@@ -36,54 +36,58 @@ function Base.copy(t::Task)
   newt
 end
 
-
+olderr = STDERR
+# supress warning message for re-defining Base.produce
+redirect_stderr()
 function Base.produce(v)
-    #### un-optimized version
-    #q = current_task().consumers
-    #t = shift!(q.waitq)
-    #empty = isempty(q.waitq)
-    ct = current_task()
-    local empty, t, q
-    while true
-        q = ct.consumers
-        if isa(q,Task)
-            t = q
-            ct.consumers = nothing
-            empty = true
-            break
-        elseif isa(q,Condition) && !isempty(q.waitq)
-            t = shift!(q.waitq)
-            empty = isempty(q.waitq)
-            break
-        end
-        wait()
+  #### un-optimized version
+  #q = current_task().consumers
+  #t = shift!(q.waitq)
+  #empty = isempty(q.waitq)
+  ct = current_task()
+  local empty, t, q
+  while true
+    q = ct.consumers
+    if isa(q,Task)
+      t = q
+      ct.consumers = nothing
+      empty = true
+      break
+    elseif isa(q,Condition) && !isempty(q.waitq)
+      t = shift!(q.waitq)
+      empty = isempty(q.waitq)
+      break
     end
+    wait()
+  end
 
-    t.state = :runnable
-    if empty
-        if isempty(Base.Workqueue)
-            yieldto(t, v)
-        else
-            schedule_and_wait(t, v)
-        end
-        ct = current_task() # When a task is copied, ct should be updated to new task ID.
-        while true
-            # wait until there are more consumers
-            q = ct.consumers
-            if isa(q,Task)
-                return q.result
-            elseif isa(q,Condition) && !isempty(q.waitq)
-                return q.waitq[1].result
-            end
-            wait()
-        end
+  t.state = :runnable
+  if empty
+    if isempty(Base.Workqueue)
+      yieldto(t, v)
     else
-        schedule(t, v)
-        # make sure `t` runs before us. otherwise, the producer might
-        # finish before `t` runs again, causing it to see the producer
-        # as done, causing done(::Task, _) to miss the value `v`.
-        # see issue #7727
-        yield()
-        return q.waitq[1].result
+      schedule_and_wait(t, v)
     end
+    ct = current_task() # When a task is copied, ct should be updated to new task ID.
+    while true
+      # wait until there are more consumers
+      q = ct.consumers
+      if isa(q,Task)
+        return q.result
+      elseif isa(q,Condition) && !isempty(q.waitq)
+        return q.waitq[1].result
+      end
+      wait()
+    end
+  else
+    schedule(t, v)
+    # make sure `t` runs before us. otherwise, the producer might
+    # finish before `t` runs again, causing it to see the producer
+    # as done, causing done(::Task, _) to miss the value `v`.
+    # see issue #7727
+    yield()
+    return q.waitq[1].result
+  end
 end
+redirect_stderr(olderr)
+

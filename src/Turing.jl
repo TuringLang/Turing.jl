@@ -7,7 +7,7 @@ module Turing
 export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample
 
 # Turing-safe data structures and associated functions
-export TURING, TArray, tzeros, cow_sweepandmark
+export TArray, tzeros
 
 # Debugging helpers
 export dprintln
