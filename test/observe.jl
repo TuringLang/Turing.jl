@@ -1,4 +1,5 @@
 using Turing
+using Distributions
 using Base.Test
 
 # Test the @assume and @predict macros on a model without conditioning.

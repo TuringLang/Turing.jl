@@ -1,4 +1,5 @@
 using Turing
+using Distributions
 using Base.Test
 
 # testing the importance sampler

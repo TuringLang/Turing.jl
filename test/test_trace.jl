@@ -1,4 +1,5 @@
 using Turing
+using Distributions
 
 import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr
 
