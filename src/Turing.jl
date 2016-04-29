@@ -15,12 +15,11 @@ export dprintln
 include("distributions/distributions.jl")
 
 # Code associated with running probabilistic programs as tasks
-include("core/tarray.jl")
 include("trace/trace.jl")
 using .Traces
-using .SelfCopyArray
 
 # Inference code
+include("core/tarray.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")

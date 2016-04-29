@@ -9,7 +9,6 @@ Notes:
 
 module Traces
 using Distributions
-using Turing.SelfCopyArray
 
 include("taskcopy.jl")
 

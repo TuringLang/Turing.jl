@@ -1,10 +1,6 @@
 # Implementation of data structures that automatically
 #  perform copy-on-write after task copying.
 
-module SelfCopyArray
-
-export TArray, tzeros, cow_sweepandmark
-
 # If current_task is an existing key in s, then return s[current_task].
 # Otherwise, return s[current_task] = s[last_task].
 immutable TArray{T,N} <: DenseArray{T,N}
@@ -29,13 +25,13 @@ end
 # duplicate TArray if task id does not match current_task
 function Base.getindex(S::TArray, i::Real)
   t, d = task_local_storage(S.ref)
-  ct = current_task()
   newd = d
-  if t != ct
-    # println("[getindex]: $(S.ref ) copying data")
-    newd = deepcopy(d)
-    task_local_storage(S.ref, (ct, newd))
-  end
+#   ct = current_task()
+#   if t != ct
+#     # println("[getindex]: $(S.ref ) copying data")
+#     newd = deepcopy(d)
+#     task_local_storage(S.ref, (ct, newd))
+#   end
   getindex(newd, i)
 end
 
@@ -105,5 +101,3 @@ end
 tzeros{T}(::Type{T}, d1::Integer, drest::Integer...) = tzeros(T, convert(Dims, tuple(d1, drest...)))
 tzeros(d1::Integer, drest::Integer...) = tzeros(Float64, convert(Dims, tuple(d1, drest...)))
 tzeros(d::Dims) = tzeros(Float64, d)
-
-end
