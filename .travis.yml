@@ -1,0 +1,3 @@
+language: julia
+julia:
+  - 0.4
