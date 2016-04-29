@@ -1,0 +1,1 @@
+Execute runtests.jl to run all the tests in this directory. A lot of the tests are probabilistic. Their stability and accuracy is provisional, in particular they may fail even if there's nothing wrong with the code. Any suggestions for improving tests are welcome.
