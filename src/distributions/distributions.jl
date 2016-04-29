@@ -10,6 +10,8 @@ import Base.LinAlg: Cholesky
 import Base.Random: rand
 import Base: getindex, mean, scale
 
+export NormalInverseGamma, NormalWishart, NormalInverseWishart, posterior
+
 flatten(x :: Float64, d :: Distribution) = ( [link(d,x)], a -> invlink(d,a[1]) )
 flatten(xs :: Array{Float64}, d :: Distribution) = ( link(d,xs), a -> invlink(d,a) )
 

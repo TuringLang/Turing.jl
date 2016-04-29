@@ -7,7 +7,7 @@ Notes:
  - `fork2` will perform lazy replaying and accumulate likelihoods like a normal particle.
 """
 
-module TraceM
+module Traces
 using Distributions
 using Turing.SelfCopyArray
 

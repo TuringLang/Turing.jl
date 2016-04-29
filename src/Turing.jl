@@ -13,13 +13,11 @@ export TArray, tzeros
 export dprintln
 
 include("distributions/distributions.jl")
-export NormalInverseGamma, NormalWishart, NormalInverseWishart, posterior
-
 
 # Code associated with running probabilistic programs as tasks
 include("core/tarray.jl")
 include("trace/trace.jl")
-using .TraceM
+using .Traces
 using .SelfCopyArray
 
 # Inference code

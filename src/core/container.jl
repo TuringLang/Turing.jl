@@ -127,7 +127,7 @@ function resample!( pc :: ParticleContainer,
   traces = collect(keys(particles))
   for i = 1:length(indx)
     tr = traces[indx[i]]
-    newtrace = TraceM.forkc(tr)
+    newtrace = Traces.forkc(tr)
     push!(pc, newtrace)
   end
 
