@@ -1,7 +1,7 @@
 
-using Distributions
-
 module Turing
+
+using Distributions
 
 # Turing essentials - modelling macros and inference algorithms
 export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample

@@ -1,4 +1,5 @@
 using Turing
+using Distributions
 
 import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, TraceC, TraceR, Trace, current_trace
 
