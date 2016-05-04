@@ -1,3 +1,10 @@
 language: julia
 julia:
   - 0.4
+notifications:
+    email: false
+script:
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.build("Turing"); Pkg.test("Turing"; coverage=true)'
+after_success:
+  - julia -e 'cd(Pkg.dir("Turing")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'

@@ -1,5 +1,6 @@
 # Turing.jl
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
+[![codecov](https://codecov.io/gh/yebai/Turing.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yebai/Turing.jl)
 
 Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros listed below. Available inference methods include  Importance Sampling, Sequential Monte Carlo, Particle Gibbs.
 
@@ -19,7 +20,15 @@ end
 
 You will need Julia 0.4, which you can get from the official Julia [website](http://julialang.org/downloads/). We recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
 
-Inside Julia, run the following:
+Turing is an officially registered Julia package, so the following should work:
+
+```julia
+Pkg.update()
+Pkg.add("Turing")
+Pkg.test("Turing")
+```
+
+If Turing can not be located, you can try the following instead:
 
 ```julia
 Pkg.clone("https://github.com/yebai/Turing.jl")
