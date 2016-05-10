@@ -110,9 +110,9 @@ function weights(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   logWs = pc.logWs
   Ws = exp(logWs-maximum(logWs))
-  z = log(sum(Ws)) + maximum(logWs)
+  logZ = log(sum(Ws)) + maximum(logWs)
   Ws = Ws ./ sum(Ws)
-  return Ws, z
+  return Ws, logZ
 end
 
 function effectiveSampleSize(pc :: ParticleContainer)

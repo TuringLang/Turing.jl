@@ -32,21 +32,21 @@ Base.values(p :: Particle) = values(p.task.storage[:turing_predicts])
 Base.getindex(p :: Particle, args...) = getindex(p.task.storage[:turing_predicts], args...)
 
 # ParticleContainer: particles ==> (weight, results)
-function getsample(pc :: ParticleContainer, i :: Int64)
+function getsample(pc :: ParticleContainer, i :: Int64, w :: Float64 = 0.)
   p = pc.vals[i]
 
   predicts = Dict{Symbol, Any}()
   for k in keys(p)
     predicts[k] = p[k]
   end
-  Ws, _ = weights(pc)
-  return Sample(Ws[i], predicts)
+  return Sample(w, predicts)
 end
 
 function Chain(pc :: ParticleContainer)
   w = pc.logE
   chain = Array{Sample}(length(pc))
-  s = map((i)->chain[i] = getsample(pc, i), 1:length(pc))
+  Ws, z = weights(pc)
+  s = map((i)->chain[i] = getsample(pc, i, Ws[i]), 1:length(pc))
 
   Chain(exp(w), s)
 end
