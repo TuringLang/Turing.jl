@@ -22,7 +22,7 @@ push!(pc, TraceC(pc.model))
 
 Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
 Base.@assert weights(pc)[2] ≈ log(3)
-Base.@assert pc.incremental_logliklihood ≈ log(1)
+Base.@assert pc.logE ≈ log(1)
 
 Base.@assert consume(pc) == log(1)
 
@@ -30,11 +30,9 @@ resample!(pc)
 Base.@assert pc.num_particles == length(pc)
 Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
 Base.@assert weights(pc)[2] ≈ log(3)
-Base.@assert pc.incremental_logliklihood ≈ log(1)
+Base.@assert pc.logE ≈ log(1)
 Base.@assert effectiveSampleSize(pc) == 3
 
 Base.@assert consume(pc) ≈ log(1)
 resample!(pc)
 Base.@assert consume(pc) ≈ log(1)
-
-
