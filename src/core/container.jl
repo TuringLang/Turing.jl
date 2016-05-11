@@ -13,8 +13,8 @@ type ParticleContainer{T<:Particle}
   vals  :: Array{T,1}
   logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
-  conditional :: Union{Void,Conditional}
-  n_consume :: Int64
+  conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
+  n_consume :: Int64 # helpful for rejuvenation steps, e.g. in SMC2
   ParticleContainer(m::Function,n::Int64) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
@@ -100,6 +100,7 @@ function Base.consume(pc :: ParticleContainer)
     # update incremental likelihoods
     _, z2      = weights(pc)
     res = increase_logevidence(pc, z2 - z1)
+    pc.n_consume += 1
     # res = increase_loglikelihood(pc, z2 - z1)
   end
 
