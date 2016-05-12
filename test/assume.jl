@@ -11,8 +11,8 @@ using Base.Test
   @predict x
 end
 
-s = SMC(1000)
-p = PG(10,100)
+s = SMC(10000)
+p = PG(10,1000)
 
 res = sample(test, s)
 

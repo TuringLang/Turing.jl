@@ -1,7 +1,11 @@
 
 module Turing
 
+# Code associated with running probabilistic programs as tasks
+include("trace/trace.jl")
+
 using Distributions
+using Turing.Traces
 
 # Turing essentials - modelling macros and inference algorithms
 export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample
@@ -12,14 +16,8 @@ export TArray, tzeros
 # Debugging helpers
 export dprintln
 
-include("distributions/distributions.jl")
-
-# Code associated with running probabilistic programs as tasks
-include("trace/trace.jl")
-using .Traces
-
 # Inference code
-include("core/tarray.jl")
+include("distributions/distributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
