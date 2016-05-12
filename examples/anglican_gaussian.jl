@@ -27,22 +27,24 @@ anglican_gaussian_exact = posterior(prior, NormalKnownSigma(s), obs)
   @predict mean
 end
 
-# KL-divergence between a normal distribution MLE-fitted to samples
-# and true posterior.
-function anglican_gaussian_divergence(samples, weights)
+function anglican_gaussian_evaluate(results)
+  # Weigthed samples of the mean
+  weights = map(x -> x.weight, results.value)
+  samples = map(x -> x.value[:mean],  results.value)
+
+  # Gaussian with the known variance MLE-fitted to the samples
   g = NormalKnownSigma(s)
   ss = suffstats(g, samples, weights)
   fitted = fit_mle(g, ss)
-  return kl(fitted, anglican_gaussian_exact)
-end
 
-function anglican_gaussian_divergence(samples :: Vector{Float64})
-  weights = fill(Float64(1), length(samples))
-  anglican_gaussian_divergence(samples, weights)
-end
+  # KL-divergence between distribution fitted above
+  # and the true posterior.
+  KL = kl(fitted, anglican_gaussian_exact)
 
-function anglican_gaussian_divergence(results)
-  weights = map(x -> x.weight, results.value)
-  samples = map(x -> x.value[:mean],  results.value)
-  return anglican_gaussian_divergence(samples, weights)
+  # Aggregating results
+  summary = Dict{Symbol,Any}()
+  summary[:exact] = anglican_gaussian_exact
+  summary[:fitted] = fitted
+  summary[:KL] = KL
+  return summary
 end
