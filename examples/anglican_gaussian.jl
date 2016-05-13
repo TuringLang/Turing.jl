@@ -33,9 +33,9 @@ function anglican_gaussian_evaluate(results)
   samples = map(x -> x.value[:mean],  results.value)
 
   # Gaussian with the known variance MLE-fitted to the samples
-  g = NormalKnownSigma(s)
-  ss = suffstats(g, samples, weights)
-  fitted = fit_mle(g, ss)
+  # g = NormalKnownSigma(s)
+  ss = suffstats(Normal, samples, weights)
+  fitted = fit_mle(Normal, ss)
 
   # KL-divergence between distribution fitted above
   # and the true posterior.
