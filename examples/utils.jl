@@ -26,3 +26,30 @@ end
 function kl(p::Normal, q::Normal)
   return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 end
+
+immutable PolyaUrn
+  counts::TArray{Float64, 1}
+  alpha::Float64
+end
+
+PolyaUrn(alpha) = PolyaUrn(convert(TArray, [alpha]),  alpha)
+
+function randclass(urn::PolyaUrn)
+  counts = localcopy(urn.counts)
+  weights = counts ./ sum(counts)
+  @assume c ~ Categorical(weights)
+  if c == length(counts)
+    urn.counts[end] = 1
+    push!(urn.counts, urn.alpha)
+  elseif c < length(counts) && c > 0
+    urn.counts[c] += 1
+  else
+    #println(weights)
+    #println("before assume: $(previous_db)")
+    #println("after assume: $(current_randomdb())")
+    error("RANDCLASS: class id: $c, urn.counts: $(urn.counts), randomdb: $(current_randomdb())")
+  end
+  return Int64(c)::Int64
+end
+
+Base.deepcopy(urn::PolyaUrn) = PolyaUrn(deepcopy(urn.counts), urn.alpha)
