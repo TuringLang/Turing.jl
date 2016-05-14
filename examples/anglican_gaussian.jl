@@ -7,9 +7,7 @@ using ConjugatePriors
 import Distributions:
   NormalKnownSigma
 
-function kl(p::Normal, q::Normal)
-  return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
-end
+include("utils.jl")
 
 m0 = 1
 s0 = sqrt(5)

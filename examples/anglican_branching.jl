@@ -5,30 +5,7 @@ using Turing
 using Distributions
 using Distances
 
-function normalize!(x)
-  norm = sum(x)
-  x /= norm
-  return x
-end
-
-function align(x,y)
-  if length(x) < length(y)
-    z = zeros(y)
-    z[1:length(x)] = x
-    x = z
-  elseif length(x) > length(y)
-    z = zeros(x)
-    z[1:length(y)] = y
-    y = z
-  end
-
-  return (x,y)
-end
-
-function kl(p :: Categorical, q :: Categorical)
-  a,b = align(p.p, q.p)
-  return kl_divergence(a,b)
-end
+include("utils.jl")
 
 function fib(n)
   if n < 3
