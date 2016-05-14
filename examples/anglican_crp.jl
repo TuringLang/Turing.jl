@@ -43,17 +43,6 @@ anglican_crp_exact =
   @predict assignments num_clusters clusters
 end
 
-# KL-divergence for the marginal of the number of clusters
-function anglican_crp_divergence(weights :: Vector{Float64})
-  ws = adjust(weights, anglican_crp_exact)
-  return kl_divergence(ws, anglican_crp_exact)
-end
-
-function anglican_crp_divergence(results :: Dict{Symbol,Any})
-  weights = marginal(Categorical, results, :num_clusters).p
-  return anglican_crp_divergence(weights)
-end
-
 function anglican_crp_evaluate(results)
   weights = map(x -> x.weight, results.value)
   samples = map(x -> x.value[:num_clusters],  results.value)
