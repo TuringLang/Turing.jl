@@ -21,6 +21,13 @@ function TArray(T::Type, dim)
   res
 end
 
+# produce a local copy of the underlying array
+function localcopy(S::TArray)
+  t,d = task_local_storage(S.ref)
+  c = deepcopy(d)
+  return c
+end
+
 # pass through getindex and setindex!
 # duplicate TArray if task id does not match current_task
 function Base.getindex(S::TArray, i::Real)
