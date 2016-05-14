@@ -31,3 +31,7 @@ function benchmark(modelname :: AbstractString, alg :: InferenceAlgorithm, do_ev
 
   return results
 end
+
+function benchmark(modelname :: AbstractString, algs, do_eval=true, do_warmup=true)
+  return map(a -> benchmark(modelname, a, do_eval, do_warmup), algs)
+end
