@@ -2,8 +2,6 @@ environment:
   matrix:
   - JULIAVERSION: "julialang/bin/winnt/x86/0.4/julia-0.4-latest-win32.exe"
   - JULIAVERSION: "julialang/bin/winnt/x64/0.4/julia-0.4-latest-win64.exe"
-  - JULIAVERSION: "julianightlies/bin/winnt/x86/julia-latest-win32.exe"
-  - JULIAVERSION: "julianightlies/bin/winnt/x64/julia-latest-win64.exe"
 
 # branches:
   # only:
@@ -15,6 +13,9 @@ notifications:
     on_build_success: false
     on_build_failure: true
     on_build_status_changed: false
+
+init:
+- cmd: set PATH=C:\MinGW\bin;C:\cygwin;%PATH%
 
 install:
 # Download most recent Julia Windows binary
