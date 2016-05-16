@@ -67,7 +67,7 @@ for i = 1:K
 end
 
 @model big_hmm begin
-  states = tzeros(Int64,N)
+  states = tzeros(Int,N)
   @assume states[1] ~ Categorical(initial)
   for i = 2:N
     @assume states[i] ~ Categorical(T[states[i-1]])

@@ -6,7 +6,7 @@ mutated externally by some inference method like SMC2, HMC, PMMH etc.
 immutable Conditional
   vals   :: Array{Distributions.VariateForm, 1}
   distrs :: Array{Distributions.Distribution,1}
-  pos  :: TArray{Int64,1}  # N.B. TArray is only meaningful for ParticleSamplers, since each particle needs a counter for its passed parameters.
+  pos  :: TArray{Int,1}  # N.B. TArray is only meaningful for ParticleSamplers, since each particle needs a counter for its passed parameters.
 end
 
 # Condition on a variable during inference, e.g. in SMC2, we sample x | theta in the inner SMC.

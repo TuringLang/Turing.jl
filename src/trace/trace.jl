@@ -18,8 +18,8 @@ export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros
 type Trace{T}
   task :: Task
   randomness :: Array{Any, 1}    # elem t is the randomness created by the t’th assume call.
-  index :: Int64                 # index of current randomness
-  num_produce :: Int64           # num of produce calls from trace, each produce corresponds to an observe.
+  index :: Int                 # index of current randomness
+  num_produce :: Int           # num of produce calls from trace, each produce corresponds to an observe.
   Trace() = (res = new(); res.randomness = Array{Any,1}(); res.index = 0; res.num_produce = 0; res)
 end
 
@@ -71,7 +71,7 @@ end
 
 # fork s and replay until observation t; drop randomness between y_t:T if keep == false
 #  N.B.: PG requires keeping all randomness even we only replay up to observation y_t
-function forkr(trace :: TraceR, t :: Int64, keep :: Bool)
+function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 0: create new task and copy randomness
   newtrace = TraceR(trace.task.code)
   newtrace.randomness = deepcopy(trace.randomness)
