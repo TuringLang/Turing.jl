@@ -9,13 +9,13 @@ typealias Particle Trace
 
 type ParticleContainer{T<:Particle}
   model :: Function
-  num_particles :: Int64
+  num_particles :: Int
   vals  :: Array{T,1}
   logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
   conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
-  n_consume :: Int64 # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer(m::Function,n::Int64) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
+  n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
+  ParticleContainer(m::Function,n::Int) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
 call{T}(::Type{ParticleContainer{T}}, m) = ParticleContainer{T}(m, 0)
@@ -35,7 +35,7 @@ function Base.push!(pc :: ParticleContainer, p :: Particle)
   pc
 end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
-function Base.push!(pc :: ParticleContainer, n :: Int64)
+function Base.push!(pc :: ParticleContainer, n :: Int)
   vals = Array{eltype(pc.vals), 1}(n)
   logWs = Array{eltype(pc.logWs), 1}(n)
   for i=1:n
@@ -121,7 +121,7 @@ function effectiveSampleSize(pc :: ParticleContainer)
   ess = sum(Ws) ^ 2 / sum(Ws .^ 2)
 end
 
-increase_logweight(pc :: ParticleContainer, t :: Int64, logw :: Float64) =
+increase_logweight(pc :: ParticleContainer, t :: Int, logw :: Float64) =
   (pc.logWs[t]  += logw)
 
 increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
@@ -141,7 +141,7 @@ function resample!( pc :: ParticleContainer,
 
   # fork particles
   empty!(pc)
-  num_children = zeros(Int64,n1)
+  num_children = zeros(Int,n1)
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
     p = particles[i] == ref ? Traces.forkc(particles[i]) : particles[i]

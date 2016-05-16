@@ -1,11 +1,11 @@
 # Particle Gibbs sampler
 
 immutable PG <: InferenceAlgorithm
-  n_particles :: Int64
-  n_iterations :: Int64
+  n_particles :: Int
+  n_iterations :: Int
   resampler :: Function
   resampler_threshold :: Float64
-  PG(n1::Int64,n2::Int64) = new(n1,n2,resampleSystematic,0.5)
+  PG(n1::Int,n2::Int) = new(n1,n2,resampleSystematic,0.5)
 end
 
 assume(spl :: Sampler{PG}, distr :: Distribution)   = randr(current_trace(), distr)

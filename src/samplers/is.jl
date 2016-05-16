@@ -1,5 +1,5 @@
 immutable IS <: InferenceAlgorithm
-  n_samples :: Int64
+  n_samples :: Int
 end
 
 type ImportanceSampler{IS} <: Sampler{IS}

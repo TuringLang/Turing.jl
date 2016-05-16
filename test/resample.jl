@@ -2,7 +2,7 @@ using Turing
 using Distributions
 using Base.Test
 
-num_samples = Int64(1e6)
+num_samples = Int(1e6)
 
 resSystematic = Turing.resampleSystematic( [0.3, 0.4, 0.3], num_samples )
 resStratified = Turing.resampleStratified( [0.3, 0.4, 0.3], num_samples )

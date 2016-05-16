@@ -1,5 +1,5 @@
 immutable SMC <: InferenceAlgorithm
-  n_particles :: Int64
+  n_particles :: Int
   resampler :: Function
   resampler_threshold :: Float64
   SMC(n) = new(n, resampleSystematic, 0.5)

@@ -5,9 +5,9 @@
 # Code adapted from: http://uk.mathworks.com/matlabcentral/fileexchange/24968-resampling-methods-for-particle-filtering
 
 # default resampling scheme
-resample( w::Vector{Float64}, num_particles::Int64 = length(w) ) = resampleSystematic(w, num_particles)
+resample( w::Vector{Float64}, num_particles::Int = length(w) ) = resampleSystematic(w, num_particles)
 
-function resampleMultinomial( w::Vector{Float64}, num_particles::Int64 )
+function resampleMultinomial( w::Vector{Float64}, num_particles::Int )
 
   s = Distributions.sampler(Categorical(w))
   indx = rand(s, num_particles)
@@ -15,7 +15,7 @@ function resampleMultinomial( w::Vector{Float64}, num_particles::Int64 )
 end
 
 
-function resampleResidual( w::Vector{Float64}, num_particles::Int64 )
+function resampleResidual( w::Vector{Float64}, num_particles::Int )
 
   M = length( w )
 
@@ -23,7 +23,7 @@ function resampleResidual( w::Vector{Float64}, num_particles::Int64 )
   Ns = floor(length(w) .* w)
 
   # The "remainder" or "residual" count:
-  R = Int64(sum( Ns ))
+  R = Int(sum( Ns ))
 
   # The number of particles which will be drawn stocastically:
   M_rdn = num_particles-R;
@@ -50,7 +50,7 @@ function resampleResidual( w::Vector{Float64}, num_particles::Int64 )
 
 end
 
-function resampleStratified( w::Vector{Float64}, num_particles::Int64 )
+function resampleStratified( w::Vector{Float64}, num_particles::Int )
 
   N = num_particles
   Q = cumsum(w)
@@ -64,7 +64,7 @@ function resampleStratified( w::Vector{Float64}, num_particles::Int64 )
   i=1
   j=1
 
-  indx = Array{Int64}(N)
+  indx = Array{Int}(N)
   while i<=N
     if T[i]<Q[j]
       indx[i]=j
@@ -78,7 +78,7 @@ function resampleStratified( w::Vector{Float64}, num_particles::Int64 )
 
 end
 
-function resampleSystematic( w::Vector{Float64}, num_particles::Int64 )
+function resampleSystematic( w::Vector{Float64}, num_particles::Int )
 
   N = num_particles
   Q = cumsum(w)
@@ -89,7 +89,7 @@ function resampleSystematic( w::Vector{Float64}, num_particles::Int64 )
   i=1
   j=1
 
-  indx = Array{Int64}(N)
+  indx = Array{Int}(N)
   while i<=N
     if (T[i]<Q[j])
       indx[i]=j
