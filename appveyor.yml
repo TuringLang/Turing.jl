@@ -3,12 +3,6 @@ environment:
   - JULIAVERSION: "julialang/bin/winnt/x86/0.4/julia-0.4-latest-win32.exe"
   - JULIAVERSION: "julialang/bin/winnt/x64/0.4/julia-0.4-latest-win64.exe"
 
-=======
-# branches:
-  # only:
-    # - master
-    # - /release-.*/
-
 notifications:
   - provider: Email
     on_build_success: false
