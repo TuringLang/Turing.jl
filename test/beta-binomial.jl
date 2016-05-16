@@ -20,8 +20,8 @@ meanp = exact.α / (exact.α + exact.β)
 end
 
 
-s = SMC(1000)
-p = PG(100,100)
+s = SMC(10000)
+p = PG(100,1000)
 
 res = sample(test, s)
 @test_approx_eq_eps mean(res[:p]) meanp 0.05

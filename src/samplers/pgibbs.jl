@@ -34,7 +34,7 @@ function Base.run(spl::Sampler{PG})
       end
     end
 
-    logevidence[tt] = spl.particles.logevidence
+    logevidence[tt] = spl.particles.logE
     ## pick a particle to be retained.
     Ws, _ = weights(spl.particles)
     indx = rand(Categorical(Ws))
