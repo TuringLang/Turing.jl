@@ -5,17 +5,6 @@ environment:
   - JULIAVERSION: "julianightlies/bin/winnt/x86/julia-latest-win32.exe"
   - JULIAVERSION: "julianightlies/bin/winnt/x64/julia-latest-win64.exe"
 
-# branches:
-  # only:
-    # - master
-    # - /release-.*/
-
-notifications:
-  - provider: Email
-    on_build_success: false
-    on_build_failure: true
-    on_build_status_changed: false
-
 install:
 # Download most recent Julia Windows binary
   - ps: (new-object net.webclient).DownloadFile(
