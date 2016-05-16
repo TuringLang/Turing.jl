@@ -1,3 +1,3 @@
 # Documentation for Turing.jl
 
-[Online](http://turingjl.readthedocs.io/en/latest/)
+[Visit the documentation on readthedocs.io](http://turingjl.readthedocs.io/en/latest/)
