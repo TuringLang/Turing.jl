@@ -32,7 +32,7 @@ Base.values(p :: Particle) = values(p.task.storage[:turing_predicts])
 Base.getindex(p :: Particle, args...) = getindex(p.task.storage[:turing_predicts], args...)
 
 # ParticleContainer: particles ==> (weight, results)
-function getsample(pc :: ParticleContainer, i :: Int64, w :: Float64 = 0.)
+function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
   p = pc.vals[i]
 
   predicts = Dict{Symbol, Any}()

@@ -1,6 +1,9 @@
 # Turing.jl
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl)
 [![codecov](https://codecov.io/gh/yebai/Turing.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yebai/Turing.jl)
+[![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
+
 
 Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros listed below. Available inference methods include  Importance Sampling, Sequential Monte Carlo, Particle Gibbs. 
 
