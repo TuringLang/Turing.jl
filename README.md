@@ -1,7 +1,7 @@
 # Turing.jl
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl)
-[![codecov](https://codecov.io/gh/yebai/Turing.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/yebai/Turing.jl)
+[![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
 
 
