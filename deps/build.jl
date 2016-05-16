@@ -1,6 +1,2 @@
-try
-  run(`make`)
-catch x
-  # todo: the error should be checked here, but I don't know how to do it
-  run(`mingw32-make`)
-end
+@unix_only run(`make`)
+@windows_only run(`mingw32-make`)
