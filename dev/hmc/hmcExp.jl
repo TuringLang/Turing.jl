@@ -155,4 +155,4 @@ function demo22(sampleNum::Int64)
   plot(HMCSampleLayer2, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using HMC with order shown"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8))
 end
 
-demo21(25)
+demo22(25)
