@@ -13,7 +13,7 @@ function logsum(xs :: Vector{Float64})
   return result
 end
 
-function reference(n :: Int)
+function reference(n :: Int64)
   logweights = zeros(Float64, n)
   samples = Array{Dict{Symbol,Any}}(n)
   for i = 1:n

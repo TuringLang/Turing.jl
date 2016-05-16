@@ -64,7 +64,7 @@ function resampleStratified( w::Vector{Float64}, num_particles::Int64 )
   i=1
   j=1
 
-  indx = Array{Int}(N)
+  indx = Array{Int64}(N)
   while i<=N
     if T[i]<Q[j]
       indx[i]=j
@@ -89,7 +89,7 @@ function resampleSystematic( w::Vector{Float64}, num_particles::Int64 )
   i=1
   j=1
 
-  indx = Array{Int}(N)
+  indx = Array{Int64}(N)
   while i<=N
     if (T[i]<Q[j])
       indx[i]=j

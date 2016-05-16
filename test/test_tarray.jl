@@ -1,7 +1,7 @@
 using Turing
 
 function f()
-  t = TArray(Int, 1);
+  t = TArray(Int64, 1);
   t[1] = 0;
   while true
     produce(t[1])

@@ -17,7 +17,7 @@ end
 
 function f()
   urn = PolyaUrn(1.72)
-  classes = tzeros(Int, 50)
+  classes = tzeros(Int64, 50)
   for i in 1:50
     classes[i]  = randclass(urn)
     u = unique(classes[1:i])
