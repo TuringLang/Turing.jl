@@ -23,7 +23,7 @@ anglican_crp_exact =
 @model anglican_crp begin
   precision_prior = Gamma(a,b)
   cluster_gen = PolyaUrn(alpha)
-  clusters = TArray{Distribution}(1)
+  clusters = TArray{Distribution,1}(0)
   assignments = TArray{Any}(length(obs))
   for i = 1:length(obs)
     c = randclass(cluster_gen)
