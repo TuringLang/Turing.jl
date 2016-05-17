@@ -35,3 +35,31 @@ end
 function benchmark(modelname :: AbstractString, algs, do_eval=true, do_warmup=true)
   return map(a -> benchmark(modelname, a, do_eval, do_warmup), algs)
 end
+
+function mean_sd(k, results)
+  values = map(r -> r[k], results)
+  d = fit_mle(Normal, values)
+  return (d.μ, d.σ)
+end
+
+function multibenchmark(n_repeat :: Int, modelname :: AbstractString, alg, do_eval=true, do_warmup=true)
+   # model definition
+  include(string(modelname, ".jl"))
+
+  # extract model and evaluation function
+  model = eval(symbol(modelname))
+  evaluate = eval(symbol(string(modelname,"_evaluate")))
+
+  if do_warmup
+    #warmup run
+    sample(model, alg)
+  end
+
+  results = map(x -> benchmark(modelname, alg, do_eval, false), zeros(n_repeat))
+
+  summary = Dict()
+  summary[:time] = mean_sd(:time, results)
+  summary[:KL]   = mean_sd(:KL,   results)
+
+  return summary
+end
