@@ -23,19 +23,20 @@ anglican_crp_exact =
 @model anglican_crp begin
   precision_prior = Gamma(a,b)
   cluster_gen = PolyaUrn(alpha)
-  clusters = Dict{Int64,Distribution}()
-  assignments = Array{Any}(length(obs))
+  clusters = TArray{Distribution}(1)
+  assignments = TArray{Any}(length(obs))
   for i = 1:length(obs)
     c = randclass(cluster_gen)
     assignments[i] = c
-    if haskey(clusters, c)
+    if c <= length(clusters)
       likelihood = clusters[c]
     else
+      @assert c == length(clusters) + 1
       @assume l ~ precision_prior
       s = sqrt(1 / (beta * l))
       @assume m ~ Normal(mu,s)
       likelihood = Normal(m, 1 / sqrt(l))
-      clusters[c] = likelihood
+      push!(clusters, likelihood)
     end
     @observe obs[i] ~ likelihood
   end
@@ -56,3 +57,5 @@ function anglican_crp_evaluate(results)
   summary[:KL] = KL
   return summary
 end
+
+
