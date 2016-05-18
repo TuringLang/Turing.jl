@@ -38,8 +38,9 @@ end
 
 function mean_sd(k, results)
   values = map(r -> r[k], results)
-  d = fit_mle(Normal, values)
-  return (d.μ, d.σ)
+  μ = mean(values)
+  σ = std(values)
+  return (μ, σ)
 end
 
 function multibenchmark(n_repeat :: Int, modelname :: AbstractString, alg, do_eval=true, do_warmup=true)
