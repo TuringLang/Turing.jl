@@ -43,7 +43,7 @@ end
   @assume(states[1] ~ initial)
   for i = 2:length(data)
     @assume(states[i] ~ trans[states[i-1]])
-    @observe(data[i]  ~ Normal(statesmean[states[i]], 0.4))
+    @observe(data[i]  ~ Normal(statesmean[states[i]], 1))
   end
   @predict states
 end
