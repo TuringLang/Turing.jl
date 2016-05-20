@@ -35,11 +35,6 @@ end
 #   return p
 # end
 
-# TODO: solve Problem 2
-# Problem 2:
-# It seems that in order to use ForwardDiff, the argument of the function
-# needs to be in type of ::Vector. Wonder if it will cause some problems.
-
 # get the graident ∇f
 ∇f = ForwardDiff.gradient(f)
 
@@ -79,34 +74,25 @@ eval2DSamples(samples)
 # sample from f()
 samples = HMCSampler(f, Float64[1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 500, 0.01, 20, 2)
 
+##############################################
+# Task 2 - compute the effective sample size #
+##############################################
+
+sampleNum = 1000
+HMCsamples = HMCSampler(simplef, sampleNum, 0.05, 20, 2)
+MHSamples = MHSampler(simplef, sampleNum, 0.5, 2)
+ess(HMCsamples)
+ess(MHSamples)
+
 ###############################################
-# Task 2 - use meta-programming to facilitate #
+# Task 3 - use meta-programming to facilitate #
 #  the HMC sampler and @model to do sampling  #
 ###############################################
 
-#############################################
-# Task -1 - implement MH to sample from f() #
-#############################################
-
-# 2D example using simplef()
-samples = MHSampler(simplef, 500, 0.5, 2)
-eval2DSamples(samples)
-
-
-
-
-
-
-
-
-
-
-
 ####################
-# Demo for Meeting #
+# Demo for meeting #
+#  on 16/05/2016   #
 ####################
-
-include("hmc.jl")
 
 # A simple multivariate Gaussian
 μ = [3.0, 3.0]
@@ -129,15 +115,18 @@ function demo1(sampleNum::Int64)
   HMCSampleLayer = layer(x=Float64[x[1] for x in HMCSamples], y=Float64[x[2] for x in HMCSamples], Geom.point, Theme(default_color=colorant"red"))
 
   # Exact
-  exactSampleLayer = layer(z=(x,y) -> simplef([x, y]), x=linspace(-2,8,100), y=linspace(-2,8,100), Geom.contour(levels=3))
+  exactSampleLayer = layer(z=(x,y) -> simplef([x, y]), x=linspace(-2,8,100), y=linspace(-2,8,100), Geom.contour(levels=5))
 
   # plot together with real dneisty
-  plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH, HMC and Exact Sampling"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
+  plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH and HMC"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
 end
 
 demo1(25)
 
 # Demo 2
+
+# Exact
+exactSampleLayer = layer(z=(x,y) -> simplef([x, y]), x=linspace(-2,8,100), y=linspace(-2,8,100), Geom.contour(levels=3))
 
 # plot MH with order
 function demo21(sampleNum::Int64)
@@ -146,7 +135,7 @@ function demo21(sampleNum::Int64)
   plot(MHSampleLayer2, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH with order shown"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8))
 end
 
-demo21(50)
+demo21(55)
 
 # plot HMC with order
 function demo22(sampleNum::Int64)

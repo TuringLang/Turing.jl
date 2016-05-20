@@ -1,4 +1,4 @@
-using Turing, DataFrames, Gadfly
+using Turing, DataFrames, Gadfly, Distributions
 
 # HMM example from Anglican and Probabilistic C papers
 

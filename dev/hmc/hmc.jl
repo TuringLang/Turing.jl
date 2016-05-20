@@ -1,16 +1,11 @@
-###############################################
-###############################################
-## implementation of Hamiltonian Monte Carlo ##
-###############################################
-###############################################
-
 using Distributions         # for distribution
 using Gadfly, Cairo         # for plotting
+using StatsBase             # for autocorrelation
 import ForwardDiff          # for graident
 
-#########################
-# implementation of HMC #
-#########################
+###########################
+# Hamiltonian Monte Carlo #
+###########################
 
 function HMCStepper(x::Vector, E::Function, ∇E::Function, ϵ::Float64, τ::Int64)
   """
@@ -94,9 +89,9 @@ function HMCSampler(Q::Function, sampleNum::Int64, ϵ::Float64, τ::Int64, dim::
   return samples
 end
 
-#############################################
-# Task -1 - implement MH to sample from f() #
-#############################################
+#######################
+# Metropolis-Hastings #
+#######################
 
 function MHStepper(x::Vector, logQ::Function, stepSize::Float64)
   """
@@ -137,11 +132,9 @@ function MHSampler(Q::Function, sampleNum::Int64, stepSize::Float64, dim::Int64)
   return samples
 end
 
-######################
-######################
-## Helper Functions ##
-######################
-######################
+####################
+# Helper Functions #
+####################
 
 function eval1DSamples(samples)
   μ = mean(Float64[x[1] for x in samples])  # inference μ
@@ -163,43 +156,26 @@ function eval2DSamples(samples)
   plot(sampleLayer, Guide.xlabel("x"), Guide.ylabel("-"), Guide.title("Samples"), Coord.cartesian(xmin=-3, xmax=9, ymin=-3, ymax=9))
 end
 
-###############
-###############
-## Reference ##
-###############
-###############
+function sampleTransform(samples)
+  """
+  transform Array{Any,1} to Array{Float64,d}
+  """
+  n = length(samples)
+  dim = length(samples[1])
+  newSamples = Float64[s[1] for s in samples]
+  for d = 2:dim
+    append!(newSamples, Float64[s[d] for s in samples])
+  end
+  return reshape(newSamples, n, dim)
+end
 
-#########################################
-# Octave source code for the HMC method #
-#   from Information theory by Mackay   #
-#########################################
-
-# g = gradE ( x ) ;                 # set gradient using initial x
-# E = findE ( x ) ;                 # set objective function too
-#
-# for l = 1:L                       # loop L times
-#   p = randn ( size(x) ) ;         # initial momentum is Normal(0,1)
-#   H = p’ * p / 2 + E ;            # evaluate H(x,p)
-#
-#   xnew = x ; gnew = g ;
-#   for tau = 1:Tau                 # make Tau ‘leapfrog’ steps
-#
-#     p = p - epsilon * gnew / 2 ;  # make half-step in p
-#     xnew = xnew + epsilon * p ;   # make step in x
-#     gnew = gradE ( xnew ) ;       # find new gradient
-#     p = p - epsilon * gnew / 2 ;  # make half-step in p
-#
-#   endfor
-#
-#   Enew = findE ( xnew ) ;         # find new value of H
-#   Hnew = p’ * p / 2 + Enew ;
-#   dH = Hnew - H ;                 # Decide whether to accept
-#
-#   if ( dH < 0 )                accept = 1 ;
-#   elseif ( rand() < exp(-dH) ) accept = 1 ;
-#   else                         accept = 0 ;
-#
-#   if ( accept )
-#     g = gnew ; x = xnew ; E = Enew ;
-#   endif
-# endfor
+function ess(samples)
+  """
+  ess = n / (1 + 2∑ρ_k)
+  """
+  n = length(samples)
+  samples = sampleTransform(samples)
+  acf = StatsBase.autocor(samples, [1:n-1], demean=false)
+  acfSum = sum(mean(acf, 2))
+  return n / (1 + 2 * acfSum)
+end
