@@ -13,7 +13,8 @@ using Distributions
 include("taskcopy.jl")
 include("tarray.jl")
 
-export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros
+export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
+       localcopy
 
 type Trace{T}
   task :: Task

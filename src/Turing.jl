@@ -11,7 +11,7 @@ using Turing.Traces
 export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample
 
 # Turing-safe data structures and associated functions
-export TArray, tzeros
+export TArray, tzeros, localcopy
 
 # Debugging helpers
 export dprintln
