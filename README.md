@@ -10,7 +10,9 @@ Turing is a Julia library for probabilistic programming. A Turing probabilistic 
 Authors: [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/)
 
 ### Relevant papers
-Ghahramani, Zoubin. "Probabilistic machine learning and artificial intelligence." Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
+1. Ghahramani, Zoubin. "Probabilistic machine learning and artificial intelligence." Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
+2. Ge, Hong, Scibior, Adam, Ghahramani, Zoubin  "Turing: Rejuvenating Probabilistic Programming in Julia." (In Submission).
+
 
 ### Example
 ```julia
