@@ -1,7 +1,8 @@
-using Distributions         # for distribution
-using Gadfly, Cairo         # for plotting
-using StatsBase             # for autocorrelation
-import ForwardDiff          # for graident
+# include("hmcDistributions.jl")        # for HMC distribution
+using Distributions                   # for distribution
+using Gadfly, Cairo                   # for plotting
+using StatsBase                       # for autocorrelation
+import ForwardDiff                    # for graident
 
 ###########################
 # Hamiltonian Monte Carlo #
@@ -19,7 +20,6 @@ function HMCStepper(x::Vector, E::Function, ∇E::Function, ϵ::Float64, τ::Int
     x       -   next state
   """
   p = randn(length(x))      # generate random momentum
-
   oldH = p' * p / 2 + E(x)  # record old Hamiltonian
   oldx = x                  # record old state
   val∇E = ∇E(x)
@@ -171,7 +171,7 @@ end
 
 function ess(samples)
   """
-  ess = n / (1 + 2∑ρ_k)
+  ess = n / (1 + 2∑ρ)
   """
   n = length(samples)
   samples = sampleTransform(samples)

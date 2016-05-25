@@ -52,6 +52,10 @@ function simplef(x::Vector)
   return 1 / sqrt((2pi) ^ 2 * det(Σ)) * exp(-0.5 * ((x - μ)' * Λ * (x - μ))[1])
 end
 
+function simplef(x::Vector)
+  return hmcpdf(hmcMvNormal(μ, Σ), x)
+end
+
 # Test f() and its gradient
 simplef([3.0, 3.0])
 ∇simplef = ForwardDiff.gradient(simplef)
@@ -72,7 +76,7 @@ samples = HMCSampler(simplef, 500, 0.05, 20, 2)
 eval2DSamples(samples)
 
 # sample from f()
-samples = HMCSampler(f, Float64[1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 500, 0.01, 20, 2)
+samples = HMCSampler(f, 500, 0.01, 20, 2)
 
 ##############################################
 # Task 2 - compute the effective sample size #
