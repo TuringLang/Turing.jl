@@ -77,17 +77,17 @@ println("1; 1: ", nn([Float64[1; 1], w11, w12, w2]))
 include("hmc.jl")
 
 G = w -> exp(-loss(w))
-HMCSamples = HMCSampler(G, 5000, 0.01, 10, 9)
+HMCSamples = HMCSampler(G, 500, 0.01, 10, 9)
 s = HMCSamples
-ws = [mean([s[10i][1] for i = 1:500]);
-      mean([s[10i][2] for i = 1:500]);
-      mean([s[10i][3] for i = 1:500]);
-      mean([s[10i][4] for i = 1:500]);
-      mean([s[10i][5] for i = 1:500]);
-      mean([s[10i][6] for i = 1:500]);
-      mean([s[10i][7] for i = 1:500]);
-      mean([s[10i][8] for i = 1:500]);
-      mean([s[10i][9] for i = 1:500])]
+ws = [mean([s[i][1] for i = 1:500]);
+      mean([s[i][2] for i = 1:500]);
+      mean([s[i][3] for i = 1:500]);
+      mean([s[i][4] for i = 1:500]);
+      mean([s[i][5] for i = 1:500]);
+      mean([s[i][6] for i = 1:500]);
+      mean([s[i][7] for i = 1:500]);
+      mean([s[i][8] for i = 1:500]);
+      mean([s[i][9] for i = 1:500])]
 w11, w12, w2 = ws[1:3], ws[4:6], ws[7:9]
 
 # Print predictions
