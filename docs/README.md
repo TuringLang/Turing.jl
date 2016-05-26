@@ -1,3 +1,3 @@
 # Documentation for Turing.jl
 
-[Visit the documentation on readthedocs.io](https://github.com/yebai/Turing.jl.git)
+[Visit the documentation on readthedocs.io](http://turingjl.readthedocs.io/)
