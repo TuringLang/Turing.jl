@@ -16,7 +16,6 @@ notifications:
     on_build_status_changed: false
 
 init:
-  - cmd: set PATH=C:\MinGW\bin;C:\cygwin;%PATH%
   - cmd: set Path=%CD%\%MINGW_DIR%\bin;%Path%
   - cmd: g++ --version
   - cmd: mingw32-make --version
