@@ -15,12 +15,6 @@ notifications:
     on_build_failure: true
     on_build_status_changed: false
 
-init:
-  - cmd: set Path=%CD%\%MINGW_DIR%\bin;%Path%
-  - cmd: g++ --version
-  - cmd: mingw32-make --version
-  - cmd: cmake --version
-
 install:
 # Download and install MinGW
   - if not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
@@ -33,6 +27,9 @@ install:
   - C:\projects\julia-binary.exe /S /D=C:\projects\julia
 
 build_script:
+  - set Path=%CD%\%MINGW_DIR%\bin;%Path%
+  - g++ --version
+  - mingw32-make --version
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
