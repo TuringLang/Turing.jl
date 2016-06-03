@@ -4,7 +4,7 @@
 import ForwardDiff                    # for graident
 
 # Activation function
-function f(a)
+function sigmoid(a)
   1 / (1 + exp(-a))
 end
 
@@ -12,16 +12,16 @@ end
 function nn(args::Vector)
   x, w11, w12, w2 = args[1:2], args[3:5], args[6:8], args[9:11]
   x1 = [1; x[1]; x[2]]
-  x2 = [1; f((w11' * x1)[1]); f((w12' * x1)[1])]
-  y = [f((w2' * x2)[1])][1]
+  x2 = [1; sigmoid((w11' * x1)[1]); sigmoid((w12' * x1)[1])]
+  y = [sigmoid((w2' * x2)[1])][1]
 end
 
 # NN with only weights as variables
 function nnw(args::Vector)
   w11, w12, w2 = args[1:3], args[4:6], args[7:9]
   x1 = [1; x[1]; x[2]]
-  x2 = [1; f((w11' * x1)[1]); f((w12' * x1)[1])]
-  y = [f((w2' * x2)[1])][1]
+  x2 = [1; sigmoid((w11' * x1)[1]); sigmoid((w12' * x1)[1])]
+  y = [sigmoid((w2' * x2)[1])][1]
 end
 
 # Loss function: binary entropy
@@ -39,12 +39,16 @@ end
 # Find the gradient of loss function wrt to weights
 ∇loss = ForwardDiff.gradient(loss)
 
-# Learning rate
-l_rate = 1
-
 # Training data
 xs = [Float64[0; 0]; Float64[0; 1]; Float64[1; 0]; Float64[1; 1]]
 ys = [0; 1; 1; 0]
+
+####################
+# Gradient descend #
+####################
+
+# Learning rate
+l_rate = 1
 
 # Initialise weights
 w11 = Float64[0.1; 0.1; 0.1]
@@ -54,7 +58,7 @@ w2 = Float64[0.1; 0.1; 0.1]
 # Print initial loss
 println("Initial loss: ", loss([w11, w12, w2]))
 
-# Gradient descend
+# GD loop
 for _ = 1:1000
   dw = ∇loss([w11, w12, w2])
   w2 -= l_rate * dw[7:9]
@@ -73,7 +77,10 @@ println("0; 1: ", nn([Float64[0; 1], w11, w12, w2]))
 println("1; 0: ", nn([Float64[1; 0], w11, w12, w2]))
 println("1; 1: ", nn([Float64[1; 1], w11, w12, w2]))
 
-# Learning as inference
+#########################
+# Learning as inference #
+#########################
+
 include("hmc.jl")
 
 G = w -> exp(-loss(w))

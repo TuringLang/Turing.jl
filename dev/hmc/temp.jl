@@ -29,12 +29,12 @@ function fun3(args::Vector)
   μ = args[1]
   σ = args[2]
   pdf = hmcNormal(μ, σ)
-  xs = randn(100)
+  xs = [1, 1, 1, 1.25, 0.75]
   l = map(pdf, xs)
   return prod(l)
 end
 
-HMCSamples = HMCSampler(fun3, 1000, 0.01, 10, 2)
+HMCSamples = HMCSampler(fun3, 1000, 0.001, 50, 2, true)
 eval2DSamples(HMCSamples)
 
 plot(z=(x,y) -> fun3([x,y]),

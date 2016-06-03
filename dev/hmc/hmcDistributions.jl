@@ -75,3 +75,27 @@ end
 #########################################
 # Distributions over periodic variables #
 #########################################
+
+function hmcVonMises(μ, β)
+  return Θ -> 1 / (2pi * besselj0(β)) * exp(β * cos(Θ - μ))
+end
+
+####################################
+# Distributions over probabilities #
+####################################
+
+function hmcBeta(u1, u2)
+  Z = gamma(u1) * gamma(u2) / (gamma(u1 + u2))
+  return p -> 1 / Z * p^(u1 - 1) * (1 - p)^(u2 - 1)
+end
+
+function hmcDirichelet(u...)
+  Z = sum(map(gamma, u)) / gamma(sum(u))
+  function pdf(p...)
+    1 / Z * prod(p .^ (u - 1)) * (sum(p) == 1)
+  end
+  return pdf
+end
+
+# TODO: test my density functions
+# TODO: try to reuse his code

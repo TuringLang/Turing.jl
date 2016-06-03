@@ -1,4 +1,4 @@
-# include("hmcDistributions.jl")        # for HMC distribution
+include("hmcDistributions.jl")        # for HMC distribution
 using Distributions                   # for distribution
 using Gadfly, Cairo                   # for plotting
 using StatsBase                       # for autocorrelation
