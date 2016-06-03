@@ -19,7 +19,7 @@ function Base.show(io::IO, ch1::Chain)
     print(io, "Empty Chain, weight $(ch1.weight)")
   else
     chain_mean = [i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value)]
-    print(io, "Chain, model edvidence (log)  $(ch1.weight) and means $(chain_mean)")
+    print(io, "Chain, model evidence (log)  $(ch1.weight) and means $(chain_mean)")
   end
 end
 
