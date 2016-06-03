@@ -13,6 +13,16 @@ type Chain
 end
 Chain() = Chain(0, Vector{Sample}())
 
+function Base.show(io::IO, ch1::Chain)
+  # Print chain weight and weighted means of samples in chain
+  if length(ch1.value) == 0
+    print(io, "Empty Chain, weight $(ch1.weight)")
+  else
+    chain_mean = [i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value)]
+    print(io, "Chain, weight $(ch1.weight) and means $(chain_mean)")
+  end
+end
+
 function Base.getindex(c::Chain, v::Symbol)
   # This strange implementation is mostly to keep backward compatability.
   #  Needs some refactoring a better format for storing results is available.
@@ -54,4 +64,3 @@ end
 # tests
 # tr = Turing.sampler.particles[1]
 # tr = Chain(Turing.sampler.particles)
-
