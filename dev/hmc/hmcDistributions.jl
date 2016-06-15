@@ -64,7 +64,7 @@ function hmcGamma(s, c)
 end
 
 function hmcInverseGamma(s, c)
-  return x -> 1 / (gamma(c) / s) * (1 / (s * v))^(c + 1) * exp(-1 / (s * v))
+  return v -> 1 / (gamma(c) / s) * (1 / (s * v))^(c + 1) * exp(-1 / (s * v))
 end
 
 function hmcLogNormal(m, s)

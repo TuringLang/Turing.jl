@@ -33,8 +33,23 @@ function loss(args::Vector)
     y = nn([x, w11, w12, w2])
     l += -(ys[i] * log2(y) + (1 - ys[i]) * log(1 - y))
   end
+  l += 0.5 * (sum(w11 .* w11) + sum(w12 .* w12) + sum(w2 .* w2))
   return l
 end
+
+# xs = [[0; 0]; [0; 1]; [1; 0]; [1; 1]]
+# ts = [0; 1; 1; 0]
+# @model bnn begin
+#   weights = TArray(Float64, 6)
+#   @param σ ~ InverseGamma(2, 3)
+#   for w in weights
+#     @param w ~ Normal(0, sqrt(σ))
+#   end
+#   for i in 1:4
+#     @observe ts[i] ~ Bernoulli(nn(xs[i], weights))
+#   end
+#   @predict weights
+# end
 
 # Find the gradient of loss function wrt to weights
 ∇loss = ForwardDiff.gradient(loss)
@@ -48,7 +63,7 @@ ys = [0; 1; 1; 0]
 ####################
 
 # Learning rate
-l_rate = 1
+l_rate = 10
 
 # Initialise weights
 w11 = Float64[0.1; 0.1; 0.1]

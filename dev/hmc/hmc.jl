@@ -66,6 +66,7 @@ function HMCSampler(Q::Function, sampleNum::Int64, ϵ::Float64, τ::Int64, dim::
   ∇E = ForwardDiff.gradient(E)
 
   x = randn(dim)
+  # x = zeros(dim)
   samples = []
   push!(samples, x)
 

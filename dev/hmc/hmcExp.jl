@@ -100,8 +100,8 @@ ess(MHSamples)
 
 # A simple multivariate Gaussian
 μ = [3.0, 3.0]
-Σ = [1.0 0.5;
-     0.5 1.0]
+Σ = [5.0 4.0;
+     4.0 5.0]
 Λ = inv(Σ)
 
 function simplef(x::Vector)
@@ -112,20 +112,21 @@ end
 function demo1(sampleNum::Int64)
   # MH
   MHSamples = MHSampler(simplef, sampleNum, 0.5, 2)
-  MHSampleLayer = layer(x=Float64[x[1] for x in MHSamples], y=Float64[x[2] for x in MHSamples], Geom.point, Theme(default_color=colorant"green"))
+  MHSampleLayer = layer(x=Float64[x[1] for x in MHSamples], y=Float64[x[2] for x in MHSamples], Geom.point, Geom.path, Theme(default_color=colorant"green"))
 
   # HMC
   HMCSamples = HMCSampler(simplef, sampleNum, 0.05, 20, 2)
-  HMCSampleLayer = layer(x=Float64[x[1] for x in HMCSamples], y=Float64[x[2] for x in HMCSamples], Geom.point, Theme(default_color=colorant"red"))
+  HMCSampleLayer = layer(x=Float64[x[1] for x in HMCSamples], y=Float64[x[2] for x in HMCSamples], Geom.point, Geom.path, Theme(default_color=colorant"red"))
 
   # Exact
   exactSampleLayer = layer(z=(x,y) -> simplef([x, y]), x=linspace(-2,8,100), y=linspace(-2,8,100), Geom.contour(levels=5))
 
   # plot together with real dneisty
-  plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH and HMC"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
+  p = plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH and HMC"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
 end
 
-demo1(25)
+p = demo1(30)
+draw(PNG("/Users/kai/Turing/docs/poster/figures/gauss.png", 6inch, 4.5inch), p)
 
 # Demo 2
 
