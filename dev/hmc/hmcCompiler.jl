@@ -48,15 +48,18 @@ p = plot(l4,l3,l2,l1, Coord.cartesian(xmin=0, xmax=500), Guide.xlabel("sample nu
 draw(PNG("/Users/kai/Turing/docs/poster/figures/gauss2.png", 5inch, 4inch), p)
 
 
-# @model hmmdemo begin
-#   states = TArray(Int, length(data))
-#   @assume states[1] ~ initial
-#   for i = 2:length(data)
-#     @assume states[i] ~ trans[states[i-1]]
-#     @observe data[i]  ~ Normal(statesmean[states[i]], 0.4)
-#   end
-#   @predict states data
-# end
+
+using Turing
+data = [1,2,3]
+@model hmmdemo begin
+  states = TArray(Int, length(data))
+  @assume states[1] ~ initial
+  for i = 2:length(data)
+    @assume states[i] ~ trans[states[i-1]]
+    @observe data[i]  ~ Normal(statesmean[states[i]], 0.4)
+  end
+  @predict states data
+end
 
 
 D = [1,2,3,4]
@@ -65,3 +68,28 @@ for x in D
   y += x
 end
 y
+
+macro assume(ex)
+  @assert ex.args[1] == symbol("@~")
+  esc(quote
+    $(ex.args[2]) = Turing.assume(Turing.SMC(500), $(ex.args[3]))
+  end)
+end
+
+@assume x ~ Normal(1, 1)
+
+Expr(:block, nothing)
+
+macro testm(ex)
+  print(ex)
+end
+
+@testm 1 ~ 2
+ct = current_task()
+
+
+a = [1,2,3]
+
+shift!(a)
+
+Expr(:block)
