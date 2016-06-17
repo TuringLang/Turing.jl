@@ -12,7 +12,7 @@ function Turing.randclass(urn::PolyaUrn)
   else
     println(weights)
   end
-  return Int64(c)::Int64
+  return Int(c)::Int
 end
 
 function f()
