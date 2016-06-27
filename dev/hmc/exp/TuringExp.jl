@@ -26,3 +26,72 @@ PGInferedStates   = mean([statesmean[v] for v in chain2[:states]])
 println("Infered states  (smc)", round(SMCInferedStates, 2))
 println("Infered states   (pg)", round(PGInferedStates, 2))
 println("True states         ", round(data+0.01, 2))
+
+
+
+@model gaussdemo begin
+  # Define a simple Normal model with unknown mean and variance.
+  @assume s ~ InverseGamma(2,3)
+  @assume m ~ Normal(0,sqrt(s))
+  @observe 1.5 ~ Normal(m, sqrt(s))
+  @observe 2.0 ~ Normal(m, sqrt(s))
+  @predict s m
+end
+
+@time chain1 = sample(gaussdemo, IS(200))
+
+program = expand(Turing.TURING[:modelex])
+model_f = eval(program)
+
+model_f()
+gaussdemo()
+
+:($(Expr(:method, :gaussdemo, :((top(svec))((top(apply_type))(Tuple),(top(svec))())), AST(:($(Expr(:lambda, Any[], Any[Any[Any[:s,:Any,18],Any[:m,:Any,18],Any[:ct,:Any,2]],Any[],0,Any[]], :(
+begin
+  s = (Turing.assume)(Turing.sampler,(Main.InverseGamma)(2,3))
+  m = (Turing.assume)(Turing.sampler,(Main.Normal)(0,(Main.sqrt)(s)))
+  (Turing.observe)(Turing.sampler,(Main.logpdf)((Main.Normal)(m,(Main.sqrt)(s)),1.5))
+  (Turing.observe)(Turing.sampler,(Main.logpdf)((Main.Normal)(m,(Main.sqrt)(s)),2.0))
+  ct = (Main.current_task)()
+  (Turing.predict)(Turing.sampler,(Main.symbol)("s"),(Main.get)(ct,s))
+  ct = (Main.current_task)()
+  (Turing.predict)(Turing.sampler,(Main.symbol)("m"),(Main.get)(ct,m))
+  return (Main.produce)((top(apply_type))(Main.Val,:done))
+end))))), false)))
+
+
+ex = Expr(:method, :aa, 1, 2)
+eval(ex)
+
+using Turing, Distributions
+@model model_exp begin
+  @assume s ~ Normal(0, 1)
+end
+
+
+expand(Turing.TURING[:modelex])
+
+a = []
+ct = current_task()
+get(ct, a)
+
+Turing.sampler = IS(200)
+@assume s ~ Normal(0, 1)
+
+
+
+function producer()
+  produce("start")
+  for n=1:4
+    produce(2n)
+  end
+  produce("stop")
+end;
+
+p = Task(producer)
+consume(p)
+
+ct = current_task()
+istaskdone(ct)
+istaskstarted(ct)
+task_local_storage()

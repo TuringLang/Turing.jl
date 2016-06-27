@@ -19,6 +19,7 @@ end
 
 ## Concrete algorithm implementations.
 
+include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")

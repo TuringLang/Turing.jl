@@ -20,7 +20,7 @@ function sample(model::Function, alg :: InferenceAlgorithm)
   Base.run(sampler)
 end
 
-assume(spl :: Sampler, distr :: Distribution)  = rand(current_trace(), distr)
+assume(spl :: Sampler, distr :: Distribution)  = rand( current_trace(), distr )
 observe(spl :: Sampler, score :: Float64)      = produce(score)
 
 function predict(spl :: Sampler, v_name :: Symbol, value)
@@ -33,5 +33,3 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
   predicts[v_name] = value
   task.storage[:turing_predicts] = predicts
 end
-
-
