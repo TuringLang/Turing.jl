@@ -22,7 +22,7 @@ type ImportanceSampler{IS} <: Sampler{IS}
 end
 
 function Base.run(spl :: Sampler{IS})
-  n = spl.alg.n_sampless
+  n = spl.alg.n_samples
   for i = 1:n
     consume(Task(spl.model))
     spl.samples[i] = spl.predicts
