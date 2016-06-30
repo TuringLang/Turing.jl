@@ -98,4 +98,3 @@ function hmcDirichelet(u...)
 end
 
 # TODO: test my density functions
-# TODO: try to reuse his code
