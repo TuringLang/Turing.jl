@@ -9,4 +9,5 @@ using Turing, Distributions, ConjugatePriors
   @predict s m
 end
 
-chain = sample(gaussdemo, IS(50))
+chain = sample(gaussdemo, IS(500))
+sample(gaussdemo, SMC(500))
