@@ -5,8 +5,9 @@ Contents
 ^^^^^^^^
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
+   file_list
    license
 
 Indices and tables
