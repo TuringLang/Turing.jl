@@ -6,7 +6,7 @@ type ImportanceSampler{IS} <: Sampler{IS}
   alg :: IS
   model :: Function
   samples :: Array{Dict{Symbol,Any}}
-  logweights  :: Array{Float64}
+  logweights :: Array{Float64}
   logevidence :: Float64
   predicts :: Dict{Symbol,Any}
   function ImportanceSampler(alg :: IS, model :: Function)
@@ -17,7 +17,7 @@ type ImportanceSampler{IS} <: Sampler{IS}
     logweights = zeros(Float64, alg.n_samples)
     logevidence = 0
     predicts = Dict{Symbol,Any}()
-    new(alg, model, samples, logevidence, predicts)
+    new(alg, model, samples, logweights, logevidence, predicts)
   end
 end
 
@@ -29,7 +29,7 @@ function Base.run(spl :: Sampler{IS})
     spl.logweights[i] = spl.logevidence
     spl.logevidence = 0
     spl.predicts = Dict{Symbol,Any}()
-  endp
+  end
   spl.logevidence = logsum(spl.logweights) - log(n)
   results = Dict{Symbol,Any}()
   results[:logevidence] = spl.logevidence
@@ -54,7 +54,5 @@ function predict(spl :: ImportanceSampler{IS}, name :: Symbol, value)
   spl.predicts[name] = value
 end
 
-sample(model :: Function, alg :: IS) = (
-                                        global sampler = ImportanceSampler{IS}(alg, model);
-                                        run(sampler)
-                                       )
+sample(model :: Function, alg :: IS) =
+  (global sampler = ImportanceSampler{IS}(alg, model); run(sampler))

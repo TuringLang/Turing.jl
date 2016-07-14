@@ -30,7 +30,7 @@ end
 #############################################
 
 function hmcNormal(μ, σ)
-  return x::Real -> 1 / sqrt((2pi)^2 * σ^2) * exp(-0.5 * (x - μ)^2 / σ^2)
+  return x::Dual -> 1 / sqrt((2pi)^2 * σ^2) * exp(-0.5 * (x - μ)^2 / σ^2)
 end
 
 # function hmcMvNormal(μ, Σ)

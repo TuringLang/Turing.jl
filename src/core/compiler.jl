@@ -4,6 +4,13 @@
 # and Dist is a valid distribution from the Distributions package
 macro assume(ex)
   @assert ex.args[1] == symbol("@~")
+  if typeof(ex.args[3].args[2]) == Expr   # Check if have extra arguements
+    if ex.args[3].args[2].args[1].args[1] == :static  # If static is set,
+      d = ex.args[3].args[1]                          # custom wrapper of distributions
+      ex.args[3].args[1] = Symbol("hmc$(d)")          # should be used
+    end
+    splice!(ex.args[3].args, 2)
+  end
   esc(quote
     $(ex.args[2]) = Turing.assume(
                                   Turing.sampler,
@@ -72,5 +79,5 @@ macro model(name, fbody)
        )
 
   TURING[:modelex] = ex
-  return esc(ex)
+  return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end

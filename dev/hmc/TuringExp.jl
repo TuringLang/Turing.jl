@@ -95,3 +95,103 @@ ct = current_task()
 istaskdone(ct)
 istaskstarted(ct)
 task_local_storage()
+
+
+
+using Turing, Distributions, ConjugatePriors
+
+@model gausstest begin
+  @assume s ~ InverseGamma(2,3)
+  @observe 1.5 ~ Normal(0, sqrt(s))
+  @observe 2.0 ~ Normal(0, sqrt(s))
+  @predict s
+end
+
+chain = sample(gausstest, HMC(5, 1, 1))
+
+
+
+f = Normal(0, sqrt(1))
+show(f)
+
+modelex = Turing.TURING[:modelex]
+print(modelex)
+# >
+# function gausstest()
+#     @assume @~(s,InverseGamma(2,3))
+#     @observe @~(1.5,Normal(0,sqrt(s)))
+#     @observe @~(2.0,Normal(0,sqrt(s)))
+#     @predict s
+#     produce(Val{:done})
+# end
+
+# This step is done by marco model
+modelex_expanded = expand(modelex)
+print(modelex_expanded)
+
+# AST: Abstract Syntax Tree
+
+# >
+# $(
+#
+# Expr(
+#   :method,
+#   :gausstest,
+  # :(  (top(svec))( (top(apply_type))(Tuple), (top(svec))() )  ),
+#   AST(
+#     :(
+#       $(
+#         Expr(
+#         :lambda,
+#         Any[],
+#         Any[Any[Any[:s, :Any, 18],
+#         Any[:ct, :Any, 18]],
+#         Any[],0,
+#         Any[]],
+#         :(begin
+#             s = (Turing.assume)(
+#               Turing.sampler,
+#               (Main.InverseGamma)(2, 3)
+#             )
+#             (Turing.observe)(
+#               Turing.sampler,
+#               (Main.logpdf)((Main.Normal)(0, (Main.sqrt)(s)), 1.5)
+#             )
+#             (Turing.observe)(
+#               Turing.sampler,
+#               (Main.logpdf)((Main.Normal)(0, (Main.sqrt)(s)), 2.0)
+#             )
+#             ct = (Main.current_task)()
+#             (Turing.predict)(
+#               Turing.sampler, (Main.symbol)("s"), (Main.get)(ct, s)
+#             )
+#             return (Main.produce)((top(apply_type))(Main.Val, :done))
+#           end)
+#         )
+#       )
+#     )
+#   ),
+#   false)
+#
+# )
+typeof(modelex_expanded)
+tt = eval(modelex_expanded)
+typeof(tt)
+show(tt)
+
+chain = sample(tt, IS(5))
+Turing.sampler
+
+tt()
+
+s = (Turing.assume)(
+              Turing.sampler,
+              (Main.InverseGamma)(2, 3)
+    )
+
+(Turing.observe)(
+  Turing.sampler,
+  (Main.logpdf)((Main.Normal)(0, (Main.sqrt)(s)), 1.5)
+)
+
+produce(1.0)

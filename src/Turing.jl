@@ -8,7 +8,7 @@ using Distributions
 using Turing.Traces
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample
+export @model, @assume, @observe, @predict, InferenceAlgorithm, HMC, IS, SMC, PG, sample
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros
