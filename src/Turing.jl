@@ -19,7 +19,7 @@ export dprintln
 
 # Inference code
 include("distributions/distributions.jl")
-include("distributions/hmcdistr.jl")
+include("distributions/ddistributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
