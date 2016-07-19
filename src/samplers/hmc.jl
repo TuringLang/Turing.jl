@@ -10,7 +10,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
   samples     :: Array{Dict{Symbol, Any}}
   logjoint    :: Dual{Float64}
   predicts    :: Dict{Symbol, Any}
-  priors      :: Dict{Symbol,Any}
+  priors      :: Dict{Symbol, Any}
   first       :: Bool
 
   function HMCSampler(alg :: HMC, model :: Function)
@@ -26,6 +26,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
 end
 
 function Base.run(spl :: Sampler{HMC})
+  # Function to generate the gradient dictionary
   function get_gradient_dict(priors)
     val∇E = Dict{Symbol, Any}()
     for k in keys(priors)
@@ -38,16 +39,15 @@ function Base.run(spl :: Sampler{HMC})
     end
     return val∇E
   end
-
+  # Function to make half momentum step
   function half_momentum_step(p, val∇E)
     for k in keys(p)
       p[k] -= ϵ * val∇E[k] / 2
     end
     return p
   end
-
   # Run the model for the first time
-  # println("initialising...")
+  dprintln(2, "initialising...")
   consume(Task(spl.model))
   spl.logjoint = Dual(0, 0)
   spl.first = false
@@ -57,8 +57,7 @@ function Base.run(spl :: Sampler{HMC})
   τ = spl.alg.lf_num
   # Sampling
   for i = 1:n
-    # HMC step
-    # println("stepping...")
+    dprintln(3, "stepping...")
     # Generate random momentum
     p = Dict{Symbol, Any}()
     for k in keys(spl.priors)
@@ -77,24 +76,24 @@ function Base.run(spl :: Sampler{HMC})
     # 'leapfrog' for each prior
     for t in 1:τ
       p = half_momentum_step(p, val∇E)
-      # make a full step for state
+      # Make a full step for state
       for k in keys(spl.priors)
         spl.priors[k] += ϵ * p[k]
       end
       val∇E = get_gradient_dict(spl.priors)
       p = half_momentum_step(p, val∇E)
     end
-    # claculate the new Hamiltonian
+    # Claculate the new Hamiltonian
     H = 0
     for k in keys(p)
       H += p[k]' * p[k]
     end
     H += spl.logjoint
-    # calculate the difference in Hamiltonian
+    # Calculate the difference in Hamiltonian
     ΔH = H - oldH
     # Vector{Any, 1} -> Any
     ΔH = ΔH[1]
-    # decide wether to accept or not
+    # Decide wether to accept or not
     if ΔH < 0
       acc = true
     elseif rand() < exp(-ΔH)
@@ -102,11 +101,11 @@ function Base.run(spl :: Sampler{HMC})
     else
       acc = false
     end
-    # rewind of rejected
+    # Rewind of rejected
     if ~acc
       spl.priors = old_priors
     end
-    # update predicts if acc
+    # Update predicts if acc
     if acc
       for k in keys(spl.predicts)
         spl.predicts[k] = spl.priors[k]
@@ -121,28 +120,32 @@ function Base.run(spl :: Sampler{HMC})
   return results
 end
 
-function assume(spl :: HMCSampler{HMC}, d :: Distribution, name :: Symbol)
-  # println("assuming...")
-  # println(spl.first)
-  if spl.first                          # The first time running the program
-    prior = Dual(rand(d), 0)            # Generate a new prior
-    spl.priors[name] = prior            # Store the generated prior
-  else                                  # ; not first time
-    prior = spl.priors[name]            # Fetch the existing prior
+function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
+  dprintln(2, "assuming...")
+  # If it's the first time running the program
+  if spl.first
+    # Generate a new prior
+    prior = Dual(rand(dd), 0)
+    # Store the generated prior
+    spl.priors[name] = prior
+  # If not the first time
+  else
+    # Fetch the existing prior
+    prior = spl.priors[name]
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
   prior = isa(prior, Array) ? prior[1] : prior
-  spl.logjoint += log(hmcpdf(d, prior))
+  spl.logjoint += log(pdf(dd, prior))
   return prior
 end
 
-function observe(spl :: HMCSampler{HMC}, score :: Dual)
-  # println("observing...")
-  spl.logjoint += score
+function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)
+  dprintln(2, "observing...")
+  spl.logjoint += log(pdf(dd, Dual(value, 0)))
 end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
-  # println("predicting...")
+  dprintln(2, "predicting...")
   spl.predicts[name] = value
 end
 

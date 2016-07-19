@@ -100,12 +100,12 @@ task_local_storage()
 
 using Turing, Distributions, DualNumbers
 
-xs = rand(Normal(1, 1), 1000)
+xs = rand(Normal(1, 4), 500)
 @model gausstest begin
-  @assume s ~ InverseGamma(2, 3; static=true)
-  @assume m ~ Normal(1, 4; static=true)
+  @assume s ~ InverseGamma(2, 3)
+  @assume m ~ Normal(0, sqrt(s))
   for x in xs
-    @observe x ~ Normal(m, sqrt(s); static=true)
+    @observe x ~ Normal(m, sqrt(s))
   end
   @predict s m
 end

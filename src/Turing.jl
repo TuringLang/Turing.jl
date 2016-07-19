@@ -36,6 +36,6 @@ global debug_level = 0
 
 # debugging print function: The first argument controls the verbosity of message,
 #  e.g. larger v leads to more verbose debugging messages.
-dprintln(v, args...) = v > Turing.debug_level ? println(args...) : nothing
+dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
 end

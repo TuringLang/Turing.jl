@@ -1,43 +1,63 @@
-export hmcpdf, hmcInverseGamma, hmcNormal
+import Distributions: pdf, rand
+export dDistribution, dNormal, dInverseGamma, hmcpdf, rand
 
-function hmcpdf(d::Distribution, x::Dual)
-  if typeof(d) == Normal
-    return hmcNormal(d.μ, d.σ)(x)
-  end
-  if typeof(d) == InverseGamma
-    return hmcInverseGamma(d.invd.α, d.θ)(x)
+abstract dDistribution
+
+# NOTE: Only store parameters as Dual but not produce Dual. This ensures compatibility of HMC and other samplers
+type dNormal <: dDistribution
+  μ     ::    Dual
+  σ     ::    Dual
+  d     ::    Normal
+  df    ::    Function
+  function dNormal(μ, σ)
+    # Convert Real to Dual if possible
+    # Force Float64 inside Dual to avoid a known bug of Dual
+    μ = isa(μ, Real)? Dual(Float64(μ), 0) : μ
+    σ = isa(σ, Real)? Dual(Float64(σ), 0) : σ
+    d = Normal(realpart(μ), realpart(σ))
+    df = hmcNormal(μ, σ)
+    new(μ, σ, d, df)
   end
 end
 
-function hmcpdf(d::Function, x::Dual)
-  return d(x)
+type dInverseGamma <: dDistribution
+  α     ::    Dual
+  Θ     ::    Dual
+  d     ::    InverseGamma
+  df    ::    Function
+  function dInverseGamma(α, Θ)
+    # Convert Real to Dual if possible
+    α = isa(α, Real)? Dual(Float64(α), 0) : α
+    Θ = isa(Θ, Real)? Dual(Float64(Θ), 0) : Θ
+    d = InverseGamma(realpart(α), realpart(Θ))
+    df = hmcInverseGamma(α, Θ)
+    new(α, Θ, d, df)
+  end
+end
+
+function pdf(dd :: dDistribution, x :: Real)
+  return pdf(dd.d, x)
+end
+
+function pdf(dd :: dDistribution, x :: Dual)
+  return dd.df(x)
+end
+
+function rand(dd :: dDistribution)
+  return rand(dd.d)
 end
 
 # InverseGamma
 function hmcInverseGamma(α, β)
+  # NOTE: There is a bug of Dual type, where "Dual(1, 0) ^ Dual(-3, 0)" gives error
   return x::Dual -> (β^α) / gamma(α) * x^(-α - 1) * exp(-β / x)
 end
 
 # Normal
 function hmcNormal(μ, σ)
-  return x::Dual -> 1 / sqrt((2pi)^2 * σ^2) * exp(-0.5 * (x - μ)^2 / σ^2)
+  return x::Dual -> 1 / sqrt(2pi * σ^2) * exp(-0.5 * (x - μ)^2 / σ^2)
 end
 
-
-#########
-# Tests #
-#########
-# using DualNumbers
-# d = InverseGamma(2,3)
-# pdf(d, 1)
-# hmcpdf(d, Dual(1,0))
-
-x = 1
-function k()
-  x = 2
-end
-k()
-x
 
 
 # function hmcpdf(pdf::Function, x)
