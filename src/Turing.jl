@@ -5,6 +5,7 @@ module Turing
 include("trace/trace.jl")
 
 using Distributions
+using DualNumbers
 using Turing.Traces
 
 # Turing essentials - modelling macros and inference algorithms
@@ -18,6 +19,7 @@ export dprintln
 
 # Inference code
 include("distributions/distributions.jl")
+include("distributions/hmcdistr.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")

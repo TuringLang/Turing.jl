@@ -5,18 +5,33 @@
 macro assume(ex)
   @assert ex.args[1] == symbol("@~")
   if typeof(ex.args[3].args[2]) == Expr   # Check if have extra arguements
-    if ex.args[3].args[2].args[1].args[1] == :static  # If static is set,
-      d = ex.args[3].args[1]                          # custom wrapper of distributions
-      ex.args[3].args[1] = Symbol("hmc$(d)")          # should be used
+    if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true     # If static is set,
+      # do something
     end
-    splice!(ex.args[3].args, 2)
+    if ex.args[3].args[2].args[1].args[1] == :param && ex.args[3].args[2].args[1].args[2] == :true    # If param is set,
+      # do something
+    end
+    splice!(ex.args[3].args, 2)   # remove this argument
+    sym = string(ex.args[2])
+    # TODO Replace all Distribution type using my own wrapper.
+    # ex.args[3].args[1] = symbol("hmc$(ex.args[3].args[1])")
+    esc(quote
+      $(ex.args[2]) = Turing.assume(
+                                    Turing.sampler,
+                                    $(ex.args[3]),
+                                    symbol($(sym))   # the symbol of prior
+                                   )
+    end)
+  else
+    esc(quote
+      $(ex.args[2]) = Turing.assume(
+                                    Turing.sampler,
+                                    $(ex.args[3])
+                                   )
+    end)
+
   end
-  esc(quote
-    $(ex.args[2]) = Turing.assume(
-                                  Turing.sampler,
-                                  $(ex.args[3])
-                                 )
-  end)
+
 end
 
 # Usage:
@@ -26,18 +41,41 @@ macro observe(ex)
   @assert ex.args[1] == symbol("@~")
   global TURING
   ex2 = Expr(:block, nothing)
-  push!(
-        ex2.args,
-        :(Turing.observe(
-                         Turing.sampler,
-                         logpdf(
-                                $(ex.args[3]),
-                                $(ex.args[2])
-                               )
-                        )
+
+  if typeof(ex.args[3].args[2]) == Expr   # Check if have extra arguements
+    if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true     # If static is set,
+      # Map Distribution to hmcDistribution
+      ex.args[3].args[1] = symbol("hmc$(ex.args[3].args[1])")
+    end
+    splice!(ex.args[3].args, 2)   # remove this argument
+    push!(
+          ex2.args,
+          :(Turing.observe(
+                           Turing.sampler,
+                           log(
+                               hmcpdf(
+                                      $(ex.args[3]),          # distribution
+                                      Dual($(ex.args[2]), 0)  # data point
+                                     )
+                              )
+                          )
+           )
          )
-       )
-  esc(ex2)
+    esc(ex2)
+  else
+    # Original version
+    push!(
+          ex2.args,
+          :(Turing.observe(
+                           Turing.sampler,
+                           logpdf(
+                                  $(ex.args[3]),  # distribution
+                                  $(ex.args[2])   # data point
+                                 )
+                          )
+           )
+         )
+  end
 end
 
 # Usage:

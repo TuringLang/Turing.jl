@@ -22,7 +22,7 @@ function HMCStepper(x::Vector, E::Function, ∇E::Function, ϵ::Float64, τ::Int
   p = randn(length(x))      # generate random momentum
   oldH = p' * p / 2 + E(x)  # record old Hamiltonian
   oldx = x                  # record old state
-  val∇E = ∇E(x)
+  val∇E = ∇E(x)             # record old gradient
 
   for t in 1:τ              # make τ ‘leapfrog’ steps
     p -= ϵ * val∇E / 2      # make a half step for momentum

@@ -98,17 +98,24 @@ task_local_storage()
 
 
 
-using Turing, Distributions, ConjugatePriors
+using Turing, Distributions, DualNumbers
 
+xs = rand(Normal(1, 1), 1000)
 @model gausstest begin
-  @assume s ~ InverseGamma(2,3)
-  @observe 1.5 ~ Normal(0, sqrt(s))
-  @observe 2.0 ~ Normal(0, sqrt(s))
-  @predict s
+  @assume s ~ InverseGamma(2, 3; static=true)
+  @assume m ~ Normal(1, 4; static=true)
+  for x in xs
+    @observe x ~ Normal(m, sqrt(s); static=true)
+  end
+  @predict s m
 end
 
-chain = sample(gausstest, HMC(5, 1, 1))
+# HMC(n_samples, lf_size, lf_num)
+chain = sample(gausstest, HMC(1000, 0.01, 5))
+mean([d[:s] for d in chain[:samples]])
+mean([d[:m] for d in chain[:samples]])
 
+chain2 = sample(gausstest, SMC(500))
 
 
 f = Normal(0, sqrt(1))
