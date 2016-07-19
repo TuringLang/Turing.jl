@@ -43,6 +43,10 @@ function pdf(dd :: dDistribution, x :: Dual)
   return dd.df(x)
 end
 
+function logpdf(dd :: dDistribution, x :: Real)
+  return logpdf(dd.d, x)
+end
+
 function rand(dd :: dDistribution)
   return rand(dd.d)
 end

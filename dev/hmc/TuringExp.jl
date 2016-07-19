@@ -100,7 +100,7 @@ task_local_storage()
 
 using Turing, Distributions, DualNumbers
 
-xs = rand(Normal(1, 4), 500)
+xs = rand(Normal(0.5, 4), 500)
 @model gausstest begin
   @assume s ~ InverseGamma(2, 3)
   @assume m ~ Normal(0, sqrt(s))
@@ -112,10 +112,12 @@ end
 
 # HMC(n_samples, lf_size, lf_num)
 chain = sample(gausstest, HMC(1000, 0.01, 5))
-mean([d[:s] for d in chain[:samples]])
-mean([d[:m] for d in chain[:samples]])
+s = mean([d[:s] for d in chain[:samples]])
+m = mean([d[:m] for d in chain[:samples]])
 
-chain2 = sample(gausstest, SMC(500))
+chain2 = sample(gausstest, SMC(100))
+mean([d[:s] for d in chain2[:samples]])
+mean([d[:m] for d in chain2[:samples]])
 
 
 f = Normal(0, sqrt(1))
