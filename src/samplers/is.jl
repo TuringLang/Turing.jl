@@ -38,16 +38,12 @@ function Base.run(spl :: Sampler{IS})
   return results
 end
 
-function assume(spl :: ImportanceSampler{IS}, distribution :: Distribution)
-  return rand(distribution)
+function assume(spl :: ImportanceSampler{IS}, dd :: dDistribution, name :: Symbol)
+  return rand(dd)
 end
 
-function param(spl :: ImportanceSampler{IS}, distribution :: Distribution)
-  return assume(spl, distribution)
-end
-
-function observe(spl :: ImportanceSampler{IS}, score :: Float64)
-  spl.logevidence += score
+function observe(spl :: ImportanceSampler{IS}, dd :: dDistribution, value)
+  spl.logevidence += logpdf(dd.d, value)
 end
 
 function predict(spl :: ImportanceSampler{IS}, name :: Symbol, value)

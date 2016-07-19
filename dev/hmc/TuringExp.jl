@@ -115,9 +115,13 @@ chain = sample(gausstest, HMC(1000, 0.01, 5))
 s = mean([d[:s] for d in chain[:samples]])
 m = mean([d[:m] for d in chain[:samples]])
 
-chain2 = sample(gausstest, SMC(100))
-mean([d[:s] for d in chain2[:samples]])
-mean([d[:m] for d in chain2[:samples]])
+chain2 = sample(gausstest, IS(100))
+
+
+chain3 = sample(gausstest, SMC(1000))
+
+
+chain4 = sample(gausstest, PG(20, 30))
 
 
 f = Normal(0, sqrt(1))
