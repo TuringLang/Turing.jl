@@ -4,6 +4,7 @@
 # NOTE: Principle 1 - only store parameters as Dual but not produce Dual. This ensures compatibility of HMC and other samplers.
 
 import Distributions: pdf, rand
+import Base: gradient
 export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dInverseGamma, hmcInverseGamma, logpdf
 
 using PDMats
@@ -46,6 +47,7 @@ function gradient(dd :: dDistribution, x)
     end
     return g
   else
+    x = isa(x, Real)? Dual(x) : x
     x = Dual(realpart(x), 1)
     return dualpart(pdf(dd, x))
   end
