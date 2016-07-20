@@ -120,6 +120,7 @@ function Base.run(spl :: Sampler{HMC})
   return results
 end
 
+# TODO: Use another way to achieve replay. The current method fails when fetching arrays
 function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
   dprintln(2, "assuming...")
   # If it's the first time running the program

@@ -20,7 +20,6 @@ function f(agrList::Vector)
   return p
 end
 
-# TODO: solve Problem 1
 # Problem 1:
 # I can't use pdf(Distribution, x) in f() for some reasone.
 # Need to figure out why the following fails

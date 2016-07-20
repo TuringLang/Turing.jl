@@ -96,5 +96,3 @@ function hmcDirichelet(u...)
   end
   return pdf
 end
-
-# TODO: test my density functions

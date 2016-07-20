@@ -12,7 +12,7 @@ xs = rand(Normal(0.5, 4), 500)
 end
 
 chain = sample(unigauss, HMC(1000, 0.01, 5))   # HMC(n_samples, lf_size, lf_num)
-s = mean([d[:s] for d in chain[:samples]])
+s = sqrt(mean([d[:s] for d in chain[:samples]]))
 m = mean([d[:m] for d in chain[:samples]])
 
 chain2 = sample(unigauss, IS(100))
@@ -20,6 +20,10 @@ chain2 = sample(unigauss, IS(100))
 chain3 = sample(unigauss, SMC(1000))
 
 chain4 = sample(unigauss, PG(20, 30))
+
+
+
+using Turing, Distributions, DualNumbers
 
 # Demo 2 - Mixture of Gaussians
 # Activation function
@@ -38,16 +42,30 @@ end
 xs = Array[[0;0], [0;1], [1;0], [1;1]]
 ts = [0; 1; 1; 0]
 @model bnn begin
-  weights = [0; 0; 0; 0; 0; 0; 0; 0; 0]
   @assume σ ~ InverseGamma(2, 3)
-  for w in weights
-    @assume w ~ Normal(0, sqrt(σ))
-  end
+  @assume w1 ~ Normal(0, sqrt(σ))
+  @assume w2 ~ Normal(0, sqrt(σ))
+  @assume w3 ~ Normal(0, sqrt(σ))
+  @assume w4 ~ Normal(0, sqrt(σ))
+  @assume w5 ~ Normal(0, sqrt(σ))
+  @assume w6 ~ Normal(0, sqrt(σ))
+  @assume w7 ~ Normal(0, sqrt(σ))
+  @assume w8 ~ Normal(0, sqrt(σ))
+  @assume w9 ~ Normal(0, sqrt(σ))
   for i in 1:4
-    y = nn([xs[i], weights[1:3], weights[4:6], weights[7:9]])
+    y = nn([xs[i], w1, w2, w3, w4, w5, w6, w7, w8, w9])
     @observe ts[i] ~ Bernoulli(y)
   end
-  @predict weights
+  @predict w1 w2 w3 w4 w5 w6 w7 w8 w9
 end
 
 chain = sample(bnn, HMC(1000, 0.01, 5))
+w1 = mean([d[:w1] for d in chain[:samples]])
+w2 = mean([d[:w1] for d in chain[:samples]])
+w3 = mean([d[:w1] for d in chain[:samples]])
+w4 = mean([d[:w1] for d in chain[:samples]])
+w5 = mean([d[:w1] for d in chain[:samples]])
+w6 = mean([d[:w1] for d in chain[:samples]])
+w7 = mean([d[:w1] for d in chain[:samples]])
+w8 = mean([d[:w1] for d in chain[:samples]])
+w9 = mean([d[:w1] for d in chain[:samples]])
