@@ -19,7 +19,7 @@ ddN = dNormal(0, 1)
 ddMN = dMvNormal(μ, Σ)
 @test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, Dual[2, 1]))
 @test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ gradient(ddMN, [2, 1])
-
+rand(ddMN)
 # Bernoulli
 ddB = dBernoulli(0.3)
 @test pdf(ddB, 1) ≈ realpart(pdf(ddB, Dual(1)))

@@ -53,14 +53,15 @@ function gradient(dd :: dDistribution, x)
   end
 end
 
-# ###############################
-# # Distributions over integers #
-# ###############################
+###############################
+# Distributions over integers #
+###############################
 
 # function hmcBinomial(f, N)
 #   return r::Int64 -> factorial(N) / (factorial(r) * factorial(N - r)) * f^r * (1 - f)^(N - r)
 # end
 
+# Bernoulli
 type dBernoulli <: dDistribution
   p     ::    Dual
   d     ::    Bernoulli
@@ -130,7 +131,7 @@ type dMvNormal <: dDistribution
     μ = isa(μ[1], Real)? Vector{Dual{Float64}}(μ) : μ
     Σ = isa(Σ[1, 1], Real)? Array{Dual{Float64},2}(Σ) : Σ
     # The constructor of MvNormal requires the Σ to be a type of PDMat
-    d = MvNormal(realpart(μ), PDMat(realpart(Σ)))
+    d = MvNormal(forceVector(realpart(μ), Float64), PDMat(realpart(Σ)))
     df = hmcMvNormal(μ, Σ)
     new(μ, Σ, d, df)
   end

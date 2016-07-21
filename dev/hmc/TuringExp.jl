@@ -1,7 +1,8 @@
+# Demo - Univariate Gaussian
 using Turing, Distributions, DualNumbers
 
-# Demo 1 - Univariate Gaussian
 xs = rand(Normal(0.5, 4), 500)
+
 @model unigauss begin
   @assume s ~ InverseGamma(2, 3)
   @assume m ~ Normal(0, sqrt(s))
@@ -23,9 +24,28 @@ chain4 = sample(unigauss, PG(20, 30))
 
 
 
+# Demo - Multivariate Gaussian
+using Turing, Distributions, DualNumbers, PDMats
+
+xs = rand(MvNormal(Vector{Float64}([1, 1]),
+                   PDMat(Array{Float64,2}([1 0; 0 1]))),
+          100)
+
+@model multigauss begin
+  @assume m ~ MvNormal([1, 1], [4 0; 0 4])
+  for x in xs
+    @observe x ~ MvNormal(m, [1 0; 0 1])
+  end
+  @predict m
+end
+
+chain = sample(multigauss, HMC(250, 0.001, 5))
+m = mean([d[:m] for d in chain[:samples]])
+
+
+# Demo - Mixture of Gaussians
 using Turing, Distributions, DualNumbers
 
-# Demo 2 - Mixture of Gaussians
 # Activation function
 function sigmoid(a)
   1 / (1 + exp(-a))

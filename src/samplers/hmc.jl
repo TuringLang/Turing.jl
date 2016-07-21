@@ -30,12 +30,35 @@ function Base.run(spl :: Sampler{HMC})
   function get_gradient_dict(priors)
     val∇E = Dict{Symbol, Any}()
     for k in keys(priors)
-      real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
-      spl.priors[k] = Dual(real, 1)
-      consume(Task(spl.model))
-      val∇E[k] = dualpart(-spl.logjoint)
-      spl.logjoint = Dual(0, 0)
-      spl.priors[k] = Dual(real, 0)
+      # TODO: Unify Float64 and Vector by making them all Vector
+      if length(priors[k]) == 1
+        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
+        # Set the dual part of the variable we want to find graident to 1
+        spl.priors[k] = Dual(real, 1)
+        # Run the model
+        consume(Task(spl.model))
+        spl.logjoint = Dual(0, 0)
+        # Reset dual part
+        spl.priors[k] = Dual(real, 0)
+        # Record graident
+        val∇E[k] = dualpart(-spl.logjoint)
+      else
+        l = length(priors[k])
+        # To store the gradient vector
+        g = zeros(l)
+        for i = 1:l
+          # Set the dual part of dimension i to 1
+          priors[k][i] = Dual(realpart(priors[k][i]), 1)
+          # Run the model
+          consume(Task(spl.model))
+          # Reset
+          priors[k][i] = Dual(realpart(priors[k][i]), 0)
+          # Record gradient of current dimension
+          g[i] = dualpart(-spl.logjoint)
+        end
+        # Record gradient
+        val∇E[k] = g
+      end
     end
     return val∇E
   end
@@ -78,6 +101,7 @@ function Base.run(spl :: Sampler{HMC})
       p = half_momentum_step(p, val∇E)
       # Make a full step for state
       for k in keys(spl.priors)
+        spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
         spl.priors[k] += ϵ * p[k]
       end
       val∇E = get_gradient_dict(spl.priors)
@@ -126,7 +150,12 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
   # If it's the first time running the program
   if spl.first
     # Generate a new prior
-    prior = Dual(rand(dd), 0)
+    r = rand(dd)
+    if length(r) == 1
+      prior = Dual(r)
+    else
+      prior = Vector{Dual}(r)
+    end
     # Store the generated prior
     spl.priors[name] = prior
   # If not the first time
@@ -135,14 +164,18 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
     prior = spl.priors[name]
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
-  prior = isa(prior, Array) ? prior[1] : prior
+  prior = (isa(prior, Array) && length(prior) == 1) ? prior[1] : prior
   spl.logjoint += log(pdf(dd, prior))
   return prior
 end
 
 function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)
   dprintln(2, "observing...")
-  spl.logjoint += log(pdf(dd, Dual(value, 0)))
+  if length(value) == 1
+    spl.logjoint += log(pdf(dd, Dual(value)))
+  else
+    spl.logjoint += log(pdf(dd, Vector{Dual}(value)))
+  end
 end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
