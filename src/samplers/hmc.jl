@@ -27,34 +27,38 @@ end
 
 function Base.run(spl :: Sampler{HMC})
   # Function to generate the gradient dictionary
-  function get_gradient_dict(priors)
+  function get_gradient_dict()
     val∇E = Dict{Symbol, Any}()
-    for k in keys(priors)
+    for k in keys(spl.priors)
       # TODO: Unify Float64 and Vector by making them all Vector
-      if length(priors[k]) == 1
+      if length(spl.priors[k]) == 1
         real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
         # Set the dual part of the variable we want to find graident to 1
         spl.priors[k] = Dual(real, 1)
         # Run the model
         consume(Task(spl.model))
-        spl.logjoint = Dual(0, 0)
         # Reset dual part
         spl.priors[k] = Dual(real, 0)
         # Record graident
         val∇E[k] = dualpart(-spl.logjoint)
+        # Reset the log joint
+        spl.logjoint = Dual(0)
       else
-        l = length(priors[k])
+        l = length(spl.priors[k])
         # To store the gradient vector
         g = zeros(l)
         for i = 1:l
+          real = realpart(spl.priors[k][i])
           # Set the dual part of dimension i to 1
-          priors[k][i] = Dual(realpart(priors[k][i]), 1)
+          spl.priors[k][i] = Dual(real, 1)
           # Run the model
           consume(Task(spl.model))
           # Reset
-          priors[k][i] = Dual(realpart(priors[k][i]), 0)
+          spl.priors[k][i] = Dual(real, 0)
           # Record gradient of current dimension
           g[i] = dualpart(-spl.logjoint)
+          # Reset the log joint
+          spl.logjoint = Dual(0)
         end
         # Record gradient
         val∇E[k] = g
@@ -72,7 +76,7 @@ function Base.run(spl :: Sampler{HMC})
   # Run the model for the first time
   dprintln(2, "initialising...")
   consume(Task(spl.model))
-  spl.logjoint = Dual(0, 0)
+  spl.logjoint = Dual(0)
   spl.first = false
   spl.predicts = Dict{Symbol,Any}()
   n = spl.alg.n_samples
@@ -91,11 +95,13 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(p)
       oldH += p[k]' * p[k]
     end
+    consume(Task(spl.model))
     oldH += spl.logjoint
+    spl.logjoint = Dual(0)
     # Record old state
     old_priors = spl.priors
     # Record old gradient
-    val∇E = get_gradient_dict(spl.priors)
+    val∇E = get_gradient_dict()
     # 'leapfrog' for each prior
     for t in 1:τ
       p = half_momentum_step(p, val∇E)
@@ -104,7 +110,7 @@ function Base.run(spl :: Sampler{HMC})
         spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
         spl.priors[k] += ϵ * p[k]
       end
-      val∇E = get_gradient_dict(spl.priors)
+      val∇E = get_gradient_dict()
       p = half_momentum_step(p, val∇E)
     end
     # Claculate the new Hamiltonian
@@ -112,7 +118,9 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(p)
       H += p[k]' * p[k]
     end
+    consume(Task(spl.model))
     H += spl.logjoint
+    spl.logjoint = Dual(0)
     # Calculate the difference in Hamiltonian
     ΔH = H - oldH
     # Vector{Any, 1} -> Any
@@ -164,7 +172,7 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
     prior = spl.priors[name]
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
-  prior = (isa(prior, Array) && length(prior) == 1) ? prior[1] : prior
+  prior = (isa(prior, Array) && (length(prior) == 1)) ? prior[1] : prior
   spl.logjoint += log(pdf(dd, prior))
   return prior
 end

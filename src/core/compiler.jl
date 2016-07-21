@@ -6,8 +6,7 @@
 macro assume(ex)
   dprintln(1, "marco assuming...")
   @assert ex.args[1] == symbol("@~")
-  # Check if have extra arguements
-  # The second check is for Vector constructor
+  # Check if have extra arguements setting
   if typeof(ex.args[3].args[2]) == Expr &&  ex.args[3].args[2].head == :parameters
     # If static is set
     if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true
@@ -40,8 +39,8 @@ macro observe(ex)
   @assert ex.args[1] == symbol("@~")
 
   global TURING
-  # Check if have extra arguements
-  if typeof(ex.args[3].args[2]) == Expr
+  # Check if have extra arguements setting
+  if typeof(ex.args[3].args[2]) == Expr &&  ex.args[3].args[2].head == :parameters
     # If static is set
     if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true
       # Do something
