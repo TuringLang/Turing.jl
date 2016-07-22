@@ -46,31 +46,6 @@ trace_plot = plot(ms_layer, ss_layer, Guide.xlabel("Value"), Guide.ylabel("Itera
 
 draw(PNG("/Users/kai/Turing/docs/demo/unigausstrace.png", 6inch, 5.5inch), trace_plot)
 
-# Effective Sample Size
-# TODO: Find the correct way to compute ESS
-
-# ESS amended from Hong's code
-function effectiveSampleSize(samples)
-  samples = samples / maximum(samples)
-  samples = samples ./ sum(samples)
-  ess = sum(samples) ^ 2 / sum(samples .^ 2)
-end
-
-# ESS
-function ESS(samples)
-  """
-  ESS = n / (1 + 2∑ρ)
-  """
-  n = length(samples)
-  acfs = StatsBase.autocor(samples, 1:(n - 1), demean=false)
-  print(1 + sum(acfs)*2)
-  return n / (1 + 2 * sum(acfs))
-end
-
-samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
-ESS(samples_m)
-effectiveSampleSize(samples_m)
-
 
 
 ################################
@@ -216,4 +191,6 @@ loss_gard = Float64[G([d[:w0], d[:w1], d[:w2]]) for d in chaing]
 
 lossb_layer = layer(x=1:length(loss_bayes), y=loss_bayes, Geom.line, Theme(default_color=colorant"blue"))
 lossg_layer = layer(x=1:length(loss_gard), y=loss_gard, Geom.line, Theme(default_color=colorant"red"))
-loss_plot = plot(lossb_layer, lossg_layer, Guide.xlabel("Loss"), Guide.ylabel("Iterations"), Guide.title("Loss G as a Function of Iterations"), Guide.manual_color_key("Legend", ["Bayes", "GD"], ["blue", "red"]))
+single_loss_plot = plot(lossb_layer, lossg_layer, Guide.xlabel("Loss"), Guide.ylabel("Iterations"), Guide.title("Loss G as a Function of Iterations"), Guide.manual_color_key("Legend", ["Bayes", "GD"], ["blue", "red"]))
+
+draw(PNG("/Users/kai/Turing/docs/demo/singleloss.png", 6inch, 5.5inch), single_loss_plot)

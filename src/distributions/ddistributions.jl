@@ -5,7 +5,7 @@
 
 import Distributions: pdf, rand
 import Base: gradient
-export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dInverseGamma, hmcInverseGamma, logpdf
+export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dTDist, hmcTDist, dExponential, hmcExponential, dGamma, hmcGamma, dInverseGamma, hmcInverseGamma, logpdf
 
 using PDMats
 
@@ -142,10 +142,24 @@ function hmcMvNormal(μ, Σ)
   return x -> 1 / sqrt((2pi)^2 * det(Σ)) * exp(-0.5 * ((x - μ)' * Λ * (x - μ))[1])
 end
 
-# function hmcStudentT(μ, s, n)
-#   Z = sqrt(pi * n * s^2) * gamma(n / 2) / gamma((n + 1) / 2)
-#   return x::Real -> 1 / Z * 1 / (1 + (x - μ)^2 / (n * s^2))^((n + 1) / 2)
-# end
+# StudentT
+type dTDist <: dDistribution
+ ν     ::    Dual
+ d     ::    TDist
+ df    ::    Function
+ function dTDist(ν)
+   # Convert Real to Dual if possible
+   ν = isa(ν, Real)? Dual{Float64}(ν) : ν
+   d = TDist(realpart(ν))
+   df = hmcTDist(ν)
+   new(ν, d, df)
+ end
+end
+
+function hmcTDist(ν)
+  Z = sqrt(pi * ν) * gamma(ν / 2) / gamma((ν + 1) / 2)
+  return x -> 1 / Z * 1 / (1 + x^2 / ν)^((ν + 1) / 2)
+end
 
 # function hmcBiexponential(μ, s)
 #   return x::Real -> 1 / 2s * exp(-abs(x - μ) / s)
@@ -159,13 +173,43 @@ end
 # # Distributions over positive real numbers #
 # ############################################
 
-# function hmcExponential(s)
-#   return x -> 1 / s * exp(-x / s)
-# end
+# Exponential
+type dExponential <: dDistribution
+ Θ     ::    Dual
+ d     ::    Exponential
+ df    ::    Function
+ function dExponential(Θ)
+   # Convert Real to Dual if possible
+   Θ = isa(Θ, Real)? Dual{Float64}(Θ) : Θ
+   d = Exponential(realpart(Θ))
+   df = hmcExponential(Θ)
+   new(Θ, d, df)
+ end
+end
 
-# function hmcGamma(s, c)
-#   return x -> 1 / (gamma(c) * s) * (x / s)^(c - 1) * exp(-x / s)
-# end
+function hmcExponential(Θ)
+  return x -> 1 / Θ * exp(-x / Θ)
+end
+
+# Gamma
+type dGamma <: dDistribution
+  α     ::    Dual
+  Θ     ::    Dual
+  d     ::    Gamma
+  df    ::    Function
+  function dGamma(α, Θ)
+    # Convert Real to Dual if possible
+    α = isa(α, Real)? Dual{Float64}(α) : α
+    Θ = isa(Θ, Real)? Dual{Float64}(Θ) : Θ
+    d = Gamma(realpart(α), realpart(Θ))
+    df = hmcGamma(α, Θ)
+    new(α, Θ, d, df)
+  end
+end
+
+function hmcGamma(α, Θ)
+  return x -> 1 / (gamma(α) * Θ) * (x / Θ)^(α - 1) * exp(-x / Θ)
+end
 
 # InverseGamma
 type dInverseGamma <: dDistribution
@@ -183,9 +227,9 @@ type dInverseGamma <: dDistribution
   end
 end
 
-function hmcInverseGamma(α, β)
+function hmcInverseGamma(α, Θ)
   # NOTE: There is a bug of Dual type, where "Dual(1, 0) ^ Dual(-3, 0)" gives error
-  return x -> (β^α) / gamma(α) * x^(-α - 1) * exp(-β / x)
+  return x -> (Θ^α) / gamma(α) * x^(-α - 1) * exp(-Θ / x)
 end
 
 # function hmcLogNormal(m, s)
