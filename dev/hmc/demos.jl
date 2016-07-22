@@ -40,8 +40,8 @@ draw(PNG("/Users/kai/Turing/docs/demo/unigausskls.png", 6inch, 5.5inch), kls_plo
 ms = [Float64(realpart(d[:m])) for d in chain[:samples]]
 ss = [Float64(realpart(d[:s])) for d in chain[:samples]]
 
-ms_layer = layer(x=1:length(ms), y=ms, Geom.line, Geom.smooth, Theme(default_color=colorant"red"))
-ss_layer = layer(x=1:length(ss), y=ss, Geom.line, Geom.smooth, Theme(default_color=colorant"green"))
+ms_layer = layer(x=1:length(ms), y=ms, Geom.line, Theme(default_color=colorant"red"))
+ss_layer = layer(x=1:length(ss), y=ss, Geom.line, Theme(default_color=colorant"green"))
 trace_plot = plot(ms_layer, ss_layer, Guide.xlabel("Value"), Guide.ylabel("Iterations"),Guide.title("Evoluation of mean and variance as a Function of Iterations"), Guide.manual_color_key("Legend", ["mean", "variance"], ["red", "green"]))
 
 draw(PNG("/Users/kai/Turing/docs/demo/unigausstrace.png", 6inch, 5.5inch), trace_plot)
@@ -70,15 +70,6 @@ end
 samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
 ESS(samples_m)
 effectiveSampleSize(samples_m)
-
-
-chain2 = sample(unigauss, IS(100))
-
-chain3 = sample(unigauss, SMC(1000))
-s3 = sqrt(mean([d.weight * d.value[:s] for d in chain3.value]))
-m3 = mean([d.weight * d.value[:m] for d in chain3.value])
-
-chain4 = sample(unigauss, PG(20, 30))
 
 
 
@@ -226,61 +217,3 @@ loss_gard = Float64[G([d[:w0], d[:w1], d[:w2]]) for d in chaing]
 lossb_layer = layer(x=1:length(loss_bayes), y=loss_bayes, Geom.line, Theme(default_color=colorant"blue"))
 lossg_layer = layer(x=1:length(loss_gard), y=loss_gard, Geom.line, Theme(default_color=colorant"red"))
 loss_plot = plot(lossb_layer, lossg_layer, Guide.xlabel("Loss"), Guide.ylabel("Iterations"), Guide.title("Loss G as a Function of Iterations"), Guide.manual_color_key("Legend", ["Bayes", "GD"], ["blue", "red"]))
-
-# TODO: ess
-
-
-
-
-
-
-
-
-
-###################################################
-# Demo - Bayesian Neural Nets with 1 Hidden Layer #
-####################################################
-using Turing, Distributions, DualNumbers, Gadfly
-
-# Activation function
-function sigmoid(a)
-  1 / (1 + exp(-a))
-end
-
-# NN with 1 hidden layer
-function hiddeny(x, w11, w12, w2)
-  x1 = [1; x]
-  x2 = [1; sigmoid((w11' * x1)[1]); sigmoid((w12' * x1)[1])]
-  y = sigmoid((w2' * x2)[1])
-end
-
-# Training data
-xs = Array[[0, 0], [0, 1], [1, 0], [1, 1]]
-ts = [0, 1, 1, 0]
-
-# Define the model
-α = 0.25          # regularizatin term
-σ = sqrt(1 / α)   # variance of the Gaussian prior
-mu = [0, 0, 0]
-Σ = [σ 0 0; 0 σ 0; 0 0 σ]
-@model hiddenbnn begin
-  @assume w11 ~ MvNormal(mu, Σ)
-  @assume w12 ~ MvNormal(mu, Σ)
-  @assume w2 ~ MvNormal(mu, Σ)
-  for i in 1:4
-    y = hiddeny(xs[i], w11, w12, w2)
-    @observe ts[i] ~ Bernoulli(y)
-  end
-  @predict w11 w12 w2
-end
-
-# Sample the model
-chain = sample(hiddenbnn, HMC(2000, 0.1, 2))
-
-# Helper function for predicting
-function hiddenpredict(x, chain)
-  return mean([hiddeny(x, d[:w11], d[:w12], d[:w2]) for d in chain[:samples]])
-end
-
-# Compute predctions
-y = Float64[hiddenpredict(xs[i], chain) for i = 1:4]
