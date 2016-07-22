@@ -68,7 +68,7 @@ xs = rand(MvNormal(Vector{Float64}([1, 1]),
 end
 
 # Run the sampler
-chain = sample(multigauss, HMC(100, 0.05, 5))
+chain = sample(multigauss, HMC(1000, 0.05, 5))
 m = mean([Vector{Float64}(realpart(d[:m]))for d in chain[:samples]])
 
 # ML estimate

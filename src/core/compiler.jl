@@ -19,7 +19,9 @@ macro assume(ex)
     # Remove the extra argument
     splice!(ex.args[3].args, 2)
   end
+  # Turn Distribution type to dDistribution
   ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
+  # Change variable to symbol
   sym = string(ex.args[2])
   esc(quote
     $(ex.args[2]) = Turing.assume(

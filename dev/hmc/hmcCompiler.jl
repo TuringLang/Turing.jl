@@ -1,95 +1,43 @@
-include("hmc.jl")
-
-### model start
-
-xs = [1, 1.6, 1, 1.1, 0.9, 1.3, 0.9]
-
-function likelihood(argList::Vector)
-  μ = argList[1]
-  σ = argList[2]
-
-  pdf = hmcNormal(μ, σ)
-
-  xs = [1, 1, 1, 1.25, 0.75]
-  lik = 1
-
-  for x in xs
-    lik *= hmcpdf(pdf, x)
-  end
-
-  return lik
-end
-
-function prior(argList::Vector)
-  μ = argList[1]
-  σ = argList[2]
-  pri = 1 * hmcpdf(hmcInverseGamma(2, 3), σ) * hmcpdf(hmcNormal(0, sqrt(σ)), μ)
-  return pri
-end
-
-function posterior(argList::Vector)
-  post = likelihood(argList) * prior(argList)
-  return post
-end
-
-### model ends
-
-HMCSamples = HMCSampler(posterior, 500, 0.04, 10, 2)
-# eval2DSamples(HMCSamples)
-s = sampleTransform(HMCSamples)
-l1 = layer(x=1:501, y=s[:,1], Geom.line, Theme(default_color=color("#000099")))
-l2 = layer(x=1:501, y=s[:,1], Geom.smooth(method=:loess,smoothing=0.9), Theme(default_color=color("orange")))
-
-l3 = layer(x=1:501, y=s[:,2], Geom.line, Theme(default_color=color("green")))
-l4 = layer(x=1:501, y=s[:,2], Geom.smooth(method=:loess,smoothing=0.9), Theme(default_color=color("red")))
-
-p = plot(l4,l3,l2,l1, Coord.cartesian(xmin=0, xmax=500), Guide.xlabel("sample number"), Guide.ylabel("parameter value"),Guide.manual_color_key("Legend", ["avergae σ","σ", "average μ", "μ"], ["red", "green", "orange","blue"]))
-
-draw(PNG("/Users/kai/Turing/docs/poster/figures/gauss2.png", 5inch, 4inch), p)
-
-
-
-using Turing
-data = [1,2,3]
-@model hmmdemo begin
-  states = TArray(Int, length(data))
-  @assume states[1] ~ initial
-  for i = 2:length(data)
-    @assume states[i] ~ trans[states[i-1]]
-    @observe data[i]  ~ Normal(statesmean[states[i]], 0.4)
-  end
-  @predict states data
-end
-
-
-D = [1,2,3,4]
-y = 0
-for x in D
-  y += x
-end
-y
-
 macro assume(ex)
   @assert ex.args[1] == symbol("@~")
-  esc(quote
-    $(ex.args[2]) = Turing.assume(Turing.SMC(500), $(ex.args[3]))
-  end)
+  # Check if have extra arguements setting
+  if typeof(ex.args[3].args[2]) == Expr &&  ex.args[3].args[2].head == :parameters
+    # If static is set
+    if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # If param is set
+    if ex.args[3].args[2].args[1].args[1] == :param && ex.args[3].args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # Remove the extra argument
+    splice!(ex.args[3].args, 2)
+  end
+  # Turn Distribution type to dDistribution
+  ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
+
+  # TODO: Finish the evaluation of index
+  # Evaluate reference if necessay
+  # if !isa(ex.args[2], Symbol) && ex.args[2].head == :ref
+  #   ex.args[2].args[2] = eval(ex.args[2].args[2])
+  # end
+
+  # Change variable to symbol
+  sym = string(ex.args[2])
+  println(sym)
+  # esc(quote
+  #   $(ex.args[2]) = Turing.assume(
+  #                                 Turing.sampler,
+  #                                 $(ex.args[3]),    # dDistribution
+  #                                 symbol($(sym))    # Symbol of prior
+  #                                )
+  #     end)
 end
 
-@assume x ~ Normal(1, 1)
-
-Expr(:block, nothing)
-
-macro testm(ex)
-  print(ex)
+xs = [4, 5, 6]
+for i = 1:3
+  println(i)
+  @assume x[i] ~ Normal(0, 1)
 end
 
-@testm 1 ~ 2
-ct = current_task()
-
-
-a = [1,2,3]
-
-shift!(a)
-
-Expr(:block)
+# NOTE: The problem is that the marco is converted at the compling time but the loop is only executed at the running time. Question = Can I fetch values from the running time in a marco?
