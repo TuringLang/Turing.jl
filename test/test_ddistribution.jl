@@ -39,3 +39,8 @@ ddG = dGamma(2, 3)
 ddIG = dInverseGamma(2, 3)
 @test pdf(ddIG, 1) ≈ realpart(pdf(ddIG, Dual(1)))
 @test ForwardDiff.gradient(x::Vector -> hmcInverseGamma(2.0, 3.0)(x[1]), [1])[1] ≈ gradient(ddIG, 1)
+
+# Beta
+ddBeta = dBeta(1, 1)
+@test pdf(ddBeta, 1) ≈ realpart(pdf(ddBeta, Dual(1)))
+@test ForwardDiff.gradient(x::Vector -> hmcBeta(1, 1)(x[1]), [0.3])[1] ≈ gradient(ddBeta, 0.3)

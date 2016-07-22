@@ -5,7 +5,7 @@
 
 import Distributions: pdf, rand
 import Base: gradient
-export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dTDist, hmcTDist, dExponential, hmcExponential, dGamma, hmcGamma, dInverseGamma, hmcInverseGamma, logpdf
+export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dTDist, hmcTDist, dExponential, hmcExponential, dGamma, hmcGamma, dInverseGamma, hmcInverseGamma, dBeta, hmcBeta, logpdf
 
 using PDMats
 
@@ -249,11 +249,27 @@ end
 # # Distributions over probabilities #
 # ####################################
 
-# function hmcBeta(u1, u2)
-#   Z = gamma(u1) * gamma(u2) / (gamma(u1 + u2))
-#   return p -> 1 / Z * p^(u1 - 1) * (1 - p)^(u2 - 1)
-# end
+# Beta
+type dBeta <: dDistribution
+  α     ::    Dual
+  β     ::    Dual
+  d     ::    Beta
+  df    ::    Function
+  function dBeta(α, β)
+    # Convert Real to Dual if possible
+    α = isa(α, Real)? Dual{Float64}(α) : α
+    β = isa(β, Real)? Dual{Float64}(β) : β
+    d = Beta(realpart(α), realpart(β))
+    df = hmcBeta(α, β)
+    new(α, β, d, df)
+  end
+end
 
+function hmcBeta(α, β)
+  Z = gamma(α) * gamma(β) / (gamma(α + β))
+  return x -> 1 / Z * x^(α - 1) * (1 - x)^(β - 1)
+end
+hmcBeta(1,1)(0.9)
 # function hmcDirichelet(u...)
 #   Z = sum(map(gamma, u)) / gamma(sum(u))
 #   function pdf(p...)
