@@ -47,20 +47,8 @@ trace_plot = plot(ms_layer, ss_layer, Guide.xlabel("Value"), Guide.ylabel("Itera
 draw(PNG("/Users/kai/Turing/docs/demo/unigausstrace.png", 6inch, 5.5inch), trace_plot)
 
 # Effective Sample Size
-function ESS(samples)
-  """
-  ESS = n / (1 + 2∑ρ)
-  """
-  n = length(samples)
-  # TODO:
-  acfs = StatsBase.autocor(samples, 1:(n - 1), demean=false)
-  println(acfs)
-  print(1 + sum(acfs)*2)
-  return n / (1 + 2 * sum(acfs))
-end
-
 samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
-ESS(samples_m)
+ess(samples_m)
 
 chain2 = sample(unigauss, PG(20, 30))
 

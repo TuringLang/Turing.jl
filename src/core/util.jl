@@ -49,3 +49,18 @@ function forceVector(in_v, T :: DataType)
   end
   return out_v
 end
+
+# Effective Sample Size
+function ess(samples)
+  """
+  @input:
+    samples : a vector of samples
+  @output:
+    ess = n / (1 + 2∑ρ)
+  """
+  n = length(samples)
+  acfs = StatsBase.autocor(samples, 1:(n - 1), demean=false)
+  println(acfs)
+  print(1 + sum(acfs)*2)
+  return n / (1 + 2 * sum(acfs))
+end
