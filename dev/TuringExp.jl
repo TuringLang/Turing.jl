@@ -23,7 +23,7 @@ s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 end
 
 # Run the sampler
-chain = sample(unigauss, HMC(500, 0.1, 20))
+chain = sample(unigauss, HMC(5000, 0.1, 20))
 m = mean([d[:m] for d in chain[:samples]])
 s = sqrt(mean([d[:s] for d in chain[:samples]]))
 

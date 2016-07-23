@@ -146,6 +146,7 @@ function Base.run(spl :: Sampler{HMC})
       accept_num += 1
     end
   end
+  # TODO: Output the result using Chain
   results = Dict{Symbol, Any}()
   results[:samples] = spl.samples
   accept_rate = accept_num / n
