@@ -1,3 +1,6 @@
+# This type Prior is for passing Symbol/Array priors to HMC sampler.
+# The corresponding parameter in @assume is only used by the HMC sampler.
+
 import Base: string
 export Prior, PriorSym, PriorArr
 

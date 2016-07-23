@@ -300,3 +300,32 @@ end
 
 chain = sample(priorsinarray, HMC(1000, 0.01, 10))
 priors = mean([d[:priors] for d in chain[:samples]])
+
+using Turing, Distributions, DualNumbers, Gadfly, ForwardDiff
+
+# Helper function for the single neuron bnn
+function singley(x, w0, w1, w2)
+  return 1 / (1 + exp(-(w0 + w1 * x[1] + w2 * x[2])))
+end
+
+# Training data
+xs = Array[[1, 2], [2, 1], [-2, -1], [-1, -2]]
+ts = [1, 1, 0, 0]
+
+# Define the model
+α = 0.25          # regularizatin term
+σ = sqrt(1 / α)   # variance of the Gaussian prior
+@model singlebnn begin
+  ws = Vector{Dual}(3)
+  for i = 1:3
+    @assume ws[i] ~ Normal(0, σ)
+  end
+  for i = 1:4
+    y = singley(xs[i], w0, w1, w2)
+    @observe ts[i] ~ Bernoulli(y)
+  end
+  @predict ws
+end
+
+# Sample the model
+chain = sample(singlebnn, HMC(3000, 0.1, 2))
