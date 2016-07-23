@@ -5,8 +5,12 @@ using Turing, Distributions, DualNumbers
 # using Gadfly
 
 # Generate synthesised data
-data_num = 50
+data_num = 25
 xs = rand(Normal(0.5, 1), data_num)
+
+# ML estimates
+m_ml = sum(xs) / data_num
+s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 
 # Define model
 @model unigauss begin
@@ -19,13 +23,9 @@ xs = rand(Normal(0.5, 1), data_num)
 end
 
 # Run the sampler
-chain = sample(unigauss, HMC(250, 0.05, 15))
+chain = sample(unigauss, HMC(500, 0.1, 20))
 m = mean([d[:m] for d in chain[:samples]])
 s = sqrt(mean([d[:s] for d in chain[:samples]]))
-
-# ML estimates
-m_ml = sum(xs) / data_num
-s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 
 # KL plot
 function kl(p_μ, p_σ, q_μ, q_σ)
@@ -280,8 +280,9 @@ chain = sample(bernoullistanmodel, HMC(3000, 0.02, 2))
 Θ_mean = mean(Θs)
 Θ_sd = var(Θs)
 
-
-# Demo - Priors in Array
+##########################
+# Demo - Priors in Array #
+##########################
 using Turing, Distributions, DualNumbers, Gadfly
 
 # Generate synthesised data
@@ -301,6 +302,9 @@ end
 chain = sample(priorsinarray, HMC(1000, 0.01, 10))
 priors = mean([d[:priors] for d in chain[:samples]])
 
+############################
+# Demo - Priors in Array 2 #
+############################
 using Turing, Distributions, DualNumbers, Gadfly, ForwardDiff
 
 # Helper function for the single neuron bnn
@@ -321,7 +325,7 @@ ts = [1, 1, 0, 0]
     @assume ws[i] ~ Normal(0, σ)
   end
   for i = 1:4
-    y = singley(xs[i], w0, w1, w2)
+    y = singley(xs[i], ws[1], ws[2], ws[3])
     @observe ts[i] ~ Bernoulli(y)
   end
   @predict ws
@@ -329,3 +333,35 @@ end
 
 # Sample the model
 chain = sample(singlebnn, HMC(3000, 0.1, 2))
+
+# Helper function for predicting
+function singlepredict(x, chain)
+  return mean([singley(x, d[:ws][1], d[:ws][2], d[:ws][3]) for d in chain[:samples]])
+end
+
+# Compute predctions
+y = Float64[singlepredict(xs[i], chain) for i = 1:4]
+
+
+#########################
+# Demo - Priors in Dict #
+#########################
+using Turing, Distributions, DualNumbers, Gadfly
+
+# Generate synthesised data
+xs = rand(Normal(0.5, 1), 500)
+
+# Define model
+@model priorsinarray begin
+  priors = Dict{Any, Dual}()
+  @assume priors["s"] ~ InverseGamma(2, 3)
+  @assume priors["m"] ~ Normal(0, sqrt(priors["s"]))
+  for x in xs
+    @observe x ~ Normal(priors["m"], sqrt(priors["s"]))
+  end
+  @predict priors
+end
+
+chain = sample(priorsinarray, HMC(1000, 0.01, 10))
+m = mean([d[:priors]["m"] for d in chain[:samples]])
+s = mean([d[:priors]["s"] for d in chain[:samples]])
