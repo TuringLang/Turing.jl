@@ -1,10 +1,12 @@
 ##############################
 # Demo - Univariate Gaussian #
 ##############################
-using Turing, Distributions, DualNumbers, Gadfly
+using Turing, Distributions, DualNumbers
+# using Gadfly
 
 # Generate synthesised data
-xs = rand(Normal(0.5, 1), 250)
+data_num = 50
+xs = rand(Normal(0.5, 1), data_num)
 
 # Define model
 @model unigauss begin
@@ -17,13 +19,13 @@ xs = rand(Normal(0.5, 1), 250)
 end
 
 # Run the sampler
-chain = sample(unigauss, HMC(10, 0.01, 500))
+chain = sample(unigauss, HMC(250, 0.05, 15))
 m = mean([d[:m] for d in chain[:samples]])
 s = sqrt(mean([d[:s] for d in chain[:samples]]))
 
 # ML estimates
-m_ml = sum(xs) / 250
-s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / 250)
+m_ml = sum(xs) / data_num
+s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 
 # KL plot
 function kl(p_μ, p_σ, q_μ, q_σ)
@@ -256,3 +258,45 @@ end
 
 # Compute predctions
 y = Float64[hiddenpredict(xs[i], chain) for i = 1:4]
+
+
+
+# Demo Bernoulli in Stan
+using Turing, Distributions, DualNumbers, Gadfly
+
+xs = Float64[0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
+
+@model bernoullistanmodel begin
+  @assume Θ ~ Beta(1, 1)
+  for x in xs
+    @observe x ~ Bernoulli(Θ)
+  end
+  @predict Θ
+end
+
+chain = sample(bernoullistanmodel, HMC(3000, 0.02, 2))
+
+Θs = [Float64(realpart(d[:Θ])) for d in chain[:samples]]
+Θ_mean = mean(Θs)
+Θ_sd = var(Θs)
+
+
+# Demo - Priors in Array
+using Turing, Distributions, DualNumbers, Gadfly
+
+# Generate synthesised data
+xs = rand(Normal(0.5, 1), 500)
+
+# Define model
+@model priorsinarray begin
+  priors = Vector{Dual}(zeros(2))
+  @assume priors[1] ~ InverseGamma(2, 3)
+  @assume priors[2] ~ Normal(0, sqrt(priors[1]))
+  for x in xs
+    @observe x ~ Normal(priors[2], sqrt(priors[1]))
+  end
+  @predict priors
+end
+
+chain = sample(priorsinarray, HMC(1000, 0.01, 10))
+priors = mean([d[:priors] for d in chain[:samples]])

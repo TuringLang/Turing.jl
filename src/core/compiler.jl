@@ -21,15 +21,36 @@ macro assume(ex)
   end
   # Turn Distribution type to dDistribution
   ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
-  # Change variable to symbol
-  sym = string(ex.args[2])
-  esc(quote
-    $(ex.args[2]) = Turing.assume(
-                                  Turing.sampler,
-                                  $(ex.args[3]),    # dDistribution
-                                  symbol($(sym))    # Symbol of prior
-                                 )
-      end)
+
+  # The if statement is to deterimnet how to pass the prior.
+  # It only supposrts pure symbol and Array(/Dict) now.
+  if isa(ex.args[2], Symbol)
+    esc(
+      quote
+        $(ex.args[2]) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          PriorSym(         # Pure Symbol
+            Symbol($(string(ex.args[2])))
+          )
+        )
+      end
+    )
+  else
+    esc(
+      quote
+        $(ex.args[2]) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          PriorArr(         # Array assignment
+            parse($(string(ex.args[2]))),           # indexing expr
+            Symbol($(string(ex.args[2].args[2]))),  # index symbol
+            $(ex.args[2].args[2])                   # index value
+          )
+        )
+      end
+    )
+  end
 end
 
 # Operation for defining the likelihood
@@ -56,13 +77,15 @@ macro observe(ex)
   end
   # Convert Distribution to dDistribution
   ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
-  esc(quote
-    Turing.observe(
-                   Turing.sampler,
-                   $(ex.args[3]),   # dDistribution
-                   $(ex.args[2])    # Data point
-                  )
-      end)
+  esc(
+    quote
+      Turing.observe(
+        Turing.sampler,
+        $(ex.args[3]),   # dDistribution
+        $(ex.args[2])    # Data point
+      )
+    end
+  )
 end
 
 # Usage:
@@ -75,15 +98,15 @@ macro predict(ex...)
     @assert typeof(ex[i]) == Symbol
     sym = string(ex[i])
     push!(
-          ex_funcs.args,
-          :(ct = current_task();
-            Turing.predict(
-                           Turing.sampler,
-                           symbol($sym),
-                           get(ct, $(ex[i]))
-                          )
-           )
-         )
+      ex_funcs.args,
+      :(ct = current_task();
+        Turing.predict(
+          Turing.sampler,
+          symbol($sym),
+          get(ct, $(ex[i]))
+        )
+      )
+    )
   end
   esc(ex_funcs)
 end
@@ -101,9 +124,9 @@ macro model(name, fbody)
   ex = Expr(:function, fname, fbody)
 
   push!(
-        ex.args[2].args,
-        :(produce( Val{:done}) )
-       )
+    ex.args[2].args,
+    :(produce(Val{:done}))
+  )
 
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called

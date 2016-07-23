@@ -20,7 +20,7 @@ function sample(model::Function, alg :: InferenceAlgorithm)
   Base.run(sampler)
 end
 
-assume(spl :: Sampler, dd :: dDistribution, name :: Symbol)  = rand( current_trace(), dd.d )
+assume(spl :: Sampler, dd :: dDistribution, p)  = rand( current_trace(), dd.d )
 observe(spl :: Sampler, dd :: dDistribution, value) = produce(logpdf(dd.d, value))
 
 function predict(spl :: Sampler, v_name :: Symbol, value)

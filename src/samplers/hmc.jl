@@ -10,7 +10,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
   samples     :: Array{Dict{Symbol, Any}}
   logjoint    :: Dual{Float64}
   predicts    :: Dict{Symbol, Any}
-  priors      :: Dict{Symbol, Any}
+  priors      :: Dict{Any, Any}
   first       :: Bool
 
   function HMCSampler(alg :: HMC, model :: Function)
@@ -20,7 +20,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
     end
     logjoint = Dual(0, 0)
     predicts = Dict{Symbol, Any}()
-    priors = Dict{Symbol, Any}()
+    priors = Dict{Any, Any}()
     new(alg, model, samples, logjoint, predicts, priors, true)
   end
 end
@@ -28,7 +28,7 @@ end
 function Base.run(spl :: Sampler{HMC})
   # Function to generate the gradient dictionary
   function get_gradient_dict()
-    val∇E = Dict{Symbol, Any}()
+    val∇E = Dict{Any, Any}()
     for k in keys(spl.priors)
       # TODO: Unify Float64 and Vector by making them all Vector
       if length(spl.priors[k]) == 1
@@ -40,7 +40,7 @@ function Base.run(spl :: Sampler{HMC})
         # Reset dual part
         spl.priors[k] = Dual(real, 0)
         # Record graident
-        val∇E[k] = dualpart(-spl.logjoint)
+        val∇E[k] = -dualpart(spl.logjoint)
         # Reset the log joint
         spl.logjoint = Dual(0)
       else
@@ -61,7 +61,7 @@ function Base.run(spl :: Sampler{HMC})
           spl.logjoint = Dual(0)
         end
         # Record gradient
-        val∇E[k] = g
+        val∇E[k] = deepcopy(g)
       end
     end
     return val∇E
@@ -78,28 +78,30 @@ function Base.run(spl :: Sampler{HMC})
   consume(Task(spl.model))
   spl.logjoint = Dual(0)
   spl.first = false
-  spl.predicts = Dict{Symbol,Any}()
+  # Store the first predicts
+  spl.samples[1] = deepcopy(spl.predicts)
   n = spl.alg.n_samples
   ϵ = spl.alg.lf_size
   τ = spl.alg.lf_num
+  accept_num = 1
   # Sampling
-  for i = 1:n
+  for i = 2:n
     dprintln(3, "stepping...")
     # Generate random momentum
-    p = Dict{Symbol, Any}()
+    p = Dict{Any, Any}()
     for k in keys(spl.priors)
       p[k] = randn(length(spl.priors[k]))
     end
     # Record old Hamiltonian
     oldH = 0
     for k in keys(p)
-      oldH += p[k]' * p[k]
+      oldH += p[k]' * p[k] / 2
     end
     consume(Task(spl.model))
-    oldH += spl.logjoint
+    oldH += realpart(-spl.logjoint)
     spl.logjoint = Dual(0)
     # Record old state
-    old_priors = spl.priors
+    old_priors = deepcopy(spl.priors)
     # Record old gradient
     val∇E = get_gradient_dict()
     # 'leapfrog' for each prior
@@ -116,10 +118,10 @@ function Base.run(spl :: Sampler{HMC})
     # Claculate the new Hamiltonian
     H = 0
     for k in keys(p)
-      H += p[k]' * p[k]
+      H += p[k]' * p[k] / 2
     end
     consume(Task(spl.model))
-    H += spl.logjoint
+    H += realpart(-spl.logjoint)
     spl.logjoint = Dual(0)
     # Calculate the difference in Hamiltonian
     ΔH = H - oldH
@@ -136,25 +138,25 @@ function Base.run(spl :: Sampler{HMC})
     # Rewind of rejected
     if ~acc
       spl.priors = old_priors
+      # Store the previous predcits
+      spl.samples[i] = deepcopy(spl.samples[i - 1])
+    else
+      # Store the new predcits
+      spl.samples[i] = deepcopy(spl.predicts)
+      accept_num += 1
     end
-    # Update predicts if acc
-    if acc
-      for k in keys(spl.predicts)
-        spl.predicts[k] = spl.priors[k]
-      end
-    end
-    # Store the samples
-    spl.samples[i] = spl.predicts
-    spl.predicts = Dict{Symbol,Any}()
   end
   results = Dict{Symbol, Any}()
   results[:samples] = spl.samples
+  accept_rate = accept_num / n
+  println("[HMC] Finshed with accept rate = $(accept_rate)")
   return results
 end
 
 # TODO: Use another way to achieve replay. The current method fails when fetching arrays
-function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, name :: Symbol)
+function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, p :: Prior)
   dprintln(2, "assuming...")
+  name = string(p)
   # If it's the first time running the program
   if spl.first
     # Generate a new prior

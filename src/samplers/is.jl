@@ -38,7 +38,7 @@ function Base.run(spl :: Sampler{IS})
   return results
 end
 
-function assume(spl :: ImportanceSampler{IS}, dd :: dDistribution, name :: Symbol)
+function assume(spl :: ImportanceSampler{IS}, dd :: dDistribution, p)
   return rand(dd)
 end
 
