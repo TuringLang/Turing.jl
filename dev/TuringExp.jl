@@ -23,9 +23,13 @@ s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 end
 
 # Run the sampler
-chain = sample(unigauss, HMC(5000, 0.1, 20))
+chain = sample(unigauss, HMC(200, 0.01, 25))
 m = mean([d[:m] for d in chain[:samples]])
 s = sqrt(mean([d[:s] for d in chain[:samples]]))
+
+# Effective Sample Size
+samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
+ess(samples_m)
 
 # KL plot
 function kl(p_μ, p_σ, q_μ, q_σ)
@@ -48,10 +52,7 @@ trace_plot = plot(ms_layer, ss_layer, Guide.xlabel("Value"), Guide.ylabel("Itera
 
 draw(PNG("/Users/kai/Turing/docs/demo/unigausstrace.png", 6inch, 5.5inch), trace_plot)
 
-# Effective Sample Size
-samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
-ess(samples_m)
-
+# Validation
 chain2 = sample(unigauss, PG(20, 30))
 
 

@@ -150,7 +150,7 @@ function Base.run(spl :: Sampler{HMC})
   results = Dict{Symbol, Any}()
   results[:samples] = spl.samples
   accept_rate = accept_num / n
-  println("[HMC] Finshed with accept rate = $(accept_rate)")
+  println("[HMC]: Finshed with accept rate = $(accept_rate)")
   return results
 end
 
