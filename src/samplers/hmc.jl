@@ -176,7 +176,7 @@ function Base.run(spl :: Sampler{HMC})
   # TODO: Calculate the logevidence
   results = Chain(0, spl.samples)
   accept_rate = accept_num / n
-  println("[HMC]: Finshed with accept rate = $(accept_rate)")
+  println("[HMC]: Finshed with accept rate = $(accept_rate) (re-runs for $(rerun_num) times)")
   return results
 end
 
