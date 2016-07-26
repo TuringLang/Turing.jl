@@ -140,7 +140,7 @@ function Base.run(spl :: Sampler{HMC})
     if ~acc
       spl.priors = old_priors
       # Store the previous predcits
-      spl.samples[i].value = deepcopy(spl.samples[i - 1])
+      spl.samples[i] = spl.samples[i - 1]
     else
       # Store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
@@ -192,7 +192,7 @@ end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
-  spl.predicts[name] = value
+  spl.predicts[name] = realpart(value)
 end
 
 sample(model :: Function, alg :: HMC) = (

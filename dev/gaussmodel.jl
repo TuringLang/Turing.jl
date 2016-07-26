@@ -14,13 +14,11 @@ xs = [1.5, 2.0]                            # the observations
   @predict s m                             # ask predictions of s and m
 end
 
-@time chain = sample(gauss, HMC(20, 0.1, 35))
-ss = [Float64(realpart(d[:s])) for d in chain[:samples]]
-ms = [Float64(realpart(d[:m])) for d in chain[:samples]]
-
-using Mamba
-print(summarystats(Chains(ss, names="s")))
-print(summarystats(Chains(ms, names="m")))
+@time chain = sample(gauss, HMC(200, 0.15, 25))
+# NOTE: s and m has N_Eff for different parameter settings. s need large ϵ and τ while m need small ones. This is worth to be mentioned in the dissertation.
+using Mamba: Chains, summarystats
+print(summarystats(Chains(chain[:s], names="s")))
+print(summarystats(Chains(chain[:m], names="m")))
 
 #     Mean       SD      Naive SE     MCSE       ESS
 # s 2.1150453 2.0837529 0.04659413 0.11830779 310.2171
