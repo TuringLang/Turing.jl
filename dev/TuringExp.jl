@@ -23,13 +23,13 @@ s_ml = sqrt(sum((xs - m_ml)'*(xs - m_ml)) / data_num)
 end
 
 # Run the sampler
-chain = sample(unigauss, HMC(200, 0.01, 25))
+chain = sample(unigauss, HMC(2000, 0.01, 25))
 m = mean([d[:m] for d in chain[:samples]])
 s = sqrt(mean([d[:s] for d in chain[:samples]]))
 
 # Effective Sample Size
 samples_m = [Float64(realpart(d[:m])) for d in chain[:samples]]
-ess(samples_m)
+Turing.ess(samples_m)
 
 # KL plot
 function kl(p_μ, p_σ, q_μ, q_σ)
