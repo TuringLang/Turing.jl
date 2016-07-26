@@ -1,3 +1,5 @@
+RerunThreshold = 250
+
 immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
   lf_size   ::  Float64   # leapfrog step size
@@ -79,6 +81,7 @@ function Base.run(spl :: Sampler{HMC})
   consume(Task(spl.model))
   spl.logjoint = Dual(0)
   spl.first = false
+  rerun_num = 0
   # Store the first predicts
   spl.samples[1].value = deepcopy(spl.predicts)
   n = spl.alg.n_samples
@@ -87,43 +90,65 @@ function Base.run(spl :: Sampler{HMC})
   accept_num = 1
   # Sampling
   for i = 2:n
-    dprintln(3, "stepping...")
-    # Generate random momentum
-    p = Dict{Any, Any}()
-    for k in keys(spl.priors)
-      p[k] = randn(length(spl.priors[k]))
-    end
-    # Record old Hamiltonian
+    has_run = false
     oldH = 0
-    for k in keys(p)
-      oldH += p[k]' * p[k] / 2
-    end
-    consume(Task(spl.model))
-    oldH += realpart(-spl.logjoint)
-    spl.logjoint = Dual(0)
+    H = 0
     # Record old state
     old_priors = deepcopy(spl.priors)
-    # Record old gradient
-    val∇E = get_gradient_dict()
-    # 'leapfrog' for each prior
-    for t in 1:τ
-      p = half_momentum_step(p, val∇E)
-      # Make a full step for state
-      for k in keys(spl.priors)
-        spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
-        spl.priors[k] += ϵ * p[k]
+    # Run the step until successful
+    while has_run == false
+      dprintln(3, "stepping...")
+      # Assume the step is successful
+      has_run = true
+      try
+        # Get gradient dict
+        val∇E = get_gradient_dict()
+        # Generate random momentum
+        p = Dict{Any, Any}()
+        for k in keys(spl.priors)
+          p[k] = randn(length(spl.priors[k]))
+        end
+        # Record old Hamiltonian
+        for k in keys(p)
+          oldH += p[k]' * p[k] / 2
+        end
+        consume(Task(spl.model))
+        oldH += realpart(-spl.logjoint)
+        spl.logjoint = Dual(0)
+        # 'leapfrog' for each prior
+        for t in 1:τ
+          p = half_momentum_step(p, val∇E)
+          # Make a full step for state
+          for k in keys(spl.priors)
+            spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
+            spl.priors[k] += ϵ * p[k]
+          end
+          val∇E = get_gradient_dict()
+          p = half_momentum_step(p, val∇E)
+        end
+        # Claculate the new Hamiltonian
+        for k in keys(p)
+          H += p[k]' * p[k] / 2
+        end
+        consume(Task(spl.model))
+        H += realpart(-spl.logjoint)
+        spl.logjoint = Dual(0)
+      catch e
+        # Revert the priors
+        spl.priors = old_priors
+        # Count re-run number
+        rerun_num += 1
+        # Only rerun for a threshold of times
+        if rerun_num <= RerunThreshold
+          # log
+          # println("[HMC]: Error occurs in the 'leapfrog' step, re-running ($(rerun_num)).")
+          # Set the model un-run
+          has_run = false
+        else
+          throw(BadParamError())
+        end
       end
-      val∇E = get_gradient_dict()
-      p = half_momentum_step(p, val∇E)
     end
-    # Claculate the new Hamiltonian
-    H = 0
-    for k in keys(p)
-      H += p[k]' * p[k] / 2
-    end
-    consume(Task(spl.model))
-    H += realpart(-spl.logjoint)
-    spl.logjoint = Dual(0)
     # Calculate the difference in Hamiltonian
     ΔH = H - oldH
     # Vector{Any, 1} -> Any
@@ -199,3 +224,11 @@ sample(model :: Function, alg :: HMC) = (
                                         global sampler = HMCSampler{HMC}(alg, model);
                                         run(sampler)
                                         )
+
+
+
+# Error
+type BadParamError <: Exception
+end
+
+Base.showerror(io::IO, e::BadParamError) = print(io, "HMC sampler terminates because of too many re-runs resulted from DomainError (over $(RerunThreshold)). This may be due to large value of ϵ and τ. Please try tuning these parameters.");

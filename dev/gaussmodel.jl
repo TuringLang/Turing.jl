@@ -2,6 +2,7 @@
 # Turing #
 ##########
 using Turing, Distributions, DualNumbers
+using Mamba: Chains, summarystats
 
 xs = [1.5, 2.0]                            # the observations
 
@@ -14,9 +15,9 @@ xs = [1.5, 2.0]                            # the observations
   @predict s m                             # ask predictions of s and m
 end
 
-@time chain = sample(gauss, HMC(200, 0.15, 25))
+@time chain = sample(gauss, HMC(200, 0.55, 25))
 # NOTE: s and m has N_Eff for different parameter settings. s need large ϵ and τ while m need small ones. This is worth to be mentioned in the dissertation.
-using Mamba: Chains, summarystats
+
 print(summarystats(Chains(chain[:s], names="s")))
 print(summarystats(Chains(chain[:m], names="m")))
 
