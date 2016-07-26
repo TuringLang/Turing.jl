@@ -7,16 +7,17 @@ end
 type HMCSampler{HMC} <: Sampler{HMC}
   alg         :: HMC
   model       :: Function
-  samples     :: Array{Dict{Symbol, Any}}
+  samples     :: Array{Sample}
   logjoint    :: Dual{Float64}
   predicts    :: Dict{Symbol, Any}
   priors      :: Dict{Any, Any}
   first       :: Bool
 
   function HMCSampler(alg :: HMC, model :: Function)
-    samples = Array{Dict{Symbol, Any}}(alg.n_samples)
+    samples = Array{Sample}(alg.n_samples)
+    weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
-      samples[i] = Dict{Symbol, Any}()
+      samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     logjoint = Dual(0, 0)
     predicts = Dict{Symbol, Any}()
@@ -79,7 +80,7 @@ function Base.run(spl :: Sampler{HMC})
   spl.logjoint = Dual(0)
   spl.first = false
   # Store the first predicts
-  spl.samples[1] = deepcopy(spl.predicts)
+  spl.samples[1].value = deepcopy(spl.predicts)
   n = spl.alg.n_samples
   ϵ = spl.alg.lf_size
   τ = spl.alg.lf_num
@@ -139,16 +140,16 @@ function Base.run(spl :: Sampler{HMC})
     if ~acc
       spl.priors = old_priors
       # Store the previous predcits
-      spl.samples[i] = deepcopy(spl.samples[i - 1])
+      spl.samples[i].value = deepcopy(spl.samples[i - 1])
     else
       # Store the new predcits
-      spl.samples[i] = deepcopy(spl.predicts)
+      spl.samples[i].value = deepcopy(spl.predicts)
       accept_num += 1
     end
   end
-  # TODO: Output the result using Chain
-  results = Dict{Symbol, Any}()
-  results[:samples] = spl.samples
+  # Wrap the result by Chain
+  # TODO: Calculate the logevidence
+  results = Chain(0, spl.samples)
   accept_rate = accept_num / n
   println("[HMC]: Finshed with accept rate = $(accept_rate)")
   return results

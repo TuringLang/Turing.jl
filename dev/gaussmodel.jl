@@ -1,7 +1,7 @@
 ##########
 # Turing #
 ##########
-using Turing, Distributions, DualNumbers, Mamba
+using Turing, Distributions, DualNumbers
 
 xs = [1.5, 2.0]                            # the observations
 
@@ -14,14 +14,15 @@ xs = [1.5, 2.0]                            # the observations
   @predict s m                             # ask predictions of s and m
 end
 
-@time chain = sample(gauss, HMC(2000, 0.1, 35))
+@time chain = sample(gauss, HMC(20, 0.1, 35))
 ss = [Float64(realpart(d[:s])) for d in chain[:samples]]
 ms = [Float64(realpart(d[:m])) for d in chain[:samples]]
 
+using Mamba
 print(summarystats(Chains(ss, names="s")))
 print(summarystats(Chains(ms, names="m")))
 
-#     Mean       SD      Naive SE     MCSE       ESS   
+#     Mean       SD      Naive SE     MCSE       ESS
 # s 2.1150453 2.0837529 0.04659413 0.11830779 310.2171
 # m 1.1553526 0.86155516 0.019264959 0.022415524 1477.299
 
