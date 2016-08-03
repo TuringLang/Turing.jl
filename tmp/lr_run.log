@@ -23,18 +23,18 @@
          stepsize_jitter = 1
  id = 1
  data
-   file = gauss_1.data.R
+   file = lr_1.data.R
  init = 2 (Default)
  random
-   seed = 1305735714
+   seed = 1311990393
  output
-   file = gauss_samples_1.csv
+   file = lr_samples_1.csv
    diagnostic_file =  (Default)
    refresh = 100 (Default)
 
 
-Gradient evaluation took 5e-06 seconds
-1000 transitions using 10 leapfrog steps per transition would take 0.05 seconds.
+Gradient evaluation took 6e-06 seconds
+1000 transitions using 10 leapfrog steps per transition would take 0.06 seconds.
 Adjust your expectations accordingly!
 
 
@@ -61,7 +61,7 @@ Iteration: 1800 / 2000 [ 90%]  (Sampling)
 Iteration: 1900 / 2000 [ 95%]  (Sampling)
 Iteration: 2000 / 2000 [100%]  (Sampling)
 # 
-#  Elapsed Time: 0.015187 seconds (Warm-up)
-#                0.027135 seconds (Sampling)
-#                0.042322 seconds (Total)
+#  Elapsed Time: 0.021156 seconds (Warm-up)
+#                0.029049 seconds (Sampling)
+#                0.050205 seconds (Total)
 # 

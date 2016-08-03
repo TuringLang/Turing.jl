@@ -101,8 +101,6 @@ function Base.run(spl :: Sampler{HMC})
       # Assume the step is successful
       has_run = true
       try
-        # Get gradient dict
-        val∇E = get_gradient_dict()
         # Generate random momentum
         p = Dict{Any, Any}()
         for k in keys(spl.priors)
@@ -115,6 +113,8 @@ function Base.run(spl :: Sampler{HMC})
         consume(Task(spl.model))
         oldH += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
+        # Get gradient dict
+        val∇E = get_gradient_dict()
         # 'leapfrog' for each prior
         for t in 1:τ
           p = half_momentum_step(p, val∇E)
@@ -134,16 +134,16 @@ function Base.run(spl :: Sampler{HMC})
         H += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
       catch e
-        # Revert the priors
-        spl.priors = old_priors
         # Count re-run number
         rerun_num += 1
         # Only rerun for a threshold of times
         if rerun_num <= RerunThreshold
-          # log
-          # println("[HMC]: Error occurs in the 'leapfrog' step, re-running ($(rerun_num)).")
-          # Set the model un-run
+          # Revert the priors
+          spl.priors = deepcopy(old_priors)
+          # Set the model un-run parameters
           has_run = false
+          oldH = 0
+          H = 0
         else
           throw(BadParamError())
         end
@@ -173,7 +173,7 @@ function Base.run(spl :: Sampler{HMC})
     end
   end
   # Wrap the result by Chain
-  # TODO: Calculate the logevidence
+  # TODO: Calculate the log-evidence
   results = Chain(0, spl.samples)
   accept_rate = accept_num / n
   println("[HMC]: Finshed with accept rate = $(accept_rate) (re-runs for $(rerun_num) times)")
@@ -184,6 +184,7 @@ end
 function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, p :: Prior)
   dprintln(2, "assuming...")
   name = string(p)
+  # TODO: Change the first running condition
   # If it's the first time running the program
   if spl.first
     # Generate a new prior

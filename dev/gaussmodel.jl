@@ -15,16 +15,166 @@ xs = [1.5, 2.0]                            # the observations
   @predict s m                             # ask predictions of s and m
 end
 
-@time chain = sample(gauss, HMC(2000, 0.15, 20))
+@time chain1 = sample(gauss, HMC(1000, 0.55, 5))
+@time chain2 = sample(gauss, HMC(1000, 0.55, 4))
+@time chain3 = sample(gauss, HMC(1000, 0.55, 4))
+@time chain4 = sample(gauss, HMC(1000, 0.55, 4))
+
 # NOTE: s and m has N_Eff for different parameter settings. s need large ϵ and τ while m need small ones. This is worth to be mentioned in the dissertation.
 
-print(summarystats(Chains(chain[:s], names="s")))
-print(summarystats(Chains(chain[:m], names="m")))
+print(summarystats(Chains([chain1[:s] chain2[:s] chain3[:s] chain4[:s]], names=["s", "s", "s", "s"])))
+print(summarystats(Chains([chain1[:m] chain2[:m] chain3[:m] chain4[:m]], names=["m", "m", "m", "m"])))
 
 #     Mean       SD      Naive SE     MCSE       ESS
-# s 2.1150453 2.0837529 0.04659413 0.11830779 310.2171
-# m 1.1553526 0.86155516 0.019264959 0.022415524 1477.299
+# s 1.9786154 1.6126516 0.02549826 0.064673827 621.7617
+# m 1.1564340 0.81268557 0.012849687 0.008232733 4000
 
+@time chain1 = sample(gauss, PG(500, 100))
+@time chain2 = sample(gauss, PG(500, 100))
+@time chain3 = sample(gauss, PG(500, 100))
+@time chain4 = sample(gauss, PG(500, 100))
+
+mean([chain1[:s]; chain2[:s]; chain3[:s]; chain4[:s]])
+mean([chain1[:m]; chain2[:m]; chain3[:m]; chain4[:m]])
+
+@time chain1 = sample(gauss, SMC(1000))
+@time chain2 = sample(gauss, SMC(1000))
+@time chain3 = sample(gauss, SMC(1000))
+@time chain4 = sample(gauss, SMC(1000))
+
+mean([chain1[:s]; chain2[:s]; chain3[:s]; chain4[:s]])
+mean([chain1[:m]; chain2[:m]; chain3[:m]; chain4[:m]])
+
+# Time in Turing
+t1 = time()
+for _ = 1:25
+  sample(gauss, HMC(1000, 0.2, 5))
+end
+t2 = time()
+t = (t2 - t1) / 25
+
+sample_nums = [10, 100, 500, 1000, 2000, 5000, 10000]
+
+smc_time = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:25
+    sample(gauss, SMC(n))
+  end
+  t2 = time()
+  t = (t2 - t1) / 25
+  push!(smc_time, t)
+end
+
+pg_time_1 = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:10
+    sample(gauss, PG(10, n))
+  end
+  t2 = time()
+  t = (t2 - t1) / 10
+  push!(pg_time_1, t)
+end
+
+pg_time_2 = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:10
+    sample(gauss, PG(20, n))
+  end
+  t2 = time()
+  t = (t2 - t1) / 10
+  push!(pg_time_2, t)
+end
+print(pg_time_2)
+
+hmc_time_1 = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:10
+    sample(gauss, HMC(n, 0.05, 2))
+  end
+  t2 = time()
+  t = (t2 - t1) / 10
+  push!(hmc_time_1, t)
+end
+
+hmc_time_2 = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:10
+    sample(gauss, HMC(n, 0.05, 10))
+  end
+  t2 = time()
+  t = (t2 - t1) / 10
+  push!(hmc_time_2, t)
+end
+
+hmc_time_3 = []
+for n = sample_nums
+  t1 = time()
+  for _ = 1:10
+    sample(gauss, HMC(n, 0.5, 2))
+  end
+  t2 = time()
+  t = (t2 - t1) / 10
+  push!(hmc_time_3, t)
+end
+
+sample_nums = [10, 100, 500, 1000, 2000, 5000, 10000]
+
+hmc_time_1 = [0.004650497436523437,0.04269888401031494,0.20954039096832275,0.4710076093673706,0.938780689239502,2.242368292808533,3.5772396087646485]
+
+hmc_time_2 = [0.015126204490661621,0.15580008029937745,0.7784370899200439,1.5663403034210206,2.908810591697693,7.821655702590943,17.936883306503297]
+
+
+hmc_time_3 = [0.009491491317749023,0.060298705101013185,0.29063079357147215,0.5673642873764038,1.1188395023345947,2.6560792922973633,5.046795201301575]
+
+pg_time_1 = [0.2000460147857666,0.029438495635986328,0.13155040740966797,0.2751434087753296,0.5456831932067872,1.4251347064971924,3.046298289299011]
+pg_time_2 = [0.007204389572143555,0.06006867885589599,0.31555991172790526,0.5549521923065186,1.0265091896057128,2.766718101501465,5.308166193962097]
+
+smc_time = [0.0004083251953125,0.0035467529296875,0.015932798385620117,0.03243380546569824,0.06348095893859863,0.1791096019744873,0.45574819564819335]
+
+using Gadfly
+smc_layer = layer(x=sample_nums, y=smc_time, Geom.line, Theme(default_color=colorant"brown"))
+pg_layer_1 = layer(x=sample_nums, y=pg_time_1, Geom.line, Theme(default_color=colorant"deepskyblue"))
+pg_layer_2 = layer(x=sample_nums, y=pg_time_2, Geom.line, Theme(default_color=colorant"royalblue"))
+hmc_layer_1 = layer(x=sample_nums, y=hmc_time_1, Geom.line, Theme(default_color=colorant"seagreen"))
+hmc_layer_2 = layer(x=sample_nums, y=hmc_time_2, Geom.line, Theme(default_color=colorant"springgreen"))
+hmc_layer_3 = layer(x=sample_nums, y=hmc_time_3, Geom.line, Theme(default_color=colorant"violet"))
+
+p = plot(smc_layer, pg_layer_1, pg_layer_2, hmc_layer_1, hmc_layer_2, hmc_layer_3, Guide.ylabel("Time used (s)"), Guide.xlabel("#samples (n)"), Guide.manual_color_key("Legend", ["SMC(n)", "PG(10, n)", "PG(20, n)", "HMC(n, 0.05, 2)", "HMC(n, 0.05, 20)", "HMC(n, 0.5, 2)"], ["brown", "deepskyblue", "royalblue", "seagreen", "springgreen", "violet"]))
+
+draw(PNG("/Users/kai/Turing/docs/report/withinturing.png", 4inch, 4inch), p)
+
+
+# Time
+t1 = time()
+for _ = 1:10
+  sample(gauss, HMC(1000, 0.55, 4))
+end
+t2 = time()
+t = (t2 - t1) / 10  # 0.5942052125930786
+
+# ESS and MCSE
+mcse_s = 0
+mcse_m = 0
+ess_s = 0
+ess_m = 0
+for _ = 1:100
+  chain = sample(gauss, HMC(1000, 0.55, 4))
+  ss_s = summarystats(Chains(chain[:s]))
+  ss_m = summarystats(Chains(chain[:m]))
+  ess_s += ss_s.value[1, 5, 1]
+  ess_m += ss_m.value[1, 5, 1]
+  mcse_s += ss_s.value[1, 4, 1]
+  mcse_m += ss_m.value[1, 4, 1]
+end
+ess_s / 100 # 181.16478750018905
+ess_m / 100 # 825.040657070573
+mcse_s / 100 # 0.1952434962425414
+mcse_m / 100 # 0.02743143131913111
 
 
 ########
@@ -52,26 +202,36 @@ model {
 }
 "
 
-gauss = Stanmodel(name="gauss", model=gauss_str);
+gauss = Stanmodel(name="gauss", model=gauss_str)
 gauss_sim = stan(gauss, gauss_data, "$(pwd())/tmp/", CmdStanDir=CMDSTAN_HOME)
+gauss_sim_sub = gauss_sim[1:1000, ["lp__", "stepsize__", "n_leapfrog__", "s", "m", "accept_stat__"], :]
+describe(gauss_sim_sub)
 
-# Inference for Stan model: gauss_model
-# 4 chains: each with iter=(1000,1000,1000,1000); warmup=(0,0,0,0); thin=(1,1,1,1); 4000 iterations saved.
-#
-# Warmup took (0.013, 0.022, 0.022, 0.024) seconds, 0.081 seconds total
-# Sampling took (0.024, 0.040, 0.038, 0.038) seconds, 0.14 seconds total
-#
-#                 Mean     MCSE  StdDev        5%   50%   95%  N_Eff  N_Eff/s    R_hat
-# lp__            -5.2  3.9e-02     1.2  -7.6e+00  -4.9  -4.1    857     6066  1.0e+00
-# accept_stat__   0.91  3.1e-03    0.15   6.0e-01  0.96   1.0   2426    17178  1.0e+00
-# stepsize__      0.68  3.2e-02   0.045   6.1e-01  0.70  0.73    2.0       14  2.8e+13
-# treedepth__      2.1  1.2e-02    0.63   1.0e+00   2.0   3.0   2581    18278  1.0e+00
-# n_leapfrog__     3.7  3.8e-02     2.0   1.0e+00   3.0   7.0   2834    20070  1.0e+00
-# n_divergent__   0.00  0.0e+00    0.00   0.0e+00  0.00  0.00   4000    28324      nan
-# s                2.1  5.8e-02     1.8   6.5e-01   1.6   5.3    958     6783  1.0e+00
-# m                1.2  2.4e-02    0.82  -9.1e-02   1.2   2.5   1151     8150  1.0e+00
-#
-# Samples were drawn using hmc with nuts.
-# For each parameter, N_Eff is a crude measure of effective sample size,
-# and R_hat is the potential scale reduction factor on split chains (at
-# convergence, R_hat=1).
+# Time
+gauss = Stanmodel(name="gauss", model=gauss_str, nchains=1)
+t1 = time()
+for _ = 1:10
+  stan(gauss, gauss_data, "$(pwd())/tmp/", CmdStanDir=CMDSTAN_HOME)
+end
+t2 = time()
+t = (t2 - t1) / 10  # 0.355244517326355
+
+# ESS and MCSE
+gauss = Stanmodel(name="gauss", model=gauss_str, nchains=1)
+mcse_s = 0
+mcse_m = 0
+ess_s = 0
+ess_m = 0
+for _ = 1:100
+  gauss_sim = stan(gauss, gauss_data, "$(pwd())/tmp/", CmdStanDir=CMDSTAN_HOME)
+  ss_s = summarystats(Chains(reshape(gauss_sim[1:1000, ["s"], :].value, 1000, 1)))
+  ss_m = summarystats(Chains(reshape(gauss_sim[1:1000, ["m"], :].value, 1000, 1)))
+  ess_s += ss_s.value[1, 5, 1]
+  ess_m += ss_m.value[1, 5, 1]
+  mcse_s += ss_s.value[1, 4, 1]
+  mcse_m += ss_m.value[1, 4, 1]
+end
+ess_s / 100 # 356.01590116934824
+ess_m / 100 # 378.54305932355135
+mcse_s / 100 # 0.10649510480431454
+mcse_m / 100 # 0.04642232215932677

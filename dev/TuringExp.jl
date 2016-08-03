@@ -234,7 +234,7 @@ xs = Array[[0, 0], [0, 1], [1, 0], [1, 1]]
 ts = [0, 1, 1, 0]
 
 # Define the model
-α = 0.25          # regularizatin term
+α = 0.09          # regularizatin term
 σ = sqrt(1 / α)   # variance of the Gaussian prior
 mu = [0, 0, 0]
 Σ = [σ 0 0; 0 σ 0; 0 0 σ]
@@ -250,17 +250,18 @@ mu = [0, 0, 0]
 end
 
 # Sample the model
-chain = sample(hiddenbnn, HMC(2000, 0.1, 2))
+chain = sample(hiddenbnn, HMC(1000, 0.5, 15))
 
 # Helper function for predicting
 function hiddenpredict(x, chain)
-  return mean([hiddeny(x, d[:w11], d[:w12], d[:w2]) for d in chain[:samples]])
+  return mean([hiddeny(x, d[:w11], d[:w12], d[:w2]) for d in chain.value])
 end
 
 # Compute predctions
 y = Float64[hiddenpredict(xs[i], chain) for i = 1:4]
 
-
+hidden_predictions_layer = layer(z=(x,y) -> hiddenpredict([x, y], chain), x=linspace(-4,4,25), y=linspace(-4,4,25), Geom.contour)
+plot(hidden_predictions_layer)
 
 # Demo Bernoulli in Stan
 using Turing, Distributions, DualNumbers, Gadfly
