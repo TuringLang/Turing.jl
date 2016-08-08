@@ -28,6 +28,8 @@ function Base.getindex(c::Chain, v::Symbol)
   #  Needs some refactoring a better format for storing results is available.
   if v == :logevidence
     log(c.weight)
+  elseif v==:samples
+    c.value
   else
     map((s)->Base.getindex(s, v), c.value)
   end
