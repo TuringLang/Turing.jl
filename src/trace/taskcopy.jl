@@ -66,7 +66,7 @@ function Base.produce(v)
     if isempty(Base.Workqueue)
       yieldto(t, v)
     else
-      schedule_and_wait(t, v)
+      Base.schedule_and_wait(t, v)
     end
     ct = current_task() # When a task is copied, ct should be updated to new task ID.
     while true
