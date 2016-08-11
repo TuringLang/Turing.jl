@@ -17,5 +17,20 @@ Contents
    usage
    debugging
    
+   .. toctree::
+   :maxdepth: 2
+   :caption: Components
+   
+   compiler
+   sampler
+   sampler/smc
+   sampler/pg
+   
+   .. toctree::
+   :maxdepth: 2
+   :caption: Development
+
+   development/workflow
+   
    license
 
