@@ -7,11 +7,15 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   gettingstarted
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Command Line
+
+   installation
+   usage
+   debugging
+   
    license
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
