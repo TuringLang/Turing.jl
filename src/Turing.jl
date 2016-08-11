@@ -25,6 +25,7 @@ include("core/conditional.jl")
 include("core/container.jl")
 include("core/io.jl")
 include("samplers/sampler.jl")
+include("distributions/bnp.jl")
 
 ## global data structures
 const TURING = Dict{Symbol, Any}()

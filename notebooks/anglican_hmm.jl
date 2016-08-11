@@ -5,8 +5,6 @@ using Turing
 using Distributions
 using Distances
 
-include("utils.jl")
-
 statesmean = [-1, 1, 0]
 initial    = Categorical([1.0/3, 1.0/3, 1.0/3])
 trans      = [Categorical([0.1, 0.5, 0.4]), Categorical([0.2, 0.2, 0.6]), Categorical([0.15, 0.15, 0.7])]

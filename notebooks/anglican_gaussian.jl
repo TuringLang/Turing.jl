@@ -7,8 +7,6 @@ using ConjugatePriors
 import Distributions:
   NormalKnownSigma
 
-include("utils.jl")
-
 m0 = 1
 s0 = sqrt(5)
 s  = sqrt(2)
