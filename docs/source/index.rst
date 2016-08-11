@@ -30,7 +30,6 @@ Contents
    :maxdepth: 2
    :caption: Development
 
-   development/workflow
-   
+   workflow
    license
 
