@@ -125,7 +125,7 @@ hmc_layer_3 = layer(x=sample_nums, y=hmc_time_3, Geom.line, Theme(default_color=
 
 p = plot(smc_layer, pg_layer_1, pg_layer_2, hmc_layer_1, hmc_layer_2, hmc_layer_3, Guide.ylabel("Time used (s)"), Guide.xlabel("#samples (n)"), Guide.manual_color_key("Legend", ["SMC(n)", "PG(10, n)", "PG(20, n)", "HMC(n, 0.01, 2)", "HMC(n, 0.01, 10)", "HMC(n, 0.03, 2)"], ["brown", "deepskyblue", "royalblue", "seagreen", "springgreen", "violet"]))
 
-draw(PNG("/Users/kai/Turing/docs/report/withinturingbeta.png", 4inch, 4inch), p)
+draw(PDF("/Users/kai/Turing/docs/report/withinturingbeta.pdf", 4inch, 4inch), p)
 
 
 # Time

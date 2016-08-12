@@ -96,6 +96,7 @@ ess(MHSamples)
 # Demo for meeting #
 #  on 16/05/2016   #
 ####################
+include("hmc.jl")
 
 # A simple multivariate Gaussian
 μ = [3.0, 3.0]
@@ -121,11 +122,13 @@ function demo1(sampleNum::Int64)
   exactSampleLayer = layer(z=(x,y) -> simplef([x, y]), x=linspace(-2,8,100), y=linspace(-2,8,100), Geom.contour(levels=5))
 
   # plot together with real dneisty
-  p = plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Guide.title("Samples using MH and HMC"), Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
+  p = plot(MHSampleLayer, HMCSampleLayer, exactSampleLayer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"),
+  # Guide.title("Samples using MH and HMC"),
+  Coord.cartesian(xmin=-2, xmax=8, ymin=-2, ymax=8), Guide.manual_color_key("Legend", ["MH", "HMC"], ["green", "red"]))
 end
 
 p = demo1(30)
-draw(PNG("/Users/kai/Turing/docs/poster/figures/gauss.png", 6inch, 4.5inch), p)
+draw(PDF("/Users/kai/Turing/docs/report/hmcmh.pdf", 6inch, 4.5inch), p)
 
 # Demo 2
 

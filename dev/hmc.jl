@@ -63,7 +63,7 @@ function HMCSampler(Q::Function, sampleNum::Int64, ϵ::Float64, τ::Int64, dim::
     samples   -   samples
   """
   E = x -> -log(Q(x))                 # we assume Q(x) = 1 / Z * e ^ (-E(x))
-  ∇E = ForwardDiff.gradient(E)
+  ∇E = x -> ForwardDiff.gradient(E, x)
 
   x = randn(dim)
   # x = zeros(dim)

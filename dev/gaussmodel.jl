@@ -15,7 +15,7 @@ xs = [1.5, 2.0]                            # the observations
   @predict s m                             # ask predictions of s and m
 end
 
-@time chain1 = sample(gauss, HMC(1000, 0.55, 5))
+@time chain1 = sample(gauss, HMC(1000, 0.55, 4))
 @time chain2 = sample(gauss, HMC(1000, 0.55, 4))
 @time chain3 = sample(gauss, HMC(1000, 0.55, 4))
 @time chain4 = sample(gauss, HMC(1000, 0.55, 4))
@@ -146,7 +146,7 @@ hmc_layer_3 = layer(x=sample_nums, y=hmc_time_3, Geom.line, Theme(default_color=
 
 p = plot(smc_layer, pg_layer_1, pg_layer_2, hmc_layer_1, hmc_layer_2, hmc_layer_3, Guide.ylabel("Time used (s)"), Guide.xlabel("#samples (n)"), Guide.manual_color_key("Legend", ["SMC(n)", "PG(10, n)", "PG(20, n)", "HMC(n, 0.05, 2)", "HMC(n, 0.05, 20)", "HMC(n, 0.5, 2)"], ["brown", "deepskyblue", "royalblue", "seagreen", "springgreen", "violet"]))
 
-draw(PNG("/Users/kai/Turing/docs/report/withinturing.png", 4inch, 4inch), p)
+draw(PDF("/Users/kai/Turing/docs/report/withinturing.pdf", 4inch, 4inch), p)
 
 
 # Time
@@ -235,3 +235,24 @@ ess_s / 100 # 356.01590116934824
 ess_m / 100 # 378.54305932355135
 mcse_s / 100 # 0.10649510480431454
 mcse_m / 100 # 0.04642232215932677
+
+
+
+
+
+
+
+
+
+# different influcne on s and m
+ess_s = 0
+ess_m = 0
+for _ = 1:25
+  chain = sample(gauss, HMC(1000, 0.1, 10))
+  ss_s = summarystats(Chains(chain[:s]))
+  ss_m = summarystats(Chains(chain[:m]))
+  ess_s += ss_s.value[1, 5, 1]
+  ess_m += ss_m.value[1, 5, 1]
+end
+ess_s / 25
+ess_m / 25

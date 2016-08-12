@@ -218,7 +218,7 @@ end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
-  spl.predicts[name] = realpart(value)
+  spl.predicts[name] = isa(value, Array) ? value : realpart(value)
 end
 
 sample(model :: Function, alg :: HMC) = (

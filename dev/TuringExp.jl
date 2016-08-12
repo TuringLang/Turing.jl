@@ -118,7 +118,11 @@ chain = sample(singlebnn, HMC(3000, 0.1, 2))
 
 # Helper function for predicting
 function singlepredict(x, chain)
-  return mean([singley(x, d[:w0], d[:w1], d[:w2]) for d in chain[:samples]])
+  n = length(chain[:w0])
+  w0s = chain[:w0]
+  w1s = chain[:w1]
+  w2s = chain[:w2]
+  return mean([singley(x, w0s[i], w1s[i], w2s[i]) for i in 1:n])
 end
 
 # Compute predctions
@@ -162,10 +166,10 @@ singledata_layer_2 = layer(x=Float64[-1, -2], y=Float64[-2, -1], Geom.point, The
 singlepredictions_layer = layer(z=(x,y) -> singlepredict([x, y], chain), x=linspace(-4,4,25), y=linspace(-4,4,25), Geom.contour)
 gdpredictions_layer = layer(z=(x,y) -> singley([x, y], w0g, w1g, w2g), x=linspace(-4,4,25), y=linspace(-4,4,25), Geom.contour(levels=1))
 
-singlepredictions_plot = plot(singledata_layer_1, singledata_layer_2, singlepredictions_layer, gdpredictions_layer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"),Guide.title("Predictions of the Single Neuron BNN"), Coord.cartesian(xmin=-4, xmax=4, ymin=-4, ymax=4))
-
+singlepredictions_plot = plot(singledata_layer_1, singledata_layer_2, singlepredictions_layer, gdpredictions_layer, Guide.xlabel("dim 1"), Guide.ylabel("dim 2"), Coord.cartesian(xmin=-4, xmax=4, ymin=-4, ymax=4))
+# ,Guide.title("Predictions of the Single Neuron BNN")
 # Output plot
-draw(PNG("/Users/kai/Turing/docs/demo/singlebnn.png", 6inch, 5.5inch), singlepredictions_plot)
+draw(PDF("/Users/kai/Turing/docs/report/singlebnn.pdf", 5.5inch, 5inch), singlepredictions_plot)
 
 # Trace
 w0s = [Float64(realpart(d[:w0])) for d in chain[:samples]]
