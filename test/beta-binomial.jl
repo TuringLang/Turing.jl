@@ -27,5 +27,4 @@ res = sample(test, p)
 @test_approx_eq_eps mean(res[:p]) meanp 0.10
 
 res = sample(test, h)
-meanp_hmc = mean([Float64(realpart(d[:p])) for d in res[:samples]])
-@test_approx_eq_eps meanp_hmc meanp 0.05
+@test_approx_eq_eps mean(res[:p]) meanp 0.05
