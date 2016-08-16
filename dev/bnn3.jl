@@ -34,7 +34,7 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict wi1 wi2 wh1 wh2 wo
 end
 
-@time chain = sample(bnn, HMC(1000, 0.1, 2))
+@time chain = sample(bnn, HMC(2500, 0.01, 5))
 
 
 
