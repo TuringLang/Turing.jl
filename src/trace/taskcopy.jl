@@ -1,8 +1,8 @@
 @unix_only libpath = replace(@__FILE__, "src/trace/taskcopy.jl", "deps/")
 @windows_only libpath = replace(@__FILE__, "src\\trace\\taskcopy.jl", "deps\\")
 
-if !(ByteString(libpath) in Base.DL_LOAD_PATH)
-  push!(Base.DL_LOAD_PATH, ByteString(libpath))
+if !(libpath in Base.DL_LOAD_PATH)
+  push!(Base.DL_LOAD_PATH, libpath)
 end
 # println(libpath)
 

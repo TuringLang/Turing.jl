@@ -29,7 +29,7 @@ end
 Params() = Params([],[])
 
 # copies the entire structure
-## TODO: #is shallow copy enough here?
+## TODO: is shallow copy enough here?
 clone(ps::Params) = Params(deepcopy(ps.values), deepcopy(ps.dists))
 
 # TODO: rename prior to logpdf
