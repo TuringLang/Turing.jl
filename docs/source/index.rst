@@ -18,8 +18,8 @@ Contents
    
    compiler
    sampler
-   copying coroutines 
-   TArray
+   coroutines 
+   tarray
    workflow
    
 .. toctree::
