@@ -17,6 +17,15 @@ export TArray, tzeros, localcopy
 # Debugging helpers
 export dprintln
 
+## global data structures
+const TURING = Dict{Symbol, Any}()
+global sampler = nothing
+global debug_level = 0
+
+# debugging print function: The first argument controls the verbosity of message,
+#  e.g. larger v leads to more verbose debugging messages.
+dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
+
 # Inference code
 include("distributions/distributions.jl")
 include("distributions/ddistributions.jl")
@@ -28,15 +37,5 @@ include("core/container.jl")
 include("core/io.jl")
 include("samplers/sampler.jl")
 include("distributions/bnp.jl")
-
-## global data structures
-const TURING = Dict{Symbol, Any}()
-global sampler = nothing
-global debug_level = 0
-
-
-# debugging print function: The first argument controls the verbosity of message,
-#  e.g. larger v leads to more verbose debugging messages.
-dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
 end
