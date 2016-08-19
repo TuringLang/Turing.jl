@@ -8,29 +8,23 @@ Contents
    :maxdepth: 2
    :caption: Getting Started
 
-   Installation 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Command Line
-
    installation
    usage
-   debugging
+   demos
    
-   .. toctree::
+.. toctree::
    :maxdepth: 2
-   :caption: Components
+   :caption: Development Notes
    
    compiler
    sampler
-   sampler/smc
-   sampler/pg
-   
-   .. toctree::
-   :maxdepth: 2
-   :caption: Development
-
+   copying coroutines 
+   TArray
    workflow
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: License
+   
    license
 
