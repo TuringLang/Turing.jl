@@ -1,11 +1,20 @@
-Pkg.add("ForwardDiff")
-import ForwardDiff
+using ForwardDiff: Dual
 
-f(x::Vector) = sum(sin, x) + prod(tan, x) * sum(sqrt, x);
-g = ForwardDiff.gradient(f);
-# x = rand(5)
-x = [0.986403, 0.140913, 0.294963, 0.837125, 0.650451]
-g(x)
+function f(a, b)
+  return a * b
+end
 
-h = ForwardDiff.hessian(f)
-h(x)
+a = Dual(1, 1, 0)
+b = Dual(2, 0, 1)
+
+f(a, b)
+
+d = Dual(1)
+d.value
+d.partials.values
+d = Dual{2, Float64}(d.value)
+
+
+a = Dual(1)
+b = Dual{1, Float64}(2)
+a+b

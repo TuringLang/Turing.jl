@@ -75,5 +75,14 @@ function kl(p :: Categorical, q :: Categorical)
   return kl_divergence(a,b)
 end
 
-export normalize!, kl, align
 
+function realpart(d)
+  return map(x -> Float64(x.value), d)
+end
+
+
+function dualpart(d)
+  return map(x -> Float64(x.partials.values[1]), d)
+end
+
+export normalize!, kl, align, realpart, dualpart

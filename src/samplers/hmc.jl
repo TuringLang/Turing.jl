@@ -10,7 +10,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
   alg         :: HMC
   model       :: Function
   samples     :: Array{Sample}
-  logjoint    :: Dual{Float64}
+  logjoint    :: Dual
   predicts    :: Dict{Symbol, Any}
   priors      :: Dict{Any, Any}
   first       :: Bool
@@ -21,7 +21,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    logjoint = Dual(0, 0)
+    logjoint = Dual(0)
     predicts = Dict{Symbol, Any}()
     priors = Dict{Any, Any}()
     new(alg, model, samples, logjoint, predicts, priors, true)
@@ -35,7 +35,7 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(spl.priors)
       # TODO: Unify Float64 and Vector by making them all Vector
       if length(spl.priors[k]) == 1
-        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
+        real = isa(spl.priors[k], Dual) ? spl.priors[k].value : spl.priors[k][1].value
         # Set the dual part of the variable we want to find graident to 1
         spl.priors[k] = Dual(real, 1)
         # Run the model
@@ -43,7 +43,7 @@ function Base.run(spl :: Sampler{HMC})
         # Reset dual part
         spl.priors[k] = Dual(real, 0)
         # Record graident
-        val∇E[k] = -dualpart(spl.logjoint)
+        val∇E[k] = -spl.logjoint..partials.values
         # Reset the log joint
         spl.logjoint = Dual(0)
       else
@@ -218,7 +218,7 @@ end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
-  spl.predicts[name] = isa(value, Array) ? value : realpart(value)
+  spl.predicts[name] = isa(value, Array) ? value : value.value
 end
 
 sample(model :: Function, alg :: HMC) = (

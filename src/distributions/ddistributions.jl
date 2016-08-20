@@ -20,10 +20,10 @@ function pdf(dd :: dDistribution, x :: Dual)
 end
 
 function pdf(dd :: dDistribution, x :: Vector)
-  if isa(x[1], Real)
-    return pdf(dd.d, x)
-  else
+  if isa(x[1], Dual)
     return dd.df(x)
+  else
+    return pdf(dd.d, x)
   end
 end
 
@@ -37,7 +37,7 @@ end
 
 function gradient(dd :: dDistribution, x)
   if isa(x, Vector)
-    x = isa(x[1], Real)? Vector{Dual{Float64}}(x) : x
+    x = isa(x[1], Dual)? x : Vector{Dual}(x)
     l = length(x)
     g = zeros(l)
     for i = 1:l
@@ -47,7 +47,7 @@ function gradient(dd :: dDistribution, x)
     end
     return g
   else
-    x = isa(x, Real)? Dual(x) : x
+    x = isa(x, Dual)? x : Dual(x)
     x = Dual(realpart(x), 1)
     return dualpart(pdf(dd, x))
   end
@@ -69,7 +69,7 @@ type dBernoulli <: dDistribution
   function dBernoulli(p)
     # Convert Real to Dual if possible
     # Force Float64 inside Dual to avoid a known bug of Dual
-    p = isa(p, Real)? Dual{Float64}(p) : p
+    p = isa(p, Dual)? p : Dual(p)
     d = Bernoulli(realpart(p))
     df = hmcBernoulli(p)
     new(p, d, df)
@@ -108,8 +108,8 @@ type dNormal <: dDistribution
   function dNormal(μ, σ)
     # Convert Real to Dual if possible
     # Force Float64 inside Dual to avoid a known bug of Dual
-    μ = isa(μ, Real)? Dual{Float64}(μ) : μ
-    σ = isa(σ, Real)? Dual{Float64}(σ) : σ
+    μ = isa(μ, Dual)? μ : Dual(μ)
+    σ = isa(σ, Dual)? σ : Dual(σ)
     d = Normal(realpart(μ), realpart(σ))
     df = hmcNormal(μ, σ)
     new(μ, σ, d, df)
@@ -128,8 +128,8 @@ type dMvNormal <: dDistribution
   df    ::    Function
   function dMvNormal(μ, Σ)
     # Convert Real to Dual if possible
-    μ = isa(μ[1], Real)? Vector{Dual{Float64}}(μ) : μ
-    Σ = isa(Σ[1, 1], Real)? Array{Dual{Float64},2}(Σ) : Σ
+    μ = isa(μ[1], Dual)? μ : map(x -> Dual{1, Real}(x), μ)
+    Σ = isa(Σ[1, 1], Dual)? Σ : map(x -> Dual{1, Real}(x), Σ)
     # The constructor of MvNormal requires the Σ to be a type of PDMat
     d = MvNormal(forceVector(realpart(μ), Float64), PDMat(realpart(Σ)))
     df = hmcMvNormal(μ, Σ)
@@ -149,7 +149,7 @@ type dTDist <: dDistribution
  df    ::    Function
  function dTDist(ν)
    # Convert Real to Dual if possible
-   ν = isa(ν, Real)? Dual{Float64}(ν) : ν
+   ν = isa(ν, Dual)? ν : Dual(ν)
    d = TDist(realpart(ν))
    df = hmcTDist(ν)
    new(ν, d, df)
@@ -180,7 +180,7 @@ type dExponential <: dDistribution
  df    ::    Function
  function dExponential(Θ)
    # Convert Real to Dual if possible
-   Θ = isa(Θ, Real)? Dual{Float64}(Θ) : Θ
+   Θ = isa(Θ, Dual)? Θ : Dual(Θ)
    d = Exponential(realpart(Θ))
    df = hmcExponential(Θ)
    new(Θ, d, df)
@@ -199,8 +199,8 @@ type dGamma <: dDistribution
   df    ::    Function
   function dGamma(α, Θ)
     # Convert Real to Dual if possible
-    α = isa(α, Real)? Dual{Float64}(α) : α
-    Θ = isa(Θ, Real)? Dual{Float64}(Θ) : Θ
+    α = isa(α, Dual)? α : Dual(α)
+    Θ = isa(Θ, Dual)? Θ : Dual(Θ)
     d = Gamma(realpart(α), realpart(Θ))
     df = hmcGamma(α, Θ)
     new(α, Θ, d, df)
@@ -219,8 +219,8 @@ type dInverseGamma <: dDistribution
   df    ::    Function
   function dInverseGamma(α, Θ)
     # Convert Real to Dual if possible
-    α = isa(α, Real)? Dual{Float64}(α) : α
-    Θ = isa(Θ, Real)? Dual{Float64}(Θ) : Θ
+    α = isa(α, Dual)? α : Dual(α)
+    Θ = isa(Θ, Dual)? Θ : Dual(Θ)
     d = InverseGamma(realpart(α), realpart(Θ))
     df = hmcInverseGamma(α, Θ)
     new(α, Θ, d, df)
@@ -257,8 +257,8 @@ type dBeta <: dDistribution
   df    ::    Function
   function dBeta(α, β)
     # Convert Real to Dual if possible
-    α = isa(α, Real)? Dual{Float64}(α) : α
-    β = isa(β, Real)? Dual{Float64}(β) : β
+    α = isa(α, Dual)? α : Dual(α)
+    β = isa(β, Dual)? β : Dual(β)
     d = Beta(realpart(α), realpart(β))
     df = hmcBeta(α, β)
     new(α, β, d, df)
