@@ -131,7 +131,6 @@ function Base.run(spl :: Sampler{HMC})
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
           for k in keys(spl.priors)
-            # spl.priors[k] = forceVector(spl.priors[k], Dual{0, Real})
             spl.priors[k] += ϵ * p[k]
           end
           val∇E = get_gradient_dict()

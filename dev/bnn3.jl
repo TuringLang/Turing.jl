@@ -1,5 +1,4 @@
-using Turing#, Gadfly
-# using Mamba: Chains, summarystats
+using Turing
 
 
 
@@ -14,12 +13,22 @@ function nn(x, wi1, wi2, wh1, wh2, wo)
   wo = sigmoid((wo' * h2)[1])
 end
 
+function predict(x, chain)
+  n = length(chain[:wi1])
+  wi1 = chain[:wi1]
+  wi2 = chain[:wi2]
+  wh1 = chain[:wh1]
+  wh2 = chain[:wh2]
+  wo = chain[:wo]
+  return mean([nn(x, wi1[i], wi2[i], wh1[i], wh2[i], wo[i]) for i in 1:n])
+end
+
 
 
 xs = Array[[1; 1], [-1; -1], [1; -1], [-1; 1]]
-ts = [1; 1; 0; 0]
+ts = [1; 0; 1; 0]
 
-alpha = 0.25            # regularizatin term
+alpha = 0.01            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 @model bnn begin
   @assume wi1 ~ MvNormal([0; 0], [var 0; 0 var])
@@ -34,17 +43,13 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict wi1 wi2 wh1 wh2 wo
 end
 
-@time chain = sample(bnn, HMC(2500, 0.01, 5))
-
-
-function predict(x, chain)
-  n = length(chain[:wi1])
-  wi1 = chain[:wi1]
-  wi2 = chain[:wi2]
-  wh1 = chain[:wh1]
-  wh2 = chain[:wh2]
-  wo = chain[:wo]
-  return mean([nn(x, wi1[i], wi2[i], wh1[i], wh2[i], wo[i]) for i in 1:n])
-end
+@time chain = sample(bnn, HMC(1000, 0.5, 10))
 
 [predict(xs[i], chain) for i = 1:4]
+
+
+
+
+using Mamba: Chains, summarystats
+s = map(x -> x[2], chain[:wo])
+println(summarystats(Chains(s)))
