@@ -27,15 +27,15 @@ global debug_level = 0
 dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
 # Inference code
+include("distributions/distributions.jl")
+include("distributions/ddistributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
-include("distributions/ddistributions.jl")
 include("core/intrinsic.jl")
 include("core/conditional.jl")
 include("core/container.jl")
 include("core/io.jl")
-include("distributions/distributions.jl")
-include("distributions/bnp.jl")
 include("samplers/sampler.jl")
+include("distributions/bnp.jl")
 
 end

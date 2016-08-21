@@ -17,9 +17,8 @@ ddN = dNormal(0, 1)
 μ = [1, 1]
 Σ = [1 0; 0 1]
 ddMN = dMvNormal(μ, Σ)
-@test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, Dual[2, 1]))
-@test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ gradient(ddMN, [2, 1])
-
+@test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, map(x -> Dual(x), [2, 1])))
+@test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ Vector([gradient(ddMN, [2, 1])...])
 # StudentT
 ddT = dTDist(1)
 @test pdf(ddT, 1) ≈ realpart(pdf(ddT, Dual(1)))

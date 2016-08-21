@@ -10,8 +10,8 @@ xs = Float64[0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
   @predict p1
 end
 
-@time chain = sample(beta, HMC(250, 0.01, 2))
-mean(chain[:p])
+@time chain = sample(beta, HMC(1000, 0.01, 2))
+mean(chain[:p1])
 
 
 using Turing
@@ -29,4 +29,13 @@ xs = [1.5, 2.0] # the observations
   @predict ms                  # ask predictions of s and m
 end
 
-@time sample(gauss_var, HMC(250, 0.45, 5))
+
+t1 = time()
+for _ = 1:100
+  sample(gauss_var, HMC(100, 0.45, 5))
+end
+t = time() - t1
+t / 100
+
+# M = 3: 0.413e-1
+# M = 9: 1.01

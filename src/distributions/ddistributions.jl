@@ -37,15 +37,12 @@ end
 
 function gradient(dd :: dDistribution, x)
   if isa(x, Vector)
-    x = isa(x[1], Dual)? x : Vector{Dual}(x)
     l = length(x)
-    g = zeros(l)
+    x_dual = []
     for i = 1:l
-      x[i] = Dual(realpart(x[i]), 1)
-      g[i] = dualpart(pdf(dd, x))[1]
-      x[i] = Dual(realpart(x[i]), 0)
+      push!(x_dual, make_dual(l, x[i], i))
     end
-    return g
+    return dualpart(pdf(dd, x_dual))
   else
     x = isa(x, Dual)? x : Dual(x)
     x = Dual(realpart(x), 1)
@@ -128,8 +125,8 @@ type dMvNormal <: dDistribution
   df    ::    Function
   function dMvNormal(μ, Σ)
     # Convert Real to Dual if possible
-    μ = isa(μ[1], Dual)? μ : map(x -> Dual{1, Real}(x), μ)
-    Σ = isa(Σ[1, 1], Dual)? Σ : map(x -> Dual{1, Real}(x), Σ)
+    μ = isa(μ[1], Dual)? μ : map(x -> Dual(x), μ)
+    Σ = isa(Σ[1, 1], Dual)? Σ : map(x -> Dual(x), Σ)
     # The constructor of MvNormal requires the Σ to be a type of PDMat
     d = MvNormal(forceVector(realpart(μ), Float64), PDMat(realpart(Σ)))
     df = hmcMvNormal(μ, Σ)

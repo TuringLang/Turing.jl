@@ -1,4 +1,4 @@
-using Turing, Distributions, DualNumbers, Gadfly, ForwardDiff
+using Turing#, Gadfly
 # using Mamba: Chains, summarystats
 
 
@@ -35,7 +35,6 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 end
 
 @time chain = sample(bnn, HMC(2500, 0.01, 5))
-
 
 
 function predict(x, chain)
