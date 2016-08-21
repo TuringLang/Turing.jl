@@ -20,7 +20,7 @@ export dprintln
 ## global data structures
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
-global debug_level = 3
+global debug_level = 0
 
 # debugging print function: The first argument controls the verbosity of message,
 #  e.g. larger v leads to more verbose debugging messages.

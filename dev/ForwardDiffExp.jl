@@ -18,3 +18,54 @@ d = Dual{2, Float64}(d.value)
 a = Dual(1)
 b = Dual{1, Float64}(2)
 a+b
+
+
+
+
+
+
+function test_f(a, b, c, d, e)
+  return a * b + c * d - e
+end
+
+# method 1
+
+t1 = time()
+for _ = 1:2500
+
+g = []
+r = test_f(Dual(1, 1), Dual(2), Dual(1), Dual(2), Dual(3))
+push!(g, dualpart(r)[1])
+r = test_f(Dual(1), Dual(2, 1), Dual(1), Dual(2), Dual(3))
+push!(g, dualpart(r)[1])
+r = test_f(Dual(1), Dual(2), Dual(1, 1), Dual(2), Dual(3))
+push!(g, dualpart(r)[1])
+r = test_f(Dual(1), Dual(2), Dual(1), Dual(2, 1), Dual(3))
+push!(g, dualpart(r)[1])
+r = test_f(Dual(1), Dual(2), Dual(1), Dual(2), Dual(3, 1))
+push!(g, dualpart(r)[1])
+
+end
+
+t = time() - t1 # 0.167
+
+# method 2
+
+t1 = time()
+for _ = 1:2500
+
+g = []
+r = test_f(
+  Dual(1, 1, 0, 0, 0, 0),
+  Dual(2, 0, 1, 0, 0, 0),
+  Dual(1, 0, 0, 1, 0, 0),
+  Dual(2, 0, 0, 0, 1, 0),
+  Dual(3, 0, 0, 0, 0, 1))
+dp = dualpart(r)
+for i = 1:5
+  push!(g, dp[i])
+end
+
+end
+
+t = time() - t1 # 0.086

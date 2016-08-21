@@ -42,14 +42,14 @@ function gradient(dd :: dDistribution, x)
     g = zeros(l)
     for i = 1:l
       x[i] = Dual(realpart(x[i]), 1)
-      g[i] = dualpart(pdf(dd, x))
+      g[i] = dualpart(pdf(dd, x))[1]
       x[i] = Dual(realpart(x[i]), 0)
     end
     return g
   else
     x = isa(x, Dual)? x : Dual(x)
     x = Dual(realpart(x), 1)
-    return dualpart(pdf(dd, x))
+    return dualpart(pdf(dd, x))[1]
   end
 end
 

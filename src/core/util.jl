@@ -75,6 +75,9 @@ function kl(p :: Categorical, q :: Categorical)
   return kl_divergence(a,b)
 end
 
+#####################################
+# Helper functions for Dual numbers #
+#####################################
 
 function realpart(d)
   return map(x -> Float64(x.value), d)
@@ -82,7 +85,20 @@ end
 
 
 function dualpart(d)
-  return map(x -> Float64(x.partials.values[1]), d)
+  return map(x -> Float64(x), d.partials.values)
 end
 
-export normalize!, kl, align, realpart, dualpart
+function make_dual(dim, real, idx)
+  expr_str = "Dual($real"
+  for i in 1:dim
+    if i != idx
+      expr_str *= ", 0"
+    else
+      expr_str *= ", 1"
+    end
+  end
+  expr_str *= ")"
+  return eval(parse(expr_str))
+end
+
+export normalize!, kl, align, realpart, dualpart, make_dual

@@ -32,41 +32,86 @@ function Base.run(spl :: Sampler{HMC})
   # Function to generate the gradient dictionary
   function get_gradient_dict()
     val∇E = Dict{Any, Any}()
+    prior_dim = 0
+    # Get total dimension of priors
     for k in keys(spl.priors)
-      # TODO: Unify Float64 and Vector by making them all Vector
+      prior_dim += length(spl.priors[k])
+    end
+    # Set dual part correspondingly
+    prior_count = 1
+    for k in keys(spl.priors)
       if length(spl.priors[k]) == 1
-        real = isa(spl.priors[k], Dual) ? spl.priors[k].value : spl.priors[k][1].value
-        # Set the dual part of the variable we want to find graident to 1
-        spl.priors[k] = Dual(real, 1)
-        # Run the model
-        consume(Task(spl.model))
-        # Reset dual part
-        spl.priors[k] = Dual(real, 0)
-        # Record graident
-        val∇E[k] = -spl.logjoint..partials.values
-        # Reset the log joint
-        spl.logjoint = Dual(0)
+        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
+        spl.priors[k] = make_dual(prior_dim, real, prior_count)
       else
-        l = length(spl.priors[k])
-        # To store the gradient vector
-        g = zeros(l)
-        for i = 1:l
-          real = realpart(spl.priors[k][i])
-          # Set the dual part of dimension i to 1
-          spl.priors[k][i] = Dual(real, 1)
-          # Run the model
-          consume(Task(spl.model))
-          # Reset
-          spl.priors[k][i] = Dual(real, 0)
-          # Record gradient of current dimension
-          g[i] = dualpart(-spl.logjoint)
-          # Reset the log joint
-          spl.logjoint = Dual(0)
-        end
-        # Record gradient
-        val∇E[k] = deepcopy(g)
+        # TODO: multidim
+        print("multidim")
+      end
+      prior_count += 1
+    end
+    # Run the model
+    spl.logjoint = Dual{prior_dim, Real}(0)
+    consume(Task(spl.model))
+    # Reset priors
+    for k in keys(spl.priors)
+      if length(spl.priors[k]) == 1
+        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
+        spl.priors[k] = Dual(real)
+      else
+        # TODO: multidim
+        print("multidim")
       end
     end
+    # Collect gradient
+    prior_count = 1
+    for k in keys(spl.priors)
+      if length(spl.priors[k]) == 1
+        val∇E[k] = dualpart(-spl.logjoint)[prior_count]
+      else
+        # TODO: multidim
+        print("multidim")
+      end
+      prior_count += 1
+    end
+    # Reset logjoint
+    spl.logjoint = Dual(0)
+
+    # for k in keys(spl.priors)
+    #   # TODO: Unify Float64 and Vector by making them all Vector
+    #   if length(spl.priors[k]) == 1
+    #     real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
+    #     # Set the dual part of the variable we want to find graident to 1
+    #     spl.priors[k] = Dual(real, 1)
+    #     # Run the model
+    #     consume(Task(spl.model))
+    #     # Reset dual part
+    #     spl.priors[k] = Dual(real, 0)
+    #     # Record graident
+    #     val∇E[k] = dualpart(-spl.logjoint)
+    #     # Reset the log joint
+    #     spl.logjoint = Dual(0)
+    #   else
+    #     l = length(spl.priors[k])
+    #     # To store the gradient vector
+    #     g = zeros(l)
+    #     for i = 1:l
+    #       real = realpart(spl.priors[k][i])
+    #       # Set the dual part of dimension i to 1
+    #       spl.priors[k][i] = Dual(real, 1)
+    #       # Run the model
+    #       consume(Task(spl.model))
+    #       # Reset
+    #       spl.priors[k][i] = Dual(real, 0)
+    #       # Record gradient of current dimension
+    #       g[i] = dualpart(-spl.logjoint)
+    #       # Reset the log joint
+    #       spl.logjoint = Dual(0)
+    #     end
+    #     # Record gradient
+    #     val∇E[k] = deepcopy(g)
+    #   end
+    # end
+
     return val∇E
   end
   # Function to make half momentum step
@@ -120,7 +165,7 @@ function Base.run(spl :: Sampler{HMC})
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
           for k in keys(spl.priors)
-            spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
+            spl.priors[k] = forceVector(spl.priors[k], Dual{0, Real})
             spl.priors[k] += ϵ * p[k]
           end
           val∇E = get_gradient_dict()
@@ -134,6 +179,8 @@ function Base.run(spl :: Sampler{HMC})
         H += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
       catch e
+        # output error type
+        dprintln(2, e)
         # Count re-run number
         rerun_num += 1
         # Only rerun for a threshold of times
@@ -173,7 +220,6 @@ function Base.run(spl :: Sampler{HMC})
     end
   end
   # Wrap the result by Chain
-  # TODO: Calculate the log-evidence
   results = Chain(0, spl.samples)
   accept_rate = accept_num / n
   println("[HMC]: Finshed with accept rate = $(accept_rate) (re-runs for $(rerun_num) times)")
@@ -218,7 +264,7 @@ end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
-  spl.predicts[name] = isa(value, Array) ? value : value.value
+  spl.predicts[name] = realpart(value)
 end
 
 sample(model :: Function, alg :: HMC) = (
