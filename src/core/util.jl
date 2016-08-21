@@ -89,16 +89,9 @@ function dualpart(d)
 end
 
 function make_dual(dim, real, idx)
-  expr_str = "Dual($real"
-  for i in 1:dim
-    if i != idx
-      expr_str *= ", 0"
-    else
-      expr_str *= ", 1"
-    end
-  end
-  expr_str *= ")"
-  return eval(parse(expr_str))
+  z = zeros(dim)
+  z[idx] = 1
+  return Dual(real, tuple(collect(z)...))
 end
 
 export normalize!, kl, align, realpart, dualpart, make_dual

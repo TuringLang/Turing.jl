@@ -69,3 +69,25 @@ end
 end
 
 t = time() - t1 # 0.086
+
+
+t1 = time()
+a = []
+for _ = 1:10000
+  push!(a, Dual(1, 1, 0, 0, 0, 0))
+end
+t = time() - t1
+
+
+function make_dual2(dim, real, idx)
+  z = zeros(dim)
+  z[idx] = 1
+  return Dual(real, tuple(collect(z)...))
+end
+
+t1 = time()
+a = []
+for _ = 1:10000
+  push!(a, make_dual2(5, 1, 1))
+end
+t = time() - t1
