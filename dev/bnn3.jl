@@ -25,10 +25,10 @@ end
 
 
 
-xs = Array[[1; 1], [-1; -1], [1; -1], [-1; 1]]
-ts = [1; 0; 1; 0]
+xs = Array[[1; 1], [0; 0], [1; 0], [0; 1]]
+ts = [1; 1; 0; 0]
 
-alpha = 0.01            # regularizatin term
+alpha = 0.16            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 @model bnn begin
   @assume wi1 ~ MvNormal([0; 0], [var 0; 0 var])
@@ -36,7 +36,8 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @assume wh1 ~ MvNormal([0; 0], [var 0; 0 var])
   @assume wh2 ~ MvNormal([0; 0], [var 0; 0 var])
   @assume wo ~ MvNormal([0; 0], [var 0; 0 var])
-  for i = 1:4
+  @assume b ~ MvNormal([0; 0], [var 0; 0 var])
+  for i = rand(1:4, 2)
     y = nn(xs[i], wi1, wi2, wh1, wh2, wo)
     @observe ts[i] ~ Bernoulli(y)
   end
@@ -45,11 +46,11 @@ end
 
 @time chain = sample(bnn, HMC(1000, 0.5, 10))
 
-[predict(xs[i], chain) for i = 1:4]
-
-
-
-
-using Mamba: Chains, summarystats
-s = map(x -> x[2], chain[:wo])
-println(summarystats(Chains(s)))
+# [predict(xs[i], chain) for i = 1:4]
+#
+#
+#
+#
+# using Mamba: Chains, summarystats
+# s = map(x -> x[2], chain[:wo])
+# println(summarystats(Chains(s)))

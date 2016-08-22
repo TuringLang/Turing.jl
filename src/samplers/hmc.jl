@@ -34,50 +34,43 @@ function Base.run(spl :: Sampler{HMC})
     val∇E = Dict{Any, Any}()
     prior_dim = 0
     # Get total dimension of priors
+    dprintln(5, "total dim...")
     for k in keys(spl.priors)
       prior_dim += length(spl.priors[k])
     end
+    # TODO: split keys(spl.priors) into 10, 10, 10, m -size arrays
     # Set dual part correspondingly
+    dprintln(5, "set dual...")
     prior_count = 1
     for k in keys(spl.priors)
-      if length(spl.priors[k]) == 1
-        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
-        spl.priors[k] = make_dual(prior_dim, real, prior_count)
+      l = length(spl.priors[k])
+      reals = realpart(spl.priors[k])
+      spl.priors[k] = []
+      for i = 1:l
+        push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
         prior_count += 1
-      else
-        l = length(spl.priors[k])
-        reals = realpart(spl.priors[k])
-        spl.priors[k] = []
-        for i = 1:l
-          push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
-          prior_count += 1
-        end
       end
     end
     # Run the model
-    spl.logjoint = Dual{prior_dim, Real}(0)
+    dprintln(5, "run model...")
     consume(Task(spl.model))
     # Collect gradient
+    dprintln(5, "collect dual...")
     prior_count = 1
     for k in keys(spl.priors)
-      if length(spl.priors[k]) == 1
-        val∇E[k] = dualpart(-spl.logjoint)[prior_count]
+      l = length(spl.priors[k])
+      # To store the gradient vector
+      g = zeros(l)
+      for i = 1:l
+        # Collect
+        g[i] = dualpart(-spl.logjoint)[prior_count]
         prior_count += 1
-      else
-        l = length(spl.priors[k])
-        # To store the gradient vector
-        g = zeros(l)
-        for i = 1:l
-          # Collect
-          g[i] = dualpart(-spl.logjoint)[prior_count]
-          prior_count += 1
-        end
-        val∇E[k] = deepcopy(g)
       end
+      val∇E[k] = deepcopy(g)
     end
     # Reset logjoint
     spl.logjoint = Dual(0)
-
+    # Return
     return val∇E
   end
   # Function to make half momentum step
@@ -118,6 +111,7 @@ function Base.run(spl :: Sampler{HMC})
           p[k] = randn(length(spl.priors[k]))
         end
         # Record old Hamiltonian
+        dprintln(4, "old H...")
         for k in keys(p)
           oldH += p[k]' * p[k] / 2
         end
@@ -125,7 +119,9 @@ function Base.run(spl :: Sampler{HMC})
         oldH += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
         # Get gradient dict
+        dprintln(4, "first gradient...")
         val∇E = get_gradient_dict()
+        dprintln(4, "leapfrog...")
         # 'leapfrog' for each prior
         for t in 1:τ
           p = half_momentum_step(p, val∇E)
@@ -137,6 +133,7 @@ function Base.run(spl :: Sampler{HMC})
           p = half_momentum_step(p, val∇E)
         end
         # Claculate the new Hamiltonian
+        dprintln(4, "new H...")
         for k in keys(p)
           H += p[k]' * p[k] / 2
         end
@@ -214,6 +211,7 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, p :: Prior)
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
   prior = (isa(prior, Array) && (length(prior) == 1)) ? prior[1] : prior
+  dprintln(2, "computing logjoint...")
   spl.logjoint += log(pdf(dd, prior))
   return prior
 end
