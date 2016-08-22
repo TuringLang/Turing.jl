@@ -11,7 +11,7 @@ using Turing.Traces
 export @model, @assume, @observe, @predict, InferenceAlgorithm, IS, SMC, PG, sample
 
 # Turing-safe data structures and associated functions
-export TArray, tzeros, localcopy
+export TArray, tzeros, localcopy, IArray
 
 # Debugging helpers
 export dprintln
@@ -24,6 +24,7 @@ include("core/intrinsic.jl")
 include("core/conditional.jl")
 include("core/container.jl")
 include("core/io.jl")
+include("core/IArray.jl")
 include("samplers/sampler.jl")
 include("distributions/bnp.jl")
 

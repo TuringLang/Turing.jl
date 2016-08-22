@@ -2,9 +2,16 @@
 ##   a valid distribution from the Distributions package
 macro assume(ex)
   @assert ex.args[1] == symbol("@~")
-  esc(quote
-    $(ex.args[2]) = Turing.assume(Turing.sampler, $(ex.args[3]))
-  end)
+  if ex.args[3].args[1] == :Inf # e.g. x ~ Inf[Normal(0,1)]
+    dprintln(0, (ex.args[2]), " ~ Inf[", (ex.args[3].args[2]), "]")
+    return esc(quote
+                 $(ex.args[2]) = Turing.assume(Turing.sampler, $(ex.args[3].args[2]), Val{true})
+               end)
+  else
+    return esc(quote
+                 $(ex.args[2]) = Turing.assume(Turing.sampler, $(ex.args[3]), Val{false})
+               end)
+  end
 end
 
 ## Usage: @observe(x ~ Dist) where x is a value and Dist is a valid distribution
