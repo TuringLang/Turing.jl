@@ -10,7 +10,7 @@ xs = Float64[0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
   @predict p1
 end
 
-@time chain = sample(beta, HMC(10000, 0.01, 2))
+@time chain = sample(beta, HMC(5000, 0.04, 2))
 mean(chain[:p1])
 
 

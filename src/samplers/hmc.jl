@@ -31,45 +31,60 @@ end
 function Base.run(spl :: Sampler{HMC})
   # Function to generate the gradient dictionary
   function get_gradient_dict()
+    # Initialisation
     val∇E = Dict{Any, Any}()
+    # Split keys(spl.priors) into 10, 10, 10, m-size chunks
+    dprintln(5, "making chunks...")
+    prior_key_chunks = []
+    key_chunk = []
     prior_dim = 0
-    # Get total dimension of priors
-    dprintln(5, "total dim...")
-    for k in keys(spl.priors)
-      prior_dim += length(spl.priors[k])
-    end
-    # TODO: split keys(spl.priors) into 10, 10, 10, m -size arrays
-    # Set dual part correspondingly
-    dprintln(5, "set dual...")
-    prior_count = 1
     for k in keys(spl.priors)
       l = length(spl.priors[k])
-      reals = realpart(spl.priors[k])
-      spl.priors[k] = []
-      for i = 1:l
-        push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
-        prior_count += 1
+      if length(key_chunk) + l > 10
+        push!(prior_key_chunks, (key_chunk, prior_dim))
+        key_chunk = []
+      else
+        push!(key_chunk, k)
+        prior_dim += l
       end
     end
-    # Run the model
-    dprintln(5, "run model...")
-    consume(Task(spl.model))
-    # Collect gradient
-    dprintln(5, "collect dual...")
-    prior_count = 1
-    for k in keys(spl.priors)
-      l = length(spl.priors[k])
-      # To store the gradient vector
-      g = zeros(l)
-      for i = 1:l
-        # Collect
-        g[i] = dualpart(-spl.logjoint)[prior_count]
-        prior_count += 1
-      end
-      val∇E[k] = deepcopy(g)
+    if length(key_chunk) != 0
+      push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
     end
-    # Reset logjoint
-    spl.logjoint = Dual(0)
+    # chunk-wise forward AD
+    for (key_chunk, prior_dim) in prior_key_chunks
+      # Set dual part correspondingly
+      dprintln(5, "set dual...")
+      prior_count = 1
+      for k in key_chunk
+        l = length(spl.priors[k])
+        reals = realpart(spl.priors[k])
+        spl.priors[k] = []
+        for i = 1:l
+          push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
+          prior_count += 1
+        end
+      end
+      # Run the model
+      dprintln(5, "run model...")
+      consume(Task(spl.model))
+      # Collect gradient
+      dprintln(5, "collect dual...")
+      prior_count = 1
+      for k in key_chunk
+        l = length(spl.priors[k])
+        # To store the gradient vector
+        g = zeros(l)
+        for i = 1:l
+          # Collect
+          g[i] = dualpart(-spl.logjoint)[prior_count]
+          prior_count += 1
+        end
+        val∇E[k] = deepcopy(g)
+      end
+      # Reset logjoint
+      spl.logjoint = Dual(0)
+    end
     # Return
     return val∇E
   end

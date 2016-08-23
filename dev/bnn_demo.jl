@@ -42,7 +42,7 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict b1 w11 w12 bo wo
 end
 
-@time chain = sample(bnn, HMC(20000, 0.35, 7))
+@time chain = sample(bnn, HMC(200, 0.35, 7))
 
 [predict(xs[i], chain) for i = 1:4]
 

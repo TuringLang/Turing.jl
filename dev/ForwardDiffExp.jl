@@ -91,3 +91,31 @@ for _ = 1:10000
   push!(a, make_dual2(5, 1, 1))
 end
 t = time() - t1
+
+
+
+
+
+test = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+total_l = length(test)
+prior_key_chunks = []
+for i = 1:10:total_l
+  end_idx = min(i + 9, total_l)
+  push!(prior_key_chunks,test[i:min(i + 9, total_l)] )
+  println("$i, $end_idx")
+end
+
+
+prior_key_chunks
+for key_chunk in prior_key_chunks
+  println(key_chunk)
+end
+
+
+all_keys = Any["1"]
+total_prior_dim = 1
+print(all_keys)
+prior_key_chunks = []
+for i = 1:10:total_prior_dim
+  push!(prior_key_chunks, all_keys[i:min(i + 9, total_prior_dim)])
+end
