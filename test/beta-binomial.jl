@@ -1,4 +1,4 @@
-using Turing, Distributions, DualNumbers, Base.Test
+using Turing, Distributions, Base.Test
 
 # Test the @assume and @predict macros on a model without conditioning.
 # We may want to add comparison of p to the test.
