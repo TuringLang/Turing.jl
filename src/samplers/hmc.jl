@@ -40,10 +40,17 @@ function Base.run(spl :: Sampler{HMC})
     prior_dim = 0
     for k in keys(spl.priors)
       l = length(spl.priors[k])
-      if length(key_chunk) + l > 10
+      if prior_dim + l > 10
+        # Store the old chunk
         push!(prior_key_chunks, (key_chunk, prior_dim))
+        # Initialise new chunk
         key_chunk = []
+        prior_dim = 0
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
       else
+        # Update
         push!(key_chunk, k)
         prior_dim += l
       end
@@ -56,13 +63,20 @@ function Base.run(spl :: Sampler{HMC})
       # Set dual part correspondingly
       dprintln(5, "set dual...")
       prior_count = 1
-      for k in key_chunk
+      for k in keys(spl.priors)
         l = length(spl.priors[k])
         reals = realpart(spl.priors[k])
         spl.priors[k] = []
-        for i = 1:l
-          push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
-          prior_count += 1
+        if k in key_chunk   # to graidnet variables
+          for i = 1:l
+            push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
+            # Count
+            prior_count += 1
+          end
+        else                # other varilables
+          for i = 1:l
+            push!(spl.priors[k], Dual{prior_dim, Float64}(reals[i]))
+          end
         end
       end
       # Run the model
@@ -73,11 +87,13 @@ function Base.run(spl :: Sampler{HMC})
       prior_count = 1
       for k in key_chunk
         l = length(spl.priors[k])
+        reals = realpart(spl.priors[k])
         # To store the gradient vector
         g = zeros(l)
         for i = 1:l
           # Collect
           g[i] = dualpart(-spl.logjoint)[prior_count]
+          # Count
           prior_count += 1
         end
         val∇E[k] = deepcopy(g)
