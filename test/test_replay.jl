@@ -14,4 +14,4 @@ xs = rand(Normal(0.5, 1), 100)
   @predict priors
 end
 
-chain = sample(priorsinarray, HMC(1000, 0.01, 10))
+chain = sample(priorsinarray, HMC(10, 0.01, 10))
