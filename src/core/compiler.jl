@@ -21,36 +21,16 @@ macro assume(ex)
   end
   # Turn Distribution type to dDistribution
   ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
-
-  # The if statement is to deterimnet how to pass the prior.
-  # It only supposrts pure symbol and Array(/Dict) now.
-  if isa(ex.args[2], Symbol)
-    esc(
-      quote
-        $(ex.args[2]) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          PriorSym(         # Pure Symbol
-            Symbol($(string(ex.args[2])))
-          )
-        )
-      end
-    )
-  else
-    esc(
-      quote
-        $(ex.args[2]) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          PriorArr(         # Array assignment
-            parse($(string(ex.args[2]))),           # indexing expr
-            Symbol($(string(ex.args[2].args[2]))),  # index symbol
-            $(ex.args[2].args[2])                   # index value
-          )
-        )
-      end
-    )
-  end
+  sym = gensym()
+  esc(
+    quote
+      $(ex.args[2]) = Turing.assume(
+        Turing.sampler,
+        $(ex.args[3]),    # dDistribution
+        Prior(Symbol($(string(sym))))
+      )
+    end
+  )
 end
 
 # Operation for defining the likelihood

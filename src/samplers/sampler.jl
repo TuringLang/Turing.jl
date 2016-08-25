@@ -20,7 +20,7 @@ end
 ## Concrete algorithm implementations.
 
 include("support/resample.jl")
-include("support/prior.jl")
+include("support/replay.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")

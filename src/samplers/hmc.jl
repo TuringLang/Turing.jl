@@ -1,4 +1,8 @@
-RerunThreshold = 250
+if debug_level == 0
+  RerunThreshold = 250
+else
+  RerunThreshold = 1
+end
 
 immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
@@ -12,7 +16,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
   samples     :: Array{Sample}
   logjoint    :: Dual
   predicts    :: Dict{Symbol, Any}
-  priors      :: Dict{Any, Any}
+  priors      :: PriorContainer
   first       :: Bool
 
   function HMCSampler(alg :: HMC, model :: Function)
@@ -23,7 +27,7 @@ type HMCSampler{HMC} <: Sampler{HMC}
     end
     logjoint = Dual(0)
     predicts = Dict{Symbol, Any}()
-    priors = Dict{Any, Any}()
+    priors = PriorContainer()
     new(alg, model, samples, logjoint, predicts, priors, true)
   end
 end
@@ -177,7 +181,7 @@ function Base.run(spl :: Sampler{HMC})
         # Count re-run number
         rerun_num += 1
         # Only rerun for a threshold of times
-        if rerun_num <= RerunThreshold
+        if rerun_num <= max(RerunThreshold, n / 5)
           # Revert the priors
           spl.priors = deepcopy(old_priors)
           # Set the model un-run parameters
@@ -220,31 +224,30 @@ function Base.run(spl :: Sampler{HMC})
 end
 
 # TODO: Use another way to achieve replay. The current method fails when fetching arrays
-function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, p :: Prior)
+function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
   dprintln(2, "assuming...")
-  name = string(p)
   # TODO: Change the first running condition
   # If it's the first time running the program
   if spl.first
     # Generate a new prior
     r = rand(dd)
     if length(r) == 1
-      prior = Dual(r)
+      val = Dual(r)
     else
-      prior = map(x -> Dual(x), r)
+      val = map(x -> Dual(x), r)
     end
     # Store the generated prior
-    spl.priors[name] = prior
+    spl.priors.addPrior(prior, val)
   # If not the first time
   else
     # Fetch the existing prior
-    prior = spl.priors[name]
+    val = spl.priors[prior]
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
-  prior = (isa(prior, Array) && (length(prior) == 1)) ? prior[1] : prior
+  val = (isa(val, Array) && (length(val) == 1)) ? val[1] : val
   dprintln(2, "computing logjoint...")
-  spl.logjoint += log(pdf(dd, prior))
-  return prior
+  spl.logjoint += log(pdf(dd, val))
+  return val
 end
 
 function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)

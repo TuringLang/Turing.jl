@@ -83,7 +83,6 @@ function realpart(d)
   return map(x -> Float64(x.value), d)
 end
 
-
 function dualpart(d)
   return map(x -> Float64(x), d.partials.values)
 end
