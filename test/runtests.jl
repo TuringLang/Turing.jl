@@ -13,3 +13,5 @@ include("test_replay.jl")
 # include("test_tarray2.jl")
 include("test_particlecontainer.jl")
 include("test_priorcontainer.jl")
+
+include("test_multisupport.jl")
