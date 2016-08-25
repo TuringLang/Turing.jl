@@ -70,18 +70,19 @@ function Base.run(spl :: Sampler{HMC})
       for k in keys(spl.priors)
         l = length(spl.priors[k])
         reals = realpart(spl.priors[k])
-        spl.priors[k] = []
+        new_val = []
         if k in key_chunk   # to graidnet variables
           for i = 1:l
-            push!(spl.priors[k], make_dual(prior_dim, reals[i], prior_count))
+            push!(new_val, make_dual(prior_dim, reals[i], prior_count))
             # Count
             prior_count += 1
           end
         else                # other varilables
           for i = 1:l
-            push!(spl.priors[k], Dual{prior_dim, Float64}(reals[i]))
+            push!(new_val, Dual{prior_dim, Float64}(reals[i]))
           end
         end
+        spl.priors[k] = new_val
       end
       # Run the model
       dprintln(5, "run model...")
@@ -181,7 +182,7 @@ function Base.run(spl :: Sampler{HMC})
         # Count re-run number
         rerun_num += 1
         # Only rerun for a threshold of times
-        if rerun_num <= max(RerunThreshold, n / 5)
+        if rerun_num <= RerunThreshold
           # Revert the priors
           spl.priors = deepcopy(old_priors)
           # Set the model un-run parameters

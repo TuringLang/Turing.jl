@@ -1,4 +1,5 @@
-using Turing, Distributions, DualNumbers
+using Turing, Distributions
+using ForwardDiff: Dual
 
 M = 10           # number of means
 xs = [1.5, 2.0] # the observations
@@ -13,7 +14,7 @@ xs = [1.5, 2.0] # the observations
   @predict ms                  # ask predictions of s and m
 end
 
-# @time chain = sample(gauss_var, HMC(1000, 0.55, 5))
+@time chain = sample(gauss_var, HMC(1000, 0.15, 5))
 
 
 
