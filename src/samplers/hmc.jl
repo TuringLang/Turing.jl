@@ -70,25 +70,16 @@ function Base.run(spl :: Sampler{HMC})
       for k in keys(spl.priors)
         l = length(spl.priors[k])
         reals = realpart(spl.priors[k])
-        if l == 1             # if single vairbale
-          if k in key_chunk
-            spl.priors[k] = make_dual(prior_dim, reals[1], prior_count)
+        val_vect = spl.priors[k]   # get the value vector
+        if k in key_chunk   # to graidnet variables
+          for i = 1:l
+            val_vect[i] = make_dual(prior_dim, reals[i], prior_count)
+            # Count
             prior_count += 1
-          else
-            spl.priors[k] = Dual{prior_dim, Float64}(reals[1])
           end
-        else                  # if vector
-          val_element = spl.priors[k]
-          if k in key_chunk   # to graidnet variables
-            for i = 1:l
-              val_element[i] = make_dual(prior_dim, reals[i], prior_count)
-              # Count
-              prior_count += 1
-            end
-          else                # other varilables
-            for i = 1:l
-              val_element[i] = Dual{prior_dim, Float64}(reals[i])
-            end
+        else                # other varilables
+          for i = 1:l
+            val_vect[i] = Dual{prior_dim, Float64}(reals[i])
           end
         end
       end
@@ -241,7 +232,7 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
     # Generate a new prior
     r = rand(dd)
     if length(r) == 1
-      val = Dual(r)
+      val = Vector{Any}([Dual(r)])
     else
       val = Vector{Any}(map(x -> Dual(x), r))
     end
