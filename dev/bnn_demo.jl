@@ -26,7 +26,7 @@ end
 
 # Generating training data
 N = 200
-M = int64(N / 4)
+M = round(Int64, N / 4)
 x1s = rand(M) * 5
 x2s = rand(M) * 5
 xt1s = Array([[x1s[i]; x2s[i]] for i = 1:M])
@@ -54,15 +54,15 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict b1 w11 w12 w13 bo wo
 end
 
-@time chain = sample(bnn, HMC(1000, 0.1, 5))
+@time chain = sample(bnn, HMC(1500, 0.1, 5))
 
 [predict(xs[i], chain) for i = 1:N]
 
 
 
-using Mamba: Chains, summarystats
-s = map(x -> x[1], chain[:wo])
-println(summarystats(Chains(s)))
+# using Mamba: Chains, summarystats
+# s = map(x -> x[1], chain[:wo])
+# println(summarystats(Chains(s)))
 
 
 
@@ -71,7 +71,7 @@ using Gadfly
 d1_layer = layer(x=map(e -> e[1], xt1s), y=map(e -> e[2], xt1s), Geom.point, Theme(default_color=colorant"royalblue"))
 d2_layer = layer(x=map(e -> e[1], xt0s), y=map(e -> e[2], xt0s), Geom.point, Theme(default_color=colorant"springgreen"))
 
-plot(d1_layer, d2_layer)
+# plot(d1_layer, d2_layer)
 
 p_layer = layer(z=(x,y) -> predict([x, y], chain), x=linspace(-6,6,25), y=linspace(-6,6,25), Geom.contour)
 

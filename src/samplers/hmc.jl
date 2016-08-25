@@ -100,7 +100,7 @@ function Base.run(spl :: Sampler{HMC})
           # Count
           prior_count += 1
         end
-        val∇E[k] = deepcopy(g)
+        val∇E[k] = g
       end
       # Reset logjoint
       spl.logjoint = Dual(0)

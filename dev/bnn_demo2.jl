@@ -30,7 +30,7 @@ end
 
 # Generating training data
 N = 200
-M = int64(N / 4)
+M = round(Int64, N / 4)
 x1s = rand(M) * 5
 x2s = rand(M) * 5
 xt1s = Array([[x1s[i]; x2s[i]] for i = 1:M])
@@ -46,7 +46,7 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 # Define model
 using Turing
 
-alpha = 0.16            # regularizatin term
+alpha = 0.04            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 @model bnn begin
   @assume w11 ~ MvNormal([0; 0], [var 0; 0 var])
@@ -72,7 +72,7 @@ end
 
 
 # Train
-@time chain = sample(bnn, HMC(1000, 0.1, 5))  # NOTE: this model has 25 dimensions
+@time chain = sample(bnn, HMC(2000, 0.1, 5))  # NOTE: this model has 25 dimensions
 
 [predict(xs[i], chain) for i = 1:N]
 
