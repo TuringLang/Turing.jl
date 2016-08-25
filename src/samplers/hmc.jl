@@ -70,19 +70,27 @@ function Base.run(spl :: Sampler{HMC})
       for k in keys(spl.priors)
         l = length(spl.priors[k])
         reals = realpart(spl.priors[k])
-        new_val = []
-        if k in key_chunk   # to graidnet variables
-          for i = 1:l
-            push!(new_val, make_dual(prior_dim, reals[i], prior_count))
-            # Count
+        if l == 1             # if single vairbale
+          if k in key_chunk
+            spl.priors[k] = make_dual(prior_dim, reals[1], prior_count)
             prior_count += 1
+          else
+            spl.priors[k] = Dual{prior_dim, Float64}(reals[1])
           end
-        else                # other varilables
-          for i = 1:l
-            push!(new_val, Dual{prior_dim, Float64}(reals[i]))
+        else                  # if vector
+          val_element = spl.priors[k]
+          if k in key_chunk   # to graidnet variables
+            for i = 1:l
+              val_element[i] = make_dual(prior_dim, reals[i], prior_count)
+              # Count
+              prior_count += 1
+            end
+          else                # other varilables
+            for i = 1:l
+              val_element[i] = Dual{prior_dim, Float64}(reals[i])
+            end
           end
         end
-        spl.priors[k] = new_val
       end
       # Run the model
       dprintln(5, "run model...")
@@ -235,7 +243,7 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
     if length(r) == 1
       val = Dual(r)
     else
-      val = map(x -> Dual(x), r)
+      val = Vector{Any}(map(x -> Dual(x), r))
     end
     # Store the generated prior
     spl.priors.addPrior(prior, val)

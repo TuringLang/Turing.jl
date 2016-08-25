@@ -72,7 +72,7 @@ end
 
 
 # Train
-@time chain = sample(bnn, HMC(2000, 0.1, 5))  # NOTE: this model has 25 dimensions
+@time chain = sample(bnn, HMC(1000, 0.1, 5))  # NOTE: this model has 25 dimensions
 
 [predict(xs[i], chain) for i = 1:N]
 
