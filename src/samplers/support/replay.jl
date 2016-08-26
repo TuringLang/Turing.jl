@@ -3,7 +3,7 @@
 
 
 
-export Prior, PriorArray, PriorContainer
+export Prior, PriorArray, PriorContainer, addPrior
 
 
 
@@ -12,30 +12,28 @@ type PriorArray
   count         ::    Int64
   currSetIdx    ::    Int64
   currGetIdx    ::    Int64
-  add           ::    Function
-  set           ::    Function
-  get           ::    Function
   function PriorArray()
     array = Vector{Any}()
     count = 0
     currSetIdx = 1
     currGetIdx = 1
-    function add(val)
-      push!(array, val)
-      count += 1
-    end
-    function set(val)
-      array[currSetIdx] = val
-      currSetIdx = (currSetIdx + 1) > count? 1 : currSetIdx + 1     # rotate
-    end
-    function get()
-      @assert count > 0 "Attempt get from an empty PriorArray."
-      oldGetIdx = currGetIdx
-      currGetIdx = (currGetIdx + 1) > count? 1 : currGetIdx + 1   # rotate
-      return array[oldGetIdx]
-    end
-    new(array, count, currSetIdx, currGetIdx, add, set, get)
+    new(array, count, currSetIdx, currGetIdx)
   end
+end
+
+function add(pa::PriorArray, val)
+  push!(pa.array, val)
+  pa.count += 1
+end
+function set(pa::PriorArray, val)
+  pa.array[pa.currSetIdx] = val
+  pa.currSetIdx = (pa.currSetIdx + 1) > pa.count? 1 : pa.currSetIdx + 1
+end
+function get(pa::PriorArray)
+  @assert pa.count > 0 "Attempt get from an empty PriorArray."
+  oldGetIdx = pa.currGetIdx
+  pa.currGetIdx = (pa.currGetIdx + 1) > pa.count? 1 : pa.currGetIdx + 1
+  return pa.array[oldGetIdx]
 end
 
 immutable Prior
@@ -51,29 +49,29 @@ end
 
 type PriorContainer
   container   ::    Dict{Prior, PriorArray}
-  addPrior    ::    Function
   function PriorContainer()
     container = Dict{Prior, PriorArray}()
-    function addPrior(idx::Prior, val)
-      if haskey(container, idx)
-        container[idx].add(val)
-      else
-        container[idx] = PriorArray()
-        container[idx].add(val)
-      end
-    end
-    new(container, addPrior)
+    new(container)
+  end
+end
+
+function addPrior(pc::PriorContainer, idx::Prior, val)
+  if haskey(pc.container, idx)
+    add(pc.container[idx], val)
+  else
+    pc.container[idx] = PriorArray()
+    add(pc.container[idx], val)
   end
 end
 
 function Base.getindex(pc::PriorContainer, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
-  return pc.container[idx].get()
+  return get(pc.container[idx])
 end
 
 function Base.setindex!(pc::PriorContainer, val, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
-  pc.container[idx].set(val)
+  set(pc.container[idx], val)
 end
 
 function Base.keys(pc::PriorContainer)
