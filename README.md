@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
 
-[Go To Turing's Documentation](http://turingjl.readthedocs.io/)
+[**Go To Turing's Documentation**](http://turingjl.readthedocs.io/)
 
 # Turing.jl
 
