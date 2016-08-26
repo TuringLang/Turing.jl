@@ -1,2 +1,2 @@
-Useage
+Usage
 =========
