@@ -5,7 +5,7 @@
 
 import Distributions: pdf, rand
 import Base: gradient
-export dDistribution, dBernoulli, hmcBernoulli, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dTDist, hmcTDist, dExponential, hmcExponential, dGamma, hmcGamma, dInverseGamma, hmcInverseGamma, dBeta, hmcBeta, logpdf
+export dDistribution, dBernoulli, hmcBernoulli, dCategorical, hmcCategorical, dNormal, hmcNormal, dMvNormal, hmcMvNormal, dTDist, hmcTDist, dExponential, hmcExponential, dGamma, hmcGamma, dInverseGamma, hmcInverseGamma, dBeta, hmcBeta, logpdf
 
 using PDMats
 
@@ -77,12 +77,24 @@ function hmcBernoulli(p)
   return k -> p^k * (1 - p)^(1 - k)
 end
 
-# function hmcCategorical(k)
-#   function pdf(x)
-#     1 / k
-#   end
-#   return pdf
-# end
+# Categorical
+type dCategorical <: dDistribution
+  p     ::    Vector{Dual}
+  d     ::    Categorical
+  df    ::    Function
+  function dCategorical(p)
+    # Convert Real to Dual if possible
+    # Force Float64 inside Dual to avoid a known bug of Dual
+    p = isa(p[1], Dual)? p : map(x -> Dual(x), p)
+    d = Categorical(realpart(p))
+    df = hmcCategorical(p)
+    new(p, d, df)
+  end
+end
+
+function hmcCategorical(p)
+  return k -> p[realpart(k)]  # this function will only be called when k is Dual
+end
 
 # function hmcPoisson(λ)
 #   return r::Int64 -> exp(-λ) * λ^r / factorial(r)
