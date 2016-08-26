@@ -74,6 +74,15 @@ end
 # Train
 @time chain = sample(bnn, HMC(1000, 0.1, 5))  # NOTE: this model has 25 dimensions
 
+# test time
+t1 = time()
+for _ in 1:10
+  sample(bnn, HMC(1000, 0.1, 5))
+end
+t = time() - t1
+t = t / 10        # 10
+
+
 [predict(xs[i], chain) for i = 1:N]
 
 

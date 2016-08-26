@@ -54,7 +54,7 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict b1 w11 w12 w13 bo wo
 end
 
-@time chain = sample(bnn, HMC(1500, 0.1, 5))
+@time chain = sample(bnn, HMC(1000, 0.1, 5))
 
 [predict(xs[i], chain) for i = 1:N]
 
@@ -76,3 +76,12 @@ d2_layer = layer(x=map(e -> e[1], xt0s), y=map(e -> e[2], xt0s), Geom.point, The
 p_layer = layer(z=(x,y) -> predict([x, y], chain), x=linspace(-6,6,25), y=linspace(-6,6,25), Geom.contour)
 
 plot(d1_layer, d2_layer,p_layer)
+
+
+# test time
+t1 = time()
+for _ in 1:10
+  sample(bnn, HMC(1000, 0.1, 5))
+end
+t = time() - t1
+t = t / 10        # 10
