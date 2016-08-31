@@ -20,10 +20,8 @@ function sample(model::Function, alg :: InferenceAlgorithm)
   Base.run(sampler)
 end
 
-assume(spl :: Sampler, distr :: Distribution)  = rand(current_trace(), distr)
-assume(spl :: Sampler, distr :: Distribution, ::Type{Val{false}}) = assume(spl, distr)
-assume(spl :: Sampler, distr :: Distribution, ::Type{Val{true}})  = IArray(distr)
-observe(spl :: Sampler, score :: Float64)      = produce(score)
+assume(spl :: Sampler, dd :: dDistribution, p)  = rand( current_trace(), dd.d )
+observe(spl :: Sampler, dd :: dDistribution, value) = produce(logpdf(dd.d, value))
 
 function predict(spl :: Sampler, v_name :: Symbol, value)
   task = current_task()
@@ -35,5 +33,3 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
   predicts[v_name] = value
   task.storage[:turing_predicts] = predicts
 end
-
-
