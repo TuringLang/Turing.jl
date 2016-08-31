@@ -20,7 +20,8 @@ macro assume(ex)
     splice!(ex.args[3].args, 2)
   end
   # Turn Distribution type to dDistribution
-  ex.args[3].args[1] = symbol("d$(ex.args[3].args[1])")
+  ddistr = symbol("d$(ex.args[3].args[1])")
+  isdefined(ddistr) && ( ex.args[3].args[1] = ddistr) # Only turn dist to ddist if corresponding ddist is defined.
   sym = gensym()
   esc(
     quote
