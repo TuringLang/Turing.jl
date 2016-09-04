@@ -237,7 +237,7 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
       val = Vector{Any}(map(x -> Dual(x), r))
     end
     # Store the generated prior
-    spl.priors.addPrior(prior, val)
+    addPrior(spl.priors, prior, val)
   # If not the first time
   else
     # Fetch the existing prior

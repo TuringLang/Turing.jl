@@ -8,6 +8,10 @@ ddB = dBernoulli(0.3)
 @test pdf(ddB, 1) ≈ realpart(pdf(ddB, Dual(1)))
 @test ForwardDiff.gradient(x::Vector -> hmcBernoulli(0.3)(x[1]), [1])[1] ≈ gradient(ddB, 1)
 
+# Categorical
+ddB = dCategorical([0.4,0.3,0.3])
+@test pdf(ddB, 1) ≈ realpart(pdf(ddB, Dual(1)))
+
 # Normal
 ddN = dNormal(0, 1)
 @test pdf(ddN, 1) ≈ realpart(pdf(ddN, Dual(1)))
@@ -19,6 +23,7 @@ ddN = dNormal(0, 1)
 ddMN = dMvNormal(μ, Σ)
 @test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, map(x -> Dual(x), [2, 1])))
 @test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ Vector([gradient(ddMN, [2, 1])...])
+
 # StudentT
 ddT = dTDist(1)
 @test pdf(ddT, 1) ≈ realpart(pdf(ddT, Dual(1)))
