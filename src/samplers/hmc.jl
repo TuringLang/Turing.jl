@@ -1,4 +1,8 @@
-RerunThreshold = 250
+if debug_level == 0
+  RerunThreshold = 250
+else
+  RerunThreshold = 1
+end
 
 immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
@@ -10,9 +14,9 @@ type HMCSampler{HMC} <: Sampler{HMC}
   alg         :: HMC
   model       :: Function
   samples     :: Array{Sample}
-  logjoint    :: Dual{Float64}
+  logjoint    :: Dual
   predicts    :: Dict{Symbol, Any}
-  priors      :: Dict{Any, Any}
+  priors      :: PriorContainer
   first       :: Bool
 
   function HMCSampler(alg :: HMC, model :: Function)
@@ -21,9 +25,9 @@ type HMCSampler{HMC} <: Sampler{HMC}
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    logjoint = Dual(0, 0)
+    logjoint = Dual(0)
     predicts = Dict{Symbol, Any}()
-    priors = Dict{Any, Any}()
+    priors = PriorContainer()
     new(alg, model, samples, logjoint, predicts, priors, true)
   end
 end
@@ -31,42 +35,77 @@ end
 function Base.run(spl :: Sampler{HMC})
   # Function to generate the gradient dictionary
   function get_gradient_dict()
+    # Initialisation
     val∇E = Dict{Any, Any}()
+    # Split keys(spl.priors) into 10, 10, 10, m-size chunks
+    dprintln(5, "making chunks...")
+    prior_key_chunks = []
+    key_chunk = []
+    prior_dim = 0
     for k in keys(spl.priors)
-      # TODO: Unify Float64 and Vector by making them all Vector
-      if length(spl.priors[k]) == 1
-        real = isa(spl.priors[k], Dual) ? realpart(spl.priors[k]) : realpart(spl.priors[k][1])
-        # Set the dual part of the variable we want to find graident to 1
-        spl.priors[k] = Dual(real, 1)
-        # Run the model
-        consume(Task(spl.model))
-        # Reset dual part
-        spl.priors[k] = Dual(real, 0)
-        # Record graident
-        val∇E[k] = -dualpart(spl.logjoint)
-        # Reset the log joint
-        spl.logjoint = Dual(0)
+      l = length(spl.priors[k])
+      if prior_dim + l > 10
+        # Store the old chunk
+        push!(prior_key_chunks, (key_chunk, prior_dim))
+        # Initialise new chunk
+        key_chunk = []
+        prior_dim = 0
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
       else
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
+      end
+    end
+    if length(key_chunk) != 0
+      push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
+    end
+    # chunk-wise forward AD
+    for (key_chunk, prior_dim) in prior_key_chunks
+      # Set dual part correspondingly
+      dprintln(5, "set dual...")
+      prior_count = 1
+      for k in keys(spl.priors)
         l = length(spl.priors[k])
+        reals = realpart(spl.priors[k])
+        val_vect = spl.priors[k]   # get the value vector
+        if k in key_chunk   # to graidnet variables
+          for i = 1:l
+            val_vect[i] = make_dual(prior_dim, reals[i], prior_count)
+            # Count
+            prior_count += 1
+          end
+        else                # other varilables
+          for i = 1:l
+            val_vect[i] = Dual{prior_dim, Float64}(reals[i])
+          end
+        end
+      end
+      # Run the model
+      dprintln(5, "run model...")
+      consume(Task(spl.model))
+      # Collect gradient
+      dprintln(5, "collect dual...")
+      prior_count = 1
+      for k in key_chunk
+        l = length(spl.priors[k])
+        reals = realpart(spl.priors[k])
         # To store the gradient vector
         g = zeros(l)
         for i = 1:l
-          real = realpart(spl.priors[k][i])
-          # Set the dual part of dimension i to 1
-          spl.priors[k][i] = Dual(real, 1)
-          # Run the model
-          consume(Task(spl.model))
-          # Reset
-          spl.priors[k][i] = Dual(real, 0)
-          # Record gradient of current dimension
-          g[i] = dualpart(-spl.logjoint)
-          # Reset the log joint
-          spl.logjoint = Dual(0)
+          # Collect
+          g[i] = dualpart(-spl.logjoint)[prior_count]
+          # Count
+          prior_count += 1
         end
-        # Record gradient
-        val∇E[k] = deepcopy(g)
+        val∇E[k] = g
       end
+      # Reset logjoint
+      spl.logjoint = Dual(0)
     end
+    # Return
     return val∇E
   end
   # Function to make half momentum step
@@ -107,6 +146,7 @@ function Base.run(spl :: Sampler{HMC})
           p[k] = randn(length(spl.priors[k]))
         end
         # Record old Hamiltonian
+        dprintln(4, "old H...")
         for k in keys(p)
           oldH += p[k]' * p[k] / 2
         end
@@ -114,19 +154,21 @@ function Base.run(spl :: Sampler{HMC})
         oldH += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
         # Get gradient dict
+        dprintln(4, "first gradient...")
         val∇E = get_gradient_dict()
+        dprintln(4, "leapfrog...")
         # 'leapfrog' for each prior
         for t in 1:τ
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
           for k in keys(spl.priors)
-            spl.priors[k] = forceVector(spl.priors[k], Dual{Real})
             spl.priors[k] += ϵ * p[k]
           end
           val∇E = get_gradient_dict()
           p = half_momentum_step(p, val∇E)
         end
         # Claculate the new Hamiltonian
+        dprintln(4, "new H...")
         for k in keys(p)
           H += p[k]' * p[k] / 2
         end
@@ -134,6 +176,8 @@ function Base.run(spl :: Sampler{HMC})
         H += realpart(-spl.logjoint)
         spl.logjoint = Dual(0)
       catch e
+        # output error type
+        dprintln(2, e)
         # Count re-run number
         rerun_num += 1
         # Only rerun for a threshold of times
@@ -173,7 +217,6 @@ function Base.run(spl :: Sampler{HMC})
     end
   end
   # Wrap the result by Chain
-  # TODO: Calculate the log-evidence
   results = Chain(0, spl.samples)
   accept_rate = accept_num / n
   println("[HMC]: Finshed with accept rate = $(accept_rate) (re-runs for $(rerun_num) times)")
@@ -181,30 +224,30 @@ function Base.run(spl :: Sampler{HMC})
 end
 
 # TODO: Use another way to achieve replay. The current method fails when fetching arrays
-function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, p :: Prior)
+function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
   dprintln(2, "assuming...")
-  name = string(p)
   # TODO: Change the first running condition
   # If it's the first time running the program
   if spl.first
     # Generate a new prior
     r = rand(dd)
     if length(r) == 1
-      prior = Dual(r)
+      val = Vector{Any}([Dual(r)])
     else
-      prior = Vector{Dual}(r)
+      val = Vector{Any}(map(x -> Dual(x), r))
     end
     # Store the generated prior
-    spl.priors[name] = prior
+    spl.priors.addPrior(prior, val)
   # If not the first time
   else
     # Fetch the existing prior
-    prior = spl.priors[name]
+    val = spl.priors[prior]
   end
   # Turn Array{Any} to Any if necessary (this is due to randn())
-  prior = (isa(prior, Array) && (length(prior) == 1)) ? prior[1] : prior
-  spl.logjoint += log(pdf(dd, prior))
-  return prior
+  val = (isa(val, Array) && (length(val) == 1)) ? val[1] : val
+  dprintln(2, "computing logjoint...")
+  spl.logjoint += log(pdf(dd, val))
+  return val
 end
 
 function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)
@@ -212,13 +255,13 @@ function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)
   if length(value) == 1
     spl.logjoint += log(pdf(dd, Dual(value)))
   else
-    spl.logjoint += log(pdf(dd, Vector{Dual}(value)))
+    spl.logjoint += log(pdf(dd, map(x -> Dual(x), value)))
   end
 end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
-  spl.predicts[name] = isa(value, Array) ? value : realpart(value)
+  spl.predicts[name] = realpart(value)
 end
 
 sample(model :: Function, alg :: HMC) = (

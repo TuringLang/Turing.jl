@@ -5,7 +5,7 @@ end
 
 CRP(alpha) = CRP(convert(TArray, [alpha]),  alpha)
 
-function randclass(urn::CRP)
+function Base.rand!(urn::CRP)
   counts = localcopy(urn.counts)
   weights = counts ./ sum(counts)
   @assume c ~ Categorical(weights)

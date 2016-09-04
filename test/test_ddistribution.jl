@@ -1,6 +1,7 @@
 # Test file for dDistribution wrapper w.r.t to the pdf function and gradient returned by AD.
 
-using Turing, DualNumbers, Distributions, Base.Test, ForwardDiff
+using Turing, Distributions, Base.Test
+using ForwardDiff: Dual
 
 # Bernoulli
 ddB = dBernoulli(0.3)
@@ -16,10 +17,8 @@ ddN = dNormal(0, 1)
 μ = [1, 1]
 Σ = [1 0; 0 1]
 ddMN = dMvNormal(μ, Σ)
-@test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, Dual[2, 1]))
-@test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ gradient(ddMN, [2, 1])
-rand(ddMN)
-
+@test pdf(ddMN, [2, 1]) ≈ realpart(pdf(ddMN, map(x -> Dual(x), [2, 1])))
+@test ForwardDiff.gradient(x::Vector -> hmcMvNormal(μ, Σ)(x), [2, 1]) ≈ Vector([gradient(ddMN, [2, 1])...])
 # StudentT
 ddT = dTDist(1)
 @test pdf(ddT, 1) ≈ realpart(pdf(ddT, Dual(1)))
@@ -37,7 +36,7 @@ ddG = dGamma(2, 3)
 
 # InverseGamma
 ddIG = dInverseGamma(2, 3)
-@test pdf(ddIG, 1) ≈ realpart(pdf(ddIG, Dual(1)))
+@test pdf(ddIG, 1) ≈ realpart(pdf(ddIG, Dual(1.0)))
 @test ForwardDiff.gradient(x::Vector -> hmcInverseGamma(2.0, 3.0)(x[1]), [1])[1] ≈ gradient(ddIG, 1)
 
 # Beta
