@@ -82,9 +82,16 @@ type dCategorical <: dDistribution
   p     ::    Vector{Dual}
   d     ::    Categorical
   df    ::    Function
-  function dCategorical(p)
+  function dCategorical(p::Vector)
     # Convert Real to Dual if possible
     # Force Float64 inside Dual to avoid a known bug of Dual
+    p = isa(p[1], Dual)? p : map(x -> Dual(x), p)
+    d = Categorical(realpart(p))
+    df = hmcCategorical(p)
+    new(p, d, df)
+  end
+  function dCategorical(n::Int64)
+    p = ones(n) / n
     p = isa(p[1], Dual)? p : map(x -> Dual(x), p)
     d = Categorical(realpart(p))
     df = hmcCategorical(p)
