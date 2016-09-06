@@ -11,20 +11,20 @@ Contents
    installation
    usage
    demos
-   
+
 .. toctree::
    :maxdepth: 2
    :caption: Development Notes
-   
+
+   language
    compiler
    sampler
-   coroutines 
+   coroutines
    tarray
    workflow
-   
+
 .. toctree::
    :maxdepth: 2
    :caption: License
-   
-   license
 
+   license
