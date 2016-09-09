@@ -6,9 +6,8 @@ In general, a compiler translates one programming language into another. Here th
 The ``@assume`` macro
 ---------
 
-Using
+Using::
 
-::
   @assume m ~ Normal(0, 1; static=true)
 
 
