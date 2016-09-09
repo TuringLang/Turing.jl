@@ -1,11 +1,11 @@
 # Turing.jl
-[![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/master?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/master)
-[![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
+[![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=development)](https://travis-ci.org/yebai/Turing.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/development?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/development)
+[![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=development)](https://coveralls.io/github/yebai/Turing.jl?branch=development)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
 
 
-Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros listed below. Available inference methods include  Importance Sampling, Sequential Monte Carlo, Particle Gibbs. 
+Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros listed below. Available inference methods include  Importance Sampling, Sequential Monte Carlo, Particle Gibbs.
 
 Authors: [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/)
 
