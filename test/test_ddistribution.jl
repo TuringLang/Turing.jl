@@ -9,6 +9,7 @@ ddB = dBernoulli(0.3)
 @test ForwardDiff.gradient(x::Vector -> hmcBernoulli(0.3)(x[1]), [1])[1] ≈ gradient(ddB, 1)
 
 # Categorical
+ddB = dCategorical(3)
 ddB = dCategorical([0.4,0.3,0.3])
 @test pdf(ddB, 1) ≈ realpart(pdf(ddB, Dual(1)))
 
