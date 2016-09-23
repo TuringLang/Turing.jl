@@ -13,6 +13,5 @@ include("test_tarray.jl")
 # include("test_tarray2.jl")
 include("test_particlecontainer.jl")
 include("test_priorcontainer.jl")
-include("test_ddistribution.jl")
 
 # include("test_multisupport.jl")   # test for multidimensional distributions

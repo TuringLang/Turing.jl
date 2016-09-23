@@ -224,13 +224,13 @@ function Base.run(spl :: Sampler{HMC})
 end
 
 # TODO: Use another way to achieve replay. The current method fails when fetching arrays
-function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
+function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
   dprintln(2, "assuming...")
   # TODO: Change the first running condition
   # If it's the first time running the program
   if spl.first
     # Generate a new prior
-    r = rand(dd)
+    r = rand(d)
     if length(r) == 1
       val = Vector{Any}([Dual(r)])
     else
@@ -246,16 +246,16 @@ function assume(spl :: HMCSampler{HMC}, dd :: dDistribution, prior :: Prior)
   # Turn Array{Any} to Any if necessary (this is due to randn())
   val = (isa(val, Array) && (length(val) == 1)) ? val[1] : val
   dprintln(2, "computing logjoint...")
-  spl.logjoint += log(pdf(dd, val))
+  spl.logjoint += logpdf(d, val)
   return val
 end
 
-function observe(spl :: HMCSampler{HMC}, dd :: dDistribution, value)
+function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
   dprintln(2, "observing...")
   if length(value) == 1
-    spl.logjoint += log(pdf(dd, Dual(value)))
+    spl.logjoint += logpdf(d, Dual(value))
   else
-    spl.logjoint += log(pdf(dd, map(x -> Dual(x), value)))
+    spl.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
 end
 

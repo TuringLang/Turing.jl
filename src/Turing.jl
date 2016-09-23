@@ -28,7 +28,6 @@ dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
 # Inference code
 include("distributions/distributions.jl")
-include("distributions/ddistributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
