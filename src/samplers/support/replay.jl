@@ -17,10 +17,6 @@ doc"""
   get(pa)           # 3
   get(pa)           # 2
   ```
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 type PriorArray
   array     ::    Vector{Any}
@@ -39,10 +35,6 @@ end
 doc"""
   Append a new element to the end of the inner array container of PriorArray.
   The inner counter of total number of element is also updated.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function add(pa::PriorArray, val)
   push!(pa.array, val)
@@ -55,10 +47,6 @@ doc"""
   The inner pointer for set is then updated:
     - if not reaches the end: incremented by 1;
     - if reaches the end: reset to 1.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function set(pa::PriorArray, val)
   pa.array[pa.currSetIdx] = val
@@ -71,10 +59,6 @@ doc"""
   The inner pointer for get is then updated:
     - if not reaches the end: incremented by 1;
     - if reaches the end: reset to 1.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function get(pa::PriorArray)
   @assert pa.count > 0 "Attempt get from an empty PriorArray."
@@ -94,10 +78,6 @@ doc"""
   p = Prior(:somesym)
   strp = string(p)
   ```
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 immutable Prior
   sym       ::    Symbol
@@ -108,10 +88,6 @@ end
 
 doc"""
   Helper function to convert a Prior to its string representation.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function Base.string(p::Prior)
   return string(p.sym)
@@ -153,10 +129,6 @@ doc"""
 
   keys(pc)  # create a key interator in the container, i.e. all the priors
   ```
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 type PriorContainer
   container   ::    Dict{Prior, PriorArray}
@@ -169,10 +141,6 @@ end
 doc"""
   Add a *new* value of a given prior to the container.
   *new* here means force appending to the end of the corresponding array of the prior.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function addPrior(pc::PriorContainer, idx::Prior, val)
   if haskey(pc.container, idx)
@@ -185,10 +153,6 @@ end
 
 doc"""
   Make the prior container support indexing with `[]`.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function Base.getindex(pc::PriorContainer, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
@@ -197,10 +161,6 @@ end
 
 doc"""
   Make the prior container support assignment with `[]`.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function Base.setindex!(pc::PriorContainer, val, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
@@ -209,10 +169,6 @@ end
 
 doc"""
   Return a key interator in the container, i.e. all the priors.
-
-  --- Info ---
-
-  Code location: src/samplers/support/replay.jl
 """
 function Base.keys(pc::PriorContainer)
   return keys(pc.container)
