@@ -130,9 +130,12 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 
 function resample!( pc :: ParticleContainer,
                    randcat :: Function = Turing.resampleSystematic,
-                   ref :: Union{Particle, Void} = nothing)
+                   ref :: Union{Particle, Void} = nothing;
+                   use_replay = false)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
+
+  ffork = use_replay ?  Traces.fork :  Traces.forkc
 
   # resample
   Ws, _ = weights(pc)
@@ -144,10 +147,10 @@ function resample!( pc :: ParticleContainer,
   num_children = zeros(Int,n1)
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
-    p = particles[i] == ref ? Traces.forkc(particles[i]) : particles[i]
+    p = particles[i] == ref ? ffork(particles[i]) : particles[i]
     num_children[i] > 0 && push!(pc, p)
     for k=1:num_children[i]-1
-      newp = Traces.forkc(p)
+      newp = ffork(p)
       push!(pc, newp)
     end
   end
