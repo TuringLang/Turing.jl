@@ -14,7 +14,7 @@ Authors: [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.en
 
 ### Relevant papers
 1. Ghahramani, Zoubin. "Probabilistic machine learning and artificial intelligence." Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
-2. Ge, Hong, Adam Scibior, and Zoubin Ghahramani "Turing: rejuvenating probabilistic programming in Julia." (In submission).
+2. Ge, Hong, Adam Scibior, and Zoubin Ghahramani "Turing: A fast imperative probabilistic programming language." (In submission).
 
 
 ### Example
