@@ -35,7 +35,7 @@ jl_task_t *jl_clone_task(jl_task_t *t)
      */
     
     memcpy((void*)newt->ctx, (void*)t->ctx, sizeof(jl_jmp_buf));
-#ifdef COPY_STACKS
+//#ifdef COPY_STACKS 
     if (t->stkbuf){
         newt->ssize = t->ssize;  // size of saved piece
         // newt->stkbuf = allocb(t->bufsz); // needs to be allocb(t->bufsz)
@@ -50,9 +50,9 @@ jl_task_t *jl_clone_task(jl_task_t *t)
         newt->bufsz = 0;
         newt->stkbuf = NULL;
     }
-#else
-#error task copying not supported yet.
-#endif
+//#else
+//#error task copying not supported yet.
+//#endif
     JL_GC_POP();
     jl_gc_wb_back(newt);
     
