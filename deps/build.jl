@@ -1,4 +1,3 @@
-@unix_only run(`make`)
-# @windows_only Int == Int32 ? run(`mingw32-make`) : run(`mingw32-make`)
-@windows_only run(`mingw32-make`)
+@static if is_unix() run(`make`)
+@static if is_windows() run(`mingw32-make`)
 
