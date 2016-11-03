@@ -1,7 +1,7 @@
 ## Usage: @assume x ~ Dist where x is a symbol to be used and Dist is
 ##   a valid distribution from the Distributions package
 macro assume(ex)
-  @assert ex.args[1] == symbol("@~")
+  @assert ex.args[1] == Symbol("@~")
   esc(quote
     $(ex.args[2]) = Turing.assume(Turing.sampler, $(ex.args[3]))
   end)
@@ -9,7 +9,7 @@ end
 
 ## Usage: @observe(x ~ Dist) where x is a value and Dist is a valid distribution
 macro observe(ex)
-  @assert ex.args[1] == symbol("@~")
+  @assert ex.args[1] == Symbol("@~")
   global TURING
   ex2 = Expr(:block, nothing)
   push!( ex2.args, :(Turing.observe(Turing.sampler,
@@ -25,7 +25,7 @@ macro predict(ex...)
     sym = string(ex[i])
     push!( ex_funcs.args, :(ct = current_task();
             Turing.predict(
-              Turing.sampler, symbol($sym), get(ct, $(ex[i])))) )
+              Turing.sampler, Symbol($sym), get(ct, $(ex[i])))) )
   end
   # println(ex_funcs)
   esc(ex_funcs)

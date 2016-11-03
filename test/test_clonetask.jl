@@ -1,7 +1,7 @@
 using Turing
 
 # test case 1: stack allocated objects are deep copied.
-function f()
+function f_ct()
   t = 0;
   while true
     produce(t)
@@ -9,7 +9,7 @@ function f()
   end
 end
 
-t = Task(f)
+t = Task(f_ct)
 
 consume(t); consume(t)
 a = copy(t);
@@ -19,7 +19,7 @@ consume(a); consume(a)
 
 # test case 2: heap allocated objects are shallowly copied.
 
-function f2()
+function f_ct2()
   t = [0 1 2];
   while true
     #println(pointer_from_objref(t));
@@ -28,7 +28,7 @@ function f2()
   end
 end
 
-t = Task(f2)
+t = Task(f_ct2)
 
 consume(t); consume(t)
 a = copy(t);
@@ -36,7 +36,7 @@ consume(a); consume(a)
 
 # more: add code in copy() to handle invalid cases for cloning tasks.
 
-function f3()
+function f_ct3()
   t = [0];
   o = (x) -> x + 1;  # not heap allocated?
   while true
@@ -46,7 +46,7 @@ function f3()
   return o
 end
 
-t = Task(f3)
+t = Task(f_ct3)
 
 consume(t); consume(t);
 a = copy(t);
