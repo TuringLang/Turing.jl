@@ -33,6 +33,9 @@ function Base.copy(t::Task)
   newt.state = t.state
   newt.result = t.result
   newt.parent = t.parent
+  if :last in fieldnames(t)
+    newt.last = nothing
+  end
   newt
 end
 
