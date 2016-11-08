@@ -1,6 +1,8 @@
+# Test task copying
+
 using Turing
 
-# test case 1: stack allocated objects are deep copied.
+# Test case 1: stack allocated objects are deep copied.
 function f_ct()
   t = 0;
   while true
@@ -15,14 +17,12 @@ consume(t); consume(t)
 a = copy(t);
 consume(a); consume(a)
 
-
-
-# test case 2: heap allocated objects are shallowly copied.
+# Test case 2: heap allocated objects are shallowly copied.
 
 function f_ct2()
   t = [0 1 2];
   while true
-    #println(pointer_from_objref(t));
+    #println(pointer_from_objref(t)); REVIEW: can we remove this comments (Kai)
     produce(t[1])
     t[1] = 1 + t[1]
   end
@@ -34,6 +34,7 @@ consume(t); consume(t)
 a = copy(t);
 consume(a); consume(a)
 
+# REVIEW: comments below need to be updated (Kai)
 # more: add code in copy() to handle invalid cases for cloning tasks.
 
 function f_ct3()

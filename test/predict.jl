@@ -1,8 +1,8 @@
+# Test the @predict macro on a deterministic model.
+
 using Turing
 using Distributions
 using Base.Test
-
-# Test the @predict macro on a deterministic model.
 
 @model testpredict begin
   x = 0

@@ -1,3 +1,5 @@
+# Test if we can pass Dual types to Distributions
+
 using Distributions
 using ForwardDiff: Dual
 

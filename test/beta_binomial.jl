@@ -1,9 +1,9 @@
+# Test @assume and @predict macros on a model with conditioning.
+# We may want to add comparison of p to the test. REVIEW: what does this comment mean? (Kai)
+
 using Turing
 using Distributions
 using Base.Test
-
-# Test the @assume and @predict macros on a model without conditioning.
-# We may want to add comparison of p to the test.
 
 prior = Beta(2,2)
 obs = [0,1,0,1,1,1,1,1,1,1]

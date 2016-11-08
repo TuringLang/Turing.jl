@@ -1,3 +1,5 @@
+# Test TraceC and TraceR
+
 using Turing
 using Distributions
 
@@ -14,8 +16,7 @@ function f()
   end
 end
 
-
-# test task copy version of trace
+# Test task copy version of trace
 t = TraceC(f)
 
 consume(t); consume(t)
@@ -26,7 +27,7 @@ Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
 
-# test replaying version of trace
+# Test replaying version of trace
 t = TraceR(f)
 
 consume(t); consume(t)
@@ -35,7 +36,6 @@ consume(a); consume(a)
 
 Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
-
 
 a2 = fork(t)
 Base.@assert length(a2.randomness) == 5

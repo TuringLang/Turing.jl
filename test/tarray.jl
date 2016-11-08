@@ -1,3 +1,5 @@
+# Test TArry
+
 using Turing
 
 function f_cta()
@@ -18,6 +20,6 @@ consume(a); consume(a)
 Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
-# Base.@assert TArray(Float64,  5)[1] != 0
+# Base.@assert TArray(Float64,  5)[1] != 0 REVIEW: can we remove this? (Kai)
 Base.@assert tzeros(Float64, 5)[1]==0
 Base.@assert tzeros(4)[1]==0

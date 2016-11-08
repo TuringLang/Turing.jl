@@ -1,3 +1,5 @@
+# Test resample
+
 using Turing
 using Distributions
 using Base.Test

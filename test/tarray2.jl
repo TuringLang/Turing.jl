@@ -1,3 +1,5 @@
+# Test TArray
+
 using Turing
 
 function Turing.randclass(urn::PolyaUrn)
@@ -22,11 +24,10 @@ function f()
     classes[i]  = randclass(urn)
     u = unique(classes[1:i])
     Base.@assert maximum(u) == length(u)
-    # println("[$(current_task())] classes: ", classes[1:i], "; urn:", urn.counts)
+    # println("[$(current_task())] classes: ", classes[1:i], "; urn:", urn.counts) REVIEW: can we remove this (Kai)
     produce(classes[i])
   end
 end
-
 
 t = Task(f)
 

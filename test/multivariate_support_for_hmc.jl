@@ -1,27 +1,16 @@
-using Turing, Distributions
+# Test the multivariate distribution support for HMC sampler
 
+using Turing, Distributions
 
 # Define helper functions
 function sigmoid(t)
   return 1 / (1 + e^(-t))
 end
 
-#
+# Define NN flow
 function nn(x, b1, w11, w12, w13, bo, wo)
-  # wi = weight_in, wh = weight_hidden, wo = weight_out
   h = tanh([w11' * x + b1[1]; w12' * x + b1[2]; w13' * x + b1[3]])
   return sigmoid((wo' * h)[1] + bo)
-end
-
-function predict(x, chain)
-  n = length(chain[:b1])
-  b1 = chain[:b1]
-  w11 = chain[:w11]
-  w12 = chain[:w12]
-  w13 = chain[:w13]
-  bo = chain[:bo]
-  wo = chain[:wo]
-  return mean([nn(x, b1[i], w11[i], w12[i], w13[i], bo[i], wo[i]) for i in 1:n])
 end
 
 # Generating training data
@@ -38,6 +27,7 @@ xs = [xt1s; xt0s]
 ts = [ones(M); ones(M); zeros(M); zeros(M)]
 
 # Define model
+
 alpha = 0.16            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
@@ -56,4 +46,5 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
   @predict b1 w11 w12 w13 bo wo
 end
 
+# Sampling
 chain = sample(bnn, HMC(10, 0.1, 5))

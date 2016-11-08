@@ -1,3 +1,5 @@
+# Test replay for loop
+
 using Turing, Distributions
 using ForwardDiff: Dual
 
@@ -15,4 +17,5 @@ xs = rand(Normal(0.5, 1), 100)
   @predict priors
 end
 
+# Sampling
 chain = sample(priorsinarray, HMC(10, 0.01, 10))
