@@ -5,6 +5,8 @@ using Base.Test
 @model testassume begin
   @assume x ~ Bernoulli(1; :static = true)
   @assume y ~ Bernoulli(x / 2; :param = true)
+  @observe 1 ~ Normal(0, 1; :static = true)
+  @observe 2 ~ Normal(0, 1; :param = true)
   @predict y
   @predict x
 end
