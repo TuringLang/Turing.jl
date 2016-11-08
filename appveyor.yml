@@ -19,7 +19,7 @@ notifications:
 
 cache:
 # Cache large downloads to avoid network unreliability
-  - %MINGW_ARCHIVE%
+  - "%MINGW_ARCHIVE%"
   
 install:
 # Download and install MinGW
