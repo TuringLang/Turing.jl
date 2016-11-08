@@ -1,5 +1,6 @@
 # Test if we can pass Dual types to Distributions
 
+using Turing
 using Distributions
 using ForwardDiff: Dual
 
