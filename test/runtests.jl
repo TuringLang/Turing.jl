@@ -14,4 +14,4 @@ include("test_replay.jl")
 include("test_particlecontainer.jl")
 include("test_priorcontainer.jl")
 
-# include("test_multisupport.jl")   # test for multidimensional distributions
+include("test_multidimsupport.jl")
