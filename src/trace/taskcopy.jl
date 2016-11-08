@@ -33,6 +33,9 @@ function Base.copy(t::Task)
   newt.state = t.state
   newt.result = t.result
   newt.parent = t.parent
+  if :last in fieldnames(t)
+    newt.last = nothing
+  end
   newt
 end
 
@@ -66,7 +69,7 @@ function Base.produce(v)
     if isempty(Base.Workqueue)
       yieldto(t, v)
     else
-      Base.schedule_and_wait(t, v)
+      schedule_and_wait(t, v)
     end
     ct = current_task() # When a task is copied, ct should be updated to new task ID.
     while true
