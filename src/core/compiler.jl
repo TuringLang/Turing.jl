@@ -19,15 +19,13 @@ macro assume(ex)
     # Remove the extra argument
     splice!(ex.args[3].args, 2)
   end
-  # Turn Distribution type to dDistribution if defiend
-  ddistr = symbol("d$(ex.args[3].args[1])")
-  isdefined(ddistr) && ( ex.args[3].args[1] = ddistr)
+
   sym = gensym()
   esc(
     quote
       $(ex.args[2]) = Turing.assume(
         Turing.sampler,
-        $(ex.args[3]),    # dDistribution
+        $(ex.args[3]),    # Distribution
         Prior(Symbol($(string(sym))))
       )
     end
@@ -56,14 +54,12 @@ macro observe(ex)
     # Remove the extra argument
     splice!(ex.args[3].args, 2)
   end
-  # Turn Distribution type to dDistribution if defiend
-  ddistr = symbol("d$(ex.args[3].args[1])")
-  isdefined(ddistr) && ( ex.args[3].args[1] = ddistr)
+
   esc(
     quote
       Turing.observe(
         Turing.sampler,
-        $(ex.args[3]),   # dDistribution
+        $(ex.args[3]),   # Distribution
         $(ex.args[2])    # Data point
       )
     end

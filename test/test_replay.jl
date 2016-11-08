@@ -1,5 +1,6 @@
 using Turing, Distributions
 using ForwardDiff: Dual
+
 # Generate synthesised data
 xs = rand(Normal(0.5, 1), 100)
 

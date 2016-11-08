@@ -1,4 +1,4 @@
-using Turing
+using Turing, Distributions
 
 
 # Define helper functions
@@ -40,12 +40,14 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 # Define model
 alpha = 0.16            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
+
 @model bnn begin
   @assume b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])
   @assume w11 ~ MvNormal([0; 0], [var 0; 0 var])
   @assume w12 ~ MvNormal([0; 0], [var 0; 0 var])
   @assume w13 ~ MvNormal([0; 0], [var 0; 0 var])
   @assume bo ~ Normal(0, var)
+
   @assume wo ~ MvNormal([0; 0; 0], [var 0 0; 0 var 0; 0 0 var])
   for i = rand(1:N, 10)
     y = nn(xs[i], b1, w11, w12, w13, bo, wo)
