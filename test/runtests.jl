@@ -1,5 +1,5 @@
 ##########################################
-# Master test file for running all tests #
+# Master file for running all test cases #
 ##########################################
 
 testcases = [
@@ -11,9 +11,14 @@ testcases = [
     "predict",
     "resample"]
 
-res = pmap(testcases) do t
-    include(t*".jl")
-    nothing
+for t in testcases include(t*".jl") end
+
+testcases_v05 = [
+    "beta-binomial",
+    "test_tarray"]
+
+if VERSION < v"0.5"
+  for t in testcases_v05 include(t*".jl") end
 end
 
 
@@ -22,9 +27,6 @@ include("test_tarray.jl")
 
 # include("test_tarray2.jl")
 include("test_particlecontainer.jl")
-
-
-
 
 # For HMC
 include("test_priorcontainer.jl")
