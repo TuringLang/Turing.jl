@@ -68,6 +68,7 @@ testcases_excluded = [
 ]
 
 # Run tests
+println("[runtests.jl] testing starts")
 for t in testcases
   if ~ (t in testcases_excluded)
     if t in testcases_v04
@@ -79,3 +80,4 @@ for t in testcases
     end
   end
 end
+println("[runtests.jl] all tests pass")
