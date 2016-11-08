@@ -73,7 +73,9 @@ function Base.run(spl :: Sampler{HMC})
         val_vect = spl.priors[k]   # get the value vector
         if k in key_chunk   # to graidnet variables
           for i = 1:l
+            dprintln(5, "making dual...")
             val_vect[i] = make_dual(prior_dim, reals[i], prior_count)
+            dprintln(5, "makie dual done")
             # Count
             prior_count += 1
           end
@@ -231,7 +233,8 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
   if spl.first
     # Generate a new prior
     r = rand(d)
-    if length(r) == 1
+    dim = length(r)
+    if dim == 1
       val = Vector{Any}([Dual(r)])
     else
       val = Vector{Any}(map(x -> Dual(x), r))
@@ -243,10 +246,22 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
     # Fetch the existing prior
     val = spl.priors[prior]
   end
-  # Turn Array{Any} to Any if necessary (this is due to randn())
-  val = (isa(val, Array) && (length(val) == 1)) ? val[1] : val
+  if isa(val, Array)
+    if length(val) == 1
+      # Turn Array{Any} to Any if necessary (this is due to randn())
+      val = val[1]
+    else
+      # Turn Array{Any} to Array{T} if necessary (this is due to an update in Distributions.jl)
+      T = typeof(val[1])
+      val = Vector{T}(val)
+    end
+  end
+
   dprintln(2, "computing logjoint...")
+  println(val)
   spl.logjoint += logpdf(d, val)
+  dprintln(2, "compute logjoint done")
+  dprintln(2, "assume done")
   return val
 end
 
@@ -257,11 +272,13 @@ function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
   else
     spl.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
+  dprintln(2, "observe done")
 end
 
 function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predicting...")
   spl.predicts[name] = realpart(value)
+  dprintln(2, "predict done")
 end
 
 sample(model :: Function, alg :: HMC) = (
