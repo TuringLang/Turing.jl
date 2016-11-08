@@ -2,33 +2,80 @@
 # Master file for running all test cases #
 ##########################################
 
+# NOTE
+# Please keep this test list structured when adding new test cases
+# so that we can tell which test case is for which .jl file
+
 testcases = [
-  "assume",
+# Turing.jl/
+#   src/
+#     core/
+#       compiler.jl
+          "assume",
+          "observe",
+          "predict",
+#       conditional.jl
+#       container.jl
+#       IArray.jl
+#       intrinsic.jl
+#       io.jl
+#       util.jl
+#     distributions/
+#       bnp.jl
+#       distributions.jl
+#       transform.jl
+#     samplers/
+#       support/
+#         reply.jl
+            "replay",
+            "priorcontainer",
+#         resample.jl
+            "resample",
+            "particlecontainer",
+#       hmc.jl
+          "pass_dual_to_dists",
+          "multivariate_support_for_hmc",
+#       is.jl
+          "importance_sampling",
+#       pgibbs.jl
+#       sampler.jl
+#       smc.jl
+#     trace/
+#       tarray.jl
+          "tarray",
+          "tarray2",
+#       taskcopy.jl
+          "clonetask",
+#       trace.jl
+          "trace",
+
+### Models ###
   "beta_binomial",
-  "importance_sampling",
-  "noparam",
-  "observe",
-  "predict",
-  "resample",
-  "clonetask",
-  "particlecontainer",
-  "priorcontainer",
-  "trace",
-  "multivariate_support_for_hmc",
-  "pass_dual_to_dists"
+  "noparam"
 ]
 
-testcases_v05 = [
+# NOTE
+# Put test cases which only want to be check in version 0.4.x here
+testcases_v04 = [
   "beta_binomial",
   "tarray"
 ]
 
-testcases_untouched = [
+# NOTE
+# Put test cases which want to be excluded here
+testcases_excluded = [
   "tarray2"
 ]
 
-for t in testcases include(t*".jl") end
-
-if VERSION < v"0.5"
-  for t in testcases_v05 include(t*".jl") end
+# Run tests
+for t in testcases
+  if ~ (t in testcases_excluded)
+    if t in testcases_v04
+      if VERSION < v"0.5"
+        include(t*".jl")
+      end
+    else
+      include(t*".jl")
+    end
+  end
 end
