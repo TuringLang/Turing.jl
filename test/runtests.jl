@@ -14,6 +14,8 @@ testcases = [
           "assume",
           "observe",
           "predict",
+          "beta_binomial",
+          "noparam",
 #       conditional.jl
 #       container.jl
 #       IArray.jl
@@ -47,11 +49,8 @@ testcases = [
 #       taskcopy.jl
           "clonetask",
 #       trace.jl
-          "trace",
-
-### Models ###
-  "beta_binomial",
-  "noparam"
+          "trace"
+# NOTE: not comma for the last element
 ]
 
 # NOTE
