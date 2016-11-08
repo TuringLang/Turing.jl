@@ -16,6 +16,7 @@ testcases = [
           "predict",
           "beta_binomial",
           "noparam",
+          "optional_parameter",
 #       conditional.jl
 #       container.jl
 #       IArray.jl
