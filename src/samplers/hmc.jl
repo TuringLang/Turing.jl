@@ -258,7 +258,6 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
   end
 
   dprintln(2, "computing logjoint...")
-  println(val)
   spl.logjoint += logpdf(d, val)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
