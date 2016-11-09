@@ -18,6 +18,7 @@ testcases = [
           "opt_param_of_dist",
 #       conditional.jl
 #       container.jl
+          "copy_particle_container.jl",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
