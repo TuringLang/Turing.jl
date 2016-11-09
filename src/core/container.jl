@@ -22,7 +22,7 @@ call{T}(::Type{ParticleContainer{T}}, m) = ParticleContainer{T}(m, 0)
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar(pc :: ParticleContainer) = ParticleContainer(pc.model, 0)
+Base.similar{T}(pc :: ParticleContainer{T}) = ParticleContainer{T}(pc.model, 0)
 # pc[i] returns the i'th particle
 Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
@@ -160,8 +160,3 @@ function resample!( pc :: ParticleContainer,
 
   pc
 end
-
-
-
-
-
