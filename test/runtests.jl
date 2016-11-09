@@ -22,6 +22,7 @@ testcases = [
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
+          "show_chain",
 #       util.jl
 #     distributions/
 #       bnp.jl
