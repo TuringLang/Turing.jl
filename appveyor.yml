@@ -39,8 +39,11 @@ build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.clone(pwd(), \"Turing\");
+      Pkg.update(); 
+      Pkg.add(\"ConjugatePriors\"); Pkg.checkout(\"ConjugatePriors\", \"master\"); 
+      Pkg.add(\"PDMats\"); Pkg.checkout(\"PDMats\", \"master\"); 
+      Pkg.clone(pwd(), \"Turing\"); 
       Pkg.build(\"Turing\")"
 
 test_script:
-  - C:\projects\julia\bin\julia --check-bounds=yes -e "Pkg.update(); Pkg.add("ConjugatePriors"); Pkg.checkout("ConjugatePriors", "master"); Pkg.add("Distributions"); Pkg.add("PDMats"); Pkg.checkout("PDMats", "master"); Pkg.status(); Pkg.clone(pwd()); Pkg.build("Turing"); Pkg.test("Turing"; coverage=true)"
+  - C:\projects\julia\bin\julia --check-bounds=yes -e "Pkg.test(\"Turing\"; coverage=true)"
