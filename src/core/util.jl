@@ -40,16 +40,6 @@ function kl(p::Normal, q::Normal)
   return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 end
 
-# Force a Vector to a single type vector Vector{T}
-function forceVector(in_v, T :: DataType)
-  l = length(in_v)
-  out_v = zeros(T, l)
-  for i = 1:l
-    out_v[i] = T(in_v[i])
-  end
-  return out_v
-end
-
 function normalize!(x)
   norm = sum(x)
   x /= norm
