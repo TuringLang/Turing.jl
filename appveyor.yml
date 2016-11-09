@@ -43,4 +43,4 @@ build_script:
       Pkg.build(\"Turing\")"
 
 test_script:
-  - C:\projects\julia\bin\julia --check-bounds=yes -e "Pkg.test(\"Turing\")"
+  - C:\projects\julia\bin\julia --check-bounds=yes -e "Pkg.update(); Pkg.add("ConjugatePriors"); Pkg.checkout("ConjugatePriors", "master"); Pkg.add("Distributions"); Pkg.add("PDMats"); Pkg.checkout("PDMats", "master"); Pkg.status(); Pkg.clone(pwd()); Pkg.build("Turing"); Pkg.test("Turing"; coverage=true)"
