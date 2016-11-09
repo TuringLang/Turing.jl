@@ -2,8 +2,7 @@
 # Master file for running all test cases #
 ##########################################
 
-# NOTE
-# Please keep this test list structured when adding new test cases
+# NOTE: please keep this test list structured when adding new test cases
 # so that we can tell which test case is for which .jl file
 
 testcases = [
@@ -54,15 +53,13 @@ testcases = [
 # NOTE: not comma for the last element
 ]
 
-# NOTE
-# Put test cases which only want to be check in version 0.4.x here
+# NOTE: put test cases which only want to be check in version 0.4.x here
 testcases_v04 = [
   "beta_binomial",
   "tarray"
 ]
 
-# NOTE
-# Put test cases which want to be excluded here
+# NOTE: put test cases which want to be excluded here
 testcases_excluded = [
   "tarray2"
 ]
