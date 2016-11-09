@@ -24,6 +24,7 @@ testcases = [
 #       io.jl
           "chain_utility",
 #       util.jl
+          "util",
 #     distributions/
 #       bnp.jl
 #       distributions.jl
