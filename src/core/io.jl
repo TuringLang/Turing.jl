@@ -39,6 +39,7 @@ Base.push!(c::Chain, s::Sample) = push!(c.value, s)
 # compute mean(f(x).w), where (x, w) is a weighted sample
 Base.mean(c::Chain, v::Symbol, f::Function) = mapreduce((s)->f(s[v]).*s.weight, +, c.value)
 
+# NOTE: Particle is a type alias of Trace
 Base.keys(p :: Particle) = keys(p.task.storage[:turing_predicts])
 Base.values(p :: Particle) = values(p.task.storage[:turing_predicts])
 Base.getindex(p :: Particle, args...) = getindex(p.task.storage[:turing_predicts], args...)
