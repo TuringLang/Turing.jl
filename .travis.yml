@@ -7,6 +7,7 @@ julia:
 notifications:
     email: false
 script:
+  - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.build("Turing"); Pkg.test("Turing"; coverage=true)'
 after_success:
