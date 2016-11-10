@@ -3,6 +3,7 @@ module Turing
 # Code associated with running probabilistic programs as tasks
 include("trace/trace.jl")
 
+import Distributions: sample        # to orverload sample()
 using ForwardDiff: Dual, npartials
 using Turing.Traces
 
