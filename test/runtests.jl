@@ -71,12 +71,17 @@ testcases_excluded = [
 println("[runtests.jl] testing starts")
 for t in testcases
   if ~ (t in testcases_excluded)
+
     if t in testcases_v04
       if VERSION < v"0.5"
+        println("[runtests.jl] running test \"$t.jl\"")
         include(t*".jl")
+        println("[runtests.jl] test \"$t.jl\" is successful")
       end
     else
+      println("[runtests.jl] running test \"$t.jl\"")
       include(t*".jl")
+      println("[runtests.jl] test \"$t.jl\" is successful")
     end
   end
 end
