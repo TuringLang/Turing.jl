@@ -38,7 +38,6 @@ testcases = [
             "resample",
             "particlecontainer",
 #       hmc.jl
-          "pass_dual_to_dists",
           "multivariate_support_for_hmc",
 #       is.jl
           "importance_sampling",
@@ -52,7 +51,9 @@ testcases = [
 #       taskcopy.jl
           "clonetask",
 #       trace.jl
-          "trace"
+          "trace",
+#   Turing.jl
+      "pass_dual_to_dists"
 # NOTE: not comma for the last element
 ]
 
