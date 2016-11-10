@@ -5,9 +5,7 @@ function f_cta()
   t[1] = 0;
   while true
     produce(t[1])
-    println("running")
     t[1]
-    println("running2")
     t[1] = 1 + t[1]
   end
 end

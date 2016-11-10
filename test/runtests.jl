@@ -10,9 +10,7 @@ include("importance_sampling.jl")
 
 include("test_clonetask.jl")
 
-if VERSION < v"0.5" # TArray currently in Julia 0.5
-  include("test_tarray.jl")
-end
+include("test_tarray.jl")
 
 # include("test_tarray2.jl")
 include("test_particlecontainer.jl")

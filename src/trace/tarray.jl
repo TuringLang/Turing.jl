@@ -8,32 +8,31 @@ immutable TArray{T,N} <: DenseArray{T,N}
   TArray() = new(gensym())
 end
 
-call{T}(::Type{TArray{T,1}}, d::Integer)  = TArray(T,  d)
-call{T}(::Type{TArray{T}}, d::Integer...) = TArray(T, convert(Tuple{Vararg{Int}}, d))
-call{T,N}(::Type{TArray{T,N}}, d::Integer...) = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
-call{T,N}(::Type{TArray{T,N}}, dim::NTuple{N,Int}) = TArray(T, dim)
+(::Type{TArray{T,1}}){T}(d::Integer)    = TArray(T,  d)
+(::Type{TArray{T}}){T}(d::Integer...) = TArray(T, convert(Tuple{Vararg{Int}}, d))
+(::Type{TArray{T,N}}){T,N}(d::Integer...) = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
+(::Type{TArray{T,N}}){T,N}(dim::NTuple{N,Int}) = TArray(T, dim)
 
 function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
   t = current_task()
   d = Array{T}(dim)
-  task_local_storage(res.ref, [t,d])
+  task_local_storage(res.ref, (t,d))
   res
+end
+
+# produce a local copy of the underlying array
+function localcopy(S::TArray)
+  t,d = task_local_storage(S.ref)
+  c = deepcopy(d)
+  return c
 end
 
 # pass through getindex and setindex!
 # duplicate TArray if task id does not match current_task
 function Base.getindex(S::TArray, i::Real)
-  println("[getindex!]: $(S.ref) reading data")
-  a = task_local_storage(S.ref)
-  println(a)
-  println("[getindex!]: $(S.ref) reading data2")
-  t, d = a[1], a[2]
-  println("[getindex!]: $(S.ref) reading data3")
+  t, d = task_local_storage(S.ref)
   newd = d
-  println("d", d[1])
-  println("d", d[1])
-  println("done")
 #   ct = current_task()
 #   if t != ct
 #     # println("[getindex]: $(S.ref ) copying data")
@@ -44,20 +43,13 @@ function Base.getindex(S::TArray, i::Real)
 end
 
 function Base.setindex!(S::TArray, x, i::Real)
-  println("setindex")
-  a = task_local_storage(S.ref)
-  t, d = a[1], a[2]
-  println("setindex2")
+  t, d = task_local_storage(S.ref)
   ct = current_task()
   newd = d
   if t != ct
-    println("[setindex!]: $(S.ref) copying data")
-    #newd = deepcopy(d)
-    println("setindex3")
-    newd = [1]
-    ct.storage[S.ref] = [ct, newd]
-    #task_local_storage(S.ref, [ct, newd])
-    println("setindex4")
+    # println("[setindex!]: $(S.ref) copying data")
+    newd = deepcopy(d)
+    task_local_storage(S.ref, (ct, newd))
   end
   setindex!(newd, x, i)
 end
