@@ -61,10 +61,11 @@ function align(x,y)
   return (x,y)
 end
 
-function kl(p :: Categorical, q :: Categorical)
-  a,b = align(p.p, q.p)
-  return kl_divergence(a,b)
-end
+# REVIEW: this functions is no where used
+# function kl(p :: Categorical, q :: Categorical)
+#   a,b = align(p.p, q.p)
+#   return kl_divergence(a,b)
+# end
 
 #####################################
 # Helper functions for Dual numbers #
