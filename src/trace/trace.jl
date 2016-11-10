@@ -23,7 +23,7 @@ type Trace{T}
   Trace() = (res = new(); res.randomness = Array{Any,1}(); res.index = 0; res.num_produce = 0; res)
 end
 
-function call{T}(::Type{Trace{T}}, f::Function)
+function (::Type{Trace{T}}){T}(f::Function)
   res = Trace{T}();
   res.task = Task(()->f());
   if isa(res.task.storage, Void)
