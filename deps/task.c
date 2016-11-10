@@ -8,6 +8,7 @@
 jl_task_t *jl_clone_task(jl_task_t *t)
 {
     jl_task_t *newt = (jl_task_t*)jl_gc_allocobj(sizeof(jl_task_t));
+    memset(newt, 0, sizeof(jl_task_t));
     jl_set_typeof(newt, jl_task_type);
     newt->stkbuf = NULL;
     newt->gcstack = NULL;

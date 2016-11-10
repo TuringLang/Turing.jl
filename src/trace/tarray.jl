@@ -17,15 +17,23 @@ function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
   t = current_task()
   d = Array{T}(dim)
-  task_local_storage(res.ref, (t,d))
+  task_local_storage(res.ref, [t,d])
   res
 end
 
 # pass through getindex and setindex!
 # duplicate TArray if task id does not match current_task
 function Base.getindex(S::TArray, i::Real)
-  t, d = task_local_storage(S.ref)
+  println("[getindex!]: $(S.ref) reading data")
+  a = task_local_storage(S.ref)
+  println(a)
+  println("[getindex!]: $(S.ref) reading data2")
+  t, d = a[1], a[2]
+  println("[getindex!]: $(S.ref) reading data3")
   newd = d
+  println("d", d[1])
+  println("d", d[1])
+  println("done")
 #   ct = current_task()
 #   if t != ct
 #     # println("[getindex]: $(S.ref ) copying data")
@@ -36,13 +44,20 @@ function Base.getindex(S::TArray, i::Real)
 end
 
 function Base.setindex!(S::TArray, x, i::Real)
-  t, d = task_local_storage(S.ref)
+  println("setindex")
+  a = task_local_storage(S.ref)
+  t, d = a[1], a[2]
+  println("setindex2")
   ct = current_task()
   newd = d
   if t != ct
-    # println("[setindex!]: $(S.ref) copying data")
-    newd = deepcopy(d)
-    task_local_storage(S.ref, (ct, newd))
+    println("[setindex!]: $(S.ref) copying data")
+    #newd = deepcopy(d)
+    println("setindex3")
+    newd = [1]
+    ct.storage[S.ref] = [ct, newd]
+    #task_local_storage(S.ref, [ct, newd])
+    println("setindex4")
   end
   setindex!(newd, x, i)
 end

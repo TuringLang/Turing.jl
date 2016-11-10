@@ -14,7 +14,7 @@ function sweepandmark(t::Task)
     #  copy-on-write for the parent task (which is copied).
     if isa(s[k], Tuple{Union{Void,Task}, Any})
       _, d = s[k]
-      s[k] = (nothing, d)
+      s[k] = [Void, d]
     end
   end
 end
