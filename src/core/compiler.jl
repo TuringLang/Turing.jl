@@ -101,11 +101,6 @@ macro model(name, fbody)
   fname = isa(name, Symbol) ? Expr(:call, name) : name
   ex = Expr(:function, fname, fbody)
 
-  push!(
-    ex.args[2].args,
-    :(produce(Val{:done}))
-  )
-
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end

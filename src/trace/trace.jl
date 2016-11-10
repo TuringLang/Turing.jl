@@ -26,7 +26,8 @@ end
 
 function call{T}(::Type{Trace{T}}, f::Function)
   res = Trace{T}();
-  res.task = Task(()->f());
+  # Task(()->f());
+  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
