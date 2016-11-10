@@ -4,7 +4,7 @@ import Distributions: logpdf, pdf, sample
 using ConjugatePriors
 import ConjugatePriors: NormalInverseGamma, NormalWishart, NormalInverseWishart, posterior
 
-include("transform.jl")
+# include("transform.jl")
 
 import Base.LinAlg: Cholesky
 import Base.Random: rand

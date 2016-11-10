@@ -45,11 +45,8 @@ include("distributions/distributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
-include("core/conditional.jl")
 include("core/container.jl")
 include("core/io.jl")
-include("core/IArray.jl")
 include("samplers/sampler.jl")
-include("distributions/bnp.jl")
 
 end
