@@ -6,7 +6,7 @@ using ForwardDiff: Dual
 using Base.Test
 
 f1 = 1.1
-f2 = 1.1
+f2 = 2.3
 d1 = Dual(1.1)
 d2 = Dual(2.3)
 
