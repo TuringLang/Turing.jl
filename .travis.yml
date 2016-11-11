@@ -1,6 +1,11 @@
 language: julia
 os:
   - linux
+    addons:
+        apt:
+          packages:
+            - gcc-5
+            - g++-5
   - osx
 julia:
   - 0.5
