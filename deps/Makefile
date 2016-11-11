@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc -gnu99
 JL_SHARE = $(shell julia -e 'print(joinpath(JULIA_HOME,Base.DATAROOTDIR,"julia"))')
 CFLAGS   += $(shell julia $(JL_SHARE)/julia-config.jl --cflags)
 CXXFLAGS += $(shell julia $(JL_SHARE)/julia-config.jl --cflags)
