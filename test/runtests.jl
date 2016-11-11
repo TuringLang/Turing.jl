@@ -48,6 +48,7 @@ testcases = [
 #       tarray.jl
           "tarray",
           "tarray2",
+          "tarray3",
 #       taskcopy.jl
           "clonetask",
 #       trace.jl
