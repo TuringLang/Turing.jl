@@ -38,7 +38,6 @@ testcases = [
             "resample",
             "particlecontainer",
 #       hmc.jl
-          "pass_dual_to_dists",
           "multivariate_support_for_hmc",
 #       is.jl
           "importance_sampling",
@@ -52,7 +51,9 @@ testcases = [
 #       taskcopy.jl
           "clonetask",
 #       trace.jl
-          "trace"
+          "trace",
+#   Turing.jl
+      "pass_dual_to_dists"
 # NOTE: not comma for the last element
 ]
 
@@ -71,12 +72,17 @@ testcases_excluded = [
 println("[runtests.jl] testing starts")
 for t in testcases
   if ~ (t in testcases_excluded)
+
     if t in testcases_v04
       if VERSION < v"0.5"
-        include(t*".jl")
+        println("[runtests.jl] \"$t.jl\" is running")
+        include(t*".jl");
+        println("[runtests.jl] \"$t.jl\" is successful")
       end
     else
-      include(t*".jl")
+      println("[runtests.jl] \"$t.jl\" is running")
+      include(t*".jl");
+      println("[runtests.jl] \"$t.jl\" is successful")
     end
   end
 end

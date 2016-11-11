@@ -40,6 +40,7 @@ function kl(p::Normal, q::Normal)
   return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 end
 
+# REVIEW: I think it is a wrong function name because we don't actually do in-place update and this function is used only for its return. I think we need to rename it.
 function normalize!(x)
   norm = sum(x)
   x /= norm
@@ -60,10 +61,11 @@ function align(x,y)
   return (x,y)
 end
 
-function kl(p :: Categorical, q :: Categorical)
-  a,b = align(p.p, q.p)
-  return kl_divergence(a,b)
-end
+# REVIEW: this functions is no where used
+# function kl(p :: Categorical, q :: Categorical)
+#   a,b = align(p.p, q.p)
+#   return kl_divergence(a,b)
+# end
 
 #####################################
 # Helper functions for Dual numbers #

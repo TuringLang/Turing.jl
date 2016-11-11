@@ -3,6 +3,7 @@ module Turing
 # Code associated with running probabilistic programs as tasks
 include("trace/trace.jl")
 
+import Distributions: sample        # to orverload sample()
 using ForwardDiff: Dual, npartials
 using Turing.Traces
 
@@ -41,7 +42,6 @@ global debug_level = 0
 dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
 # Inference code
-include("distributions/distributions.jl")
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
