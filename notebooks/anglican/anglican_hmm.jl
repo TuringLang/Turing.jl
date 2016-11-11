@@ -5,6 +5,12 @@ using Turing
 using Distributions
 using Distances
 
+function normalize(x)
+  norm = sum(x)
+  x /= norm
+  return x
+end
+
 statesmean = [-1, 1, 0]
 initial    = Categorical([1.0/3, 1.0/3, 1.0/3])
 trans      = [Categorical([0.1, 0.5, 0.4]), Categorical([0.2, 0.2, 0.6]), Categorical([0.15, 0.15, 0.7])]
@@ -33,7 +39,7 @@ anglican_hmm_matrix =   [[ 0.3775 0.3092 0.3133];
 # Convert anglican_hmm_matrix to a vector of vectors
 anglican_hmm_exact = Vector{Categorical}(size(anglican_hmm_matrix)[1])
 for i = 1:length(anglican_hmm_exact)
-  anglican_hmm_exact[i] = Categorical(normalize!(squeeze(anglican_hmm_matrix[i,:],1)))
+  anglican_hmm_exact[i] = Categorical(normalize(squeeze(anglican_hmm_matrix[i,:],1)))
 end
 
 @model anglican_hmm begin
