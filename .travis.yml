@@ -1,12 +1,14 @@
 language: julia
-os:
-  - linux
-    addons:
+matrix:
+  include:
+    - os: linux
+      addons:
         apt:
+          sources:
+            - ubuntu-toolchain-r-test
           packages:
-            - gcc-5
-            - g++-5
-  - osx
+            - g++-4.9
+    - os: osx
 julia:
   - 0.5
 notifications:
