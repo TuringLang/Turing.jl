@@ -5,7 +5,7 @@ using Distributions
 
 import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr
 
-function f()
+function f2()
   t = TArray(Int, 1);
   t[1] = 0;
   while true
@@ -17,7 +17,7 @@ function f()
 end
 
 # Test task copy version of trace
-t = TraceC(f)
+t = TraceC(f2)
 
 consume(t); consume(t)
 a = fork(t);
@@ -28,7 +28,7 @@ Base.@assert consume(a) == 4
 
 
 # Test replaying version of trace
-t = TraceR(f)
+t = TraceR(f2)
 
 consume(t); consume(t)
 a = fork(t);

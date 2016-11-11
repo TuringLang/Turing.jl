@@ -11,9 +11,10 @@ using Base.Test
   @predict x
 end
 
-s = SMC(100)
+s = SMC(1000)
 
 res = sample(testassume, s)
 
 @test reduce(&, res[:x]) == 1 # check that x is always 1
+
 @test_approx_eq_eps mean(res[:y]) 0.5 0.1 # check that the mean of y is between 0.4 and 0.6

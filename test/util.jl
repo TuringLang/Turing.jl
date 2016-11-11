@@ -9,3 +9,4 @@ using Base.Test
 randcat([0.1, 0.9])
 @test kl(Normal(0, 1), Normal(0, 1)) == 0
 @test align([1, 2, 3], [1]) == ([1,2,3],[1,0,0])
+@test align([1], [1, 2, 3]) == ([1,0,0],[1,2,3])

@@ -7,6 +7,12 @@ using Distances
 
 include("utils.jl")
 
+function normalize(x)
+  norm = sum(x)
+  x /= norm
+  return x
+end
+
 function fib(n)
   if n < 3
     return 1
@@ -38,7 +44,7 @@ end
 # Exact posterior on l (for range 0-15) copied from Anglican repo
 # Seems to be wrong
 anglican_branching_exact =
-  Categorical(normalize!(map(x -> exp(x), [-3.9095, -2.1104, -2.6806, -Inf, -Inf, -1.1045,
+  Categorical(normalize(map(x -> exp(x), [-3.9095, -2.1104, -2.6806, -Inf, -Inf, -1.1045,
                                              -1.5051, -2.0530, -2.7665, -3.5635, -4.4786,
                                              -5.5249, -6.5592, -7.8998, -8.7471])))
 

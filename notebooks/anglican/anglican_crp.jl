@@ -5,6 +5,12 @@ using Turing
 using Distributions
 using Distances
 
+function normalize(x)
+  norm = sum(x)
+  x /= norm
+  return x
+end
+
 obs = [10, 11, 12, -100, -150, -200, 0.001, 0.01, 0.005, 0.0]
 alpha = 1.72
 mu    = 0.0
@@ -14,7 +20,7 @@ b     = 10.0
 
 #Exact posterior over the number of clusters, taken from the Anglican repo
 anglican_crp_exact =
-  Categorical(normalize!(map(x -> exp(x),
+  Categorical(normalize(map(x -> exp(x),
     [-11.4681, -1.0437, -0.9126, -1.6553, -3.0348,
      -4.9985, -7.5829, -10.9459, -15.6461, -21.6521])))
 
@@ -65,5 +71,3 @@ function anglican_crp_evaluate(results)
   summary[:KL] = KL
   return summary
 end
-
-

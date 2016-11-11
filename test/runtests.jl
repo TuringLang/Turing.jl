@@ -48,6 +48,7 @@ testcases = [
 #       tarray.jl
           "tarray",
           "tarray2",
+          "tarray3",
 #       taskcopy.jl
           "clonetask",
 #       trace.jl
@@ -65,7 +66,8 @@ testcases_v04 = [
 
 # NOTE: put test cases which want to be excluded here
 testcases_excluded = [
-  "tarray2"
+  "tarray2",
+  "multivariate_support_for_hmc"
 ]
 
 # Run tests
