@@ -4,7 +4,7 @@ using Base.Test
 
 # Test the @predict macro on a deterministic model.
 
-@model test begin
+@model testpredict begin
   x = 0
   @predict x
   x = 1
@@ -15,13 +15,13 @@ end
 s = SMC(10)
 p = PG(2,5)
 
-res = sample(test, s)
+res = sample(testpredict, s)
 
 @test res[:x][1] == 0
 @test res[:y][1] == 2
 
 
-res = sample(test, p)
+res = sample(testpredict, p)
 
 @test res[:x][1] == 0
 @test res[:y][1] == 2

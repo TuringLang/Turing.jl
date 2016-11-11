@@ -8,10 +8,10 @@ immutable TArray{T,N} <: DenseArray{T,N}
   TArray() = new(gensym())
 end
 
-call{T}(::Type{TArray{T,1}}, d::Integer)  = TArray(T,  d)
-call{T}(::Type{TArray{T}}, d::Integer...) = TArray(T, convert(Tuple{Vararg{Int}}, d))
-call{T,N}(::Type{TArray{T,N}}, d::Integer...) = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
-call{T,N}(::Type{TArray{T,N}}, dim::NTuple{N,Int}) = TArray(T, dim)
+(::Type{TArray{T,1}}){T}(d::Integer)    = TArray(T,  d)
+(::Type{TArray{T}}){T}(d::Integer...) = TArray(T, convert(Tuple{Vararg{Int}}, d))
+(::Type{TArray{T,N}}){T,N}(d::Integer...) = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
+(::Type{TArray{T,N}}){T,N}(dim::NTuple{N,Int}) = TArray(T, dim)
 
 function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
@@ -19,6 +19,13 @@ function TArray(T::Type, dim)
   d = Array{T}(dim)
   task_local_storage(res.ref, (t,d))
   res
+end
+
+# produce a local copy of the underlying array
+function localcopy(S::TArray)
+  t,d = task_local_storage(S.ref)
+  c = deepcopy(d)
+  return c
 end
 
 # pass through getindex and setindex!

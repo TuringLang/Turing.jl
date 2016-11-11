@@ -5,6 +5,9 @@ CXXFLAGS += $(shell julia $(JL_SHARE)/julia-config.jl --cflags)
 LDFLAGS  += $(shell julia $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell julia $(JL_SHARE)/julia-config.jl --ldlibs)
 
+CFLAGS   += $(shell julia -e 'if ~is_apple() print("-std=gnu99 ") end')$
+CFLAGS   += $(shell julia -e 'if is_windows() && Int == Int32 print("-march=pentium4 ") end')$
+
 task: task.c
 	$(CC) $(CFLAGS) -O2 -shared -fPIC task.c $(LDFLAGS) $(LDLIBS) -o libtask.$(LIBEXT)
 

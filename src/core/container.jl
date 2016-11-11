@@ -18,7 +18,7 @@ type ParticleContainer{T<:Particle}
   ParticleContainer(m::Function,n::Int) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
-call{T}(::Type{ParticleContainer{T}}, m) = ParticleContainer{T}(m, 0)
+(::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)

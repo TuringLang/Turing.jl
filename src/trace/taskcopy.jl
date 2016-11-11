@@ -1,5 +1,5 @@
-@unix_only libpath = replace(@__FILE__, "src/trace/taskcopy.jl", "deps/")
-@windows_only libpath = replace(@__FILE__, "src\\trace\\taskcopy.jl", "deps\\")
+if is_unix() libpath = replace(@__FILE__, "src/trace/taskcopy.jl", "deps/") end
+if is_windows() libpath = replace(@__FILE__, "src\\trace\\taskcopy.jl", "deps\\") end
 
 if !(libpath in Base.DL_LOAD_PATH)
   push!(Base.DL_LOAD_PATH, libpath)
@@ -14,7 +14,7 @@ function sweepandmark(t::Task)
     #  copy-on-write for the parent task (which is copied).
     if isa(s[k], Tuple{Union{Void,Task}, Any})
       _, d = s[k]
-      s[k] = (nothing, d)
+      s[k] = [Void, d]
     end
   end
 end

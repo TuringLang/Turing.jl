@@ -1,15 +1,16 @@
 using Turing
 
-function f()
+function f_cta()
   t = TArray(Int, 1);
   t[1] = 0;
   while true
     produce(t[1])
+    t[1]
     t[1] = 1 + t[1]
   end
 end
 
-t = Task(f)
+t = Task(f_cta)
 
 consume(t); consume(t)
 a = copy(t);
