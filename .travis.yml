@@ -3,7 +3,7 @@ os:
   - linux
   - osx
 julia:
-  - 0.4
+  - 0.5
 notifications:
     email: false
 script:
