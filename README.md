@@ -3,6 +3,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/master?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/master)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
+![Gitter](https://gitter.im/Turing-jl/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 [**Go To Turing's Documentation**](http://turingjl.readthedocs.io/)
 
