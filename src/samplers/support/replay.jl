@@ -1,22 +1,24 @@
 export Prior, PriorArray, PriorContainer, addPrior
 
 doc"""
-  Type for a rotated array (used for prior replay purpose).
+    PriorArray(array, count, currSetIdx, currGetIdx)
 
-  This type of array support set and get without specifying indices. Instead, an inner index pointer is used to iterate the array. The pointers for set and get are separate.
+Type for a rotated array (used for prior replay purpose).
 
-  Usage:
+This type of array support set and get without specifying indices. Instead, an inner index pointer is used to iterate the array. The pointers for set and get are separate.
 
-  ```julia
-  pa = PriorArray() # []
-  add(pa, 1)        # [1]
-  add(pa, 2)        # [1, 2]
-  get(pa)           # 1
-  get(pa)           # 2
-  set(pa, 3)        # [3, 2]
-  get(pa)           # 3
-  get(pa)           # 2
-  ```
+Usage:
+
+```julia
+pa = PriorArray() # []
+add(pa, 1)        # [1]
+add(pa, 2)        # [1, 2]
+get(pa)           # 1
+get(pa)           # 2
+set(pa, 3)        # [3, 2]
+get(pa)           # 3
+get(pa)           # 2
+```
 """
 type PriorArray
   array     ::    Vector{Any}
@@ -33,8 +35,10 @@ type PriorArray
 end
 
 doc"""
-  Append a new element to the end of the inner array container of PriorArray.
-  The inner counter of total number of element is also updated.
+    add(pa::PriorArray, val)
+
+Append a new element to the end of the inner array container of PriorArray.
+The inner counter of total number of element is also updated.
 """
 function add(pa::PriorArray, val)
   push!(pa.array, val)
@@ -42,11 +46,13 @@ function add(pa::PriorArray, val)
 end
 
 doc"""
-  Set the element with the corresponding inner pointer of set to the passed value.
+    set(pa::PriorArray, val)
 
-  The inner pointer for set is then updated:
-    - if not reaches the end: incremented by 1;
-    - if reaches the end: reset to 1.
+Set the element with the corresponding inner pointer of set to the passed value.
+
+The inner pointer for set is then updated:
+  - if not reaches the end: incremented by 1;
+  - if reaches the end: reset to 1.
 """
 function set(pa::PriorArray, val)
   pa.array[pa.currSetIdx] = val
@@ -54,11 +60,13 @@ function set(pa::PriorArray, val)
 end
 
 doc"""
-  Fetch the element with the corresponding inner pointer of get.
+    get(pa::PriorArray)
 
-  The inner pointer for get is then updated:
-    - if not reaches the end: incremented by 1;
-    - if reaches the end: reset to 1.
+Fetch the element with the corresponding inner pointer of get.
+
+The inner pointer for get is then updated:
+  - if not reaches the end: incremented by 1;
+  - if reaches the end: reset to 1.
 """
 function get(pa::PriorArray)
   @assert pa.count > 0 "Attempt get from an empty PriorArray."
@@ -70,14 +78,16 @@ end
 
 
 doc"""
-  A wrapper of symbol type representing priors.
+    Prior(sym)
 
-  Usage:
+A wrapper of symbol type representing priors.
 
-  ```julia
-  p = Prior(:somesym)
-  strp = string(p)
-  ```
+Usage:
+
+```julia
+p = Prior(:somesym)
+strp = string(p)
+```
 """
 immutable Prior
   sym       ::    Symbol
@@ -87,48 +97,52 @@ immutable Prior
 end
 
 doc"""
-  Helper function to convert a Prior to its string representation.
+    Base.string(p::Prior)
+
+Helper function to convert a Prior to its string representation.
 """
 function Base.string(p::Prior)
   return string(p.sym)
 end
 
 doc"""
-  A container to store priors based on dictionary.
+    PriorContainer()
 
-  This type is basically a dictionary supporting adding new priors by creating a PriorArray and indexing using pc[] syntax
+A container to store priors based on dictionary.
 
-  Usage:
+This type is basically a dictionary supporting adding new priors by creating a PriorArray and indexing using pc[] syntax
 
-  ```julia
-  pc = PriorContainer()
-  p1 = Prior(:a)
-  p2 = Prior(:b)
+Usage:
 
-  addPrior(pc, p1, 1)
-  addPrior(pc, p1, 2)
-  addPrior(pc, p1, 3)
-  addPrior(pc, p2, 4)
+```julia
+pc = PriorContainer()
+p1 = Prior(:a)
+p2 = Prior(:b)
 
-  pc[p1]    # 1
-  pc[p1]    # 2
-  pc[p1]    # 3
-  pc[p1]    # 1
-  pc[p1]    # 2
-  pc[p1]    # 3
+addPrior(pc, p1, 1)
+addPrior(pc, p1, 2)
+addPrior(pc, p1, 3)
+addPrior(pc, p2, 4)
 
-  pc[p2]    # 4
+pc[p1]    # 1
+pc[p1]    # 2
+pc[p1]    # 3
+pc[p1]    # 1
+pc[p1]    # 2
+pc[p1]    # 3
 
-  pc[p1] = 5
-  pc[p1] = 6
-  pc[p1] = 7
+pc[p2]    # 4
 
-  pc[p1]    # 5
-  pc[p1]    # 6
-  pc[p1]    # 7
+pc[p1] = 5
+pc[p1] = 6
+pc[p1] = 7
 
-  keys(pc)  # create a key interator in the container, i.e. all the priors
-  ```
+pc[p1]    # 5
+pc[p1]    # 6
+pc[p1]    # 7
+
+keys(pc)  # create a key interator in the container, i.e. all the priors
+```
 """
 type PriorContainer
   container   ::    Dict{Prior, PriorArray}
@@ -139,8 +153,10 @@ type PriorContainer
 end
 
 doc"""
-  Add a *new* value of a given prior to the container.
-  *new* here means force appending to the end of the corresponding array of the prior.
+    addPrior(pc::PriorContainer, idx::Prior, val)
+
+Add a *new* value of a given prior to the container.
+*new* here means force appending to the end of the corresponding array of the prior.
 """
 function addPrior(pc::PriorContainer, idx::Prior, val)
   if haskey(pc.container, idx)
@@ -152,7 +168,9 @@ function addPrior(pc::PriorContainer, idx::Prior, val)
 end
 
 doc"""
-  Make the prior container support indexing with `[]`.
+    Base.getindex(pc::PriorContainer, idx::Prior)
+
+Make the prior container support indexing with `[]`.
 """
 function Base.getindex(pc::PriorContainer, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
@@ -160,7 +178,9 @@ function Base.getindex(pc::PriorContainer, idx::Prior)
 end
 
 doc"""
-  Make the prior container support assignment with `[]`.
+    Base.setindex!(pc::PriorContainer, val, idx::Prior)
+
+Make the prior container support assignment with `[]`.
 """
 function Base.setindex!(pc::PriorContainer, val, idx::Prior)
   @assert haskey(pc.container, idx) "PriorContainer has no $idx."
@@ -168,7 +188,9 @@ function Base.setindex!(pc::PriorContainer, val, idx::Prior)
 end
 
 doc"""
-  Return a key interator in the container, i.e. all the priors.
+    Base.keys(pc::PriorContainer)
+
+Return a key interator in the container, i.e. all the priors.
 """
 function Base.keys(pc::PriorContainer)
   return keys(pc.container)
