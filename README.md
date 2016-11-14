@@ -4,6 +4,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=development)](https://coveralls.io/github/yebai/Turing.jl?branch=development)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
 
+[**Go To Turing's Documentation**](http://turingjl.readthedocs.io/)
+
+# Turing.jl
 
 Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros listed below. Available inference methods include  Importance Sampling, Sequential Monte Carlo, Particle Gibbs.
 
@@ -11,7 +14,7 @@ Authors: [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.en
 
 ### Relevant papers
 1. Ghahramani, Zoubin. "Probabilistic machine learning and artificial intelligence." Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
-2. Ge, Hong, Adam Scibior, and Zoubin Ghahramani "Turing: rejuvenating probabilistic programming in Julia." (In submission).
+2. Ge, Hong, Adam Scibior, and Zoubin Ghahramani "Turing: A fast imperative probabilistic programming language." (In submission).
 
 
 ### Example
@@ -72,34 +75,3 @@ chain = sample(gaussdemo, PG(10,500))
 
 ## Task copying
 Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires building a small C program, which should be done automatically on Linux and Mac systems that have GCC and Make installed.
-
-## Development notes
-Following GitHub guidelines, we have two main branches: master and development. We protect them with a review process to make sure at least two people approve the code before it is committed to either of them. For this reason, do not commit to either master or development directly.
-Please use the following workflow instead.
-
-### Reporting bugs
-- branch from master
-- write a test that exposes the bug
-- create an issue describing the bug, referencing the new branch
-
-### Bug fixes
-- assign yourself to the relevant issue
-- fix the bug on the dedicated branch
-- see that the new test (and all the old ones) passes
-- create a pull request
-- when a pull request is accepted close the issue and propagate changes to development
-
-### New features and performance enhancements
-- create an issue describing the proposed change
-- branch from development
-- write tests for the new features
-- implement the feature
-- see that all tests pass
-- create a pull request
-
-### Merging development into master
-- review changes from master
-- create a pull request
-
-## External contributions
-Turing is an open-source project and we welcome any and all contributions from the community. If you have comments, questions, suggestions, or bug reports, please open an issue and let us know. If you want to contribute bug fixes or new features, please fork the repo and make a pull requrest. If you'd like to make a more substantial contribution to Turing, please get in touch so we can discuss the best way to proceed.

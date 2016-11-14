@@ -6,13 +6,25 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: Getting Started
 
-   file_list
+   installation
+   usage
+   demos
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Development Notes
+
+   language
+   compiler
+   sampler
+   coroutines
+   tarray
+   workflow
+
+.. toctree::
+   :maxdepth: 2
+   :caption: License
+
    license
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
