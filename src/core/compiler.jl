@@ -1,3 +1,28 @@
+# Helper function
+doc"""
+    has_ops(ex)
+
+Check if has optional arguments.
+
+```julia
+has_ops(parse("@assume x ~ Normal(0, 1; :static=true)"))  # gives true
+has_ops(parse("@assume x ~ Normal(0, 1)"))                # gives false
+has_ops(parse("@assume x ~ Binomial(; :static=true)"))    # gives true
+has_ops(parse("@assume x ~ Binomial()"))                  # gives false
+```
+"""
+function has_ops(ex)
+  if length(ex.args[3].args) <= 1               # check if the D() has parameters
+    return false                                # Binominal() can have empty
+  elseif typeof(ex.args[3].args[2]) != Expr     # check if has optional arguments
+    return false
+  elseif ex.args[3].args[2].head != :parameters # check if parameters valid
+    return false
+  end
+  true
+end
+
+
 # Operation for defining the prior
 # Usage:
 # @assume x ~ Dist
@@ -7,13 +32,13 @@ macro assume(ex)
   dprintln(1, "marco assuming...")
   @assert ex.args[1] == symbol("@~")
   # Check if have extra arguements setting
-  if typeof(ex.args[3].args[2]) == Expr &&  ex.args[3].args[2].head == :parameters
+  if has_ops(ex)
     # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true
+    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
       # Do something
     end
     # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :param && ex.args[3].args[2].args[1].args[2] == :true
+    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
       # Do something
     end
     # Remove the extra argument
@@ -42,13 +67,13 @@ macro observe(ex)
 
   global TURING
   # Check if have extra arguements setting
-  if typeof(ex.args[3].args[2]) == Expr &&  ex.args[3].args[2].head == :parameters
+  if has_ops(ex)
     # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :static && ex.args[3].args[2].args[1].args[2] == :true
+    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
       # Do something
     end
     # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :param && ex.args[3].args[2].args[1].args[2] == :true
+    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
       # Do something
     end
     # Remove the extra argument
