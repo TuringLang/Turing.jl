@@ -1,6 +1,15 @@
 # Helper function
-"""
-Check if has optional arguments
+doc"""
+    has_ops(ex)
+
+Check if has optional arguments.
+
+```julia
+has_ops(parse("@assume x ~ Normal(0, 1; :static=true)"))  # gives true
+has_ops(parse("@assume x ~ Normal(0, 1)"))                # gives false
+has_ops(parse("@assume x ~ Binomial(; :static=true)"))    # gives true
+has_ops(parse("@assume x ~ Binomial()"))                  # gives false
+```
 """
 function has_ops(ex)
   if length(ex.args[3].args) <= 1               # check if the D() has parameters
