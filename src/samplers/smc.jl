@@ -7,7 +7,7 @@ immutable SMC <: InferenceAlgorithm
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b)
 end
 
-assume(spl :: Sampler{SMC}, distr :: Distribution)  = rand(current_trace(), distr)
+assume(spl :: Sampler{SMC}, distr :: Distribution, p)  = rand(current_trace(), distr)
 
 ## wrapper for smc: run the sampler, collect results.
 function Base.run(spl::Sampler{SMC})

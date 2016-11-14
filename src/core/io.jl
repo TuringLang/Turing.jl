@@ -13,11 +13,23 @@ type Chain
 end
 Chain() = Chain(0, Vector{Sample}())
 
+function Base.show(io::IO, ch1::Chain)
+  # Print chain weight and weighted means of samples in chain
+  if length(ch1.value) == 0
+    print(io, "Empty Chain, weight $(ch1.weight)")
+  else
+    chain_mean = [i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value)]
+    print(io, "Chain, model evidence (log)  $(ch1.weight) and means $(chain_mean)")
+  end
+end
+
 function Base.getindex(c::Chain, v::Symbol)
   # This strange implementation is mostly to keep backward compatability.
   #  Needs some refactoring a better format for storing results is available.
   if v == :logevidence
     log(c.weight)
+  elseif v==:samples
+    c.value
   else
     map((s)->Base.getindex(s, v), c.value)
   end
@@ -27,6 +39,7 @@ Base.push!(c::Chain, s::Sample) = push!(c.value, s)
 # compute mean(f(x).w), where (x, w) is a weighted sample
 Base.mean(c::Chain, v::Symbol, f::Function) = mapreduce((s)->f(s[v]).*s.weight, +, c.value)
 
+# NOTE: Particle is a type alias of Trace
 Base.keys(p :: Particle) = keys(p.task.storage[:turing_predicts])
 Base.values(p :: Particle) = values(p.task.storage[:turing_predicts])
 Base.getindex(p :: Particle, args...) = getindex(p.task.storage[:turing_predicts], args...)
@@ -54,4 +67,3 @@ end
 # tests
 # tr = Turing.sampler.particles[1]
 # tr = Chain(Turing.sampler.particles)
-

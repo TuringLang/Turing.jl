@@ -19,7 +19,9 @@ end
 
 ## Concrete algorithm implementations.
 
+include("support/resample.jl")
+include("support/replay.jl")
+include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
-include("support/resample.jl")

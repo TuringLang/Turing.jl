@@ -1,16 +1,91 @@
-include("predict.jl")
-include("assume.jl")
-include("observe.jl")
-include("noparam.jl")
-if VERSION < v"0.5" # Depends on ConjugatePriors, which is currently broken in Julia 0.5
-  include("beta-binomial.jl")
+##########################################
+# Master file for running all test cases #
+##########################################
+
+# NOTE: please keep this test list structured when adding new test cases
+# so that we can tell which test case is for which .jl file
+
+testcases = [
+# Turing.jl/
+#   src/
+#     core/
+#       compiler.jl
+          "assume",
+          "observe",
+          "predict",
+          "beta_binomial",
+          "noparam",
+          "opt_param_of_dist",
+#       conditional.jl
+#       container.jl
+          "copy_particle_container",
+#       IArray.jl
+#       intrinsic.jl
+#       io.jl
+          "chain_utility",
+#       util.jl
+          "util",
+#     distributions/
+#       bnp.jl
+#       distributions.jl
+#       transform.jl
+#     samplers/
+#       support/
+#         reply.jl
+            "replay",
+            "priorcontainer",
+#         resample.jl
+            "resample",
+            "particlecontainer",
+#       hmc.jl
+          "multivariate_support_for_hmc",
+#       is.jl
+          "importance_sampling",
+#       pgibbs.jl
+#       sampler.jl
+#       smc.jl
+#     trace/
+#       tarray.jl
+          "tarray",
+          "tarray2",
+          "tarray3",
+#       taskcopy.jl
+          "clonetask",
+#       trace.jl
+          "trace",
+#   Turing.jl
+      "pass_dual_to_dists"
+# NOTE: not comma for the last element
+]
+
+# NOTE: put test cases which only want to be check in version 0.4.x here
+testcases_v04 = [
+  "beta_binomial",
+  "tarray"
+]
+
+# NOTE: put test cases which want to be excluded here
+testcases_excluded = [
+  "tarray2",
+  "multivariate_support_for_hmc"
+]
+
+# Run tests
+println("[runtests.jl] testing starts")
+for t in testcases
+  if ~ (t in testcases_excluded)
+
+    if t in testcases_v04
+      if VERSION < v"0.5"
+        println("[runtests.jl] \"$t.jl\" is running")
+        include(t*".jl");
+        println("[runtests.jl] \"$t.jl\" is successful")
+      end
+    else
+      println("[runtests.jl] \"$t.jl\" is running")
+      include(t*".jl");
+      println("[runtests.jl] \"$t.jl\" is successful")
+    end
+  end
 end
-include("resample.jl")
-include("importance_sampling.jl")
-
-include("test_clonetask.jl")
-
-include("test_tarray.jl")
-
-# include("test_tarray2.jl")
-include("test_particlecontainer.jl")
+println("[runtests.jl] all tests pass")

@@ -13,7 +13,8 @@ type ParticleContainer{T<:Particle}
   vals  :: Array{T,1}
   logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
-  conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
+  # conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
+  conditional :: Void # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
   ParticleContainer(m::Function,n::Int) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
@@ -22,7 +23,7 @@ end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar(pc :: ParticleContainer) = ParticleContainer(pc.model, 0)
+Base.similar{T}(pc :: ParticleContainer{T}) = ParticleContainer{T}(pc.model, 0)
 # pc[i] returns the i'th particle
 Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
@@ -163,8 +164,3 @@ function resample!( pc :: ParticleContainer,
 
   pc
 end
-
-
-
-
-

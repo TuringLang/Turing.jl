@@ -13,7 +13,8 @@ using Distributions
 include("taskcopy.jl")
 include("tarray.jl")
 
-export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros
+export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
+       localcopy
 
 type Trace{T}
   task :: Task
@@ -25,7 +26,8 @@ end
 
 function (::Type{Trace{T}}){T}(f::Function)
   res = Trace{T}();
-  res.task = Task(()->f());
+  # Task(()->f());
+  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end

@@ -8,8 +8,6 @@ macro getvarid(e)
   return parse( getvarid(e) )
 end
 
-dot(x) = dot(x, x)
-
 invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
 
 logit(x) = log(x ./ (1.0 - x))
@@ -39,3 +37,43 @@ using Distributions
 function kl(p::Normal, q::Normal)
   return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 end
+
+function align(x,y)
+  if length(x) < length(y)
+    z = zeros(y)
+    z[1:length(x)] = x
+    x = z
+  elseif length(x) > length(y)
+    z = zeros(x)
+    z[1:length(y)] = y
+    y = z
+  end
+
+  return (x,y)
+end
+
+# REVIEW: this functions is no where used
+# function kl(p :: Categorical, q :: Categorical)
+#   a,b = align(p.p, q.p)
+#   return kl_divergence(a,b)
+# end
+
+#####################################
+# Helper functions for Dual numbers #
+#####################################
+
+function realpart(d)
+  return map(x -> Float64(x.value), d)
+end
+
+function dualpart(d)
+  return map(x -> Float64(x), d.partials.values)
+end
+
+function make_dual(dim, real, idx)
+  z = zeros(dim)
+  z[idx] = 1
+  return Dual(real, tuple(collect(z)...))
+end
+
+export kl, align, realpart, dualpart, make_dual

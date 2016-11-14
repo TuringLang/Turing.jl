@@ -8,7 +8,7 @@ immutable PG <: InferenceAlgorithm
   PG(n1::Int,n2::Int) = new(n1,n2,resampleSystematic,0.5)
 end
 
-assume(spl :: Sampler{PG}, distr :: Distribution)   = randr(current_trace(), distr)
+assume(spl :: Sampler{PG}, distr :: Distribution, p)   = randr(current_trace(), distr)
 
 function Base.run(spl::Sampler{PG})
   chain = Chain()
@@ -18,7 +18,7 @@ function Base.run(spl::Sampler{PG})
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
   for tt = 1:spl.alg.n_iterations
-    dprintln(-1, "[PG]: Iter $(tt) out of $(spl.alg.n_iterations)")
+    mod(tt,10) == 0 && dprintln(-1, "[PG]: Iter $(tt) out of $(spl.alg.n_iterations)")
     spl.particles = ParticleContainer{TraceR}(spl.model)
     if ref_particle == nothing
       push!(spl.particles, spl.alg.n_particles)

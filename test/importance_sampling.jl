@@ -1,10 +1,10 @@
+# Test the importance sampler
+# The test is based on running a reference implementation of a model with the same seed as the importance sampler.
+# Both predictions and logevidence are compared for equality.
+
 using Turing
 using Distributions
 using Base.Test
-
-# testing the importance sampler
-# the test is based on running a reference implementation of a model with the same seed as importance sampler
-# both predictions and logevidence are compared for equality
 
 function logsum(xs :: Vector{Float64})
   largest = maximum(xs)

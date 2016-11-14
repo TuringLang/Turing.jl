@@ -1,4 +1,5 @@
 julia 0.5
 
-Distributions
-ConjugatePriors
+Distributions 0.11.0
+PDMats 0.5.1
+ForwardDiff
