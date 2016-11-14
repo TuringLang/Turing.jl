@@ -4,11 +4,6 @@ using Turing
 using Distributions
 using Base.Test
 
-<<<<<<< HEAD
-# Test the @predict macro on a deterministic model.
-
-=======
->>>>>>> development
 @model testpredict begin
   x = 0
   @predict x
