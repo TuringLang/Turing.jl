@@ -4,6 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.4.svg)](http://pkg.julialang.org/?pkg=Turing)
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable)
 
 [**Go To Turing's Documentation**](http://turingjl.readthedocs.io/)
 
@@ -32,7 +33,7 @@ end
 
 ## Installation
 
-You will need Julia 0.4, which you can get from the official Julia [website](http://julialang.org/downloads/). We recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
+You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/). We recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
 
 Turing is an officially registered Julia package, so the following should work:
 
@@ -42,7 +43,7 @@ Pkg.add("Turing")
 Pkg.test("Turing")
 ```
 
-If Turing can not be located, you can try the following instead:
+If Turing can not be located or you want to use the latest version of Turing, you can try the following instead:
 
 ```julia
 Pkg.clone("https://github.com/yebai/Turing.jl")
