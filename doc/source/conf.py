@@ -158,7 +158,7 @@ html_static_path = ['_static']
 #html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = juliadoc.default_sidebars()
+# html_sidebars = juliadoc.default_sidebars()
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
