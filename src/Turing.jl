@@ -53,7 +53,6 @@ dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 ##################
 include("core/util.jl")
 include("core/compiler.jl")
-include("core/intrinsic.jl")
 include("core/container.jl")
 include("core/io.jl")
 include("samplers/sampler.jl")
