@@ -16,6 +16,7 @@ Contents
 
    replayapi
    samplerapi
+   tarray
    compilerapi
 
 .. toctree::
