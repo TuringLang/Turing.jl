@@ -92,11 +92,12 @@ function Base.run(spl :: Sampler{HMC})
         l = length(spl.priors[k])
         reals = realpart(spl.priors[k])
         val_vect = spl.priors[k]   # get the value vector
+
         if k in key_chunk   # to graidnet variables
           for i = 1:l
             dprintln(5, "making dual...")
             val_vect[i] = make_dual(prior_dim, reals[i], prior_count)
-            dprintln(5, "makie dual done")
+            dprintln(5, "make dual done")
             # Count
             prior_count += 1
           end
@@ -185,7 +186,7 @@ function Base.run(spl :: Sampler{HMC})
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
           for k in keys(spl.priors)
-            spl.priors[k] += ϵ * p[k]
+            spl.priors[k] = Array{Any}(spl.priors[k] + ϵ * p[k])
           end
           val∇E = get_gradient_dict()
           p = half_momentum_step(p, val∇E)
