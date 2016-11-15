@@ -38,7 +38,7 @@ Example
 Installation
 ------------
 
-You will need Julia 0.4, which you can get from the official Julia
+You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia
 `website <http://julialang.org/downloads/>`__. We recommend that you
 install a pre-compiled package, as Turing may not work correctly with
 Julia built form source.
@@ -52,7 +52,7 @@ should work:
     Pkg.add("Turing")
     Pkg.test("Turing")
 
-If Turing can not be located, you can try the following instead:
+If Turing can not be located or you want to use the latest version of Turing, you can try the following instead:
 
 .. code:: julia
 
