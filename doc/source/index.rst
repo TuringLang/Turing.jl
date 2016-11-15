@@ -14,24 +14,26 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: APIs
+
+   replayapi
+   samplerapi
+   compilerapi
+
+.. toctree::
+   :maxdepth: 2
    :caption: Development Notes
 
    language
    compiler
-   sampler
-   coroutines
+   samplerintro
    tarray
    workflow
-
-.. toctree::
-   :maxdepth: 2
-   :caption: APIs
-
-   replayapi
-   compilerapi
 
 .. toctree::
    :maxdepth: 2
    :caption: License
 
    license
+
+

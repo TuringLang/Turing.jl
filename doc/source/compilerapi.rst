@@ -1,4 +1,4 @@
-Macros for Compiler
+Compiler
 =========
 
 .. function:: assume(ex)

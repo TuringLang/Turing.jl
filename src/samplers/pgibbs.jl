@@ -1,5 +1,26 @@
 # Particle Gibbs sampler
 
+doc"""
+    PG(n_particles::Int, n_iterations::Int)
+
+Particle Gibbs sampler.
+
+Usage:
+
+```julia
+PG(100, 100)
+```
+
+Example:
+
+```julia
+@model example begin
+  ...
+end
+
+sample(example, PG(100, 100))
+```
+"""
 immutable PG <: InferenceAlgorithm
   n_particles :: Int
   n_iterations :: Int

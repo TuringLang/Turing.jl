@@ -25,12 +25,16 @@ end
 
 to_gen = Dict(
   "replayapi" => Dict(
-    :title => "Replay",
-    :list  => ["Prior", "PriorArray", "PriorContainer", "addPrior"]
+    :title  =>  "Replay",
+    :list   =>  ["Prior", "PriorArray", "PriorContainer", "addPrior"]
   ),
   "compilerapi" => Dict(
-    :title => "Macros for Compiler",
-    :list  => ["@assume", "@observe", "@predict", "@model"]
+    :title  =>  "Compiler",
+    :list   =>  ["@assume", "@observe", "@predict", "@model"]
+  ),
+  "samplerapi" => Dict(
+    :title  =>  "Sampler",
+    :list   =>  ["IS", "SMC", "PG", "HMC"]
   )
 )
 
@@ -76,20 +80,19 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: APIs
+
+   $api_str
+
+.. toctree::
+   :maxdepth: 2
    :caption: Development Notes
 
    language
    compiler
-   sampler
-   coroutines
+   samplerintro
    tarray
    workflow
-
-.. toctree::
-   :maxdepth: 2
-   :caption: APIs
-
-   $api_str
 
 .. toctree::
    :maxdepth: 2
