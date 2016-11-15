@@ -66,8 +66,7 @@ testcases_v04 = [
 
 # NOTE: put test cases which want to be excluded here
 testcases_excluded = [
-  "tarray2",
-  "multivariate_support_for_hmc"
+  "tarray2"
 ]
 
 # Run tests
