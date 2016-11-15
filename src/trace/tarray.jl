@@ -1,8 +1,28 @@
-# Implementation of data structures that automatically
-#  perform copy-on-write after task copying.
+##########
+# TArray #
+##########
 
-# If current_task is an existing key in s, then return s[current_task].
-# Otherwise, return s[current_task] = s[last_task].
+doc"""
+    TArray{T}(dims, ...)
+
+Implementation of data structures that automatically perform copy-on-write after task copying.
+
+If current_task is an existing key in `s`, then return `s[current_task]`. Otherwise, return `s[current_task] = s[last_task]`.
+
+Usage:
+
+```julia
+TArray(dim)
+```
+
+Example:
+
+```julia
+ta = TArray(4)              # init
+for i in 1:4 ta[i] = i end  # assign
+Array(ta)                   # convert to 4-element Array{Int64,1}: [1, 2, 3, 4]
+```
+"""
 immutable TArray{T,N} <: DenseArray{T,N}
   ref :: Symbol  # object_id
   TArray() = new(gensym())
@@ -91,12 +111,26 @@ Base.ndims(S::TArray) = Base.ndims(task_local_storage(S.ref)[2])
 Base.get(t::Task, S) = S
 Base.get(t::Task, S::TArray) = (t.storage[S.ref][2])
 
-## convenience constructors ##
+##########
+# tzeros #
+##########
 
-"""
+doc"""
      tzeros(dims, ...)
+
 Construct a distributed array of zeros.
 Trailing arguments are the same as those accepted by `TArray`.
+
+```julia
+tzeros(dim)
+```
+
+Example:
+
+```julia
+tz = tzeros(4)              # construct
+Array(tz)                   # convert to 4-element Array{Int64,1}: [0, 0, 0, 0]
+```
 """
 function tzeros(T::Type, dim)
   res = TArray{T,length(dim)}();
@@ -105,6 +139,7 @@ function tzeros(T::Type, dim)
   task_local_storage(res.ref, (t,d))
   res
 end
+
 tzeros{T}(::Type{T}, d1::Integer, drest::Integer...) = tzeros(T, convert(Dims, tuple(d1, drest...)))
 tzeros(d1::Integer, drest::Integer...) = tzeros(Float64, convert(Dims, tuple(d1, drest...)))
 tzeros(d::Dims) = tzeros(Float64, d)

@@ -41,6 +41,10 @@ to_gen = Dict(
   "samplerapi" => Dict(
     :title  =>  "Sampler",
     :list   =>  ["IS", "SMC", "PG", "HMC"]
+  )，
+  "tarray" => Dict(
+    :title  =>  "TArray",
+    :list   =>  ["TArray", "tzeros"]
   )
 )
 
