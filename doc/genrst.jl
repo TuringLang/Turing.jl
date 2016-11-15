@@ -25,32 +25,40 @@ function printrst(io,md)
     end
 end
 
-# Load the package to bind docs
-using Turing
+#########################
+# Main auto-gen routine #
+#########################
 
-# NOTE: this is the to-generate list. Each key-value mapping will be convereted into a .rst file. :title is the title of this .rst file and :list contains APIs to be generated.
-to_gen = Dict(
-  "replayapi" => Dict(
-    :title  =>  "Replay",
-    :list   =>  ["Prior", "PriorArray", "PriorContainer", "addPrior"]
-  ),
-  "compilerapi" => Dict(
-    :title  =>  "Compiler",
-    :list   =>  ["@assume", "@observe", "@predict", "@model"]
-  ),
-  "samplerapi" => Dict(
-    :title  =>  "Sampler",
-    :list   =>  ["IS", "SMC", "PG", "HMC"]
-  ),
-  "tarrayapi" => Dict(
-    :title  =>  "TArray",
-    :list   =>  ["TArray", "tzeros"]
-  ),
-  "chainapi" => Dict(
-    :title  =>  "Chain",
-    :list   => ["Chain", "Sample"]
-  )
-)
+using Turing  # load the package to bind docs
+
+#######################################################################
+# NOTE: this is the to-generate list.                                 #
+# Each key-value mapping will be convereted into a .rst file.         #
+# :title is the title of this .rst file, and                          #
+# :list contains APIs to be generated.                                #
+to_gen = Dict(                                                        #
+  "replayapi" => Dict(                                                #
+    :title  =>  "Replay",                                             #
+    :list   =>  ["Prior", "PriorArray", "PriorContainer", "addPrior"] #
+  ),                                                                  #
+  "compilerapi" => Dict(                                              #
+    :title  =>  "Compiler",                                           #
+    :list   =>  ["@assume", "@observe", "@predict", "@model"]         #
+  ),                                                                  #
+  "samplerapi" => Dict(                                               #
+    :title  =>  "Sampler",                                            #
+    :list   =>  ["IS", "SMC", "PG", "HMC"]                            #
+  ),                                                                  #
+  "tarrayapi" => Dict(                                                #
+    :title  =>  "TArray",                                             #
+    :list   =>  ["TArray", "tzeros"]                                  #
+  ),                                                                  #
+  "chainapi" => Dict(                                                 #
+    :title  =>  "Chain",                                              #
+    :list   => ["Chain", "Sample"]                                    #
+  )                                                                   #
+)                                                                     #
+#######################################################################
 
 # Generate all APIs
 cd(joinpath(dirname(@__FILE__),"source")) do
