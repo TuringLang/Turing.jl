@@ -8,9 +8,17 @@ Contents
    :maxdepth: 2
    :caption: Getting Started
 
-   installation
-   usage
-   demos
+   getstarted
+
+.. toctree::
+   :maxdepth: 2
+   :caption: APIs
+
+   replayapi
+   samplerapi
+   tarrayapi
+   compilerapi
+   chainapi
 
 .. toctree::
    :maxdepth: 2
@@ -18,8 +26,7 @@ Contents
 
    language
    compiler
-   sampler
-   coroutines
+   samplerintro
    tarray
    workflow
 
@@ -28,3 +35,5 @@ Contents
    :caption: License
 
    license
+
+

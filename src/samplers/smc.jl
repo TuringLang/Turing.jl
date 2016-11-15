@@ -1,3 +1,25 @@
+
+doc"""
+    SMC(n_particles::Int)
+
+Sequential Monte Carlo sampler.
+
+Usage:
+
+```julia
+SMC(1000)
+```
+
+Example:
+
+```julia
+@model example begin
+  ...
+end
+
+sample(example, SMC(1000))
+```
+"""
 immutable SMC <: InferenceAlgorithm
   n_particles :: Int
   resampler :: Function

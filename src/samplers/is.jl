@@ -1,3 +1,25 @@
+
+doc"""
+    IS(n_particles::Int)
+
+Importance sampler.
+
+Usage:
+
+```julia
+IS(1000)
+```
+
+Example:
+
+```julia
+@model example begin
+  ...
+end
+
+sample(example, IS(1000))
+```
+"""
 immutable IS <: InferenceAlgorithm
   n_samples :: Int
 end

@@ -1,16 +1,73 @@
-# Some utility functions for extracting results.
+#########################
+# Sampler I/O Interface #
+#########################
 
+##########
+# Sample #
+##########
+
+doc"""
+    Sample(weight::Float64, value::Dict{Symbol,Any})
+
+A wrapper of output samples.
+
+Example:
+
+```julia
+# Define a model
+@model xxx begin
+  ...
+  @predict mu sigma
+end
+
+# Run the inference engine
+chain = sample(xxx, SMC(1000))
+
+sample = chain[:mu][1]  # get the first sample
+sample.weight           # show the weight of this sample
+sample.value            # show the value of this sample (a dictionary)
+```
+"""
 type Sample
-  weight :: Float64 # particle weight
+  weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
 
 Base.getindex(s::Sample, v::Symbol) = Base.getindex(s.value, v)
 
+#########
+# Chain #
+#########
+
+doc"""
+    Chain(weight::Float64, value::Array{Sample})
+
+A wrapper of output trajactory of samplers.
+
+Example:
+
+```julia
+# Define a model
+@model xxx begin
+  ...
+  @predict mu sigma
+end
+
+# Run the inference engine
+chain = sample(xxx, SMC(1000))
+
+chain[:logevidence]   # show the log model evidence
+chain[:mu]            # show the weighted trajactory for :mu
+chain[:sigma]         # show the weighted trajactory for :sigma
+mean(chain[:mu])      # find the mean of :mu
+mean(chain[:sigma])   # find the mean of :sigma
+```
+"""
 type Chain
   weight :: Float64 # log model evidence
   value :: Array{Sample}
 end
+
 Chain() = Chain(0, Vector{Sample}())
 
 function Base.show(io::IO, ch1::Chain)

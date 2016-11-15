@@ -4,6 +4,27 @@ else
   RerunThreshold = 1
 end
 
+doc"""
+    HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
+
+Hamiltonian Monte Carlo sampler.
+
+Usage:
+
+```julia
+HMC(1000, 0.05, 10)
+```
+
+Example:
+
+```julia
+@model example begin
+  ...
+end
+
+sample(example, HMC(1000, 0.05, 10))
+```
+"""
 immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
   lf_size   ::  Float64   # leapfrog step size
