@@ -24,19 +24,22 @@ function printrst(io,md)
 end
 
 to_gen = Dict(
-  "replay" => Dict(
+  "replayapi" => Dict(
     :title => "Replay",
-    :list  => [Prior, PriorArray, PriorContainer, addPrior]
+    :list  => ["Prior", "PriorArray", "PriorContainer", "addPrior"]
+  ),
+  "compilerapi" => Dict(
+    :title => "Macros for Compiler",
+    :list  => ["@assume", "@observe", "@predict", "@model"]
   )
 )
-
 
 cd(joinpath(dirname(@__FILE__),"source")) do
   for fname in keys(to_gen)
     open("$fname.rst","w") do f
       println(f,"$(to_gen[fname][:title])\n=========\n")
-      for fun in to_gen[fname][:list]
-        md = Base.doc(fun)
+      for api in to_gen[fname][:list]
+        md = include_string("@doc $api")
         if isa(md,Markdown.MD)
           isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $D")
 
@@ -49,9 +52,11 @@ cd(joinpath(dirname(@__FILE__),"source")) do
   end
 end
 
-api_str = ""
-for fname in keys(to_gen)
-  api_str *= "$fname\n"
+# Generate API filenames
+fnames = [fname for fname in keys(to_gen)]
+api_str = "$(shift!(fnames))"
+for fname in fnames
+  api_str *= "\n   $fname"
 end
 
 rst = """
@@ -85,6 +90,7 @@ Contents
    :caption: APIs
 
    $api_str
+
 .. toctree::
    :maxdepth: 2
    :caption: License

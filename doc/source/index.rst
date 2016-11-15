@@ -27,12 +27,11 @@ Contents
    :maxdepth: 2
    :caption: APIs
 
-   replay
+   replayapi
+   compilerapi
 
 .. toctree::
    :maxdepth: 2
    :caption: License
 
    license
-
-

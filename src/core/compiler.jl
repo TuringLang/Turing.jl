@@ -1,4 +1,7 @@
-# Helper function
+###################
+# Helper function #
+###################
+
 doc"""
     has_ops(ex)
 
@@ -22,12 +25,32 @@ function has_ops(ex)
   true
 end
 
+##########
+# Macros #
+##########
 
-# Operation for defining the prior
-# Usage:
-# @assume x ~ Dist
-# , where x is a symbol to be used
-# and Dist is a valid distribution from the Distributions package
+doc"""
+    assume(ex)
+
+Operation for defining the prior.
+
+Usage:
+
+```julia
+@assume x ~ Dist
+```
+
+Here `x` is a **symbol** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
+
+Example:
+
+```julia
+@assume x ~ Normal(0, 1)
+@assume x ~ Binomial(0, 1)
+@assume x ~ Normal(0, 1; :static=true)
+@assume x ~ Binomial(0, 1; :param=true)
+```
+"""
 macro assume(ex)
   dprintln(1, "marco assuming...")
   @assert ex.args[1] == Symbol("@~")
@@ -57,10 +80,28 @@ macro assume(ex)
   )
 end
 
-# Operation for defining the likelihood
-# Usage:
-# @observe(x ~ Dist)
-# , where x is a value and Dist is a valid distribution
+doc"""
+    observe(ex)
+
+Operation for defining the likelihood.
+
+Usage:
+
+```julia
+@observe x ~ Dist
+```
+
+Here `x` is a **concrete value** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
+
+Example:
+
+```julia
+@observe x ~ Normal(0, 1)
+@observe x ~ Binomial(0, 1)
+@observe x ~ Normal(0, 1; :static=true)
+@observe x ~ Binomial(0, 1; :param=true)
+```
+"""
 macro observe(ex)
   dprintln(1, "marco observing...")
   @assert ex.args[1] == Symbol("@~")
@@ -91,9 +132,19 @@ macro observe(ex)
   )
 end
 
-# Usage:
-# @predict x y z
-# , where x, y, z are symbols
+doc"""
+    predict(ex...)
+
+Operation for defining the the variable(s) to return.
+
+Usage:
+
+```julia
+@predict x y z
+```
+
+Here `x`, `y`, `z` are symbols.
+"""
 macro predict(ex...)
   dprintln(1, "marco predicting...")
   ex_funcs = Expr(:block)
@@ -113,9 +164,29 @@ macro predict(ex...)
   esc(ex_funcs)
 end
 
+doc"""
+    model(name, fbody)
 
-# Usage:
-# @model f body
+Wrapper for models.
+
+Usage:
+
+```julia
+@model f body
+```
+
+Example:
+
+```julia
+@model gauss begin
+  @assume s ~ InverseGamma(2,3)
+  @assume m ~ Normal(0,sqrt(s))
+  @observe 1.5 ~ Normal(m, sqrt(s))
+  @observe 2.0 ~ Normal(m, sqrt(s))
+  @predict s m
+end
+```
+"""
 macro model(name, fbody)
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
