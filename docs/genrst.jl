@@ -24,14 +24,18 @@ function printrst(io,md)
 end
 
 to_gen = Dict(
-  "replay" => [Prior, PriorArray, PriorContainer, addPrior]
+  "replay" => Dict(
+    :title => "Replay",
+    :list  => [Prior, PriorArray, PriorContainer, addPrior]
+  )
 )
 
 
 cd(joinpath(dirname(@__FILE__),"source")) do
   for fname in keys(to_gen)
     open("$fname.rst","w") do f
-      for fun in to_gen[fname]
+      println(f,"$(to_gen[fname][:title])\n=========\n")
+      for fun in to_gen[fname][:list]
         md = Base.doc(fun)
         if isa(md,Markdown.MD)
           isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $D")

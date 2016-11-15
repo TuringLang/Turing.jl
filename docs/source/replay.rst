@@ -1,3 +1,6 @@
+Replay
+=========
+
 .. function:: Prior(sym)
 
    A wrapper of symbol type representing priors.
