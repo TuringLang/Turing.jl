@@ -76,4 +76,6 @@ function make_dual(dim, real, idx)
   return Dual(real, tuple(collect(z)...))
 end
 
+Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
+
 export kl, align, realpart, dualpart, make_dual

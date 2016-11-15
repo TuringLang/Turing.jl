@@ -1,14 +1,11 @@
 module Turing
 
-# Code associated with running probabilistic programs as tasks
+# Code associated with running probabilistic programs as tasks. REVIEW: can we find a way to move this to where the other included files locate.
 include("trace/trace.jl")
 
 import Distributions: sample        # to orverload sample()
-using ForwardDiff: Dual, npartials
+using ForwardDiff: Dual, npartials  # for automatic differentiation
 using Turing.Traces
-
-# TODO: move this to seperate AD module
-Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
 
 ###########
 # Warning #################################
@@ -23,6 +20,10 @@ StatsFuns.gammalogpdf(k::Real, θ::Real, x::Real) = -log(gamma(k)) - k * log(θ)
 
 ###########################################
 
+#################
+# Turing module #
+#################
+
 # Turing essentials - modelling macros and inference algorithms
 export @model, @assume, @observe, @predict, InferenceAlgorithm, HMC, IS, SMC, PG, sample, Chain, Sample
 
@@ -32,16 +33,24 @@ export TArray, tzeros, localcopy, IArray
 # Debugging helpers
 export dprintln
 
-## global data structures
+# Global data structures
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
 global debug_level = 0
 
-# debugging print function: The first argument controls the verbosity of message,
-#  e.g. larger v leads to more verbose debugging messages.
+##########
+# Helper #
+##########
+doc"""
+    dprintln(v, args...)
+
+Debugging print function: The first argument controls the verbosity of message, e.g. larger v leads to more verbose debugging messages.
+"""
 dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
 
-# Inference code
+##################
+# Inference code #
+##################
 include("core/util.jl")
 include("core/compiler.jl")
 include("core/intrinsic.jl")
