@@ -23,20 +23,74 @@ function printrst(io,md)
     end
 end
 
-API_list = [Prior, PriorArray, PriorContainer, addPrior]
+to_gen = Dict(
+  "replay" => [Prior, PriorArray, PriorContainer, addPrior]
+)
+
 
 cd(joinpath(dirname(@__FILE__),"source")) do
-  for API in API_list
-    fname = replace("$(string(API))", "Turing.", "")
+  for fname in keys(to_gen)
     open("$fname.rst","w") do f
-      md = Base.doc(API)
-      if isa(md,Markdown.MD)
-        isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $D")
+      for fun in to_gen[fname]
+        md = Base.doc(fun)
+        if isa(md,Markdown.MD)
+          isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $D")
 
-        printrst(f,md)
-      else
-        warn("$D is not documented.")
+          printrst(f,md)
+        else
+          warn("$D is not documented.")
+        end
       end
     end
+  end
+end
+
+api_str = ""
+for fname in keys(to_gen)
+  api_str *= "$fname\n"
+end
+
+rst = """
+Welcome to Turing.jl's documentation!
+=====================================
+
+Contents
+^^^^^^^^
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting Started
+
+   installation
+   usage
+   demos
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Development Notes
+
+   language
+   compiler
+   sampler
+   coroutines
+   tarray
+   workflow
+
+.. toctree::
+   :maxdepth: 2
+   :caption: APIs
+
+   $api_str
+.. toctree::
+   :maxdepth: 2
+   :caption: License
+
+   license
+
+"""
+
+cd(joinpath(dirname(@__FILE__),"source")) do
+  open("index.rst","w") do f
+    println(f,rst)
   end
 end

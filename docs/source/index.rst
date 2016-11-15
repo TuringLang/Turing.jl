@@ -25,6 +25,14 @@ Contents
 
 .. toctree::
    :maxdepth: 2
+   :caption: APIs
+
+   replay
+
+.. toctree::
+   :maxdepth: 2
    :caption: License
 
    license
+
+
