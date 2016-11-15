@@ -74,9 +74,7 @@ Contents
    :maxdepth: 2
    :caption: Getting Started
 
-   installation
-   usage
-   demos
+   getstarted
 
 .. toctree::
    :maxdepth: 2
