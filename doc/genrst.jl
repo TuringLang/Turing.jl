@@ -1,4 +1,6 @@
-using Turing
+####################
+# Helper functions #
+####################
 
 if VERSION < v"0.5.0-"
     function Markdown.rstinline(io::IO, md::Markdown.Link)
@@ -23,6 +25,10 @@ function printrst(io,md)
     end
 end
 
+# Load the package to bind docs
+using Turing
+
+# NOTE: this is the to-generate list. Each key-value mapping will be convereted into a .rst file. :title is the title of this .rst file and :list contains APIs to be generated.
 to_gen = Dict(
   "replayapi" => Dict(
     :title  =>  "Replay",
@@ -38,6 +44,7 @@ to_gen = Dict(
   )
 )
 
+# Generate all APIs
 cd(joinpath(dirname(@__FILE__),"source")) do
   for fname in keys(to_gen)
     open("$fname.rst","w") do f
@@ -63,6 +70,7 @@ for fname in fnames
   api_str *= "\n   $fname"
 end
 
+# Generate index.rst
 rst = """
 Welcome to Turing.jl's documentation!
 =====================================
