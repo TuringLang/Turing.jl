@@ -17,3 +17,8 @@ for i in 1:4 ta5[i] = i end
 @test Array(ta5) == [1, 2, 3, 4]
 
 @test Array(tzeros(4)) == zeros(4)
+
+ta6 = TArray{Float64}(4);
+for i in 1:4 ta6[i] = i / 10 end
+@test ta6[1] == 0.1
+@test Array(ta6) == [0.1, 0.2, 0.3, 0.4]
