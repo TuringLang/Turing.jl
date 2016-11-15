@@ -42,9 +42,13 @@ to_gen = Dict(
     :title  =>  "Sampler",
     :list   =>  ["IS", "SMC", "PG", "HMC"]
   ),
-  "tarray" => Dict(
+  "tarrayapi" => Dict(
     :title  =>  "TArray",
     :list   =>  ["TArray", "tzeros"]
+  ),
+  "chainapi" => Dict(
+    :title  =>  "Chain",
+    :list   => ["Chain", "Sample"]
   )
 )
 
@@ -56,7 +60,7 @@ cd(joinpath(dirname(@__FILE__),"source")) do
       for api in to_gen[fname][:list]
         md = include_string("@doc $api")
         if isa(md,Markdown.MD)
-          isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $D")
+          isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $api")
 
           printrst(f,md)
         else

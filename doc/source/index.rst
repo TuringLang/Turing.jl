@@ -16,8 +16,9 @@ Contents
 
    replayapi
    samplerapi
-   tarray
+   tarrayapi
    compilerapi
+   chainapi
 
 .. toctree::
    :maxdepth: 2
