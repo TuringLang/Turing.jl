@@ -37,10 +37,6 @@ using Turing  # load the package to bind docs
 # :title is the title of this .rst file, and                          #
 # :list contains APIs to be generated.                                #
 to_gen = Dict(                                                        #
-  "replayapi" => Dict(                                                #
-    :title  =>  "Replay",                                             #
-    :list   =>  ["Prior", "PriorArray", "PriorContainer", "addPrior"] #
-  ),                                                                  #
   "compilerapi" => Dict(                                              #
     :title  =>  "Compiler",                                           #
     :list   =>  ["@assume", "@observe", "@predict", "@model"]         #

@@ -12,23 +12,39 @@ The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contri
 
 # Installation
 
+To use Turing, you need install Julia first and then install Turing.
+
 ## 1) Install Julia
 
-You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/).
+You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from [the official Julia website](http://julialang.org/downloads/).
+
+It provides three options for users
+
+1. A command line version [Julia/downloads](http://julialang.org/downloads/)
+2. A community maintained IDE [Juno](http://www.junolab.org/)
+3. [JuliaBox.com](https://www.juliabox.com/) - a Jupyter notebook in the browser
+
+For command line version, we recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
+
+Juno also needs the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.
+
+JuliaBox is a free-installed Jupyter notebook for Julia. You can follow the following section to give a shot to Turing without installing Julia on your machine in few seconds.
 
 ## 2) Install Turing
 
-Turing is an officially registered Julia package, so the following should work:
+Turing is an officially registered Julia package, so the following should install a stable version of Turing:
 
 ```julia
 Pkg.update()
 Pkg.add("Turing")
+Pkg.build("Turing")
 Pkg.test("Turing")
 ```
 
-If you want to use the latest version of Turing, you can try the following instead:
+If you want to use the latest version of Turing with some experimental samplers, you can try the following instead:
 
 ```julia
+Pkg.update()
 Pkg.clone("Turing")
 Pkg.build("Turing")
 Pkg.test("Turing")
@@ -59,15 +75,21 @@ chain = sample(gaussdemo, SMC(500))
 chain = sample(gaussdemo, PG(10,500))
 chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 ```
+
+The arguments for each sampler are
+
+* SMC: number of particles
+* PG: number of praticles, number of iterations
+* HMC: number of samples, leapfrog step size, leapfrog step numbers
+
 # Citing Turing
 
-To cite Turing, please reference the technical report. Sample BibTeX entry is given below:
+To cite Turing, please refer the technical report. Sample BibTeX entry is given below:
 
 ```
 @ARTICLE{Turing2016,
-    author = {Ge, Hong and {\'S}cibior, Adam and Xu, Kai and
-    Ghahramani, Zoubin},
-    title = "{Turing: A fast imperative probabilistic programming language",
+    author = {Ge, Hong and {\'S}cibior, Adam and Xu, Kai and Ghahramani, Zoubin},
+    title = "{Turing: A fast imperative probabilistic programming language.}",
     year = 2016,
     month = jun
 }

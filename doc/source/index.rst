@@ -14,7 +14,6 @@ Contents
    :maxdepth: 2
    :caption: APIs
 
-   replayapi
    samplerapi
    tarrayapi
    compilerapi
