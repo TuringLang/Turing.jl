@@ -1,6 +1,6 @@
 # Turing.jl
 
-Turing is a Julia library for (universal) probabilistic programming. 
+Turing is a Julia library for (universal) probabilistic programming.
 The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contributors) (in alphabetical order) is [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx). Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do contact us.
 
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
@@ -12,9 +12,9 @@ The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contri
 
 # Installation
 
-## 1) Install Julia 
+## 1) Install Julia
 
-You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/). 
+You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/).
 
 ## 1) Install Turing
 
@@ -41,8 +41,8 @@ If all tests pass, you're ready to start using Turing.
 A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros illustrated below. Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC).
 
 ```julia
+# Define a simple Normal model with unknown mean and variance.
 @model gaussdemo begin
-  # Define a simple Normal model with unknown mean and variance.
   @assume s ~ InverseGamma(2,3)
   @assume m ~ Normal(0,sqrt(s))
   @observe 1.5 ~ Normal(m, sqrt(s))
@@ -54,18 +54,18 @@ end
 Inference methods are functions which take the probabilistic program as one of the arguments.
 
 ```julia
-#  run sampler, collect results
+#  Run sampler, collect results
 chain = sample(gaussdemo, SMC(500))
 chain = sample(gaussdemo, PG(10,500))
 chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 ```
 # Citing Turing
 
-To cite GPflow, please reference the Technical report. Sample Bibtex is given below:
+To cite Turing, please reference the technical report. Sample bibtex entry is given below:
 
 ```
 @ARTICLE{Turing2016,
-    author = {Ge, Hong and Scibior, Adam and Xu, Kai and 
+    author = {Ge, Hong and Scibior, Adam and Xu, Kai and
     Ghahramani, Zoubin},
     title = "{Turing: A fast imperative probabilistic programming language",
     year = 2016,
