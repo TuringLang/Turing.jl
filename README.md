@@ -61,11 +61,11 @@ chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 ```
 # Citing Turing
 
-To cite Turing, please reference the technical report. Sample bibtex entry is given below:
+To cite Turing, please reference the technical report. Sample BibTeX entry is given below:
 
 ```
 @ARTICLE{Turing2016,
-    author = {Ge, Hong and Scibior, Adam and Xu, Kai and
+    author = {Ge, Hong and Ścibior, Adam and Xu, Kai and
     Ghahramani, Zoubin},
     title = "{Turing: A fast imperative probabilistic programming language",
     year = 2016,
