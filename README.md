@@ -16,13 +16,14 @@ The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contri
 
 You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/).
 
-## 1) Install Turing
+## 2) Install Turing
 
 Turing is an officially registered Julia package, so the following should work:
 
 ```julia
 Pkg.update()
 Pkg.add("Turing")
+Pkg.build("Turing")
 Pkg.test("Turing")
 ```
 
@@ -65,9 +66,8 @@ To cite Turing, please reference the technical report. Sample BibTeX entry is gi
 
 ```
 @ARTICLE{Turing2016,
-    author = {Ge, Hong and {\'S}cibior, Adam and Xu, Kai and
-    Ghahramani, Zoubin},
-    title = "{Turing: A fast imperative probabilistic programming language",
+    author = {Ge, Hong and {\'S}cibior, Adam and Xu, Kai and Ghahramani, Zoubin},
+    title = "{Turing: A fast imperative probabilistic programming language.}",
     year = 2016,
     month = jun
 }
