@@ -26,7 +26,7 @@ Pkg.add("Turing")
 Pkg.test("Turing")
 ```
 
-If Turing can not be located or you want to use the latest version of Turing, you can try the following instead:
+If you want to use the latest version of Turing, you can try the following instead:
 
 ```julia
 Pkg.clone("https://github.com/yebai/Turing.jl")
@@ -52,6 +52,7 @@ end
 ```
 
 Inference methods are functions which take the probabilistic program as one of the arguments.
+
 ```julia
 #  run sampler, collect results
 chain = sample(gaussdemo, SMC(500))
