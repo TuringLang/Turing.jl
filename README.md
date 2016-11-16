@@ -32,7 +32,7 @@ Pkg.test("Turing")
 
 If all tests pass, you're ready to start using Turing.
 
-### Example
+### Simple Example
 
 A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros illustrated below. Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC).
 
@@ -52,7 +52,7 @@ Inference methods are functions which take the probabilistic program as one of t
 #  run sampler, collect results
 chain = sample(gaussdemo, SMC(500))
 chain = sample(gaussdemo, PG(10,500))
-chain = sample(gaussdemo, HMC(10,500))
+chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 ```
 
 ### Relevant papers
