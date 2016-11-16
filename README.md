@@ -67,7 +67,7 @@ To cite GPflow, please reference the Technical report. Sample Bibtex is given be
 @ARTICLE{Turing2016,
     author = {Ge, Hong and Scibior, Adam and Xu, Kai and 
     Ghahramani, Zoubin},
-    title = "{Turing: Turing: A fast imperative probabilistic programming language",
+    title = "{Turing: A fast imperative probabilistic programming language",
     year = 2016,
     month = jun
 }
