@@ -55,6 +55,10 @@ Juno also needs the command line version installed. This IDE is recommended for 
 
 JuliaBox is a free-installed Jupyter notebook for Julia. You can follow the following section to give a shot to Turing without installing Julia on your machine in few seconds.
 
+  **IMPORTANT**: as JuliaBox is still in beta version, it has a bug which will cause Turing fail to build from Jupyter. For installation of Turing on JuliaBox, please go to ``Console`` tab (from the navigation bar on the top), run ``PATH=/opt/julia-0.5.0/bin:$PATH; export PATH`` and install Turing from terminal (see next section).
+  
+  **TIP**: you can copy these commands from here and paste it into JuliaBox by right click on the virtual terminal and choose paste from browser.
+
 Turing
 ~~~~~~
 
