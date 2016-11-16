@@ -40,8 +40,6 @@ build_script:
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
       Pkg.update(); 
-      # Pkg.add(\"ConjugatePriors\"); Pkg.checkout(\"ConjugatePriors\", \"master\"); 
-      # Pkg.add(\"PDMats\"); Pkg.checkout(\"PDMats\", \"master\"); 
       Pkg.clone(pwd(), \"Turing\"); 
       Pkg.build(\"Turing\")"
 
