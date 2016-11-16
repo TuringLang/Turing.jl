@@ -10,9 +10,13 @@ The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contri
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Documentation Status](https://readthedocs.org/projects/turingjl/badge/?version=latest)](http://turingjl.readthedocs.io/?badge=latest)
 
-## Installation
+# Installation
+
+## 1) Install Julia 
 
 You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from the official Julia [website](http://julialang.org/downloads/). 
+
+## 1) Install Turing
 
 Turing is an officially registered Julia package, so the following should work:
 
@@ -32,7 +36,7 @@ Pkg.test("Turing")
 
 If all tests pass, you're ready to start using Turing.
 
-### Simple Example
+## 3) Simple Example
 
 A Turing probabilistic program is just a normal Julia program, wrapped in a `@model` macro, that uses some of the special macros illustrated below. Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC).
 
@@ -54,7 +58,16 @@ chain = sample(gaussdemo, SMC(500))
 chain = sample(gaussdemo, PG(10,500))
 chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 ```
+# Citing Turing
 
-### Relevant papers
-1. Ghahramani, Zoubin. "Probabilistic machine learning and artificial intelligence." Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
-2. Ge, Hong, Adam Scibior, and Zoubin Ghahramani "Turing: A fast imperative probabilistic programming language." (In submission).
+To cite GPflow, please reference the Technical report. Sample Bibtex is given below:
+
+```
+@ARTICLE{Turing2016,
+    author = {Ge, Hong and Scibior, Adam and Xu, Kai and 
+    Ghahramani, Zoubin},
+    title = "{Turing: Turing: A fast imperative probabilistic programming language",
+    year = 2016,
+    month = jun
+}
+```
