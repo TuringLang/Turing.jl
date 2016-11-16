@@ -112,7 +112,7 @@ Inference methods are functions which take the probabilistic program as one of t
     chain = sample(gaussdemo, PG(10,500))
     chain = sample(gaussdemo, HMC(1000, 0.1, 5))
 
-The arguments for each sampler is
+The arguments for each sampler are
 
 * SMC: number of particles
 * PG: number of praticles, number of iterations
