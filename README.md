@@ -29,7 +29,7 @@ Pkg.test("Turing")
 If you want to use the latest version of Turing, you can try the following instead:
 
 ```julia
-Pkg.clone("https://github.com/yebai/Turing.jl")
+Pkg.clone("Turing")
 Pkg.build("Turing")
 Pkg.test("Turing")
 ```
