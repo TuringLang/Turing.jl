@@ -1,6 +1,7 @@
 # Turing.jl
 
 Turing is a Julia library for (universal) probabilistic programming.
+It was originally created and is now managed by Hong Ge. 
 The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contributors) is [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx). Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch.
 
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
