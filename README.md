@@ -1,7 +1,7 @@
 # Turing.jl
 
 Turing is a Julia library for (universal) probabilistic programming.
-The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contributors) is [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx). Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do contact us.
+The full list of [contributors](https://github.com/yebai/Turing.jl/graphs/contributors) is [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx). Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch.
 
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/master?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/master)
@@ -28,7 +28,7 @@ For command line version, we recommend that you install a version downloaded fro
 
 Juno also needs the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.
 
-JuliaBox is a free-installed Jupyter notebook for Julia. You can follow the following section to give a shot to Turing without installing Julia on your machine in few seconds.
+JuliaBox provides a pre-installed Jupyter notebook for Julia. You can take a shot at Turing without installing Julia on your machine in few seconds.
 
 ## 2) Install Turing
 
@@ -41,7 +41,7 @@ Pkg.build("Turing")
 Pkg.test("Turing")
 ```
 
-If you want to use the latest version of Turing with some experimental samplers, you can try the following instead:
+If you want to use the latest version of Turing with some experimental features, you can try the following instead:
 
 ```julia
 Pkg.update()
@@ -84,7 +84,7 @@ The arguments for each sampler are
 
 # Citing Turing
 
-To cite Turing, please refer the technical report. Sample BibTeX entry is given below:
+To cite Turing, please refer to the technical report. Sample BibTeX entry is given below:
 
 ```
 @ARTICLE{Turing2016,
