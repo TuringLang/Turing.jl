@@ -24,7 +24,7 @@ It provides three options for users
 2. A community maintained IDE [Juno](http://www.junolab.org/)
 3. [JuliaBox.com](https://www.juliabox.com/) - a Jupyter notebook in the browser
 
-For command line version, we recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
+For command line version, we recommend that you install a version downloaded from the [official website](http://julialang.org/downloads/), as Turing may not work correctly with Julia provided by other sources (e.g. Turing does not work with Julia installed via apt-get).
 
 Juno also needs the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.
 
