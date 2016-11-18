@@ -249,9 +249,12 @@ end
 
 function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
   dprintln(2, "assuming...")
+  # 1. Gen priors and vectorize if necessary
+
   # TODO: Change the first running condition
   # If it's the first time running the program
   if spl.first
+    dprintln(2, "generating priors...")
     # Generate a new prior
     r = rand(d)
     dim = length(r)
@@ -260,28 +263,33 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
     elseif isa(r, Vector)
       val = Vector{Any}(map(x -> Dual(x), r))
     elseif isa(r, Array)
-      val = Array{Any,2}(map(x -> Dual(x), r))
+      val = Vector{Any}(map(x -> Dual(x), vec(r)))
     end
     # Store the generated prior
+    print(prior)
     addPrior(spl.priors, prior, val)
   # If not the first time
   else
     # Fetch the existing prior
+    dprintln(2, "fetching priors...")
+
     val = spl.priors[prior]
   end
 
-
-  if isa(val, Array)
+  # 2. reconstruct priors
+  dprintln(2, "reconstructing priors...")
+  if prior.typ != "univarite"
     if length(val) == 1
       # Turn Array{Any} to Any if necessary (this is due to randn())
       val = val[1]
-    elseif isa(val, Vector)
+    elseif prior.typ == "multivarite"
       # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
       T = typeof(val[1])
       val = Vector{T}(val)
-    else
+    elseif prior.typ == "matrixvarite"
       T = typeof(val[1])
-      val = Array{T, 2}(val)
+      dim = Int(sqrt(length(val)))
+      val = Array{T, 2}(reshape(val, dim, dim))
     end
   end
 

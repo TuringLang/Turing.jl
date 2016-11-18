@@ -36,7 +36,7 @@ export dprintln
 # Global data structures
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
-global debug_level = 0
+global debug_level = 3
 
 ##########
 # Helper #

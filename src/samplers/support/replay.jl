@@ -92,9 +92,12 @@ strp = string(p)
 immutable Prior
   sym       ::    Symbol
   name      ::    String
-  typ       ::    Symbol
+  typ       ::    String
   function Prior(sym)
-    new(sym, "", symbol(""))
+    new(sym, "unknown", "unknown")
+  end
+  function Prior(sym, name, typ)
+    new(sym, name, typ)
   end
 end
 

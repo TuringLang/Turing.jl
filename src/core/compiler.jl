@@ -74,7 +74,7 @@ macro assume(ex)
       $(ex.args[2]) = Turing.assume(
         Turing.sampler,
         $(ex.args[3]),    # Distribution
-        Prior(Symbol($(string(sym)))) # TODO: pass var name to Prior
+        Prior(Symbol($(string(sym)), "", typeof($(ex.args[3])))) # TODO: pass var name to Prior
       )
     end
   )
