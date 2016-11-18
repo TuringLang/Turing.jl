@@ -34,7 +34,7 @@ end
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC
   model       :: Function
-  priors      :: PriorContainer
+  priors      :: GradientInfo
   samples     :: Array{Sample}
   logjoint    :: Dual
   predicts    :: Dict{Symbol, Any}
@@ -48,7 +48,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
     end
     logjoint = Dual(0)
     predicts = Dict{Symbol, Any}()
-    priors = PriorContainer()
+    priors = GradientInfo()
     new(alg, model, priors, samples, logjoint, predicts, true)
   end
 end

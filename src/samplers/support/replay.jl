@@ -1,4 +1,4 @@
-export Prior, PriorArray, PriorContainer, addPrior
+export Prior, PriorArray, GradientInfo, addPrior
 
 doc"""
     PriorArray(array, count, currSetIdx, currGetIdx)
@@ -106,7 +106,7 @@ function Base.string(p::Prior)
 end
 
 doc"""
-    PriorContainer()
+    GradientInfo()
 
 A container to store priors based on dictionary.
 
@@ -115,7 +115,7 @@ This type is basically a dictionary supporting adding new priors by creating a P
 Usage:
 
 ```julia
-pc = PriorContainer()
+pc = GradientInfo()
 p1 = Prior(:a)
 p2 = Prior(:b)
 
@@ -144,21 +144,21 @@ pc[p1]    # 7
 keys(pc)  # create a key interator in the container, i.e. all the priors
 ```
 """
-type PriorContainer
+type GradientInfo
   container   ::    Dict{Prior, PriorArray}
-  function PriorContainer()
+  function GradientInfo()
     container = Dict{Prior, PriorArray}()
     new(container)
   end
 end
 
 doc"""
-    addPrior(pc::PriorContainer, idx::Prior, val)
+    addPrior(pc::GradientInfo, idx::Prior, val)
 
 Add a *new* value of a given prior to the container.
 *new* here means force appending to the end of the corresponding array of the prior.
 """
-function addPrior(pc::PriorContainer, idx::Prior, val)
+function addPrior(pc::GradientInfo, idx::Prior, val)
   if haskey(pc.container, idx)
     add(pc.container[idx], val)
   else
@@ -168,30 +168,30 @@ function addPrior(pc::PriorContainer, idx::Prior, val)
 end
 
 doc"""
-    Base.getindex(pc::PriorContainer, idx::Prior)
+    Base.getindex(pc::GradientInfo, idx::Prior)
 
 Make the prior container support indexing with `[]`.
 """
-function Base.getindex(pc::PriorContainer, idx::Prior)
-  @assert haskey(pc.container, idx) "PriorContainer has no $idx."
+function Base.getindex(pc::GradientInfo, idx::Prior)
+  @assert haskey(pc.container, idx) "GradientInfo has no $idx."
   return get(pc.container[idx])
 end
 
 doc"""
-    Base.setindex!(pc::PriorContainer, val, idx::Prior)
+    Base.setindex!(pc::GradientInfo, val, idx::Prior)
 
 Make the prior container support assignment with `[]`.
 """
-function Base.setindex!(pc::PriorContainer, val, idx::Prior)
-  @assert haskey(pc.container, idx) "PriorContainer has no $idx."
+function Base.setindex!(pc::GradientInfo, val, idx::Prior)
+  @assert haskey(pc.container, idx) "GradientInfo has no $idx."
   set(pc.container[idx], val)
 end
 
 doc"""
-    Base.keys(pc::PriorContainer)
+    Base.keys(pc::GradientInfo)
 
 Return a key interator in the container, i.e. all the priors.
 """
-function Base.keys(pc::PriorContainer)
+function Base.keys(pc::GradientInfo)
   return keys(pc.container)
 end
