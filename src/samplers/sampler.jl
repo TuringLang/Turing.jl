@@ -1,5 +1,6 @@
 abstract InferenceAlgorithm{P}
 abstract Sampler{T<:InferenceAlgorithm}
+abstract GradientSampler{T} <: Sampler{T}
 
 doc"""
     ParticleSampler{T}

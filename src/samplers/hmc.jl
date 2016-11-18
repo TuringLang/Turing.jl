@@ -31,7 +31,7 @@ immutable HMC <: InferenceAlgorithm
   lf_num    ::  Int64     # leapfrog step number
 end
 
-type HMCSampler{HMC} <: Sampler{HMC}
+type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC
   model       :: Function
   priors      :: PriorContainer

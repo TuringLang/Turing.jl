@@ -1,5 +1,5 @@
 doc"""
-    get_gradient_dict(spl :: Sampler)
+    get_gradient_dict(spl :: GradientSampler)
 
 Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint. This function uses chunk-wise forward AD with a chunk of size 10, which is limited by the ForwardDiff package.
 
