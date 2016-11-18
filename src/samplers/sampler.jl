@@ -23,13 +23,6 @@ type ParticleSampler{T} <: Sampler{T}
   ParticleSampler(m :: Function, a :: T) = (s = new(); s.alg = a; s.model = m; s)
 end
 
-# TODO: add comments
-type GradientSampler{T} <: Sampler{T}
-  alg         :: T
-  model       :: Function
-  priors      :: PriorContainer
-end
-
 # Concrete algorithm implementations.
 include("support/resample.jl")
 include("support/ad.jl")
