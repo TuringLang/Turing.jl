@@ -257,8 +257,10 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
     dim = length(r)
     if dim == 1
       val = Vector{Any}([Dual(r)])
-    else
+    elseif isa(r, Vector)
       val = Vector{Any}(map(x -> Dual(x), r))
+    elseif isa(r, Array)
+      val = Array{Any,2}(map(x -> Dual(x), r))
     end
     # Store the generated prior
     addPrior(spl.priors, prior, val)
@@ -267,14 +269,19 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
     # Fetch the existing prior
     val = spl.priors[prior]
   end
+
+
   if isa(val, Array)
     if length(val) == 1
       # Turn Array{Any} to Any if necessary (this is due to randn())
       val = val[1]
-    else
-      # Turn Array{Any} to Array{T} if necessary (this is due to an update in Distributions.jl)
+    elseif isa(val, Vector)
+      # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
       T = typeof(val[1])
       val = Vector{T}(val)
+    else
+      T = typeof(val[1])
+      val = Array{T, 2}(val)
     end
   end
 
