@@ -110,7 +110,7 @@ doc"""
 
 A container to store priors based on dictionary.
 
-This type is basically a dictionary supporting adding new priors by creating a PriorArray and indexing using pc[] syntax
+This type is basically a dictionary supporting adding new priors by creating a PriorArray and indexing using pc[] syntax.
 
 Usage:
 
