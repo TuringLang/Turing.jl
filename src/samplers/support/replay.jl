@@ -91,8 +91,10 @@ strp = string(p)
 """
 immutable Prior
   sym       ::    Symbol
+  name      ::    String
+  typ       ::    Symbol
   function Prior(sym)
-    new(sym)
+    new(sym, "", symbol(""))
   end
 end
 
