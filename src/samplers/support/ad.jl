@@ -8,21 +8,21 @@ Example:
 ```julia
 function Base.run(spl :: Sampler{HMC})
   ...
-  val∇E = get_gradient_dict(spl)
+  val∇E = get_gradient_dict(spl.priors, spl.model, spl.logjoint)
   ...
 end
 ```
 """
-function get_gradient_dict(spl :: Sampler)
+function get_gradient_dict(priors::GradientInfo, model::Function, logjoint::LogJoint)
   # Initialisation
   val∇E = Dict{Any, Any}()
-  # Split keys(spl.priors) into 10, 10, 10, m-size chunks
+  # Split keys(priors) into 10, 10, 10, m-size chunks
   dprintln(5, "making chunks...")
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
-  for k in keys(spl.priors)
-    l = length(spl.priors[k])
+  for k in keys(priors)
+    l = length(priors[k])
     if prior_dim + l > 10
       # Store the old chunk
       push!(prior_key_chunks, (key_chunk, prior_dim))
@@ -46,10 +46,10 @@ function get_gradient_dict(spl :: Sampler)
     # Set dual part correspondingly
     dprintln(5, "set dual...")
     prior_count = 1
-    for k in keys(spl.priors)
-      l = length(spl.priors[k])
-      reals = realpart(spl.priors[k])
-      val_vect = spl.priors[k]   # get the value vector
+    for k in keys(priors)
+      l = length(priors[k])
+      reals = realpart(priors[k])
+      val_vect = priors[k]   # get the value vector
 
       if k in key_chunk   # to graidnet variables
         for i = 1:l
@@ -67,25 +67,27 @@ function get_gradient_dict(spl :: Sampler)
     end
     # Run the model
     dprintln(5, "run model...")
-    consume(Task(spl.model))
+    consume(Task(model))
     # Collect gradient
     dprintln(5, "collect dual...")
     prior_count = 1
     for k in key_chunk
-      l = length(spl.priors[k])
-      reals = realpart(spl.priors[k])
+      dprintln(6, "for each prior...")
+      l = length(priors[k])
+      reals = realpart(priors[k])
       # To store the gradient vector
       g = zeros(l)
       for i = 1:l
         # Collect
-        g[i] = dualpart(-spl.logjoint)[prior_count]
+        dprintln(7, "taking from logjoint...")
+        g[i] = dualpart(-logjoint.val)[prior_count]
         # Count
         prior_count += 1
       end
       val∇E[k] = g
     end
     # Reset logjoint
-    spl.logjoint = Dual(0)
+    logjoint.val = Dual(0)
   end
   # Return
   return val∇E

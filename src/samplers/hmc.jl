@@ -36,7 +36,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   model       :: Function
   priors      :: GradientInfo
   samples     :: Array{Sample}
-  logjoint    :: Dual
+  logjoint    :: LogJoint
   predicts    :: Dict{Symbol, Any}
   first       :: Bool
 
@@ -46,7 +46,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    logjoint = Dual(0)
+    logjoint = LogJoint(Dual(0))
     predicts = Dict{Symbol, Any}()
     priors = GradientInfo()
     new(alg, model, priors, samples, logjoint, predicts, true)
@@ -64,7 +64,7 @@ function Base.run(spl :: Sampler{HMC})
   # Run the model for the first time
   dprintln(2, "initialising...")
   consume(Task(spl.model))
-  spl.logjoint = Dual(0)
+  spl.logjoint.val = Dual(0)
   spl.first = false
   rerun_num = 0
   # Store the first predicts
@@ -97,11 +97,11 @@ function Base.run(spl :: Sampler{HMC})
           oldH += p[k]' * p[k] / 2
         end
         consume(Task(spl.model))
-        oldH += realpart(-spl.logjoint)
-        spl.logjoint = Dual(0)
+        oldH += realpart(-spl.logjoint.val)
+        spl.logjoint.val = Dual(0)
         # Get gradient dict
         dprintln(4, "first gradient...")
-        val∇E = get_gradient_dict(spl)
+        val∇E = get_gradient_dict(spl.priors, spl.model, spl.logjoint)
         dprintln(4, "leapfrog...")
         # 'leapfrog' for each prior
         for t in 1:τ
@@ -110,7 +110,7 @@ function Base.run(spl :: Sampler{HMC})
           for k in keys(spl.priors)
             spl.priors[k] = Array{Any}(spl.priors[k] + ϵ * p[k])
           end
-          val∇E = get_gradient_dict(spl)
+          val∇E = get_gradient_dict(spl.priors, spl.model, spl.logjoint)
           p = half_momentum_step(p, val∇E)
         end
         # Claculate the new Hamiltonian
@@ -119,8 +119,8 @@ function Base.run(spl :: Sampler{HMC})
           H += p[k]' * p[k] / 2
         end
         consume(Task(spl.model))
-        H += realpart(-spl.logjoint)
-        spl.logjoint = Dual(0)
+        H += realpart(-spl.logjoint.val)
+        spl.logjoint.val = Dual(0)
       catch e
         # output error type
         dprintln(2, e)
@@ -201,7 +201,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
   end
 
   dprintln(2, "computing logjoint...")
-  spl.logjoint += logpdf(d, val)
+  spl.logjoint.val += logpdf(d, val)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
@@ -210,9 +210,9 @@ end
 function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
   dprintln(2, "observing...")
   if length(value) == 1
-    spl.logjoint += logpdf(d, Dual(value))
+    spl.logjoint.val += logpdf(d, Dual(value))
   else
-    spl.logjoint += logpdf(d, map(x -> Dual(x), value))
+    spl.logjoint.val += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end
