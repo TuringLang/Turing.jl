@@ -68,7 +68,7 @@ include("core/util.jl")
 include("core/compiler.jl")
 include("core/container.jl")
 include("core/io.jl")
-include("samplers/support/replay.jl")
+include("core/gradientinfo.jl")
 include("samplers/sampler.jl")
 include("core/ad.jl")
 
