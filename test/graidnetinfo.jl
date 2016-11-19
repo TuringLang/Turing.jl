@@ -1,8 +1,8 @@
-# Test PriorContainer
+# Test GradientInfo
 
 using Turing, Base.Test
 
-pc = PriorContainer()
+pc = GradientInfo()
 p1 = Prior(gensym())
 p2 = Prior(gensym())
 

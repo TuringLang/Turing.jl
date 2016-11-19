@@ -1,5 +1,6 @@
 abstract InferenceAlgorithm{P}
 abstract Sampler{T<:InferenceAlgorithm}
+abstract GradientSampler{T} <: Sampler{T}
 
 doc"""
     ParticleSampler{T}
@@ -25,12 +26,10 @@ end
 
 # Concrete algorithm implementations.
 include("support/resample.jl")
-include("support/replay.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
-
 
 # Fallback functions
 Base.run(spl :: Sampler) = error("[sample]: unmanaged inference algorithm: $(typeof(spl))")

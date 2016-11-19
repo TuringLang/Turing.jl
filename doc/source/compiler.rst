@@ -23,7 +23,7 @@ After all of these three steps, the Julia statement to be exectued will be::
 
 The aim of using types ``Prior`` is to pass an identity of each ``@assume`` macro, which is corresponding to each prior, by which priors can be replayed by the HMC sampler respectively.
 
-  The priors passed to the sampler will be stored in a data structure named ``PriorContainer``, which holds a dictionary with each ``Prior`` as its key and corresponding value being a list whose tail is connected with its head. This way of prior replay supports any abritary data structure to be used in a Turing program.
+  The priors passed to the sampler will be stored in a data structure named ``GradientInfo``, which holds a dictionary with each ``Prior`` as its key and corresponding value being a list whose tail is connected with its head. This way of prior replay supports any abritary data structure to be used in a Turing program.
 
 The ``@observe`` macro
 ---------
