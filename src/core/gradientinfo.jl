@@ -149,7 +149,7 @@ type GradientInfo
   logjoint    ::    Dual
   function GradientInfo()
     container = Dict{Prior, PriorArray}()
-    new(container, nothing)
+    new(container, Dual(0))
   end
 end
 

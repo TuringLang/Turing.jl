@@ -8,12 +8,12 @@ Example:
 ```julia
 function Base.run(spl :: Sampler{HMC})
   ...
-  val∇E = get_gradient_dict(spl.priors, spl.model, spl.logjoint)
+  val∇E = get_gradient_dict(spl.priors, spl.model)
   ...
 end
 ```
 """
-function get_gradient_dict(priors::GradientInfo, model::Function, logjoint::LogJoint)
+function get_gradient_dict(priors::GradientInfo, model::Function)
   # Initialisation
   val∇E = Dict{Any, Any}()
   # Split keys(priors) into 10, 10, 10, m-size chunks
@@ -80,14 +80,14 @@ function get_gradient_dict(priors::GradientInfo, model::Function, logjoint::LogJ
       for i = 1:l
         # Collect
         dprintln(7, "taking from logjoint...")
-        g[i] = dualpart(-logjoint.val)[prior_count]
+        g[i] = dualpart(-priors.logjoint)[prior_count]
         # Count
         prior_count += 1
       end
       val∇E[k] = g
     end
     # Reset logjoint
-    logjoint.val = Dual(0)
+    priors.logjoint = Dual(0)
   end
   # Return
   return val∇E
