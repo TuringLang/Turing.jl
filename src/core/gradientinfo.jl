@@ -146,9 +146,10 @@ keys(pc)  # create a key interator in the container, i.e. all the priors
 """
 type GradientInfo
   container   ::    Dict{Prior, PriorArray}
+  logjoint    ::    Dual
   function GradientInfo()
     container = Dict{Prior, PriorArray}()
-    new(container)
+    new(container, nothing)
   end
 end
 
