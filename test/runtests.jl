@@ -33,7 +33,7 @@ testcases = [
 #       support/
 #         reply.jl
             "replay",
-            "priorcontainer",
+            "graidnetinfo",
 #         resample.jl
             "resample",
             "particlecontainer",

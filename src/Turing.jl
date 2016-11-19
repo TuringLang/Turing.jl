@@ -20,6 +20,19 @@ StatsFuns.gammalogpdf(k::Real, θ::Real, x::Real) = -log(gamma(k)) - k * log(θ)
 
 ###########################################
 
+###########
+# Warning #####################################
+# The following logjoint wrapper is temporary #
+
+type LogJoint
+  val   :: Dual
+  function LogJoint(val)
+    new(val)
+  end
+end
+
+###############################################
+
 #################
 # Turing module #
 #################
@@ -55,6 +68,8 @@ include("core/util.jl")
 include("core/compiler.jl")
 include("core/container.jl")
 include("core/io.jl")
+include("core/gradientinfo.jl")
 include("samplers/sampler.jl")
+include("core/ad.jl")
 
 end

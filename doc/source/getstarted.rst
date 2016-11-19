@@ -46,8 +46,8 @@ You will need Julia 0.5 (or 0.4; but 0.5 is recommended), which you can get from
 It provides three options for users
 
 1. A command line version (`Julia/downloads <http://julialang.org/downloads/>`_)
-2. A community maintained IDE `Juno<http://www.junolab.org/>`_
-3. `JuliaBox.com<https://www.juliabox.com/>`_ - a Jupyter notebook in the browser
+2. A community maintained IDE `Juno <http://www.junolab.org/>`_
+3. `JuliaBox.com <https://www.juliabox.com/>`_ - a Jupyter notebook in the browser
 
 For command line version, we recommend that you install a pre-compiled package, as Turing may not work correctly with Julia built form source.
 
