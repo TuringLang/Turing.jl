@@ -82,6 +82,8 @@ doc"""
 
 A wrapper of symbol type representing priors.
 
+  - type is encoded in the form of [is_uni?, is_multi?, is_matrix?]
+
 Usage:
 
 ```julia
@@ -92,7 +94,7 @@ strp = string(p)
 immutable Prior
   sym       ::    Symbol
   name      ::    String
-  typ       ::    String
+  typ       ::    Int64
   function Prior(sym)
     new(sym, "unknown", "unknown")
   end
@@ -109,6 +111,8 @@ Helper function to convert a Prior to its string representation.
 function Base.string(p::Prior)
   return string(p.sym)
 end
+
+
 
 doc"""
     GradientInfo()

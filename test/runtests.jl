@@ -39,6 +39,7 @@ testcases = [
             "particlecontainer",
 #       hmc.jl
           "multivariate_support_for_hmc",
+          "hmcmatrixsupport",
 #       is.jl
           "importance_sampling",
 #       pgibbs.jl
