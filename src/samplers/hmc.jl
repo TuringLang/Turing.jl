@@ -120,20 +120,23 @@ function Base.run(spl :: Sampler{HMC})
         H += realpart(-spl.priors.logjoint)
         spl.priors.logjoint = Dual(0)
       catch e
-        # output error type
-        dprintln(2, e)
-        # Count re-run number
-        rerun_num += 1
-        # Only rerun for a threshold of times
-        if rerun_num <= RerunThreshold
-          # Revert the priors
-          spl.priors = deepcopy(old_priors)
-          # Set the model un-run parameters
-          has_run = false
-          oldH = 0
-          H = 0
-        else
-          throw(BadParamError())
+        # NOTE: this is a hack for missing support for constrained variable - will be removed after constained HMC is implmented
+        if ~("ArgumentError(matrix is not symmetric/Hermitian. This error can be avoided by calling cholfact(Hermitian(A)) which will ignore either the upper or lower triangle of the matrix.)" == replace(string(e), "\"", ""))
+          # output error type
+          dprintln(2, e)
+          # Count re-run number
+          rerun_num += 1
+          # Only rerun for a threshold of times
+          if rerun_num <= RerunThreshold
+            # Revert the priors
+            spl.priors = deepcopy(old_priors)
+            # Set the model un-run parameters
+            has_run = false
+            oldH = 0
+            H = 0
+          else
+            throw(BadParamError())
+          end
         end
       end
     end
@@ -208,11 +211,12 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
       T = typeof(val[1])
       dim = Int(sqrt(length(val)))
       val = Array{T, 2}(reshape(val, dim, dim))
-      println(val)
+      # val = Symmetric(val) # NOTE: this is just a hack before constrained HMC is implmented.
     end
   end
 
   dprintln(2, "computing logjoint...")
+  println(val)
   spl.priors.logjoint += logpdf(d, val)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")

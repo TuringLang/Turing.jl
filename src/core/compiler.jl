@@ -71,6 +71,7 @@ macro assume(ex)
   sym = gensym()
   esc(
     quote
+      # Record the type of variable
       if isa($(ex.args[3]), UnivariateDistribution)
         typ = 1
       elseif isa($(ex.args[3]), MultivariateDistribution)
