@@ -93,10 +93,10 @@ strp = string(p)
 """
 immutable Prior
   sym       ::    Symbol
-  name      ::    String
+  name      ::    Symbol
   typ       ::    Int64
   function Prior(sym)
-    new(sym, "unknown", "unknown")
+    new(sym, :unknownname, 0)
   end
   function Prior(sym, name, typ)
     new(sym, name, typ)

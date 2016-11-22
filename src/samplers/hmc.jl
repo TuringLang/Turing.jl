@@ -180,12 +180,11 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
     dprintln(2, "generating priors...")
     # Generate a new prior
     r = rand(d)
-    dim = length(r)
-    if dim == 1
+    if prior.typ == 1
       val = Vector{Any}([Dual(r)])
-    elseif isa(r, Vector)
+    elseif prior.typ == 2
       val = Vector{Any}(map(x -> Dual(x), r))
-    elseif isa(r, Array)
+    elseif prior.typ == 3
       val = Vector{Any}(map(x -> Dual(x), vec(r)))
     end
     # Store the generated prior
@@ -199,7 +198,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
 
   # 2. reconstruct priors
   dprintln(2, "reconstructing priors...")
-  if length(val) == 1
+  if prior.typ == 1
     # Turn Array{Any} to Any if necessary (this is due to randn())
     val = val[1]
   elseif prior.typ == 2
