@@ -199,24 +199,20 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
 
   # 2. reconstruct priors
   dprintln(2, "reconstructing priors...")
-  if ~(prior.typ == 1)
-    if length(val) == 1
-      # Turn Array{Any} to Any if necessary (this is due to randn())
-      val = val[1]
-    elseif prior.typ == 2
-      # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
-      T = typeof(val[1])
-      val = Vector{T}(val)
-    elseif prior.typ == 3
-      T = typeof(val[1])
-      dim = Int(sqrt(length(val)))
-      val = Array{T, 2}(reshape(val, dim, dim))
-      # val = Symmetric(val) # NOTE: this is just a hack before constrained HMC is implmented.
-    end
+  if length(val) == 1
+    # Turn Array{Any} to Any if necessary (this is due to randn())
+    val = val[1]
+  elseif prior.typ == 2
+    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
+    T = typeof(val[1])
+    val = Vector{T}(val)
+  elseif prior.typ == 3
+    T = typeof(val[1])
+    dim = Int(sqrt(length(val)))
+    val = Array{T, 2}(reshape(val, dim, dim))
   end
 
   dprintln(2, "computing logjoint...")
-  println(val)
   spl.priors.logjoint += logpdf(d, val)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
