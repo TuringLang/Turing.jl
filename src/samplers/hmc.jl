@@ -34,8 +34,7 @@ end
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC
   model       :: Function
-  vars      :: GradientInfo
-  dims        :: GradientInfo
+  vars        :: GradientInfo
   samples     :: Array{Sample}
   predicts    :: Dict{Symbol, Any}
   first       :: Bool
@@ -48,8 +47,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
     end
     predicts = Dict{Symbol, Any}()
     vars = GradientInfo()   # GradientInfo Initialize logjoint as Dual(0)
-    dims = GradientInfo()
-    new(alg, model, vars, dims, samples, predicts, true)
+    new(alg, model, vars, samples, predicts, true)
   end
 end
 
@@ -192,15 +190,11 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
     end
     # Store the generated var
     addVarInfo(spl.vars, var, val)
-    # Store dim info
-    dim = size(r)
-    addVarInfo(spl.dims, var, dim)
   # If not the first time
   else
     # Fetch the existing var
     dprintln(2, "fetching vars...")
     val = spl.vars[var]
-    dim = spl.dims[var]
   end
 
   # 2. reconstruct vars
@@ -214,7 +208,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
     val = Vector{T}(val)
   elseif var.typ == 3
     T = typeof(val[1])
-    val = Array{T, 2}(reshape(val, dim...))
+    val = Array{T, 2}(reshape(val, var.dim...))
   end
 
   dprintln(2, "computing logjoint...")

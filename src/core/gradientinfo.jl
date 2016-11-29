@@ -95,11 +95,12 @@ immutable VarInfo
   sym       ::    Symbol
   name      ::    Symbol
   typ       ::    Int64
+  dim       ::    Tuple
   function VarInfo(sym)
-    new(sym, :unknownname, 0)
+    new(sym, :unknownname, 0, ())
   end
-  function VarInfo(sym, name, typ)
-    new(sym, name, typ)
+  function VarInfo(sym, name, typ, dim)
+    new(sym, name, typ, dim)
   end
 end
 

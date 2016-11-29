@@ -86,7 +86,8 @@ macro assume(ex)
         VarInfo(
           Symbol($(string(sym))),
           "",                             # TODO: pass var name to Prior
-          typ
+          typ,
+          size($(ex.args[3]))
         )
       )
     end
