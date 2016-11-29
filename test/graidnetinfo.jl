@@ -3,13 +3,13 @@
 using Turing, Base.Test
 
 pc = GradientInfo()
-p1 = Prior(gensym())
-p2 = Prior(gensym())
+p1 = VarInfo(gensym())
+p2 = VarInfo(gensym())
 
-addPrior(pc, p1, 1)
-addPrior(pc, p1, 2)
-addPrior(pc, p1, 3)
-addPrior(pc, p2, 4)
+addVarInfo(pc, p1, 1)
+addVarInfo(pc, p1, 2)
+addVarInfo(pc, p1, 3)
+addVarInfo(pc, p2, 4)
 
 @test pc[p1] == 1
 @test pc[p1] == 2

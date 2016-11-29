@@ -1,7 +1,7 @@
-export Prior, PriorArray, GradientInfo, addPrior
+export VarInfo, VarInfoArray, GradientInfo, addVarInfo
 
 doc"""
-    PriorArray(array, count, currSetIdx, currGetIdx)
+    VarInfoArray(array, count, currSetIdx, currGetIdx)
 
 Type for a rotated array (used for prior replay purpose).
 
@@ -10,7 +10,7 @@ This type of array support set and get without specifying indices. Instead, an i
 Usage:
 
 ```julia
-pa = PriorArray() # []
+pa = VarInfoArray() # []
 add(pa, 1)        # [1]
 add(pa, 2)        # [1, 2]
 get(pa)           # 1
@@ -20,12 +20,12 @@ get(pa)           # 3
 get(pa)           # 2
 ```
 """
-type PriorArray
+type VarInfoArray
   array     ::    Vector{Any}
   count         ::    Int64
   currSetIdx    ::    Int64
   currGetIdx    ::    Int64
-  function PriorArray()
+  function VarInfoArray()
     array = Vector{Any}()
     count = 0
     currSetIdx = 1
@@ -35,18 +35,18 @@ type PriorArray
 end
 
 doc"""
-    add(pa::PriorArray, val)
+    add(pa::VarInfoArray, val)
 
-Append a new element to the end of the inner array container of PriorArray.
+Append a new element to the end of the inner array container of VarInfoArray.
 The inner counter of total number of element is also updated.
 """
-function add(pa::PriorArray, val)
+function add(pa::VarInfoArray, val)
   push!(pa.array, val)
   pa.count += 1
 end
 
 doc"""
-    set(pa::PriorArray, val)
+    set(pa::VarInfoArray, val)
 
 Set the element with the corresponding inner pointer of set to the passed value.
 
@@ -54,13 +54,13 @@ The inner pointer for set is then updated:
   - if not reaches the end: incremented by 1;
   - if reaches the end: reset to 1.
 """
-function set(pa::PriorArray, val)
+function set(pa::VarInfoArray, val)
   pa.array[pa.currSetIdx] = val
   pa.currSetIdx = (pa.currSetIdx + 1) > pa.count? 1 : pa.currSetIdx + 1 # rotate if reaches the end
 end
 
 doc"""
-    get(pa::PriorArray)
+    get(pa::VarInfoArray)
 
 Fetch the element with the corresponding inner pointer of get.
 
@@ -68,8 +68,8 @@ The inner pointer for get is then updated:
   - if not reaches the end: incremented by 1;
   - if reaches the end: reset to 1.
 """
-function get(pa::PriorArray)
-  @assert pa.count > 0 "Attempt get from an empty PriorArray."
+function get(pa::VarInfoArray)
+  @assert pa.count > 0 "Attempt get from an empty VarInfoArray."
   oldGetIdx = pa.currGetIdx   # record the old get index
   pa.currGetIdx = (pa.currGetIdx + 1) > pa.count? 1 : pa.currGetIdx + 1 # rotate if reaches the end
   return pa.array[oldGetIdx]
@@ -78,51 +78,61 @@ end
 
 
 doc"""
-    Prior(sym)
+    VarInfo(sym)
 
 A wrapper of symbol type representing priors.
+
+  - type is encoded in the form of [is_uni?, is_multi?, is_matrix?]
 
 Usage:
 
 ```julia
-p = Prior(:somesym)
+p = VarInfo(:somesym)
 strp = string(p)
 ```
 """
-immutable Prior
+immutable VarInfo
   sym       ::    Symbol
-  function Prior(sym)
-    new(sym)
+  name      ::    Symbol
+  typ       ::    Int64
+  dim       ::    Tuple
+  function VarInfo(sym)
+    new(sym, :unknownname, 0, ())
+  end
+  function VarInfo(sym, name, typ, dim)
+    new(sym, name, typ, dim)
   end
 end
 
 doc"""
-    Base.string(p::Prior)
+    Base.string(p::VarInfo)
 
-Helper function to convert a Prior to its string representation.
+Helper function to convert a VarInfo to its string representation.
 """
-function Base.string(p::Prior)
+function Base.string(p::VarInfo)
   return string(p.sym)
 end
+
+
 
 doc"""
     GradientInfo()
 
 A container to store priors based on dictionary.
 
-This type is basically a dictionary supporting adding new priors by creating a PriorArray and indexing using pc[] syntax.
+This type is basically a dictionary supporting adding new priors by creating a VarInfoArray and indexing using pc[] syntax.
 
 Usage:
 
 ```julia
 pc = GradientInfo()
-p1 = Prior(:a)
-p2 = Prior(:b)
+p1 = VarInfo(:a)
+p2 = VarInfo(:b)
 
-addPrior(pc, p1, 1)
-addPrior(pc, p1, 2)
-addPrior(pc, p1, 3)
-addPrior(pc, p2, 4)
+addVarInfo(pc, p1, 1)
+addVarInfo(pc, p1, 2)
+addVarInfo(pc, p1, 3)
+addVarInfo(pc, p2, 4)
 
 pc[p1]    # 1
 pc[p1]    # 2
@@ -145,45 +155,45 @@ keys(pc)  # create a key interator in the container, i.e. all the priors
 ```
 """
 type GradientInfo
-  container   ::    Dict{Prior, PriorArray}
+  container   ::    Dict{VarInfo, VarInfoArray}
   logjoint    ::    Dual
   function GradientInfo()
-    container = Dict{Prior, PriorArray}()
+    container = Dict{VarInfo, VarInfoArray}()
     new(container, Dual(0))
   end
 end
 
 doc"""
-    addPrior(pc::GradientInfo, idx::Prior, val)
+    addVarInfo(pc::GradientInfo, idx::VarInfo, val)
 
 Add a *new* value of a given prior to the container.
 *new* here means force appending to the end of the corresponding array of the prior.
 """
-function addPrior(pc::GradientInfo, idx::Prior, val)
+function addVarInfo(pc::GradientInfo, idx::VarInfo, val)
   if haskey(pc.container, idx)
     add(pc.container[idx], val)
   else
-    pc.container[idx] = PriorArray()  # create a PA if new
+    pc.container[idx] = VarInfoArray()  # create a PA if new
     add(pc.container[idx], val)
   end
 end
 
 doc"""
-    Base.getindex(pc::GradientInfo, idx::Prior)
+    Base.getindex(pc::GradientInfo, idx::VarInfo)
 
 Make the prior container support indexing with `[]`.
 """
-function Base.getindex(pc::GradientInfo, idx::Prior)
+function Base.getindex(pc::GradientInfo, idx::VarInfo)
   @assert haskey(pc.container, idx) "GradientInfo has no $idx."
   return get(pc.container[idx])
 end
 
 doc"""
-    Base.setindex!(pc::GradientInfo, val, idx::Prior)
+    Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
 
 Make the prior container support assignment with `[]`.
 """
-function Base.setindex!(pc::GradientInfo, val, idx::Prior)
+function Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
   @assert haskey(pc.container, idx) "GradientInfo has no $idx."
   set(pc.container[idx], val)
 end
