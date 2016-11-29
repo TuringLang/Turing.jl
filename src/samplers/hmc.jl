@@ -170,7 +170,7 @@ function Base.run(spl :: Sampler{HMC})
   return results
 end
 
-function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
+function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: VarInfo)
   dprintln(2, "assuming...")
   # 1. Gen priors and vectorize if necessary
 
@@ -188,7 +188,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: Prior)
       val = Vector{Any}(map(x -> Dual(x), vec(r)))
     end
     # Store the generated prior
-    addPrior(spl.priors, prior, val)
+    addVarInfo(spl.priors, prior, val)
   # If not the first time
   else
     # Fetch the existing prior
