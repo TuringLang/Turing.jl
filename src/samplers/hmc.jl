@@ -35,6 +35,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC
   model       :: Function
   priors      :: GradientInfo
+  dims        :: GradientInfo
   samples     :: Array{Sample}
   predicts    :: Dict{Symbol, Any}
   first       :: Bool
@@ -47,7 +48,8 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
     end
     predicts = Dict{Symbol, Any}()
     priors = GradientInfo()   # GradientInfo Initialize logjoint as Dual(0)
-    new(alg, model, priors, samples, predicts, true)
+    dims = GradientInfo()
+    new(alg, model, priors, dims, samples, predicts, true)
   end
 end
 
@@ -176,6 +178,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: VarInfo)
 
   # TODO: Change the first running condition
   # If it's the first time running the program
+  local dim
   if spl.first
     dprintln(2, "generating priors...")
     # Generate a new prior
@@ -189,11 +192,15 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: VarInfo)
     end
     # Store the generated prior
     addVarInfo(spl.priors, prior, val)
+    # Store dim info
+    dim = size(r)
+    addVarInfo(spl.dims, prior, dim)
   # If not the first time
   else
     # Fetch the existing prior
     dprintln(2, "fetching priors...")
     val = spl.priors[prior]
+    dim = spl.dims[prior]
   end
 
   # 2. reconstruct priors
@@ -207,8 +214,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, prior :: VarInfo)
     val = Vector{T}(val)
   elseif prior.typ == 3
     T = typeof(val[1])
-    dim = Int(sqrt(length(val)))
-    val = Array{T, 2}(reshape(val, dim, dim))
+    val = Array{T, 2}(reshape(val, dim...))
   end
 
   dprintln(2, "computing logjoint...")
