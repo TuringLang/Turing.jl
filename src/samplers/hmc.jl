@@ -108,6 +108,10 @@ function Base.run(spl :: Sampler{HMC})
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
           for k in keys(spl.values)
+            # X -> R and move
+            # real = link(spl.dists[k], spl.values[k]) + ϵ * p[k]
+            # R -> X and store
+            # spl.values[k] = Array{Any}(invlink(spl.dists[k], real))
             spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
           end
           val∇E = get_gradient_dict(spl.values, spl.model)
@@ -174,15 +178,6 @@ end
 
 function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
   dprintln(2, "assuming...")
-  # Get the type of variable
-  if isa(d, UnivariateDistribution)
-    typ = 1
-  elseif isa(d, MultivariateDistribution)
-    typ = 2
-  elseif isa(d, MatrixDistribution)
-    typ = 3
-  end
-
   # 1. Gen values and vectorize if necessary
 
   # TODO: Change the first running condition
@@ -195,11 +190,11 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
     # Generate a new var
     dprintln(2, "generating values...")
     r = rand(d)
-    if typ == 1
+    if isa(d, UnivariateDistribution)
       val = Vector{Any}([Dual(r)])
-    elseif typ == 2
+    elseif isa(d, MultivariateDistribution)
       val = Vector{Any}(map(x -> Dual(x), r))
-    elseif typ == 3
+    elseif isa(d, MatrixDistribution)
       val = Vector{Any}(map(x -> Dual(x), vec(r)))
     end
     # Store the generated var
@@ -216,14 +211,14 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
 
   # 2. reconstruct values
   dprintln(2, "reconstructing values...")
-  if typ == 1
+  if isa(d, UnivariateDistribution)
     # Turn Array{Any} to Any if necessary (this is due to randn())
     val = val[1]
-  elseif typ == 2
+  elseif isa(d, MultivariateDistribution)
     # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
     T = typeof(val[1])
     val = Vector{T}(val)
-  elseif typ == 3
+  elseif isa(d, MatrixDistribution)
     T = typeof(val[1])
     val = Array{T, 2}(reshape(val, dim...))
   end
