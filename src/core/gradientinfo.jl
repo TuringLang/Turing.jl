@@ -94,13 +94,11 @@ strp = string(p)
 immutable VarInfo
   sym       ::    Symbol
   name      ::    Symbol
-  typ       ::    Int64
-  dim       ::    Tuple
   function VarInfo(sym)
-    new(sym, :unknownname, 0, ())
+    new(sym, :unknownname)
   end
-  function VarInfo(sym, name, typ, dim)
-    new(sym, name, typ, dim)
+  function VarInfo(sym, name)
+    new(sym, name)
   end
 end
 

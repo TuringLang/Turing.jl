@@ -34,7 +34,8 @@ end
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC
   model       :: Function
-  vars        :: GradientInfo
+  values      :: GradientInfo
+  dists       :: Dict{VarInfo, Distribution}
   samples     :: Array{Sample}
   predicts    :: Dict{Symbol, Any}
   first       :: Bool
@@ -46,8 +47,9 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     predicts = Dict{Symbol, Any}()
-    vars = GradientInfo()   # GradientInfo Initialize logjoint as Dual(0)
-    new(alg, model, vars, samples, predicts, true)
+    values = GradientInfo()   # GradientInfo Initialize logjoint as Dual(0)
+    dists = Dict{VarInfo, Distribution}()
+    new(alg, model, values, dists, samples, predicts, true)
   end
 end
 
@@ -62,7 +64,7 @@ function Base.run(spl :: Sampler{HMC})
   # Run the model for the first time
   dprintln(2, "initialising...")
   consume(Task(spl.model))
-  spl.vars.logjoint = Dual(0)
+  spl.values.logjoint = Dual(0)
   spl.first = false
   rerun_num = 0
   # Store the first predicts
@@ -77,7 +79,7 @@ function Base.run(spl :: Sampler{HMC})
     oldH = 0
     H = 0
     # Record old state
-    old_vars = deepcopy(spl.vars)
+    old_values = deepcopy(spl.values)
     # Run the step until successful
     while has_run == false
       dprintln(3, "stepping...")
@@ -86,8 +88,8 @@ function Base.run(spl :: Sampler{HMC})
       try
         # Generate random momentum
         p = Dict{Any, Any}()
-        for k in keys(spl.vars)
-          p[k] = randn(length(spl.vars[k]))
+        for k in keys(spl.values)
+          p[k] = randn(length(spl.values[k]))
         end
         # Record old Hamiltonian
         dprintln(4, "old H...")
@@ -95,20 +97,20 @@ function Base.run(spl :: Sampler{HMC})
           oldH += p[k]' * p[k] / 2
         end
         consume(Task(spl.model))
-        oldH += realpart(-spl.vars.logjoint)
-        spl.vars.logjoint = Dual(0)
+        oldH += realpart(-spl.values.logjoint)
+        spl.values.logjoint = Dual(0)
         # Get gradient dict
         dprintln(4, "first gradient...")
-        val∇E = get_gradient_dict(spl.vars, spl.model)
+        val∇E = get_gradient_dict(spl.values, spl.model)
         dprintln(4, "leapfrog...")
         # 'leapfrog' for each var
         for t in 1:τ
           p = half_momentum_step(p, val∇E)
           # Make a full step for state
-          for k in keys(spl.vars)
-            spl.vars[k] = Array{Any}(spl.vars[k] + ϵ * p[k])
+          for k in keys(spl.values)
+            spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
           end
-          val∇E = get_gradient_dict(spl.vars, spl.model)
+          val∇E = get_gradient_dict(spl.values, spl.model)
           p = half_momentum_step(p, val∇E)
         end
         # Claculate the new Hamiltonian
@@ -117,8 +119,8 @@ function Base.run(spl :: Sampler{HMC})
           H += p[k]' * p[k] / 2
         end
         consume(Task(spl.model))
-        H += realpart(-spl.vars.logjoint)
-        spl.vars.logjoint = Dual(0)
+        H += realpart(-spl.values.logjoint)
+        spl.values.logjoint = Dual(0)
       catch e
         # NOTE: this is a hack for missing support for constrained variable - will be removed after constained HMC is implmented
         if ~("ArgumentError(matrix is not symmetric/Hermitian. This error can be avoided by calling cholfact(Hermitian(A)) which will ignore either the upper or lower triangle of the matrix.)" == replace(string(e), "\"", ""))
@@ -128,8 +130,8 @@ function Base.run(spl :: Sampler{HMC})
           rerun_num += 1
           # Only rerun for a threshold of times
           if rerun_num <= RerunThreshold
-            # Revert the vars
-            spl.vars = deepcopy(old_vars)
+            # Revert the values
+            spl.values = deepcopy(old_values)
             # Set the model un-run parameters
             has_run = false
             oldH = 0
@@ -154,7 +156,7 @@ function Base.run(spl :: Sampler{HMC})
     end
     # Rewind of rejected
     if ~acc
-      spl.vars = old_vars
+      spl.values = old_values
       # Store the previous predcits
       spl.samples[i] = spl.samples[i - 1]
     else
@@ -172,47 +174,62 @@ end
 
 function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
   dprintln(2, "assuming...")
-  # 1. Gen vars and vectorize if necessary
+  # Get the type of variable
+  if isa(d, UnivariateDistribution)
+    typ = 1
+  elseif isa(d, MultivariateDistribution)
+    typ = 2
+  elseif isa(d, MatrixDistribution)
+    typ = 3
+  end
+
+  # 1. Gen values and vectorize if necessary
 
   # TODO: Change the first running condition
   # If it's the first time running the program
-  local dim
+
   if spl.first
-    dprintln(2, "generating vars...")
+    # Record dist
+    spl.dists[var] = d
+
     # Generate a new var
+    dprintln(2, "generating values...")
     r = rand(d)
-    if var.typ == 1
+    if typ == 1
       val = Vector{Any}([Dual(r)])
-    elseif var.typ == 2
+    elseif typ == 2
       val = Vector{Any}(map(x -> Dual(x), r))
-    elseif var.typ == 3
+    elseif typ == 3
       val = Vector{Any}(map(x -> Dual(x), vec(r)))
     end
     # Store the generated var
-    addVarInfo(spl.vars, var, val)
+    addVarInfo(spl.values, var, val)
   # If not the first time
   else
     # Fetch the existing var
-    dprintln(2, "fetching vars...")
-    val = spl.vars[var]
+    dprintln(2, "fetching values...")
+    val = spl.values[var]
   end
 
-  # 2. reconstruct vars
-  dprintln(2, "reconstructing vars...")
-  if var.typ == 1
+  # Get the dim of variable
+  dim = size(spl.dists[var])
+
+  # 2. reconstruct values
+  dprintln(2, "reconstructing values...")
+  if typ == 1
     # Turn Array{Any} to Any if necessary (this is due to randn())
     val = val[1]
-  elseif var.typ == 2
+  elseif typ == 2
     # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
     T = typeof(val[1])
     val = Vector{T}(val)
-  elseif var.typ == 3
+  elseif typ == 3
     T = typeof(val[1])
-    val = Array{T, 2}(reshape(val, var.dim...))
+    val = Array{T, 2}(reshape(val, dim...))
   end
 
   dprintln(2, "computing logjoint...")
-  spl.vars.logjoint += logpdf(d, val)
+  spl.values.logjoint += logpdf(d, val)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
@@ -221,9 +238,9 @@ end
 function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
   dprintln(2, "observing...")
   if length(value) == 1
-    spl.vars.logjoint += logpdf(d, Dual(value))
+    spl.values.logjoint += logpdf(d, Dual(value))
   else
-    spl.vars.logjoint += logpdf(d, map(x -> Dual(x), value))
+    spl.values.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end
