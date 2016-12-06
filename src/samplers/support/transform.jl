@@ -186,9 +186,9 @@ end
 
 #################### Callback function ####################
 
-link(d::Distribution, x::Real) = x
+link(d::Distribution, x) = x
 
-invlink(d::Distribution, x::Real) = x
+invlink(d::Distribution, x) = x
 
 function logpdf(d::Distribution, x::Real, transform::Bool)
   logpdf(d, x)

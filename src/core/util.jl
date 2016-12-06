@@ -82,18 +82,34 @@ Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-function vectorize(d::Distribution, r)
-  if isa(d, UnivariateDistribution)
+function vectorize(d::UnivariateDistribution, r)
+  if isa(r, Dual)
+    val = Vector{Any}([r])
+  else
     val = Vector{Any}([Dual(r)])
-  elseif isa(d, MultivariateDistribution)
+  end
+  val
+end
+
+function vectorize(d::MultivariateDistribution, r)
+  if isa(r[1], Dual)
+    val = Vector{Any}(map(x -> x, r))
+  else
     val = Vector{Any}(map(x -> Dual(x), r))
-  elseif isa(d, MatrixDistribution)
+  end
+  val
+end
+
+function vectorize(d::MatrixDistribution, r)
+  if isa(r[1][1], Dual)
+    val = Vector{Any}(map(x -> x, vec(r)))
+  else
     val = Vector{Any}(map(x -> Dual(x), vec(r)))
   end
   val
 end
 
-function reconstruct(d::Distribution, val, dim::Tuple)
+function reconstruct(d::Distribution, val)
   if isa(d, UnivariateDistribution)
     # Turn Array{Any} to Any if necessary (this is due to randn())
     val = val[1]
@@ -103,7 +119,7 @@ function reconstruct(d::Distribution, val, dim::Tuple)
     val = Vector{T}(val)
   elseif isa(d, MatrixDistribution)
     T = typeof(val[1])
-    val = Array{T, 2}(reshape(val, dim...))
+    val = Array{T, 2}(reshape(val, size(d)...))
   end
   val
 end

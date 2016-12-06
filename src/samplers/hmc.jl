@@ -56,6 +56,7 @@ end
 function Base.run(spl :: Sampler{HMC})
   # Function to make half momentum step
   function half_momentum_step(p, val∇E)
+    dprintln(5, "half_momentum_step...")
     for k in keys(p)
       p[k] -= ϵ * val∇E[k] / 2
     end
@@ -109,10 +110,14 @@ function Base.run(spl :: Sampler{HMC})
           # Make a full step for state
           for k in keys(spl.values)
             # X -> R and move
-            # real = link(spl.dists[k], spl.values[k]) + ϵ * p[k]
+            dprintln(5, "X -> R...")
+            real = reconstruct(spl.dists[k], spl.values[k])
+            real = link(spl.dists[k], real) + ϵ * reconstruct(spl.dists[k], p[k])
+            real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
             # R -> X and store
-            # spl.values[k] = Array{Any}(invlink(spl.dists[k], real))
-            spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
+            dprintln(5, "R -> X...")
+            spl.values[k] = vectorize(spl.dists[k], invlink(spl.dists[k], real))
+            # spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
           end
           val∇E = get_gradient_dict(spl.values, spl.model)
           p = half_momentum_step(p, val∇E)
@@ -190,6 +195,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
     # Generate a new var
     dprintln(2, "generating values...")
     r = rand(d)
+    val = r
     val = vectorize(d, r)
     # Store the generated var
     addVarInfo(spl.values, var, val)
@@ -203,7 +209,7 @@ function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
   # 2. reconstruct values
   dprintln(2, "reconstructing values...")
   dim = size(spl.dists[var])
-  val = reconstruct(d, val, dim)
+  val = reconstruct(d, val)
 
   dprintln(2, "computing logjoint...")
   spl.values.logjoint += logpdf(d, val)
