@@ -110,9 +110,12 @@ function Base.run(spl :: Sampler{HMC})
           # Make a full step for state
           for k in keys(spl.values)
             # X -> R and move
-            dprintln(5, "X -> R...")
+            dprintln(5, "reconstruct...")
             real = reconstruct(spl.dists[k], spl.values[k])
-            real = link(spl.dists[k], real) + ϵ * reconstruct(spl.dists[k], p[k])
+            dprintln(5, "X -> R...")
+            real = link(spl.dists[k], real)
+            dprintln(5, "move...")
+            real += ϵ * reconstruct(spl.dists[k], p[k])
             real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
             # R -> X and store
             dprintln(5, "R -> X...")

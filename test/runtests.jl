@@ -41,6 +41,7 @@ testcases = [
           "multivariate_support_for_hmc",
           "hmcmatrixsupport",
           "constrained",
+          "constrained_simplex",
 #       is.jl
           "importance_sampling",
 #       pgibbs.jl

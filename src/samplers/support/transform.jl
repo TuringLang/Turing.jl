@@ -27,66 +27,6 @@ import Distributions.logpdf
 # y = trans(x)
 # py(y)
 #
-# # Simplex
-#
-# function gen_prop(y)
-#   K = length(y)
-#   [logit⁻¹(y[k] + log(1 / (K - k))) for k in 1:K-1]
-# end
-#
-# function simplex_invtrans(y)
-#   simplex_invtrans(y, gen_prop(y))
-# end
-#
-# function simplex_invtrans(y, z)
-#   K = length(y)
-#   x = zeros(K)
-#   for k in 1:K-1
-#     x[k] = (1 - sum(x)) * z[k]
-#   end
-#   x[K] = 1 - sum(x)
-#   x
-# end
-#
-# function make_simplexpy(px, invtrans)
-#   function simplexpy(y)
-#     K = length(y)
-#     z = gen_prop(y)
-#     x = simplex_invtrans(y, z)
-#     px(x) * prod([z[k] * (1 - z[k]) * (1 - sum(x[1:k-1])) for k in 1:K-1])
-#   end
-#   simplexpy
-# end
-#
-# dist = Dirichlet([0.2, 0.3, 0.4])
-#
-# px = x -> pdf(dist, x)
-# py = make_simplexpy(px, simplex_invtrans)
-#
-# y = [-3.2, 5.3, 7.2]
-# py(y)
-#
-# # Work with Distributions
-#
-# function make_py(dist)
-#   if isa(dist, Dirichlet)
-#     return make_simplexpy(px, simplex_invtrans)
-#   end
-# end
-#
-# import Distributions.pdf
-#
-# function pdf(dist, x, transform::Bool)
-#   if transform
-#     make_py(dist)(x)
-#   else
-#     pdf(dist, x)
-#   end
-# end
-#
-# pdf(dist, [-3.2, 5.3, 7.2], true)
-
-
 
 # NOTE: Codes below are adapted from https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
 
@@ -182,6 +122,33 @@ invlink(d::UnitDistribution, x::Real) = invlogit(x)
 function logpdf(d::UnitDistribution, x::Real, transform::Bool)
   lp = logpdf(d, x)
   transform ? lp + log(x * (1.0 - x)) : lp
+end
+
+################### SimplexDistribution ###################
+
+typealias SimplexDistribution Union{Dirichlet}
+
+function link(d::SimplexDistribution, x::Vector)
+  K = length(x)
+  T = typeof(x[1])
+  z = Vector{T}(K-1)
+  for k in 1:K-1
+    z[k] = x[k] / (1 - sum(x[1:k-1]))
+  end
+  y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
+  push!(y, T(0))
+end
+
+function invlink(d::SimplexDistribution, y::Vector)
+  K = length(y)
+  T = typeof(y[1])
+  z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
+  x = Vector{T}(K)
+  for k in 1:K-1
+    x[k] = (1 - sum(x[1:k-1])) * z[k]
+  end
+  x[K] = 1 - sum(x[1:K-1])
+  x
 end
 
 #################### Callback function ####################
