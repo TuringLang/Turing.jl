@@ -134,23 +134,20 @@ function Base.run(spl :: Sampler{HMC})
         H += realpart(-spl.values.logjoint)
         spl.values.logjoint = Dual(0)
       catch e
-        # NOTE: this is a hack for missing support for constrained variable - will be removed after constained HMC is implmented
-        if ~("ArgumentError(matrix is not symmetric/Hermitian. This error can be avoided by calling cholfact(Hermitian(A)) which will ignore either the upper or lower triangle of the matrix.)" == replace(string(e), "\"", ""))
-          # output error type
-          dprintln(2, e)
-          # Count re-run number
-          rerun_num += 1
-          # Only rerun for a threshold of times
-          if rerun_num <= RerunThreshold
-            # Revert the values
-            spl.values = deepcopy(old_values)
-            # Set the model un-run parameters
-            has_run = false
-            oldH = 0
-            H = 0
-          else
-            throw(BadParamError())
-          end
+        # output error type
+        dprintln(2, e)
+        # Count re-run number
+        rerun_num += 1
+        # Only rerun for a threshold of times
+        if rerun_num <= RerunThreshold
+          # Revert the values
+          spl.values = deepcopy(old_values)
+          # Set the model un-run parameters
+          has_run = false
+          oldH = 0
+          H = 0
+        else
+          throw(BadParamError())
         end
       end
     end

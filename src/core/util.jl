@@ -101,7 +101,7 @@ function vectorize(d::MultivariateDistribution, r)
 end
 
 function vectorize(d::MatrixDistribution, r)
-  if isa(r[1][1], Dual)
+  if isa(r[1,1], Dual)
     val = Vector{Any}(map(x -> x, vec(r)))
   else
     val = Vector{Any}(map(x -> Dual(x), vec(r)))
