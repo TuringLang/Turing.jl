@@ -104,7 +104,11 @@ function vectorize(d::MatrixDistribution, r)
   if isa(r[1,1], Dual)
     val = Vector{Any}(map(x -> x, vec(r)))
   else
+    s = Dual(sum(r))
     val = Vector{Any}(map(x -> Dual(x), vec(r)))
+    # Dual(f) can lose precision of f.
+    # The trick below is to prevent when s == 1 and lose this constrain (which is important for simplex)
+    val[end] = s - sum(val[end-1])
   end
   val
 end
