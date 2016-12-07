@@ -38,9 +38,9 @@ testcases = [
             "resample",
             "particlecontainer",
 #       hmc.jl
-          "multivariate_support_for_hmc",
-          "matrixad",
-          "constrained",
+          "multivariate_support",
+          "matrix_support",
+          "constrained_bounded",
           "constrained_simplex",
 #       is.jl
           "importance_sampling",
