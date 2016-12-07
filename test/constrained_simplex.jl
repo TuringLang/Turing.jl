@@ -12,5 +12,6 @@ obs = [1,2,1,2,2,2,2,2,2,2]
   @predict ps
 end
 
-chain = sample(constrained_simplex_test, HMC(3000, 0.01, 3))  # using a large step size (1.5)
+chain = sample(constrained_simplex_test, HMC(3000, 0.015, 3))
 mean(chain[:ps])
+@test_approx_eq_eps mean(chain[:ps]) [5/16 11/16] 0.10
