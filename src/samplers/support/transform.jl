@@ -1,33 +1,5 @@
 import Distributions.logpdf
 
-# ddylogit⁻¹(y) = logit⁻¹(y) * (1 - logit⁻¹(y)) # derivative of inverse log-odds
-#
-# function make_trans(a, b)
-#   x -> logit((x - a) / (b - a))
-# end
-#
-# function make_invtrans(a, b)
-#   y -> a + (b - a) * logit⁻¹(y)
-# end
-#
-# function make_py(px, invtrans, a, b)
-#   y -> px(invtrans(y)) * (b - a) * ddylogit⁻¹(y)
-# end
-#
-# trans = make_trans(0, 1)
-# invtrans = make_invtrans(0, 1)
-#
-# dist = Beta(1, 2)
-# px = x -> pdf(dist, x)
-# py = make_py(px, invtrans, 0, 1)
-#
-# x = 0.3
-# px(x)
-#
-# y = trans(x)
-# py(y)
-#
-
 # NOTE: Codes below are adapted from https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
 
 #################### TransformDistribution ####################
