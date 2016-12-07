@@ -75,7 +75,7 @@ function Base.show(io::IO, ch1::Chain)
   if length(ch1.value) == 0
     print(io, "Empty Chain, weight $(ch1.weight)")
   else
-    chain_mean = [i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value)]
+    chain_mean = Dict(i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value))
     print(io, "Chain, model evidence (log)  $(ch1.weight) and means $(chain_mean)")
   end
 end
