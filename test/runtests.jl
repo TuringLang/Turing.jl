@@ -39,7 +39,7 @@ testcases = [
             "particlecontainer",
 #       hmc.jl
           "multivariate_support_for_hmc",
-          "hmcmatrixsupport",
+          "matrixad",
           "constrained",
           "constrained_simplex",
 #       is.jl
