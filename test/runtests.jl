@@ -9,6 +9,8 @@ testcases = [
 # Turing.jl/
 #   src/
 #     core/
+#       ad.jl
+          "ad",
 #       compiler.jl
           "assume",
           "observe",
@@ -19,6 +21,9 @@ testcases = [
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
+#       graidnetinfo.jl
+          "replay",
+          "graidnetinfo",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
@@ -31,9 +36,6 @@ testcases = [
 #       transform.jl
 #     samplers/
 #       support/
-#         reply.jl
-            "replay",
-            "graidnetinfo",
 #         resample.jl
             "resample",
             "particlecontainer",
