@@ -123,35 +123,29 @@ function invlink(d::SimplexDistribution, y::Vector)
   x
 end
 
-############### PositiveDefiniteDistribution ##############
+############### PDMatDistribution ##############
 
-typealias PositiveDefiniteDistribution Union{Wishart}
+typealias PDMatDistribution Union{InverseWishart, Wishart}
 
-function link(d::PositiveDefiniteDistribution, x::Array)
+function link(d::PDMatDistribution, x::Array)
   z = chol(x)
   dim = size(z)
   for m in 1:dim[1]
-    for n in 1:dim[2]
-      if m < n
-        z[m, n] = 0
-      elseif m == n
-        z[m, n] = log(z[m, n])
-      end
-    end
+    z[m, m] = log(z[m, m])
+  end
+  for m in 1:dim[1], n in m+1:dim[2]
+    z[m, n] = 0
   end
   z
 end
 
-function invlink(d::PositiveDefiniteDistribution, z::Array)
+function invlink(d::PDMatDistribution, z::Array)
   dim = size(z)
   for m in 1:dim[1]
-    for n in 1:dim[2]
-      if m < n
-        z[m, n] = 0
-      elseif m == n
-        z[m, n] = exp(z[m, n])
-      end
-    end
+    z[m, m] = exp(z[m, m])
+  end
+  for m in 1:dim[1], n in m+1:dim[2]
+    z[m, n] = 0
   end
   z' * z
 end
