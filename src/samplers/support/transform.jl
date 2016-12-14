@@ -133,9 +133,8 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
       z[k] = x[k] / (1 - sum(x[1:k-1]))
     end
     lp + sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-  else
-    lp
   end
+  lp
 end
 
 # TODO: logpdf for SimplexDistribution
@@ -167,7 +166,18 @@ function invlink(d::PDMatDistribution, z::Array)
   z' * z
 end
 
-# TODO: logpdf for PDMatDistribution
+function logpdf(d::PDMatDistribution, x::Array, transform::Bool)
+  lp = logpdf(d, x)
+  if transform && isfinite(lp)
+    U = chol(x)
+    n = dim(d)
+    for i in 1:n
+      lp += (n - i + 2) * log(U[i, i])
+    end
+    lp += n * log(2)
+  end
+  lp
+end
 
 ################## Callback functions ##################
 

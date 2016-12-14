@@ -6,4 +6,4 @@ using Turing
   @predict p
 end
 
-sample(hmcmatrixsup, HMC(10, 0.1, 3))
+sample(hmcmatrixsup, HMC(1000, 0.3, 3))
