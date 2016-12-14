@@ -48,6 +48,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
 end
 
 function Base.run(spl :: Sampler{HMC})
+
   # Half momentum step
   function half_momentum_step(p, val∇E)
     dprintln(5, "half_momentum_step...")
@@ -65,6 +66,8 @@ function Base.run(spl :: Sampler{HMC})
     spl.values.logjoint = Dual(0)
     return logjoint
   end
+
+  t_start = time()  # record the start time of HMC
 
   # Run the model for the first time
   dprintln(2, "initialising...")
@@ -150,7 +153,7 @@ function Base.run(spl :: Sampler{HMC})
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-  println("[HMC]: Finshed with accept rate = $(accept_rate)")
+  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
