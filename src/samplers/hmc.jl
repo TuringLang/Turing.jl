@@ -1,9 +1,3 @@
-if debug_level == 0
-  RerunThreshold = 250
-else
-  RerunThreshold = 1
-end
-
 doc"""
     HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
 
@@ -67,7 +61,6 @@ function Base.run(spl :: Sampler{HMC})
   consume(Task(spl.model))
   spl.values.logjoint = Dual(0)
   spl.first = false
-  rerun_num = 0
   # Store the first predicts
   spl.samples[1].value = deepcopy(spl.predicts)
   n = spl.alg.n_samples
@@ -86,70 +79,52 @@ function Base.run(spl :: Sampler{HMC})
       dprintln(3, "stepping...")
       # Assume the step is successful
       has_run = true
-      try
-        # Generate random momentum
-        p = Dict{Any, Any}()
-        for k in keys(spl.values)
-          p[k] = randn(length(spl.values[k]))
-        end
-        # Record old Hamiltonian
-        dprintln(4, "old H...")
-        for k in keys(p)
-          oldH += p[k]' * p[k] / 2
-        end
-        consume(Task(spl.model))
-        oldH += realpart(-spl.values.logjoint)
-        spl.values.logjoint = Dual(0)
-        # Get gradient dict
-        dprintln(4, "first gradient...")
-        val∇E = get_gradient_dict(spl.values, spl.model)
-        dprintln(4, "leapfrog...")
-        # 'leapfrog' for each var
-        for t in 1:τ
-          p = half_momentum_step(p, val∇E)
-          # Make a full step for state
-          for k in keys(spl.values)
-            # X -> R and move
-            dprintln(5, "reconstruct...")
-            real = reconstruct(spl.dists[k], spl.values[k])
-            dprintln(5, "X -> R...")
-            real = link(spl.dists[k], real)
-            dprintln(5, "move...")
-            real += ϵ * reconstruct(spl.dists[k], p[k])
-            real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
-            # R -> X and store
-            dprintln(5, "R -> X...")
-            spl.values[k] = vectorize(spl.dists[k], invlink(spl.dists[k], real))
-            # spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
-          end
-          val∇E = get_gradient_dict(spl.values, spl.model)
-          p = half_momentum_step(p, val∇E)
-        end
-        # Claculate the new Hamiltonian
-        dprintln(4, "new H...")
-        for k in keys(p)
-          H += p[k]' * p[k] / 2
-        end
-        consume(Task(spl.model))
-        H += realpart(-spl.values.logjoint)
-        spl.values.logjoint = Dual(0)
-      catch e
-        # output error type
-        dprintln(2, e)
-        # Count re-run number
-        rerun_num += 1
-        # Only rerun for a threshold of times
-        if rerun_num <= RerunThreshold
-          # Revert the values
-          spl.values = deepcopy(old_values)
-          # Set the model un-run parameters
-          has_run = false
-          oldH = 0
-          H = 0
-        else
-          throw(BadParamError())
-        end
+      # Generate random momentum
+      p = Dict{Any, Any}()
+      for k in keys(spl.values)
+        p[k] = randn(length(spl.values[k]))
       end
+      # Record old Hamiltonian
+      dprintln(4, "old H...")
+      for k in keys(p)
+        oldH += p[k]' * p[k] / 2
+      end
+      consume(Task(spl.model))
+      oldH += realpart(-spl.values.logjoint)
+      spl.values.logjoint = Dual(0)
+      # Get gradient dict
+      dprintln(4, "first gradient...")
+      val∇E = get_gradient_dict(spl.values, spl.model)
+      dprintln(4, "leapfrog...")
+      # 'leapfrog' for each var
+      for t in 1:τ
+        p = half_momentum_step(p, val∇E)
+        # Make a full step for state
+        for k in keys(spl.values)
+          # X -> R and move
+          dprintln(5, "reconstruct...")
+          real = reconstruct(spl.dists[k], spl.values[k])
+          dprintln(5, "X -> R...")
+          real = link(spl.dists[k], real)
+          dprintln(5, "move...")
+          real += ϵ * reconstruct(spl.dists[k], p[k])
+          real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
+          # R -> X and store
+          dprintln(5, "R -> X...")
+          spl.values[k] = vectorize(spl.dists[k], invlink(spl.dists[k], real))
+          # spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
+        end
+        val∇E = get_gradient_dict(spl.values, spl.model)
+        p = half_momentum_step(p, val∇E)
+      end
+      # Claculate the new Hamiltonian
+      dprintln(4, "new H...")
+      for k in keys(p)
+        H += p[k]' * p[k] / 2
+      end
+      consume(Task(spl.model))
+      H += realpart(-spl.values.logjoint)
+      spl.values.logjoint = Dual(0)
     end
     # Calculate the difference in Hamiltonian
     ΔH = H - oldH
@@ -177,7 +152,7 @@ function Base.run(spl :: Sampler{HMC})
   # Wrap the result by Chain
   results = Chain(0, spl.samples)
   accept_rate = accept_num / n
-  println("[HMC]: Finshed with accept rate = $(accept_rate) (re-runs for $(rerun_num) times)")
+  println("[HMC]: Finshed with accept rate = $(accept_rate)")
   return results
 end
 
@@ -238,11 +213,3 @@ sample(model :: Function, alg :: HMC) = (
                                         global sampler = HMCSampler{HMC}(alg, model);
                                         run(sampler)
                                         )
-
-
-
-# Error
-type BadParamError <: Exception
-end
-
-Base.showerror(io::IO, e::BadParamError) = print(io, "HMC sampler terminates because of too many re-runs resulted from DomainError (over $(RerunThreshold)). This may be due to large value of ϵ and τ. Please try tuning these parameters.");
