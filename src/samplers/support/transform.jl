@@ -144,7 +144,7 @@ end
 typealias PDMatDistribution Union{InverseWishart, Wishart}
 
 function link(d::PDMatDistribution, x::Array)
-  z = chol(x)
+  z = chol(x)'
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = log(z[m, m])
@@ -163,7 +163,7 @@ function invlink(d::PDMatDistribution, z::Array)
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = 0
   end
-  z' * z
+  z * z'
 end
 
 function logpdf(d::PDMatDistribution, x::Array, transform::Bool)
