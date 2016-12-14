@@ -34,6 +34,7 @@ testcases = [
 #       bnp.jl
 #       distributions.jl
 #       transform.jl
+            "transform",
 #     samplers/
 #       support/
 #         resample.jl
