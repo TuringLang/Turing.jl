@@ -101,18 +101,18 @@ function Base.run(spl :: Sampler{HMC})
         p = half_momentum_step(p, val∇E)
         # Make a full step for state
         for k in keys(spl.values)
-          # X -> R and move
-          dprintln(5, "reconstruct...")
-          real = reconstruct(spl.dists[k], spl.values[k])
-          dprintln(5, "X -> R...")
-          real = link(spl.dists[k], real)
-          dprintln(5, "move...")
-          real += ϵ * reconstruct(spl.dists[k], p[k])
-          real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
-          # R -> X and store
-          dprintln(5, "R -> X...")
-          spl.values[k] = vectorize(spl.dists[k], invlink(spl.dists[k], real))
-          # spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
+          # # X -> R and move
+          # dprintln(5, "reconstruct...")
+          # real = reconstruct(spl.dists[k], spl.values[k])
+          # dprintln(5, "X -> R...")
+          # real = link(spl.dists[k], real)
+          # dprintln(5, "move...")
+          # real += ϵ * reconstruct(spl.dists[k], p[k])
+          # real = length(real) == 1 ? real[1] : real       # Array{T}[1] → T for invlink()
+          # # R -> X and store
+          # dprintln(5, "R -> X...")
+          # spl.values[k] = vectorize(spl.dists[k], invlink(spl.dists[k], real))
+          spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
         end
         val∇E = get_gradient_dict(spl.values, spl.model)
         p = half_momentum_step(p, val∇E)
@@ -156,38 +156,38 @@ function Base.run(spl :: Sampler{HMC})
   return results
 end
 
-function assume(spl :: HMCSampler{HMC}, d :: Distribution, var :: VarInfo)
+function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
   dprintln(2, "assuming...")
-  # 1. Gen values and vectorize if necessary
+  # Step 1 - Generate or replay variable
 
-  # TODO: Change the first running condition
-  # If it's the first time running the program
+  if spl.first  # first time -> generate
+    # Build {var -> dist} dictionary
+    spl.dists[var] = dist
 
-  if spl.first
-    # Record dist
-    spl.dists[var] = d
+    # Sample a new prior
+    dprintln(2, "sampling prior...")
+    r = rand(dist)
 
-    # Generate a new var
-    dprintln(2, "generating values...")
-    r = rand(d)
-    val = r
-    val = vectorize(d, r)
+    # Transform
+    v = link(dist, r)        # X -> R
+    val = vectorize(dist, v) # vectorize
+
     # Store the generated var
     addVarInfo(spl.values, var, val)
-  # If not the first time
-  else
-    # Fetch the existing var
+  else         # not first time -> replay
+    # Replay varibale
     dprintln(2, "fetching values...")
     val = spl.values[var]
   end
 
-  # 2. reconstruct values
+  # Step 2 - Reconstruct variable
   dprintln(2, "reconstructing values...")
-  dim = size(spl.dists[var])
-  val = reconstruct(d, val)
+  val = reconstruct(dist, val)  # reconstruct
+  val = invlink(dist, val)      # R -> X
 
+  # Computing logjoint
   dprintln(2, "computing logjoint...")
-  spl.values.logjoint += logpdf(d, val)
+  spl.values.logjoint += logpdf(dist, val, true)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
