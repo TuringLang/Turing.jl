@@ -123,6 +123,21 @@ function invlink(d::SimplexDistribution, y::Vector)
   x
 end
 
+function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
+  lp = logpdf(d, x)
+  if transform
+    K = length(x)
+    T = typeof(x[1])
+    z = Vector{T}(K-1)
+    for k in 1:K-1
+      z[k] = x[k] / (1 - sum(x[1:k-1]))
+    end
+    lp + sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
+  else
+    lp
+  end
+end
+
 # TODO: logpdf for SimplexDistribution
 
 ############### PDMatDistribution ##############
