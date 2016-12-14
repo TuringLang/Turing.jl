@@ -38,7 +38,7 @@ m = gi[v1][1].value
 function logjoint(x::Vector)
   s = x[2]
   dist_s = InverseGamma(2,3)
-  s = invlink(dist_s, s)
+  s = invlink(dist_s, s)        # NOTE: as we now work in R, we need to do R -> X for s
   m = x[1]
   lik_dist = Normal(m, sqrt(s))
 
