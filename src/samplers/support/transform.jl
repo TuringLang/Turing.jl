@@ -155,7 +155,7 @@ function link(d::PDMatDistribution, x::Array)
   z
 end
 
-function invlink(d::PDMatDistribution, z::Array)
+function invlink(d::PDMatDistribution, z::Union{Array, LowerTriangular})
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp(z[m, m])
