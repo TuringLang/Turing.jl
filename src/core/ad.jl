@@ -1,3 +1,5 @@
+const CHUNKSIZE = 1000
+
 doc"""
     get_gradient_dict(spl :: GradientSampler)
 
@@ -16,14 +18,14 @@ end
 function get_gradient_dict(priors::GradientInfo, model::Function)
   # Initialisation
   val∇E = Dict{Any, Any}()
-  # Split keys(priors) into 10, 10, 10, m-size chunks
+  # Split keys(priors) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(5, "making chunks...")
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
   for k in keys(priors)
     l = length(priors[k])
-    if prior_dim + l > 10
+    if prior_dim + l > CHUNKSIZE
       # Store the old chunk
       push!(prior_key_chunks, (key_chunk, prior_dim))
       # Initialise new chunk
