@@ -123,6 +123,8 @@ function invlink(d::SimplexDistribution, y::Vector)
   x
 end
 
+# TODO: logpdf for SimplexDistribution
+
 ############### PDMatDistribution ##############
 
 typealias PDMatDistribution Union{InverseWishart, Wishart}
@@ -150,12 +152,14 @@ function invlink(d::PDMatDistribution, z::Array)
   z' * z
 end
 
-#################### Callback function ####################
+# TODO: logpdf for PDMatDistribution
+
+################## Callback functions ##################
 
 link(d::Distribution, x) = x
 
 invlink(d::Distribution, x) = x
 
-function logpdf(d::Distribution, x::Real, transform::Bool)
+function logpdf(d::Distribution, x, transform::Bool)
   logpdf(d, x)
 end
