@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: get_gradient_dict
+using Turing: get_gradient_dict, invlink
 using ForwardDiff
 using ForwardDiff: Dual
 using Base.Test
@@ -16,34 +16,40 @@ end
 
 # Run HMC to gen GradientInfo, model, etc
 chain = sample(ad_test, HMC(1, 0.1, 1))
-chain[:s]
+chain[:s][1]
+chain[:m][1]
 
-# Get s and m from the result
+# Call Turing's AD
+# The result out is the gradient information on R
 gi = Turing.sampler.values
 vars = [k for k in keys(gi)]
 v1 = vars[1]
 v2 = vars[2]
-s = gi[v1][1].value
-m = gi[v2][1].value
 
-# Call Turing's AD
+s = gi[v2][1].value
+invlink(InverseGamma(2,3), s)
+m = gi[v1][1].value
+
 ∇E = get_gradient_dict(gi, ad_test)
 ∇E[v1][1]
 ∇E[v2][1]
 
 # Hand-written logjoint
 function logjoint(x::Vector)
-  s = x[1]
-  m = x[2]
+  s = x[2]
+  dist_s = InverseGamma(2,3)
+  s = invlink(dist_s, s)
+  m = x[1]
   lik_dist = Normal(m, sqrt(s))
-  lp = logpdf(InverseGamma(2,3), s) + logpdf(Normal(0,sqrt(s)), m)
+
+  lp = logpdf(dist_s, s, true) + logpdf(Normal(0,sqrt(s)), m, true)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
   lp
 end
 
 # Call ForwardDiff's AD
 g = x -> ForwardDiff.gradient(logjoint, x);
-x = [s, m]
+x = [m, s]
 logjoint(x)
 ∇E_ad = -g(x)
 ∇E_ad[1]
