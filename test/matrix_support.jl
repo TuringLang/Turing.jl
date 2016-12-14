@@ -7,6 +7,10 @@ using Base.Test
   @predict p
 end
 
-chain = sample(hmcmatrixsup, HMC(5000, 0.1, 3))
+ps = []
+for _ in 1:5
+  chain = sample(hmcmatrixsup, HMC(3000, 0.3, 3))
+  push!(ps, mean(chain[:p]))
+end
 
-@test_approx_eq_eps mean(chain[:p]) (7 * [1 0.5; 0.5 1]) 0.5
+@test_approx_eq_eps mean(ps) (7 * [1 0.5; 0.5 1]) 0.5
