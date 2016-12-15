@@ -29,21 +29,22 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC                          # the HMC algorithm info
   model       :: Function                     # model function
   values      :: GradientInfo                 # container for variables
-  dists       :: Dict{VarInfo, Distribution}  # dictionary from variables to the corresponding distributions
+  dists       :: Dict{VarInfo, Distribution}  # variable to its distribution
   samples     :: Array{Sample}                # samples
   predicts    :: Dict{Symbol, Any}            # outputs
   first       :: Bool                         # the first run flag
 
   function HMCSampler(alg :: HMC, model :: Function)
+    values = GradientInfo()   # GradientInfo initialize logjoint as Dual(0)
+    dists = Dict{VarInfo, Distribution}()
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     predicts = Dict{Symbol, Any}()
-    values = GradientInfo()   # GradientInfo initialize logjoint as Dual(0)
-    dists = Dict{VarInfo, Distribution}()
-    new(alg, model, values, dists, samples, predicts, true)
+    first = true
+    new(alg, model, values, dists, samples, predicts, first)
   end
 end
 
@@ -55,20 +56,47 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(p)
       p[k] -= ϵ * val∇E[k] / 2
     end
-    return p
+    p
   end
 
-  # # Leapfrog step
-  # function leapfrog()
-  # end
-  
+  # Leapfrog step
+  function leapfrog(values, p, model)
+    # Get gradient dict
+    dprintln(4, "first gradient...")
+    val∇E = get_gradient_dict(values, model)
+
+    # Do 'leapfrog' for each var
+    dprintln(4, "leapfrog...")
+    for t in 1:τ
+      p = half_momentum_step(p, val∇E)  # half step for momentum
+      for k in keys(values)             # full step for state
+        values[k] = Array{Any}(values[k] + ϵ * p[k])
+      end
+      val∇E = get_gradient_dict(values, model)
+      p = half_momentum_step(p, val∇E)  # half step for momentum
+    end
+
+    # Return updated θ and momentum
+    values, p
+  end
+
   # Find logjoint
   # NOTE: it returns logjoint but not -logjoint
   function find_logjoint(model, values)
-    consume(Task(model))
-    logjoint = values.logjoint
-    values.logjoint = Dual(0)
-    return logjoint
+    consume(Task(model))        # run model
+    logjoint = values.logjoint  # get logjoint
+    values.logjoint = Dual(0)   # reset logjoint
+    logjoint
+  end
+
+  # Compute Hamiltonian
+  function find_H(p, model, values)
+    H = 0
+    for k in keys(p)
+      H += p[k]' * p[k] / 2
+    end
+    H += realpart(-find_logjoint(model, values))
+    H[1]  # Vector{Any, 1} -> Any
   end
 
   t_start = time()  # record the start time of HMC
@@ -82,77 +110,39 @@ function Base.run(spl :: Sampler{HMC})
   spl.samples[1].value = deepcopy(spl.predicts)
 
   # Set parameters
-  n = spl.alg.n_samples
-  ϵ = spl.alg.lf_size
-  τ = spl.alg.lf_num
+  n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
   accept_num = 1        # the first samples is always accepted
 
-  # Sampling
+  # HMC steps
   for i = 2:n
-    dprintln(3, "stepping...")
+    dprintln(3, "HMC stepping...")
 
-    # Initialization
-    has_run = false
-    oldH = 0
-    H = 0
-
-    # Record old state
+    dprintln(4, "recording old θ...")
     old_values = deepcopy(spl.values)
 
-    # Generate random momentum
+    dprintln(4, "sampling momentum...")
     p = Dict{Any, Any}()
     for k in keys(spl.values)
       p[k] = randn(length(spl.values[k]))
     end
 
-    # Record old Hamiltonian
-    dprintln(4, "old H...")
-    for k in keys(p)
-      oldH += p[k]' * p[k] / 2
-    end
-    oldH += realpart(-find_logjoint(spl.model, spl.values))
+    dprintln(4, "recording old H...")
+    oldH = find_H(p, spl.model, spl.values)
 
-    # Get gradient dict
-    dprintln(4, "first gradient...")
-    val∇E = get_gradient_dict(spl.values, spl.model)
+    dprintln(4, "leapfrog stepping...")
+    spl.values, p = leapfrog(spl.values, p, spl.model)
 
-    # Do 'leapfrog' for each var
-    dprintln(4, "leapfrog...")
-    for t in 1:τ
-      p = half_momentum_step(p, val∇E)  # half step for momentum
-      for k in keys(spl.values)         # full step for state
-        spl.values[k] = Array{Any}(spl.values[k] + ϵ * p[k])
-      end
-      val∇E = get_gradient_dict(spl.values, spl.model)
-      p = half_momentum_step(p, val∇E)  # half step for momentum
-    end
+    dprintln(4, "computing new H...")
+    H = find_H(p, spl.model, spl.values)
 
-    # Claculate the new Hamiltonian
-    dprintln(4, "new H...")
-    for k in keys(p)
-      H += p[k]' * p[k] / 2
-    end
-    H += realpart(-find_logjoint(spl.model, spl.values))
-
-    # Calculate the difference in Hamiltonian
+    dprintln(4, "computing ΔH...")
     ΔH = H - oldH
-    ΔH = ΔH[1]  # Vector{Any, 1} -> Any
 
-    # Decide wether to accept or not
-    if ΔH < 0
-      acc = true
-    elseif rand() < exp(-ΔH)
-      acc = true
-    else
-      acc = false
-    end
-
-    if ~acc # rejected => store the previous predcits
-      spl.values = old_values
-      spl.samples[i] = spl.samples[i - 1]
-    else    # accepted => store the new predcits
-      spl.samples[i].value = deepcopy(spl.predicts)
-      accept_num += 1
+    dprintln(4, "decide wether to accept...")
+    if ΔH < 0 || rand() < exp(-ΔH)  # accepted => store the new predcits
+      spl.samples[i].value, accept_num = deepcopy(spl.predicts), accept_num + 1
+    else                            # rejected => store the previous predcits
+      spl.values, spl.samples[i] = old_values, spl.samples[i - 1]
     end
   end
 
