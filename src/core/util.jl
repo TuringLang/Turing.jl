@@ -78,4 +78,51 @@ end
 
 Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
 
-export kl, align, realpart, dualpart, make_dual
+#####################################################
+# Helper functions for vectorize/reconstruct values #
+#####################################################
+
+function vectorize(d::UnivariateDistribution, r)
+  if isa(r, Dual)
+    val = Vector{Any}([r])
+  else
+    val = Vector{Any}([Dual(r)])
+  end
+  val
+end
+
+function vectorize(d::MultivariateDistribution, r)
+  if isa(r[1], Dual)
+    val = Vector{Any}(map(x -> x, r))
+  else
+    val = Vector{Any}(map(x -> Dual(x), r))
+  end
+  val
+end
+
+function vectorize(d::MatrixDistribution, r)
+  if isa(r[1,1], Dual)
+    val = Vector{Any}(map(x -> x, vec(r)))
+  else
+    s = Dual(sum(r))
+    val = Vector{Any}(map(x -> Dual(x), vec(r)))
+  end
+  val
+end
+
+function reconstruct(d::Distribution, val)
+  if isa(d, UnivariateDistribution)
+    # Turn Array{Any} to Any if necessary (this is due to randn())
+    val = val[1]
+  elseif isa(d, MultivariateDistribution)
+    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
+    T = typeof(val[1])
+    val = Vector{T}(val)
+  elseif isa(d, MatrixDistribution)
+    T = typeof(val[1])
+    val = Array{T, 2}(reshape(val, size(d)...))
+  end
+  val
+end
+
+export kl, align, realpart, dualpart, make_dual, vectorize, reconstruct

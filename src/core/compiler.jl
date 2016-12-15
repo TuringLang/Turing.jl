@@ -71,23 +71,12 @@ macro assume(ex)
   sym = gensym()
   esc(
     quote
-      # Record the type of variable
-      if isa($(ex.args[3]), UnivariateDistribution)
-        typ = 1
-      elseif isa($(ex.args[3]), MultivariateDistribution)
-        typ = 2
-      elseif isa($(ex.args[3]), MatrixDistribution)
-        typ = 3
-      end
-
       $(ex.args[2]) = Turing.assume(
         Turing.sampler,
         $(ex.args[3]),    # Distribution
         VarInfo(
           Symbol($(string(sym))),
-          "",                             # TODO: pass var name to Prior
-          typ,
-          size($(ex.args[3]))
+          ""              # TODO: pass var name to Prior
         )
       )
     end

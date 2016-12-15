@@ -26,6 +26,7 @@ end
 
 # Concrete algorithm implementations.
 include("support/resample.jl")
+include("support/transform.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")

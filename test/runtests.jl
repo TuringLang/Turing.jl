@@ -9,6 +9,8 @@ testcases = [
 # Turing.jl/
 #   src/
 #     core/
+#       ad.jl
+          "ad",
 #       compiler.jl
           "assume",
           "observe",
@@ -19,6 +21,9 @@ testcases = [
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
+#       graidnetinfo.jl
+          "replay",
+          "graidnetinfo",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
@@ -29,17 +34,17 @@ testcases = [
 #       bnp.jl
 #       distributions.jl
 #       transform.jl
+            "transform",
 #     samplers/
 #       support/
-#         reply.jl
-            "replay",
-            "graidnetinfo",
 #         resample.jl
             "resample",
             "particlecontainer",
 #       hmc.jl
-          "multivariate_support_for_hmc",
-          "hmcmatrixsupport",
+          "multivariate_support",
+          "matrix_support",
+          "constrained_bounded",
+          "constrained_simplex",
 #       is.jl
           "importance_sampling",
 #       pgibbs.jl
@@ -71,19 +76,22 @@ testcases_excluded = [
 ]
 
 # Run tests
+path = Pkg.dir("Turing") * "/test"
+cd(path)
 println("[runtests.jl] testing starts")
 for t in testcases
   if ~ (t in testcases_excluded)
-
     if t in testcases_v04
       if VERSION < v"0.5"
         println("[runtests.jl] \"$t.jl\" is running")
-        include(t*".jl");
+        # include(t*".jl");
+        readstring(`julia $t.jl`)
         println("[runtests.jl] \"$t.jl\" is successful")
       end
     else
       println("[runtests.jl] \"$t.jl\" is running")
-      include(t*".jl");
+      # include(t*".jl");
+      readstring(`julia $t.jl`)
       println("[runtests.jl] \"$t.jl\" is successful")
     end
   end
