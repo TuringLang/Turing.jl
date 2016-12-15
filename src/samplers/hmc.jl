@@ -121,10 +121,7 @@ function Base.run(spl :: Sampler{HMC})
     old_values = deepcopy(spl.values)
 
     dprintln(2, "sampling momentum...")
-    p = Dict{Any, Any}()
-    for k in keys(spl.values)
-      p[k] = randn(length(spl.values[k]))
-    end
+    p = Dict(k => randn(length(spl.values[k])) for k in keys(spl.values))
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, spl.model, spl.values)
