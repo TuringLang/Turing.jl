@@ -1,3 +1,5 @@
+include("support/hmc_helper.jl")
+
 doc"""
     HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
 
@@ -49,57 +51,8 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
 end
 
 function Base.run(spl :: Sampler{HMC})
-
-  # Half momentum step
-  function half_momentum_step(p, val∇E)
-    dprintln(3, "half_momentum_step...")
-    for k in keys(p)
-      p[k] -= ϵ * val∇E[k] / 2
-    end
-    p
-  end
-
-  # Leapfrog step
-  function leapfrog(values, p, model)
-    # Get gradient dict
-    dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(values, model)
-
-    # Do 'leapfrog' for each var
-    dprintln(3, "leapfrog...")
-    for t in 1:τ
-      p = half_momentum_step(p, val∇E)  # half step for momentum
-      for k in keys(values)             # full step for state
-        values[k] = Array{Any}(values[k] + ϵ * p[k])
-      end
-      val∇E = get_gradient_dict(values, model)
-      p = half_momentum_step(p, val∇E)  # half step for momentum
-    end
-
-    # Return updated θ and momentum
-    values, p
-  end
-
-  # Find logjoint
-  # NOTE: it returns logjoint but not -logjoint
-  function find_logjoint(model, values)
-    consume(Task(model))        # run model
-    logjoint = values.logjoint  # get logjoint
-    values.logjoint = Dual(0)   # reset logjoint
-    logjoint
-  end
-
-  # Compute Hamiltonian
-  function find_H(p, model, values)
-    H = 0
-    for k in keys(p)
-      H += p[k]' * p[k] / 2
-    end
-    H += realpart(-find_logjoint(model, values))
-    H[1]  # Vector{Any, 1} -> Any
-  end
-
-  t_start = time()  # record the start time of HMC
+  # Record the start time of HMC
+  t_start = time()
 
   # Run the model for the first time
   dprintln(2, "initialising...")
@@ -126,8 +79,13 @@ function Base.run(spl :: Sampler{HMC})
     dprintln(2, "recording old H...")
     oldH = find_H(p, spl.model, spl.values)
 
+    dprintln(3, "first gradient...")
+    val∇E = get_gradient_dict(spl.values, spl.model)
+
     dprintln(2, "leapfrog stepping...")
-    spl.values, p = leapfrog(spl.values, p, spl.model)
+    for t in 1:τ  # do 'leapfrog' for each var
+      spl.values, val∇E, p = leapfrog(spl.values, val∇E, p, ϵ, spl.model)
+    end
 
     dprintln(2, "computing new H...")
     H = find_H(p, spl.model, spl.values)
