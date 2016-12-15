@@ -58,12 +58,16 @@ function Base.run(spl :: Sampler{HMC})
     return p
   end
 
+  # # Leapfrog step
+  # function leapfrog()
+  # end
+  
   # Find logjoint
   # NOTE: it returns logjoint but not -logjoint
-  function find_logjoint()
-    consume(Task(spl.model))
-    logjoint = spl.values.logjoint
-    spl.values.logjoint = Dual(0)
+  function find_logjoint(model, values)
+    consume(Task(model))
+    logjoint = values.logjoint
+    values.logjoint = Dual(0)
     return logjoint
   end
 
@@ -71,7 +75,7 @@ function Base.run(spl :: Sampler{HMC})
 
   # Run the model for the first time
   dprintln(2, "initialising...")
-  find_logjoint()
+  find_logjoint(spl.model, spl.values)
   spl.first = false
 
   # Store the first predicts
@@ -106,7 +110,7 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(p)
       oldH += p[k]' * p[k] / 2
     end
-    oldH += realpart(-find_logjoint())
+    oldH += realpart(-find_logjoint(spl.model, spl.values))
 
     # Get gradient dict
     dprintln(4, "first gradient...")
@@ -128,7 +132,7 @@ function Base.run(spl :: Sampler{HMC})
     for k in keys(p)
       H += p[k]' * p[k] / 2
     end
-    H += realpart(-find_logjoint())
+    H += realpart(-find_logjoint(spl.model, spl.values))
 
     # Calculate the difference in Hamiltonian
     ΔH = H - oldH
