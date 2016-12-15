@@ -52,7 +52,7 @@ function Base.run(spl :: Sampler{HMC})
 
   # Half momentum step
   function half_momentum_step(p, val∇E)
-    dprintln(5, "half_momentum_step...")
+    dprintln(3, "half_momentum_step...")
     for k in keys(p)
       p[k] -= ϵ * val∇E[k] / 2
     end
@@ -62,11 +62,11 @@ function Base.run(spl :: Sampler{HMC})
   # Leapfrog step
   function leapfrog(values, p, model)
     # Get gradient dict
-    dprintln(4, "first gradient...")
+    dprintln(3, "first gradient...")
     val∇E = get_gradient_dict(values, model)
 
     # Do 'leapfrog' for each var
-    dprintln(4, "leapfrog...")
+    dprintln(3, "leapfrog...")
     for t in 1:τ
       p = half_momentum_step(p, val∇E)  # half step for momentum
       for k in keys(values)             # full step for state
@@ -115,30 +115,30 @@ function Base.run(spl :: Sampler{HMC})
 
   # HMC steps
   for i = 2:n
-    dprintln(3, "HMC stepping...")
+    dprintln(2, "HMC stepping...")
 
-    dprintln(4, "recording old θ...")
+    dprintln(2, "recording old θ...")
     old_values = deepcopy(spl.values)
 
-    dprintln(4, "sampling momentum...")
+    dprintln(2, "sampling momentum...")
     p = Dict{Any, Any}()
     for k in keys(spl.values)
       p[k] = randn(length(spl.values[k]))
     end
 
-    dprintln(4, "recording old H...")
+    dprintln(2, "recording old H...")
     oldH = find_H(p, spl.model, spl.values)
 
-    dprintln(4, "leapfrog stepping...")
+    dprintln(2, "leapfrog stepping...")
     spl.values, p = leapfrog(spl.values, p, spl.model)
 
-    dprintln(4, "computing new H...")
+    dprintln(2, "computing new H...")
     H = find_H(p, spl.model, spl.values)
 
-    dprintln(4, "computing ΔH...")
+    dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    dprintln(4, "decide wether to accept...")
+    dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)  # accepted => store the new predcits
       spl.samples[i].value, accept_num = deepcopy(spl.predicts), accept_num + 1
     else                            # rejected => store the previous predcits
