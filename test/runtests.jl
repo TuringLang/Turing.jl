@@ -84,14 +84,14 @@ for t in testcases
     if t in testcases_v04
       if VERSION < v"0.5"
         println("[runtests.jl] \"$t.jl\" is running")
-        # include(t*".jl");
-        readstring(`julia $t.jl`)
+        include(t*".jl");
+        # readstring(`julia $t.jl`)
         println("[runtests.jl] \"$t.jl\" is successful")
       end
     else
       println("[runtests.jl] \"$t.jl\" is running")
-      # include(t*".jl");
-      readstring(`julia $t.jl`)
+      include(t*".jl");
+      # readstring(`julia $t.jl`)
       println("[runtests.jl] \"$t.jl\" is successful")
     end
   end
