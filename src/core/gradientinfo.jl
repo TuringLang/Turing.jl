@@ -96,14 +96,14 @@ strp = string(p)
 immutable VarInfo
   id    ::    Symbol
   function VarInfo(sym::Symbol)
-    new("T"*string(sym))
+    new(sym)
   end
   function VarInfo(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
     if isa(arrExpr.args[2], Symbol)
       @assert arrExpr.args[2] == idxSym
       arrExpr.args[2] = idxVal
     end
-    new(Symbol("T"*string(arrExpr)))
+    new(Symbol(arrExpr))
   end
   function VarInfo(mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
     if isa(mulDimExpr.args[1], Symbol)    # mat form x[i, j]
@@ -125,7 +125,7 @@ immutable VarInfo
         mulDimExpr.args[2] = dim2Val
       end
     end
-    new(Symbol("T"*string(mulDimExpr)))
+    new(Symbol(mulDimExpr))
   end
 end
 
