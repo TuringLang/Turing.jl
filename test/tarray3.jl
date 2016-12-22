@@ -6,6 +6,11 @@ push!(ta1, 1);
 push!(ta1, 2);
 @test pop!(ta1) == 2
 
+ta1_2 = TArray{Int, 1}(4); # another constructor
+push!(ta1_2, 1);
+push!(ta1_2, 2);
+@test pop!(ta1_2) == 2
+
 ta2 = TArray{Int}(4, 4);
 ta3 = TArray{Int, 4}(4, 3, 2, 1);
 ta4 = localcopy(ta3);
