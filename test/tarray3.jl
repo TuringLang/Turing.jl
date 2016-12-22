@@ -27,3 +27,5 @@ ta6 = TArray{Float64}(4);
 for i in 1:4 ta6[i] = i / 10 end
 @test ta6[1] == 0.1
 @test Array(ta6) == [0.1, 0.2, 0.3, 0.4]
+
+ta7 = TArray{Int, 2}((2, 2));   # TODO: add test for use this multi-dim array
