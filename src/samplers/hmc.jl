@@ -158,7 +158,8 @@ function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predict done")
 end
 
-function sample(model :: Function, alg :: HMC)
+function sample(model :: Function, alg :: HMC; chunk_size=1000)
   global sampler = HMCSampler{HMC}(alg, model);
+  global CHUNKSIZE = chunk_size;
   run(sampler)
 end
