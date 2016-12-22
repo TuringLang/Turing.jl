@@ -14,15 +14,122 @@ has_ops(parse("@assume x ~ Binomial(; :static=true)"))    # gives true
 has_ops(parse("@assume x ~ Binomial()"))                  # gives false
 ```
 """
-function has_ops(ex)
-  if length(ex.args[3].args) <= 1               # check if the D() has parameters
+function has_ops(right)
+  if length(right.args) <= 1               # check if the D() has parameters
     return false                                # Binominal() can have empty
-  elseif typeof(ex.args[3].args[2]) != Expr     # check if has optional arguments
+  elseif typeof(right.args[2]) != Expr     # check if has optional arguments
     return false
-  elseif ex.args[3].args[2].head != :parameters # check if parameters valid
+  elseif right.args[2].head != :parameters # check if parameters valid
     return false
   end
   true
+end
+
+function gen_assume_ex(left, right)
+  if has_ops(right)
+    # If static is set
+    if right.args[2].args[1].args[1] == :(:static) && right.args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # If param is set
+    if right.args[2].args[1].args[1] == :(:param) && right.args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # Remove the extra argument
+    splice!(right.args, 2)
+  end
+
+  # The if statement is to deterimnet how to pass the prior.
+  # It only supposrts pure symbol and Array(/Dict) now.
+  varExpr = ex.args[2]
+  if isa(varExpr, Symbol)
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Pure Symbol
+            Symbol($(string(varExpr)))
+          )
+        )
+      end
+    )
+  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Symbol)
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2])                   # index value
+          )
+        )
+      end
+    )
+  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Expr)
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[1].args[2]))),  # index symbol
+            $(varExpr.args[1].args[2]),                  # index value
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2])                   # index value
+          )
+        )
+      end
+    )
+  elseif length(varExpr.args) == 3
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2]),                  # index value
+            Symbol($(string(varExpr.args[3]))),  # index symbol
+            $(varExpr.args[3])                   # index value
+          )
+        )
+      end
+    )
+  end
+end
+
+#################
+# Overload of ~ #
+#################
+
+macro ~(left, right)
+  if isa(left, Real)                  # value
+    esc(println("Call observe"))
+  else
+    local sym
+    if isa(left, Symbol)              # symbol
+      sym = left
+    elseif isa(left.args[1], Symbol)  # matrix
+      sym = left.args[1]
+    elseif isa(left.args[1], Expr)    # array of arry
+      sym = left.args[1].args[1]
+    end
+    esc(
+      quote
+        if isdefined(Symbol($(string(sym))))
+          println("Call observe")
+        else
+          println("Call assume")
+          $left = rand($right)
+        end
+      end
+    )
+  end
 end
 
 ##########
@@ -248,6 +355,15 @@ macro model(name, fbody)
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
   ex = Expr(:function, fname, fbody)
+
+  # Assign data locally
+  local_assign_ex = quote
+    for k in keys(data)
+      ex = Expr(Symbol("="), k, data[k])
+      eval(ex)
+    end
+  end
+  unshift!(fbody.args, local_assign_ex)
 
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
