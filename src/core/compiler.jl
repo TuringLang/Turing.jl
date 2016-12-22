@@ -83,7 +83,7 @@ macro assume(ex)
         )
       end
     )
-  elseif length(varExpr.args) == 2
+  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Symbol)
     esc(
       quote
         $(varExpr) = Turing.assume(
@@ -91,6 +91,22 @@ macro assume(ex)
           $(ex.args[3]),    # dDistribution
           VarInfo(          # Array assignment
             parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2])                   # index value
+          )
+        )
+      end
+    )
+  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Expr)
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[1].args[2]))),  # index symbol
+            $(varExpr.args[1].args[2]),                  # index value
             Symbol($(string(varExpr.args[2]))),  # index symbol
             $(varExpr.args[2])                   # index value
           )

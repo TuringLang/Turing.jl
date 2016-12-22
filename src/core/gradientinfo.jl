@@ -105,16 +105,27 @@ immutable VarInfo
     end
     new(Symbol(arrExpr))
   end
-  function VarInfo(matExpr::Expr, rowSym::Symbol, rowVal::Any, colSym::Symbol, colVal::Any)
-    if isa(matExpr.args[2], Symbol)
-      @assert matExpr.args[2] == rowSym
-      matExpr.args[2] = rowVal
+  function VarInfo(mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
+    if isa(mulDimExpr.args[1], Symbol)    # mat form x[i, j]
+      if isa(mulDimExpr.args[2], Symbol)
+        @assert mulDimExpr.args[2] == dim1Sym
+        mulDimExpr.args[2] = dim1Val
+      end
+      if isa(mulDimExpr.args[3], Symbol)
+        @assert mulDimExpr.args[3] == dim2Sym
+        mulDimExpr.args[3] = dim2Val
+      end
+    elseif isa(mulDimExpr.args[1], Expr)  # multi array form x[i][j]
+      if isa(mulDimExpr.args[1], Expr)
+        @assert mulDimExpr.args[1].args[2] == dim1Sym
+        mulDimExpr.args[1].args[2] = dim1Val
+      end
+      if isa(mulDimExpr.args[2], Symbol)
+        @assert mulDimExpr.args[2] == dim2Sym
+        mulDimExpr.args[2] = dim2Val
+      end
     end
-    if isa(matExpr.args[3], Symbol)
-      @assert matExpr.args[3] == colSym
-      matExpr.args[3] = colVal
-    end
-    new(Symbol(matExpr))
+    new(Symbol(mulDimExpr))
   end
 end
 
