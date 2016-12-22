@@ -201,20 +201,23 @@ macro model(name, fbody)
   # This varinfo array is useful is task cloning.
 
   # Turn f into f() if necessary.
-  fname = isa(name, Symbol) ? Expr(:call, name) : name
-  ex = Expr(:function, fname, fbody)
-
-  # Assign data locally
-  local_assign_ex = quote
-    if isdefined(Symbol("data"))
-      for k in keys(data)
-        ex = Expr(Symbol("="), k, data[k])
-        eval(ex)
+  if isa(name, Symbol)
+    fname = Expr(:call, name)
+  else
+    fname = name
+    # If :data is passed in, assign data locally
+    if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) > 0
+      local_assign_ex = quote
+        for k in keys(data)
+          ex = Expr(Symbol("="), k, data[k])
+          eval(ex)
+        end
       end
+      unshift!(fbody.args, local_assign_ex)
     end
   end
-  unshift!(fbody.args, local_assign_ex)
 
+  ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end
