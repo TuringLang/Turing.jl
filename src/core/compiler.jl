@@ -70,28 +70,45 @@ macro assume(ex)
 
   # The if statement is to deterimnet how to pass the prior.
   # It only supposrts pure symbol and Array(/Dict) now.
-  if isa(ex.args[2], Symbol)
+  varExpr = ex.args[2]
+  if isa(varExpr, Symbol)
     esc(
       quote
-        $(ex.args[2]) = Turing.assume(
+        $(varExpr) = Turing.assume(
           Turing.sampler,
           $(ex.args[3]),    # dDistribution
           VarInfo(          # Pure Symbol
-            Symbol($(string(ex.args[2])))
+            Symbol($(string(varExpr)))
           )
         )
       end
     )
-  else
+  elseif length(varExpr.args) == 2
     esc(
       quote
-        $(ex.args[2]) = Turing.assume(
+        $(varExpr) = Turing.assume(
           Turing.sampler,
           $(ex.args[3]),    # dDistribution
           VarInfo(          # Array assignment
-            parse($(string(ex.args[2]))),           # indexing expr
-            Symbol($(string(ex.args[2].args[2]))),  # index symbol
-            $(ex.args[2].args[2])                   # index value
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2])                   # index value
+          )
+        )
+      end
+    )
+  elseif length(varExpr.args) == 3
+    esc(
+      quote
+        $(varExpr) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(varExpr))),           # indexing expr
+            Symbol($(string(varExpr.args[2]))),  # index symbol
+            $(varExpr.args[2]),                  # index value
+            Symbol($(string(varExpr.args[3]))),  # index symbol
+            $(varExpr.args[3])                   # index value
           )
         )
       end

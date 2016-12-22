@@ -99,12 +99,22 @@ immutable VarInfo
     new(sym)
   end
   function VarInfo(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
-    arrExpr
     if isa(arrExpr.args[2], Symbol)
       @assert arrExpr.args[2] == idxSym
       arrExpr.args[2] = idxVal
     end
     new(Symbol(arrExpr))
+  end
+  function VarInfo(matExpr::Expr, rowSym::Symbol, rowVal::Any, colSym::Symbol, colVal::Any)
+    if isa(matExpr.args[2], Symbol)
+      @assert matExpr.args[2] == rowSym
+      matExpr.args[2] = rowVal
+    end
+    if isa(matExpr.args[3], Symbol)
+      @assert matExpr.args[3] == colSym
+      matExpr.args[3] = colVal
+    end
+    new(Symbol(matExpr))
   end
 end
 
