@@ -1,5 +1,7 @@
 export VarInfo, VarInfoArray, GradientInfo, addVarInfo
 
+########## VarInfoArray ##########
+
 doc"""
     VarInfoArray(array, count, currSetIdx, currGetIdx)
 
@@ -75,7 +77,7 @@ function get(pa::VarInfoArray)
   return pa.array[oldGetIdx]
 end
 
-
+########## VarInfo ##########
 
 doc"""
     VarInfo(sym)
@@ -92,13 +94,17 @@ strp = string(p)
 ```
 """
 immutable VarInfo
-  sym       ::    Symbol
-  name      ::    Symbol
-  function VarInfo(sym)
-    new(sym, :unknownname)
+  id    ::    Symbol
+  function VarInfo(sym::Symbol)
+    new(sym)
   end
-  function VarInfo(sym, name)
-    new(sym, name)
+  function VarInfo(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
+    arrExpr
+    if isa(arrExpr.args[2], Symbol)
+      @assert arrExpr.args[2] == idxSym
+      arrExpr.args[2] = idxVal
+    end
+    new(Symbol(arrExpr))
   end
 end
 
@@ -108,10 +114,10 @@ doc"""
 Helper function to convert a VarInfo to its string representation.
 """
 function Base.string(p::VarInfo)
-  return string(p.sym)
+  return string(p.id)
 end
 
-
+########## GradientInfo ##########
 
 doc"""
     GradientInfo()

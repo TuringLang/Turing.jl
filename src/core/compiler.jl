@@ -68,19 +68,36 @@ macro assume(ex)
     splice!(ex.args[3].args, 2)
   end
 
-  sym = gensym()
-  esc(
-    quote
-      $(ex.args[2]) = Turing.assume(
-        Turing.sampler,
-        $(ex.args[3]),    # Distribution
-        VarInfo(
-          Symbol($(string(sym))),
-          ""              # TODO: pass var name to Prior
+  # The if statement is to deterimnet how to pass the prior.
+  # It only supposrts pure symbol and Array(/Dict) now.
+  if isa(ex.args[2], Symbol)
+    esc(
+      quote
+        $(ex.args[2]) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Pure Symbol
+            Symbol($(string(ex.args[2])))
+          )
         )
-      )
-    end
-  )
+      end
+    )
+  else
+    esc(
+      quote
+        $(ex.args[2]) = Turing.assume(
+          Turing.sampler,
+          $(ex.args[3]),    # dDistribution
+          VarInfo(          # Array assignment
+            parse($(string(ex.args[2]))),           # indexing expr
+            Symbol($(string(ex.args[2].args[2]))),  # index symbol
+            $(ex.args[2].args[2])                   # index value
+          )
+        )
+      end
+    )
+  end
+
 end
 
 doc"""

@@ -24,6 +24,7 @@ testcases = [
 #       graidnetinfo.jl
           "replay",
           "graidnetinfo",
+          "flaten_naming",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
