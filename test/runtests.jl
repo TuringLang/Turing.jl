@@ -19,6 +19,7 @@ testcases = [
           "beta_binomial",
           "noparam",
           "opt_param_of_dist",
+          "new_grammar",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
