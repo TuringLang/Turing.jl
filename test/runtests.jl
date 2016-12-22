@@ -11,6 +11,7 @@ testcases = [
 #     core/
 #       ad.jl
           "ad",
+          "ad2",
 #       compiler.jl
           "assume",
           "observe",
