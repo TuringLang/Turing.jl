@@ -206,9 +206,11 @@ macro model(name, fbody)
 
   # Assign data locally
   local_assign_ex = quote
-    for k in keys(data)
-      ex = Expr(Symbol("="), k, data[k])
-      eval(ex)
+    if isdefined(Symbol("data"))
+      for k in keys(data)
+        ex = Expr(Symbol("="), k, data[k])
+        eval(ex)
+      end
     end
   end
   unshift!(fbody.args, local_assign_ex)
