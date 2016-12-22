@@ -63,7 +63,11 @@ end
 #####################################
 
 function realpart(d)
-  return map(x -> Float64(x.value), d)
+  if isa(d[1,1], Dual)      # matrix
+    return map(x -> Float64(x.value), d)
+  elseif isa(d[1,1], Array) # array of arry
+    return [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
+  end
 end
 
 function dualpart(d)
