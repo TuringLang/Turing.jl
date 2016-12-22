@@ -26,80 +26,58 @@ function has_ops(right)
 end
 
 function gen_assume_ex(left, right)
-  if has_ops(right)
-    # If static is set
-    if right.args[2].args[1].args[1] == :(:static) && right.args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # If param is set
-    if right.args[2].args[1].args[1] == :(:param) && right.args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # Remove the extra argument
-    splice!(right.args, 2)
-  end
-
   # The if statement is to deterimnet how to pass the prior.
   # It only supposrts pure symbol and Array(/Dict) now.
-  varExpr = ex.args[2]
-  if isa(varExpr, Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Pure Symbol
-            Symbol($(string(varExpr)))
-          )
+  if isa(left, Symbol)
+    quote
+      $(left) = Turing.assume(
+        Turing.sampler,
+        $(right),    # dDistribution
+        VarInfo(          # Pure Symbol
+          Symbol($(string(left)))
         )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
+      )
+    end
+  elseif length(left.args) == 2 && isa(left.args[1], Symbol)
+    quote
+      $(left) = Turing.assume(
+        Turing.sampler,
+        $(right),    # dDistribution
+        VarInfo(          # Array assignment
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2])                   # index value
         )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Expr)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[1].args[2]))),  # index symbol
-            $(varExpr.args[1].args[2]),                  # index value
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
+      )
+    end
+  elseif length(left.args) == 2 && isa(left.args[1], Expr)
+    quote
+      $(left) = Turing.assume(
+        Turing.sampler,
+        $(right),    # dDistribution
+        VarInfo(          # Array assignment
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[1].args[2]))),  # index symbol
+          $(left.args[1].args[2]),                  # index value
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2])                   # index value
         )
-      end
-    )
-  elseif length(varExpr.args) == 3
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2]),                  # index value
-            Symbol($(string(varExpr.args[3]))),  # index symbol
-            $(varExpr.args[3])                   # index value
-          )
+      )
+    end
+  elseif length(left.args) == 3
+    quote
+      $(left) = Turing.assume(
+        Turing.sampler,
+        $(right),    # dDistribution
+        VarInfo(          # Array assignment
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2]),                  # index value
+          Symbol($(string(left.args[3]))),  # index symbol
+          $(left.args[3])                   # index value
         )
-      end
-    )
+      )
+    end
   end
 end
 
@@ -108,188 +86,58 @@ end
 #################
 
 macro ~(left, right)
+  # Deal with additional arguments for distribution
+  if has_ops(right)
+    # If static is set
+    if right.args[2].args[1].args[1] == :static && right.args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # If param is set
+    if right.args[2].args[1].args[1] == :param && right.args[2].args[1].args[2] == :true
+      # Do something
+    end
+    # Remove the extra argument
+    splice!(right.args, 2)
+  end
+
   if isa(left, Real)                  # value
-    esc(println("Call observe"))
+    # Call observe
+    esc(
+      quote
+        Turing.observe(
+          Turing.sampler,
+          $(right),   # Distribution
+          $(left)     # Data point
+        )
+      end
+    )
   else
     local sym
     if isa(left, Symbol)              # symbol
       sym = left
-    elseif isa(left.args[1], Symbol)  # matrix
+    elseif length(left.args) == 2 && isa(left.args[1], Symbol)  # vector
       sym = left.args[1]
-    elseif isa(left.args[1], Expr)    # array of arry
+    elseif length(left.args) == 2 && isa(left.args[1], Expr)    # array of arry
       sym = left.args[1].args[1]
+    elseif length(left.args) == 3
+      sym = left.args[1]
     end
     esc(
       quote
         if isdefined(Symbol($(string(sym))))
-          println("Call observe")
+          # Call observe
+          Turing.observe(
+            Turing.sampler,
+            $(right),   # Distribution
+            $(left)     # Data point
+          )
         else
-          println("Call assume")
-          $left = rand($right)
+          # Call assume
+          $(gen_assume_ex(left, right))
         end
       end
     )
   end
-end
-
-##########
-# Macros #
-##########
-
-doc"""
-    assume(ex)
-
-Operation for defining the prior.
-
-Usage:
-
-```julia
-@assume x ~ Dist
-```
-
-Here `x` is a **symbol** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-Example:
-
-```julia
-@assume x ~ Normal(0, 1)
-@assume x ~ Binomial(0, 1)
-@assume x ~ Normal(0, 1; :static=true)
-@assume x ~ Binomial(0, 1; :param=true)
-```
-"""
-macro assume(ex)
-  dprintln(1, "marco assuming...")
-  @assert ex.args[1] == Symbol("@~")
-  # Check if have extra arguements setting
-  if has_ops(ex)
-    # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # Remove the extra argument
-    splice!(ex.args[3].args, 2)
-  end
-
-  # The if statement is to deterimnet how to pass the prior.
-  # It only supposrts pure symbol and Array(/Dict) now.
-  varExpr = ex.args[2]
-  if isa(varExpr, Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Pure Symbol
-            Symbol($(string(varExpr)))
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Expr)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[1].args[2]))),  # index symbol
-            $(varExpr.args[1].args[2]),                  # index value
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 3
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2]),                  # index value
-            Symbol($(string(varExpr.args[3]))),  # index symbol
-            $(varExpr.args[3])                   # index value
-          )
-        )
-      end
-    )
-  end
-
-end
-
-doc"""
-    observe(ex)
-
-Operation for defining the likelihood.
-
-Usage:
-
-```julia
-@observe x ~ Dist
-```
-
-Here `x` is a **concrete value** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-Example:
-
-```julia
-@observe x ~ Normal(0, 1)
-@observe x ~ Binomial(0, 1)
-@observe x ~ Normal(0, 1; :static=true)
-@observe x ~ Binomial(0, 1; :param=true)
-```
-"""
-macro observe(ex)
-  dprintln(1, "marco observing...")
-  @assert ex.args[1] == Symbol("@~")
-
-  global TURING
-  # Check if have extra arguements setting
-  if has_ops(ex)
-    # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # Remove the extra argument
-    splice!(ex.args[3].args, 2)
-  end
-
-  esc(
-    quote
-      Turing.observe(
-        Turing.sampler,
-        $(ex.args[3]),   # Distribution
-        $(ex.args[2])    # Data point
-      )
-    end
-  )
 end
 
 doc"""
