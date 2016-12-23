@@ -32,16 +32,16 @@ alpha = 0.16            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
 @model bnn begin
-  @assume b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])
-  @assume w11 ~ MvNormal([0; 0], [var 0; 0 var])
-  @assume w12 ~ MvNormal([0; 0], [var 0; 0 var])
-  @assume w13 ~ MvNormal([0; 0], [var 0; 0 var])
-  @assume bo ~ Normal(0, var)
+  b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])
+  w11 ~ MvNormal([0; 0], [var 0; 0 var])
+  w12 ~ MvNormal([0; 0], [var 0; 0 var])
+  w13 ~ MvNormal([0; 0], [var 0; 0 var])
+  bo ~ Normal(0, var)
 
-  @assume wo ~ MvNormal([0; 0; 0], [var 0 0; 0 var 0; 0 0 var])
+  wo ~ MvNormal([0; 0; 0], [var 0 0; 0 var 0; 0 0 var])
   for i = rand(1:N, 10)
     y = nn(xs[i], b1, w11, w12, w13, bo, wo)
-    @observe ts[i] ~ Bernoulli(y)
+    ts[i] ~ Bernoulli(y)
   end
   @predict b1 w11 w12 w13 bo wo
 end

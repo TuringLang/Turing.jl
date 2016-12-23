@@ -19,7 +19,7 @@ v_mat = VarInfo(:(x[i,j]), :i, 1, :j, 2)
 @model mat_name_test begin
   p = Array{Dual}((2, 2))
   for i in 1:2, j in 1:2
-    @assume p[i,j] ~ Normal(0, 1)
+    p[i,j] ~ Normal(0, 1)
   end
   @predict p
 end
@@ -35,7 +35,7 @@ v_arrarr = VarInfo(:(x[i][j]), :i, 1, :j, 2)
   p[1] = Array{Dual}(2)
   p[2] = Array{Dual}(2)
   for i in 1:2, j in 1:2
-    @assume p[i][j] ~ Normal(0, 1)
+    p[i][j] ~ Normal(0, 1)
   end
   @predict p
 end

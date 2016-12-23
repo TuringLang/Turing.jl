@@ -12,10 +12,10 @@ exact = posterior(prior, Bernoulli, obs)
 meanp = exact.α / (exact.α + exact.β)
 
 @model testbb begin
-  @assume p ~ Beta(2,2)
-  @assume x ~ Bernoulli(p)
+  p ~ Beta(2,2)
+  x ~ Bernoulli(p)
   for i = 1:length(obs)
-    @observe obs[i] ~ Bernoulli(p)
+    obs[i] ~ Bernoulli(p)
   end
   @predict p x
 end

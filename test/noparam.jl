@@ -5,9 +5,9 @@ using Distributions
 using Base.Test
 
 @model testnoparam begin
-  @assume x ~ Bernoulli(1)
-  @observe 1 ~ Bernoulli(x / 2)
-  @observe 0 ~ Bernoulli(x / 2)
+  x ~ Bernoulli(1)
+  1 ~ Bernoulli(x / 2)
+  0 ~ Bernoulli(x / 2)
   @predict x
 end
 

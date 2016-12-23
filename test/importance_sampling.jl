@@ -40,10 +40,10 @@ function reference()
 end
 
 @model normal begin
-  @assume x ~ Normal(4,5)
-  @observe 3 ~ Normal(x,2)
-  @assume y ~ Normal(x,1)
-  @observe 1.5 ~ Normal(y,2)
+  x ~ Normal(4,5)
+  3 ~ Normal(x,2)
+  y ~ Normal(x,1)
+  1.5 ~ Normal(y,2)
   @predict x y
 end
 

@@ -5,10 +5,10 @@ using Distributions
 using Base.Test
 
 @model test begin
-  @assume z ~ Normal(0,1)
-  @assume x ~ Bernoulli(1)
-  @observe 1 ~ Bernoulli(x / 2)
-  @observe 0 ~ Bernoulli(x / 2)
+  z ~ Normal(0,1)
+  x ~ Bernoulli(1)
+  1 ~ Bernoulli(x / 2)
+  0 ~ Bernoulli(x / 2)
   @predict x
 end
 

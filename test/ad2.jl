@@ -3,11 +3,11 @@ using Turing
 using Base.Test
 
 # Define model
-@model ad_test2 begin
+@model ad_test2(data=Dict(:x=>[1.5 2.0])) begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
   @predict s m
 end
 
