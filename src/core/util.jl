@@ -81,6 +81,8 @@ function make_dual(dim, real, idx)
 end
 
 Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
+Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
+Base.convert(::Type{Int64}, d::Dual{0,Int64}) = d.value
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #

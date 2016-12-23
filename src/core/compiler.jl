@@ -81,6 +81,17 @@ function gen_assume_ex(left, right)
   end
 end
 
+macro isdefined(variable)
+ quote
+   try
+    $(esc(variable))
+    true
+   catch
+    false
+   end
+ end
+end
+
 #################
 # Overload of ~ #
 #################
@@ -112,19 +123,9 @@ macro ~(left, right)
       end
     )
   else
-    local sym
-    if isa(left, Symbol)              # symbol
-      sym = left
-    elseif length(left.args) == 2 && isa(left.args[1], Symbol)  # vector
-      sym = left.args[1]
-    elseif length(left.args) == 2 && isa(left.args[1], Expr)    # array of arry
-      sym = left.args[1].args[1]
-    elseif length(left.args) == 3
-      sym = left.args[1]
-    end
     esc(
       quote
-        if isdefined(Symbol($(string(sym))))
+        if @isdefined($left)
           # Call observe
           Turing.observe(
             Turing.sampler,
