@@ -16,7 +16,7 @@ has_ops(parse("@assume x ~ Binomial()"))                  # gives false
 """
 function has_ops(right)
   if length(right.args) <= 1               # check if the D() has parameters
-    return false                                # Binominal() can have empty
+    return false                           # Binominal() can have empty
   elseif typeof(right.args[2]) != Expr     # check if has optional arguments
     return false
   elseif right.args[2].head != :parameters # check if parameters valid
@@ -117,8 +117,8 @@ macro ~(left, right)
       quote
         Turing.observe(
           Turing.sampler,
-          $(right),   # Distribution
-          $(left)     # Data point
+          $(right),     # Distribution
+          $(left)       # Data point
         )
       end
     )
