@@ -125,7 +125,7 @@ immutable VarInfo
         mulDimExpr.args[2] = dim2Val
       end
     end
-    new(Symbol(mulDimExpr))
+    new(Symbol(replace(string(mulDimExpr), r"\(|\)", "")))
   end
 end
 
