@@ -44,7 +44,6 @@ end
   3 ~ Normal(x,2)
   y ~ Normal(x,1)
   1.5 ~ Normal(y,2)
-  @predict x y
 end
 
 n = 10

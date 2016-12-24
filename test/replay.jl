@@ -14,7 +14,6 @@ xs = rand(Normal(0.5, 1), 100)
   for x in xs
     x ~ Normal(priors[2], sqrt(priors[1]))
   end
-  @predict priors
 end
 
 # Sampling

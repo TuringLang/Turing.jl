@@ -7,7 +7,6 @@ using Base.Test
 @model test_assume begin
   x ~ Bernoulli(1)
   y ~ Bernoulli(x / 2)
-  @predict x y
 end
 
 s = SMC(10000)

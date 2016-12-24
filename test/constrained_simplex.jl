@@ -9,7 +9,6 @@ obs12 = [1,2,1,2,2,2,2,2,2,2]
   for i = 1:length(obs12)
     obs12[i] ~ Categorical(ps)
   end
-  @predict ps
 end
 
 chain = sample(constrained_simplex_test, HMC(3000, 0.75, 5))

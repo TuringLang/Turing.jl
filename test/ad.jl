@@ -11,7 +11,6 @@ using Base.Test
   m ~ Normal(0,sqrt(s))
   1.5 ~ Normal(m, sqrt(s))
   2.0 ~ Normal(m, sqrt(s))
-  @predict s m
 end
 
 # Run HMC to gen GradientInfo, model, etc

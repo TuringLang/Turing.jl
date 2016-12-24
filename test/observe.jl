@@ -9,7 +9,6 @@ using Base.Test
   x ~ Bernoulli(1)
   1 ~ Bernoulli(x / 2)
   0 ~ Bernoulli(x / 2)
-  @predict x
 end
 
 s = SMC(10000)

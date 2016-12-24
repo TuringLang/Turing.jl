@@ -8,7 +8,6 @@ using Base.Test
   m ~ Normal(0,sqrt(s))
   x[1] ~ Normal(m, sqrt(s))
   x[2] ~ Normal(m, sqrt(s))
-  @predict s m
 end
 
 # Run HMC with chunk_size=1

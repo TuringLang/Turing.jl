@@ -7,8 +7,6 @@ using Turing
   for i in 1:length(x)
     x[i] ~ Normal(m, sqrt(s))
   end
-  @predict s m
-  s, m
 end
 
 chain = sample(gauss, SMC(10))
