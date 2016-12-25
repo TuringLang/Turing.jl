@@ -43,6 +43,7 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
     y = nn(xs[i], b1, w11, w12, w13, bo, wo)
     ts[i] ~ Bernoulli(y)
   end
+  @predict b1 w11 w12 w13 bo wo
 end
 
 # Sampling

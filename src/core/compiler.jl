@@ -37,8 +37,6 @@ function gen_assume_ex(left, right)
           Symbol($(string(left)))
         )
       )
-      # TODO: figure out how to do this at the end of model
-      ct = current_task()
       Turing.predict(
         Turing.sampler,
         Symbol($(string(left))),
@@ -56,7 +54,6 @@ function gen_assume_ex(left, right)
           $(left.args[2])                   # index value
         )
       )
-      ct = current_task()
       Turing.predict(
         Turing.sampler,
         Symbol($(string(left.args[1]))),
@@ -76,7 +73,6 @@ function gen_assume_ex(left, right)
           $(left.args[2])                   # index value
         )
       )
-      ct = current_task()
       Turing.predict(
         Turing.sampler,
         Symbol($(string(left.args[1].args[1]))),
@@ -96,7 +92,6 @@ function gen_assume_ex(left, right)
           $(left.args[3])                   # index value
         )
       )
-      ct = current_task()
       Turing.predict(
         Turing.sampler,
         Symbol($(string(left.args[1]))),

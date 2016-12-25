@@ -9,6 +9,7 @@ obs = [0,1,0,1,1,1,1,1,1,1]
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)
   end
+  @predict p
 end
 
 chain = sample(constrained_test, HMC(3000, 1.5, 3)) # using a large step size (1.5)
