@@ -4,12 +4,11 @@ using Base.Test
 
 obs = [0,1,0,1,1,1,1,1,1,1]
 
-@model constrained_test begin
+@model newinterface begin
   p ~ Beta(2,2)
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)
   end
-  @predict p
 end
 
 chain = sample(
