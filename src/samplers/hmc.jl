@@ -50,54 +50,68 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function Base.run(spl :: Sampler{HMC})
-  # Record the start time of HMC
-  t_start = time()
+function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64)
+  if spl.first
+    # Run the model for the first time
+    dprintln(2, "initialising...")
+    find_logjoint(spl.model, values)
+    spl.first = false
 
-  # Run the model for the first time
-  dprintln(2, "initialising...")
-  find_logjoint(spl.model, spl.values)
-  spl.first = false
-
-  # Store the first predicts
-  spl.samples[1].value = deepcopy(spl.predicts)
-
-  # Set parameters
-  n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
-  accept_num = 1        # the first samples is always accepted
-
-  # HMC steps
-  for i = 2:n
+    # Return
+    true, spl.values
+  else
     dprintln(2, "HMC stepping...")
 
     dprintln(2, "recording old θ...")
-    old_values = deepcopy(spl.values)
+    old_values = deepcopy(values)
 
     dprintln(2, "sampling momentum...")
-    p = Dict(k => randn(length(spl.values[k])) for k in keys(spl.values))
+    p = Dict(k => randn(length(values[k])) for k in keys(values))
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, spl.model, spl.values)
+    oldH = find_H(p, spl.model, values)
 
     dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(spl.values, spl.model)
+    val∇E = get_gradient_dict(values, spl.model)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      spl.values, val∇E, p = leapfrog(spl.values, val∇E, p, ϵ, spl.model)
+      values, val∇E, p = leapfrog(values, val∇E, p, ϵ, spl.model)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, spl.model, spl.values)
+    H = find_H(p, spl.model, values)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
     dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)  # accepted => store the new predcits
-      spl.samples[i].value, accept_num = deepcopy(spl.predicts), accept_num + 1
-    else                            # rejected => store the previous predcits
-      spl.values, spl.samples[i] = old_values, spl.samples[i - 1]
+    if ΔH < 0 || rand() < exp(-ΔH)  # accepted
+      true, values
+    else                            # rejected
+      false, old_values
+    end
+  end
+end
+
+function Base.run(spl :: Sampler{HMC})
+  # Set parameters
+  n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
+
+  # initialization
+  t_start = time()  # record the start time of HMC
+  accept_num = 0    # record the accept number
+  values = spl.values
+
+  # HMC steps
+  for i = 1:n
+    is_accept, values = step(spl, values, n, ϵ, τ)
+    if is_accept  # accepted => store the new predcits
+      spl.samples[i].value = deepcopy(spl.predicts)
+      accept_num = accept_num + 1
+    else          # rejected => store the previous predcits
+      spl.samples[i] = spl.samples[i - 1]
+      spl.values = values # TODO: remove this when we have new interface
     end
   end
 
