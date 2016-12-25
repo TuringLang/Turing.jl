@@ -1,81 +1,4 @@
-export VarInfo, VarInfoArray, GradientInfo, addVarInfo
-
-########## VarInfoArray ##########
-
-doc"""
-    VarInfoArray(array, count, currSetIdx, currGetIdx)
-
-Type for a rotated array (used for prior replay purpose).
-
-This type of array support set and get without specifying indices. Instead, an inner index pointer is used to iterate the array. The pointers for set and get are separate.
-
-Usage:
-
-```julia
-pa = VarInfoArray() # []
-add(pa, 1)        # [1]
-add(pa, 2)        # [1, 2]
-get(pa)           # 1
-get(pa)           # 2
-set(pa, 3)        # [3, 2]
-get(pa)           # 3
-get(pa)           # 2
-```
-"""
-type VarInfoArray
-  array     ::    Vector{Any}
-  count         ::    Int64
-  currSetIdx    ::    Int64
-  currGetIdx    ::    Int64
-  function VarInfoArray()
-    array = Vector{Any}()
-    count = 0
-    currSetIdx = 1
-    currGetIdx = 1
-    new(array, count, currSetIdx, currGetIdx)
-  end
-end
-
-doc"""
-    add(pa::VarInfoArray, val)
-
-Append a new element to the end of the inner array container of VarInfoArray.
-The inner counter of total number of element is also updated.
-"""
-function add(pa::VarInfoArray, val)
-  push!(pa.array, val)
-  pa.count += 1
-end
-
-doc"""
-    set(pa::VarInfoArray, val)
-
-Set the element with the corresponding inner pointer of set to the passed value.
-
-The inner pointer for set is then updated:
-  - if not reaches the end: incremented by 1;
-  - if reaches the end: reset to 1.
-"""
-function set(pa::VarInfoArray, val)
-  pa.array[pa.currSetIdx] = val
-  pa.currSetIdx = (pa.currSetIdx + 1) > pa.count? 1 : pa.currSetIdx + 1 # rotate if reaches the end
-end
-
-doc"""
-    get(pa::VarInfoArray)
-
-Fetch the element with the corresponding inner pointer of get.
-
-The inner pointer for get is then updated:
-  - if not reaches the end: incremented by 1;
-  - if reaches the end: reset to 1.
-"""
-function get(pa::VarInfoArray)
-  @assert pa.count > 0 "Attempt get from an empty VarInfoArray."
-  oldGetIdx = pa.currGetIdx   # record the old get index
-  pa.currGetIdx = (pa.currGetIdx + 1) > pa.count? 1 : pa.currGetIdx + 1 # rotate if reaches the end
-  return pa.array[oldGetIdx]
-end
+export VarInfo, GradientInfo, addVarInfo
 
 ########## VarInfo ##########
 
@@ -180,10 +103,10 @@ keys(pc)  # create a key interator in the container, i.e. all the priors
 ```
 """
 type GradientInfo
-  container   ::    Dict{VarInfo, VarInfoArray}
+  container   ::    Dict{VarInfo, Any}
   logjoint    ::    Dual
   function GradientInfo()
-    container = Dict{VarInfo, VarInfoArray}()
+    container = Dict{VarInfo, Any}()
     new(container, Dual(0))
   end
 end
@@ -195,12 +118,7 @@ Add a *new* value of a given prior to the container.
 *new* here means force appending to the end of the corresponding array of the prior.
 """
 function addVarInfo(pc::GradientInfo, idx::VarInfo, val)
-  if haskey(pc.container, idx)
-    add(pc.container[idx], val)
-  else
-    pc.container[idx] = VarInfoArray()  # create a PA if new
-    add(pc.container[idx], val)
-  end
+  pc.container[idx] = val
 end
 
 doc"""
@@ -210,7 +128,7 @@ Make the prior container support indexing with `[]`.
 """
 function Base.getindex(pc::GradientInfo, idx::VarInfo)
   @assert haskey(pc.container, idx) "GradientInfo has no $idx."
-  return get(pc.container[idx])
+  return pc.container[idx]
 end
 
 doc"""
@@ -220,7 +138,7 @@ Make the prior container support assignment with `[]`.
 """
 function Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
   @assert haskey(pc.container, idx) "GradientInfo has no $idx."
-  set(pc.container[idx], val)
+  pc.container[idx] = val
 end
 
 doc"""

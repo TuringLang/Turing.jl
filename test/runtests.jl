@@ -25,7 +25,7 @@ testcases = [
           "copy_particle_container",
 #       graidnetinfo.jl
           "replay",
-          "graidnetinfo",
+          "gradientinfo",
           "flaten_naming",
 #       IArray.jl
 #       intrinsic.jl
