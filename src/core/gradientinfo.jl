@@ -1,4 +1,4 @@
-export VarInfo, GradientInfo, addVarInfo
+export VarInfo, GradientInfo
 
 ########## VarInfo ##########
 
@@ -109,16 +109,6 @@ type GradientInfo
     container = Dict{VarInfo, Any}()
     new(container, Dual(0))
   end
-end
-
-doc"""
-    addVarInfo(pc::GradientInfo, idx::VarInfo, val)
-
-Add a *new* value of a given prior to the container.
-*new* here means force appending to the end of the corresponding array of the prior.
-"""
-function addVarInfo(pc::GradientInfo, idx::VarInfo, val)
-  pc.container[idx] = val
 end
 
 doc"""

@@ -45,17 +45,15 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     predicts = Dict{Symbol, Any}()
-    first = true
-    new(alg, model, values, dists, samples, predicts, first)
+    new(alg, model, values, dists, samples, predicts)
   end
 end
 
-function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64)
-  if spl.first
+function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
+  if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
     find_logjoint(spl.model, values)
-    spl.first = false
 
     # Return
     true, spl.values
@@ -105,7 +103,7 @@ function Base.run(spl :: Sampler{HMC})
 
   # HMC steps
   for i = 1:n
-    is_accept, values = step(spl, values, n, ϵ, τ)
+    is_accept, values = step(spl, values, n, ϵ, τ, i==1)
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
       accept_num = accept_num + 1
@@ -123,7 +121,7 @@ end
 function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if spl.first  # first time -> generate
+  if ~haskey(spl.values.container, var)  # first time -> generate
     # Build {var -> dist} dictionary
     spl.dists[var] = dist
 
@@ -136,7 +134,7 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
     val = vectorize(dist, v) # vectorize
 
     # Store the generated var
-    addVarInfo(spl.values, var, val)
+    spl.values.container[var] = val
   else         # not first time -> replay
     # Replay varibale
     dprintln(2, "fetching values...")

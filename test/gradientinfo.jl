@@ -6,10 +6,10 @@ pc = GradientInfo()
 p1 = VarInfo(gensym())
 p2 = VarInfo(gensym())
 
-addVarInfo(pc, p1, 1)
-addVarInfo(pc, p1, 2)
-addVarInfo(pc, p1, 3)
-addVarInfo(pc, p2, 4)
+pc.container[p1] = 1
+pc.container[p1] = 2
+pc.container[p1] = 3
+pc.container[p2] = 4
 
 @test pc[p1] == 3
 @test pc[p2] == 4
