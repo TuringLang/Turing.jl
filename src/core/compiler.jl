@@ -101,11 +101,11 @@ macro ~(left, right)
   if has_ops(right)
     # If static is set
     if right.args[2].args[1].args[1] == :static && right.args[2].args[1].args[2] == :true
-      # Do something for static
+      # Do something
     end
     # If param is set
     if right.args[2].args[1].args[1] == :param && right.args[2].args[1].args[2] == :true
-      # Do something for param
+      # Do something
     end
     # Remove the extra argument
     splice!(right.args, 2)
@@ -216,11 +216,6 @@ macro model(name, fbody)
       end
       unshift!(fbody.args, local_assign_ex)
     end
-  end
-
-  # Init to predict dict
-  to_predict_ex = quote
-    to_predict = Set()
   end
 
   ex = Expr(:function, fname, fbody)
