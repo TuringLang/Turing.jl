@@ -37,13 +37,8 @@ function gen_assume_ex(left, right)
           Symbol($(string(left)))
         )
       )
-      Turing.predict(
-        Turing.sampler,
-        Symbol($(string(left))),
-        get(ct, $(left))
-      )
     end
-  elseif length(left.args) == 2 && isa(left.args[1], Symbol)  # vec
+  elseif length(left.args) == 2 && isa(left.args[1], Symbol)
     quote
       $(left) = Turing.assume(
         Turing.sampler,
@@ -54,13 +49,8 @@ function gen_assume_ex(left, right)
           $(left.args[2])                   # index value
         )
       )
-      Turing.predict(
-        Turing.sampler,
-        Symbol($(string(left.args[1]))),
-        get(ct, $(left.args[1]))
-      )
     end
-  elseif length(left.args) == 2 && isa(left.args[1], Expr)  # arr of arr
+  elseif length(left.args) == 2 && isa(left.args[1], Expr)
     quote
       $(left) = Turing.assume(
         Turing.sampler,
@@ -73,13 +63,8 @@ function gen_assume_ex(left, right)
           $(left.args[2])                   # index value
         )
       )
-      Turing.predict(
-        Turing.sampler,
-        Symbol($(string(left.args[1].args[1]))),
-        get(ct, $(left.args[1].args[1]))
-      )
     end
-  elseif length(left.args) == 3                             # mat
+  elseif length(left.args) == 3
     quote
       $(left) = Turing.assume(
         Turing.sampler,
@@ -91,11 +76,6 @@ function gen_assume_ex(left, right)
           Symbol($(string(left.args[3]))),  # index symbol
           $(left.args[3])                   # index value
         )
-      )
-      Turing.predict(
-        Turing.sampler,
-        Symbol($(string(left.args[1]))),
-        get(ct, $(left.args[1]))
       )
     end
   end
@@ -238,11 +218,10 @@ macro model(name, fbody)
     end
   end
 
-  # Initialization
-  init_ex = quote
-    ct = current_task()
+  # Init to predict dict
+  to_predict_ex = quote
+    to_predict = Set()
   end
-  unshift!(fbody.args, init_ex)
 
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
