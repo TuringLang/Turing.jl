@@ -32,7 +32,38 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 end
 
 function Base.run(model, data, spl::Sampler{Gibbs})
+  # initialization
+  n =  spl.gibbs.n_iters
+  t_start = time()  # record the start time of HMC
+  accept_num = 0    # record the accept number
+  varInfo = VarInfo()
 
+  # HMC steps
+  for i = 1:n
+    dprintln(2, "recording old θ...")
+    old_values = deepcopy(varInfo.values)
+    dprintln(2, "Gibbs stepping...")
+    is_accept = true
+    for sampler in spl.samplers
+      dprintln(2, "$sampler stepping...")
+      is_accept_this, varInfo = step(model, data, sampler, varInfo, i==1)
+      is_accept = is_accept_this && is_accept
+      spl.predicts = sampler.predicts
+      if ~is_accept break end     # if one of the step is reject, reject all
+      println(varInfo.values)
+    end
+    if is_accept  # accepted => store the new predcits
+      spl.samples[i].value = deepcopy(spl.predicts)
+      accept_num = accept_num + 1
+    else          # rejected => store the previous predcits
+      varInfo.values = old_values
+      spl.samples[i] = spl.samples[i - 1]
+    end
+  end
+
+  accept_rate = accept_num / n    # calculate the accept rate
+  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
+  return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
 function sample(model::Function, data::Dict, gibbs::Gibbs)

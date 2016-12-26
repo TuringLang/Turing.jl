@@ -12,5 +12,5 @@ using Base.Test
   s, m
 end
 
-gibbs = Gibbs(100, HMC(100, 0.1, 5, :s), HMC(100, 0.2, 3, :m))
-sample(gibbstest, Dict(:x=>[1.5 2.0]), gibbs)
+gibbs = Gibbs(10, HMC(0.1, 5, :s), HMC(0.2, 3, :m))
+chain = sample(gibbstest, Dict(:x=>[1.5 2.0]), gibbs)
