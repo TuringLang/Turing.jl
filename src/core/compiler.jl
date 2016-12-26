@@ -210,9 +210,9 @@ macro model(name, fbody)
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
 
-  push!(fname.args, Expr(Symbol("::"), :varInfo, :(Turing.GradientInfo)))
   push!(fname.args, Expr(Symbol("::"), :data, :Dict))
-  push!(fname.args, Expr(Symbol("::"), :sampler, :(Turing.Sampler)))
+  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(GradientInfo())))
+  push!(fname.args, Expr(Symbol("kw"), :sampler, :nothing))
 
   local_assign_ex = quote
     for k in keys(data)
@@ -236,6 +236,9 @@ end
 #   println(typeof(fname.args[2]))
 # end
 #
-# @test xxx(data::Dict{Symbol, Any}, varinfo=GradientInfo()) begin
+# @test xxx(data=nothing, varinfo=GradientInfo()) begin
 #   print(1)
 # end
+#
+# aa(p=nothing,data=10) = 1
+# aa

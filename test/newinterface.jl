@@ -11,9 +11,12 @@ data = Dict(:obs=>[0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
   end
 end
 Turing.TURING[:modelex]
+
+newinterface(data)
+
 ga = GradientInfo()
 sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
-ga = newinterface(ga, data, sampler)
+ga = newinterface(data, ga, sampler)
 newinterface
 
 chain = sample(newinterface, HMC(100, 1.5, 3))
