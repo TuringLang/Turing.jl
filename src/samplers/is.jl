@@ -60,16 +60,15 @@ function Base.run(spl :: Sampler{IS})
   return results
 end
 
-function assume(spl :: ImportanceSampler{IS}, d :: Distribution, p)
+function assume(spl :: ImportanceSampler{IS}, d :: Distribution, p, varInfo::GradientInfo)
   return rand(d)
 end
 
-function observe(spl :: ImportanceSampler{IS}, d :: Distribution, value)
+function observe(spl :: ImportanceSampler{IS}, d :: Distribution, value, varInfo::GradientInfo)
   spl.logevidence += logpdf(d, value)
 end
 
-function predict(spl :: ImportanceSampler{IS}, name :: Symbol, value)
-  spl.predicts[name] = value
+function predict(spl :: ImportanceSampler{IS}, name :: Symbol, value) spl.predicts[name] = value
 end
 
 sample(model :: Function, alg :: IS) =

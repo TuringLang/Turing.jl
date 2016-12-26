@@ -20,6 +20,7 @@ testcases = [
           "noparam",
           "opt_param_of_dist",
           "new_grammar",
+          "newinterface",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
