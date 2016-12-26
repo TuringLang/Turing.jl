@@ -43,45 +43,46 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function step(model, data, spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
+function step(model, data, spl::Sampler{HMC}, varInfo::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
-    values = model(data, values, spl)
+    varInfo = model(data, varInfo, spl)
 
     # Return
-    true, values
+    true, varInfo
   else
     dprintln(2, "HMC stepping...")
 
     dprintln(2, "recording old θ...")
-    old_values = deepcopy(values)
+    old_values = copy(varInfo.values)
 
     dprintln(2, "sampling momentum...")
-    p = Dict(k => randn(length(values[k])) for k in keys(values))
+    p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, model, data, values, spl)
+    oldH = find_H(p, model, data, varInfo, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(values, model, data, spl)
+    val∇E = get_gradient_dict(varInfo, model, data, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      values, val∇E, p = leapfrog(values, val∇E, p, ϵ, model, data, spl)
+      varInfo, val∇E, p = leapfrog(varInfo, val∇E, p, ϵ, model, data, spl)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, model, data, values, spl)
+    H = find_H(p, model, data, varInfo, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
     dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)  # accepted
-      true, values
-    else                            # rejected
-      false, old_values
+    if ΔH < 0 || rand() < exp(-ΔH)      # accepted
+      true, varInfo
+    else                                # rejected
+      varInfo.values = copy(old_values) # rewind
+      false, varInfo
     end
   end
 end
