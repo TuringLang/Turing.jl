@@ -102,11 +102,11 @@ function Base.run(model, data, spl::Sampler{HMC})
   # initialization
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
-  values = VarInfo()
+  varInfo = VarInfo()
 
   # HMC steps
   for i = 1:n
-    is_accept, values = step(model, data, spl, values, n, ϵ, τ, i==1)
+    is_accept, varInfo = step(model, data, spl, varInfo, n, ϵ, τ, i==1)
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
       accept_num = accept_num + 1
