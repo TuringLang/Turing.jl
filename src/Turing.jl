@@ -38,7 +38,7 @@ export dprintln
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
 global debug_level = 0
-global CHUNKSIZE
+global CHUNKSIZE = 1000
 
 ##########
 # Helper #

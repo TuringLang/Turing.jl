@@ -163,14 +163,24 @@ function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predict done")
 end
 
-function sample(model::Function, data::Dict, alg::HMC; chunk_size=1000)
+function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int64)
   global CHUNKSIZE = chunk_size;
   sampler = HMCSampler{HMC}(alg);
   run(model, data, sampler)
 end
 
-function sample(model::Function, alg::HMC; chunk_size=1000)
+function sample(model::Function, data::Dict, alg::HMC)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, data, sampler)
+end
+
+function sample(model::Function, alg::HMC, chunk_size::Int64)
   global CHUNKSIZE = chunk_size;
+  sampler = HMCSampler{HMC}(alg);
+  run(model, Dict(), sampler)
+end
+
+function sample(model::Function, alg::HMC)
   sampler = HMCSampler{HMC}(alg);
   run(model, Dict(), sampler)
 end
