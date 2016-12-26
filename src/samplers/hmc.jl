@@ -26,6 +26,9 @@ immutable HMC <: InferenceAlgorithm
   lf_size   ::  Float64   # leapfrog step size
   lf_num    ::  Int64     # leapfrog step number
   space     ::  Set       # sampling space, emtpy means all
+  function HMC(lf_size::Float64, lf_num::Int64, space...)
+    HMC(0, lf_size, lf_num, space...)
+  end
   function HMC(n_samples, lf_size, lf_num)
     new(n_samples, lf_size, lf_num, Set())
   end
