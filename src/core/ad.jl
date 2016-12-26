@@ -13,7 +13,7 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function get_gradient_dict(values::GradientInfo, model::Function, data=Dict(), spl=nothing)
+function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
   val∇E = Dict{Any, Any}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,

@@ -33,7 +33,7 @@ function gen_assume_ex(left, right)
       $(left) = Turing.assume(
         sampler,
         $(right),    # dDistribution
-        VarInfo(          # Pure Symbol
+        Var(          # Pure Symbol
           Symbol($(string(left)))
         ),
         varInfo
@@ -44,7 +44,7 @@ function gen_assume_ex(left, right)
       $(left) = Turing.assume(
         sampler,
         $(right),    # dDistribution
-        VarInfo(          # Array assignment
+        Var(          # Array assignment
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2])                   # index value
@@ -57,7 +57,7 @@ function gen_assume_ex(left, right)
       $(left) = Turing.assume(
         sampler,
         $(right),    # dDistribution
-        VarInfo(          # Array assignment
+        Var(          # Array assignment
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[1].args[2]))),  # index symbol
           $(left.args[1].args[2]),                  # index value
@@ -72,7 +72,7 @@ function gen_assume_ex(left, right)
       $(left) = Turing.assume(
         sampler,
         $(right),    # dDistribution
-        VarInfo(          # Array assignment
+        Var(          # Array assignment
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2]),                  # index value
@@ -213,7 +213,7 @@ macro model(name, fbody)
   if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
     push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   end
-  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(GradientInfo())))
+  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
   local_assign_ex = quote
@@ -238,7 +238,7 @@ end
 #   println(typeof(fname.args[2]))
 # end
 #
-# @test xxx(data=nothing, varinfo=GradientInfo()) begin
+# @test xxx(data=nothing, varinfo=VarInfo()) begin
 #   print(1)
 # end
 #

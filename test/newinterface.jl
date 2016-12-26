@@ -16,7 +16,7 @@ Turing.TURING[:modelex]
 
 # newinterface(data)
 #
-# ga = GradientInfo()
+# ga = VarInfo()
 # sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
 # ga = newinterface(data, ga, sampler)
 # newinterface

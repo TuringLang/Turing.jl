@@ -17,8 +17,8 @@ end
 # Call Turing's AD
 # The result out is the gradient information on R
 gi = ad_test()
-s = realpart(gi.values[VarInfo(:s)][1])
-m = realpart(gi.values[VarInfo(:m)][1])
+s = realpart(gi.values[Var(:s)][1])
+m = realpart(gi.values[Var(:m)][1])
 ∇E = get_gradient_dict(gi, ad_test, Dict(), nothing)
 grad_Turing = sort([∇E[v][1] for v in keys(gi)])
 

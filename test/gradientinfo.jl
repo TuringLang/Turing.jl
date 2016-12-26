@@ -1,10 +1,10 @@
-# Test GradientInfo
+# Test VarInfo
 
 using Turing, Base.Test
 
-pc = GradientInfo()
-p1 = VarInfo(gensym())
-p2 = VarInfo(gensym())
+pc = VarInfo()
+p1 = Var(gensym())
+p2 = Var(gensym())
 
 pc.values[p1] = 1
 pc.values[p1] = 2

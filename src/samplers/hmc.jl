@@ -50,7 +50,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function step(model, data, spl::Sampler{HMC}, varInfo::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
+function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
@@ -101,7 +101,7 @@ function Base.run(model, data, spl::Sampler{HMC})
   # initialization
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
-  values = GradientInfo()
+  values = VarInfo()
 
   # HMC steps
   for i = 1:n
@@ -119,7 +119,7 @@ function Base.run(model, data, spl::Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :: VarInfo, varInfo::GradientInfo)
+function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :: Var, varInfo::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   if ~haskey(varInfo.values, var)  # first time -> generate
@@ -152,7 +152,7 @@ function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :
   return val
 end
 
-function observe(spl :: Union{Void, HMCSampler{HMC}}, d :: Distribution, value, varInfo::GradientInfo)
+function observe(spl :: Union{Void, HMCSampler{HMC}}, d :: Distribution, value, varInfo::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     varInfo.logjoint += logpdf(d, Dual(value))

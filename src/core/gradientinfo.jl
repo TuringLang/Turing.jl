@@ -1,9 +1,9 @@
-export VarInfo, GradientInfo
+export Var, VarInfo
 
-########## VarInfo ##########
+########## Var ##########
 
 doc"""
-    VarInfo(sym)
+    Var(sym)
 
 A wrapper of symbol type representing priors.
 
@@ -12,23 +12,23 @@ A wrapper of symbol type representing priors.
 Usage:
 
 ```julia
-p = VarInfo(:somesym)
+p = Var(:somesym)
 strp = string(p)
 ```
 """
-immutable VarInfo
+immutable Var
   id    ::    Symbol
-  function VarInfo(sym::Symbol)
+  function Var(sym::Symbol)
     new(sym)
   end
-  function VarInfo(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
+  function Var(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
     if isa(arrExpr.args[2], Symbol)
       @assert arrExpr.args[2] == idxSym
       arrExpr.args[2] = idxVal
     end
     new(Symbol(arrExpr))
   end
-  function VarInfo(mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
+  function Var(mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
     if isa(mulDimExpr.args[1], Symbol)    # mat form x[i, j]
       if isa(mulDimExpr.args[2], Symbol)
         @assert mulDimExpr.args[2] == dim1Sym
@@ -53,34 +53,34 @@ immutable VarInfo
 end
 
 doc"""
-    Base.string(p::VarInfo)
+    Base.string(p::Var)
 
-Helper function to convert a VarInfo to its string representation.
+Helper function to convert a Var to its string representation.
 """
-function Base.string(p::VarInfo)
+function Base.string(p::Var)
   return string(p.id)
 end
 
-########## GradientInfo ##########
+########## VarInfo ##########
 
 doc"""
-    GradientInfo()
+    VarInfo()
 
 A values to store priors based on dictionary.
 
-This type is basically a dictionary supporting adding new priors by creating a VarInfoArray and indexing using pc[] syntax.
+This type is basically a dictionary supporting adding new priors by creating a VarArray and indexing using pc[] syntax.
 
 Usage:
 
 ```julia
-pc = GradientInfo()
-p1 = VarInfo(:a)
-p2 = VarInfo(:b)
+pc = VarInfo()
+p1 = Var(:a)
+p2 = Var(:b)
 
-addVarInfo(pc, p1, 1)
-addVarInfo(pc, p1, 2)
-addVarInfo(pc, p1, 3)
-addVarInfo(pc, p2, 4)
+addVar(pc, p1, 1)
+addVar(pc, p1, 2)
+addVar(pc, p1, 3)
+addVar(pc, p2, 4)
 
 pc[p1]    # 1
 pc[p1]    # 2
@@ -102,40 +102,40 @@ pc[p1]    # 7
 keys(pc)  # create a key interator in the values, i.e. all the priors
 ```
 """
-type GradientInfo
-  values      ::    Dict{VarInfo, Any}
+type VarInfo
+  values      ::    Dict{Var, Any}
   logjoint    ::    Dual
-  function GradientInfo()
-    values = Dict{VarInfo, Any}()
+  function VarInfo()
+    values = Dict{Var, Any}()
     new(values, Dual(0))
   end
 end
 
 doc"""
-    Base.getindex(pc::GradientInfo, idx::VarInfo)
+    Base.getindex(pc::VarInfo, idx::Var)
 
 Make the prior values support indexing with `[]`.
 """
-function Base.getindex(pc::GradientInfo, idx::VarInfo)
-  @assert haskey(pc.values, idx) "GradientInfo has no $idx."
+function Base.getindex(pc::VarInfo, idx::Var)
+  @assert haskey(pc.values, idx) "VarInfo has no $idx."
   return pc.values[idx]
 end
 
 doc"""
-    Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
+    Base.setindex!(pc::VarInfo, val, idx::Var)
 
 Make the prior values support assignment with `[]`.
 """
-function Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
-  @assert haskey(pc.values, idx) "GradientInfo has no $idx."
+function Base.setindex!(pc::VarInfo, val, idx::Var)
+  @assert haskey(pc.values, idx) "VarInfo has no $idx."
   pc.values[idx] = val
 end
 
 doc"""
-    Base.keys(pc::GradientInfo)
+    Base.keys(pc::VarInfo)
 
 Return a key interator in the values, i.e. all the priors.
 """
-function Base.keys(pc::GradientInfo)
+function Base.keys(pc::VarInfo)
   return keys(pc.values)
 end

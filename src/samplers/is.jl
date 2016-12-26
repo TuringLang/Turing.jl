@@ -60,11 +60,11 @@ function Base.run(spl :: Sampler{IS})
   return results
 end
 
-function assume(spl :: ImportanceSampler{IS}, d :: Distribution, p, varInfo::GradientInfo)
+function assume(spl :: ImportanceSampler{IS}, d :: Distribution, p, varInfo::VarInfo)
   return rand(d)
 end
 
-function observe(spl :: ImportanceSampler{IS}, d :: Distribution, value, varInfo::GradientInfo)
+function observe(spl :: ImportanceSampler{IS}, d :: Distribution, value, varInfo::VarInfo)
   spl.logevidence += logpdf(d, value)
 end
 
