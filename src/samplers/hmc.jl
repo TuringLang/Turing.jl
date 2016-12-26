@@ -29,19 +29,17 @@ end
 
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC                          # the HMC algorithm info
-  dists       :: Dict{VarInfo, Distribution}  # variable to its distribution
   samples     :: Array{Sample}                # samples
   predicts    :: Dict{Symbol, Any}            # outputs
 
   function HMCSampler(alg :: HMC)
-    dists = Dict{VarInfo, Distribution}()
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     predicts = Dict{Symbol, Any}()
-    new(alg, dists, samples, predicts)
+    new(alg, samples, predicts)
   end
 end
 
@@ -114,12 +112,12 @@ function Base.run(spl :: Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo, varInfo::GradientInfo)
+function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :: VarInfo, varInfo::GradientInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(varInfo.container, var)  # first time -> generate
+  if ~haskey(varInfo.values, var)  # first time -> generate
     # Build {var -> dist} dictionary
-    spl.dists[var] = dist
+    varInfo.dists[var] = dist
 
     # Sample a new prior
     dprintln(2, "sampling prior...")
@@ -130,7 +128,7 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo, va
     val = vectorize(dist, v) # vectorize
 
     # Store the generated var
-    varInfo.container[var] = val
+    varInfo.values[var] = val
   else         # not first time -> replay
     # Replay varibale
     dprintln(2, "fetching values...")
@@ -150,7 +148,7 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo, va
   return val
 end
 
-function observe(spl :: HMCSampler{HMC}, d :: Distribution, value, varInfo::GradientInfo)
+function observe(spl :: Union{Void, HMCSampler{HMC}}, d :: Distribution, value, varInfo::GradientInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     varInfo.logjoint += logpdf(d, Dual(value))

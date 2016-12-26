@@ -66,7 +66,7 @@ end
 doc"""
     GradientInfo()
 
-A container to store priors based on dictionary.
+A values to store priors based on dictionary.
 
 This type is basically a dictionary supporting adding new priors by creating a VarInfoArray and indexing using pc[] syntax.
 
@@ -99,43 +99,45 @@ pc[p1]    # 5
 pc[p1]    # 6
 pc[p1]    # 7
 
-keys(pc)  # create a key interator in the container, i.e. all the priors
+keys(pc)  # create a key interator in the values, i.e. all the priors
 ```
 """
 type GradientInfo
-  container   ::    Dict{VarInfo, Any}
+  values      ::    Dict{VarInfo, Any}
+  dists       ::    Dict{VarInfo, Distribution}   # variable to its distribution
   logjoint    ::    Dual
   function GradientInfo()
-    container = Dict{VarInfo, Any}()
-    new(container, Dual(0))
+    values = Dict{VarInfo, Any}()
+    dists = Dict{VarInfo, Distribution}()
+    new(values, dists, Dual(0))
   end
 end
 
 doc"""
     Base.getindex(pc::GradientInfo, idx::VarInfo)
 
-Make the prior container support indexing with `[]`.
+Make the prior values support indexing with `[]`.
 """
 function Base.getindex(pc::GradientInfo, idx::VarInfo)
-  @assert haskey(pc.container, idx) "GradientInfo has no $idx."
-  return pc.container[idx]
+  @assert haskey(pc.values, idx) "GradientInfo has no $idx."
+  return pc.values[idx]
 end
 
 doc"""
     Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
 
-Make the prior container support assignment with `[]`.
+Make the prior values support assignment with `[]`.
 """
 function Base.setindex!(pc::GradientInfo, val, idx::VarInfo)
-  @assert haskey(pc.container, idx) "GradientInfo has no $idx."
-  pc.container[idx] = val
+  @assert haskey(pc.values, idx) "GradientInfo has no $idx."
+  pc.values[idx] = val
 end
 
 doc"""
     Base.keys(pc::GradientInfo)
 
-Return a key interator in the container, i.e. all the priors.
+Return a key interator in the values, i.e. all the priors.
 """
 function Base.keys(pc::GradientInfo)
-  return keys(pc.container)
+  return keys(pc.values)
 end
