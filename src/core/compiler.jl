@@ -34,6 +34,7 @@ function gen_assume_ex(left, right)
         sampler,
         $(right),    # dDistribution
         Var(          # Pure Symbol
+          Symbol($(string(left))),
           Symbol($(string(left)))
         ),
         varInfo
@@ -45,6 +46,7 @@ function gen_assume_ex(left, right)
         sampler,
         $(right),    # dDistribution
         Var(          # Array assignment
+          Symbol($(string(left.args[1]))),  # pure symbol, e.g. :p for p[1]
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2])                   # index value
@@ -58,6 +60,7 @@ function gen_assume_ex(left, right)
         sampler,
         $(right),    # dDistribution
         Var(          # Array assignment
+          Symbol($(string(left.args[1].args[1]))),  # pure symbol
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[1].args[2]))),  # index symbol
           $(left.args[1].args[2]),                  # index value
@@ -73,6 +76,7 @@ function gen_assume_ex(left, right)
         sampler,
         $(right),    # dDistribution
         Var(          # Array assignment
+          Symbol($(string(left.args[1]))),  # pure symbol
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2]),                  # index value

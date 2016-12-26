@@ -6,15 +6,15 @@ using Base.Test
 
 # Symbol
 v_sym = Var(:x)
-@test v_sym.id == :x
+@test v_sym.uid == :x
 
 # Array
-v_arr = Var(:(x[i]), :i, 1)
-@test v_arr.id == Symbol("x[1]")
+v_arr = Var(:x, :(x[i]), :i, 1)
+@test v_arr.uid == Symbol("x[1]")
 
 # Matrix
-v_mat = Var(:(x[i,j]), :i, 1, :j, 2)
-@test v_mat.id == Symbol("x[1,2]")
+v_mat = Var(:x, :(x[i,j]), :i, 1, :j, 2)
+@test v_mat.uid == Symbol("x[1,2]")
 
 @model mat_name_test begin
   p = Array{Dual}((2, 2))
@@ -27,8 +27,8 @@ chain = sample(mat_name_test, HMC(2500, 0.75, 5))
 @test_approx_eq_eps mean(mean(chain[:p])) 0 5e-2
 
 # Multi array
-v_arrarr = Var(:(x[i][j]), :i, 1, :j, 2)
-@test v_arrarr.id == Symbol("x[1][2]")
+v_arrarr = Var(:x, :(x[i][j]), :i, 1, :j, 2)
+@test v_arrarr.uid == Symbol("x[1][2]")
 
 @model marr_name_test begin
   p = Array{Array{Dual}}(2)

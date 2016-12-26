@@ -17,18 +17,22 @@ strp = string(p)
 ```
 """
 immutable Var
-  id    ::    Symbol
+  sym   ::    Symbol
+  uid   ::    Symbol
   function Var(sym::Symbol)
-    new(sym)
+    new(sym, sym)
   end
-  function Var(arrExpr::Expr, idxSym::Symbol, idxVal::Any)
+  function Var(sym::Symbol, uid::Symbol)
+    new(sym, uid)
+  end
+  function Var(sym::Symbol, arrExpr::Expr, idxSym::Symbol, idxVal::Any)
     if isa(arrExpr.args[2], Symbol)
       @assert arrExpr.args[2] == idxSym
       arrExpr.args[2] = idxVal
     end
-    new(Symbol(arrExpr))
+    new(sym, Symbol(arrExpr))
   end
-  function Var(mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
+  function Var(sym::Symbol, mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
     if isa(mulDimExpr.args[1], Symbol)    # mat form x[i, j]
       if isa(mulDimExpr.args[2], Symbol)
         @assert mulDimExpr.args[2] == dim1Sym
@@ -48,7 +52,7 @@ immutable Var
         mulDimExpr.args[2] = dim2Val
       end
     end
-    new(Symbol(replace(string(mulDimExpr), r"\(|\)", "")))
+    new(sym, Symbol(replace(string(mulDimExpr), r"\(|\)", "")))
   end
 end
 
@@ -57,8 +61,8 @@ doc"""
 
 Helper function to convert a Var to its string representation.
 """
-function Base.string(p::Var)
-  return string(p.id)
+function Base.string(v::Var)
+  return string(v.uid)
 end
 
 ########## VarInfo ##########
