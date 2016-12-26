@@ -25,7 +25,7 @@ immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
   lf_size   ::  Float64   # leapfrog step size
   lf_num    ::  Int64     # leapfrog step number
-  space     ::  Set     # sampling space
+  space     ::  Set       # sampling space, emtpy means all
   function HMC(n_samples, lf_size, lf_num)
     new(n_samples, lf_size, lf_num, Set())
   end
@@ -122,7 +122,7 @@ end
 function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :: Var, varInfo::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(varInfo.values, var)  && (spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space)# first time -> generate
+  if ~haskey(varInfo.values, var)   # first time -> generate
     # Sample a new prior
     dprintln(2, "sampling prior...")
     r = rand(dist)
@@ -131,9 +131,11 @@ function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :
     v = link(dist, r)        # X -> R
     val = vectorize(dist, v) # vectorize
 
-    # Store the generated var
-    varInfo.values[var] = val
-  else         # not first time -> replay
+    # Store the generated var if it's in space
+    if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+      varInfo.values[var] = val
+    end
+  else                              # not first time -> replay
     # Replay varibale
     dprintln(2, "fetching values...")
     val = varInfo[var]
