@@ -60,12 +60,8 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     # Return
     true, varInfo
   else
-    dprintln(2, "HMC stepping...")
     # Set parameters
     ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
-
-    dprintln(2, "recording old θ...")
-    old_values = deepcopy(varInfo.values)
 
     dprintln(2, "sampling momentum...")
     p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
@@ -91,7 +87,6 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
       true, varInfo
     else                                # rejected
-      varInfo.values = old_values
       false, varInfo
     end
   end
@@ -106,11 +101,15 @@ function Base.run(model, data, spl::Sampler{HMC})
 
   # HMC steps
   for i = 1:n
+    dprintln(2, "recording old θ...")
+    old_values = deepcopy(varInfo.values)
+    dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, data, spl, varInfo, i==1)
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
       accept_num = accept_num + 1
     else          # rejected => store the previous predcits
+      varInfo.values = old_values
       spl.samples[i] = spl.samples[i - 1]
     end
   end
