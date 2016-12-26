@@ -43,14 +43,14 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
+function step(model, data, spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
-    find_logjoint(spl.model, values)
+    values = model(data, values, spl)
 
     # Return
-    true, spl.values
+    true, values
   else
     dprintln(2, "HMC stepping...")
 
@@ -61,18 +61,18 @@ function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ
     p = Dict(k => randn(length(values[k])) for k in keys(values))
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, spl.model, values)
+    oldH = find_H(p, model, data, values, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(values, spl.model)
+    val∇E = get_gradient_dict(values, model, data, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      values, val∇E, p = leapfrog(values, val∇E, p, ϵ, spl.model)
+      values, val∇E, p = leapfrog(values, val∇E, p, ϵ, model, data, spl)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, spl.model, values)
+    H = find_H(p, model, data, values, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
@@ -86,24 +86,23 @@ function step(spl::Sampler{HMC}, values::GradientInfo, n::Int64, ϵ::Float64, τ
   end
 end
 
-function Base.run(spl :: Sampler{HMC})
+function Base.run(model, data, spl::Sampler{HMC})
   # Set parameters
   n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
 
   # initialization
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
-  values = spl.values
+  values = GradientInfo()
 
   # HMC steps
   for i = 1:n
-    is_accept, values = step(spl, values, n, ϵ, τ, i==1)
+    is_accept, values = step(model, data, spl, values, n, ϵ, τ, i==1)
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
       accept_num = accept_num + 1
     else          # rejected => store the previous predcits
       spl.samples[i] = spl.samples[i - 1]
-      spl.values = values # TODO: remove this when we have new interface
     end
   end
 
@@ -164,8 +163,8 @@ function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
   dprintln(2, "predict done")
 end
 
-function sample(model :: Function, alg :: HMC; chunk_size=1000)
-  global sampler = HMCSampler{HMC}(alg);
+function sample(model::Function, data::Dict, alg::HMC; chunk_size=1000)
   global CHUNKSIZE = chunk_size;
-  run(sampler)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, data, sampler)
 end

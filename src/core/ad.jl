@@ -13,7 +13,7 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function get_gradient_dict(values::GradientInfo, model::Function)
+function get_gradient_dict(values::GradientInfo, model::Function, data, spl)
   # Initialisation
   val∇E = Dict{Any, Any}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
@@ -67,7 +67,7 @@ function get_gradient_dict(values::GradientInfo, model::Function)
     end
     # Run the model
     dprintln(4, "run model...")
-    consume(Task(model))
+    values = model(data, values, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1

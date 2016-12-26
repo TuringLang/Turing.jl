@@ -9,22 +9,21 @@ data = Dict(:obs=>[0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)
   end
+  @predict p
 end
+
 Turing.TURING[:modelex]
 
-newinterface(data)
+# newinterface(data)
+#
+# ga = GradientInfo()
+# sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
+# ga = newinterface(data, ga, sampler)
+# newinterface
+#
+# chain = sample(newinterface, HMC(100, 1.5, 3))
 
-ga = GradientInfo()
-sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
-ga = newinterface(data, ga, sampler)
-newinterface
-
-chain = sample(newinterface, HMC(100, 1.5, 3))
-
-chain = sample(
-  constrained_test,
-  HMC(3000, 1.5, 3; :p)
-)
+chain = sample(newinterface, data, HMC(2000, 0.75, 3))
 
  # using a large step size (1.5)
 @test_approx_eq_eps mean(chain[:p]) 10/14 0.10
