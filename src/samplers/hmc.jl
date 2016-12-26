@@ -25,6 +25,13 @@ immutable HMC <: InferenceAlgorithm
   n_samples ::  Int64     # number of samples
   lf_size   ::  Float64   # leapfrog step size
   lf_num    ::  Int64     # leapfrog step number
+  space     ::  Tuple     # sampling space
+  function HMC(n_samples, lf_size, lf_num)
+    new(n_samples, lf_size, lf_num, ())
+  end
+  function HMC(n_samples, lf_size, lf_num, space)
+    new(n_samples, lf_size, lf_num, space)
+  end
 end
 
 type HMCSampler{HMC} <: GradientSampler{HMC}
@@ -116,9 +123,6 @@ function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   if ~haskey(varInfo.values, var)  # first time -> generate
-    # Build {var -> dist} dictionary
-    varInfo.dists[var] = dist
-
     # Sample a new prior
     dprintln(2, "sampling prior...")
     r = rand(dist)

@@ -104,12 +104,10 @@ keys(pc)  # create a key interator in the values, i.e. all the priors
 """
 type GradientInfo
   values      ::    Dict{VarInfo, Any}
-  dists       ::    Dict{VarInfo, Distribution}   # variable to its distribution
   logjoint    ::    Dual
   function GradientInfo()
     values = Dict{VarInfo, Any}()
-    dists = Dict{VarInfo, Distribution}()
-    new(values, dists, Dual(0))
+    new(values, Dual(0))
   end
 end
 
