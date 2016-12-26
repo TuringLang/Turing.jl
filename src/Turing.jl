@@ -57,7 +57,7 @@ include("core/util.jl")
 include("core/compiler.jl")
 include("core/container.jl")
 include("core/io.jl")
-include("core/gradientinfo.jl")
+include("core/varinfo.jl")
 include("samplers/sampler.jl")
 include("core/ad.jl")
 
