@@ -51,7 +51,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, n::Int64, ϵ::Float64, τ::Int64, is_first::Bool)
+function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
@@ -61,6 +61,8 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, n::Int64, ϵ::Fl
     true, varInfo
   else
     dprintln(2, "HMC stepping...")
+    # Set parameters
+    ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
 
     dprintln(2, "recording old θ...")
     old_values = deepcopy(varInfo.values)
@@ -96,17 +98,15 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, n::Int64, ϵ::Fl
 end
 
 function Base.run(model, data, spl::Sampler{HMC})
-  # Set parameters
-  n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
-
   # initialization
+  n =  spl.alg.n_samples
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
   varInfo = VarInfo()
 
   # HMC steps
   for i = 1:n
-    is_accept, varInfo = step(model, data, spl, varInfo, n, ϵ, τ, i==1)
+    is_accept, varInfo = step(model, data, spl, varInfo, i==1)
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
       accept_num = accept_num + 1
