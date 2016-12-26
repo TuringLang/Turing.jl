@@ -23,7 +23,4 @@ Turing.TURING[:modelex]
 #
 # chain = sample(newinterface, HMC(100, 1.5, 3))
 
-chain = sample(newinterface, data, HMC(2000, 0.75, 3))
-
- # using a large step size (1.5)
-@test_approx_eq_eps mean(chain[:p]) 10/14 0.10
+chain = sample(newinterface, data, HMC(100, 0.75, 3, :p, :x))
