@@ -31,6 +31,7 @@ include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
+include("gibbs.jl")
 
 # Fallback functions
 Base.run(spl :: Sampler) = error("[sample]: unmanaged inference algorithm: $(typeof(spl))")
