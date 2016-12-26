@@ -29,8 +29,6 @@ immutable PG <: InferenceAlgorithm
   PG(n1::Int,n2::Int) = new(n1,n2,resampleSystematic,0.5)
 end
 
-assume(spl :: Sampler{PG}, distr :: Distribution, p)   = randr(current_trace(), distr)
-
 function Base.run(spl::Sampler{PG})
   chain = Chain()
   logevidence = Vector{Float64}(spl.alg.n_iterations)

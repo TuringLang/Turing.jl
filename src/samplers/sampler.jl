@@ -50,8 +50,8 @@ function sample(model::Function, alg :: InferenceAlgorithm)
   Base.run(sampler)
 end
 
-assume(spl :: Sampler, d :: Distribution, p)  = rand( current_trace(), d )
-observe(spl :: Sampler, d :: Distribution, value) = produce(logpdf(d, value))
+assume(spl :: Sampler, d :: Distribution, p, varInfo)  = rand( current_trace(), d )
+observe(spl :: Sampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
 function predict(spl :: Sampler, v_name :: Symbol, value)
   task = current_task()

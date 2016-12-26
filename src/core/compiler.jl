@@ -210,9 +210,9 @@ macro model(name, fbody)
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
 
-  push!(fname.args, Expr(Symbol("::"), :data, :Dict))
+  push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(GradientInfo())))
-  push!(fname.args, Expr(Symbol("kw"), :sampler, :nothing))
+  push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
   local_assign_ex = quote
     for k in keys(data)
