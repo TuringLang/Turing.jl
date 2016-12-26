@@ -210,8 +210,9 @@ macro model(name, fbody)
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
 
-  
-  push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
+  if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
+    push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
+  end
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(GradientInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
