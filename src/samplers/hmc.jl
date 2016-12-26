@@ -55,7 +55,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::GradientInfo, n::Int64, Ï
     dprintln(2, "HMC stepping...")
 
     dprintln(2, "recording old Î¸...")
-    old_values = copy(varInfo.values)
+    old_values = deepcopy(varInfo.values)
 
     dprintln(2, "sampling momentum...")
     p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
@@ -81,7 +81,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::GradientInfo, n::Int64, Ï
     if Î”H < 0 || rand() < exp(-Î”H)      # accepted
       true, varInfo
     else                                # rejected
-      varInfo.values = copy(old_values) # rewind
+      varInfo.values = old_values
       false, varInfo
     end
   end
