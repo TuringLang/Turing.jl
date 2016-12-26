@@ -2,7 +2,7 @@ using Distributions
 using Turing
 using Base.Test
 
-obs = [0,1,0,1,1,1,1,1,1,1]
+data = Dict(:obs=>[0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
 
 @model newinterface begin
   p ~ Beta(2,2)
@@ -10,10 +10,16 @@ obs = [0,1,0,1,1,1,1,1,1,1]
     obs[i] ~ Bernoulli(p)
   end
 end
+Turing.TURING[:modelex]
+ga = GradientInfo()
+sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
+newinterface(ga, data, sampler)
+newinterface
+
+chain = sample(newinterface, HMC(100, 1.5, 3))
 
 chain = sample(
   constrained_test,
-  data=Dict(:obs=>[0, 1, 0, 1, 1, 1, 1, 1, 1, 1]),
   HMC(3000, 1.5, 3; :p)
 )
 

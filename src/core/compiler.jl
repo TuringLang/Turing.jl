@@ -31,29 +31,31 @@ function gen_assume_ex(left, right)
   if isa(left, Symbol)
     quote
       $(left) = Turing.assume(
-        Turing.sampler,
+        sampler,
         $(right),    # dDistribution
         VarInfo(          # Pure Symbol
           Symbol($(string(left)))
-        )
+        ),
+        varInfo
       )
     end
   elseif length(left.args) == 2 && isa(left.args[1], Symbol)
     quote
       $(left) = Turing.assume(
-        Turing.sampler,
+        sampler,
         $(right),    # dDistribution
         VarInfo(          # Array assignment
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2])                   # index value
-        )
+        ),
+        varInfo
       )
     end
   elseif length(left.args) == 2 && isa(left.args[1], Expr)
     quote
       $(left) = Turing.assume(
-        Turing.sampler,
+        sampler,
         $(right),    # dDistribution
         VarInfo(          # Array assignment
           parse($(string(left))),           # indexing expr
@@ -61,13 +63,14 @@ function gen_assume_ex(left, right)
           $(left.args[1].args[2]),                  # index value
           Symbol($(string(left.args[2]))),  # index symbol
           $(left.args[2])                   # index value
-        )
+        ),
+        varInfo
       )
     end
   elseif length(left.args) == 3
     quote
       $(left) = Turing.assume(
-        Turing.sampler,
+        sampler,
         $(right),    # dDistribution
         VarInfo(          # Array assignment
           parse($(string(left))),           # indexing expr
@@ -75,7 +78,8 @@ function gen_assume_ex(left, right)
           $(left.args[2]),                  # index value
           Symbol($(string(left.args[3]))),  # index symbol
           $(left.args[3])                   # index value
-        )
+        ),
+        varInfo
       )
     end
   end
@@ -116,9 +120,10 @@ macro ~(left, right)
     esc(
       quote
         Turing.observe(
-          Turing.sampler,
+          sampler,
           $(right),   # Distribution
-          $(left)     # Data point
+          $(left),    # Data point
+          varInfo
         )
       end
     )
@@ -128,9 +133,10 @@ macro ~(left, right)
         if @isdefined($left)
           # Call observe
           Turing.observe(
-            Turing.sampler,
+            sampler,
             $(right),   # Distribution
-            $(left)     # Data point
+            $(left),    # Data point
+            varInfo
           )
         else
           # Call assume
@@ -164,7 +170,7 @@ macro predict(ex...)
       ex_funcs.args,
       :(ct = current_task();
         Turing.predict(
-          Turing.sampler,
+          sampler,
           Symbol($sym), get(ct, $(ex[i]))
         )
       )
@@ -202,23 +208,26 @@ macro model(name, fbody)
   # This varinfo array is useful is task cloning.
 
   # Turn f into f() if necessary.
-  if isa(name, Symbol)
-    fname = Expr(:call, name)
-  else
-    fname = name
-    # If :data is passed in, assign data locally
-    if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) > 0
-      local_assign_ex = quote
-        for k in keys(data)
-          ex = Expr(Symbol("="), k, data[k])
-          eval(ex)
-        end
-      end
-      unshift!(fbody.args, local_assign_ex)
-    end
-  end
+  fname = isa(name, Symbol) ? Expr(:call, name) : name
+
+  push!(fname.args, Expr(Symbol("::"), :varInfo, :(Turing.GradientInfo)))
+  push!(fname.args, Expr(Symbol("::"), :data, :Dict))
+  push!(fname.args, Expr(Symbol("::"), :sampler, :(Turing.Sampler)))
+
+  # return varInfo always
+  push!(fbody.args, :(varInfo))
 
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end
+
+# macro test(fname,fbody)
+#   dump(fname)
+#   println(fname.args)
+#   println(typeof(fname.args[2]))
+# end
+#
+# @test xxx(data::Dict{Symbol, Any}, varinfo=GradientInfo()) begin
+#   print(1)
+# end

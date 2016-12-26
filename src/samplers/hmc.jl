@@ -29,15 +29,11 @@ end
 
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg         :: HMC                          # the HMC algorithm info
-  model       :: Function                     # model function
-  values      :: GradientInfo                 # container for variables
   dists       :: Dict{VarInfo, Distribution}  # variable to its distribution
   samples     :: Array{Sample}                # samples
   predicts    :: Dict{Symbol, Any}            # outputs
-  first       :: Bool                         # the first run flag
 
-  function HMCSampler(alg :: HMC, model :: Function)
-    values = GradientInfo()   # GradientInfo initialize logjoint as Dual(0)
+  function HMCSampler(alg :: HMC)
     dists = Dict{VarInfo, Distribution}()
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
@@ -45,7 +41,7 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
     predicts = Dict{Symbol, Any}()
-    new(alg, model, values, dists, samples, predicts)
+    new(alg, dists, samples, predicts)
   end
 end
 
@@ -118,10 +114,10 @@ function Base.run(spl :: Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
+function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo, varInfo::GradientInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(spl.values.container, var)  # first time -> generate
+  if ~haskey(varInfo.container, var)  # first time -> generate
     # Build {var -> dist} dictionary
     spl.dists[var] = dist
 
@@ -134,11 +130,11 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
     val = vectorize(dist, v) # vectorize
 
     # Store the generated var
-    spl.values.container[var] = val
+    varInfo.container[var] = val
   else         # not first time -> replay
     # Replay varibale
     dprintln(2, "fetching values...")
-    val = spl.values[var]
+    val = varInfo[var]
   end
 
   # Step 2 - Reconstruct variable
@@ -148,18 +144,18 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
 
   # Computing logjoint
   dprintln(2, "computing logjoint...")
-  spl.values.logjoint += logpdf(dist, val, true)
+  varInfo.logjoint += logpdf(dist, val, true)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
 end
 
-function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
+function observe(spl :: HMCSampler{HMC}, d :: Distribution, value, varInfo::GradientInfo)
   dprintln(2, "observing...")
   if length(value) == 1
-    spl.values.logjoint += logpdf(d, Dual(value))
+    varInfo.logjoint += logpdf(d, Dual(value))
   else
-    spl.values.logjoint += logpdf(d, map(x -> Dual(x), value))
+    varInfo.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end
@@ -171,7 +167,7 @@ function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
 end
 
 function sample(model :: Function, alg :: HMC; chunk_size=1000)
-  global sampler = HMCSampler{HMC}(alg, model);
+  global sampler = HMCSampler{HMC}(alg);
   global CHUNKSIZE = chunk_size;
   run(sampler)
 end
