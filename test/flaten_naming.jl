@@ -23,8 +23,8 @@ v_mat = Var(:x, :(x[i,j]), :i, 1, :j, 2)
   end
   @predict p
 end
-chain = sample(mat_name_test, HMC(2500, 0.75, 5))
-@test_approx_eq_eps mean(mean(chain[:p])) 0 5e-2
+chain = sample(mat_name_test, HMC(1000, 0.75, 5))
+@test_approx_eq_eps mean(mean(chain[:p])) 0 0.25
 
 # Multi array
 v_arrarr = Var(:x, :(x[i][j]), :i, 1, :j, 2)
@@ -39,5 +39,5 @@ v_arrarr = Var(:x, :(x[i][j]), :i, 1, :j, 2)
   end
   @predict p
 end
-chain = sample(marr_name_test, HMC(2500, 0.75, 5))
-@test_approx_eq_eps mean(mean(mean(chain[:p]))) 0 5e-2
+chain = sample(marr_name_test, HMC(1000, 0.75, 5))
+@test_approx_eq_eps mean(mean(mean(chain[:p]))) 0 0.25
