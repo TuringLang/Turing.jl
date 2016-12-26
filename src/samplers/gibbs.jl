@@ -31,7 +31,11 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   end
 end
 
+function Base.run(model, data, spl::Sampler{Gibbs})
+
+end
+
 function sample(model::Function, data::Dict, gibbs::Gibbs)
   sampler = GibbsSampler{Gibbs}(gibbs);
-  # run(model, data, sampler)
+  run(model, data, sampler)
 end
