@@ -214,6 +214,14 @@ macro model(name, fbody)
   push!(fname.args, Expr(Symbol("::"), :data, :Dict))
   push!(fname.args, Expr(Symbol("::"), :sampler, :(Turing.Sampler)))
 
+  local_assign_ex = quote
+    for k in keys(data)
+      ex = Expr(Symbol("="), k, data[k])
+      eval(ex)
+    end
+  end
+  unshift!(fbody.args, local_assign_ex)
+
   # return varInfo always
   push!(fbody.args, :(varInfo))
 

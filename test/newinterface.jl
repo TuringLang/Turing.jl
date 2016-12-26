@@ -13,7 +13,7 @@ end
 Turing.TURING[:modelex]
 ga = GradientInfo()
 sampler = HMCSampler{HMC}(HMC(100, 1.5, 3))
-newinterface(ga, data, sampler)
+ga = newinterface(ga, data, sampler)
 newinterface
 
 chain = sample(newinterface, HMC(100, 1.5, 3))
