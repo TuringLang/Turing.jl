@@ -42,16 +42,13 @@ end
 type HMCSampler{HMC} <: GradientSampler{HMC}
   alg        ::HMC                          # the HMC algorithm info
   samples    ::Array{Sample}                # samples
-  predicts   ::Dict{Symbol, Any}            # outputs
-
   function HMCSampler(alg::HMC)
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    predicts = Dict{Symbol, Any}()
-    new(alg, samples, predicts)
+    new(alg, samples)
   end
 end
 
@@ -99,6 +96,7 @@ end
 function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   # initialization
   n =  spl.alg.n_samples
+  task = current_task()
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
   varInfo = VarInfo()
@@ -110,7 +108,7 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, data, spl, varInfo, i==1)
     if is_accept  # accepted => store the new predcits
-      spl.samples[i].value = deepcopy(spl.predicts)
+      spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
       accept_num = accept_num + 1
     else          # rejected => store the previous predcits
       varInfo.values = old_values
@@ -166,12 +164,6 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, varI
     varInfo.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
-end
-
-function predict(spl::HMCSampler{HMC}, name::Symbol, value)
-  dprintln(2, "predicting...")
-  spl.predicts[name] = realpart(value)
-  dprintln(2, "predict done")
 end
 
 function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int64)
