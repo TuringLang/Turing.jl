@@ -120,7 +120,3 @@ function Chain(pc :: ParticleContainer)
 
   Chain(exp(w), s)
 end
-
-# tests
-# tr = Turing.sampler.particles[1]
-# tr = Chain(Turing.sampler.particles)
