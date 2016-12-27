@@ -59,5 +59,5 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
   if ~haskey(task.storage, :turing_predicts)
     task.storage[:turing_predicts] = Dict{Symbol,Any}()
   end
-  task.storage[:turing_predicts][v_name] = realpart(value)
+  task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
 end
