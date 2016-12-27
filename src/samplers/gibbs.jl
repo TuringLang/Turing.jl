@@ -50,7 +50,6 @@ function Base.run(model, data, spl::Sampler{Gibbs})
       is_accept = is_accept_this && is_accept
       spl.predicts = sampler.predicts
       if ~is_accept break end     # if one of the step is reject, reject all
-      println(varInfo.values)
     end
     if is_accept  # accepted => store the new predcits
       spl.samples[i].value = deepcopy(spl.predicts)
