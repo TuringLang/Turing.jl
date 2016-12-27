@@ -56,11 +56,8 @@ observe(spl :: Sampler, d :: Distribution, value, varInfo) = produce(logpdf(d, v
 
 function predict(spl :: Sampler, v_name :: Symbol, value)
   task = current_task()
-  if haskey(task.storage, :turing_predicts)
-    predicts = task.storage[:turing_predicts]
-  else
-    predicts = Dict{Symbol,Any}()
+  if ~haskey(task.storage, :turing_predicts)
+    task.storage[:turing_predicts] = Dict{Symbol,Any}()
   end
-  predicts[v_name] = value
-  task.storage[:turing_predicts] = predicts
+  task.storage[:turing_predicts][v_name] = value
 end
