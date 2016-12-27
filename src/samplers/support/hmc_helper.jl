@@ -21,40 +21,16 @@ function make_dual(dim, real, idx)
 end
 
 Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
-Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
-Base.convert(::Type{Int64}, d::Dual{0,Int64}) = d.value
+Base.convert(::Type{Int64}, d::Dual{0,Int64})     = d.value
+Base.convert(::Type{Float64}, d::Dual{0,Int64})   = round(Int, d.value)
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-function vectorize(d::UnivariateDistribution, r)
-  if isa(r, Dual)
-    val = Vector{Any}([r])
-  else
-    val = Vector{Any}([Dual(r)])
-  end
-  val
-end
-
-function vectorize(d::MultivariateDistribution, r)
-  if isa(r[1], Dual)
-    val = Vector{Any}(map(x -> x, r))
-  else
-    val = Vector{Any}(map(x -> Dual(x), r))
-  end
-  val
-end
-
-function vectorize(d::MatrixDistribution, r)
-  if isa(r[1,1], Dual)
-    val = Vector{Any}(map(x -> x, vec(r)))
-  else
-    s = Dual(sum(r))
-    val = Vector{Any}(map(x -> Dual(x), vec(r)))
-  end
-  val
-end
+vectorize(d::UnivariateDistribution, r)   = Vector{Dual}([r])
+vectorize(d::MultivariateDistribution, r) = Vector{Dual}(r)
+vectorize(d::MatrixDistribution, r)       = Vector{Dual}(vec(r))
 
 function reconstruct(d::Distribution, val)
   if isa(d, UnivariateDistribution)
