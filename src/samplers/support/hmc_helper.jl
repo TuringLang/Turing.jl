@@ -4,20 +4,18 @@
 
 function realpart(d)
   if isa(d[1,1], Dual)      # matrix
-    return map(x -> Float64(x.value), d)
+    map(x -> Float64(x.value), d)
   elseif isa(d[1,1], Array) # array of arry
-    return [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
+    [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
   end
 end
 
-function dualpart(d)
-  return map(x -> Float64(x), d.partials.values)
-end
+dualpart(d) = map(x -> Float64(x), d.partials.values)
 
 function make_dual(dim, real, idx)
   z = zeros(dim)
   z[idx] = 1
-  return Dual(real, tuple(collect(z)...))
+  Dual(real, tuple(collect(z)...))
 end
 
 Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
