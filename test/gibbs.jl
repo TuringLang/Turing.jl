@@ -9,8 +9,9 @@ using Base.Test
     x[i] ~ Normal(m, sqrt(s))
   end
   @predict s m
-  s, m
 end
 
-gibbs = Gibbs(10, HMC(0.1, 5, :s), HMC(0.2, 3, :m))
+gibbs = Gibbs(100, HMC(0.1, 5, :s), HMC(0.2, 3, :m))
 chain = sample(gibbstest, Dict(:x=>[1.5 2.0]), gibbs)
+
+Turing.TURING[:modelex]

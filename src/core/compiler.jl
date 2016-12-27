@@ -228,6 +228,15 @@ macro model(name, fbody)
   end
   unshift!(fbody.args, local_assign_ex)
 
+  # predict_ex = quote
+  #   ct = current_task()
+  #   ct.storage[:turing_predicts] = Dict{Symbol,Any}()
+  #   for sym in syms(varInfo)
+  #     ct.storage[:turing_predicts][Symbol(string(sym))] = get(ct, sym)
+  #   end
+  # end
+  # push!(fbody.args, predict_ex)
+
   # return varInfo always
   push!(fbody.args, :(varInfo))
 
@@ -235,16 +244,3 @@ macro model(name, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end
-
-# macro test(fname,fbody)
-#   dump(fname)
-#   println(fname.args)
-#   println(typeof(fname.args[2]))
-# end
-#
-# @test xxx(data=nothing, varinfo=VarInfo()) begin
-#   print(1)
-# end
-#
-# aa(p=nothing,data=10) = 1
-# aa

@@ -148,3 +148,5 @@ doc"""
 Return a set of all symbols
 """
 syms(vi::VarInfo) = Set(map(v -> v.sym, keys(vi)))
+
+export syms
