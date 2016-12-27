@@ -1,5 +1,3 @@
-const CHUNKSIZE = 1000
-
 doc"""
     get_gradient_dict(spl :: GradientSampler)
 

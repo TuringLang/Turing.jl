@@ -11,6 +11,7 @@ testcases = [
 #     core/
 #       ad.jl
           "ad",
+          "ad2",
 #       compiler.jl
           "assume",
           "observe",
@@ -24,6 +25,7 @@ testcases = [
 #       graidnetinfo.jl
           "replay",
           "graidnetinfo",
+          "flaten_naming",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
