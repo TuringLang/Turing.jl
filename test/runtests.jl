@@ -76,7 +76,8 @@ testcases_v04 = [
 
 # NOTE: put test cases which want to be excluded here
 testcases_excluded = [
-  "tarray2"
+  "tarray2",
+  "predict"
 ]
 
 # Run tests

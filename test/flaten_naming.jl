@@ -21,7 +21,7 @@ v_mat = Var(:x, :(x[i,j]), :i, 1, :j, 2)
   for i in 1:2, j in 1:2
     p[i,j] ~ Normal(0, 1)
   end
-  @predict p
+  p
 end
 chain = sample(mat_name_test, HMC(1000, 0.75, 5))
 @test_approx_eq_eps mean(mean(chain[:p])) 0 0.25
@@ -37,7 +37,7 @@ v_arrarr = Var(:x, :(x[i][j]), :i, 1, :j, 2)
   for i in 1:2, j in 1:2
     p[i][j] ~ Normal(0, 1)
   end
-  @predict p
+  p
 end
 chain = sample(marr_name_test, HMC(1000, 0.75, 5))
 @test_approx_eq_eps mean(mean(mean(chain[:p]))) 0 0.25

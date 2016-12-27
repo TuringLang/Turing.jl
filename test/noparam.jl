@@ -1,4 +1,4 @@
-# Test @assume and @predict macros on a model with conditioning.
+# Test @assume and macros on a model with conditioning.
 
 using Turing
 using Distributions
@@ -8,7 +8,7 @@ using Base.Test
   x ~ Bernoulli(1)
   1 ~ Bernoulli(x / 2)
   0 ~ Bernoulli(x / 2)
-  @predict x
+  x
 end
 
 s = SMC(1000)

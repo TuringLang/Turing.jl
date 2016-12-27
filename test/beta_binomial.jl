@@ -17,7 +17,7 @@ meanp = exact.α / (exact.α + exact.β)
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)
   end
-  @predict p x
+  p, x
 end
 
 

@@ -7,8 +7,7 @@ using Base.Test
   y ~ Bernoulli(x / 2; :param = true)
   1 ~ Normal(0, 1; :static = true)
   2 ~ Normal(0, 1; :param = true)
-  @predict y
-  @predict x
+  y, x
 end
 
 s = SMC(1000)

@@ -237,8 +237,12 @@ macro model(name, fbody)
   # end
   # push!(fbody.args, predict_ex)
 
-  # return varInfo always
+  # return varInfo if sampler is nothing otherwise varInfo
+  return_ex = fbody.args[end]
+  predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
+  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex)
   push!(fbody.args, :(varInfo))
+  # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
 
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex

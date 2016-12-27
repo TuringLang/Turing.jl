@@ -8,7 +8,7 @@ using Base.Test
   for i in 1:length(x)
     x[i] ~ Normal(m, sqrt(s))
   end
-  @predict s m
+  s, m
 end
 
 gibbs = Gibbs(100, HMC(0.1, 5, :s), HMC(0.2, 3, :m))

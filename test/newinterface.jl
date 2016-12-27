@@ -9,7 +9,7 @@ data = Dict(:obs=>[0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)
   end
-  @predict p
+  p
 end
 
 Turing.TURING[:modelex]

@@ -11,9 +11,9 @@ using Base.Test
   m ~ Normal(0,sqrt(s))
   1.5 ~ Normal(m, sqrt(s))
   2.0 ~ Normal(m, sqrt(s))
-  # @predict s m
+  s, m
 end
-
+Turing.TURING[:modelex]
 # Call Turing's AD
 # The result out is the gradient information on R
 gi = ad_test()
