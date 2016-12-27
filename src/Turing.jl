@@ -26,7 +26,7 @@ StatsFuns.gammalogpdf(k::Real, θ::Real, x::Real) = -log(gamma(k)) - k * log(θ)
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @predict, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, HMCSampler, VarInfo
+export @model, @predict, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, VarInfo
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
