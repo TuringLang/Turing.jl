@@ -1,42 +1,74 @@
-# Half momentum step
-function half_momentum_step(p, ϵ, val∇E)
-  dprintln(3, "half_momentum_step...")
-  for k in keys(p)
-    p[k] -= ϵ * val∇E[k] / 2
+#####################################
+# Helper functions for Dual numbers #
+#####################################
+
+function realpart(d)
+  if isa(d[1,1], Dual)      # matrix
+    return map(x -> Float64(x.value), d)
+  elseif isa(d[1,1], Array) # array of arry
+    return [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
   end
-  p
 end
 
-# Leapfrog step
-function leapfrog(values, val∇E, p, ϵ, model, data, spl)
-  dprintln(3, "leapfrog...")
+function dualpart(d)
+  return map(x -> Float64(x), d.partials.values)
+end
 
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-  for k in keys(values)               # full step for state
-    values[k] = Array{Any}(values[k] + ϵ * p[k])
+function make_dual(dim, real, idx)
+  z = zeros(dim)
+  z[idx] = 1
+  return Dual(real, tuple(collect(z)...))
+end
+
+Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
+Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
+Base.convert(::Type{Int64}, d::Dual{0,Int64}) = d.value
+
+#####################################################
+# Helper functions for vectorize/reconstruct values #
+#####################################################
+
+function vectorize(d::UnivariateDistribution, r)
+  if isa(r, Dual)
+    val = Vector{Any}([r])
+  else
+    val = Vector{Any}([Dual(r)])
   end
-  val∇E = get_gradient_dict(values, model, data, spl)
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-
-  # Return updated θ and momentum
-  values, val∇E, p
+  val
 end
 
-# Find logjoint
-# NOTE: it returns logjoint but not -logjoint
-function find_logjoint(model, data, values, spl)
-  values = model(data, values, spl) # run model
-  logjoint = values.logjoint        # get logjoint
-  values.logjoint = Dual(0)         # reset logjoint
-  logjoint
-end
-
-# Compute Hamiltonian
-function find_H(p, model, data, values, spl)
-  H = 0
-  for k in keys(p)
-    H += p[k]' * p[k] / 2
+function vectorize(d::MultivariateDistribution, r)
+  if isa(r[1], Dual)
+    val = Vector{Any}(map(x -> x, r))
+  else
+    val = Vector{Any}(map(x -> Dual(x), r))
   end
-  H += realpart(-find_logjoint(model, data, values, spl))
-  H[1]  # Vector{Any, 1} -> Any
+  val
 end
+
+function vectorize(d::MatrixDistribution, r)
+  if isa(r[1,1], Dual)
+    val = Vector{Any}(map(x -> x, vec(r)))
+  else
+    s = Dual(sum(r))
+    val = Vector{Any}(map(x -> Dual(x), vec(r)))
+  end
+  val
+end
+
+function reconstruct(d::Distribution, val)
+  if isa(d, UnivariateDistribution)
+    # Turn Array{Any} to Any if necessary (this is due to randn())
+    val = val[1]
+  elseif isa(d, MultivariateDistribution)
+    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
+    T = typeof(val[1])
+    val = Vector{T}(val)
+  elseif isa(d, MatrixDistribution)
+    T = typeof(val[1])
+    val = Array{T, 2}(reshape(val, size(d)...))
+  end
+  val
+end
+
+export realpart, dualpart, make_dual, vectorize, reconstruct

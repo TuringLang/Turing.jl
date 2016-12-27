@@ -1,4 +1,5 @@
 include("support/hmc_helper.jl")
+include("support/hmc_core.jl")
 
 doc"""
     HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
@@ -22,10 +23,10 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples ::  Int64     # number of samples
-  lf_size   ::  Float64   # leapfrog step size
-  lf_num    ::  Int64     # leapfrog step number
-  space     ::  Set       # sampling space, emtpy means all
+  n_samples:: Int64     # number of samples
+  lf_size  :: Float64   # leapfrog step size
+  lf_num   :: Int64     # leapfrog step number
+  space    :: Set       # sampling space, emtpy means all
   function HMC(lf_size::Float64, lf_num::Int64, space...)
     HMC(0, lf_size, lf_num, space...)
   end
@@ -39,11 +40,11 @@ immutable HMC <: InferenceAlgorithm
 end
 
 type HMCSampler{HMC} <: GradientSampler{HMC}
-  alg         :: HMC                          # the HMC algorithm info
-  samples     :: Array{Sample}                # samples
-  predicts    :: Dict{Symbol, Any}            # outputs
+  alg        ::HMC                          # the HMC algorithm info
+  samples    ::Array{Sample}                # samples
+  predicts   ::Dict{Symbol, Any}            # outputs
 
-  function HMCSampler(alg :: HMC)
+  function HMCSampler(alg::HMC)
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
@@ -95,7 +96,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   end
 end
 
-function Base.run(model, data, spl::Sampler{HMC})
+function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   # initialization
   n =  spl.alg.n_samples
   t_start = time()  # record the start time of HMC
@@ -122,7 +123,7 @@ function Base.run(model, data, spl::Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :: Var, varInfo::VarInfo)
+function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, var::Var, varInfo::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   if ~haskey(varInfo.values, var)   # first time -> generate
@@ -157,7 +158,7 @@ function assume(spl :: Union{Void, HMCSampler{HMC}}, dist :: Distribution, var :
   return val
 end
 
-function observe(spl :: Union{Void, HMCSampler{HMC}}, d :: Distribution, value, varInfo::VarInfo)
+function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, varInfo::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     varInfo.logjoint += logpdf(d, Dual(value))
@@ -167,7 +168,7 @@ function observe(spl :: Union{Void, HMCSampler{HMC}}, d :: Distribution, value, 
   dprintln(2, "observe done")
 end
 
-function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
+function predict(spl::HMCSampler{HMC}, name::Symbol, value)
   dprintln(2, "predicting...")
   spl.predicts[name] = realpart(value)
   dprintln(2, "predict done")
