@@ -136,10 +136,15 @@ function Base.setindex!(pc::VarInfo, val, idx::Var)
 end
 
 doc"""
-    Base.keys(pc::VarInfo)
+    Base.keys(vi::VarInfo)
 
 Return a key interator in the values, i.e. all the priors.
 """
-function Base.keys(pc::VarInfo)
-  return keys(pc.values)
-end
+Base.keys(vi::VarInfo) = keys(vi.values)
+
+doc"""
+    syms(vi::VarInfo)
+
+Return a set of all symbols
+"""
+syms(vi::VarInfo) = Set(map(v -> v.sym, keys(vi)))
