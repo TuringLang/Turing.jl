@@ -81,7 +81,7 @@ testcases_excluded = [
 ]
 
 # Run tests
-path = Pkg.dir("Turing") * "/test"
+path = dirname(@__FILE__)
 cd(path)
 println("[runtests.jl] testing starts")
 for t in testcases
