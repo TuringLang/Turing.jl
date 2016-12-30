@@ -71,7 +71,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
+  println("[Gibbs]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 

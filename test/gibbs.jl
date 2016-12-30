@@ -13,8 +13,9 @@ x = [1.5 2.0]
   s, m
 end
 
-gibbs = Gibbs(100, PG(10, 10, :s), HMC(0.2, 3, :m))
+gibbs = Gibbs(2000, PG(0, 10, :s), HMC(0, 0.2, 3, :m))
 chain = sample(gibbstest, Dict(:x=>[1.5 2.0]), gibbs)
 
 Turing.TURING[:modelex]
-chain[:s]
+mean(chain[:s]) - 7/6
+mean(chain[:m]) - 49/24
