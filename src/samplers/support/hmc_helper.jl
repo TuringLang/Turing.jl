@@ -18,9 +18,11 @@ function make_dual(dim, real, idx)
   Dual(real, tuple(collect(z)...))
 end
 
-Base.convert(::Type{Float64}, d::Dual{0,Float64}) = d.value
-Base.convert(::Type{Int64}, d::Dual{0,Int64})     = d.value
-Base.convert(::Type{Float64}, d::Dual{0,Int64})   = round(Int, d.value)
+import Base.promote_rule
+Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
+
+Base.convert{T<:Real}(::Type{T}, d::Dual{0,T})  = d.value
+Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #

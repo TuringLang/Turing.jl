@@ -10,13 +10,15 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   samples     ::  Array{Sample}       # samples
   predicts    ::  Dict{Symbol, Any}   # outputs
 
-  function GibbsSampler(gibbs::Gibbs)
+  function GibbsSampler(model::Function, gibbs::Gibbs)
     n_samplers = length(gibbs.algs)
     samplers = Array{Sampler}(n_samplers)
     for i in 1:n_samplers
       alg = gibbs.algs[i]
       if isa(alg, HMC)
         samplers[i] = HMCSampler{HMC}(alg)
+      elseif isa(alg, PG)
+        samplers[i] = ParticleSampler{PG}(model, alg)
       end
     end
 
@@ -48,15 +50,15 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     is_accept = true
     for sampler in spl.samplers
       dprintln(2, "$sampler stepping...")
-      
-      if isa(spl, Sampler{HMC})
+
+      if isa(sampler, Sampler{HMC})
         is_accept_this, varInfo = step(model, data, sampler, varInfo, i==1)
-      elseif isa(spl, Sampler{PG})
-        ref_particle, _ = step(spl, ref_particle)
-        is_accept_this = true
+        is_accept = is_accept_this && is_accept
+      elseif isa(sampler, Sampler{PG})
+        global sampler = sampler
+        ref_particle, _ = step(sampler, ref_particle)
       end
 
-      is_accept = is_accept_this && is_accept
       if ~is_accept break end     # if one of the step is reject, reject all
     end
     if is_accept  # accepted => store the new predcits
@@ -74,6 +76,6 @@ function Base.run(model, data, spl::Sampler{Gibbs})
 end
 
 function sample(model::Function, data::Dict, gibbs::Gibbs)
-  sampler = GibbsSampler{Gibbs}(gibbs);
+  global sampler = GibbsSampler{Gibbs}(model, gibbs);
   run(model, data, sampler)
 end

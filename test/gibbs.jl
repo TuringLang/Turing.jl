@@ -2,6 +2,8 @@ using Distributions
 using Turing
 using Base.Test
 
+x = [1.5 2.0]
+
 @model gibbstest begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
@@ -11,10 +13,8 @@ using Base.Test
   s, m
 end
 
-gibbs = Gibbs(100, HMC(0.1, 5, :s), HMC(0.2, 3, :m))
+gibbs = Gibbs(100, PG(10, 10, :s), HMC(0.2, 3, :m))
 chain = sample(gibbstest, Dict(:x=>[1.5 2.0]), gibbs)
 
 Turing.TURING[:modelex]
-
-
-PG(10, 10, :s)
+chain[:s]
