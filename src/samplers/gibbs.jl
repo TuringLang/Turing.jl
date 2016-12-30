@@ -38,6 +38,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
   t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
   varInfo = VarInfo()
+  ref_particle = nothing
 
   # HMC steps
   for i = 1:n
@@ -47,7 +48,14 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     is_accept = true
     for sampler in spl.samplers
       dprintln(2, "$sampler stepping...")
-      is_accept_this, varInfo = step(model, data, sampler, varInfo, i==1)
+      
+      if isa(spl, Sampler{HMC})
+        is_accept_this, varInfo = step(model, data, sampler, varInfo, i==1)
+      elseif isa(spl, Sampler{PG})
+        ref_particle, _ = step(spl, ref_particle)
+        is_accept_this = true
+      end
+
       is_accept = is_accept_this && is_accept
       if ~is_accept break end     # if one of the step is reject, reject all
     end
