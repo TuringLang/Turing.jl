@@ -136,6 +136,7 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, var::Var,
     # Store the generated var if it's in space
     if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
       varInfo.values[var] = val
+      varInfo.dists[var] = dist
     end
   else                              # not first time -> replay
     # Replay varibale

@@ -108,11 +108,9 @@ keys(pc)  # create a key interator in the values, i.e. all the priors
 """
 type VarInfo
   values      ::    Dict{Var, Any}
+  dists       ::    Dict{Var, Distribution}
   logjoint    ::    Dual
-  function VarInfo()
-    values = Dict{Var, Any}()
-    new(values, Dual(0))
-  end
+  VarInfo() = new(Dict{Var, Any}(), Dict{Var, Distribution}(), Dual(0))
 end
 
 doc"""
