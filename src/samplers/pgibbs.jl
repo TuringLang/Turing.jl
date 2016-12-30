@@ -26,7 +26,12 @@ immutable PG <: InferenceAlgorithm
   n_iterations :: Int
   resampler :: Function
   resampler_threshold :: Float64
-  PG(n1::Int,n2::Int) = new(n1,n2,resampleSystematic,0.5)
+  space :: Set
+  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set())
+  function PG(n1::Int, n2::Int, space...)
+    space = isa(space, Symbol) ? Set([space]) : Set(space)
+    new(n1, n2, resampleSystematic, 0.5, space)
+  end
 end
 
 function Base.run(spl::Sampler{PG})
