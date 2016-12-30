@@ -44,6 +44,8 @@ testcases = [
 #         resample.jl
             "resample",
             "particlecontainer",
+#       gibbs.jl
+            "gibbs",
 #       hmc.jl
           "multivariate_support",
           "matrix_support",
