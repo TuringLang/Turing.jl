@@ -34,8 +34,10 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 
-gibbs = Gibbs(1500, PG(15, 1, :z1, :z2, :z3, :z4), HMC(1, 0.25, 3, :mu1, :mu2))
+gibbs = Gibbs(500, PG(100, 1, :z1, :z2, :z3, :z4), HMC(1, 0.15, 3, :mu1, :mu2))
 chain = sample(MoGtest, gibbs)
+
+# chain = sample(MoGtest, SMC(5000))
 
 Turing.TURING[:modelex]
 
@@ -45,6 +47,3 @@ mean(chain[:z3])
 mean(chain[:z4])
 mean(chain[:mu1])
 mean(chain[:mu2])
-
-# @test_approx_eq_eps mean(chain[:s]) 49/24 0.15
-# @test_approx_eq_eps mean(chain[:m]) 7/6 0.15
