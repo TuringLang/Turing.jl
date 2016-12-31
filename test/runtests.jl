@@ -46,6 +46,7 @@ testcases = [
             "particlecontainer",
 #       gibbs.jl
             "gibbs",
+            "gibbs2",
 #       hmc.jl
           "multivariate_support",
           "matrix_support",
