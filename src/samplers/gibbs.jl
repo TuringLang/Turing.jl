@@ -79,3 +79,8 @@ function sample(model::Function, data::Dict, gibbs::Gibbs)
   global sampler = GibbsSampler{Gibbs}(model, gibbs);
   run(model, data, sampler)
 end
+
+function sample(model::Function, gibbs::Gibbs)
+  global sampler = GibbsSampler{Gibbs}(model, gibbs);
+  run(model, Dict(), sampler)
+end
