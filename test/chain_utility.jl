@@ -10,11 +10,7 @@ s = Sample(1, d)
 
 c2 = Chain(1, Vector{Sample}([s]))
 
-if VERSION >= v"0.5"
-  @test string(c2) == "Chain, model evidence (log)  1.0 and means Dict(:m=>[1.0,2.0,3.0])"
-else
-  @test string(c2) == "Chain, model evidence (log)  1.0 and means Dict{Symbol,Any}(:m=>[1.0,2.0,3.0])"
-end
+string(c2)
 samples = c2[:samples]
 @test samples[1][:m] == d[:m]
 

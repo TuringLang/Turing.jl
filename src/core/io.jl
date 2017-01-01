@@ -76,12 +76,16 @@ function Base.show(io::IO, ch1::Chain)
     print(io, "Empty Chain, weight $(ch1.weight)")
   elseif length(ch1.value) == 1
     chain_mean = Dict(i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value))
-    print(io, "Chain, model evidence (log)  $(ch1.weight) and means $(chain_mean)")
+    print(io, "Chain, model evidence (log) $(ch1.weight) and means $(chain_mean)")
   else
     vars = keys(ch1.value[1].value)
-    print(io, "Chain, model evidence (log)  $(ch1.weight)\n")
+    print(io, "Chain\nModel evidence (log) = $(ch1.weight)\n")
     for v in vars
-      print(io, "Stats for :$v\n $(mcmcstats(ch1[v]))\n")
+      print(io, "Stats for :$v\n")
+      stats = mcmcstats(ch1[v])
+      for (label, value) in stats
+        print(io, "  $label = $value\n")
+      end
     end
   end
 end
