@@ -74,9 +74,15 @@ function Base.show(io::IO, ch1::Chain)
   # Print chain weight and weighted means of samples in chain
   if length(ch1.value) == 0
     print(io, "Empty Chain, weight $(ch1.weight)")
-  else
+  elseif length(ch1.value) == 1
     chain_mean = Dict(i => mean(ch1, i, x -> x) for i in keys(ch1.value[1].value))
     print(io, "Chain, model evidence (log)  $(ch1.weight) and means $(chain_mean)")
+  else
+    vars = keys(ch1.value[1].value)
+    print(io, "Chain, model evidence (log)  $(ch1.weight)\n")
+    for v in vars
+      print(io, "Stats for :$v\n $(mcmcstats(ch1[v]))\n")
+    end
   end
 end
 
@@ -124,3 +130,43 @@ end
 # tests
 # tr = Turing.sampler.particles[1]
 # tr = Chain(Turing.sampler.particles)
+
+###############
+# Declaration #
+###############################################
+# Code below are taken/adapted from           #
+# Mamba.jl/blob/master/src/output/mcse.jl and #
+# Mamba.jl/blob/master/src/output/stats.jl    #
+###############################################
+import StatsBase: sem
+
+function mcse_bm{T<:Real}(x::Vector{T}; size::Integer=100)
+  n = length(x)
+  m = div(n, size)
+  m >= 2 ||
+    throw(ArgumentError(
+      "iterations are < $(2 * size) and batch size is > $(div(n, 2))"
+    ))
+  mbar = [mean(x[i * size + (1:size)]) for i in 0:(m - 1)]
+  sem(mbar)
+end
+
+# For univariate
+function mcmcstats{T<:Real}(x::Vector{T})
+  labels = ["Mean", "SD", "Naive SE", "MCSE", "ESS"]
+  vals = [mean(x), std(x), sem(x), mcse_bm(x)]
+  stats = [vals;  min((vals[2] / vals[4])^2, length(x))]
+  Dict(labels[i] => stats[i] for i in 1:5)
+end
+
+# For multivariate
+function mcmcstats{T<:Real}(x::Array{T, 2})
+  labels = ["Mean", "SD", "Naive SE", "MCSE", "ESS"]
+  f = x -> [mean(x), std(x), sem(x), mcse_bm(vec(x))]
+  vals = permutedims(
+    mapslices(x -> f(x), x, [1 2]),
+    [2, 1]
+  )
+  stats = [vals  min((vals[:, 2] ./ vals[:, 4]).^2, size(x, 2))]
+  Dict(labels[i] => stats[i] for i in 1:5)
+end
