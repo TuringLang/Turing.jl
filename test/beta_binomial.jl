@@ -4,11 +4,10 @@
 using Turing
 using Distributions
 using Base.Test
-using ConjugatePriors: posterior
 
 prior = Beta(2,2)
 obs = [0,1,0,1,1,1,1,1,1,1]
-exact = posterior(prior, Bernoulli, obs)
+exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
 meanp = exact.α / (exact.α + exact.β)
 
 @model testbb begin
