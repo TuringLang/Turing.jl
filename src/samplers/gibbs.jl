@@ -51,15 +51,17 @@ function Base.run(model, data, spl::Sampler{Gibbs})
       dprintln(2, "$local_spl stepping...")
 
       if isa(local_spl, Sampler{HMC})
-        old_values = deepcopy(varInfo.values)
-        is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
-        if ~is_accept
-          varInfo.values = old_values
+        for _ in local_spl.alg.n_samples
+          old_values = deepcopy(varInfo.values)
+          is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
+          if ~is_accept
+            varInfo.values = old_values
+          end
         end
       elseif isa(local_spl, Sampler{PG})
-        # global sampler = local_spl
-        ref_particle, _ = step(model, data, local_spl, varInfo, ref_particle)
-        # ref_particle, _ = step(sampler, ref_particle)
+        for _ in local_spl.alg.n_iterations
+          ref_particle, _ = step(model, data, local_spl, varInfo, ref_particle)
+        end
       end
 
     end
