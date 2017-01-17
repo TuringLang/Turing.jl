@@ -36,42 +36,38 @@ end
 function Base.run(model, data, spl::Sampler{Gibbs})
   # initialization
   task = current_task()
-  n =  spl.gibbs.n_iters
+  n = spl.gibbs.n_iters
   t_start = time()  # record the start time of HMC
-  accept_num = 0    # record the accept number
   varInfo = VarInfo()
   ref_particle = nothing
 
   # HMC steps
   for i = 1:n
     dprintln(2, "recording old θ...")
-    old_values = deepcopy(varInfo.values)
-    dprintln(2, "Gibbs stepping...")
-    is_accept = true
-    for sampler in spl.samplers
-      dprintln(2, "$sampler stepping...")
 
-      if isa(sampler, Sampler{HMC})
-        is_accept_this, varInfo = step(model, data, sampler, varInfo, i==1)
-        is_accept = is_accept_this && is_accept
-      elseif isa(sampler, Sampler{PG})
-        global sampler = sampler
-        ref_particle, _ = step(sampler, ref_particle)
+    dprintln(2, "Gibbs stepping...")
+
+    for local_spl in spl.samplers
+      dprintln(2, "$local_spl stepping...")
+
+      if isa(local_spl, Sampler{HMC})
+        old_values = deepcopy(varInfo.values)
+        is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
+        if ~is_accept
+          varInfo.values = old_values
+        end
+      elseif isa(local_spl, Sampler{PG})
+        # global sampler = local_spl
+        ref_particle, _ = step(model, data, local_spl, varInfo, ref_particle)
+        # ref_particle, _ = step(sampler, ref_particle)
       end
 
-      if ~is_accept break end     # if one of the step is reject, reject all
     end
-    if is_accept  # accepted => store the new predcits
-      spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
-      accept_num = accept_num + 1
-    else          # rejected => store the previous predcits
-      varInfo.values = old_values
-      spl.samples[i] = spl.samples[i - 1]
-    end
+    spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
+
   end
 
-  accept_rate = accept_num / n    # calculate the accept rate
-  println("[Gibbs]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
+  println("[Gibbs]: Finshed within $(time() - t_start) seconds")
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 

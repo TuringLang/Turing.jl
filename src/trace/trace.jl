@@ -35,6 +35,17 @@ function (::Type{Trace{T}}){T}(f::Function)
   res
 end
 
+function (::Type{Trace{T}}){T}(f::Function, data, spl, varInfo)
+  res = Trace{T}();
+  # Task(()->f());
+  res.task = Task( () -> begin res=f(data, varInfo, spl); produce(Val{:done}); res; end )
+  if isa(res.task.storage, Void)
+    res.task.storage = ObjectIdDict()
+  end
+  res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+  res
+end
+
 typealias TraceR Trace{:R} # Task Copy
 typealias TraceC Trace{:C} # Replay
 

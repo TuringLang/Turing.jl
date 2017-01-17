@@ -34,6 +34,31 @@ immutable PG <: InferenceAlgorithm
   end
 end
 
+function step(model, data, spl::Sampler{PG}, varInfo, ref_particle)
+  spl.particles = ParticleContainer{TraceR}(spl.model)
+  if ref_particle == nothing
+    push!(spl.particles, spl.alg.n_particles, data, spl, varInfo)
+  else
+    push!(spl.particles, spl.alg.n_particles-1, data, spl, varInfo)
+    push!(spl.particles, ref_particle)
+  end
+
+  while consume(spl.particles) != Val{:done}
+    ess = effectiveSampleSize(spl.particles)
+    if ess <= spl.alg.resampler_threshold * length(spl.particles)
+      resample!(spl.particles, spl.alg.resampler, ref_particle)
+    end
+  end
+
+  ## pick a particle to be retained.
+  Ws, _ = weights(spl.particles)
+  indx = rand(Categorical(Ws))
+  ref_particle = fork2(spl.particles[indx])
+
+  s = getsample(spl.particles, indx)
+  ref_particle, s
+end
+
 function step(spl::Sampler{PG}, ref_particle)
   spl.particles = ParticleContainer{TraceR}(spl.model)
   if ref_particle == nothing
