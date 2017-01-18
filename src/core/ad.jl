@@ -22,7 +22,7 @@ function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=no
   key_chunk = []
   prior_dim = 0
   for k in keys(values)
-    if isempty(spl.alg.space) || k.sym in spl.alg.space
+    if spl == nothing || isempty(spl.alg.space) || k.sym in spl.alg.space
       l = length(values[k])
       if prior_dim + l > CHUNKSIZE
         # Store the old chunk
