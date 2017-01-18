@@ -55,7 +55,7 @@ assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_t
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo::VarInfo)
   # TODO: fix the logic of assume()
-  if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+  if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space || ~haskey(varInfo.values, var)
     r = rand(current_trace(), dist)  # gen random
     v = link(dist, r)             # X -> R
     val = vectorize(dist, v)      # vectorize
@@ -65,15 +65,13 @@ function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo:
     varInfo.dists[var] = dist
 
     r
-  elseif haskey(varInfo.values, var)
+  else
     val = varInfo[var]
     dist = varInfo.dists[var]
     val = reconstruct(dist, val)
     val = invlink(dist, val)
     # produce(logpdf(dist, val, true))
     val
-  else
-    rand(current_trace(), dist)
   end
 
 end
