@@ -72,6 +72,8 @@ function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo:
     val = invlink(dist, val)
     # produce(logpdf(dist, val, true))
     val
+  else
+    rand(current_trace(), dist)
   end
 
 end
