@@ -22,20 +22,22 @@ function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=no
   key_chunk = []
   prior_dim = 0
   for k in keys(values)
-    l = length(values[k])
-    if prior_dim + l > CHUNKSIZE
-      # Store the old chunk
-      push!(prior_key_chunks, (key_chunk, prior_dim))
-      # Initialise new chunk
-      key_chunk = []
-      prior_dim = 0
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
-    else
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
+    if isempty(spl.alg.space) || k.sym in spl.alg.space
+      l = length(values[k])
+      if prior_dim + l > CHUNKSIZE
+        # Store the old chunk
+        push!(prior_key_chunks, (key_chunk, prior_dim))
+        # Initialise new chunk
+        key_chunk = []
+        prior_dim = 0
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
+      else
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
+      end
     end
   end
   if length(key_chunk) != 0

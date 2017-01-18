@@ -1,7 +1,7 @@
 # Half momentum step
 function half_momentum_step(p, ϵ, val∇E)
   dprintln(3, "half_momentum_step...")
-  for k in keys(p)
+  for k in keys(val∇E)
     p[k] -= ϵ * val∇E[k] / 2
   end
   p
@@ -12,7 +12,7 @@ function leapfrog(values, val∇E, p, ϵ, model, data, spl)
   dprintln(3, "leapfrog...")
 
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-  for k in keys(values)               # full step for state
+  for k in keys(val∇E)               # full step for state
     values[k] = Vector{Dual}(values[k] + ϵ * p[k])
   end
   val∇E = get_gradient_dict(values, model, data, spl)
