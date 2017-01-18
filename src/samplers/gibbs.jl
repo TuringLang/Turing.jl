@@ -43,8 +43,6 @@ function Base.run(model, data, spl::Sampler{Gibbs})
 
   # HMC steps
   for i = 1:n
-    dprintln(2, "recording old θ...")
-
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.samplers
@@ -52,6 +50,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
 
       if isa(local_spl, Sampler{HMC})
         for _ in local_spl.alg.n_samples
+          dprintln(2, "recording old θ...")
           old_values = deepcopy(varInfo.values)
           is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
           if ~is_accept
