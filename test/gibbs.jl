@@ -13,7 +13,7 @@ x = [1.5 2.0]
   s, m
 end
 
-gibbs = Gibbs(1500, PG(10, 1, :s), HMC(1, 0.2, 3, :m))
+gibbs = Gibbs(1500, PG(100, 1, :s), HMC(1, 0.2, 3, :m))
 chain = sample(gibbstest, gibbs)
 
 Turing.TURING[:modelex]
