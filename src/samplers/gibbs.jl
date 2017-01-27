@@ -1,3 +1,5 @@
+include("support/gibbs_helper.jl")
+
 immutable Gibbs <: InferenceAlgorithm
   n_iters ::  Int
   algs    ::  Tuple
@@ -58,9 +60,12 @@ function Base.run(model, data, spl::Sampler{Gibbs})
           end
         end
       elseif isa(local_spl, Sampler{PG})
+        samples_history = []
         for _ in local_spl.alg.n_iterations
-          ref_particle, _ = step(model, data, local_spl, varInfo, ref_particle)
+          ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
+          push!(samples_history, samples)
         end
+        varInfo = update(varInfo, samples_history, local_spl.alg.space)
       end
 
     end
