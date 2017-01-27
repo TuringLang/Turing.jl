@@ -54,25 +54,31 @@ end
 assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_trace(), d )
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo::VarInfo)
-  # TODO: fix the bug here
-  if ~haskey(varInfo.values, var)
-    r = rand(current_trace(), dist)  # gen random
-    v = link(dist, r)             # X -> R
-    val = vectorize(dist, v)      # vectorize
+  # NOTE:
+  # haskey?   yes no  yes no
+  # in space? yes yes no  no
+  # action    r&s r&s f&p r&p,
+  # where r = random, s = store, f = fetch, p = produce
+  if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+    r = rand(current_trace(), dist) # gen random
+    v = link(dist, r)               # X -> R
+    val = vectorize(dist, v)        # vectorize
 
-    # Store the generated var if it's in space
-    if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
-      varInfo.values[var] = val
-      varInfo.dists[var] = dist
+    varInfo.values[var] = val
+    varInfo.dists[var] = dist
+  else  # if it isn't in space
+    if haskey(varInfo.values, var)
+      val = varInfo[var]
+      dist = varInfo.dists[var]
+      val = reconstruct(dist, val)
+      r = invlink(dist, val)
+      produce(logpdf(dist, r, true))
+    else
+      r = rand(current_trace(), dist)  # gen random
+      produce(logpdf(dist, r))
     end
-    r
-  else
-    val = varInfo[var]
-    dist = varInfo.dists[var]
-    val = reconstruct(dist, val)
-    invlink(dist, val)
   end
-
+  r
 end
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
