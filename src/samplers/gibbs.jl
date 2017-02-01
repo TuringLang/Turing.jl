@@ -69,7 +69,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
       end
 
     end
-    spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
+    spl.samples[i].value = varInfo2samples(varInfo)
 
   end
 

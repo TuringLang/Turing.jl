@@ -14,3 +14,15 @@ function update(varInfo, samples_history, space)
   end
   varInfo
 end
+
+function varInfo2samples(varInfo)
+  samples = Dict{Symbol, Any}()
+  for var in keys(varInfo)
+    dist = varInfo.dists[var]
+    val = varInfo[var]
+    val = reconstruct(dist, val)
+    val = invlink(dist, val)
+    samples[var.sym] = val
+  end
+  samples
+end

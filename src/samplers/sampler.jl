@@ -56,6 +56,8 @@ assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_t
 function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo::VarInfo)
   # TODO: fix the bug here
   if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+    varInfo.values[var] = nothing
+    varInfo.dists[var] = dist
     r = rand(current_trace(), dist)     # gen random
   else  # if it isn't in space
     if haskey(varInfo.values, var)
