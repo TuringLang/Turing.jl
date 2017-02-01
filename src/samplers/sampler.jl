@@ -55,11 +55,6 @@ assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_t
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo::VarInfo)
   # TODO: fix the bug here
-  # NOTE:
-  # haskey?   yes no  yes no
-  # in space? yes yes no  no
-  # action    r&s r&s f&p r&p,
-  # where r = random, s = store, f = fetch, p = produce
   if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
     r = rand(current_trace(), dist)     # gen random
   else  # if it isn't in space
@@ -68,10 +63,10 @@ function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo:
       dist = varInfo.dists[var]
       val = reconstruct(dist, val)
       r = invlink(dist, val)
-      produce(logpdf(dist, r, true))
+      produce(log(1.0))
     else
       r = rand(current_trace(), dist)   # gen random
-      produce(logpdf(dist, r))
+      produce(log(1.0))
     end
   end
   r
