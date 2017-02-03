@@ -60,11 +60,11 @@ A Turing probabilistic program is just a normal Julia program, wrapped in a `@mo
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model gaussdemo begin
-  @assume s ~ InverseGamma(2,3)
-  @assume m ~ Normal(0,sqrt(s))
-  @observe 1.5 ~ Normal(m, sqrt(s))
-  @observe 2.0 ~ Normal(m, sqrt(s))
-  @predict s m
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  1.5 ~ Normal(m, sqrt(s))
+  2.0 ~ Normal(m, sqrt(s))
+  return s, m
 end
 ```
 
