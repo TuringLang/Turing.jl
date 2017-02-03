@@ -4,28 +4,31 @@
 using Turing
 using Distributions
 using Base.Test
-using ConjugatePriors: posterior
 
 prior = Beta(2,2)
 obs = [0,1,0,1,1,1,1,1,1,1]
-exact = posterior(prior, Bernoulli, obs)
+exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
 meanp = exact.α / (exact.α + exact.β)
 
 @model testbb begin
-  @assume p ~ Beta(2,2)
-  @assume x ~ Bernoulli(p)
+  p ~ Beta(2,2)
+  x ~ Bernoulli(p)
   for i = 1:length(obs)
-    @observe obs[i] ~ Bernoulli(p)
+    obs[i] ~ Bernoulli(p)
   end
-  @predict p x
+  p, x
 end
 
 
 s = SMC(10000)
 p = PG(100,1000)
+g = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
 
 res = sample(testbb, s)
 @test_approx_eq_eps mean(res[:p]) meanp 0.05
 
 res = sample(testbb, p)
+@test_approx_eq_eps mean(res[:x]) meanp 0.10
+
+res = sample(testbb, g)
 @test_approx_eq_eps mean(res[:x]) meanp 0.10

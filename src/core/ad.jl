@@ -13,29 +13,31 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function get_gradient_dict(priors::GradientInfo, model::Function)
+function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
-  val∇E = Dict{Any, Any}()
-  # Split keys(priors) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
+  val∇E = Dict{Var, Vector{Float64}}()
+  # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(4, "making chunks...")
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
-  for k in keys(priors)
-    l = length(priors[k])
-    if prior_dim + l > CHUNKSIZE
-      # Store the old chunk
-      push!(prior_key_chunks, (key_chunk, prior_dim))
-      # Initialise new chunk
-      key_chunk = []
-      prior_dim = 0
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
-    else
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
+  for k in keys(values)
+    if spl == nothing || isempty(spl.alg.space) || k.sym in spl.alg.space
+      l = length(values[k])
+      if prior_dim + l > CHUNKSIZE
+        # Store the old chunk
+        push!(prior_key_chunks, (key_chunk, prior_dim))
+        # Initialise new chunk
+        key_chunk = []
+        prior_dim = 0
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
+      else
+        # Update
+        push!(key_chunk, k)
+        prior_dim += l
+      end
     end
   end
   if length(key_chunk) != 0
@@ -46,10 +48,10 @@ function get_gradient_dict(priors::GradientInfo, model::Function)
     # Set dual part correspondingly
     dprintln(4, "set dual...")
     prior_count = 1
-    for k in keys(priors)
-      l = length(priors[k])
-      reals = realpart(priors[k])
-      val_vect = priors[k]   # get the value vector
+    for k in keys(values)
+      l = length(values[k])
+      reals = realpart(values[k])
+      val_vect = values[k]   # get the value vector
 
       if k in key_chunk   # to graidnet variables
         for i = 1:l
@@ -67,27 +69,27 @@ function get_gradient_dict(priors::GradientInfo, model::Function)
     end
     # Run the model
     dprintln(4, "run model...")
-    consume(Task(model))
+    values = model(data, values, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
     for k in key_chunk
       dprintln(5, "for each prior...")
-      l = length(priors[k])
-      reals = realpart(priors[k])
+      l = length(values[k])
+      reals = realpart(values[k])
       # To store the gradient vector
       g = zeros(l)
       for i = 1:l
         # Collect
         dprintln(5, "taking from logjoint...")
-        g[i] = dualpart(-priors.logjoint)[prior_count]
+        g[i] = dualpart(-values.logjoint)[prior_count]
         # Count
         prior_count += 1
       end
       val∇E[k] = g
     end
     # Reset logjoint
-    priors.logjoint = Dual(0)
+    values.logjoint = Dual(0)
   end
   # Return
   return val∇E

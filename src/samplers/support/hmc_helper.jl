@@ -1,42 +1,50 @@
-# Half momentum step
-function half_momentum_step(p, ϵ, val∇E)
-  dprintln(3, "half_momentum_step...")
-  for k in keys(p)
-    p[k] -= ϵ * val∇E[k] / 2
+#####################################
+# Helper functions for Dual numbers #
+#####################################
+
+function realpart(d)
+  if isa(d[1,1], Dual)      # matrix
+    map(x -> Float64(x.value), d)
+  elseif isa(d[1,1], Array) # array of arry
+    [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
   end
-  p
 end
 
-# Leapfrog step
-function leapfrog(values, val∇E, p, ϵ, model)
-  dprintln(3, "leapfrog...")
+dualpart(d) = map(x -> Float64(x), d.partials.values)
 
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-  for k in keys(values)               # full step for state
-    values[k] = Array{Any}(values[k] + ϵ * p[k])
+function make_dual(dim, real, idx)
+  z = zeros(dim)
+  z[idx] = 1
+  Dual(real, tuple(collect(z)...))
+end
+
+import Base.promote_rule
+Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
+
+Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T})  = d.value
+Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
+
+#####################################################
+# Helper functions for vectorize/reconstruct values #
+#####################################################
+
+vectorize(d::UnivariateDistribution, r)   = Vector{Dual}([r])
+vectorize(d::MultivariateDistribution, r) = Vector{Dual}(r)
+vectorize(d::MatrixDistribution, r)       = Vector{Dual}(vec(r))
+
+function reconstruct(d::Distribution, val)
+  if isa(d, UnivariateDistribution)
+    # Turn Array{Any} to Any if necessary (this is due to randn())
+    val = val[1]
+  elseif isa(d, MultivariateDistribution)
+    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
+    T = typeof(val[1])
+    val = Vector{T}(val)
+  elseif isa(d, MatrixDistribution)
+    T = typeof(val[1])
+    val = Array{T, 2}(reshape(val, size(d)...))
   end
-  val∇E = get_gradient_dict(values, model)
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-
-  # Return updated θ and momentum
-  values, val∇E, p
+  val
 end
 
-# Find logjoint
-# NOTE: it returns logjoint but not -logjoint
-function find_logjoint(model, values)
-  consume(Task(model))        # run model
-  logjoint = values.logjoint  # get logjoint
-  values.logjoint = Dual(0)   # reset logjoint
-  logjoint
-end
-
-# Compute Hamiltonian
-function find_H(p, model, values)
-  H = 0
-  for k in keys(p)
-    H += p[k]' * p[k] / 2
-  end
-  H += realpart(-find_logjoint(model, values))
-  H[1]  # Vector{Any, 1} -> Any
-end
+export realpart, dualpart, make_dual, vectorize, reconstruct

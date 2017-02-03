@@ -5,11 +5,11 @@ using Base.Test
 obs = [0,1,0,1,1,1,1,1,1,1]
 
 @model constrained_test begin
-  @assume p ~ Beta(2,2)
+  p ~ Beta(2,2)
   for i = 1:length(obs)
-    @observe obs[i] ~ Bernoulli(p)
+    obs[i] ~ Bernoulli(p)
   end
-  @predict p
+  p
 end
 
 chain = sample(constrained_test, HMC(3000, 1.5, 3)) # using a large step size (1.5)

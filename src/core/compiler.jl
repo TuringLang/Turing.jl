@@ -14,175 +14,141 @@ has_ops(parse("@assume x ~ Binomial(; :static=true)"))    # gives true
 has_ops(parse("@assume x ~ Binomial()"))                  # gives false
 ```
 """
-function has_ops(ex)
-  if length(ex.args[3].args) <= 1               # check if the D() has parameters
+function has_ops(right)
+  if length(right.args) <= 1               # check if the D() has parameters
     return false                                # Binominal() can have empty
-  elseif typeof(ex.args[3].args[2]) != Expr     # check if has optional arguments
+  elseif typeof(right.args[2]) != Expr     # check if has optional arguments
     return false
-  elseif ex.args[3].args[2].head != :parameters # check if parameters valid
+  elseif right.args[2].head != :parameters # check if parameters valid
     return false
   end
   true
 end
 
-##########
-# Macros #
-##########
-
-doc"""
-    assume(ex)
-
-Operation for defining the prior.
-
-Usage:
-
-```julia
-@assume x ~ Dist
-```
-
-Here `x` is a **symbol** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-Example:
-
-```julia
-@assume x ~ Normal(0, 1)
-@assume x ~ Binomial(0, 1)
-@assume x ~ Normal(0, 1; :static=true)
-@assume x ~ Binomial(0, 1; :param=true)
-```
-"""
-macro assume(ex)
-  dprintln(1, "marco assuming...")
-  @assert ex.args[1] == Symbol("@~")
-  # Check if have extra arguements setting
-  if has_ops(ex)
-    # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # Remove the extra argument
-    splice!(ex.args[3].args, 2)
-  end
-
+function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
   # It only supposrts pure symbol and Array(/Dict) now.
-  varExpr = ex.args[2]
-  if isa(varExpr, Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Pure Symbol
-            Symbol($(string(varExpr)))
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Symbol)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 2 && isa(varExpr.args[1], Expr)
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[1].args[2]))),  # index symbol
-            $(varExpr.args[1].args[2]),                  # index value
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2])                   # index value
-          )
-        )
-      end
-    )
-  elseif length(varExpr.args) == 3
-    esc(
-      quote
-        $(varExpr) = Turing.assume(
-          Turing.sampler,
-          $(ex.args[3]),    # dDistribution
-          VarInfo(          # Array assignment
-            parse($(string(varExpr))),           # indexing expr
-            Symbol($(string(varExpr.args[2]))),  # index symbol
-            $(varExpr.args[2]),                  # index value
-            Symbol($(string(varExpr.args[3]))),  # index symbol
-            $(varExpr.args[3])                   # index value
-          )
-        )
-      end
-    )
+  if isa(left, Symbol)
+    quote
+      $(left) = Turing.assume(
+        sampler,
+        $(right),    # dDistribution
+        Var(          # Pure Symbol
+          Symbol($(string(left))),
+          Symbol($(string(left)))
+        ),
+        varInfo
+      )
+    end
+  elseif length(left.args) == 2 && isa(left.args[1], Symbol)
+    quote
+      $(left) = Turing.assume(
+        sampler,
+        $(right),    # dDistribution
+        Var(          # Array assignment
+          Symbol($(string(left.args[1]))),  # pure symbol, e.g. :p for p[1]
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2])                   # index value
+        ),
+        varInfo
+      )
+    end
+  elseif length(left.args) == 2 && isa(left.args[1], Expr)
+    quote
+      $(left) = Turing.assume(
+        sampler,
+        $(right),    # dDistribution
+        Var(          # Array assignment
+          Symbol($(string(left.args[1].args[1]))),  # pure symbol
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[1].args[2]))),  # index symbol
+          $(left.args[1].args[2]),                  # index value
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2])                   # index value
+        ),
+        varInfo
+      )
+    end
+  elseif length(left.args) == 3
+    quote
+      $(left) = Turing.assume(
+        sampler,
+        $(right),    # dDistribution
+        Var(          # Array assignment
+          Symbol($(string(left.args[1]))),  # pure symbol
+          parse($(string(left))),           # indexing expr
+          Symbol($(string(left.args[2]))),  # index symbol
+          $(left.args[2]),                  # index value
+          Symbol($(string(left.args[3]))),  # index symbol
+          $(left.args[3])                   # index value
+        ),
+        varInfo
+      )
+    end
   end
-
 end
 
-doc"""
-    observe(ex)
+macro isdefined(variable)
+ quote
+   try
+    $(esc(variable))
+    true
+   catch
+    false
+   end
+ end
+end
 
-Operation for defining the likelihood.
+#################
+# Overload of ~ #
+#################
 
-Usage:
-
-```julia
-@observe x ~ Dist
-```
-
-Here `x` is a **concrete value** to be used and `Dist` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-Example:
-
-```julia
-@observe x ~ Normal(0, 1)
-@observe x ~ Binomial(0, 1)
-@observe x ~ Normal(0, 1; :static=true)
-@observe x ~ Binomial(0, 1; :param=true)
-```
-"""
-macro observe(ex)
-  dprintln(1, "marco observing...")
-  @assert ex.args[1] == Symbol("@~")
-
-  global TURING
-  # Check if have extra arguements setting
-  if has_ops(ex)
+macro ~(left, right)
+  # Deal with additional arguments for distribution
+  if has_ops(right)
     # If static is set
-    if ex.args[3].args[2].args[1].args[1] == :(:static) && ex.args[3].args[2].args[1].args[2] == :true
+    if right.args[2].args[1].args[1] == :static && right.args[2].args[1].args[2] == :true
       # Do something
     end
     # If param is set
-    if ex.args[3].args[2].args[1].args[1] == :(:param) && ex.args[3].args[2].args[1].args[2] == :true
+    if right.args[2].args[1].args[1] == :param && right.args[2].args[1].args[2] == :true
       # Do something
     end
     # Remove the extra argument
-    splice!(ex.args[3].args, 2)
+    splice!(right.args, 2)
   end
 
-  esc(
-    quote
-      Turing.observe(
-        Turing.sampler,
-        $(ex.args[3]),   # Distribution
-        $(ex.args[2])    # Data point
-      )
-    end
-  )
+  if isa(left, Real)                  # value
+    # Call observe
+    esc(
+      quote
+        Turing.observe(
+          sampler,
+          $(right),   # Distribution
+          $(left),    # Data point
+          varInfo
+        )
+      end
+    )
+  else
+    esc(
+      quote
+        if @isdefined($left)
+          # Call observe
+          Turing.observe(
+            sampler,
+            $(right),   # Distribution
+            $(left),    # Data point
+            varInfo
+          )
+        else
+          # Call assume
+          $(gen_assume_ex(left, right))
+        end
+      end
+    )
+  end
 end
 
 doc"""
@@ -208,7 +174,7 @@ macro predict(ex...)
       ex_funcs.args,
       :(ct = current_task();
         Turing.predict(
-          Turing.sampler,
+          sampler,
           Symbol($sym), get(ct, $(ex[i]))
         )
       )
@@ -247,8 +213,38 @@ macro model(name, fbody)
 
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
-  ex = Expr(:function, fname, fbody)
 
+  if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
+    push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
+  end
+  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
+  push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
+
+  local_assign_ex = quote
+    for k in keys(data)
+      ex = Expr(Symbol("="), k, data[k])
+      eval(ex)
+    end
+  end
+  unshift!(fbody.args, local_assign_ex)
+
+  # predict_ex = quote
+  #   ct = current_task()
+  #   ct.storage[:turing_predicts] = Dict{Symbol,Any}()
+  #   for sym in syms(varInfo)
+  #     ct.storage[:turing_predicts][Symbol(string(sym))] = get(ct, sym)
+  #   end
+  # end
+  # push!(fbody.args, predict_ex)
+
+  # return varInfo if sampler is nothing otherwise varInfo
+  return_ex = fbody.args[end]
+  predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
+  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex)
+  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
+  # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
+
+  ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end

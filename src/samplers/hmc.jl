@@ -1,4 +1,5 @@
 include("support/hmc_helper.jl")
+include("support/hmc_core.jl")
 
 doc"""
     HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
@@ -22,82 +23,96 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples ::  Int64     # number of samples
-  lf_size   ::  Float64   # leapfrog step size
-  lf_num    ::  Int64     # leapfrog step number
+  n_samples:: Int64     # number of samples
+  lf_size  :: Float64   # leapfrog step size
+  lf_num   :: Int64     # leapfrog step number
+  space    :: Set       # sampling space, emtpy means all
+  function HMC(lf_size::Float64, lf_num::Int64, space...)
+    HMC(1, lf_size, lf_num, space...)
+  end
+  function HMC(n_samples, lf_size, lf_num)
+    new(n_samples, lf_size, lf_num, Set())
+  end
+  function HMC(n_samples, lf_size, lf_num, space...)
+    space = isa(space, Symbol) ? Set([space]) : Set(space)
+    new(n_samples, lf_size, lf_num, space)
+  end
 end
 
 type HMCSampler{HMC} <: GradientSampler{HMC}
-  alg         :: HMC                          # the HMC algorithm info
-  model       :: Function                     # model function
-  values      :: GradientInfo                 # container for variables
-  dists       :: Dict{VarInfo, Distribution}  # variable to its distribution
-  samples     :: Array{Sample}                # samples
-  predicts    :: Dict{Symbol, Any}            # outputs
-  first       :: Bool                         # the first run flag
-
-  function HMCSampler(alg :: HMC, model :: Function)
-    values = GradientInfo()   # GradientInfo initialize logjoint as Dual(0)
-    dists = Dict{VarInfo, Distribution}()
+  alg        ::HMC                          # the HMC algorithm info
+  samples    ::Array{Sample}                # samples
+  function HMCSampler(alg::HMC)
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    predicts = Dict{Symbol, Any}()
-    first = true
-    new(alg, model, values, dists, samples, predicts, first)
+    new(alg, samples)
   end
 end
 
-function Base.run(spl :: Sampler{HMC})
-  # Record the start time of HMC
-  t_start = time()
+function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
+  if is_first
+    # Run the model for the first time
+    dprintln(2, "initialising...")
+    varInfo = model(data, varInfo, spl)
 
-  # Run the model for the first time
-  dprintln(2, "initialising...")
-  find_logjoint(spl.model, spl.values)
-  spl.first = false
-
-  # Store the first predicts
-  spl.samples[1].value = deepcopy(spl.predicts)
-
-  # Set parameters
-  n, ϵ, τ = spl.alg.n_samples, spl.alg.lf_size, spl.alg.lf_num
-  accept_num = 1        # the first samples is always accepted
-
-  # HMC steps
-  for i = 2:n
-    dprintln(2, "HMC stepping...")
-
-    dprintln(2, "recording old θ...")
-    old_values = deepcopy(spl.values)
+    # Return
+    true, varInfo
+  else
+    # Set parameters
+    ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
 
     dprintln(2, "sampling momentum...")
-    p = Dict(k => randn(length(spl.values[k])) for k in keys(spl.values))
+    p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, spl.model, spl.values)
+    oldH = find_H(p, model, data, varInfo, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(spl.values, spl.model)
+    val∇E = get_gradient_dict(varInfo, model, data, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      spl.values, val∇E, p = leapfrog(spl.values, val∇E, p, ϵ, spl.model)
+      varInfo, val∇E, p = leapfrog(varInfo, val∇E, p, ϵ, model, data, spl)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, spl.model, spl.values)
+    H = find_H(p, model, data, varInfo, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
     dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)  # accepted => store the new predcits
-      spl.samples[i].value, accept_num = deepcopy(spl.predicts), accept_num + 1
-    else                            # rejected => store the previous predcits
-      spl.values, spl.samples[i] = old_values, spl.samples[i - 1]
+    if ΔH < 0 || rand() < exp(-ΔH)      # accepted
+      true, varInfo
+    else                                # rejected
+      false, varInfo
+    end
+  end
+end
+
+function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
+  # initialization
+  n =  spl.alg.n_samples
+  task = current_task()
+  t_start = time()  # record the start time of HMC
+  accept_num = 0    # record the accept number
+  varInfo = VarInfo()
+
+  # HMC steps
+  for i = 1:n
+    dprintln(2, "recording old θ...")
+    old_values = deepcopy(varInfo.values)
+    dprintln(2, "HMC stepping...")
+    is_accept, varInfo = step(model, data, spl, varInfo, i==1)
+    if is_accept  # accepted => store the new predcits
+      spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
+      accept_num = accept_num + 1
+    else          # rejected => store the previous predcits
+      varInfo.values = old_values
+      spl.samples[i] = spl.samples[i - 1]
     end
   end
 
@@ -106,13 +121,10 @@ function Base.run(spl :: Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
+function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, var::Var, varInfo::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if spl.first  # first time -> generate
-    # Build {var -> dist} dictionary
-    spl.dists[var] = dist
-
+  if ~haskey(varInfo.values, var)   # first time -> generate
     # Sample a new prior
     dprintln(2, "sampling prior...")
     r = rand(dist)
@@ -121,12 +133,15 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
     v = link(dist, r)        # X -> R
     val = vectorize(dist, v) # vectorize
 
-    # Store the generated var
-    addVarInfo(spl.values, var, val)
-  else         # not first time -> replay
+    # Store the generated var if it's in space
+    if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+      varInfo.values[var] = val
+      varInfo.dists[var] = dist
+    end
+  else                              # not first time -> replay
     # Replay varibale
     dprintln(2, "fetching values...")
-    val = spl.values[var]
+    val = varInfo[var]
   end
 
   # Step 2 - Reconstruct variable
@@ -136,30 +151,40 @@ function assume(spl :: HMCSampler{HMC}, dist :: Distribution, var :: VarInfo)
 
   # Computing logjoint
   dprintln(2, "computing logjoint...")
-  spl.values.logjoint += logpdf(dist, val, true)
+  varInfo.logjoint += logpdf(dist, val, true)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
 end
 
-function observe(spl :: HMCSampler{HMC}, d :: Distribution, value)
+function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, varInfo::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
-    spl.values.logjoint += logpdf(d, Dual(value))
+    varInfo.logjoint += logpdf(d, Dual(value))
   else
-    spl.values.logjoint += logpdf(d, map(x -> Dual(x), value))
+    varInfo.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end
 
-function predict(spl :: HMCSampler{HMC}, name :: Symbol, value)
-  dprintln(2, "predicting...")
-  spl.predicts[name] = realpart(value)
-  dprintln(2, "predict done")
+function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int64)
+  global CHUNKSIZE = chunk_size;
+  sampler = HMCSampler{HMC}(alg);
+  run(model, data, sampler)
 end
 
-function sample(model :: Function, alg :: HMC; chunk_size=1000)
-  global sampler = HMCSampler{HMC}(alg, model);
+function sample(model::Function, data::Dict, alg::HMC)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, data, sampler)
+end
+
+function sample(model::Function, alg::HMC, chunk_size::Int64)
   global CHUNKSIZE = chunk_size;
-  run(sampler)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, Dict(), sampler)
+end
+
+function sample(model::Function, alg::HMC)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, Dict(), sampler)
 end

@@ -2,17 +2,17 @@ using Distributions
 using Turing
 using Base.Test
 
-obs = [1,2,1,2,2,2,2,2,2,2]
+obs12 = [1,2,1,2,2,2,2,2,2,2]
 
 @model constrained_simplex_test begin
-  @assume ps ~ Dirichlet(2, 3)
-  for i = 1:length(obs)
-    @observe obs[i] ~ Categorical(ps)
+  ps ~ Dirichlet(2, 3)
+  for i = 1:length(obs12)
+    obs12[i] ~ Categorical(ps)
   end
-  @predict ps
+  return ps
 end
 
-chain = sample(constrained_simplex_test, HMC(3000, 0.75, 5))
+chain = sample(constrained_simplex_test, HMC(1000, 0.75, 2))
 println(mean(chain[:ps]))
 
-@test_approx_eq_eps mean(chain[:ps]) [5/16 11/16] 0.01
+@test_approx_eq_eps mean(chain[:ps]) [5/16 11/16] 0.015

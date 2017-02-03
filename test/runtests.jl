@@ -19,12 +19,14 @@ testcases = [
           "beta_binomial",
           "noparam",
           "opt_param_of_dist",
+          "new_grammar",
+          "newinterface",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
 #       graidnetinfo.jl
           "replay",
-          "graidnetinfo",
+          "gradientinfo",
           "flaten_naming",
 #       IArray.jl
 #       intrinsic.jl
@@ -42,6 +44,9 @@ testcases = [
 #         resample.jl
             "resample",
             "particlecontainer",
+#       gibbs.jl
+            "gibbs",
+            "gibbs2",
 #       hmc.jl
           "multivariate_support",
           "matrix_support",
@@ -74,7 +79,8 @@ testcases_v04 = [
 
 # NOTE: put test cases which want to be excluded here
 testcases_excluded = [
-  "tarray2"
+  "tarray2",
+  "predict"
 ]
 
 # Run tests

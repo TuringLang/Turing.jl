@@ -36,11 +36,25 @@ function Base.push!(pc :: ParticleContainer, p :: Particle)
   pc
 end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
+
 function Base.push!(pc :: ParticleContainer, n :: Int)
   vals = Array{eltype(pc.vals), 1}(n)
   logWs = Array{eltype(pc.logWs), 1}(n)
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model)
+    logWs[i] = 0
+  end
+  append!(pc.vals, vals)
+  append!(pc.logWs, logWs)
+  pc.num_particles += n
+  pc
+end
+
+function Base.push!(pc :: ParticleContainer, n :: Int, data, spl, varInfo)
+  vals = Array{eltype(pc.vals), 1}(n)
+  logWs = Array{eltype(pc.logWs), 1}(n)
+  for i=1:n
+    vals[i]  = eltype(pc.vals)(pc.model, data, spl, varInfo)
     logWs[i] = 0
   end
   append!(pc.vals, vals)

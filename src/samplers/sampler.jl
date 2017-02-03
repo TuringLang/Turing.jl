@@ -31,6 +31,7 @@ include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
+include("gibbs.jl")
 
 # Fallback functions
 Base.run(spl :: Sampler) = error("[sample]: unmanaged inference algorithm: $(typeof(spl))")
@@ -50,16 +51,34 @@ function sample(model::Function, alg :: InferenceAlgorithm)
   Base.run(sampler)
 end
 
-assume(spl :: Sampler, d :: Distribution, p)  = rand( current_trace(), d )
-observe(spl :: Sampler, d :: Distribution, value) = produce(logpdf(d, value))
+assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_trace(), d )
+
+function assume(spl::ParticleSampler{PG}, dist::Distribution, var::Var, varInfo::VarInfo)
+  # TODO: fix the bug here
+  if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
+    varInfo.values[var] = nothing
+    varInfo.dists[var] = dist
+    r = rand(current_trace(), dist)     # gen random
+  else  # if it isn't in space
+    if haskey(varInfo.values, var)
+      val = varInfo[var]
+      dist = varInfo.dists[var]
+      val = reconstruct(dist, val)
+      r = invlink(dist, val)
+      produce(logpdf(dist, r, true))
+    else
+      r = rand(current_trace(), dist)   # gen random
+      produce(log(1.0))
+    end
+  end
+  r
+end
+observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
 function predict(spl :: Sampler, v_name :: Symbol, value)
   task = current_task()
-  if haskey(task.storage, :turing_predicts)
-    predicts = task.storage[:turing_predicts]
-  else
-    predicts = Dict{Symbol,Any}()
+  if ~haskey(task.storage, :turing_predicts)
+    task.storage[:turing_predicts] = Dict{Symbol,Any}()
   end
-  predicts[v_name] = value
-  task.storage[:turing_predicts] = predicts
+  task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
 end
