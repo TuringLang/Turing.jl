@@ -69,7 +69,8 @@ testcases = [
           "trace",
 #   Turing.jl
       "normal_loc",
-      "normal_mixture"
+      "normal_mixture",
+      "naive_bayes"
 # NOTE: not comma for the last element
 ]
 
