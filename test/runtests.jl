@@ -12,6 +12,7 @@ testcases = [
 #       ad.jl
           "ad",
           "ad2",
+          "pass_dual_to_dists",
 #       compiler.jl
           "assume",
           "observe",
@@ -38,7 +39,7 @@ testcases = [
 #       bnp.jl
 #       distributions.jl
 #       transform.jl
-            "transform",
+          "transform",
 #     samplers/
 #       support/
 #         resample.jl
@@ -67,7 +68,8 @@ testcases = [
 #       trace.jl
           "trace",
 #   Turing.jl
-      "pass_dual_to_dists"
+      "normal_loc",
+      "normal_mixture"
 # NOTE: not comma for the last element
 ]
 
