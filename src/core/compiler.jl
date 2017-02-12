@@ -107,7 +107,7 @@ macro ~(left, right)
       quote
         # Require all data to be stored in data dictionary.
         if haskey(data, Symbol($left_sym))
-          $(_left) = data[Symbol($left_sym)]
+          # $(_left) = data[Symbol($left_sym)]
           # Call observe
           Turing.observe(
             sampler,
@@ -193,13 +193,13 @@ macro model(name, fbody)
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
-  #local_assign_ex = quote
-  #  for k in keys(data)
-  #    ex = Expr(Symbol("="), k, data[k])
-  #    eval(ex)
-  #  end
-  #end
-  #unshift!(fbody.args, local_assign_ex)
+  local_assign_ex = quote
+    for k in keys(data)
+      ex = Expr(Symbol("="), k, data[k])
+      eval(ex)
+    end
+  end
+  unshift!(fbody.args, local_assign_ex)
 
   # predict_ex = quote
   #   ct = current_task()
