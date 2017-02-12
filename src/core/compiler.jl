@@ -97,12 +97,17 @@ macro ~(left, right)
       end
     )
   else
-    left_sym = string(left)
+    _left = left
+    # Get symbol from expr like x[1][2]
+    while typeof(_left) != Symbol
+      _left = _left.args[1]
+    end
+    left_sym = string(_left)
     esc(
       quote
         # Require all data to be stored in data dictionary.
         if haskey(data, Symbol($left_sym))
-          $(left) = data[Symbol($left_sym)]
+          $(_left) = data[Symbol($left_sym)]
           # Call observe
           Turing.observe(
             sampler,
