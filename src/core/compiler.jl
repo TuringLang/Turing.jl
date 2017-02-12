@@ -2,29 +2,6 @@
 # Helper function #
 ###################
 
-doc"""
-    has_ops(ex)
-
-Check if has optional arguments.
-
-```julia
-has_ops(parse("@assume x ~ Normal(0, 1; :static=true)"))  # gives true
-has_ops(parse("@assume x ~ Normal(0, 1)"))                # gives false
-has_ops(parse("@assume x ~ Binomial(; :static=true)"))    # gives true
-has_ops(parse("@assume x ~ Binomial()"))                  # gives false
-```
-"""
-function has_ops(right)
-  if length(right.args) <= 1               # check if the D() has parameters
-    return false                                # Binominal() can have empty
-  elseif typeof(right.args[2]) != Expr     # check if has optional arguments
-    return false
-  elseif right.args[2].head != :parameters # check if parameters valid
-    return false
-  end
-  true
-end
-
 function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
   # It only supposrts pure symbol and Array(/Dict) now.
@@ -105,19 +82,6 @@ end
 #################
 
 macro ~(left, right)
-  # Deal with additional arguments for distribution
-  if has_ops(right)
-    # If static is set
-    if right.args[2].args[1].args[1] == :static && right.args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # If param is set
-    if right.args[2].args[1].args[1] == :param && right.args[2].args[1].args[2] == :true
-      # Do something
-    end
-    # Remove the extra argument
-    splice!(right.args, 2)
-  end
 
   if isa(left, Real)                  # value
     # Call observe
