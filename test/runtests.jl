@@ -18,7 +18,7 @@ testcases = [
           "predict",
           "beta_binomial",
           "noparam",
-          "opt_param_of_dist",
+          #"opt_param_of_dist",
           "new_grammar",
           "newinterface",
 #       conditional.jl
