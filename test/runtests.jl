@@ -47,6 +47,7 @@ testcases = [
 #       gibbs.jl
             "gibbs",
             "gibbs2",
+            "gibbs_constructor",
 #       hmc.jl
           "multivariate_support",
           "matrix_support",
