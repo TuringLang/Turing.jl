@@ -34,7 +34,7 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 
-gibbs = Gibbs(500, PG(100, 1, :z1, :z2, :z3, :z4), HMC(1, 0.15, 3, :mu1, :mu2))
+gibbs = Gibbs(500, PG(10, 1, :z1, :z2, :z3, :z4), HMC(1, 0.15, 3, :mu1, :mu2))
 chain = sample(MoGtest, gibbs)
 
 # chain = sample(MoGtest, SMC(5000))

@@ -11,7 +11,7 @@ end
 
 s1 = Gibbs(1000, HMC(10, 0.1, 5, :s, :m))
 s2 = Gibbs(1000, PG(10, 10, :s, :m))
-s3 = Gibbs(1000, PG(100, 2, :s), HMC(1, 0.4, 8, :m))
+s3 = Gibbs(1000, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
 
 
 c1 = sample(gdemo, s1)
