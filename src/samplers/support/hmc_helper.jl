@@ -22,7 +22,7 @@ import Base.promote_rule
 Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
 
 Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T})  = d.value
-Base.convert(::Type{Float64}, d::Dual{0,Int64}) = round(Int, d.value)
+Base.convert(::Type{Float64}, d::Dual{0,Int}) = round(Int, d.value)
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #

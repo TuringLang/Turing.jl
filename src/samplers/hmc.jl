@@ -2,7 +2,7 @@ include("support/hmc_helper.jl")
 include("support/hmc_core.jl")
 
 doc"""
-    HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
+    HMC(n_samples::Int, lf_size::Float64, lf_num::Int)
 
 Hamiltonian Monte Carlo sampler.
 
@@ -23,11 +23,11 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples:: Int64     # number of samples
+  n_samples:: Int     # number of samples
   lf_size  :: Float64   # leapfrog step size
-  lf_num   :: Int64     # leapfrog step number
+  lf_num   :: Int     # leapfrog step number
   space    :: Set       # sampling space, emtpy means all
-  function HMC(lf_size::Float64, lf_num::Int64, space...)
+  function HMC(lf_size::Float64, lf_num::Int, space...)
     HMC(1, lf_size, lf_num, space...)
   end
   function HMC(n_samples, lf_size, lf_num)
@@ -167,7 +167,7 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, varI
   dprintln(2, "observe done")
 end
 
-function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int64)
+function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   sampler = HMCSampler{HMC}(alg);
   run(model, data, sampler)
@@ -178,7 +178,7 @@ function sample(model::Function, data::Dict, alg::HMC)
   run(model, data, sampler)
 end
 
-function sample(model::Function, alg::HMC, chunk_size::Int64)
+function sample(model::Function, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   sampler = HMCSampler{HMC}(alg);
   run(model, Dict(), sampler)
