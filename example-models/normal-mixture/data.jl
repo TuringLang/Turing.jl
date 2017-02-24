@@ -1,10 +1,5 @@
-# Turing.jl version of model at https://github.com/stan-dev/example-models/blob/master/basic_estimators/normal_mixture.stan
 
-using Distributions
-using Turing
-using Base.Test
-
-data = Dict(:y=>[
+nmdata = Dict(:y=>[
 10.0787617156523, -9.51866467444093, 9.73922587306449, 11.5662681883816,
 9.62798489000074, -9.60265090119919, 8.90114345923455, 10.866328444034,
 10.5347883361026, 8.60577222463504, -10.625227428575, -9.08615131315038,
@@ -256,19 +251,3 @@ data = Dict(:y=>[
 9.21373329527328, 10.6594703226401, -9.85683654390669, -9.28952032750969,
 10.7624268604215, 8.29988657732754, -10.6390998021297, -10.6627107313838
 ])
-
-@model normal_mixture begin
-  theta ~ Uniform(0, 1)
-  mu = Array{Any}(2)
-  for k = 1:2
-    mu[k] ~ Normal(0, 10)
-  end
-  for n = 1:1000
-    k = rand() < theta ? 1 : 2
-    y[n] ~ Normal(mu[k], 1.0)
-  end
-  mu
-end
-
-chain = sample(normal_mixture, data, HMC(1000, 0.05, 3))
-print(mean([[Float64(n) for n in ns] for ns in chain[:mu]]))

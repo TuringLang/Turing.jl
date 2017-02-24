@@ -1,31 +1,14 @@
-# Turing.jl version of model at https://github.com/stan-dev/example-models/blob/master/misc/cluster/naive-bayes/naive-bayes.stan
-
 using Distributions
 using Turing
 using Base.Test
 
-include("naive_bayes_data.jl")
+include("data.jl")
+include("model.jl")
 
-@model naive_bayes begin
-  theta ~ Dirichlet(alpha)
-  phi = Array{Any}(K)
-  for k = 1:K
-    phi[k] ~ Dirichlet(β)
-  end
-  for m = 1:M
-    z[m] ~ Categorical(theta)
-  end
-  for n = 1:N
-    w[n] ~ Categorical(phi[z[doc[n]]])
-  end
-  phi
-end
+nbchain = sample(nbmodel, nbdata, HMC(1000, 0.1, 3))
+print(mean([[realpart(n) for n in ns] for ns in nbchain[:phi]]))
 
-chain = sample(naive_bayes, data, HMC(1000, 0.1, 3))
-print(mean([[realpart(n) for n in ns] for ns in chain[:phi]]))
-
-
-# This example sometimes gives non-determinstic error:
+# NOTE: this example sometimes gives non-determinstic error:
 # ERROR: LoadError: DomainError:
 #  in nan_dom_err at ./math.jl:196 [inlined]
 #  in log(::Float64) at ./math.jl:202
