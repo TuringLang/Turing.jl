@@ -45,11 +45,7 @@ include("core/compiler.jl")
 include("core/container.jl")
 include("core/io.jl")
 include("core/varinfo.jl")
-
-# supress warning message for re-defining Base.produce
-olderr = STDERR; redirect_stderr()
 include("samplers/sampler.jl")
-redirect_stderr(olderr)
 
 include("core/ad.jl")
 

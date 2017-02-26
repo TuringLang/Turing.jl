@@ -39,10 +39,7 @@ function Base.copy(t::Task)
   newt
 end
 
-olderr = STDERR
-# supress warning message for re-defining Base.produce
-redirect_stderr()
-function Base.produce(v)
+@suppress_err function Base.produce(v)
   #### un-optimized version
   #q = current_task().consumers
   #t = shift!(q.waitq)
@@ -92,5 +89,3 @@ function Base.produce(v)
     return q.waitq[1].result
   end
 end
-redirect_stderr(olderr)
-
