@@ -70,6 +70,49 @@ end
 
 Chain() = Chain(0, Vector{Sample}())
 
+
+typealias TuringChains Chains
+extract_sample!(names, value, k, v) = begin
+    if isa(v, Number)
+      name = string(k)
+      push!(value, v)
+      push!(names, name)
+    elseif isa(v, Array)
+      for i = eachindex(v)
+        if isa(v[i], Number)
+          name = string(k) * string(ind2sub(size(s), i))
+          name = replace(name, "(", "["); name = replace(name, ")", "]")
+          push!(value, v[i])
+          push!(names, name)
+        elseif isa(v[i], Array)
+          extract_sample!(names, value, k, v[i])
+        else
+          error("Unknown var type: $(typeof(v[i]))")
+        end
+      end
+  else
+    error("Unknown var type: $(typeof(v))")
+  end
+end
+
+TuringChains(chn::Chain) = begin
+  # Get num of dimensions
+  value_all = Array{Array}(0)
+  names = Array{AbstractString}(0)
+  for n = eachindex(chain.value)
+    value = Array{Float64}(0)
+    names = Array{AbstractString}(0)
+    for (k, v) in chn.value[n].value
+      extract_sample!(names, value, k, v)
+    end
+    push!(value_all, value)
+  end
+  value_all2 = [v[i] for v in value_all, i=1:length(names)]
+  value_all2 = reshape(value_all2, length(value_all), length(names), 1)
+  Chains(value_all2, names = names)
+end
+
+
 function Base.show(io::IO, ch1::Chain)
   # Print chain weight and weighted means of samples in chain
   if length(ch1.value) == 0
@@ -81,10 +124,15 @@ function Base.show(io::IO, ch1::Chain)
     vars = keys(ch1.value[1].value)
     print(io, "Chain\nModel evidence (log) = $(ch1.weight)\n")
     for v in vars
-      print(io, "Stats for :$v\n")
-      stats = mcmcstats(ch1[v])
-      for (label, value) in stats
-        print(io, "  $label = $value\n")
+      if isa(eltype(ch1[v]), Array)
+        # TODO: implement support for array type.
+        print(io, "Stats for array type not implemented yet.")
+      else
+        print(io, "Stats for :$v\n")
+        stats = mcmcstats(ch1[v])
+        for (label, value) in stats
+          print(io, "  $label = $value\n")
+        end
       end
     end
   end

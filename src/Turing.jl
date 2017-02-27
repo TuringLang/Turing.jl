@@ -7,6 +7,7 @@ import Distributions: sample        # to orverload sample()
 import Base.~                       # to orverload @~
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 using Turing.Traces
+using Mamba
 
 #################
 # Turing module #
