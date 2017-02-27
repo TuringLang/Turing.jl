@@ -183,6 +183,21 @@ macro predict(ex...)
   esc(ex_funcs)
 end
 
+macro predictall(ex)
+  ex_funcs = Expr(:block)
+  push!(
+    ex_funcs.args,
+    :(ct = current_task();
+      Turing.predict(
+        sampler,
+        get(ct, $(ex)),
+        ct
+      )
+    )
+  )
+  esc(ex_funcs)
+end
+
 doc"""
     model(name, fbody)
 
@@ -238,8 +253,12 @@ macro model(name, fbody)
   # push!(fbody.args, predict_ex)
 
   # return varInfo if sampler is nothing otherwise varInfo
-  return_ex = fbody.args[end]
-  predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
+  return_ex = fbody.args[end]   # get last statement of model
+  if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
+    predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
+  else
+    predict_ex = parse("@predictall varInfo")
+  end
   fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex)
   push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
   # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
