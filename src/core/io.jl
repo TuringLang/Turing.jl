@@ -99,7 +99,7 @@ TuringChains(chn::Chain) = begin
   # Get num of dimensions
   value_all = Array{Array}(0)
   names = Array{AbstractString}(0)
-  for n = eachindex(chain.value)
+  for n = eachindex(chn.value)
     value = Array{Float64}(0)
     names = Array{AbstractString}(0)
     for (k, v) in chn.value[n].value
