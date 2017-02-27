@@ -82,3 +82,9 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
   end
   task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
 end
+
+function predict(spl::Sampler, vi::VarInfo, task)
+  for sym in syms(vi)
+    predict(spl, sym, get(task, sym))
+  end
+end
