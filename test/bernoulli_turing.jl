@@ -1,17 +1,18 @@
-using Distributions, Turing
+using Distributions, Turing, Mamba
 
 N = 10
 y = [0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
 
 @model bernoulli begin
-  @assume p ~ Beta(1,1)
+  p ~ Beta(1,1)
   for i =1:N
-    @observe y[i] ~ Bernoulli(p)
+    y[i] ~ Bernoulli(p)
   end
-  @predict p
+  return p
 end
 
-c = sample(bernoulli, HMC(1000, 0.2, 5))
+bdata = Dict(:N=>N, :y=>y)
+c = sample(bernoulli, bdata, HMC(1000, 0.2, 5));
+sim2 = Turing.TuringChains(c);
 
-mean(c[:p])
-var(c[:p])
+describe(sim1)
