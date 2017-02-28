@@ -3,3 +3,4 @@ julia 0.5
 Distributions 0.11.0
 PDMats 0.5.1
 ForwardDiff
+Mamba
