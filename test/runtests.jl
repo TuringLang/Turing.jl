@@ -12,6 +12,7 @@ testcases = [
 #       ad.jl
           "ad",
           "ad2",
+          "pass_dual_to_dists",
 #       compiler.jl
           "assume",
           "observe",
@@ -21,6 +22,7 @@ testcases = [
           #"opt_param_of_dist",
           "new_grammar",
           "newinterface",
+          "noreturn",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
@@ -38,7 +40,7 @@ testcases = [
 #       bnp.jl
 #       distributions.jl
 #       transform.jl
-            "transform",
+          "transform",
 #     samplers/
 #       support/
 #         resample.jl
@@ -68,7 +70,9 @@ testcases = [
 #       trace.jl
           "trace",
 #   Turing.jl
-      "pass_dual_to_dists"
+      # "normal_loc",
+      # "normal_mixture",
+      # "naive_bayes"
 # NOTE: not comma for the last element
 ]
 

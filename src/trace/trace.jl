@@ -10,11 +10,30 @@ Notes:
 module Traces
 using Distributions
 
+# Trick for supressing some warning messages.
+#   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
+macro suppress_err(block)
+    quote
+        if ccall(:jl_generating_output, Cint, ()) == 0
+            ORIGINAL_STDERR = STDERR
+            err_rd, err_wr = redirect_stderr()
+
+            value = $(esc(block))
+
+            REDIRECTED_STDERR = STDERR
+            # need to keep the return value live
+            err_stream = redirect_stderr(ORIGINAL_STDERR)
+
+            return value
+        end
+    end
+end
+
 include("taskcopy.jl")
 include("tarray.jl")
 
 export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
-       localcopy
+       localcopy, @suppress_err
 
 type Trace{T}
   task :: Task
