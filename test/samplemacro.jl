@@ -1,5 +1,5 @@
 using Distributions
-using Turing: @sample
+using Turing
 
 @model gdemo(x) begin
   s ~ InverseGamma(2,3)

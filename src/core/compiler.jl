@@ -267,15 +267,18 @@ end
 macro sample(modelcall, alg)
   # println(typeof(modelcall))
   modelf = modelcall.args[1]
-  modelt = eval(parse(string(modelf)))
-  # println(1)
+  modelt = modelf
   psyms = modelcall.args[2:end]
   # println(psyms)
-  data = Dict()
-  for sym in psyms
-    data[sym] = eval(sym)
-  end
+
   # res = sample(modelt, data, eval(alg))
   # print(res)
-  esc(:(sample($modelt, $data, $alg)))
+  # esc(:(sample($modelt, data, $alg)))
+  esc(quote
+    data = Dict()
+    for sym in $psyms
+      data[sym] = eval(sym)
+    end
+    sample($modelt, data, $alg)
+  end)
 end
