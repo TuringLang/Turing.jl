@@ -210,11 +210,7 @@ Example:
 end
 ```
 """
-macro model(fexpr)
-  name = fexpr.args[1]
-  fbody = fexpr.args[2]
-  # name = model_ex.args[1]
-  # fbody = model_ex.args[2]
+macro model(name, fbody)
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
   # This varinfo array is useful is task cloning.
@@ -251,14 +247,13 @@ macro model(fexpr)
   # push!(fbody.args, predict_ex)
 
   # return varInfo if sampler is nothing otherwise varInfo
-  fbody_defined = fbody.args[end] # NOTE: nested args is used here because the orignal model expr is in a block
-  return_ex = fbody_defined.args[end]   # get last statement of defined model
+  return_ex = fbody.args[end]   # get last statement of defined model
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
     predict_ex = parse("@predictall varInfo")
   end
-  fbody_defined.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # change return to predict
+  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # change return to predict
 
   # Trick
   push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
@@ -267,6 +262,12 @@ macro model(fexpr)
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
+end
+
+macro model(fexpr)
+  name = fexpr.args[1]
+  fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
+  esc(:(@model $name $fbody))
 end
 
 macro sample(modelcall, alg)
