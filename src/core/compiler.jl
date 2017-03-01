@@ -219,11 +219,10 @@ macro model(name, fbody)
 
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
-  # TODO: get parameters from the argument list
-  arglist = fname.args[2:end]
-  # TODO: remove arguments
-  fname.args = fname.args[1:1]
+  arglist = fname.args[2:end]   # get parameters from the argument list
+  fname.args = fname.args[1:1]  # remove arguments
 
+  # TODO: check and remove this condition
   if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
     push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   end
@@ -239,6 +238,7 @@ macro model(name, fbody)
   end
   unshift!(fbody.args, local_assign_ex)
 
+  # TODO: check and remove this comment
   # predict_ex = quote
   #   ct = current_task()
   #   ct.storage[:turing_predicts] = Dict{Symbol,Any}()
