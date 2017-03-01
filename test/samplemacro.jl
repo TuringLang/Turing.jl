@@ -1,7 +1,7 @@
 using Distributions
 using Turing
 
-@model gdemo(x) begin
+@model gdemo(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   for i = 1:length(x)

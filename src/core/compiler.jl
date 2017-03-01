@@ -210,7 +210,9 @@ Example:
 end
 ```
 """
-macro model(name, fbody)
+macro model(fexpr)
+  name = fexpr.args[1]
+  fbody = fexpr.args[2]
   # name = model_ex.args[1]
   # fbody = model_ex.args[2]
   dprintln(1, "marco modelling...")
@@ -249,13 +251,16 @@ macro model(name, fbody)
   # push!(fbody.args, predict_ex)
 
   # return varInfo if sampler is nothing otherwise varInfo
-  return_ex = fbody.args[end]   # get last statement of model
+  fbody_defined = fbody.args[end] # NOTE: nested args is used here because the orignal model expr is in a block
+  return_ex = fbody_defined.args[end]   # get last statement of defined model
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
     predict_ex = parse("@predictall varInfo")
   end
-  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex)
+  fbody_defined.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # change return to predict
+
+  # Trick
   push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
   # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
 
