@@ -13,13 +13,16 @@ end
 x = [2.0, 3.0]
 
 alg = Gibbs(10, HMC(1, 0.2, 3, :m), PG(10, 1, :s))
-chn = @sample2(gdemo(x), alg, x)
+# NOTE: want to translate below to
+#       chn = sample(gdemo, Dict(:x => x), alg)
+chn = @sample2(gdemo(x), alg)
 
 Turing.TURING[:modelex]
 
-macro sample2(modelcall, alg, s)
+macro sample2(modelcall, alg)
   # println(typeof(modelcall))
   modelf = modelcall.args[1]
+  modelt = eval(parse(string(modelf)))
   # println(1)
   psyms = modelcall.args[2:end]
   # println(psyms)
@@ -27,5 +30,8 @@ macro sample2(modelcall, alg, s)
   for sym in psyms
     data[sym] = eval(sym)
   end
-  sample(modelf, data, alg)
+  sample(modelt, data, eval(alg))
 end
+
+res = eval(parse("gdemo"))
+isa(res, Function)

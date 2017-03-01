@@ -4,7 +4,7 @@
 
 function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
-  # It only supposrts pure symbol and Array(/Dict) now.
+  # It only supports pure symbol and Array(/Dict) now.
   if isa(left, Symbol)
     quote
       $(left) = Turing.assume(
@@ -124,10 +124,14 @@ macro ~(left, right)
   end
 end
 
+######################
+# Modelling Language #
+######################
+
 doc"""
     predict(ex...)
 
-Operation for defining the the variable(s) to return.
+Operation for defining the variable(s) to return.
 
 Usage:
 
@@ -156,6 +160,18 @@ macro predict(ex...)
   esc(ex_funcs)
 end
 
+doc"""
+    predictall(ex...)
+
+Operation for return all variables depending on a `VarInfo` instance.
+Usage:
+
+```julia
+@predictall vi
+```
+
+Here `vi` are is of type `VarInfo`.
+"""
 macro predictall(ex)
   ex_funcs = Expr(:block)
   push!(
@@ -195,16 +211,23 @@ end
 ```
 """
 macro model(name, fbody)
+  # name = model_ex.args[1]
+  # fbody = model_ex.args[2]
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
   # This varinfo array is useful is task cloning.
 
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
+  # TODO: get parameters from the argument list
+  arglist = fname.args[2:end]
+  # TODO: remove arguments
+  fname.args = fname.args[1:1]
 
   if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
     push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   end
+
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
@@ -240,3 +263,17 @@ macro model(name, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end
+
+# macro sample(modelcall, alg)
+#   println(typeof(modelcall))
+#   modelf = modelcall.args[1]
+#   println(1)
+#   psyms = modelcall.args[2:end]
+#   println(psyms)
+#   data = Dict()
+#   for sym in psyms
+#     data[sym] = eval(sym)
+#   end
+#   println(data)
+#   sample(modelf, data, alg)
+# end
