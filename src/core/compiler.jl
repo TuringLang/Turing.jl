@@ -264,16 +264,18 @@ macro model(name, fbody)
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
 end
 
-# macro sample(modelcall, alg)
-#   println(typeof(modelcall))
-#   modelf = modelcall.args[1]
-#   println(1)
-#   psyms = modelcall.args[2:end]
-#   println(psyms)
-#   data = Dict()
-#   for sym in psyms
-#     data[sym] = eval(sym)
-#   end
-#   println(data)
-#   sample(modelf, data, alg)
-# end
+macro sample(modelcall, alg)
+  # println(typeof(modelcall))
+  modelf = modelcall.args[1]
+  modelt = eval(parse(string(modelf)))
+  # println(1)
+  psyms = modelcall.args[2:end]
+  # println(psyms)
+  data = Dict()
+  for sym in psyms
+    data[sym] = eval(sym)
+  end
+  # res = sample(modelt, data, eval(alg))
+  # print(res)
+  esc(:(sample($modelt, $data, $alg)))
+end
