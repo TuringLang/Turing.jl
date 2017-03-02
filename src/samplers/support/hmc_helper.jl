@@ -25,7 +25,7 @@ end
 end
 
 Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T})  = d.value
-Base.convert(::Type{Float64}, d::Dual{0,Int}) = round(Int, d.value)
+Base.convert{N}(::Type{Int}, d::Dual{N,Float64}) = round(Int, d.value)
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #
