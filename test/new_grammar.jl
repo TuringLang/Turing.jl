@@ -1,7 +1,9 @@
 using Distributions
 using Turing
 
-@model gauss(data=Dict(:x=>Float64[1 2])) begin
+x = Float64[1 2]
+
+@model gauss(x) begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   for i in 1:length(x)
@@ -10,7 +12,7 @@ using Turing
   s, m
 end
 
-chain = sample(gauss, SMC(10))
+chain = @sample(gauss(x), HMC(10, 0.1, 3))
 
 chain[:s]
 chain[:m]
