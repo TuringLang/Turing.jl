@@ -12,9 +12,5 @@ x = Float64[1 2]
   s, m
 end
 
-chain = @sample(gauss(x), HMC(10, 0.1, 3))
-
-chain[:s]
-chain[:m]
-
-Turing.TURING[:modelex]
+chain = @sample(gauss(x), PG(10, 10))
+chain = @sample(gauss(x), SMC(10))

@@ -30,11 +30,11 @@ immutable SMC <: InferenceAlgorithm
 end
 
 ## wrapper for smc: run the sampler, collect results.
-function Base.run(spl::Sampler{SMC})
+function Base.run(model, data, spl::Sampler{SMC})
 
   TraceType = spl.alg.use_replay ? TraceR : TraceC
   spl.particles = ParticleContainer{TraceType}(spl.model)
-  push!(spl.particles, spl.alg.n_particles)
+  push!(spl.particles, spl.alg.n_particles, data, spl, VarInfo())
 
   while consume(spl.particles) != Val{:done}
     ess = effectiveSampleSize(spl.particles)

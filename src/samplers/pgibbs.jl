@@ -84,7 +84,7 @@ function step(spl::Sampler{PG}, ref_particle)
   ref_particle, s
 end
 
-function Base.run(spl::Sampler{PG})
+function Base.run(model, data, spl::Sampler{PG})
   n = spl.alg.n_iterations
   t_start = time()  # record the start time of PG
   chain = Chain()
@@ -94,7 +94,7 @@ function Base.run(spl::Sampler{PG})
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
   for i = 1:n
-    ref_particle, s = step(spl, ref_particle)
+    ref_particle, s = step(model, data, spl, VarInfo(), ref_particle)
     logevidence[i] = spl.particles.logE
     push!(chain, Sample(1/n, s.value))
   end
