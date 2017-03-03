@@ -67,14 +67,14 @@ function gen_assume_ex(left, right)
 end
 
 macro isdefined(variable)
- quote
-   try
-    $(esc(variable))
-    true
-   catch
-    false
-   end
- end
+  esc(quote
+    try
+      $variable
+      true
+    catch
+      false
+    end
+  end)
 end
 
 #################
@@ -97,7 +97,7 @@ macro ~(left, right)
       end
     )
   else
-    _left = left
+    _left = left  # left is the variable (symbol) itself
     # Get symbol from expr like x[1][2]
     while typeof(_left) != Symbol
       _left = _left.args[1]
@@ -106,7 +106,7 @@ macro ~(left, right)
     esc(
       quote
         # Require all data to be stored in data dictionary.
-        if haskey(data, Symbol($left_sym))
+        if @isdefined($left) || haskey(data, Symbol($left_sym))
           # $(_left) = data[Symbol($left_sym)]
           # Call observe
           Turing.observe(
@@ -115,9 +115,11 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
-        else
+        elseif ~isdefined(Symbol($left_sym))
           # Call assume
           $(gen_assume_ex(left, right))
+        else
+          throw(ErrorException("Use of global variable (" * $left_sym * ") is illegal. Please defined it in model delcaration."))
         end
       end
     )
