@@ -17,8 +17,8 @@ Turing.TURING[:modelex]
 # Call Turing's AD
 # The result out is the gradient information on R
 gi = ad_test()
-s = realpart(gi.values[Var(:s)][1])
-m = realpart(gi.values[Var(:m)][1])
+_s = realpart(gi.values[Var(:s)][1])
+_m = realpart(gi.values[Var(:m)][1])
 ∇E = get_gradient_dict(gi, ad_test, Dict(), nothing)
 grad_Turing = sort([∇E[v][1] for v in keys(gi)])
 
@@ -36,8 +36,8 @@ end
 
 # Call ForwardDiff's AD
 g = x -> ForwardDiff.gradient(logjoint, x);
-x = [m, s]
-grad_FWAD = sort(-g(x))
+_x = [_m, _s]
+grad_FWAD = sort(-g(_x))
 
 # Compare result
 @test_approx_eq_eps grad_Turing grad_FWAD 1e-9

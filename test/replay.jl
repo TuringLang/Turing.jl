@@ -7,7 +7,7 @@ using ForwardDiff: Dual
 xs = rand(Normal(0.5, 1), 100)
 
 # Define model
-@model priorsinarray begin
+@model priorsinarray(xs) begin
   priors = Vector{Dual}(2)
   priors[1] ~ InverseGamma(2, 3)
   priors[2] ~ Normal(0, sqrt(priors[1]))
@@ -18,4 +18,4 @@ xs = rand(Normal(0.5, 1), 100)
 end
 
 # Sampling
-chain = sample(priorsinarray, HMC(10, 0.01, 10))
+chain = @sample(priorsinarray(xs), HMC(10, 0.01, 10))

@@ -7,10 +7,10 @@ using Base.Test
   p
 end
 
-ps = []
+p = []
 for _ in 1:5
   chain = sample(hmcmatrixsup, HMC(1000, 0.3, 2))
-  push!(ps, mean(chain[:p]))
+  push!(p, mean(chain[:p]))
 end
 
-@test_approx_eq_eps mean(ps) (7 * [1 0.5; 0.5 1]) 0.5
+@test_approx_eq_eps mean(p) (7 * [1 0.5; 0.5 1]) 0.5
