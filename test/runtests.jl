@@ -24,6 +24,7 @@ testcases = [
           "newinterface",
           "noreturn",
           "samplemacro",
+          "forbid_global.jl",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
