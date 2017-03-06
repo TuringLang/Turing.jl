@@ -220,6 +220,7 @@ macro model(name, fbody)
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
   arglist = fname.args[2:end]   # get parameters from the argument list
+  TURING[:modelarglist] = arglist
   fname.args = fname.args[1:1]  # remove arguments
 
   # TODO: check and remove this condition
@@ -284,8 +285,12 @@ macro sample(modelcall, alg)
   # esc(:(sample($modelt, data, $alg)))
   esc(quote
     data = Dict()
-    for sym in $psyms
-      data[sym] = eval(sym)
+    arglist = Turing.TURING[:modelarglist]
+    localsyms = $psyms
+    for i = 1:length(arglist)
+      localsym = localsyms[i]
+      arg = arglist[i]
+      data[arg] = eval(localsym)
     end
     sample($modelt, data, $alg)
   end)
