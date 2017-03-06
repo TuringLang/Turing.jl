@@ -72,20 +72,23 @@ Chain() = Chain(0, Vector{Sample}())
 
 
 typealias TuringChains Chains
-extract_sample!(names, value, k, v) = begin
+extract_sample!(names, value, k :: String, v) = begin
     if isa(v, Number)
-      name = string(k)
+      name = k
       push!(value, v)
       push!(names, name)
     elseif isa(v, Array)
       for i = eachindex(v)
         if isa(v[i], Number)
-          name = string(k) * string(ind2sub(size(s), i))
-          name = replace(name, "(", "["); name = replace(name, ")", "]")
-          push!(value, v[i])
+          name = k * string(ind2sub(size(v), i))
+          name = replace(name, "(", "[");
+          name = replace(name, ",)", "]");
+          name = replace(name, ")", "]");
+          push!(value, realpart(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)
-          extract_sample!(names, value, k, v[i])
+          name = k * string(ind2sub(size(v), i))
+          extract_sample!(names, value, name, v[i])
         else
           error("Unknown var type: $(typeof(v[i]))")
         end
@@ -103,7 +106,7 @@ TuringChains(chn::Chain) = begin
     value = Array{Float64}(0)
     names = Array{AbstractString}(0)
     for (k, v) in chn.value[n].value
-      extract_sample!(names, value, k, v)
+      extract_sample!(names, value, string(k), v)
     end
     push!(value_all, value)
   end
