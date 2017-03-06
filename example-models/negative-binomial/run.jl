@@ -6,4 +6,4 @@ include("data.jl")
 include("model.jl")
 
 # Produce an error.
-sample(negbinmodel, negbindata, HMC(1000, 0.1, 5))
+@sample(negbinmodel(negbindata), HMC(1000, 0.25, 3))
