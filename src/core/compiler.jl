@@ -106,7 +106,7 @@ macro ~(left, right)
     esc(
       quote
         # Require all data to be stored in data dictionary.
-        if @isdefined($left) || haskey(data, Symbol($left_sym))
+        if haskey(data, Symbol($left_sym))
           # $(_left) = data[Symbol($left_sym)]
           # Call observe
           Turing.observe(
@@ -115,11 +115,13 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
+        elseif @isdefined($left)
+          throw(ErrorException("Redefiining of existing variable (local or global) (" * $left_sym * ") is not allowed."))
         elseif ~isdefined(Symbol($left_sym))
           # Call assume
           $(gen_assume_ex(left, right))
         else
-          throw(ErrorException("Use of global variable (" * $left_sym * ") is illegal. Please defined it in model delcaration."))
+          throw(ErrorException("Unexpted error (compiler, probably caused by @isdefined)."))
         end
       end
     )
