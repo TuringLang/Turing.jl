@@ -1,18 +1,20 @@
-using Distributions, Turing, Mamba
+using Distributions, Turing
 
 N = 10
 y = [0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
 
-@model bernoulli begin
+@model bernoulli(y) begin
   p ~ Beta(1,1)
   for i =1:N
     y[i] ~ Bernoulli(p)
   end
-  return p
+  return(p)
 end
 
-bdata = Dict(:N=>N, :y=>y)
-c = sample(bernoulli, bdata, HMC(1000, 0.2, 5));
-sim2 = Turing.TuringChains(c);
+c = @sample(bernoulli(y), HMC(1000, 0.2, 5))
 
-describe(sim1)
+t = 0
+for _ = 1:10
+  t += @elapsed @sample(bernoulli(y), HMC(1000, 0.2, 5))
+end
+t / 10  # => 8.04s Mon 6 Mar 15:16:40

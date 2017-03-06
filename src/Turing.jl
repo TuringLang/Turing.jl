@@ -14,7 +14,7 @@ using Mamba
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @predict, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, VarInfo, @predictall
+export @model, @sample, @predict, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, VarInfo, @predictall
 
 export TuringChains, describe, plot
 

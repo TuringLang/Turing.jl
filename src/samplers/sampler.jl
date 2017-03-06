@@ -46,9 +46,19 @@ predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
 # Default functions
-function sample(model::Function, alg :: InferenceAlgorithm)
+function sample(model::Function, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);
   Base.run(sampler)
+end
+
+function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
+  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  Base.run(model, data, sampler)
+end
+
+function sample(model::Function, alg::InferenceAlgorithm)
+  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  Base.run(model, Dict(), sampler)
 end
 
 assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_trace(), d )

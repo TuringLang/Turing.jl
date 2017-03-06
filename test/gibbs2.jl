@@ -4,7 +4,7 @@ using Base.Test
 
 D = [1.0 1.0 4.0 4.0]
 
-@model MoGtest begin
+@model MoGtest(D) begin
   mu1 ~ Normal(1, 1)
   mu2 ~ Normal(4, 1)
   z1 ~ Categorical(2)
@@ -35,7 +35,7 @@ D = [1.0 1.0 4.0 4.0]
 end
 
 gibbs = Gibbs(500, PG(10, 1, :z1, :z2, :z3, :z4), HMC(1, 0.15, 3, :mu1, :mu2))
-chain = sample(MoGtest, gibbs)
+chain = @sample(MoGtest(D), gibbs)
 
 # chain = sample(MoGtest, SMC(5000))
 

@@ -34,17 +34,17 @@ function reference()
   log_lik = logpdf(Normal(x,2), 3) + logpdf(Normal(y,2), 1.5)
   d = Dict()
   d[:logweight] = log_lik
-  d[:x] = x
-  d[:y] = y
+  d[:a] = x
+  d[:b] = y
   return d
 end
 
 @model normal begin
-  x ~ Normal(4,5)
-  3 ~ Normal(x,2)
-  y ~ Normal(x,1)
-  1.5 ~ Normal(y,2)
-  x, y
+  a ~ Normal(4,5)
+  3 ~ Normal(a,2)
+  b ~ Normal(a,1)
+  1.5 ~ Normal(b,2)
+  a, b
 end
 
 n = 10
@@ -57,8 +57,8 @@ for i=1:100
   srand(seed)
   tested = sample(normal, alg)
   for i = 1:n
-    @test exact[:samples][i][:x] == tested[:samples][i][:x]
-    @test exact[:samples][i][:y] == tested[:samples][i][:y]
+    @test exact[:samples][i][:a] == tested[:samples][i][:a]
+    @test exact[:samples][i][:b] == tested[:samples][i][:b]
     @test exact[:logweights][i]  == tested[:logweights][i]
   end
   @test exact[:logevidence] == tested[:logevidence]
