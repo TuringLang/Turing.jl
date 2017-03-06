@@ -12,14 +12,14 @@ parameters {
   real<lower=0> beta;
 }
 model {
-  alpha ~ cauchy(0,10);
-  beta ~ cauchy(0,10);
+  alpha ~ gamma(2,3);
+  beta ~ beta(2,3);
   for (i in 1:N)
     y[i] ~ neg_binomial(alpha, beta);
 }
 "
 
 sm = Stanmodel(name="negativebinomial", model=negativebinomialstan, nchains=1)
-negativebinomialdata = [Dict("N" => length(negbindata[:y]), "y" => negbindata[:y])]
+negativebinomialdata = [Dict("N" => length(negbindata), "y" => negbindata)]
 sim = stan(sm, negativebinomialdata)
 describe(sim)
