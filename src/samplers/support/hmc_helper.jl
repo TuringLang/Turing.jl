@@ -15,7 +15,7 @@ dualpart(d) = map(x -> Float64(x), d.partials.values)
 function make_dual(dim, real, idx)
   z = zeros(dim)
   z[idx] = 1
-  Dual(real, tuple(collect(z)...))
+  Dual(real, collect(z)...)
 end
 
 # (HG): Why do we need this function?
