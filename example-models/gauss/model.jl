@@ -6,5 +6,5 @@
       lam[i] ~ Gamma(.001, .001)
       x[i] ~ Normal(mu, sqrt(1 / (sqrt(lam[i]))))
     end
-    return(mu)
+    return(mu, lam)
 end
