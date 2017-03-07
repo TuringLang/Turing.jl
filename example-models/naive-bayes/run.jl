@@ -5,8 +5,9 @@ using Base.Test
 include("data.jl")
 include("model.jl")
 
-nbchain = sample(nbmodel, nbdata, HMC(1000, 0.1, 3))
-print(mean([[realpart(n) for n in ns] for ns in nbchain[:phi]]))
+nbchain = sample(nbmodel, nbdata, HMC(300, 0.1, 3))
+sim1 = TuringChains(nbchain)
+describe(sim1)
 
 # NOTE: this example sometimes gives non-determinstic error:
 # ERROR: LoadError: DomainError:

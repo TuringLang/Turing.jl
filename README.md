@@ -59,11 +59,11 @@ A Turing probabilistic program is just a normal Julia program, wrapped in a `@mo
 
 ```julia
 # Define a simple Normal model with unknown mean and variance.
-@model gaussdemo begin
+@model gdemo(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
   return s, m
 end
 ```
@@ -72,9 +72,9 @@ Inference methods are functions which take the probabilistic program as one of t
 
 ```julia
 #  Run sampler, collect results
-chain = sample(gaussdemo, SMC(500))
-chain = sample(gaussdemo, PG(10,500))
-chain = sample(gaussdemo, HMC(1000, 0.1, 5))
+chain = @sample(gdemo([1.5, 2]), SMC(500))
+chain = @sample(gdemo([1.5, 2]), PG(10,500))
+chain = @sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))
 ```
 
 The arguments for each sampler are
