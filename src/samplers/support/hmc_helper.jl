@@ -10,7 +10,7 @@ dualpart(d::Array) = map(x -> x.partials.values, d)
 function make_dual(dim, real, idx)
   z = zeros(dim)
   z[idx] = 1
-  Dual(real, collect(z)...)
+  Dual(real, z...)
 end
 
 # (HG): Why do we need this function?
