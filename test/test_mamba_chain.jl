@@ -3,7 +3,7 @@ using Base.Test
 
 @model mamba_chain_test() = begin
   m = rand()
-  x = rand(5,4)
+  x = rand(2,2)
   y = Array{Array}(2,2)
   for i in eachindex(y)
     y[i] = rand(2,2)
@@ -12,5 +12,5 @@ using Base.Test
 end
 
 chain = @sample(mamba_chain_test(), PG(5,300));
-sim1 = TuringChains(chain)
+sim1 = MambaChains(chain)
 describe(sim1)

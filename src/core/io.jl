@@ -71,7 +71,7 @@ end
 Chain() = Chain(0, Vector{Sample}())
 
 
-typealias TuringChains Chains
+typealias MambaChains Chains
 extract_sample!(names, value, k :: String, v) = begin
     if isa(v, Number)
       name = k
@@ -99,7 +99,7 @@ extract_sample!(names, value, k :: String, v) = begin
   end
 end
 
-TuringChains(chn::Chain) = begin
+MambaChains(chn::Chain) = begin
   # Get num of dimensions
   value_all = Array{Array}(0)
   names = Array{AbstractString}(0)

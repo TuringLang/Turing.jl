@@ -7,7 +7,7 @@ import Distributions: sample        # to orverload sample()
 import Base.~                       # to orverload @~
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 using Turing.Traces
-using Mamba
+@suppress_err begin using Mamba end
 
 #################
 # Turing module #
@@ -16,7 +16,7 @@ using Mamba
 # Turing essentials - modelling macros and inference algorithms
 export @model, @sample, @predict, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, VarInfo, @predictall
 
-export TuringChains, describe, plot
+export MambaChains, describe, plot
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
