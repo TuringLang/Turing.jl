@@ -11,16 +11,16 @@ using Base.Test
   x
 end
 
-s = SMC(1000)
-p = PG(100,10)
+smc = SMC(1000)
+pg = PG(100,10)
 
-res = sample(testnoparam, s)
+res = sample(testnoparam, smc)
 
 @test reduce(&, res[:x]) == 1  # check that x is always 1
 @test res[:logevidence] ≈ 2 * log(0.5)
 
 
-res = sample(testnoparam, p)
+res = sample(testnoparam, pg)
 
 @test reduce(&, res[:x]) == 1  # check that x is always 1
 # PG does not provide logevidence estimate

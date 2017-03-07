@@ -4,7 +4,7 @@
 
 function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
-  # It only supposrts pure symbol and Array(/Dict) now.
+  # It only supports pure symbol and Array(/Dict) now.
   if isa(left, Symbol)
     quote
       $(left) = Turing.assume(
@@ -67,14 +67,14 @@ function gen_assume_ex(left, right)
 end
 
 macro isdefined(variable)
- quote
-   try
-    $(esc(variable))
-    true
-   catch
-    false
-   end
- end
+  esc(quote
+    try
+      $variable
+      true
+    catch
+      false
+    end
+  end)
 end
 
 #################
@@ -83,6 +83,7 @@ end
 
 macro ~(left, right)
 
+  # Is multivariate a subtype of real, e.g. Vector, Matrix?
   if isa(left, Real)                  # value
     # Call observe
     esc(
@@ -96,9 +97,17 @@ macro ~(left, right)
       end
     )
   else
+    _left = left  # left is the variable (symbol) itself
+    # Get symbol from expr like x[1][2]
+    while typeof(_left) != Symbol
+      _left = _left.args[1]
+    end
+    left_sym = string(_left)
     esc(
       quote
-        if @isdefined($left)
+        # Require all data to be stored in data dictionary.
+        if haskey(data, Symbol($left_sym))
+          # $(_left) = data[Symbol($left_sym)]
           # Call observe
           Turing.observe(
             sampler,
@@ -106,19 +115,27 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
-        else
+        elseif @isdefined($left)
+          throw(ErrorException("Redefiining of existing variable (local or global) (" * $left_sym * ") is not allowed."))
+        elseif ~isdefined(Symbol($left_sym))
           # Call assume
           $(gen_assume_ex(left, right))
+        else
+          throw(ErrorException("Unexpted error (compiler, probably caused by @isdefined)."))
         end
       end
     )
   end
 end
 
+######################
+# Modelling Language #
+######################
+
 doc"""
     predict(ex...)
 
-Operation for defining the the variable(s) to return.
+Operation for defining the variable(s) to return.
 
 Usage:
 
@@ -147,6 +164,18 @@ macro predict(ex...)
   esc(ex_funcs)
 end
 
+doc"""
+    predictall(ex...)
+
+Operation for return all variables depending on a `VarInfo` instance.
+Usage:
+
+```julia
+@predictall vi
+```
+
+Here `vi` are is of type `VarInfo`.
+"""
 macro predictall(ex)
   ex_funcs = Expr(:block)
   push!(
@@ -192,10 +221,15 @@ macro model(name, fbody)
 
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
+  arglist = fname.args[2:end]   # get parameters from the argument list
+  TURING[:modelarglist] = arglist
+  fname.args = fname.args[1:1]  # remove arguments
 
+  # TODO: check and remove this condition
   if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
     push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   end
+
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
@@ -207,6 +241,7 @@ macro model(name, fbody)
   end
   unshift!(fbody.args, local_assign_ex)
 
+  # TODO: check and remove this comment
   # predict_ex = quote
   #   ct = current_task()
   #   ct.storage[:turing_predicts] = Dict{Symbol,Any}()
@@ -217,17 +252,48 @@ macro model(name, fbody)
   # push!(fbody.args, predict_ex)
 
   # return varInfo if sampler is nothing otherwise varInfo
-  return_ex = fbody.args[end]   # get last statement of model
+  return_ex = fbody.args[end]   # get last statement of defined model
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
     predict_ex = parse("@predictall varInfo")
   end
-  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex)
+  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # change return to predict
+
+  # Trick
   push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
   # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
 
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
   return esc(ex)  # esc() makes sure that ex is resovled where @model is called
+end
+
+macro model(fexpr)
+  name = fexpr.args[1]
+  fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
+  esc(:(@model $name $fbody))
+end
+
+macro sample(modelcall, alg)
+  # println(typeof(modelcall))
+  modelf = modelcall.args[1]
+  modelt = modelf
+  psyms = modelcall.args[2:end]
+  # println(psyms)
+
+  # res = sample(modelt, data, eval(alg))
+  # print(res)
+  # esc(:(sample($modelt, data, $alg)))
+  esc(quote
+    data = Dict()
+    arglist = Turing.TURING[:modelarglist]
+    localsyms = $psyms
+    for i = 1:length(arglist)
+      localsym = localsyms[i]
+      arg = arglist[i]
+      data[arg] = eval(localsym)
+    end
+    sample($modelt, data, $alg)
+  end)
 end

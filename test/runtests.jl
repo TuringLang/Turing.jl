@@ -23,6 +23,8 @@ testcases = [
           "new_grammar",
           "newinterface",
           "noreturn",
+          "samplemacro",
+          "forbid_global",
 #       conditional.jl
 #       container.jl
           "copy_particle_container",

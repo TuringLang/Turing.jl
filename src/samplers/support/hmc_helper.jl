@@ -15,7 +15,7 @@ dualpart(d) = map(x -> Float64(x), d.partials.values)
 function make_dual(dim, real, idx)
   z = zeros(dim)
   z[idx] = 1
-  Dual(real, tuple(collect(z)...))
+  Dual(real, collect(z)...)
 end
 
 # (HG): Why do we need this function?
@@ -25,7 +25,12 @@ end
 end
 
 Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T})  = d.value
-Base.convert(::Type{Float64}, d::Dual{0,Int}) = round(Int, d.value)
+Base.convert{N}(::Type{Int}, d::Dual{N,Float64}) = round(Int, d.value)
+Base.convert{N}(::Type{Int}, d::Dual{N,Float32}) = round(Int, d.value)
+Base.convert{N}(::Type{Int}, d::Dual{N,Float16}) = round(Int, d.value)
+Base.convert{N}(::Type{Float64}, d::Dual{N,Int}) = float(d.value)
+Base.convert{N}(::Type{Float32}, d::Dual{N,Int}) = float(d.value)
+Base.convert{N}(::Type{Float16}, d::Dual{N,Int}) = float(d.value)
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #

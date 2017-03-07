@@ -6,9 +6,9 @@ c = Chain()
 
 d = Dict{Symbol, Any}()
 d[:m] = [1,2,3]
-s = Sample(1, d)
+sp = Sample(1, d)
 
-c2 = Chain(1, Vector{Sample}([s]))
+c2 = Chain(1, Vector{Sample}([sp]))
 
 string(c2)
 samples = c2[:samples]

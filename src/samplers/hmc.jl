@@ -173,15 +173,15 @@ function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int)
   run(model, data, sampler)
 end
 
-function sample(model::Function, data::Dict, alg::HMC)
-  sampler = HMCSampler{HMC}(alg);
-  run(model, data, sampler)
-end
-
 function sample(model::Function, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   sampler = HMCSampler{HMC}(alg);
   run(model, Dict(), sampler)
+end
+
+function sample(model::Function, data::Dict, alg::HMC)
+  sampler = HMCSampler{HMC}(alg);
+  run(model, data, sampler)
 end
 
 function sample(model::Function, alg::HMC)
