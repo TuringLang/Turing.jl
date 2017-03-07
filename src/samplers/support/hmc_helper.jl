@@ -2,13 +2,8 @@
 # Helper functions for Dual numbers #
 #####################################
 
-function realpart(d)
-  if isa(d[1,1], Dual)      # matrix
-    map(x -> Float64(x.value), d)
-  elseif isa(d[1,1], Array) # array of arry
-    [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
-  end
-end
+realpart(d::Dual) = d.value
+realpart(d::Union{Vector, Matrix}) = map(x -> x.value, d)
 
 dualpart(d) = map(x -> Float64(x), d.partials.values)
 
