@@ -2,10 +2,10 @@
 # Helper functions for Dual numbers #
 #####################################
 
-realpart(d::Dual) = d.value
-realpart(d::Union{Vector, Matrix}) = map(x -> x.value, d)
-
-dualpart(d) = map(x -> Float64(x), d.partials.values)
+realpart(d::Dual)  = d.value
+realpart(d::Array) = map(x -> x.value, d)
+dualpart(d::Dual)  = d.partials.values
+dualpart(d::Array) = map(x -> x.partials.values, d)
 
 function make_dual(dim, real, idx)
   z = zeros(dim)
