@@ -84,6 +84,7 @@ extract_sample!(names, value, k :: String, v) = begin
           name = replace(name, "(", "[");
           name = replace(name, ",)", "]");
           name = replace(name, ")", "]");
+          isa(v[i], Void) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)
