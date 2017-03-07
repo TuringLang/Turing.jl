@@ -36,6 +36,7 @@ testcases = [
 #       intrinsic.jl
 #       io.jl
           "chain_utility",
+          "test_mamba_chain",
 #       util.jl
           "util",
 #     distributions/
