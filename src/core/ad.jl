@@ -13,7 +13,7 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=nothing)
+function get_gradient_dict(varInfo::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
   val∇E = Dict{Var, Vector{Float64}}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
@@ -21,9 +21,9 @@ function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=no
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
-  for k in keys(values)
+  for k in keys(varInfo)
     if spl == nothing || isempty(spl.alg.space) || k.sym in spl.alg.space
-      l = length(values[k])
+      l = length(varInfo[k])
       if prior_dim + l > CHUNKSIZE
         # Store the old chunk
         push!(prior_key_chunks, (key_chunk, prior_dim))
@@ -47,21 +47,20 @@ function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=no
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
     dprintln(4, "set dual...")
+    dps = eye(prior_dim)      # dualpart values to set
     prior_count = 1
-    for k in keys(values)
-      l = length(values[k])
-      reals = realpart(values[k])
-      val_vect = values[k]   # get the value vector
-
-      if k in key_chunk   # to graidnet variables
+    for k in keys(varInfo)
+      l = length(varInfo[k])
+      reals = realpart(varInfo[k])
+      val_vect = varInfo[k]   # get a reference for the value vector
+      if k in key_chunk       # to graidnet variables
+        dprintln(5, "making dual...")
         for i = 1:l
-          dprintln(5, "making dual...")
-          val_vect[i] = make_dual(prior_dim, reals[i], prior_count)
-          dprintln(5, "make dual done")
-          # Count
-          prior_count += 1
+          val_vect[i] = Dual(reals[i], dps[1:end, prior_count]...)
+          prior_count += 1    # count
         end
-      else                # other varilables
+        dprintln(5, "make dual done")
+      else                    # other varilables (not for gradient info)
         for i = 1:l
           val_vect[i] = Dual{prior_dim, Float64}(reals[i])
         end
@@ -69,27 +68,27 @@ function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=no
     end
     # Run the model
     dprintln(4, "run model...")
-    values = model(data, values, spl)
+    varInfo = model(data, varInfo, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
     for k in key_chunk
       dprintln(5, "for each prior...")
-      l = length(values[k])
-      reals = realpart(values[k])
+      l = length(varInfo[k])
+      reals = realpart(varInfo[k])
       # To store the gradient vector
       g = zeros(l)
       for i = 1:l
         # Collect
         dprintln(5, "taking from logjoint...")
-        g[i] = dualpart(-values.logjoint)[prior_count]
+        g[i] = dualpart(-varInfo.logjoint)[prior_count]
         # Count
         prior_count += 1
       end
       val∇E[k] = g
     end
     # Reset logjoint
-    values.logjoint = Dual(0)
+    varInfo.logjoint = Dual(0)
   end
   # Return
   return val∇E

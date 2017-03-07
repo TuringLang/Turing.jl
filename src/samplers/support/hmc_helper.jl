@@ -7,12 +7,6 @@ realpart(d::Array) = map(x -> x.value, d)
 dualpart(d::Dual)  = d.partials.values
 dualpart(d::Array) = map(x -> x.partials.values, d)
 
-function make_dual(dim, real, idx)
-  z = zeros(dim)
-  z[idx] = 1
-  Dual(real, z...)
-end
-
 # (HG): Why do we need this function?
 @suppress_err begin
   import Base.promote_rule
