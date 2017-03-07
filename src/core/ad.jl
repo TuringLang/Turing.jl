@@ -61,7 +61,7 @@ function get_gradient_dict(varInfo::VarInfo, model::Function, data=Dict(), spl=n
         end
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
-        for i = 1:l
+        for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
           val_vect[i] = Dual{prior_dim, Float64}(reals[i])
         end
       end
@@ -75,15 +75,13 @@ function get_gradient_dict(varInfo::VarInfo, model::Function, data=Dict(), spl=n
     for k in key_chunk
       dprintln(5, "for each prior...")
       l = length(varInfo[k])
-      reals = realpart(varInfo[k])
+      duals = dualpart(-varInfo.logjoint)
       # To store the gradient vector
       g = zeros(l)
-      for i = 1:l
-        # Collect
+      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed to support Matrix
         dprintln(5, "taking from logjoint...")
-        g[i] = dualpart(-varInfo.logjoint)[prior_count]
-        # Count
-        prior_count += 1
+        g[i] = duals[prior_count] # collect
+        prior_count += 1          # count
       end
       val∇E[k] = g
     end
