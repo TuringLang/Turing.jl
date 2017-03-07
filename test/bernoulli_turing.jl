@@ -18,3 +18,4 @@ for _ = 1:10
   t += @elapsed @sample(bernoulli(y), HMC(1000, 0.2, 5))
 end
 t / 10  # => 8.04s Mon 6 Mar 15:16:40
+        # => 7.42s Tue 7 Mar 12:59:55 (a083e820c26f7a02e62d0d24f45890d774940cca)
