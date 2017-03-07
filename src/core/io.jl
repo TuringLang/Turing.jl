@@ -84,7 +84,7 @@ extract_sample!(names, value, k :: String, v) = begin
           name = replace(name, "(", "[");
           name = replace(name, ",)", "]");
           name = replace(name, ")", "]");
-          push!(value, realpart(v[i]))
+          push!(value, Float64(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)
           name = k * string(ind2sub(size(v), i))
