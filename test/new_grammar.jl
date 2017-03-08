@@ -2,6 +2,7 @@ using Distributions
 using Turing
 
 x = Float64[1 2]
+priors = 0
 
 @model gauss(x) begin
   priors = TArray{Float64}(2)

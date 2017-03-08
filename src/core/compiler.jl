@@ -94,6 +94,10 @@ macro ~(left, right)
     left_sym = string(_left)
     # Require all data to be stored in data dictionary.
     if _left in TURING[:modelarglist]
+      if ~(_left in TURING[:model_dvar_list])
+        println("[Turing:] Assume `" * left_sym * "` is an observation")
+        push!(TURING[:model_dvar_list], _left)
+      end
       esc(
         quote
           # Call observe
@@ -106,14 +110,21 @@ macro ~(left, right)
         end
       )
     else
+      if ~(_left in TURING[:model_pvar_list])
+        msg = "[Turing:] Assume `" * left_sym * "` is a parameter"
+        isdefined(Symbol(left_sym)) && (msg  *= " (ignoring `$(left_sym)` found in global scope)")
+        println(msg)
+        push!(TURING[:model_pvar_list], _left)
+      end
+
       esc(
         quote
-          if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
+           #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
             # Call assume
             $(gen_assume_ex(left, right))
-          else
-            throw(ErrorException("Redefiining of existing variable (" * $left_sym * ") is not allowed."))
-          end
+          #else
+          #  throw(ErrorException("Redefining of existing variable (" * $left_sym * ") is not allowed."))
+          #end
         end
       )
     end
@@ -223,6 +234,8 @@ macro model(name, fbody)
   # Get parameters from the argument list
   arglist = fname.args[2:end]
   TURING[:modelarglist] = arglist
+  TURING[:model_dvar_list] = Set{Symbol}() # Data
+  TURING[:model_pvar_list] = Set{Symbol}() # Parameter
   fname.args = fname.args[1:1]  # remove arguments
 
   # Set parameters as model(data, varInfo, sampler)
