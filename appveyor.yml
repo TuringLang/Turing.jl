@@ -20,6 +20,7 @@ notifications:
 cache:
 # Cache large downloads to avoid network unreliability
   - "%MINGW_ARCHIVE%"
+  - "C:\Users\appveyor\.julia\v0.5"
   
 install:
 # Download and install MinGW
