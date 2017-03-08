@@ -7,5 +7,5 @@ include("model.jl")
 
 chain = @sample(gaussmodel(gaussdata), PG(20, 300))
 
-sim1 = TuringChains(chain)
+sim1 = MambaChains(chain)
 describe(sim1)
