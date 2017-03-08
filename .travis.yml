@@ -19,10 +19,6 @@ matrix:
     allow_failures:
        - env: TEST_GROUP=F
          os: osx
-
-cache:
-  directories:
-  - $HOME/.julia/v0.5
   
 notifications:
     email: false
@@ -31,8 +27,6 @@ script:
   - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --check-bounds=yes -e 'Pkg.update(); 
-             rm(Pkg.dir("Hexagons"), force=true, recursive=true);
-             rm(Pkg.dir("Turing"), force=true, recursive=true);
              Pkg.clone(pwd(), "Turing");  
              Pkg.build("Turing"); 
              Pkg.test("Turing"; coverage=true)'
