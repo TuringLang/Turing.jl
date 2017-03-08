@@ -92,11 +92,10 @@ macro ~(left, right)
       _left = _left.args[1]
     end
     left_sym = string(_left)
-    esc(
-      quote
-        # Require all data to be stored in data dictionary.
-        if haskey(data, Symbol($left_sym))
-          # $(_left) = data[Symbol($left_sym)]
+    # Require all data to be stored in data dictionary.
+    if _left in TURING[:modelarglist]
+      esc(
+        quote
           # Call observe
           Turing.observe(
             sampler,
@@ -104,14 +103,20 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
-        elseif isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
-          # Call assume
-          $(gen_assume_ex(left, right))
-        else
-          throw(ErrorException("Redefiining of existing variable (" * $left_sym * ") is not allowed."))
         end
-      end
-    )
+      )
+    else
+      esc(
+        quote
+          if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
+            # Call assume
+            $(gen_assume_ex(left, right))
+          else
+            throw(ErrorException("Redefiining of existing variable (" * $left_sym * ") is not allowed."))
+          end
+        end
+      )
+    end
   end
 end
 
@@ -286,7 +291,7 @@ macro model(fexpr)
 end
 
 doc"""
-    @sample(fexpr)
+    @sample(modelcall, alg)
 
 Macro for running the inference engine.
 
