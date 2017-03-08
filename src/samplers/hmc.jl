@@ -71,7 +71,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     oldH = find_H(p, model, data, varInfo, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = get_gradient_dict(varInfo, model, data, spl)
+    val∇E = gradient(varInfo, model, data, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var

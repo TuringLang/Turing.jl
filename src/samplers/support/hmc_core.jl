@@ -15,7 +15,7 @@ function leapfrog(values, val∇E, p, ϵ, model, data, spl)
   for k in keys(val∇E)               # full step for state
     values[k] = Vector{Dual}(values[k] + ϵ * p[k])
   end
-  val∇E = get_gradient_dict(values, model, data, spl)
+  val∇E = gradient(values, model, data, spl)
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
 
   # Return updated θ and momentum

@@ -1,5 +1,5 @@
 doc"""
-    get_gradient_dict(spl :: GradientSampler)
+    gradient(spl :: GradientSampler)
 
 Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint. This function uses chunk-wise forward AD with a chunk of size 10, which is limited by the ForwardDiff package.
 
@@ -8,12 +8,12 @@ Example:
 ```julia
 function Base.run(spl :: Sampler{HMC})
   ...
-  val∇E = get_gradient_dict(spl.priors, spl.model)
+  val∇E = gradient(spl.priors, spl.model)
   ...
 end
 ```
 """
-function get_gradient_dict(values::VarInfo, model::Function, data=Dict(), spl=nothing)
+function gradient(values::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
   val∇E = Dict{Var, Vector{Float64}}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
