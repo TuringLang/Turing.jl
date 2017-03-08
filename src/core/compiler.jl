@@ -95,7 +95,7 @@ macro ~(left, right)
     # Require all data to be stored in data dictionary.
     if _left in TURING[:modelarglist]
       if ~(_left in TURING[:model_dvar_list])
-        println("[Turing:] Assume `" * left_sym * "` is an observation")
+        println("[Turing]: Observe - `" * left_sym * "` is an observation")
         push!(TURING[:model_dvar_list], _left)
       end
       esc(
@@ -111,7 +111,7 @@ macro ~(left, right)
       )
     else
       if ~(_left in TURING[:model_pvar_list])
-        msg = "[Turing:] Assume `" * left_sym * "` is a parameter"
+        msg = "[Turing]: Assume - `" * left_sym * "` is a parameter"
         isdefined(Symbol(left_sym)) && (msg  *= " (ignoring `$(left_sym)` found in global scope)")
         println(msg)
         push!(TURING[:model_pvar_list], _left)
