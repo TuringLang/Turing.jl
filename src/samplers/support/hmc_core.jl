@@ -12,7 +12,7 @@ function leapfrog(values, val∇E, p, ϵ, model, data, spl)
   dprintln(3, "leapfrog...")
 
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-  for k in keys(val∇E)               # full step for state
+  for k in keys(val∇E)                # full step for state
     values[k] = Vector{Dual}(values[k] + ϵ * p[k])
   end
   val∇E = gradient(values, model, data, spl)

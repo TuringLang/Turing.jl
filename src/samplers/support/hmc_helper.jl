@@ -2,21 +2,10 @@
 # Helper functions for Dual numbers #
 #####################################
 
-function realpart(d)
-  if isa(d[1,1], Dual)      # matrix
-    map(x -> Float64(x.value), d)
-  elseif isa(d[1,1], Array) # array of arry
-    [map(x -> Float64(x.value), d[i]) for i in 1:length(d)]
-  end
-end
-
-dualpart(d) = map(x -> Float64(x), d.partials.values)
-
-function make_dual(dim, real, idx)
-  z = zeros(dim)
-  z[idx] = 1
-  Dual(real, collect(z)...)
-end
+realpart(d::Dual)  = d.value
+realpart(d::Array) = map(x -> x.value, d)
+dualpart(d::Dual)  = d.partials.values
+dualpart(d::Array) = map(x -> x.partials.values, d)
 
 # (HG): Why do we need this function?
 @suppress_err begin

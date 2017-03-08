@@ -23,9 +23,9 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples:: Int     # number of samples
+  n_samples:: Int       # number of samples
   lf_size  :: Float64   # leapfrog step size
-  lf_num   :: Int     # leapfrog step number
+  lf_num   :: Int       # leapfrog step number
   space    :: Set       # sampling space, emtpy means all
   function HMC(lf_size::Float64, lf_num::Int, space...)
     HMC(1, lf_size, lf_num, space...)
@@ -107,10 +107,10 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
     old_values = deepcopy(varInfo.values)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, data, spl, varInfo, i==1)
-    if is_accept  # accepted => store the new predcits
+    if is_accept    # accepted => store the new predcits
       spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
       accept_num = accept_num + 1
-    else          # rejected => store the previous predcits
+    else            # rejected => store the previous predcits
       varInfo.values = old_values
       spl.samples[i] = spl.samples[i - 1]
     end
