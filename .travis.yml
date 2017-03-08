@@ -7,11 +7,11 @@ addons:
            - gcc-5
            - g++-5  
 env:
-  - TEST_GROUP=S
   - TEST_GROUP=F
 matrix:
     fast_finish: true
     include:
+       - env: TEST_GROUP=F
        - language: julia
          julia: 0.5
          os: linux
