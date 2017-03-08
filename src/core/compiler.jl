@@ -307,7 +307,7 @@ Example:
 @sample(gauss(x), SMC(100))
 ```
 """
-macro sample(modelcall, alg)
+macro sample(modelcall, alg, optionalps...)
   modelf = modelcall.args[1]      # get the function symbol for model
   psyms = modelcall.args[2:end]   # get the (passed-in) symbols
   esc(quote
@@ -319,6 +319,6 @@ macro sample(modelcall, alg)
       arg = arglist[i]            # arglist are symbols in model scope
       data[arg] = eval(localsym)
     end
-    sample($modelf, data, $alg)
+    sample($modelf, data, $alg, $optionalps...)
   end)
 end
