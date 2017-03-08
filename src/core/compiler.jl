@@ -66,17 +66,6 @@ function gen_assume_ex(left, right)
   end
 end
 
-macro isdefined(variable)
-  esc(quote
-    try
-      $variable
-      true
-    catch
-      false
-    end
-  end)
-end
-
 #################
 # Overload of ~ #
 #################
@@ -115,13 +104,11 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
-        elseif @isdefined($left)
-          throw(ErrorException("Redefiining of existing variable (local or global) (" * $left_sym * ") is not allowed."))
-        elseif ~isdefined(Symbol($left_sym))
+        elseif isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
           # Call assume
           $(gen_assume_ex(left, right))
         else
-          throw(ErrorException("Unexpted error (compiler, probably caused by @isdefined)."))
+          throw(ErrorException("Redefiining of existing variable (" * $left_sym * ") is not allowed."))
         end
       end
     )
