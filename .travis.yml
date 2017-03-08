@@ -6,8 +6,9 @@ addons:
         packages:
            - gcc-5
            - g++-5  
-language: 
-  - julia: 0.5
+language: julia
+julia: 
+  - 0.5
 os:
   - linux
   - osx
