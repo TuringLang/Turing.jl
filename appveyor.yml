@@ -41,7 +41,7 @@ build_script:
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
       Pkg.update(); 
-      rm(Pkg.dir("Turing"), force=true, recursive=true);
+      rm(Pkg.dir("\Turing\"), force=true, recursive=true);
       Pkg.clone(pwd(), \"Turing\"); 
       Pkg.build(\"Turing\")"
 
