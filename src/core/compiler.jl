@@ -9,8 +9,8 @@ function gen_assume_ex(left, right)
     quote
       $(left) = Turing.assume(
         sampler,
-        $(right),    # dDistribution
-        Var(          # Pure Symbol
+        $(right),   # distribution
+        Var(        # pure Symbol
           Symbol($(string(left))),
           Symbol($(string(left)))
         ),
@@ -21,8 +21,8 @@ function gen_assume_ex(left, right)
     quote
       $(left) = Turing.assume(
         sampler,
-        $(right),    # dDistribution
-        Var(          # Array assignment
+        $(right),   # distribution
+        Var(        # array assignment
           Symbol($(string(left.args[1]))),  # pure symbol, e.g. :p for p[1]
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
@@ -35,8 +35,8 @@ function gen_assume_ex(left, right)
     quote
       $(left) = Turing.assume(
         sampler,
-        $(right),    # dDistribution
-        Var(          # Array assignment
+        $(right),   # dDistribution
+        Var(        # array assignment
           Symbol($(string(left.args[1].args[1]))),  # pure symbol
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[1].args[2]))),  # index symbol
@@ -51,8 +51,8 @@ function gen_assume_ex(left, right)
     quote
       $(left) = Turing.assume(
         sampler,
-        $(right),    # dDistribution
-        Var(          # Array assignment
+        $(right),   # dDistribution
+        Var(        # array assignment
           Symbol($(string(left.args[1]))),  # pure symbol
           parse($(string(left))),           # indexing expr
           Symbol($(string(left.args[2]))),  # index symbol
@@ -128,9 +128,9 @@ macro ~(left, right)
   end
 end
 
-######################
-# Modelling Language #
-######################
+####################
+# Modelling Syntax #
+####################
 
 doc"""
     predict(ex...)
@@ -191,26 +191,32 @@ macro predictall(ex)
   esc(ex_funcs)
 end
 
+#################
+# Main Compiler #
+#################
+
 doc"""
-    model(name, fbody)
+    @model(name, fbody)
 
 Wrapper for models.
 
 Usage:
 
 ```julia
-@model f body
+@model model() begin
+  body
+end
 ```
 
 Example:
 
 ```julia
-@model gauss begin
-  @assume s ~ InverseGamma(2,3)
-  @assume m ~ Normal(0,sqrt(s))
-  @observe 1.5 ~ Normal(m, sqrt(s))
-  @observe 2.0 ~ Normal(m, sqrt(s))
-  @predict s m
+@model gauss() begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  1.5 ~ Normal(m, sqrt(s))
+  2.0 ~ Normal(m, sqrt(s))
+  return(s, m)
 end
 ```
 """
@@ -221,18 +227,18 @@ macro model(name, fbody)
 
   # Turn f into f() if necessary.
   fname = isa(name, Symbol) ? Expr(:call, name) : name
-  arglist = fname.args[2:end]   # get parameters from the argument list
+
+  # Get parameters from the argument list
+  arglist = fname.args[2:end]
   TURING[:modelarglist] = arglist
   fname.args = fname.args[1:1]  # remove arguments
 
-  # TODO: check and remove this condition
-  if length(find(arg -> isa(arg, Expr) && arg.head == :kw && arg.args[1] == :data, fname.args)) == 0
-    push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
-  end
-
+  # Set parameters as model(data, varInfo, sampler)
+  push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
   push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
+  # Assign variables in data locally
   local_assign_ex = quote
     for k in keys(data)
       ex = Expr(Symbol("="), k, data[k])
@@ -241,59 +247,86 @@ macro model(name, fbody)
   end
   unshift!(fbody.args, local_assign_ex)
 
-  # TODO: check and remove this comment
-  # predict_ex = quote
-  #   ct = current_task()
-  #   ct.storage[:turing_predicts] = Dict{Symbol,Any}()
-  #   for sym in syms(varInfo)
-  #     ct.storage[:turing_predicts][Symbol(string(sym))] = get(ct, sym)
-  #   end
-  # end
-  # push!(fbody.args, predict_ex)
-
-  # return varInfo if sampler is nothing otherwise varInfo
+  # Generate @predict
   return_ex = fbody.args[end]   # get last statement of defined model
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
+    # Convert return(a, b, c) to @predict a b c
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
+    # If there is no variables specified, predict all
     predict_ex = parse("@predictall varInfo")
   end
-  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # change return to predict
+  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # only generate predict marcos if there is a sampler exisiting, i.e. predict nothing if the model is run on its own
 
-  # Trick
+  # Trick for HMC sampler as it needs the return of varInfo
   push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
-  # push!(fbody.args, Expr(Symbol("if"), parse("sampler == nothing"), return_ex, :(varInfo)))
 
+  # Generate model declaration
   ex = Expr(:function, fname, fbody)
   TURING[:modelex] = ex
-  return esc(ex)  # esc() makes sure that ex is resovled where @model is called
+  return esc(ex)  # NOTE: esc() makes sure that ex is resovled where @model is called
 end
 
+doc"""
+    @model(fexpr)
+
+Wrapper for models.
+
+Usage:
+
+```julia
+@model f() = begin
+  body
+end
+```
+
+Example:
+
+```julia
+@model gauss() = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  1.5 ~ Normal(m, sqrt(s))
+  2.0 ~ Normal(m, sqrt(s))
+  return(s, m)
+end
+```
+"""
 macro model(fexpr)
   name = fexpr.args[1]
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
   esc(:(@model $name $fbody))
 end
 
-macro sample(modelcall, alg)
-  # println(typeof(modelcall))
-  modelf = modelcall.args[1]
-  modelt = modelf
-  psyms = modelcall.args[2:end]
-  # println(psyms)
+doc"""
+    @sample(fexpr)
 
-  # res = sample(modelt, data, eval(alg))
-  # print(res)
-  # esc(:(sample($modelt, data, $alg)))
+Macro for running the inference engine.
+
+Usage:
+
+```julia
+@sample(modelf(params), alg)
+```
+
+Example:
+
+```julia
+@sample(gauss(x), SMC(100))
+```
+"""
+macro sample(modelcall, alg)
+  modelf = modelcall.args[1]      # get the function symbol for model
+  psyms = modelcall.args[2:end]   # get the (passed-in) symbols
   esc(quote
     data = Dict()
     arglist = Turing.TURING[:modelarglist]
     localsyms = $psyms
     for i = 1:length(arglist)
-      localsym = localsyms[i]
-      arg = arglist[i]
+      localsym = localsyms[i]     # passed-in symbols are local
+      arg = arglist[i]            # arglist are symbols in model scope
       data[arg] = eval(localsym)
     end
-    sample($modelt, data, $alg)
+    sample($modelf, data, $alg)
   end)
 end
