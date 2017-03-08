@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: get_gradient_dict, invlink, link
+using Turing: gradient, invlink, link
 using ForwardDiff
 using ForwardDiff: Dual
 using Base.Test
@@ -19,7 +19,7 @@ Turing.TURING[:modelex]
 gi = ad_test()
 _s = realpart(gi.values[Var(:s)][1])
 _m = realpart(gi.values[Var(:m)][1])
-∇E = get_gradient_dict(gi, ad_test, Dict(), nothing)
+∇E = gradient(gi, ad_test, Dict(), nothing)
 grad_Turing = sort([∇E[v][1] for v in keys(gi)])
 
 # Hand-written logjoint

@@ -6,7 +6,7 @@ include("data.jl")
 include("model.jl")
 
 nbchain = sample(nbmodel, nbdata, HMC(300, 0.1, 3))
-sim1 = TuringChains(nbchain)
+sim1 = MambaChains(nbchain)
 describe(sim1)
 
 # NOTE: this example sometimes gives non-determinstic error:
