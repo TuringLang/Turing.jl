@@ -16,6 +16,10 @@ matrix:
          julia: 0.5
          os: osx
 
+cache:
+  directories:
+  - $HOME/.julia/v0.5
+  
 notifications:
     email: false
 script:
