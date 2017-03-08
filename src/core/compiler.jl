@@ -66,17 +66,6 @@ function gen_assume_ex(left, right)
   end
 end
 
-macro isdefined(variable)
-  esc(quote
-    try
-      $variable
-      true
-    catch
-      false
-    end
-  end)
-end
-
 #################
 # Overload of ~ #
 #################
@@ -103,11 +92,10 @@ macro ~(left, right)
       _left = _left.args[1]
     end
     left_sym = string(_left)
-    esc(
-      quote
-        # Require all data to be stored in data dictionary.
-        if haskey(data, Symbol($left_sym))
-          # $(_left) = data[Symbol($left_sym)]
+    # Require all data to be stored in data dictionary.
+    if _left in TURING[:modelarglist]
+      esc(
+        quote
           # Call observe
           Turing.observe(
             sampler,
@@ -115,16 +103,20 @@ macro ~(left, right)
             $(left),    # Data point
             varInfo
           )
-        elseif @isdefined($left)
-          throw(ErrorException("Redefiining of existing variable (local or global) (" * $left_sym * ") is not allowed."))
-        elseif ~isdefined(Symbol($left_sym))
-          # Call assume
-          $(gen_assume_ex(left, right))
-        else
-          throw(ErrorException("Unexpted error (compiler, probably caused by @isdefined)."))
         end
-      end
-    )
+      )
+    else
+      esc(
+        quote
+          if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
+            # Call assume
+            $(gen_assume_ex(left, right))
+          else
+            throw(ErrorException("Redefiining of existing variable (" * $left_sym * ") is not allowed."))
+          end
+        end
+      )
+    end
   end
 end
 
@@ -299,7 +291,7 @@ macro model(fexpr)
 end
 
 doc"""
-    @sample(fexpr)
+    @sample(modelcall, alg)
 
 Macro for running the inference engine.
 
@@ -315,7 +307,7 @@ Example:
 @sample(gauss(x), SMC(100))
 ```
 """
-macro sample(modelcall, alg)
+macro sample(modelcall, alg, optionalps...)
   modelf = modelcall.args[1]      # get the function symbol for model
   psyms = modelcall.args[2:end]   # get the (passed-in) symbols
   esc(quote
@@ -327,6 +319,6 @@ macro sample(modelcall, alg)
       arg = arglist[i]            # arglist are symbols in model scope
       data[arg] = eval(localsym)
     end
-    sample($modelf, data, $alg)
+    sample($modelf, data, $alg, $optionalps...)
   end)
 end

@@ -4,12 +4,13 @@ using Turing
 x = Float64[1 2]
 
 @model gauss(x) begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  priors = TArray{Float64}(2)
+  priors[1] ~ InverseGamma(2,3)         # s
+  priors[2] ~ Normal(0,sqrt(priors[1])) # m
   for i in 1:length(x)
-    x[i] ~ Normal(m, sqrt(s))
+    x[i] ~ Normal(priors[2], sqrt(priors[1]))
   end
-  s, m
+  priors
 end
 
 chain = @sample(gauss(x), PG(10, 10))
