@@ -5,6 +5,8 @@ include("trace/trace.jl")
 
 import Distributions: sample        # to orverload sample()
 import Base.~                       # to orverload @~
+import Base.convert
+import Base.promote_rule
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 using Turing.Traces
 @suppress_err begin using Mamba end
