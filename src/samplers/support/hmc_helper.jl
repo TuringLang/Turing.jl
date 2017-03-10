@@ -9,11 +9,12 @@ dualpart(d::Array) = map(x -> x.partials.values, d)
 
 # (HG): Why do we need this function?
 @suppress_err begin
-  import Base.promote_rule
   Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
 end
 
-Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T})  = d.value
+Base.promote_rule(D1::Type{Float64}, D2::Type{Dual}) = D2
+
+Base.convert{N,T<:Real}(::Type{T}, d::Dual{N,T}) = d.value
 Base.convert{N}(::Type{Int}, d::Dual{N,Float64}) = round(Int, d.value)
 Base.convert{N}(::Type{Int}, d::Dual{N,Float32}) = round(Int, d.value)
 Base.convert{N}(::Type{Int}, d::Dual{N,Float16}) = round(Int, d.value)
@@ -32,7 +33,7 @@ vectorize(d::MatrixDistribution, r)       = Vector{Dual}(vec(r))
 function reconstruct(d::Distribution, val)
   if isa(d, UnivariateDistribution)
     # Turn Array{Any} to Any if necessary (this is due to randn())
-    val = val[1]
+    val = length(val) == 1 ? val[1] : val
   elseif isa(d, MultivariateDistribution)
     # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
     T = typeof(val[1])
