@@ -33,12 +33,15 @@ function varInfo2samples(varInfo)
     val = reconstruct(dist, val)
     val = invlink(dist, val)
     if ~(var.sym in keys(samples))
-      samples[var.sym] = val
+      samples[var.sym] = Any[realpart(val)]
     else
-      if length(samples[var.sym]) == 1
-        samples[var.sym] = [samples[var.sym]]
-      end
-      push!(samples[var.sym], val)
+      push!(samples[var.sym], realpart(val))
+    end
+  end
+  # Remove un-necessary []'s
+  for k in keys(samples)
+    if isa(samples[k], Array) && length(samples[k]) == 1
+      samples[k] = samples[k][1]
     end
   end
   samples
