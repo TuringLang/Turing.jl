@@ -2,75 +2,74 @@
 # Helper function #
 ###################
 
+function parse_indexing(expr)
+  # Initialize an expression block to store the code for creating uid
+  uid_ex = Expr(:block)
+  # Add the initialization statement for uid
+  push!(uid_ex.args, quote uid_list = [] end)
+  # Initialize a local container for parsing and add the expr to it
+  to_eval = []; unshift!(to_eval, expr)
+  # Parse the expression and creating the code for creating uid
+  while length(to_eval) > 0
+    evaling = shift!(to_eval)   # get the current expression to deal with
+    if isa(evaling, Expr)
+      # Add all the indexing arguments to the left
+      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
+      # Add first argument depending on its type
+      # If it is an expression, it means it's a nested array calling
+      # Otherwise it's the symbol for the calling
+      if isa(evaling.args[1], Expr)
+        unshift!(to_eval, evaling.args[1])
+      else
+        push!(uid_ex.args, quote unshift!(uid_list, $(string(evaling.args[1]))) end)
+      end
+    else
+      # Evaluting the concrete value of the indexing variable
+      push!(uid_ex.args, quote push!(uid_list, string($evaling)) end)
+    end
+  end
+  push!(uid_ex.args, quote uid = reduce(*, uid_list) end)
+  uid_ex
+end
+
 function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
   # It only supports pure symbol and Array(/Dict) now.
-  if isa(left, Symbol)
+  if isa(left, Symbol)  # symbol
     quote
       $(left) = Turing.assume(
         sampler,
         $(right),   # distribution
-        Var(        # pure Symbol
-          Symbol($(string(left))),
-          Symbol($(string(left)))
-        ),
+        Var(Symbol($(string(left)))),
         varInfo
       )
     end
-  elseif length(left.args) == 2 && isa(left.args[1], Symbol)
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # distribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1]))),  # pure symbol, e.g. :p for p[1]
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2])                   # index value
-        ),
-        varInfo
-      )
-    end
-  elseif length(left.args) == 2 && isa(left.args[1], Expr)
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # dDistribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1].args[1]))),  # pure symbol
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[1].args[2]))),  # index symbol
-          $(left.args[1].args[2]),                  # index value
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2])                   # index value
-        ),
-        varInfo
-      )
-    end
-  elseif length(left.args) == 3
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # dDistribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1]))),  # pure symbol
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2]),                  # index value
-          Symbol($(string(left.args[3]))),  # index symbol
-          $(left.args[3])                   # index value
-        ),
-        varInfo
-      )
-    end
+  else                  # indexing
+    uid_ex = parse_indexing(left)
+    push!(
+      uid_ex.args,
+      quote
+        $(left) = Turing.assume(
+          sampler,
+          $(right),   # distribution
+          Var(Symbol(uid_list[1]),Symbol(uid)),
+          varInfo
+        )
+      end
+    )
+    uid_ex
   end
 end
+
+insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
 
 #################
 # Overload of ~ #
 #################
 
 macro ~(left, right)
+
+
 
   # Is multivariate a subtype of real, e.g. Vector, Matrix?
   if isa(left, Real)                  # value

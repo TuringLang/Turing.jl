@@ -19,41 +19,8 @@ strp = string(p)
 immutable Var
   sym   ::    Symbol
   uid   ::    Symbol
-  function Var(sym::Symbol)
-    new(sym, sym)
-  end
-  function Var(sym::Symbol, uid::Symbol)
-    new(sym, uid)
-  end
-  function Var(sym::Symbol, arrExpr::Expr, idxSym::Symbol, idxVal::Any)
-    if isa(arrExpr.args[2], Symbol)
-      @assert arrExpr.args[2] == idxSym
-      arrExpr.args[2] = idxVal
-    end
-    new(sym, Symbol(arrExpr))
-  end
-  function Var(sym::Symbol, mulDimExpr::Expr, dim1Sym::Symbol, dim1Val::Any, dim2Sym::Symbol, dim2Val::Any)
-    if isa(mulDimExpr.args[1], Symbol)    # mat form x[i, j]
-      if isa(mulDimExpr.args[2], Symbol)
-        @assert mulDimExpr.args[2] == dim1Sym
-        mulDimExpr.args[2] = dim1Val
-      end
-      if isa(mulDimExpr.args[3], Symbol)
-        @assert mulDimExpr.args[3] == dim2Sym
-        mulDimExpr.args[3] = dim2Val
-      end
-    elseif isa(mulDimExpr.args[1], Expr)  # multi array form x[i][j]
-      if isa(mulDimExpr.args[1], Expr)
-        @assert mulDimExpr.args[1].args[2] == dim1Sym
-        mulDimExpr.args[1].args[2] = dim1Val
-      end
-      if isa(mulDimExpr.args[2], Symbol)
-        @assert mulDimExpr.args[2] == dim2Sym
-        mulDimExpr.args[2] = dim2Val
-      end
-    end
-    new(sym, Symbol(replace(string(mulDimExpr), r"\(|\)", "")))
-  end
+  Var(sym::Symbol) = new(sym, sym)
+  Var(sym::Symbol, uid::Symbol) = new(sym, uid)
 end
 
 doc"""
