@@ -1,11 +1,21 @@
 # ---------   Utility Functions ----------- #
-getvarid(s::Symbol) = string(":($s)")
+getvarid(s::Symbol) = s
+getvarid(s::Number) = s
 
-getvarid(e::Expr)   = string("$(getvarid(e.args[1])), $(e.args[2])")
+
+getvarid(e::Expr) = begin
+  if e.head == :ref
+    tmp = map(x->getvarid(x), e.args)
+    res = string(tmp[1]) * "[" *
+      foldl((i,j)->"$i,$j", string(tmp[2]), tmp[3:end]) * "]"
+  else
+    eval(e)
+  end
+end
 
 macro getvarid(e)
-  # usage: @getvarid x[2][1+5], will return a tuple like (:x, 2, 6)
-  return parse( getvarid(e) )
+  # usage: @getvarid x[1,2][1+5][45][3], will return :(x, [1,2], [6], [45], [3])
+  return getvarid(e)
 end
 
 invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
