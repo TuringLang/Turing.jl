@@ -19,7 +19,6 @@ macro VarName(ex::Union{Expr, Symbol})
       _2   = _2.args[1]
       isa(_2, Symbol) && (_1 = ":($_2)" * ", $_1 Symbol(\"$s\")"; break)
     end
-    println(_1)
     return parse(_1)
   else
     error("VarName: Mis-formed variable name $(e)!")
