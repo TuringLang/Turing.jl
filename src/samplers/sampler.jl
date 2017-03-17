@@ -26,7 +26,9 @@ end
 
 # Concrete algorithm implementations.
 include("support/resample.jl")
-include("support/transform.jl")
+@suppress_err begin
+  include("support/transform.jl")
+end
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")
@@ -48,7 +50,7 @@ predict(spl, var_name :: Symbol, value) =
 # Default functions
 function sample(model::Function, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(sampler)
+  Base.run(model, Dict(), sampler)
 end
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
@@ -56,10 +58,6 @@ function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   Base.run(model, data, sampler)
 end
 
-function sample(model::Function, alg::InferenceAlgorithm)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(model, Dict(), sampler)
-end
 
 assume(spl :: ParticleSampler, d :: Distribution, p, varInfo)  = rand( current_trace(), d )
 
