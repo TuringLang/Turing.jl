@@ -1,22 +1,22 @@
 using Distributions
 using ForwardDiff: Dual
 using Turing
-using Turing: Var, parse_indexing
+using Turing: parse_indexing
 using Base.Test
 
 # Symbol
-v_sym = Var(:x)
-@test v_sym.uid == :x
+v_sym = string(:x)
+@test v_sym == "x"
 
 # Array
 i = 1
-v_arr = Var(:x, Symbol(eval(parse_indexing(:(x[i])))))
-@test v_arr.uid == Symbol("x[1]")
+v_arr = eval(parse_indexing(:(x[i])))
+@test v_arr == "x[1]"
 
 # Matrix
 i, j = 1, 2
-v_mat = Var(:x, Symbol(eval(parse_indexing(:(x[i,j])))))
-@test v_mat.uid == Symbol("x[1,2]")
+v_mat = eval(parse_indexing(:(x[i,j])))
+@test v_mat== "x[1,2]"
 
 @model mat_name_test begin
   p = Array{Dual}((2, 2))
@@ -30,8 +30,8 @@ chain = sample(mat_name_test, HMC(1000, 0.75, 2))
 
 # Multi array
 i, j = 1, 2
-v_arrarr = Var(:x, Symbol(eval(parse_indexing(:(x[i][j])))))
-@test v_arrarr.uid == Symbol("x[1][2]")
+v_arrarr = eval(parse_indexing(:(x[i][j])))
+@test v_arrarr == "x[1][2]"
 
 @model marr_name_test begin
   p = Array{Array{Dual}}(2)
