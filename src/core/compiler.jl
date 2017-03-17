@@ -2,6 +2,8 @@
 # Helper function #
 ###################
 
+insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+
 function parse_indexing(expr)
   # Initialize an expression block to store the code for creating uid
   uid_ex = Expr(:block)
@@ -12,7 +14,7 @@ function parse_indexing(expr)
   # Parse the expression and creating the code for creating uid
   while length(to_eval) > 0
     evaling = shift!(to_eval)   # get the current expression to deal with
-    if isa(evaling, Expr)
+    if isa(evaling, Expr) && evaling.head == :ref
       # Add all the indexing arguments to the left
       unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
       # Add first argument depending on its type
@@ -64,8 +66,6 @@ function gen_assume_ex(left, right)
     uid_ex
   end
 end
-
-insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
 
 #################
 # Overload of ~ #
