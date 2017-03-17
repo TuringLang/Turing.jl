@@ -62,7 +62,7 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
         for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
-          val_vect[i] = Dual{prior_dim, Float64}(reals[i])
+          val_vect[i] = reals[i]
         end
       end
     end
