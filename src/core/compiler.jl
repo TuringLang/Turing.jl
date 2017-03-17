@@ -4,7 +4,7 @@
 
 insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
 
-function parse_indexing(expr)
+function varname(expr)
   # Initialize an expression block to store the code for creating uid
   uid_ex = Expr(:block)
   # Add the initialization statement for uid
@@ -36,47 +36,11 @@ function parse_indexing(expr)
   uid_ex
 end
 
-function gen_assume_ex(left, right)
-  # The if statement is to deterimnet how to pass the prior.
-  # It only supports pure symbol and Array(/Dict) now.
-  if isa(left, Symbol)
-    # Symbol
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),                 # dist
-        $(string(left)),          # uid
-        Symbol($(string(left))),  # sym
-        vi
-      )
-    end
-  else
-    # Indexing
-    uid_ex = parse_indexing(left)
-    push!(
-      uid_ex.args,
-      quote
-        $(left) = Turing.assume(
-          sampler,
-          $(right),             # dist
-          uid,                  # uid
-          Symbol(uid_list[1]),  # sym
-          vi
-        )
-      end
-    )
-    uid_ex
-  end
-end
-
 #################
 # Overload of ~ #
 #################
 
 macro ~(left, right)
-
-
-
   # Is multivariate a subtype of real, e.g. Vector, Matrix?
   if isa(left, Real)                  # value
     # Call observe
@@ -121,12 +85,40 @@ macro ~(left, right)
         println(msg)
         push!(TURING[:model_pvar_list], _left)
       end
-
+      # The if statement is to deterimnet how to pass the prior.
+      # It only supports pure symbol and Array(/Dict) now.
+      if isa(left, Symbol)
+        # Symbol
+        assume_ex = quote
+          $(left) = Turing.assume(
+            sampler,
+            $(right),                 # dist
+            $(string(left)),          # uid
+            Symbol($(string(left))),  # sym
+            vi
+          )
+        end
+      else
+        # Indexing
+        assume_ex = varname(left)
+        push!(
+          assume_ex.args,
+          quote
+            $(left) = Turing.assume(
+              sampler,
+              $(right),             # dist
+              uid,                  # uid
+              Symbol(uid_list[1]),  # sym
+              vi
+            )
+          end
+        )
+      end
       esc(
         quote
-           #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
-            # Call assume
-            $(gen_assume_ex(left, right))
+          #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
+          # Call assume
+          $(assume_ex)
           #else
           #  throw(ErrorException("Redefining of existing variable (" * $left_sym * ") is not allowed."))
           #end
