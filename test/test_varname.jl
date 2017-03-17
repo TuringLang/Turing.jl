@@ -14,9 +14,16 @@ v_arr = eval(parse_indexing(:(x[i])))
 @test v_arr == "x[1]"
 
 # Matrix
-i, j = 1, 2
+i, j, k = 1, 2, 3
 v_mat = eval(parse_indexing(:(x[i,j])))
 @test v_mat== "x[1,2]"
+
+v_mat = eval(parse_indexing(:(x[i,j,k])))
+@test v_mat== "x[1,2,3]"
+
+v_mat == eval(parse_indexing(:((x[1,2][1+5][45][3][i])))
+@test v_mat == "x[1,2][6][45][3][1]"
+
 
 @model mat_name_test begin
   p = Array{Dual}((2, 2))
