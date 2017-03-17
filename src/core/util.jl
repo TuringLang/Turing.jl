@@ -1,21 +1,24 @@
 # ---------   Utility Functions ----------- #
-getvarid(s::Symbol) = s
-getvarid(s::Number) = s
-
-
-getvarid(e::Expr) = begin
-  if e.head == :ref
-    tmp = map(x->getvarid(x), e.args)
-    res = string(tmp[1]) * "[" *
-      foldl((i,j)->"$i,$j", string(tmp[2]), tmp[3:end]) * "]"
+macro VarName(ex::Union{Expr, Symbol})
+  if isa(ex, Symbol)
+    _ = string(ex)
+    return :(Symbol($_))
+  elseif ex.head == :ref
+    _2 = ex
+    _1 = ""
+    while _2.head == :ref
+      if length(_2.args) > 2
+        _1 = string([_2.args[2:end]...]) * ", $_1"
+      else
+        _1 = string(_2.args[2]) * ", $_1"
+      end
+      _2   = _2.args[1]
+      isa(_2, Symbol) && (_1 = ":($_2)" * ", $_1"; break)
+    end
+    return parse(_1)
   else
-    eval(e)
+    error("VarName: Mis-formed variable name $(e)!")
   end
-end
-
-macro getvarid(e)
-  # usage: @getvarid x[1,2][1+5][45][3], will return :(x, [1,2], [6], [45], [3])
-  return getvarid(e)
 end
 
 invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
