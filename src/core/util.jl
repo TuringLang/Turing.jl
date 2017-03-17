@@ -12,7 +12,7 @@ macro VarName(ex::Union{Expr, Symbol})
     _1 = ""
     while _2.head == :ref
       if length(_2.args) > 2
-        _1 = foldl( (x,y)-> "$x, $y", map(string, _2.args[2:end])) * ", $_1"
+        _1 = "[" * foldl( (x,y)-> "$x, $y", map(string, _2.args[2:end])) * "], $_1"
       else
         _1 = string(_2.args[2]) * ", $_1"
       end
