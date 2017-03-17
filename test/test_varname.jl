@@ -21,7 +21,7 @@ v_mat = eval(parse_indexing(:(x[i,j])))
 v_mat = eval(parse_indexing(:(x[i,j,k])))
 @test v_mat== "x[1,2,3]"
 
-v_mat == eval(parse_indexing(:((x[1,2][1+5][45][3][i])))
+v_mat = eval(parse_indexing(:((x[1,2][1+5][45][3][i]))))
 @test v_mat == "x[1,2][6][45][3][1]"
 
 
