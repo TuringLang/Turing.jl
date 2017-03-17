@@ -14,7 +14,7 @@ macro VarName(ex::Union{Expr, Symbol})
       if length(_2.args) > 2
         _1 = "[" * foldl( (x,y)-> "$x, $y", map(string, _2.args[2:end])) * "], $_1"
       else
-        _1 = string(_2.args[2]) * ", $_1"
+        _1 = "[" * string(_2.args[2]) * "], $_1"
       end
       _2   = _2.args[1]
       isa(_2, Symbol) && (_1 = ":($_2)" * ", ($_1), Symbol(\"$s\")"; break)
