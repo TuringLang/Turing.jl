@@ -17,7 +17,7 @@ macro VarName(ex::Union{Expr, Symbol})
         _1 = string(_2.args[2]) * ", $_1"
       end
       _2   = _2.args[1]
-      isa(_2, Symbol) && (_1 = ":($_2)" * ", $_1 Symbol(\"$s\")"; break)
+      isa(_2, Symbol) && (_1 = ":($_2)" * ", ($_1), Symbol(\"$s\")"; break)
     end
     return esc(parse(_1))
   else
