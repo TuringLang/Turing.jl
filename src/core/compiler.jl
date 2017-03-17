@@ -35,25 +35,29 @@ end
 function gen_assume_ex(left, right)
   # The if statement is to deterimnet how to pass the prior.
   # It only supports pure symbol and Array(/Dict) now.
-  if isa(left, Symbol)  # symbol
+  if isa(left, Symbol)
+    # Symbol
     quote
       $(left) = Turing.assume(
         sampler,
-        $(right),   # distribution
-        Var(Symbol($(string(left)))),
-        varInfo
+        $(right),                 # dist
+        $(string(left)),          # uid
+        Symbol($(string(left))),  # sym
+        vi
       )
     end
-  else                  # indexing
+  else
+    # Indexing
     uid_ex = parse_indexing(left)
     push!(
       uid_ex.args,
       quote
         $(left) = Turing.assume(
           sampler,
-          $(right),   # distribution
-          Var(Symbol(uid_list[1]),Symbol(uid)),
-          varInfo
+          $(right),             # dist
+          uid,                  # uid
+          Symbol(uid_list[1]),  # sym
+          vi
         )
       end
     )
@@ -80,7 +84,7 @@ macro ~(left, right)
           sampler,
           $(right),   # Distribution
           $(left),    # Data point
-          varInfo
+          vi
         )
       end
     )
@@ -104,7 +108,7 @@ macro ~(left, right)
             sampler,
             $(right),   # Distribution
             $(left),    # Data point
-            varInfo
+            vi
           )
         end
       )
@@ -237,9 +241,9 @@ macro model(name, fbody)
   TURING[:model_pvar_list] = Set{Symbol}() # Parameter
   fname.args = fname.args[1:1]  # remove arguments
 
-  # Set parameters as model(data, varInfo, sampler)
+  # Set parameters as model(data, vi, sampler)
   push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
-  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
+  push!(fname.args, Expr(Symbol("kw"), :vi, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
   # Assign variables in data locally
@@ -258,12 +262,12 @@ macro model(name, fbody)
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
     # If there is no variables specified, predict all
-    predict_ex = parse("@predictall varInfo")
+    predict_ex = parse("@predictall vi")
   end
   fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # only generate predict marcos if there is a sampler exisiting, i.e. predict nothing if the model is run on its own
 
-  # Trick for HMC sampler as it needs the return of varInfo
-  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
+  # Trick for HMC sampler as it needs the return of vi
+  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = vi end"))
 
   # Generate model declaration
   ex = Expr(:function, fname, fbody)
