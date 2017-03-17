@@ -12,9 +12,10 @@ function parse_indexing(expr)
   # Initialize a local container for parsing and add the expr to it
   to_eval = []; unshift!(to_eval, expr)
   # Parse the expression and creating the code for creating uid
+  find_head = false
   while length(to_eval) > 0
     evaling = shift!(to_eval)   # get the current expression to deal with
-    if isa(evaling, Expr) && evaling.head == :ref
+    if isa(evaling, Expr) && evaling.head == :ref && ~find_head
       # Add all the indexing arguments to the left
       unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
       # Add first argument depending on its type
@@ -24,6 +25,7 @@ function parse_indexing(expr)
         unshift!(to_eval, evaling.args[1])
       else
         push!(uid_ex.args, quote unshift!(uid_list, $(string(evaling.args[1]))) end)
+        find_head = true
       end
     else
       # Evaluting the concrete value of the indexing variable
