@@ -13,17 +13,17 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function gradient(varInfo::VarInfo, model::Function, data=Dict(), spl=nothing)
+function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
-  val∇E = Dict{Var, Vector{Float64}}()
+  val∇E = Dict{String, Vector{Float64}}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(4, "making chunks...")
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
-  for k in keys(varInfo)
-    if spl == nothing || isempty(spl.alg.space) || k.sym in spl.alg.space
-      l = length(varInfo[k])
+  for k in keys(vi)
+    if spl == nothing || isempty(spl.alg.space) || vi.syms[k] in spl.alg.space
+      l = length(vi[k])
       if prior_dim + l > CHUNKSIZE
         # Store the old chunk
         push!(prior_key_chunks, (key_chunk, prior_dim))
@@ -49,10 +49,10 @@ function gradient(varInfo::VarInfo, model::Function, data=Dict(), spl=nothing)
     dprintln(4, "set dual...")
     dps = eye(prior_dim)      # dualpart values to set
     prior_count = 1
-    for k in keys(varInfo)
-      l = length(varInfo[k])
-      reals = realpart(varInfo[k])
-      val_vect = varInfo[k]   # get a reference for the value vector
+    for k in keys(vi)
+      l = length(vi[k])
+      reals = realpart(vi[k])
+      val_vect = vi[k]        # get a reference for the value vector
       if k in key_chunk       # to graidnet variables
         dprintln(5, "making dual...")
         for i = 1:l
@@ -68,14 +68,14 @@ function gradient(varInfo::VarInfo, model::Function, data=Dict(), spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
-    varInfo = model(data, varInfo, spl)
+    vi = model(data, vi, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
     for k in key_chunk
       dprintln(5, "for each prior...")
-      l = length(varInfo[k])
-      duals = dualpart(-varInfo.logjoint)
+      l = length(vi[k])
+      duals = dualpart(-vi.logjoint)
       # To store the gradient vector
       g = zeros(l)
       for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed to support Matrix
@@ -86,7 +86,7 @@ function gradient(varInfo::VarInfo, model::Function, data=Dict(), spl=nothing)
       val∇E[k] = g
     end
     # Reset logjoint
-    varInfo.logjoint = Dual(0)
+    vi.logjoint = Dual(0)
   end
   # Return
   return val∇E

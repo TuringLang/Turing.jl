@@ -1,41 +1,39 @@
-function update(varInfo, samples, space)
-  vars = collect(keys(varInfo))
+function update(vi, samples, space)
+  uids = collect(keys(vi))
   syms = keys(samples.value)
   for sym in syms
     if sym in space
       if isa(samples.value[sym], Real)
-        var = filter(v -> v.uid == Symbol("$sym"), vars)[1]
-        dist = varInfo.dists[var]
+        uid = filter(uid -> uid == "$sym", uids)[1]
+        dist = vi.dists[uid]
         s = samples.value[sym]
-        v = link(dist, s)
-        val = vectorize(dist, v)
-        varInfo.values[var] = val
+        val = vectorize(dist, link(dist, s))
+        vi.vals[uid] = val
       else isa(samples.value[sym], Array)
         s = samples.value[sym]
         for i = 1:length(s)
-          var = filter(v -> v.uid == Symbol("$sym[$i]"), vars)[1]
-          dist = varInfo.dists[var]
-          v = link(dist, s[i])
-          val = vectorize(dist, v)
-          varInfo.values[var] = val
+          uid = filter(uid -> uid == "$sym[$i]", uids)[1]
+          dist = vi.dists[uid]
+          val = vectorize(dist, link(dist, s[i]))
+          vi.vals[uid] = val
         end
       end
     end
   end
-  varInfo
+  vi
 end
 
-function varInfo2samples(varInfo)
+function varInfo2samples(vi)
   samples = Dict{Symbol, Any}()
-  for var in keys(varInfo)
-    dist = varInfo.dists[var]
-    val = varInfo[var]
+  for uid in keys(vi)
+    dist = vi.dists[uid]
+    val = vi[uid]
     val = reconstruct(dist, val)
     val = invlink(dist, val)
-    if ~(var.sym in keys(samples))
-      samples[var.sym] = Any[realpart(val)]
+    if ~(vi.syms[uid] in keys(samples))
+      samples[vi.syms[uid]] = Any[realpart(val)]
     else
-      push!(samples[var.sym], realpart(val))
+      push!(samples[vi.syms[uid]], realpart(val))
     end
   end
   # Remove un-necessary []'s

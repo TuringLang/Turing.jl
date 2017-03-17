@@ -21,17 +21,17 @@ sample(example, IS(1000))
 ```
 """
 immutable IS <: InferenceAlgorithm
-  n_samples :: Int
+  n_samples   ::  Int
 end
 
 type ImportanceSampler{IS} <: Sampler{IS}
-  alg :: IS
-  model :: Function
-  samples :: Array{Dict{Symbol,Any}}
-  logweights :: Array{Float64}
-  logevidence :: Float64
-  predicts :: Dict{Symbol,Any}
-  function ImportanceSampler(alg :: IS, model :: Function)
+  alg         ::  IS
+  model       ::  Function
+  samples     ::  Array{Dict{Symbol,Any}}
+  logweights  ::  Array{Float64}
+  logevidence ::  Float64
+  predicts    ::  Dict{Symbol,Any}
+  function ImportanceSampler(alg::IS, model::Function)
     samples = Array{Dict{Symbol,Any}}(alg.n_samples)
     for i = 1:alg.n_samples
       samples[i] = Dict{Symbol,Any}()
@@ -43,7 +43,7 @@ type ImportanceSampler{IS} <: Sampler{IS}
   end
 end
 
-function Base.run(spl :: Sampler{IS})
+function Base.run(spl::Sampler{IS})
   n = spl.alg.n_samples
   for i = 1:n
     consume(Task(spl.model))
@@ -60,16 +60,16 @@ function Base.run(spl :: Sampler{IS})
   return results
 end
 
-function assume(spl :: ImportanceSampler{IS}, d :: Distribution, p, varInfo::VarInfo)
+function assume(spl::ImportanceSampler{IS}, d::Distribution, uid::String, sym::Symbol, varInfo::VarInfo)
   return rand(d)
 end
 
-function observe(spl :: ImportanceSampler{IS}, d :: Distribution, value, varInfo::VarInfo)
+function observe(spl::ImportanceSampler{IS}, d::Distribution, value, varInfo::VarInfo)
   spl.logevidence += logpdf(d, value)
 end
 
-function predict(spl :: ImportanceSampler{IS}, name :: Symbol, value) spl.predicts[name] = value
+function predict(spl::ImportanceSampler{IS}, name::Symbol, value) spl.predicts[name] = value
 end
 
-sample(model :: Function, alg :: IS) =
+sample(model::Function, alg::IS) =
   (global sampler = ImportanceSampler{IS}(alg, model); run(sampler))
