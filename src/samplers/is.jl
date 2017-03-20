@@ -71,5 +71,5 @@ end
 function predict(spl::ImportanceSampler{IS}, name::Symbol, value) spl.predicts[name] = value
 end
 
-sample(model::Function, alg::IS) =
+sample(model::Function, data::Dict, alg::IS) =
   (global sampler = ImportanceSampler{IS}(alg, model); run(sampler))

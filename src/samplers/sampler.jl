@@ -47,11 +47,7 @@ observe(spl, weight :: Float64) =
 predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
-# Default functions
-function sample(model::Function, alg::InferenceAlgorithm)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(model, Dict(), sampler)
-end
+predict(spl::Void, var_name :: Symbol, value) = nothing
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);
@@ -90,10 +86,4 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
     task.storage[:turing_predicts] = Dict{Symbol,Any}()
   end
   task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
-end
-
-function predict(spl::Sampler, vi::VarInfo, task)
-  for sym in syms(vi)
-    predict(spl, sym, get(task, sym))
-  end
 end

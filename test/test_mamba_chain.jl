@@ -6,7 +6,7 @@ using Base.Test
   x = rand(2,2)
   y = Array{Array}(2,2)
   for i in eachindex(y)
-    y[i] = rand(2,2)
+    y[i] ~ MvNormal(2,2)
   end
   return(m, x, y)
 end

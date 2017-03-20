@@ -14,13 +14,13 @@ end
 smc = SMC(1000)
 pg = PG(100,10)
 
-res = sample(testnoparam, smc)
+res = @sample(testnoparam(), smc)
 
 @test reduce(&, res[:x]) == 1  # check that x is always 1
 @test res[:logevidence] ≈ 2 * log(0.5)
 
 
-res = sample(testnoparam, pg)
+res = @sample(testnoparam(), pg)
 
 @test reduce(&, res[:x]) == 1  # check that x is always 1
 # PG does not provide logevidence estimate
@@ -28,7 +28,7 @@ res = sample(testnoparam, pg)
 if isdefined(:SMC2)
 
   s2 = SMC2(10,100)
-  res = sample(test, s2)
+  res = @sample(test(), s2)
 
   @test reduce(&, res[:x]) == 1  # check that x is always 1
   @test res[:logevidence] ≈ 2 * log(0.5)
