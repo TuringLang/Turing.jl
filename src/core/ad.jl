@@ -47,7 +47,7 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
     dprintln(4, "set dual...")
-    dps = eye(prior_dim)      # dualpart values to set
+    dps = zeros(prior_dim)
     prior_count = 1
     for k in keys(vi)
       l = length(vi[k])
@@ -56,13 +56,15 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
       if k in key_chunk       # to graidnet variables
         dprintln(5, "making dual...")
         for i = 1:l
-          val_vect[i] = Dual(reals[i], dps[1:end, prior_count]...)
-          prior_count += 1    # count
+          dps[prior_count] = 1  # set dual part
+          val_vect[i] = Dual(reals[i], dps...)
+          dps[prior_count] = 0  # reset dual part
+          prior_count += 1      # count
         end
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
         for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
-          val_vect[i] = Dual{prior_dim, Float64}(reals[i])
+          val_vect[i] = reals[i]
         end
       end
     end
