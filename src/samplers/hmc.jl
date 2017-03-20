@@ -104,14 +104,14 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   # HMC steps
   for i = 1:n
     dprintln(2, "recording old θ...")
-    old_values = deepcopy(varInfo.values)
+    old_vals = deepcopy(varInfo.vals)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, data, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
       spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
-      varInfo.values = old_values
+      varInfo.vals = old_vals
       spl.samples[i] = spl.samples[i - 1]
     end
   end
@@ -121,48 +121,50 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, var::Var, varInfo::VarInfo)
+function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(varInfo.values, var)   # first time -> generate
+  if ~haskey(vi.vals, uid)   # first time -> generate
+    # Record symbol
+    vi.syms[uid] = sym
+
     # Sample a new prior
     dprintln(2, "sampling prior...")
     r = rand(dist)
 
     # Transform
-    v = link(dist, r)        # X -> R
-    val = vectorize(dist, v) # vectorize
+    val = vectorize(dist, link(dist, r)) # X -> R and vectorize
 
-    # Store the generated var if it's in space
-    if spl == nothing || isempty(spl.alg.space) || var.sym in spl.alg.space
-      varInfo.values[var] = val
-      varInfo.dists[var] = dist
+    # Store the generated uid if it's in space
+    if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
+      vi.vals[uid] = val
+      vi.dists[uid] = dist
     end
   else                              # not first time -> replay
     # Replay varibale
-    dprintln(2, "fetching values...")
-    val = varInfo[var]
+    dprintln(2, "fetching vals...")
+    val = vi[uid]
   end
 
   # Step 2 - Reconstruct variable
-  dprintln(2, "reconstructing values...")
+  dprintln(2, "reconstructing vals...")
   val = reconstruct(dist, val)  # reconstruct
   val = invlink(dist, val)      # R -> X
 
   # Computing logjoint
   dprintln(2, "computing logjoint...")
-  varInfo.logjoint += logpdf(dist, val, true)
+  vi.logjoint += logpdf(dist, val, true)
   dprintln(2, "compute logjoint done")
   dprintln(2, "assume done")
   return val
 end
 
-function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, varInfo::VarInfo)
+function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
-    varInfo.logjoint += logpdf(d, Dual(value))
+    vi.logjoint += logpdf(d, Dual(value))
   else
-    varInfo.logjoint += logpdf(d, map(x -> Dual(x), value))
+    vi.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end

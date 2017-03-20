@@ -30,8 +30,7 @@ testcases = [
           "copy_particle_container",
 #       graidnetinfo.jl
           "replay",
-          "gradientinfo",
-          "flaten_naming",
+          "test_varname",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl

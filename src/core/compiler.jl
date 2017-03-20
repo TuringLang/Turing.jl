@@ -2,68 +2,38 @@
 # Helper function #
 ###################
 
-function gen_assume_ex(left, right)
-  # The if statement is to deterimnet how to pass the prior.
-  # It only supports pure symbol and Array(/Dict) now.
-  if isa(left, Symbol)
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # distribution
-        Var(        # pure Symbol
-          Symbol($(string(left))),
-          Symbol($(string(left)))
-        ),
-        varInfo
-      )
-    end
-  elseif length(left.args) == 2 && isa(left.args[1], Symbol)
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # distribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1]))),  # pure symbol, e.g. :p for p[1]
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2])                   # index value
-        ),
-        varInfo
-      )
-    end
-  elseif length(left.args) == 2 && isa(left.args[1], Expr)
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # dDistribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1].args[1]))),  # pure symbol
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[1].args[2]))),  # index symbol
-          $(left.args[1].args[2]),                  # index value
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2])                   # index value
-        ),
-        varInfo
-      )
-    end
-  elseif length(left.args) == 3
-    quote
-      $(left) = Turing.assume(
-        sampler,
-        $(right),   # dDistribution
-        Var(        # array assignment
-          Symbol($(string(left.args[1]))),  # pure symbol
-          parse($(string(left))),           # indexing expr
-          Symbol($(string(left.args[2]))),  # index symbol
-          $(left.args[2]),                  # index value
-          Symbol($(string(left.args[3]))),  # index symbol
-          $(left.args[3])                   # index value
-        ),
-        varInfo
-      )
+insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+
+function varname(expr)
+  # Initialize an expression block to store the code for creating uid
+  uid_ex = Expr(:block)
+  # Add the initialization statement for uid
+  push!(uid_ex.args, quote uid_list = [] end)
+  # Initialize a local container for parsing and add the expr to it
+  to_eval = []; unshift!(to_eval, expr)
+  # Parse the expression and creating the code for creating uid
+  find_head = false
+  while length(to_eval) > 0
+    evaling = shift!(to_eval)   # get the current expression to deal with
+    if isa(evaling, Expr) && evaling.head == :ref && ~find_head
+      # Add all the indexing arguments to the left
+      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
+      # Add first argument depending on its type
+      # If it is an expression, it means it's a nested array calling
+      # Otherwise it's the symbol for the calling
+      if isa(evaling.args[1], Expr)
+        unshift!(to_eval, evaling.args[1])
+      else
+        push!(uid_ex.args, quote unshift!(uid_list, $(string(evaling.args[1]))) end)
+        find_head = true
+      end
+    else
+      # Evaluting the concrete value of the indexing variable
+      push!(uid_ex.args, quote push!(uid_list, string($evaling)) end)
     end
   end
+  push!(uid_ex.args, quote uid = reduce(*, uid_list) end)
+  uid_ex
 end
 
 #################
@@ -71,7 +41,6 @@ end
 #################
 
 macro ~(left, right)
-
   # Is multivariate a subtype of real, e.g. Vector, Matrix?
   if isa(left, Real)                  # value
     # Call observe
@@ -81,7 +50,7 @@ macro ~(left, right)
           sampler,
           $(right),   # Distribution
           $(left),    # Data point
-          varInfo
+          vi
         )
       end
     )
@@ -105,7 +74,7 @@ macro ~(left, right)
             sampler,
             $(right),   # Distribution
             $(left),    # Data point
-            varInfo
+            vi
           )
         end
       )
@@ -116,12 +85,40 @@ macro ~(left, right)
         println(msg)
         push!(TURING[:model_pvar_list], _left)
       end
-
+      # The if statement is to deterimnet how to pass the prior.
+      # It only supports pure symbol and Array(/Dict) now.
+      if isa(left, Symbol)
+        # Symbol
+        assume_ex = quote
+          $(left) = Turing.assume(
+            sampler,
+            $(right),                 # dist
+            $(string(left)),          # uid
+            Symbol($(string(left))),  # sym
+            vi
+          )
+        end
+      else
+        # Indexing
+        assume_ex = varname(left)
+        push!(
+          assume_ex.args,
+          quote
+            $(left) = Turing.assume(
+              sampler,
+              $(right),             # dist
+              uid,                  # uid
+              Symbol(uid_list[1]),  # sym
+              vi
+            )
+          end
+        )
+      end
       esc(
         quote
-           #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
-            # Call assume
-            $(gen_assume_ex(left, right))
+          #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
+          # Call assume
+          $(assume_ex)
           #else
           #  throw(ErrorException("Redefining of existing variable (" * $left_sym * ") is not allowed."))
           #end
@@ -238,9 +235,9 @@ macro model(name, fbody)
   TURING[:model_pvar_list] = Set{Symbol}() # Parameter
   fname.args = fname.args[1:1]  # remove arguments
 
-  # Set parameters as model(data, varInfo, sampler)
+  # Set parameters as model(data, vi, sampler)
   push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
-  push!(fname.args, Expr(Symbol("kw"), :varInfo, :(VarInfo())))
+  push!(fname.args, Expr(Symbol("kw"), :vi, :(VarInfo())))
   push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
 
   # Assign variables in data locally
@@ -259,12 +256,12 @@ macro model(name, fbody)
     predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
   else
     # If there is no variables specified, predict all
-    predict_ex = parse("@predictall varInfo")
+    predict_ex = parse("@predictall vi")
   end
   fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # only generate predict marcos if there is a sampler exisiting, i.e. predict nothing if the model is run on its own
 
-  # Trick for HMC sampler as it needs the return of varInfo
-  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = varInfo end"))
+  # Trick for HMC sampler as it needs the return of vi
+  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = vi end"))
 
   # Generate model declaration
   ex = Expr(:function, fname, fbody)

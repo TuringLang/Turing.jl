@@ -53,10 +53,10 @@ function Base.run(model, data, spl::Sampler{Gibbs})
       if isa(local_spl, Sampler{HMC})
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
-          old_values = deepcopy(varInfo.values)
+          old_vals = deepcopy(varInfo.vals)
           is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
           if ~is_accept
-            varInfo.values = old_values
+            varInfo.vals = old_vals
           end
         end
       elseif isa(local_spl, Sampler{PG})
