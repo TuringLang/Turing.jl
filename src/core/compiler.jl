@@ -87,14 +87,16 @@ macro ~(left, right)
       end
       # The if statement is to deterimnet how to pass the prior.
       # It only supports pure symbol and Array(/Dict) now.
+      local sym
       if isa(left, Symbol)
         # Symbol
         assume_ex = quote
+          sym = $(string(left))
           $(left) = Turing.assume(
             sampler,
-            $(right),                 # dist
-            $(string(left)),          # uid
-            Symbol($(string(left))),  # sym
+            $(right),         # dist
+            $(string(left)),  # uid
+            Symbol(sym),      # sym
             vi
           )
         end
@@ -104,26 +106,18 @@ macro ~(left, right)
         push!(
           assume_ex.args,
           quote
+            sym = uid_list[1]
             $(left) = Turing.assume(
               sampler,
-              $(right),             # dist
-              uid,                  # uid
-              Symbol(uid_list[1]),  # sym
+              $(right),     # dist
+              uid,          # uid
+              Symbol(sym),  # sym
               vi
             )
           end
         )
       end
-      esc(
-        quote
-          #if isa(Symbol($left_sym), TArray) || ~isdefined(Symbol($left_sym))
-          # Call assume
-          $(assume_ex)
-          #else
-          #  throw(ErrorException("Redefining of existing variable (" * $left_sym * ") is not allowed."))
-          #end
-        end
-      )
+      esc(assume_ex)
     end
   end
 end
