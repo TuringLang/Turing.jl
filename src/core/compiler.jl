@@ -6,6 +6,7 @@ insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-
 
 function varname(expr)
   # Initialize an expression block to store the code for creating uid
+  local sym
   uid_ex = Expr(:block)
   # Add the initialization statement for uid
   push!(uid_ex.args, quote uid_list = [] end)
@@ -26,6 +27,7 @@ function varname(expr)
       else
         push!(uid_ex.args, quote unshift!(uid_list, $(string(evaling.args[1]))) end)
         find_head = true
+        sym = evaling.args[1]
       end
     else
       # Evaluting the concrete value of the indexing variable
@@ -33,7 +35,7 @@ function varname(expr)
     end
   end
   push!(uid_ex.args, quote uid = reduce(*, uid_list) end)
-  uid_ex
+  return uid_ex, sym
 end
 
 #################
@@ -87,7 +89,6 @@ macro ~(left, right)
       end
       # The if statement is to deterimnet how to pass the prior.
       # It only supports pure symbol and Array(/Dict) now.
-      local sym
       if isa(left, Symbol)
         # Symbol
         assume_ex = quote
@@ -99,10 +100,12 @@ macro ~(left, right)
             Symbol(sym),      # sym
             vi
           )
+          ct = current_task();
+          Turing.predict(sampler, Symbol(sym), get(ct, $(left)))
         end
       else
         # Indexing
-        assume_ex = varname(left)
+        assume_ex, sym = varname(left)
         push!(
           assume_ex.args,
           quote
@@ -114,75 +117,14 @@ macro ~(left, right)
               Symbol(sym),  # sym
               vi
             )
+            ct = current_task();
+            Turing.predict(sampler, Symbol(sym), get(ct, $(sym)))
           end
         )
       end
       esc(assume_ex)
     end
   end
-end
-
-####################
-# Modelling Syntax #
-####################
-
-doc"""
-    predict(ex...)
-
-Operation for defining the variable(s) to return.
-
-Usage:
-
-```julia
-@predict x y z
-```
-
-Here `x`, `y`, `z` are symbols.
-"""
-macro predict(ex...)
-  dprintln(1, "marco predicting...")
-  ex_funcs = Expr(:block)
-  for i = 1:length(ex)
-    @assert typeof(ex[i]) == Symbol
-    sym = string(ex[i])
-    push!(
-      ex_funcs.args,
-      :(ct = current_task();
-        Turing.predict(
-          sampler,
-          Symbol($sym), get(ct, $(ex[i]))
-        )
-      )
-    )
-  end
-  esc(ex_funcs)
-end
-
-doc"""
-    predictall(ex...)
-
-Operation for return all variables depending on a `VarInfo` instance.
-Usage:
-
-```julia
-@predictall vi
-```
-
-Here `vi` are is of type `VarInfo`.
-"""
-macro predictall(ex)
-  ex_funcs = Expr(:block)
-  push!(
-    ex_funcs.args,
-    :(ct = current_task();
-      Turing.predict(
-        sampler,
-        get(ct, $(ex)),
-        ct
-      )
-    )
-  )
-  esc(ex_funcs)
 end
 
 #################
@@ -243,19 +185,14 @@ macro model(name, fbody)
   end
   unshift!(fbody.args, local_assign_ex)
 
-  # Generate @predict
+  # Always return VarInfo
   return_ex = fbody.args[end]   # get last statement of defined model
+  vi_ex = :(if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = vi end)
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
-    # Convert return(a, b, c) to @predict a b c
-    predict_ex = parse("@predict " * replace(replace(string(return_ex), r"\(|\)|return", ""), ",", " "))
+    fbody.args[end] = vi_ex
   else
-    # If there is no variables specified, predict all
-    predict_ex = parse("@predictall vi")
+    push!(fbody.args, vi_ex)
   end
-  fbody.args[end] = Expr(Symbol("if"), parse("sampler != nothing"), predict_ex) # only generate predict marcos if there is a sampler exisiting, i.e. predict nothing if the model is run on its own
-
-  # Trick for HMC sampler as it needs the return of vi
-  push!(fbody.args, parse("if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = vi end"))
 
   # Generate model declaration
   ex = Expr(:function, fname, fbody)
