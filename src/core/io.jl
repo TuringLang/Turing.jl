@@ -72,7 +72,15 @@ Chain() = Chain(0, Vector{Sample}())
 
 
 typealias MambaChains Chains
-extract_sample!(names, value, k :: String, v) = begin
+flatten(s::Sample) = begin
+  vals  = Array{Float64}(0)
+  names = Array{AbstractString}(0)
+  for (k, v) in s.value
+    flatten(names, vals, string(k), v)
+  end
+  return vals, names
+end
+flatten(names, value :: Array{Float64}, k :: String, v) = begin
     if isa(v, Number)
       name = k
       push!(value, v)
@@ -89,7 +97,7 @@ extract_sample!(names, value, k :: String, v) = begin
           push!(names, name)
         elseif isa(v[i], Array)
           name = k * string(ind2sub(size(v), i))
-          extract_sample!(names, value, name, v[i])
+          flatten(names, value, name, v[i])
         else
           error("Unknown var type: $(typeof(v[i]))")
         end
@@ -100,20 +108,18 @@ extract_sample!(names, value, k :: String, v) = begin
 end
 
 MambaChains(chn::Chain) = begin
-  # Get num of dimensions
-  value_all = Array{Array}(0)
-  names = Array{AbstractString}(0)
-  for n = eachindex(chn.value)
-    value = Array{Float64}(0)
-    names = Array{AbstractString}(0)
-    for (k, v) in chn.value[n].value
-      extract_sample!(names, value, string(k), v)
-    end
-    push!(value_all, value)
+  local names = Array{Array{AbstractString}}(0)
+  local vals  = Array{Array}(0)
+  for s in chn.value
+    v, n = flatten(s)
+    push!(vals, v)
+    push!(names, n)
   end
-  value_all2 = [v[i] for v in value_all, i=1:length(names)]
-  value_all2 = reshape(value_all2, length(value_all), length(names), 1)
-  Chains(value_all2, names = names)
+
+  # Assuming that names[i] == names[j] for all (i,j)
+  vals2 = [v[i] for v in vals, i=1:length(names[1])]
+  vals2 = reshape(vals2, length(vals), length(names[1]), 1)
+  Mamba.Chains(vals2, names = names[1])
 end
 
 
