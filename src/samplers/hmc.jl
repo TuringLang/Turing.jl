@@ -123,10 +123,7 @@ end
 function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(vi.vals, uid)   # first time -> generate
-    # Record symbol
-    vi.syms[uid] = sym
-
+  if ~haskey(vi, uid)   # first time -> generate
     # Sample a new prior
     dprintln(2, "sampling prior...")
     r = rand(dist)
@@ -136,8 +133,9 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::Stri
 
     # Store the generated uid if it's in space
     if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-      vi.vals[uid] = val
-      vi.dists[uid] = dist
+      setsym!(vi, sym, uid)   # record symbol
+      vi[uid] = val
+      setdist!(vi, dist, uid)
     end
   else                              # not first time -> replay
     # Replay varibale
