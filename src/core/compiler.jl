@@ -187,7 +187,7 @@ macro model(name, fbody)
 
   # Always return VarInfo
   return_ex = fbody.args[end]   # get last statement of defined model
-  vi_ex = :(if ~isa(sampler, ImportanceSampler) current_task().storage[:turing_varinfo] = vi end)
+  vi_ex = :(if ~isa(sampler, ImportanceSampler) return vi end)
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
     fbody.args[end] = vi_ex
   else
