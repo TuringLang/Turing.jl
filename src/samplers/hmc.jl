@@ -133,9 +133,7 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::Stri
 
     # Store the generated uid if it's in space
     if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-      setsym!(vi, sym, uid)   # record symbol
-      vi[uid] = val
-      setdist!(vi, dist, uid)
+      addvi!(vi, uid, val, sym, dist)
     end
   else                              # not first time -> replay
     # Replay varibale

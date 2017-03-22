@@ -59,9 +59,11 @@ assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    setsym!(vi, sym, uid)  # record symbol
-    vi[uid] = nothing
-    setdist!(vi, dist, uid)
+    if ~haskey(vi, uid)
+      addvi!(vi, uid, nothing, sym, dist)
+    else
+      setvi!(vi, uid, nothing, sym, dist)
+    end
     r = rand(current_trace(), dist)     # gen random
   else  # if it isn't in space
     if haskey(vi, uid)

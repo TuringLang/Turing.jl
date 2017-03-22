@@ -15,43 +15,32 @@ type VarInfo
   )
 end
 
-function mapuid(vi::VarInfo, uid::String)
-  if haskey(vi.idcs, uid)
-    vi.idcs[uid]
-  else
-    vi.idcs[uid] = length(vi.idcs) + 1
-  end
-end
+getidx(vi::VarInfo, uid::String) = vi.idcs[uid]
 
-getsym(vi::VarInfo, uid::String) = vi.syms[mapuid(vi, uid)]
-function setsym!(vi::VarInfo, sym, uid::String)
-  idx = mapuid(vi, uid)
-  if length(vi.syms) < idx
-    push!(vi.syms, sym)
-  else
-    vi.syms[idx] = sym
-  end
-end
+getval(vi::VarInfo, uid::String) = vi.vals[getidx(vi, uid)]
+setval!(vi::VarInfo, val, uid::String) = vi.vals[getidx(vi, uid)] = val
 
-getdist(vi::VarInfo, uid::String) = vi.dists[mapuid(vi, uid)]
-function setdist!(vi::VarInfo, dist, uid::String)
-  idx = mapuid(vi, uid)
-  if length(vi.dists) < idx
-    push!(vi.dists, dist)
-  else
-    vi.dists[idx] = dist
-  end
-end
+getsym(vi::VarInfo, uid::String) = vi.syms[getidx(vi, uid)]
+setsym!(vi::VarInfo, sym, uid::String) = vi.syms[getidx(vi, uid)] = sym
+
+getdist(vi::VarInfo, uid::String) = vi.dists[getidx(vi, uid)]
+setdist!(vi::VarInfo, dist, uid::String) = vi.dists[getidx(vi, uid)] = dist
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, uid::String) = vi.vals[mapuid(vi, uid)]
-function Base.setindex!(vi::VarInfo, val, uid::String)
-  idx = mapuid(vi, uid)
-  if length(vi.vals) < idx
-    push!(vi.vals, val)
-  else
-    vi.vals[idx] = val
-  end
+Base.getindex(vi::VarInfo, uid::String) = getval(vi, uid)
+Base.setindex!(vi::VarInfo, val, uid::String) = setval!(vi, val, uid)
+
+addvi!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
+  vi.idcs[uid] = length(vi.idcs) + 1
+  push!(vi.vals, val)
+  push!(vi.syms, sym)
+  push!(vi.dists, dist)
+end
+
+setvi!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
+  setval!(vi, val, uid)
+  setsym!(vi, sym, uid)
+  setdist!(vi, dist, uid)
 end
 
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
