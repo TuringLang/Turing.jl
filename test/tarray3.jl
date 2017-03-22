@@ -1,4 +1,4 @@
-using Turing: TArray, localcopy, tzeros
+using Turing: TArray, get, tzeros
 using Base.Test
 
 ta1 = TArray{Int}(4);
@@ -13,7 +13,7 @@ push!(ta1_2, 2);
 
 ta2 = TArray{Int}(4, 4);
 ta3 = TArray{Int, 4}(4, 3, 2, 1);
-ta4 = localcopy(ta3);
+ta4 = get(ta3);
 
 @test ta3[3] == ta4[3]
 

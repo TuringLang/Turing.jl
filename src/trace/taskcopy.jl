@@ -6,16 +6,14 @@ if !(libpath in Base.DL_LOAD_PATH)
 end
 # println(libpath)
 
-function sweepandmark(t::Task)
-  s :: ObjectIdDict = t.storage
-  for k in keys(s)
-    # All copy-on-write family data structures stores data in task_local_storage in
-    # the form of (taskid::Task, data::Any). Setting taskid to nothing will triger
-    #  copy-on-write for the parent task (which is copied).
-    if isa(s[k], Tuple{Union{Void,Task}, Any})
-      _, d = s[k]
-      s[k] = [Void, d]
-    end
+# Utility function for self-copying mechanism
+n_copies() = n_copies(current_task())
+n_copies(t::Task) = begin
+  isa(t.storage, Void) && (t.storage = ObjectIdDict())
+  if haskey(t.storage, :n_copies)
+    t.storage[:n_copies]
+  else
+    t.storage[:n_copies] = 0
   end
 end
 
@@ -24,8 +22,9 @@ function Base.copy(t::Task)
     error("Only runnable or finished tasks can be copied.")
   newt = ccall((:jl_clone_task, "libtask"), Any, (Any,), t)::Task
   if t.storage != nothing
+    n = n_copies(t)
+    t.storage[:n_copies]  = 1 + n
     newt.storage = copy(t.storage)
-    sweepandmark(t)
   else
     newt.storage = nothing
   end
