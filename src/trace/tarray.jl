@@ -35,17 +35,10 @@ end
 
 function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
-  t = current_task()
+  n = n_copies()
   d = Array{T}(dim)
-  task_local_storage(res.ref, (t,d))
+  task_local_storage(res.ref, (n,d))
   res
-end
-
-# produce a local copy of the underlying array
-function localcopy(S::TArray)
-  t,d = task_local_storage(S.ref)
-  c = deepcopy(d)
-  return c
 end
 
 # pass through getindex and setindex!
@@ -63,45 +56,52 @@ function Base.getindex(S::TArray, i::Real)
 end
 
 function Base.setindex!(S::TArray, x, i::Real)
-  t, d = task_local_storage(S.ref)
-  ct = current_task()
+  n, d = task_local_storage(S.ref)
+  cn   = n_copies()
   newd = d
-  if t != ct
+  if cn > n
     # println("[setindex!]: $(S.ref) copying data")
     newd = deepcopy(d)
-    task_local_storage(S.ref, (ct, newd))
+    task_local_storage(S.ref, (cn, newd))
   end
   setindex!(newd, x, i)
 end
 
 function Base.push!(S::TArray, x)
-  t, d = task_local_storage(S.ref)
-  ct = current_task()
+  n, d = task_local_storage(S.ref)
+  cn   = n_copies()
   newd = d
-  if t != ct
+  if cn > n
     newd = deepcopy(d)
-    task_local_storage(S.ref, (ct, newd))
+    task_local_storage(S.ref, (cn, newd))
   end
   push!(newd, x)
 end
 
 function Base.pop!(S::TArray)
-  t, d = task_local_storage(S.ref)
-  ct = current_task()
+  n, d = task_local_storage(S.ref)
+  cn   = n_copies()
   newd = d
-  if t != ct
+  if cn > n
     newd = deepcopy(d)
-    task_local_storage(S.ref, (ct, newd))
+    task_local_storage(S.ref, (cn, newd))
   end
   pop!(d)
 end
 
 function Base.convert(::Type{TArray}, x::Array)
   res = TArray{typeof(x[1]),ndims(x)}();
-  t = current_task()
-  task_local_storage(res.ref, (t,x))
+  n   = n_copies()
+  task_local_storage(res.ref, (n,x))
   res
 end
+
+function Base.convert(::Array, x::Type{TArray})
+  n,d = task_local_storage(S.ref)
+  c = deepcopy(d)
+  return c
+end
+
 
 Base.show(io::IO, S::TArray) = Base.show(io::IO, task_local_storage(S.ref)[2])
 Base.display(io::IO, S::TArray) = Base.display(io::IO, task_local_storage(S.ref)[2])
@@ -110,6 +110,8 @@ Base.ndims(S::TArray) = Base.ndims(task_local_storage(S.ref)[2])
 
 Base.get(t::Task, S) = S
 Base.get(t::Task, S::TArray) = (t.storage[S.ref][2])
+Base.get(S::TArray) = (current_task().storage[S.ref][2])
+
 
 ##########
 # tzeros #
@@ -134,9 +136,9 @@ Array(tz)                   # convert to 4-element Array{Int64,1}: [0, 0, 0, 0]
 """
 function tzeros(T::Type, dim)
   res = TArray{T,length(dim)}();
-  t = current_task()
+  n = n_copies()
   d = zeros(T,dim)
-  task_local_storage(res.ref, (t,d))
+  task_local_storage(res.ref, (n,d))
   res
 end
 
