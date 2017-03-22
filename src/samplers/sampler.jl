@@ -59,12 +59,17 @@ assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    if ~haskey(vi, uid)
-      addvi!(vi, uid, nothing, sym, dist)
-    else
-      setvi!(vi, uid, nothing, sym, dist)
-    end
     r = rand(current_trace(), dist)     # gen random
+    if sym in spl.alg.space
+      if ~haskey(vi, uid)
+        addvi!(vi, uid, Dict{String, Any}(), sym, dist)
+      elseif ~isa(vi[uid], Dict)
+        vi[uid] = Dict{String, Any}()
+      end
+      val = vectorize(dist, link(dist, r))
+      vi[uid][string(current_trace().task)] = val
+    end
+    r
   else  # if it isn't in space
     if haskey(vi, uid)
       val = vi[uid]

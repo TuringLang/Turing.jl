@@ -60,16 +60,15 @@ function Base.run(model, data, spl::Sampler{Gibbs})
           end
         end
       elseif isa(local_spl, Sampler{PG})
-        local samples
+        # local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
         end
-        varInfo = update(varInfo, samples, local_spl.alg.space)
+        # varInfo = update(varInfo, samples, local_spl.alg.space)
       end
 
     end
     spl.samples[i].value = varInfo2samples(varInfo)
-
   end
 
   println("[Gibbs]: Finshed within $(time() - t_start) seconds")

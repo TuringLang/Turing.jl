@@ -46,15 +46,24 @@ function step(model, data, spl::Sampler{PG}, vi, ref_particle)
   while consume(spl.particles) != Val{:done}
     ess = effectiveSampleSize(spl.particles)
     if ess <= spl.alg.resampler_threshold * length(spl.particles)
-      resample!(spl.particles, spl.alg.resampler, ref_particle)
+      # resample!(spl.particles, spl.alg.resampler, ref_particle)
     end
   end
 
   ## pick a particle to be retained.
   Ws, _ = weights(spl.particles)
   indx = rand(Categorical(Ws))
-  ref_particle = fork2(spl.particles[indx])
 
+
+  ref_str = string(spl.particles[indx].task)
+  for uid in keys(vi)
+    sym = getsym(vi, uid)
+    if sym in spl.alg.space
+      vi[uid] = vi[uid][ref_str]
+    end
+  end
+
+  ref_particle = fork2(spl.particles[indx])
   s = getsample(spl.particles, indx)
   ref_particle, s
 end

@@ -37,11 +37,5 @@ addvi!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
   push!(vi.dists, dist)
 end
 
-setvi!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
-  setval!(vi, val, uid)
-  setsym!(vi, sym, uid)
-  setdist!(vi, dist, uid)
-end
-
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)

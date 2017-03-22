@@ -2,6 +2,7 @@
 # Helper functions for Dual numbers #
 #####################################
 
+realpart(f)        = f
 realpart(d::Dual)  = d.value
 realpart(d::Array) = map(x -> x.value, d)
 dualpart(d::Dual)  = d.partials.values
