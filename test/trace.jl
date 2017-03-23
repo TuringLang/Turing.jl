@@ -38,6 +38,6 @@ Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
 a2 = fork(t)
-Base.@assert length(a2.randomness) == 5
-Base.@assert t.randomness == a2.randomness
-Base.@assert t.index == a2.index
+Base.@assert length(a2.vi.randomness) == 5
+Base.@assert t.vi.randomness == a2.vi.randomness
+Base.@assert t.vi.index == a2.vi.index

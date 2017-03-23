@@ -6,12 +6,18 @@ type VarInfo
   syms        ::    Vector{Symbol}
   dists       ::    Vector{Distribution}
   logjoint    ::    Dual
+  randomness  ::    Vector{Any}   # elem t is the randomness created by the t’th assume call.
+  index :: Int                    # index of current randomness
+  num_produce :: Int              # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
     Dict{String, Int}(),
     Vector{Any}(),
     Vector{Symbol}(),
     Vector{Distribution}(),
-    Dual(0.0)
+    Dual(0.0),
+    Array{Any,1}(),
+    0,
+    0
   )
 end
 
