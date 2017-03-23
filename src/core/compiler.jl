@@ -188,7 +188,7 @@ macro model(name, fbody)
   # Always return VarInfo
   return_ex = fbody.args[end]   # get last statement of defined model
   vi_ex = quote
-    return vi
+    vi
   end
   if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
     fbody.args[end] = vi_ex

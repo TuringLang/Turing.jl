@@ -36,7 +36,7 @@ setdist!(vi::VarInfo, dist, uid::String) = vi.dists[getidx(vi, uid)] = dist
 Base.getindex(vi::VarInfo, uid::String) = getval(vi, uid)
 Base.setindex!(vi::VarInfo, val, uid::String) = setval!(vi, val, uid)
 
-addvi!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
+addvar!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
   vi.idcs[uid] = length(vi.idcs) + 1
   push!(vi.vals, val)
   push!(vi.syms, sym)

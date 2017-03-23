@@ -48,7 +48,8 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.samplers
-      dprintln(2, "$local_spl stepping...")
+      dprintln(2, "Sampler stepping...")
+      # dprintln(2, "$local_spl stepping...")
 
       if isa(local_spl, Sampler{HMC})
         for _ in local_spl.alg.n_samples
@@ -64,9 +65,12 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
         end
-        # varInfo = update(varInfo, samples, local_spl.alg.space)
+        varInfo = merge(varInfo, ref_particle)
+        # println(typeof(varInfo["s"]))
+        # println(isa(varInfo["s"], TArray))
+        # println(typeof(Vector(varInfo["s"])))
+        # exit()
       end
-
     end
     spl.samples[i].value = varInfo2samples(varInfo)
   end
