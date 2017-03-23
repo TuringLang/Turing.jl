@@ -5,11 +5,17 @@ type VarInfo
   syms        ::    Dict{String, Symbol}
   dists       ::    Dict{String, Distribution}
   logjoint    ::    Dual
+  randomness :: Array{Any, 1}    # elem t is the randomness created by the t’th assume call.
+  index :: Int                   # index of current randomness
+  num_produce :: Int             # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
     Dict{String, Any}(),
     Dict{String, Symbol}(),
     Dict{String, Distribution}(),
-    Dual(0)
+    Dual(0),
+    Array{Any,1}(),
+    0,
+    0
   )
 end
 
