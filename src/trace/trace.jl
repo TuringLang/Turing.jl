@@ -9,6 +9,7 @@ Notes:
 
 module Traces
 using Distributions
+using Turing: VarInfo
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -37,12 +38,11 @@ export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
 
 type Trace{T}
   task :: Task
-  randomness :: Array{Any, 1}    # elem t is the randomness created by the t’th assume call.
-  index :: Int                 # index of current randomness
-  num_produce :: Int           # num of produce calls from trace, each produce corresponds to an observe.
-  Trace() = (res = new(); res.randomness = Array{Any,1}(); res.index = 0; res.num_produce = 0; res)
+  vi   :: VarInfo
+  Trace() = (res = new(); res.vi = VarInfo(); res)
 end
 
+# NOTE: this function is called by `forkr`
 function (::Type{Trace{T}}){T}(f::Function)
   res = Trace{T}();
   # Task(()->f());
@@ -54,10 +54,10 @@ function (::Type{Trace{T}}){T}(f::Function)
   res
 end
 
-function (::Type{Trace{T}}){T}(f::Function, data, spl, varInfo)
+function (::Type{Trace{T}}){T}(f::Function, data, spl, vi :: VarInfo)
   res = Trace{T}();
   # Task(()->f());
-  res.task = Task( () -> begin res=f(data, varInfo, spl); produce(Val{:done}); res; end )
+  res.task = Task( () -> begin res=f(data, vi, spl); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
@@ -70,12 +70,12 @@ typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
 function randr( t::Trace, distr :: Distribution )
-  t.index += 1
-  if t.index < length(t.randomness)
-    res = t.randomness[t.index]
+  t.vi.index += 1
+  if t.vi.index < length(t.vi.randomness)
+    res = t.vi.randomness[t.vi.index]
   else # sample, record
     res = Distributions.rand(distr)
-    push!(t.randomness, res)
+    push!(t.vi.randomness, res)
   end
   return res
 end
@@ -87,16 +87,16 @@ Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
 Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
 
 # step to the next observe statement, return log likelihood
-Base.consume(t::Trace) = (t.num_produce += 1; Base.consume(t.task))
+Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 
 # Task copying version of fork for both TraceR and TraceC.
 function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
-  n_rand = min(trace.index, length(trace.randomness))
-  newtrace.randomness = trace.randomness[1:n_rand]
-  newtrace.index = trace.index
-  newtrace.num_produce = trace.num_produce
+  n_rand = min(trace.vi.index, length(trace.vi.randomness))
+  newtrace.vi.randomness = trace.vi.randomness[1:n_rand]
+  newtrace.vi.index = trace.vi.index
+  newtrace.vi.num_produce = trace.vi.num_produce
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -106,20 +106,20 @@ end
 function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 0: create new task and copy randomness
   newtrace = TraceR(trace.task.code)
-  newtrace.randomness = deepcopy(trace.randomness)
+  newtrace.vi.randomness = deepcopy(trace.vi.randomness)
 
   # Step 1: Call consume t times to replay randomness
   map((i)->consume(newtrace), 1:t)
 
   # Step 2: Remove remaining randomness if keep==false
   if !keep
-    newtrace.randomness = newtrace.randomness[1:newtrace.index]
+    newtrace.vi.randomness = newtrace.vi.randomness[1:newtrace.vi.index]
   end
   newtrace
 end
 
 # Default fork implementation, replay immediately.
-fork(s :: TraceR) = forkr(s, s.num_produce, false)
+fork(s :: TraceR) = forkr(s, s.vi.num_produce, false)
 fork(s :: TraceC) = forkc(s)
 
 # Lazily replay on demand, note that:
