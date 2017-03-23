@@ -31,19 +31,8 @@ vectorize(d::UnivariateDistribution, r)   = Vector{Dual}([r])
 vectorize(d::MultivariateDistribution, r) = Vector{Dual}(r)
 vectorize(d::MatrixDistribution, r)       = Vector{Dual}(vec(r))
 
-function reconstruct(d::Distribution, val)
-  if isa(d, UnivariateDistribution)
-    # Turn Array{Any} to Any if necessary (this is due to randn())
-    val = length(val) == 1 ? val[1] : val
-  elseif isa(d, MultivariateDistribution)
-    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
-    T = typeof(val[1])
-    val = Vector{T}(val)
-  elseif isa(d, MatrixDistribution)
-    T = typeof(val[1])
-    val = Array{T, 2}(reshape(val, size(d)...))
-  end
-  val
-end
+reconstruct(d::UnivariateDistribution, val)   = length(val) == 1 ? val[1] : val
+reconstruct(d::MultivariateDistribution, val) = Vector{eltype(val)}(val)
+reconstruct(d::MatrixDistribution, val)       = Array{eltype(val), 2}(reshape(val, size(d)...))
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
