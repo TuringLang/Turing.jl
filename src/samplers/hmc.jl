@@ -65,6 +65,9 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
 
     dprintln(2, "sampling momentum...")
     p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
+    if spl != nothing && ~isempty(spl.alg.space)
+      p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
+    end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, data, varInfo, spl)
