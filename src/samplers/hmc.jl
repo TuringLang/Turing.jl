@@ -123,35 +123,57 @@ end
 function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if ~haskey(vi, uid)   # first time -> generate
-    # Sample a new prior
+  # ct = current_trace()
+  # r = rand(ct, dist)
+  local r
+  if ~haskey(vi, uid)
     dprintln(2, "sampling prior...")
     r = rand(dist)
-
-    # Transform
-    val = vectorize(dist, link(dist, r)) # X -> R and vectorize
-
-    # Store the generated uid if it's in space
-    if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-      addvar!(vi, uid, val, sym, dist)
-    end
-  else                              # not first time -> replay
-    # Replay varibale
+    val = vectorize(dist, link(dist, r))      # X -> R and vectorize
+    addvar!(vi, uid, val, sym, dist)
+    push!(vi.randomness, r) # sync randomness and vals
+  else
     dprintln(2, "fetching vals...")
     val = vi[uid]
+    r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
+    sync(vi, uid, r)        # sync R and X
   end
-
-  # Step 2 - Reconstruct variable
-  dprintln(2, "reconstructing vals...")
-  val = reconstruct(dist, val)  # reconstruct
-  val = invlink(dist, val)      # R -> X
-
-  # Computing logjoint
-  dprintln(2, "computing logjoint...")
-  vi.logjoint += logpdf(dist, val, true)
-  dprintln(2, "compute logjoint done")
-  dprintln(2, "assume done")
-  return val
+  if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
+    nothing
+  else
+    nothing
+  end
+  vi.logjoint += logpdf(dist, r, true)
+  r
+  # if ~haskey(vi, uid)   # first time -> generate
+  #   # Sample a new prior
+  #   dprintln(2, "sampling prior...")
+  #   r = rand(dist)
+  #
+  #   # Transform
+  #   val = vectorize(dist, link(dist, r)) # X -> R and vectorize
+  #
+  #   # Store the generated uid if it's in space
+  #   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
+  #     addvar!(vi, uid, val, sym, dist)
+  #   end
+  # else                              # not first time -> replay
+  #   # Replay varibale
+  #   dprintln(2, "fetching vals...")
+  #   val = vi[uid]
+  # end
+  #
+  # # Step 2 - Reconstruct variable
+  # dprintln(2, "reconstructing vals...")
+  # val = reconstruct(dist, val)  # reconstruct
+  # val = invlink(dist, val)      # R -> X
+  #
+  # # Computing logjoint
+  # dprintln(2, "computing logjoint...")
+  # vi.logjoint += logpdf(dist, val, true)
+  # dprintln(2, "compute logjoint done")
+  # dprintln(2, "assume done")
+  # return val
 end
 
 function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)

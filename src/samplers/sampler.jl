@@ -58,28 +58,18 @@ end
 assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  = rand(current_trace(), dist)
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
+  ct = current_trace()
+  r = rand(ct, dist)
+  if ~haskey(ct.vi, uid)
+    val = vectorize(dist, link(dist, r))  # X -> R and vectorize
+    addvar!(ct.vi, uid, val, sym, dist)
+  else
+    nothing   # is actually replaying
+  end
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    # NOTE: this is unfinished
-    vi = current_trace().vi
-    r = rand(current_trace(), dist)     # gen random
-    val = TArray(vectorize(dist, link(dist, r)))
-    if ~haskey(vi, uid)
-      addvar!(vi, uid, val, sym, dist)
-    else
-      setval!(vi, val, uid)
-    end
-    r
-  else  # if it isn't in space
-    if haskey(vi, uid)
-      val = vi[uid]
-      dist = getdist(vi, uid)
-      val = reconstruct(dist, val)
-      r = invlink(dist, val)
-      produce(logpdf(dist, r, true))
-    else
-      r = rand(current_trace(), dist)   # gen random
-      produce(log(1.0))
-    end
+    nothing
+  else
+    produce(log(1.0))
   end
   r
 end
