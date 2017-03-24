@@ -178,3 +178,30 @@ function resample!( pc :: ParticleContainer,
 
   pc
 end
+
+
+########### Auxilary Functions ###################
+
+
+# NOTE: Particle is a type alias of Trace
+Base.keys(p :: Particle) = keys(p.task.storage[:turing_predicts])
+Base.values(p :: Particle) = values(p.task.storage[:turing_predicts])
+Base.getindex(p :: Particle, args...) = getindex(p.task.storage[:turing_predicts], args...)
+
+# ParticleContainer: particles ==> (weight, results)
+function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
+  p = pc.vals[i]
+
+  predicts = Dict{Symbol, Any}()
+  for k in keys(p)
+    predicts[k] = p[k]
+  end
+  return Sample(w, predicts)
+end
+
+getsample(pc :: ParticleContainer) = begin
+  w = pc.logE
+  Ws, z = weights(pc)
+  s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))
+  return exp(w), s
+end
