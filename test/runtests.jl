@@ -89,25 +89,56 @@ testcases_excluded = [
   "predict"
 ]
 
+
+
+using Distributions, Turing
+using ForwardDiff: Dual
+using Base.Test
+
+# Run tests in parallel
+# Code adapted from runtest.jl from Distributions.jl package
+
+print_with_color(:blue, "[runtests.jl] testing starts\n")
+
+if nworkers() > 1
+    rmprocs(workers())
+end
+
+if Base.JLOptions().code_coverage == 1
+    addprocs(Sys.CPU_CORES, exeflags = ["--code-coverage=user", "--inline=no", "--check-bounds=yes"])
+else
+    addprocs(Sys.CPU_CORES, exeflags = "--check-bounds=yes")
+end
+
+@everywhere using Distributions, Turing
+@everywhere using ForwardDiff: Dual
+@everywhere using Base.Test
+@everywhere srand(345679)
+@everywhere testcases_v04 = ["beta_binomial", "tarray"]
+@everywhere testcases_excluded = ["tarray2", "predict"]
+
 # Run tests
-path = dirname(@__FILE__)
-cd(path)
-println("[runtests.jl] testing starts")
-for t in testcases
+# @everywhere path = dirname(@__FILE__)
+
+res = pmap(testcases) do t
   if ~ (t in testcases_excluded)
     if t in testcases_v04
       if VERSION < v"0.5"
         println("[runtests.jl] \"$t.jl\" is running")
         include(t*".jl");
+        # include(joinpath(path, t*".jl"));
         # readstring(`julia $t.jl`)
         println("[runtests.jl] \"$t.jl\" is successful")
       end
     else
       println("[runtests.jl] \"$t.jl\" is running")
       include(t*".jl");
+      # include(joinpath(path, t*".jl"));
       # readstring(`julia $t.jl`)
       println("[runtests.jl] \"$t.jl\" is successful")
     end
   end
+  nothing
 end
+
 println("[runtests.jl] all tests pass")
