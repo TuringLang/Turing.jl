@@ -3,15 +3,16 @@
 using Turing
 using Distributions
 
-import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr
+import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr, addvar!
 
 function f2()
   t = TArray(Int, 1);
   t[1] = 0;
   while true
-    rand(current_trace(), Normal(0,1))
+    ct = current_trace()
+    rand(ct, Normal(0,1)); addvar!(ct.vi, "", nothing, :test, Normal(0,1))
     produce(t[1])
-    rand(current_trace(), Normal(0,1))
+    rand(ct, Normal(0,1)); addvar!(ct.vi, "", nothing, :test, Normal(0,1))
     t[1] = 1 + t[1]
   end
 end
