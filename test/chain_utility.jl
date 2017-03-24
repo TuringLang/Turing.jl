@@ -1,3 +1,4 @@
+using Distributions
 using Turing: Chain, Sample
 using Base.Test
 
@@ -20,11 +21,11 @@ samples = c2[:samples]
 #  Tests for Mamba Chain
 
 @model mamba_chain_test() = begin
-  m = rand()
-  x = rand(2,2)
+  m ~ Uniform(-1, 1)
+  x ~ Wishart(7, [1 0.5; 0.5 1])
   y = Array{Array}(2,2)
   for i in eachindex(y)
-    y[i] = rand(2,2)
+    y[i] ~ Wishart(7, [1 0.5; 0.5 1])
   end
   return(m, x, y)
 end
