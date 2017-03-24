@@ -37,6 +37,7 @@ Base.getindex(vi::VarInfo, uid::String) = getval(vi, uid)
 Base.setindex!(vi::VarInfo, val, uid::String) = setval!(vi, val, uid)
 
 addvar!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
+  @assert ~haskey(vi, uid)
   vi.idcs[uid] = length(vi.idcs) + 1
   push!(vi.vals, val)
   push!(vi.syms, sym)
