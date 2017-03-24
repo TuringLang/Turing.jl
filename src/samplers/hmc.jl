@@ -139,11 +139,10 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::Stri
     sync(vi, uid, r)        # sync R and X
   end
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    nothing
+    vi.logjoint += logpdf(dist, r, true)
   else
-    nothing
+    vi.logjoint += logpdf(dist, r, false)   # observe data, non-transformed variable
   end
-  vi.logjoint += logpdf(dist, r, true)
   r
   # if ~haskey(vi, uid)   # first time -> generate
   #   # Sample a new prior
