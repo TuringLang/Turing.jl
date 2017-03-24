@@ -5,14 +5,18 @@ using Distributions
 
 import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr, addvar!
 
+global n = 0
+
+
 function f2()
+  global n
   t = TArray(Int, 1);
   t[1] = 0;
   while true
     ct = current_trace()
-    rand(ct, Normal(0,1)); addvar!(ct.vi, "", nothing, :test, Normal(0,1))
-    produce(t[1])
-    rand(ct, Normal(0,1)); addvar!(ct.vi, "", nothing, :test, Normal(0,1))
+    rand(ct, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
+    produce(t[1]);
+    rand(ct, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
     t[1] = 1 + t[1]
   end
 end
