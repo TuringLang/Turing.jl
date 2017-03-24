@@ -22,7 +22,7 @@ testcases = [
           #"opt_param_of_dist",
           "new_grammar",
           "newinterface",
-          "noreturn",
+          # "noreturn",
           "samplemacro",
           "forbid_global",
 #       conditional.jl

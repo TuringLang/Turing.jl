@@ -27,15 +27,12 @@ end
 type ImportanceSampler{IS} <: Sampler{IS}
   alg         ::  IS
   model       ::  Function
-  samples     ::  Array{Dict{Symbol,Any}}
+  samples     ::  Vector{Sample}
   logweights  ::  Array{Float64}
   logevidence ::  Float64
   predicts    ::  Dict{Symbol,Any}
   function ImportanceSampler(alg::IS, model::Function)
-    samples = Array{Dict{Symbol,Any}}(alg.n_samples)
-    for i = 1:alg.n_samples
-      samples[i] = Dict{Symbol,Any}()
-    end
+    samples = Array{Sample}(alg.n_samples)
     logweights = zeros(Float64, alg.n_samples)
     logevidence = 0
     predicts = Dict{Symbol,Any}()
@@ -47,17 +44,14 @@ function Base.run(spl::Sampler{IS})
   n = spl.alg.n_samples
   for i = 1:n
     consume(Task(spl.model))
-    spl.samples[i] = spl.predicts
+    spl.samples[i] = Sample(spl.logevidence, spl.predicts)
     spl.logweights[i] = spl.logevidence
     spl.logevidence = 0
     spl.predicts = Dict{Symbol,Any}()
   end
   spl.logevidence = logsum(spl.logweights) - log(n)
-  results = Dict{Symbol,Any}()
-  results[:logevidence] = spl.logevidence
-  results[:logweights] = spl.logweights
-  results[:samples] = spl.samples
-  return results
+  chn = Chain(exp(spl.logevidence), spl.samples)
+  return chn
 end
 
 function assume(spl::ImportanceSampler{IS}, d::Distribution, uid::String, sym::Symbol, varInfo::VarInfo)
