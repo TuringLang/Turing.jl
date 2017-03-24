@@ -45,3 +45,13 @@ end
 
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)
+
+sync(vi::VarInfo, uid::String,r) = vi.randomness[getidx(vi, uid)] = r
+sync(vi::VarInfo, uids::Vector{String}) = begin
+  for uid = uids
+    idx = getidx(vi, uid)
+    dist = getdist(vi, uid)
+    val = getval(vi, uid)
+    vi.randomness[idx] = invlink(dist, reconstruct(dist, val))
+  end
+end
