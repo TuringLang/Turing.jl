@@ -80,6 +80,7 @@ function randr( t::Trace, distr :: Distribution )
   return res
 end
 
+
 # generate a new random variable, no replay
 randc(t::Trace, distr :: Distribution) = Distributions.rand(distr)
 
@@ -94,6 +95,10 @@ function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   n_rand = min(trace.vi.index, length(trace.vi.randomness))
+  newtrace.vi.idcs = filter((uid, idx) -> idx <= n_rand, trace.vi.idcs)
+  newtrace.vi.vals = trace.vi.vals[1:n_rand]
+  newtrace.vi.syms = trace.vi.syms[1:n_rand]
+  newtrace.vi.dists = trace.vi.dists[1:n_rand]
   newtrace.vi.randomness = trace.vi.randomness[1:n_rand]
   newtrace.vi.index = trace.vi.index
   newtrace.vi.num_produce = trace.vi.num_produce
@@ -106,6 +111,10 @@ end
 function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 0: create new task and copy randomness
   newtrace = TraceR(trace.task.code)
+  newtrace.vi.idcs = deepcopy(trace.vi.idcs)
+  newtrace.vi.vals = deepcopy(trace.vi.vals)
+  newtrace.vi.syms = deepcopy(trace.vi.syms)
+  newtrace.vi.dists = deepcopy(trace.vi.dists)
   newtrace.vi.randomness = deepcopy(trace.vi.randomness)
 
   # Step 1: Call consume t times to replay randomness
@@ -113,7 +122,12 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
 
   # Step 2: Remove remaining randomness if keep==false
   if !keep
-    newtrace.vi.randomness = newtrace.vi.randomness[1:newtrace.vi.index]
+    index = newtrace.vi.index
+    filter!((uid, idx) -> idx <= index, newtrace.vi.idcs)
+    newtrace.vi.vals = newtrace.vi.vals[1:index]
+    newtrace.vi.syms = newtrace.vi.syms[1:index]
+    newtrace.vi.dists = newtrace.vi.dists[1:index]
+    newtrace.vi.randomness = newtrace.vi.randomness[1:index]
   end
   newtrace
 end
