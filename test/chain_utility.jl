@@ -2,7 +2,7 @@ using Turing: Chain, Sample
 using Base.Test
 
 c = Chain()
-@test string(c) == "Empty Chain, weight 0.0"
+#@test string(c) == "Empty Chain, weight 0.0"
 
 d = Dict{Symbol, Any}()
 d[:m] = [1,2,3]
@@ -14,7 +14,7 @@ string(c2)
 samples = c2[:samples]
 @test samples[1][:m] == d[:m]
 
-@test mean(c2, :m, x -> x) == [1.0, 2.0, 3.0]
+#@test mean(c2, :m, x -> x) == [1.0, 2.0, 3.0]
 
 
 #  Tests for Mamba Chain
@@ -30,5 +30,4 @@ samples = c2[:samples]
 end
 
 chain = @sample(mamba_chain_test(), PG(5,300));
-sim1 = MambaChains(chain)
-describe(sim1)
+describe(chain)
