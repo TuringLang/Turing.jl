@@ -65,6 +65,9 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
 
     dprintln(2, "sampling momentum...")
     p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
+    if spl != nothing && ~isempty(spl.alg.space)
+      p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
+    end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, data, varInfo, spl)
@@ -139,11 +142,10 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::Stri
     sync(vi, uid, r)        # sync R and X
   end
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    nothing
+    vi.logjoint += logpdf(dist, r, true)
   else
-    nothing
+    vi.logjoint += logpdf(dist, r, false)   # observe data, non-transformed variable
   end
-  vi.logjoint += logpdf(dist, r, true)
   r
   # if ~haskey(vi, uid)   # first time -> generate
   #   # Sample a new prior
