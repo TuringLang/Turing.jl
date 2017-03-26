@@ -1,14 +1,15 @@
 module Turing
 
+using Distributions
+using ForwardDiff: Dual, npartials  # for automatic differentiation
+
 # Code associated with running probabilistic programs as tasks. REVIEW: can we find a way to move this to where the other included files locate.
+include("core/varinfo.jl")
 include("trace/trace.jl")
+using Turing.Traces
 
 import Distributions: sample        # to orverload sample()
-import Base.~                       # to orverload @~
-import Base.convert
-import Base.promote_rule
-using ForwardDiff: Dual, npartials  # for automatic differentiation
-using Turing.Traces
+import Base: ~, convert, promote_rule
 @suppress_err begin using Mamba end
 
 #################
@@ -16,9 +17,14 @@ using Turing.Traces
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @sample, @predict, parse_indexing, @~, @isdefined, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, VarInfo, @predictall
+export @model, @sample, @~, InferenceAlgorithm, HMC, IS, SMC,
+        PG, Gibbs, sample, Chain, Sample, Sampler,
+        ImportanceSampler, HMCSampler, VarInfo, @predictall, @predict
 
-export MambaChains, describe, plot
+export Dual
+
+# Export Mamba Chain utility functions
+export describe, plot, write, heideldiag, rafterydiag, gelmandiag
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
@@ -49,7 +55,6 @@ include("core/util.jl")
 include("core/compiler.jl")
 include("core/container.jl")
 include("core/io.jl")
-include("core/varinfo.jl")
 include("samplers/sampler.jl")
 
 include("core/ad.jl")

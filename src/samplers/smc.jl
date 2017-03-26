@@ -43,6 +43,6 @@ function Base.run(model, data, spl::Sampler{SMC})
     end
   end
 
-  res = Chain(spl.particles)
+  res = Chain(getsample(spl.particles)...)
 
 end
