@@ -57,6 +57,10 @@ end
 function (::Type{Trace{T}}){T}(f::Function, data, spl, vi :: VarInfo)
   res = Trace{T}();
   # Task(()->f());
+  res.vi.idcs = vi.idcs
+  res.vi.vals = vi.vals
+  res.vi.syms = vi.syms
+  res.vi.dists = vi.dists
   res.task = Task( () -> begin res=f(data, vi, spl); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
@@ -69,20 +73,27 @@ typealias TraceR Trace{:R} # Task Copy
 typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
-function randr( t::Trace, distr :: Distribution )
-  t.vi.index += 1
-  if t.vi.index < length(t.vi.randomness)
-    res = t.vi.randomness[t.vi.index]
-  else # sample, record
-    res = Distributions.rand(distr)
-    push!(t.vi.randomness, res)
-  end
-  return res
-end
 
+function randr(t::Trace, name::String, sym::Symbol, distr::Distribution)
+  t.vi.index += 1
+  local r
+  if t.vi.index <= length(t.vi.randomness)
+    r = t.vi.randomness[t.vi.index]
+  else # sample, record
+    @assert ~(name in t.vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(t.vi)"
+    r = Distributions.rand(distr)
+    push!(t.vi.randomness, r)
+    push!(t.vi.names, name)
+    push!(t.vi.tsyms, sym)
+  end
+  return r
+end
 
 # generate a new random variable, no replay
 randc(t::Trace, distr :: Distribution) = Distributions.rand(distr)
+
+Distributions.rand(t::TraceR, name::String, sym::Symbol, dist::Distribution) = randr(t, name, sym, dist)
+Distributions.rand(t::TraceC, name::String, sym::Symbol, dist::Distribution) = randc(t, dist)
 
 Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
 Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
@@ -95,11 +106,13 @@ function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   n_rand = min(trace.vi.index, length(trace.vi.randomness))
-  newtrace.vi.idcs = filter((uid, idx) -> idx <= n_rand, trace.vi.idcs)
-  newtrace.vi.vals = trace.vi.vals[1:n_rand]
-  newtrace.vi.syms = trace.vi.syms[1:n_rand]
-  newtrace.vi.dists = trace.vi.dists[1:n_rand]
+  newtrace.vi.idcs = trace.vi.idcs
+  newtrace.vi.vals = trace.vi.vals
+  newtrace.vi.syms = trace.vi.syms
+  newtrace.vi.dists = trace.vi.dists
   newtrace.vi.randomness = trace.vi.randomness[1:n_rand]
+  newtrace.vi.names = trace.vi.names[1:n_rand]
+  newtrace.vi.tsyms = trace.vi.tsyms[1:n_rand]
   newtrace.vi.index = trace.vi.index
   newtrace.vi.num_produce = trace.vi.num_produce
   newtrace.task.storage[:turing_trace] = newtrace
@@ -111,23 +124,23 @@ end
 function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 0: create new task and copy randomness
   newtrace = TraceR(trace.task.code)
-  newtrace.vi.idcs = deepcopy(trace.vi.idcs)
-  newtrace.vi.vals = deepcopy(trace.vi.vals)
-  newtrace.vi.syms = deepcopy(trace.vi.syms)
-  newtrace.vi.dists = deepcopy(trace.vi.dists)
+  newtrace.vi.idcs = trace.vi.idcs
+  newtrace.vi.vals = trace.vi.vals
+  newtrace.vi.syms = trace.vi.syms
+  newtrace.vi.dists = trace.vi.dists
   newtrace.vi.randomness = deepcopy(trace.vi.randomness)
+  newtrace.vi.names = deepcopy(trace.vi.names)
+  newtrace.vi.tsyms = deepcopy(trace.vi.tsyms)
 
   # Step 1: Call consume t times to replay randomness
-  map((i)->consume(newtrace), 1:t)
+  map(i -> consume(newtrace), 1:t)
 
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    filter!((uid, idx) -> idx <= index, newtrace.vi.idcs)
-    newtrace.vi.vals = newtrace.vi.vals[1:index]
-    newtrace.vi.syms = newtrace.vi.syms[1:index]
-    newtrace.vi.dists = newtrace.vi.dists[1:index]
     newtrace.vi.randomness = newtrace.vi.randomness[1:index]
+    newtrace.vi.names = newtrace.vi.names[1:index]
+    newtrace.vi.tsyms = newtrace.vi.tsyms[1:index]
   end
   newtrace
 end
