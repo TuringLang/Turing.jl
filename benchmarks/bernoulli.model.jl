@@ -13,7 +13,7 @@ model {
 }
 "
 
-@model bermodel() begin
+@model bermodel(y) begin
  theta ~ Beta(1,1)
  for n = 1:length(y)
    y[n] ~ Bernoulli(theta)
