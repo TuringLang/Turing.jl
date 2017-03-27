@@ -5,9 +5,9 @@ addons:
            - ubuntu-toolchain-r-test
         packages:
            - gcc-5
-           - g++-5  
+           - g++-5
 language: julia
-julia: 
+julia:
   - 0.5
 os:
   - linux
@@ -24,24 +24,24 @@ matrix:
        - env: GROUP=AutoTest
          os: osx
        - env: GROUP=Bench
-  
+
 notifications:
     email: false
 script:
   - if [ "$(uname)" != "Darwin" ]; then ln -s `which gcc-5` gcc && export PATH=`pwd`:$PATH && echo $PATH; fi
   - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --check-bounds=yes -e 'Pkg.update(); 
-             Pkg.clone(pwd(), "Turing");  
-             Pkg.build("Turing"); 
+  - julia --check-bounds=yes -e 'Pkg.update();
+             Pkg.clone(pwd(), "Turing");
+             Pkg.build("Turing");
              if ENV["GROUP"] != "Bench"
                 Pkg.test("Turing"; coverage=true)
              else
-                println("Add benchmarking scripts.")
+                include(Pkg.dir("Turing")*"/benchmarks/benchmark.jl")
              end'
 after_success:
-  - julia -e 'if ENV["GROUP"] != "Bench" 
-                cd(Pkg.dir("Turing")); Pkg.add("Coverage"); 
+  - julia -e 'if ENV["GROUP"] != "Bench"
+                cd(Pkg.dir("Turing")); Pkg.add("Coverage");
                 using Coverage; Coveralls.submit(process_folder())
                 end'
 notifications:
