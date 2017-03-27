@@ -48,7 +48,8 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.samplers
-      dprintln(2, "$local_spl stepping...")
+      # dprintln(2, "Sampler stepping...")
+      dprintln(2, "$(typeof(local_spl)) stepping...")
 
       if isa(local_spl, Sampler{HMC})
         for _ in local_spl.alg.n_samples
@@ -60,16 +61,24 @@ function Base.run(model, data, spl::Sampler{Gibbs})
           end
         end
       elseif isa(local_spl, Sampler{PG})
-        local samples
+        # Update new VarInfo to the reference particle
+        if ref_particle != nothing
+          ref_particle.vi.idcs = varInfo.idcs
+          ref_particle.vi.vals = varInfo.vals
+          ref_particle.vi.syms = varInfo.syms
+          ref_particle.vi.dists = varInfo.dists
+          ref_particle.vi.index = 0
+          ref_particle.vi.num_produce = 0
+        end
+        # local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
         end
-        varInfo = update(varInfo, samples, local_spl.alg.space)
+        varInfo = ref_particle.vi
       end
-
+      # println(varInfo)
     end
     spl.samples[i].value = varInfo2samples(varInfo)
-
   end
 
   println("[Gibbs]: Finshed within $(time() - t_start) seconds")

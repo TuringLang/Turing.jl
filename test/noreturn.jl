@@ -12,4 +12,7 @@ xnoreturn = [1.5 2.0]
   end
 end
 
-chain = @sample(noreturn(xnoreturn), HMC(100, 0.4, 8))
+chain = @sample(noreturn(xnoreturn), HMC(3000, 0.15, 6))
+
+@test_approx_eq_eps mean(chain[:s]) 49/24 0.2
+@test_approx_eq_eps mean(chain[:m]) 7/6 0.2

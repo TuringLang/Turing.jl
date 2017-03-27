@@ -25,6 +25,7 @@ end
 # Find logjoint
 # NOTE: it returns logjoint but not -logjoint
 function find_logjoint(model, data, values, spl)
+  values.index = 0
   values = model(data, values, spl) # run model
   logjoint = values.logjoint        # get logjoint
   values.logjoint = Dual(0)         # reset logjoint

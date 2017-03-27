@@ -5,17 +5,17 @@ function update(vi, samples, space)
     if sym in space
       if isa(samples.value[sym], Real)
         uid = filter(uid -> uid == "$sym", uids)[1]
-        dist = vi.dists[uid]
+        dist = getdist(vi, uid)
         s = samples.value[sym]
         val = vectorize(dist, link(dist, s))
-        vi.vals[uid] = val
+        vi[uid] = val
       else isa(samples.value[sym], Array)
         s = samples.value[sym]
         for i = 1:length(s)
           uid = filter(uid -> uid == "$sym[$i]", uids)[1]
-          dist = vi.dists[uid]
+          dist = getdist(vi, uid)
           val = vectorize(dist, link(dist, s[i]))
-          vi.vals[uid] = val
+          vi[uid] = val
         end
       end
     end
@@ -26,14 +26,24 @@ end
 function varInfo2samples(vi)
   samples = Dict{Symbol, Any}()
   for uid in keys(vi)
-    dist = vi.dists[uid]
+    dist = getdist(vi, uid)
     val = vi[uid]
     val = reconstruct(dist, val)
     val = invlink(dist, val)
-    if ~(vi.syms[uid] in keys(samples))
-      samples[vi.syms[uid]] = Any[realpart(val)]
+    sym = getsym(vi, uid)
+    if ~(sym in keys(samples))
+      samples[sym] = Any[realpart(val)]
     else
-      push!(samples[vi.syms[uid]], realpart(val))
+      push!(samples[sym], realpart(val))
+    end
+  end
+  for i = 1:length(vi.tsyms)
+    val = vi.randomness[i]
+    sym = vi.tsyms[i]
+    if ~(sym in keys(samples))
+      samples[sym] = Any[val]
+    else
+      push!(samples[sym], val)
     end
   end
   # Remove un-necessary []'s

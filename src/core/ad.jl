@@ -22,7 +22,7 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
   key_chunk = []
   prior_dim = 0
   for k in keys(vi)
-    if spl == nothing || isempty(spl.alg.space) || vi.syms[k] in spl.alg.space
+    if spl == nothing || isempty(spl.alg.space) || getsym(vi, k) in spl.alg.space
       l = length(vi[k])
       if prior_dim + l > CHUNKSIZE
         # Store the old chunk
@@ -70,6 +70,7 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
+    vi.index = 0
     vi = model(data, vi, spl)
     # Collect gradient
     dprintln(4, "collect dual...")

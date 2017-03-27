@@ -34,12 +34,12 @@ immutable PG <: InferenceAlgorithm
   end
 end
 
-function step(model, data, spl::Sampler{PG}, varInfo, ref_particle)
+function step(model, data, spl::Sampler{PG}, vi, ref_particle)
   spl.particles = ParticleContainer{TraceR}(spl.model)
   if ref_particle == nothing
-    push!(spl.particles, spl.alg.n_particles, data, spl, varInfo)
+    push!(spl.particles, spl.alg.n_particles, data, spl, vi)
   else
-    push!(spl.particles, spl.alg.n_particles-1, data, spl, varInfo)
+    push!(spl.particles, spl.alg.n_particles-1, data, spl, vi)
     push!(spl.particles, ref_particle)
   end
 
@@ -54,7 +54,6 @@ function step(model, data, spl::Sampler{PG}, varInfo, ref_particle)
   Ws, _ = weights(spl.particles)
   indx = rand(Categorical(Ws))
   ref_particle = fork2(spl.particles[indx])
-
   s = getsample(spl.particles, indx)
   ref_particle, s
 end

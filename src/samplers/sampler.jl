@@ -47,11 +47,7 @@ observe(spl, weight :: Float64) =
 predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
-# Default functions
-function sample(model::Function, alg::InferenceAlgorithm)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(model, Dict(), sampler)
-end
+predict(spl::Void, var_name :: Symbol, value) = nothing
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);
@@ -63,24 +59,24 @@ assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
   if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    vi.syms[uid] = sym  # record symbol
-    vi.vals[uid] = nothing
-    vi.dists[uid] = dist
-    r = rand(current_trace(), dist)     # gen random
-  else  # if it isn't in space
-    if haskey(vi.vals, uid)
-      val = vi[uid]
-      dist = vi.dists[uid]
-      val = reconstruct(dist, val)
-      r = invlink(dist, val)
-      produce(logpdf(dist, r, true))
+    name = uid
+    r = rand(current_trace(), name, sym, dist)
+  else
+    local r
+    vi = current_trace().vi
+    if ~haskey(vi, uid)
+      dprintln(2, "sampling prior...")
+      r = rand(dist)
+      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
+      addvar!(vi, uid, val, sym, dist)
     else
-      vi.syms[uid] = sym  # record symbol
-      r = rand(current_trace(), dist)   # gen random
-      produce(log(1.0))
+      dprintln(2, "fetching vals...")
+      val = vi[uid]
+      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
     end
+    produce(log(1.0))
+    r
   end
-  r
 end
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
@@ -90,10 +86,4 @@ function predict(spl :: Sampler, v_name :: Symbol, value)
     task.storage[:turing_predicts] = Dict{Symbol,Any}()
   end
   task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
-end
-
-function predict(spl::Sampler, vi::VarInfo, task)
-  for sym in syms(vi)
-    predict(spl, sym, get(task, sym))
-  end
 end

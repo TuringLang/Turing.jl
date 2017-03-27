@@ -1,31 +1,65 @@
 ########## VarInfo ##########
 
 type VarInfo
-  vals        ::    Dict{String, Any}
-  syms        ::    Dict{String, Symbol}
-  dists       ::    Dict{String, Distribution}
+  idcs        ::    Dict{String, Int}
+  vals        ::    Vector{Any}
+  syms        ::    Vector{Symbol}
+  dists       ::    Vector{Distribution}
   logjoint    ::    Dual
-  randomness :: Array{Any, 1}    # elem t is the randomness created by the t’th assume call.
-  index :: Int                   # index of current randomness
-  num_produce :: Int             # num of produce calls from trace, each produce corresponds to an observe.
+
+  names       ::    Vector{String}
+  tsyms       ::    Vector{Symbol}
+  randomness  ::    Vector{Any}   # elem t is the randomness created by the t’th assume call.
+  index       ::    Int           # index of current randomness
+  num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
-    Dict{String, Any}(),
-    Dict{String, Symbol}(),
-    Dict{String, Distribution}(),
-    Dual(0),
-    Array{Any,1}(),
+    Dict{String, Int}(),
+    Vector{Any}(),
+    Vector{Symbol}(),
+    Vector{Distribution}(),
+    Dual(0.0),
+    Vector{String}(),
+    Vector{Symbol}(),
+    Vector{Any}(),
     0,
     0
   )
 end
 
-Base.getindex(vi::VarInfo, uid::String) = vi.vals[uid]
+getidx(vi::VarInfo, uid::String) = vi.idcs[uid]
 
-# The default setindex!() for VarInfo is to set values
-Base.setindex!(vi::VarInfo, val, uid::String) = vi.vals[uid] = val
+getval(vi::VarInfo, uid::String) = vi.vals[getidx(vi, uid)]
+setval!(vi::VarInfo, val, uid::String) = vi.vals[getidx(vi, uid)] = val
 
-Base.keys(vi::VarInfo) = keys(vi.vals)
+getsym(vi::VarInfo, uid::String) = vi.syms[getidx(vi, uid)]
+setsym!(vi::VarInfo, sym, uid::String) = vi.syms[getidx(vi, uid)] = sym
 
-syms(vi::VarInfo) = Set(values(vi.syms))
+getdist(vi::VarInfo, uid::String) = vi.dists[getidx(vi, uid)]
+setdist!(vi::VarInfo, dist, uid::String) = vi.dists[getidx(vi, uid)] = dist
 
-export VarInfo, syms
+# The default getindex & setindex!() for get & set values
+Base.getindex(vi::VarInfo, uid::String) = getval(vi, uid)
+Base.setindex!(vi::VarInfo, val, uid::String) = setval!(vi, val, uid)
+
+addvar!(vi::VarInfo, uid::String, val, sym::Symbol, dist::Distribution) = begin
+  @assert ~haskey(vi, uid)
+  vi.idcs[uid] = length(vi.idcs) + 1
+  push!(vi.vals, val)
+  push!(vi.syms, sym)
+  push!(vi.dists, dist)
+end
+
+Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
+Base.keys(vi::VarInfo) = keys(vi.idcs)
+
+function randr(vi::VarInfo, name::String, sym::Symbol, dist::Distribution)
+  local r
+  vi.index += 1
+  if vi.index <= length(vi.randomness)
+    r = vi.randomness[vi.index]
+  else # sample, record
+    @assert ~(name in vi.names) "[randr(vi)] attempt to generate an exisitng variable $name to $(vi)"
+    r = Distributions.rand(dist)
+  end
+  r
+end

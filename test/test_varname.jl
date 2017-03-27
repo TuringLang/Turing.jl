@@ -10,18 +10,18 @@ v_sym = string(:x)
 
 # Array
 i = 1
-v_arr = eval(varname(:(x[i])))
+v_arr = eval(varname(:(x[i]))[1])
 @test v_arr == "x[1]"
 
 # Matrix
 i, j, k = 1, 2, 3
-v_mat = eval(varname(:(x[i,j])))
+v_mat = eval(varname(:(x[i,j]))[1])
 @test v_mat== "x[1,2]"
 
-v_mat = eval(varname(:(x[i,j,k])))
+v_mat = eval(varname(:(x[i,j,k]))[1])
 @test v_mat== "x[1,2,3]"
 
-v_mat = eval(varname(:((x[1,2][1+5][45][3][i]))))
+v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
 @test v_mat == "x[1,2][6][45][3][1]"
 
 
@@ -37,7 +37,7 @@ chain = sample(mat_name_test, HMC(1000, 0.75, 2))
 
 # Multi array
 i, j = 1, 2
-v_arrarr = eval(varname(:(x[i][j])))
+v_arrarr = eval(varname(:(x[i][j]))[1])
 @test v_arrarr == "x[1][2]"
 
 @model marr_name_test begin
