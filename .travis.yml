@@ -13,12 +13,17 @@ os:
   - linux
   - osx
 env:
-  - TEST_GROUP=F
+  - GROUP=AutoTest
+  - GROUP=Bench
 matrix:
     fast_finish: true
+    exclude:
+       - os: osx
+         env: GROUP=Bench
     allow_failures:
-       - env: TEST_GROUP=F
+       - env: GROUP=AutoTest
          os: osx
+       - env: GROUP=Bench
   
 notifications:
     email: false
