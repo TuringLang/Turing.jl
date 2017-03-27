@@ -56,8 +56,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
-    varInfo.index = 0
-    varInfo = model(data, varInfo, spl)
+    varInfo = runmodel(model, data, varInfo, spl)
     # Return
     true, varInfo
   else

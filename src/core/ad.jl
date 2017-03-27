@@ -70,8 +70,7 @@ function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
-    vi.index = 0
-    vi = model(data, vi, spl)
+    vi = runmodel(model, data, vi, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
