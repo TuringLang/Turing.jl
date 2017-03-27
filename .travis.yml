@@ -34,12 +34,15 @@ script:
   - julia --check-bounds=yes -e 'Pkg.update(); 
              Pkg.clone(pwd(), "Turing");  
              Pkg.build("Turing"); 
-             if ENV["GROUP"] == "AutoTest"
+             if ENV["GROUP"] != "Bench"
                 Pkg.test("Turing"; coverage=true)
              else
                 println("Add benchmarking scripts.")
              end'
 after_success:
-  - julia -e 'cd(Pkg.dir("Turing")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
+  - julia -e 'if ENV["GROUP"] != "Bench" 
+                cd(Pkg.dir("Turing")); Pkg.add("Coverage"); 
+                using Coverage; Coveralls.submit(process_folder())
+                end'
 notifications:
     email: false
