@@ -254,14 +254,14 @@ macro sample(modelcall, alg, optionalps...)
   modelf = modelcall.args[1]      # get the function symbol for model
   psyms = modelcall.args[2:end]   # get the (passed-in) symbols
   esc(quote
-    data = Dict()
-    arglist = Turing.TURING[:modelarglist]
-    localsyms = $psyms
-    for i = 1:length(arglist)
-      localsym = localsyms[i]     # passed-in symbols are local
-      arg = arglist[i]            # arglist are symbols in model scope
-      data[arg] = eval(localsym)
+    data_ = Dict()
+    arglist_ = Turing.TURING[:modelarglist]
+    localsyms_ = $psyms
+    for i_ = 1:length(arglist_)
+      localsym_ = localsyms_[i_]     # passed-in symbols are local
+      arg_ = arglist_[i_]            # arglist are symbols in model scope
+      data_[arg_] = eval(localsym_)
     end
-    sample($modelf, data, $alg, $optionalps...)
+    sample($modelf, data_, $alg, $optionalps...)
   end)
 end

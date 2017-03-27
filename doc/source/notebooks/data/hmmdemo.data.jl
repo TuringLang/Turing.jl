@@ -23,22 +23,22 @@ means = (collect(1.0:K)*2-K)*2
 T = zeros(K,K); for i=1:K; T[i,:] = rand(Dirichlet(ones(K)./K)); end
 T = T + K*eye(K)/K; for i=1:K; T[i,:] = T[i,:] ./ sum(T[i,:]); end # Add self-trans prob.
 
-obs = zeros(N)
 
-@model hmmdemo begin
+@model hmmdata begin 
     states = tzeros(Int,N)
     # T = TArray{Array{Float64,}}
-    
-    @assume states[1] ~ Categorical(initial)
+    y = zeros(N)
+
+    states[1] ~ Categorical(initial)
     for i = 2:N
-        @assume states[i] ~ Categorical(vec(T[states[i-1],:]))
-        @assume obs[i] ~ Normal(means[states[i]], 0.4)
+        states[i] ~ Categorical(vec(T[states[i-1],:]))
+        y[i] ~ Normal(means[states[i]], 0.4)
     end
-    @predict obs
+    return y
 end
 
 srand(1234)
-chain = sample(hmmdemo, PG(10,2));
-obs = chain.value[1].value[:obs]
+chain = sample(hmmdata, PG(10,2));
+obs = chain.value[1].value[:y]
 srand()
 
