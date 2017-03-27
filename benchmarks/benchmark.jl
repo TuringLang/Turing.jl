@@ -1,4 +1,5 @@
 using Turing
+include("ASCIIPlot.jl");
 
 CONFIG = Dict(
   "model-list" => [
@@ -7,6 +8,7 @@ CONFIG = Dict(
     #"normal-mixture",
     "gauss",
     "bernoulli",
+    "gdemo-geweke"
     #"negative-binomial"
   ],
 
