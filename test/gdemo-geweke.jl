@@ -39,6 +39,7 @@ describe(s)
 
 bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
 # bk = PG(20,10);
+# bk = HMC(10, 0.25, 5, :m)
 
 N = 300
 x = [s[:y][1]...]
@@ -52,11 +53,9 @@ end
 s2 = vcat(s_bk...);
 describe(s2)
 
-plot_m = qqplot(s[:m], s2[:m], Coord.cartesian(xmin=-20, xmax=20, ymin=-10, ymax=10))
-if isa(bk, Turing.PG)
-  draw(PNG("plot_m_PGPG.png", 10inch, 5inch), plot_m)
-else
-  draw(PNG("plot_m_PGGibbs.png", 10inch, 5inch), plot_m)
-end
+plot_m = qqplot(s[:m], s2[:m], Coord.cartesian(xmin=-20, xmax=20, ymin=-20, ymax=20))
+draw(PNG("plot_m_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 10inch, 5inch), plot_m)
 
-qqplot(s[:s], s2[:s])
+
+plot_s = qqplot(s[:s], s2[:s], Coord.cartesian(xmin=-100, xmax=100, ymin=-100, ymax=100))
+draw(PNG("plot_s_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 10inch, 5inch), plot_s)
