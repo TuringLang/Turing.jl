@@ -1,7 +1,7 @@
 # Code adapted from: https://github.com/johnmyleswhite/ASCIIPlots.jl/blob/master/src/ASCIIPlots.jl
 
 immutable ASCIIPlot
-    s::ASCIIString
+    s::String
 end
 
 Base.show(io::IO, p::ASCIIPlot) = print(io, p.s)
