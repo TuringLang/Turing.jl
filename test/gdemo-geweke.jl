@@ -54,8 +54,8 @@ s2 = vcat(s_bk...);
 describe(s2)
 
 plot_m = qqplot(s[:m], s2[:m], Coord.cartesian(xmin=-20, xmax=20, ymin=-20, ymax=20))
-draw(PNG("plot_m_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 10inch, 5inch), plot_m)
+draw(PNG("plot_m_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 7inch, 7inch), plot_m)
 
 
-plot_s = qqplot(s[:s], s2[:s], Coord.cartesian(xmin=-100, xmax=100, ymin=-100, ymax=100))
-draw(PNG("plot_s_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 10inch, 5inch), plot_s)
+plot_s = qqplot(s[:s], s2[:s], Coord.cartesian(xmin=0, xmax=100, ymin=0, ymax=100))
+draw(PNG("plot_s_PG$(replace(string(typeof(bk)), "Turing.", "")).png", 7inch, 7inch), plot_s)
