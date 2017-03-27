@@ -88,7 +88,7 @@ function scatterplot(x::AbstractArray, y::AbstractArray; sym::Char = '^')
 
     print(io, "\n")
 
-    return ASCIIPlot(bytestring(io))
+    return ASCIIPlot(String(io))
 end
 
 function scatterplot(y::AbstractArray; sym::Char = '^')
