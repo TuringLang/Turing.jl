@@ -52,14 +52,17 @@ end
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
-function randr(vi::VarInfo, name::String, sym::Symbol, dist::Distribution)
-  local r
+function randr(vi::VarInfo, name::String, sym::Symbol, distr::Distribution)
   vi.index += 1
+  local r
   if vi.index <= length(vi.randomness)
     r = vi.randomness[vi.index]
   else # sample, record
-    @assert ~(name in vi.names) "[randr(vi)] attempt to generate an exisitng variable $name to $(vi)"
-    r = Distributions.rand(dist)
+    @assert ~(name in vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(vi)"
+    r = Distributions.rand(distr)
+    push!(vi.randomness, r)
+    push!(vi.names, name)
+    push!(vi.tsyms, sym)
   end
-  r
+  return r
 end

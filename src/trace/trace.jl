@@ -10,6 +10,7 @@ Notes:
 module Traces
 using Distributions
 using Turing: VarInfo
+import Turing.randr
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -74,20 +75,7 @@ typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
 
-function randr(t::Trace, name::String, sym::Symbol, distr::Distribution)
-  t.vi.index += 1
-  local r
-  if t.vi.index <= length(t.vi.randomness)
-    r = t.vi.randomness[t.vi.index]
-  else # sample, record
-    @assert ~(name in t.vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(t.vi)"
-    r = Distributions.rand(distr)
-    push!(t.vi.randomness, r)
-    push!(t.vi.names, name)
-    push!(t.vi.tsyms, sym)
-  end
-  return r
-end
+randr(t::Trace, name::String, sym::Symbol, distr::Distribution) = randr(t.vi, name, sym, distr)
 
 # generate a new random variable, no replay
 randc(t::Trace, distr :: Distribution) = Distributions.rand(distr)
