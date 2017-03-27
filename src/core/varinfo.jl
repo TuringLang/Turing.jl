@@ -6,16 +6,21 @@ type VarInfo
   syms        ::    Vector{Symbol}
   dists       ::    Vector{Distribution}
   logjoint    ::    Dual
+
+  names       ::    Vector{String}
+  tsyms       ::    Vector{Symbol}
   randomness  ::    Vector{Any}   # elem t is the randomness created by the t’th assume call.
-  index :: Int                    # index of current randomness
-  num_produce :: Int              # num of produce calls from trace, each produce corresponds to an observe.
+  index       ::    Int           # index of current randomness
+  num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
     Dict{String, Int}(),
     Vector{Any}(),
     Vector{Symbol}(),
     Vector{Distribution}(),
     Dual(0.0),
-    Array{Any,1}(),
+    Vector{String}(),
+    Vector{Symbol}(),
+    Vector{Any}(),
     0,
     0
   )
@@ -47,12 +52,14 @@ end
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
-sync(vi::VarInfo, uid::String,r) = vi.randomness[getidx(vi, uid)] = r
-sync(vi::VarInfo, uids::Vector{String}) = begin
-  for uid = uids
-    idx = getidx(vi, uid)
-    dist = getdist(vi, uid)
-    val = getval(vi, uid)
-    vi.randomness[idx] = invlink(dist, reconstruct(dist, val))
+function randr(vi::VarInfo, name::String, sym::Symbol, dist::Distribution)
+  local r
+  vi.index += 1
+  if vi.index <= length(vi.randomness)
+    r = vi.randomness[vi.index]
+  else # sample, record
+    @assert ~(name in vi.names) "[randr(vi)] attempt to generate an exisitng variable $name to $(vi)"
+    r = Distributions.rand(dist)
   end
+  r
 end
