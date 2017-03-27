@@ -11,7 +11,7 @@ Gadfly.plot(qq::QQPair, elements::ElementOrFunction...) = Gadfly.plot(x=qq.qx, y
 qqplot(x, y, elements::ElementOrFunction...) = Gadfly.plot(qqbuild(x, y), elements...)
 qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Theoretical Normal quantiles"), Guide.ylabel("Observed quantiles"), elements...)
 
-NSamples = 3000
+NSamples = 30000
 
 @model gdemo2(x, bkstep) = begin
     y = similar(x)
@@ -36,19 +36,19 @@ end
 
 fw = PG(20, NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = PG(20,10);
+bk = PG(20,50);
 
 s = @sample(gdemo2([1.5, 2], false), fw);
 describe(s)
 
-N = div(NSamples, 10)
+N = div(NSamples, 50)
 
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)
 
 for i = 1:N
     s_bk[i] = @sample(gdemo2(x, true), bk);
-    x = [s_bk[i][:y][10]...];
+    x = [s_bk[i][:y][end]...];
 end
 
 s2 = vcat(s_bk...);
