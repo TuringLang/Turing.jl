@@ -60,14 +60,14 @@ qqplot(s[:s], s2[:s])
 
 qqs = qqbuild(s[:s], s2[:s])
 println("QQ plot for s:")
-scatterplot(qqs.qx, qqs.qy)
+show(scatterplot(qqs.qx, qqs.qy))
 
 println("QQ plot for s (removing last 50 quantiles):")
-scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50])
+show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50]))
 
 qqm = qqbuild(s[:m], s2[:m])
 println("QQ plot for m:")
-scatterplot(qqm.qx, qqm.qy)
+show(scatterplot(qqm.qx, qqm.qy))
 
 println("QQ plot for m (removing first and last 50 quantiles):")
-scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50])
+show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50]))
