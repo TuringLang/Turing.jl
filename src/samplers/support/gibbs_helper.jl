@@ -37,6 +37,15 @@ function varInfo2samples(vi)
       push!(samples[sym], realpart(val))
     end
   end
+  for i = 1:length(vi.tsyms)
+    val = vi.randomness[i]
+    sym = vi.tsyms[i]
+    if ~(sym in keys(samples))
+      samples[sym] = Any[val]
+    else
+      push!(samples[sym], val)
+    end
+  end
   # Remove un-necessary []'s
   for k in keys(samples)
     if isa(samples[k], Array) && length(samples[k]) == 1
@@ -44,22 +53,4 @@ function varInfo2samples(vi)
     end
   end
   samples
-end
-
-function merge(this_vi, trace)
-  that_vi = trace.vi
-  idx = length(this_vi.idcs)
-  for uid = keys(that_vi)
-    val = getval(that_vi, uid)
-    val = isa(val, TArray) ? Array(get(trace.task, val)) : val
-    # val = isa(val, TArray) ? Vector(val) : val
-    if ~haskey(this_vi, uid)
-      sym = getsym(that_vi, uid)
-      dist = getdist(that_vi, uid)
-      addvar!(this_vi, uid, deepcopy(val), sym, dist)
-    else
-      setval!(this_vi, val, uid)
-    end
-  end
-  this_vi
 end

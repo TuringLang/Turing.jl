@@ -61,15 +61,20 @@ function Base.run(model, data, spl::Sampler{Gibbs})
           end
         end
       elseif isa(local_spl, Sampler{PG})
+        # Update new VarInfo to the reference particle
+        if ref_particle != nothing
+          ref_particle.vi.idcs = varInfo.idcs
+          ref_particle.vi.vals = varInfo.vals
+          ref_particle.vi.syms = varInfo.syms
+          ref_particle.vi.dists = varInfo.dists
+          ref_particle.vi.index = 0
+          ref_particle.vi.num_produce = 0
+        end
         # local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
-        # println(typeof(varInfo["s"]))
-        # println(isa(varInfo["s"], TArray))
-        # println(typeof(Vector(varInfo["s"])))
-        # exit()
       end
       # println(varInfo)
     end
