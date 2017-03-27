@@ -78,7 +78,7 @@ Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(0,0,0), 0:0,
 Chain(w::Real, s::Array{Sample}) = begin
   chn = Chain()
   chn.weight = w
-  chn.value2 = s
+  chn.value2 = deepcopy(s)
 
   chn = flatten!(chn)
 end
@@ -151,6 +151,20 @@ function Base.getindex(c::Chain, v::Symbol)
   else
     map((s)->Base.getindex(s, v), c.value2)
   end
+end
+
+function Base.vcat(c1::Chain, args::Chain...)
+
+  names = c1.names
+  all(c -> c.names == names, args) ||
+    throw(ArgumentError("chain names differ"))
+
+  chains = c1.chains
+  all(c -> c.chains == chains, args) ||
+    throw(ArgumentError("sets of chains differ"))
+
+  value2 = cat(1, c1.value2, map(c -> c.value2, args)...)
+  Chain(0, value2)
 end
 
 ## NOTE: depreciated functions
