@@ -33,11 +33,12 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 end
 
 fw = PG(20, 3000)
-# bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = PG(20,10);
-
 s = @sample(gdemo2([1.5, 2], false), fw);
 describe(s)
+
+
+bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
+# bk = PG(20,10);
 
 N = 300
 x = [s[:y][1]...]
@@ -51,6 +52,11 @@ end
 s2 = vcat(s_bk...);
 describe(s2)
 
+plot_m = qqplot(s[:m], s2[:m], Coord.cartesian(xmin=-20, xmax=20, ymin=-10, ymax=10))
+if isa(bk, Turing.PG)
+  draw(PNG("plot_m_PGPG.png", 10inch, 5inch), plot_m)
+else
+  draw(PNG("plot_m_PGGibbs.png", 10inch, 5inch), plot_m)
+end
 
-qqplot(s[:m], s2[:m])
 qqplot(s[:s], s2[:s])

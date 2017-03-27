@@ -1,4 +1,5 @@
 *.dylib
 *.so
 *.orig
+*.png
 tmp/
