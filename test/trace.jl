@@ -14,9 +14,9 @@ function f2()
   t[1] = 0;
   while true
     ct = current_trace()
-    rand(ct, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
+    rand(ct, "$n", :test, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
     produce(t[1]);
-    rand(ct, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
+    rand(ct, "$n", :test, Normal(0,1)); addvar!(ct.vi, "$n", nothing, :test, Normal(0,1)); n += 1;
     t[1] = 1 + t[1]
   end
 end
