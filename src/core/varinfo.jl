@@ -14,7 +14,7 @@ end
 uid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
 string(vn::VarName) = uid(vn)
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
-==(x::VarName, y::VarName) = uid(x) == uid(y)
+==(x::VarName, y::VarName) = isequal(x, y)
 
 cuid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}" # the uid which is only available at compile time
 
