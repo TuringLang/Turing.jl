@@ -1,11 +1,24 @@
-########## VarInfo ##########
+import Base.string, Base.isequal, Base.==
+
+########## VarName ##########
 
 immutable VarName
-  csym      ::    Symbol        # ymbol generated in compilation time
+  csym      ::    Symbol        # symbol generated in compilation time
   sym       ::    Symbol        # variable symbol
-  uid       ::    String        # unique identifier
-  counter   ::    Int           # counter of same csym and uid
+  indexing  ::    String        # indexing
+  counter   ::    Int           # counter of same {csym, uid}
 end
+
+# NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
+
+uid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
+string(vn::VarName) = uid(vn)
+isequal(x::VarName, y::VarName) = uid(x) == uid(y)
+==(x::VarName, y::VarName) = uid(x) == uid(y)
+
+cuid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}" # the uid which is only available at compile time
+
+########## VarInfo ##########
 
 type VarInfo
   idcs        ::    Dict{String, Int}
