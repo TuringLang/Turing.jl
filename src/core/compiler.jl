@@ -93,7 +93,8 @@ macro ~(left, right)
         # Symbol
         assume_ex = quote
           sym = Symbol($(string(left)))
-          vn = makevn(vi, gensym(), sym, "")
+          vn = VarName(gensym(), sym, "", 1)  # TODO: replace this with the method below
+          # vn = makevn(vi, gensym(), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -110,7 +111,8 @@ macro ~(left, right)
           assume_ex.args,
           quote
             sym = Symbol(uid_list[1])
-            vn = nextvn(vi, gensym(), sym, indexing)
+            vn = VarName(gensym(), sym, indexing, 1)  # TODO: replace this with the method below
+            # vn = nextvn(vi, gensym(), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
