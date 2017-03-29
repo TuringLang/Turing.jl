@@ -1,5 +1,12 @@
 ########## VarInfo ##########
 
+immutable VarName
+  csym      ::    Symbol        # ymbol generated in compilation time
+  sym       ::    Symbol        # variable symbol
+  uid       ::    String        # unique identifier
+  counter   ::    Int           # counter of same csym and uid
+end
+
 type VarInfo
   idcs        ::    Dict{String, Int}
   vals        ::    Vector{Any}
@@ -51,6 +58,8 @@ end
 
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)
+
+syms(vi::VarInfo) = union(Set(tsyms), Set(syms))
 
 function randr(vi::VarInfo, name::String, sym::Symbol, distr::Distribution)
   vi.index += 1
