@@ -11,12 +11,12 @@ end
 
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
-uid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
-string(vn::VarName) = uid(vn)
+uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
+string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName) = isequal(x, y)
 
-cuid(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}" # the uid which is only available at compile time
+cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing) # the uid which is only available at compile time
 
 ########## VarInfo ##########
 
@@ -72,7 +72,31 @@ end
 Base.haskey(vi::VarInfo, uid::String) = haskey(vi.idcs, uid)
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
-syms(vi::VarInfo) = union(Set(tsyms), Set(syms))
+syms(vi::VarInfo) = union(Set(vi.tsyms), Set(vi.syms))
+
+uids(vi::VarInfo) = union(Set(keys(vi.idcs)), Set(vi.names))
+
+nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
+  uids = uids(vi)
+  
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function randr(vi::VarInfo, name::String, sym::Symbol, distr::Distribution)
   vi.index += 1

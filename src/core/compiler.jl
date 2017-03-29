@@ -7,9 +7,9 @@ insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-
 function varname(expr)
   # Initialize an expression block to store the code for creating uid
   local sym
-  uid_ex = Expr(:block)
+  indexing_ex = Expr(:block)
   # Add the initialization statement for uid
-  push!(uid_ex.args, quote uid_list = [] end)
+  push!(indexing_ex.args, quote indexing_list = [] end)
   # Initialize a local container for parsing and add the expr to it
   to_eval = []; unshift!(to_eval, expr)
   # Parse the expression and creating the code for creating uid
@@ -25,17 +25,17 @@ function varname(expr)
       if isa(evaling.args[1], Expr)
         unshift!(to_eval, evaling.args[1])
       else
-        push!(uid_ex.args, quote unshift!(uid_list, $(string(evaling.args[1]))) end)
+        # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
         find_head = true
         sym = evaling.args[1]
       end
     else
       # Evaluting the concrete value of the indexing variable
-      push!(uid_ex.args, quote push!(uid_list, string($evaling)) end)
+      push!(indexing_ex.args, quote push!(indexing_list, string($evaling)) end)
     end
   end
-  push!(uid_ex.args, quote uid = reduce(*, uid_list) end)
-  return uid_ex, sym
+  push!(indexing_ex.args, quote indexing = reduce(*, indexing_list) end)
+  return indexing_ex, sym
 end
 
 #################
@@ -92,33 +92,33 @@ macro ~(left, right)
       if isa(left, Symbol)
         # Symbol
         assume_ex = quote
-          sym = $(string(left))
+          sym = Symbol($(string(left)))
+          vn = makevn(vi, gensym(), sym, "")
           $(left) = Turing.assume(
             sampler,
-            $(right),         # dist
-            $(string(left)),  # uid
-            Symbol(sym),      # sym
-            vi
+            $(right),   # dist
+            vn,         # VarName
+            vi          # VarInfo
           )
           ct = current_task();
-          Turing.predict(sampler, Symbol(sym), get(ct, $(left)))
+          Turing.predict(sampler, sym, get(ct, $(left)))
         end
       else
         # Indexing
-        assume_ex, sym = varname(left)
+        assume_ex, sym = varname(left)    # sym here is used in predict()
         push!(
           assume_ex.args,
           quote
-            sym = uid_list[1]
+            sym = Symbol(uid_list[1])
+            vn = nextvn(vi, gensym(), sym, indexing)
             $(left) = Turing.assume(
               sampler,
-              $(right),     # dist
-              uid,          # uid
-              Symbol(sym),  # sym
-              vi
+              $(right),   # dist
+              vn,         # VarName
+              vi          # VarInfo
             )
             ct = current_task();
-            Turing.predict(sampler, Symbol(sym), get(ct, $(sym)))
+            Turing.predict(sampler, sym, get(ct, $(sym)))
           end
         )
       end
