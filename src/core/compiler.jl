@@ -220,21 +220,41 @@ macro model(fexpr)
   # Get parameters from the argument list, e.g. f(x, y, ...)
   farglist = fname.args[2:end] #  (x,y,...)
 
-  # Set parameters as model(data, vi, sampler)
-  push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
-  push!(fname.args, Expr(Symbol("kw"), :vi, :(VarInfo())))
-  push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
+  # Add keyword arguments, e.g.
+  #   f(x,y,z; c=1)
+  #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
+  if isa(fname.args[2], Symbol) || fname.args[2].head == :kw # e.g. f(x) or f(x=1,y)
+    args1 = Expr(:parameters)
+    insert!(fname.args, 2, args1)
+    fname.args[2].args = [Expr(:kw, :vi, :(VarInfo())), Expr(:kw, :alg, :(IS(1)))]
+  else # e.g. f(x,y;k=1)
+    args1 = fname.args[2].args
+    fname.args[2].args = [Expr(:kw, :vi, :(VarInfo())), Expr(:kw, :alg, :(IS(1)))]
+    fname.args[2].args = push!(fname.args[2].args, args1...)
+  end
+
   dprintln(1, fname)
 
-
+  # Remove positional arguments, e.g.
+  #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
+  #      ==>   f(; vi=VarInfo(),sampler=IS(1))
   fname2 = deepcopy(fname)
-  fname2.args = fname2.args[1:1]  # remove arguments
+  fname2.args = fname2.args[1:2]
+  fname2.args[2].args[2] = Expr(:kw, :sampler, :(sampler))
   dprintln(1, fname2)
 
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
   dprintln(1, fbody)
 
-  dprintln(1, :($fname = begin @model($fname2, $fbody, $farglist) end))
-
-  esc(:($fname = begin @model($fname2, $fbody, $farglist) end))
+  dprintln(1, :($fname = begin @model($fname2, $fbody) end))
+  esc(quote
+      $fname = begin
+        sampler = ImportanceSampler{typeof(alg)}(alg, println) # Default sampler is IS.
+        dprintln(1, sampler)
+        f = @model($fname2, $fbody, $farglist)
+        sampler.model = f
+        return f
+      end
+    end
+      )
 end
