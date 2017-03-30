@@ -26,8 +26,9 @@ function varname(expr)
         unshift!(to_eval, evaling.args[1])
       else
         # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
+        push!(indexing_ex.args, quote sym = Symbol($(string(evaling.args[1]))) end) # store symbol in runtime
         find_head = true
-        sym = evaling.args[1]
+        sym = evaling.args[1] # store symbol in compilation time
       end
     else
       # Evaluting the concrete value of the indexing variable
@@ -35,7 +36,7 @@ function varname(expr)
     end
   end
   push!(indexing_ex.args, quote indexing = reduce(*, indexing_list) end)
-  return indexing_ex, sym
+  indexing_ex, sym
 end
 
 #################
@@ -93,8 +94,7 @@ macro ~(left, right)
         # Symbol
         assume_ex = quote
           sym = Symbol($(string(left)))
-          vn = VarName(gensym(), sym, "", 1)  # TODO: replace this with the method below
-          # vn = makevn(vi, gensym(), sym, "")
+          vn = nextvn(vi, Symbol($(string(gensym()))), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -107,12 +107,14 @@ macro ~(left, right)
       else
         # Indexing
         assume_ex, sym = varname(left)    # sym here is used in predict()
+        # NOTE:
+        # The initialization of assume_ex is indexing_ex,
+        # in which sym will store the variable symbol (Symbol),
+        # and indexing will store the indexing (String)
         push!(
           assume_ex.args,
           quote
-            sym = Symbol(uid_list[1])
-            vn = VarName(gensym(), sym, indexing, 1)  # TODO: replace this with the method below
-            # vn = nextvn(vi, gensym(), sym, indexing)
+            vn = nextvn(vi, Symbol($(string(gensym()))), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
