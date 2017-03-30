@@ -126,25 +126,15 @@ end
 function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
+  local r
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    local r
-    if ~haskey(vi, vn)
-      dprintln(2, "sampling prior...")
-      r = rand(dist)
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, vn, val, dist)
-    else
-      dprintln(2, "fetching vals...")
-      val = vi[vn]
-      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-    end
+    r = randrn(vi, vn, dist)
     vi.logjoint += logpdf(dist, r, true)
-    r
   else
-    r = randr(vi, vn, dist)                     # replay by randomness
+    r = randrc(vi, vn, dist)                     # replay by randomness
     vi.logjoint += logpdf(dist, r, false)       # observe data, non-transformed variable
-    r
   end
+  r
 end
 
 function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)

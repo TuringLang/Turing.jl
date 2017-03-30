@@ -100,7 +100,24 @@ nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
-function randr(vi::VarInfo, vn::VarName, dist::Distribution)
+# Random with replaying by name
+randrn(vi::VarInfo, vn::VarName, dist::Distribution) = begin
+  local r
+  if ~haskey(vi, vn)
+    dprintln(2, "sampling prior...")
+    r = rand(dist)
+    val = vectorize(dist, link(dist, r))      # X -> R and vectorize
+    addvar!(vi, vn, val, dist)
+  else
+    dprintln(2, "fetching vals...")
+    val = vi[vn]
+    r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
+  end
+  r
+end
+
+# Random with replaying by counter
+function randrc(vi::VarInfo, vn::VarName, dist::Distribution)
   vi.index += 1
   local r
   if vi.index <= length(vi.randomness)
