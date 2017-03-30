@@ -157,24 +157,8 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
   dprintln(2, "observe done")
 end
 
-function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int)
+function sample(model::Function, alg::HMC, chunk_size::Int = 5)
   global CHUNKSIZE = chunk_size;
-  sampler = HMCSampler{HMC}(alg);
-  run(model, data, sampler)
-end
-
-function sample(model::Function, alg::HMC, chunk_size::Int)
-  global CHUNKSIZE = chunk_size;
-  sampler = HMCSampler{HMC}(alg);
-  run(model, Dict(), sampler)
-end
-
-function sample(model::Function, data::Dict, alg::HMC)
-  sampler = HMCSampler{HMC}(alg);
-  run(model, data, sampler)
-end
-
-function sample(model::Function, alg::HMC)
-  sampler = HMCSampler{HMC}(alg);
+  global sampler = HMCSampler{HMC}(alg);
   run(model, Dict(), sampler)
 end
