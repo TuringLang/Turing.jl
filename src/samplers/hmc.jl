@@ -169,3 +169,5 @@ function sample(model::Function, alg::HMC)
   sampler = HMCSampler{HMC}(alg);
   run(model, Dict(), sampler)
 end
+
+# rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{HMC}) = rand(vi, vn, dist, :name)

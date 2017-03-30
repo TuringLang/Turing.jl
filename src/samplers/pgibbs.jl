@@ -60,23 +60,14 @@ end
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
   vi = current_trace().vi
+  local r
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
     r = rand(vi, vn, dist, :counter)
   else
-    local r
-    if ~haskey(vi, vn)
-      dprintln(2, "sampling prior...")
-      r = rand(dist)
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, vn, val, dist)
-    else
-      dprintln(2, "fetching vals...")
-      val = vi[vn]
-      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-    end
+    r = rand(vi, vn, dist, :name)
     produce(log(1.0))
-    r
   end
+  r
 end
 
 function Base.run(model, data, spl::Sampler{PG})
@@ -97,3 +88,5 @@ function Base.run(model, data, spl::Sampler{PG})
   println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
 end
+
+# rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}) = rand(vi, vn, dist, :counter)
