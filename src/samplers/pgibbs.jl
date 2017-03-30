@@ -58,21 +58,20 @@ function step(model, data, spl::Sampler{PG}, vi, ref_particle)
   ref_particle, s
 end
 
-function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
-  if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    name = uid
-    r = rand(current_trace(), name, sym, dist)
+function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
+  vi = current_trace().vi
+  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
+    randr(vi, vn, dist)
   else
     local r
-    vi = current_trace().vi
-    if ~haskey(vi, uid)
+    if ~haskey(vi, vn)
       dprintln(2, "sampling prior...")
       r = rand(dist)
       val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, uid, val, sym, dist)
+      addvar!(vi, vn, val, dist)
     else
       dprintln(2, "fetching vals...")
-      val = vi[uid]
+      val = vi[vn]
       r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
     end
     produce(log(1.0))

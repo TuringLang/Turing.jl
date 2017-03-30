@@ -64,7 +64,7 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
 
     dprintln(2, "sampling momentum...")
-    p = Dict(k => randn(length(varInfo[k])) for k in keys(varInfo))
+    p = Dict(uid(k) => randn(length(varInfo[k])) for k in keys(varInfo))
     if spl != nothing && ~isempty(spl.alg.space)
       p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
     end
@@ -123,25 +123,25 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
+function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
+  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
     local r
-    if ~haskey(vi, uid)
+    if ~haskey(vi, vn)
       dprintln(2, "sampling prior...")
       r = rand(dist)
       val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, uid, val, sym, dist)
+      addvar!(vi, vn, val, dist)
     else
       dprintln(2, "fetching vals...")
-      val = vi[uid]
+      val = vi[vn]
       r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
     end
     vi.logjoint += logpdf(dist, r, true)
     r
   else
-    r = randr(vi, uid, sym, dist)                         # replay by randomness
+    r = randr(vi, vn, dist)                     # replay by randomness
     vi.logjoint += logpdf(dist, r, false)       # observe data, non-transformed variable
     r
   end

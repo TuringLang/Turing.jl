@@ -15,7 +15,7 @@ end
 """
 function gradient(vi::VarInfo, model::Function, data=Dict(), spl=nothing)
   # Initialisation
-  val∇E = Dict{String, Vector{Float64}}()
+  val∇E = Dict{Tuple, Vector{Float64}}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(4, "making chunks...")
   prior_key_chunks = []

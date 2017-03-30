@@ -54,8 +54,7 @@ function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   Base.run(model, data, sampler)
 end
 
-
-assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  = rand(current_trace(), dist)
+assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), dist)
 
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 

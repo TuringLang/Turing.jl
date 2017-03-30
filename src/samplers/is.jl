@@ -54,9 +54,7 @@ function Base.run(spl::Sampler{IS})
   return chn
 end
 
-function assume(spl::ImportanceSampler{IS}, d::Distribution, uid::String, sym::Symbol, varInfo::VarInfo)
-  return rand(d)
-end
+assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, varInfo::VarInfo) = rand(d)
 
 function observe(spl::ImportanceSampler{IS}, d::Distribution, value, varInfo::VarInfo)
   spl.logevidence += logpdf(d, value)
