@@ -61,7 +61,7 @@ end
 function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
   vi = current_trace().vi
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    randrc(vi, vn, dist)
+    r = rand(vi, vn, dist, :counter)
   else
     local r
     if ~haskey(vi, vn)

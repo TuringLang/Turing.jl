@@ -1,5 +1,6 @@
 import Base.string, Base.isequal, Base.==, Base.convert
 import Base.getindex, Base.setindex!
+import Base.rand
 
 ########## VarName ##########
 
@@ -98,6 +99,16 @@ Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
 nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when VarInfo internal structure is updated
   VarName(csym, sym, indexing, 1)
+end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, method::Symbol) = begin
+  if method == :name
+    randrn(vi, vn, dist)
+  elseif method == :counter
+    randrc(vi, vn, dist)
+  else
+    error("[rand]: unsupported randomness replaying method: $method")
+  end
 end
 
 # Random with replaying by name

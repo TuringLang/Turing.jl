@@ -128,11 +128,12 @@ function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, vn::VarNa
   dprintln(2, "assuming...")
   local r
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = randrn(vi, vn, dist)
+    r = rand(vi, vn, dist, :name)
     vi.logjoint += logpdf(dist, r, true)
   else
-    r = randrc(vi, vn, dist)                     # replay by randomness
-    vi.logjoint += logpdf(dist, r, false)       # observe data, non-transformed variable
+    r = rand(vi, vn, dist, :counter)
+    # Observe data, non-transformed variable
+    vi.logjoint += logpdf(dist, r, false)
   end
   r
 end
