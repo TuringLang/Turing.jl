@@ -58,6 +58,27 @@ function step(model, data, spl::Sampler{PG}, vi, ref_particle)
   ref_particle, s
 end
 
+function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
+  vi = current_trace().vi
+  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
+    randr(vi, vn, dist)
+  else
+    local r
+    if ~haskey(vi, vn)
+      dprintln(2, "sampling prior...")
+      r = rand(dist)
+      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
+      addvar!(vi, vn, val, dist)
+    else
+      dprintln(2, "fetching vals...")
+      val = vi[vn]
+      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
+    end
+    produce(log(1.0))
+    r
+  end
+end
+
 function Base.run(model, data, spl::Sampler{PG})
   n = spl.alg.n_iterations
   t_start = time()  # record the start time of PG

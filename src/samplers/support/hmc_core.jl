@@ -1,3 +1,8 @@
+function runmodel(model, data, vi, spl)
+  vi.index = 0
+  model(data, vi, spl) # run model
+end
+
 # Half momentum step
 function half_momentum_step(p, ϵ, val∇E)
   dprintln(3, "half_momentum_step...")
@@ -25,8 +30,7 @@ end
 # Find logjoint
 # NOTE: it returns logjoint but not -logjoint
 function find_logjoint(model, data, values, spl)
-  values.index = 0
-  values = model(data, values, spl) # run model
+  values = runmodel(model, data, values, spl)
   logjoint = values.logjoint        # get logjoint
   values.logjoint = Dual(0)         # reset logjoint
   logjoint

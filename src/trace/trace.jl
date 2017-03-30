@@ -9,7 +9,8 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarInfo
+using Turing: VarName, VarInfo
+import Turing.randr
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -74,26 +75,13 @@ typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
 
-function randr(t::Trace, name::String, sym::Symbol, distr::Distribution)
-  t.vi.index += 1
-  local r
-  if t.vi.index <= length(t.vi.randomness)
-    r = t.vi.randomness[t.vi.index]
-  else # sample, record
-    @assert ~(name in t.vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(t.vi)"
-    r = Distributions.rand(distr)
-    push!(t.vi.randomness, r)
-    push!(t.vi.names, name)
-    push!(t.vi.tsyms, sym)
-  end
-  return r
-end
+randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr)
 
 # generate a new random variable, no replay
 randc(t::Trace, distr :: Distribution) = Distributions.rand(distr)
 
-Distributions.rand(t::TraceR, name::String, sym::Symbol, dist::Distribution) = randr(t, name, sym, dist)
-Distributions.rand(t::TraceC, name::String, sym::Symbol, dist::Distribution) = randc(t, dist)
+Distributions.rand(t::TraceR, vn::VarName, dist::Distribution) = randr(t, vn, dist)
+Distributions.rand(t::TraceC, vn::VarName, dist::Distribution) = randc(t, dist)
 
 Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
 Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
@@ -129,7 +117,9 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   newtrace.vi.syms = trace.vi.syms
   newtrace.vi.dists = trace.vi.dists
   newtrace.vi.randomness = deepcopy(trace.vi.randomness)
-  newtrace.vi.names = deepcopy(trace.vi.names)
+  # NOTE: use deepcopy below directly will cause error
+  newtrace.vi.names = map(vn -> identity(vn), trace.vi.names)
+
   newtrace.vi.tsyms = deepcopy(trace.vi.tsyms)
 
   # Step 1: Call consume t times to replay randomness

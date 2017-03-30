@@ -54,30 +54,8 @@ function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   Base.run(model, data, sampler)
 end
 
+assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), dist)
 
-assume(spl::ParticleSampler, dist::Distribution, uid::String, sym::Symbol, vi)  = rand(current_trace(), dist)
-
-function assume(spl::ParticleSampler{PG}, dist::Distribution, uid::String, sym::Symbol, vi::VarInfo)
-  if spl == nothing || isempty(spl.alg.space) || sym in spl.alg.space
-    name = uid
-    r = rand(current_trace(), name, sym, dist)
-  else
-    local r
-    vi = current_trace().vi
-    if ~haskey(vi, uid)
-      dprintln(2, "sampling prior...")
-      r = rand(dist)
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, uid, val, sym, dist)
-    else
-      dprintln(2, "fetching vals...")
-      val = vi[uid]
-      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-    end
-    produce(log(1.0))
-    r
-  end
-end
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
 function predict(spl :: Sampler, v_name :: Symbol, value)

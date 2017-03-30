@@ -17,8 +17,10 @@ Turing.TURING[:modelex]
 # Call Turing's AD
 # The result out is the gradient information on R
 vi = ad_test()
-_s = realpart(vi["s"][1])
-_m = realpart(vi["m"][1])
+svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
+mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
+_s = realpart(vi[svn][1])
+_m = realpart(vi[mvn][1])
 ∇E = gradient(vi, ad_test, Dict(), nothing)
 grad_Turing = sort([∇E[v][1] for v in keys(vi)])
 
