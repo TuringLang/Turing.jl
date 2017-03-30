@@ -28,9 +28,10 @@ testcases = [
 #       conditional.jl
 #       container.jl
           "copy_particle_container",
-#       graidnetinfo.jl
+#       varinfo.jl
           "replay",
           "test_varname",
+          "varinfo",
 #       IArray.jl
 #       intrinsic.jl
 #       io.jl
