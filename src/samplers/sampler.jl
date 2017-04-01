@@ -47,7 +47,18 @@ observe(spl, weight :: Float64) =
 predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
+function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
+  r = rand(vi, vn, dist, spl)
+  vi.logjoint += logpdf(dist, r, true)
+  r
+end
+
 predict(spl::Void, var_name :: Symbol, value) = nothing
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl:: Void) = begin
+  # TODO: calling of rand() should be updated when group filed is added
+  rand(vi, vn, dist, :byname)
+end
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);

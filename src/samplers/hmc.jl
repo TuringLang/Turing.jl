@@ -123,15 +123,15 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   local r
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = rand(vi, vn, dist, :name)
+    r = rand(vi, vn, dist, spl)
     vi.logjoint += logpdf(dist, r, true)
   else
-    r = rand(vi, vn, dist, :counter)
+    r = rand(vi, vn, dist, spl, false)
     # Observe data, non-transformed variable
     vi.logjoint += logpdf(dist, r, false)
   end
@@ -170,4 +170,11 @@ function sample(model::Function, alg::HMC)
   run(model, Dict(), sampler)
 end
 
-# rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{HMC}) = rand(vi, vn, dist, :name)
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{Sampler{HMC}, Void}, inside=true) = begin
+  # TODO: calling of rand() should be updated when group filed is added
+  if inside == true
+    rand(vi, vn, dist, :byname)
+  else
+    rand(vi, vn, dist, :bycounter)
+  end
+end

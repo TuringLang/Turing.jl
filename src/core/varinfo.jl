@@ -101,10 +101,11 @@ nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
+# TODO: below should be updated when the field group is add to InferenceAlgorithm
 rand(vi::VarInfo, vn::VarName, dist::Distribution, method::Symbol) = begin
-  if method == :name
+  if method == :byname
     randrn(vi, vn, dist)
-  elseif method == :counter
+  elseif method == :bycounter
     randrc(vi, vn, dist)
   else
     error("[rand]: unsupported randomness replaying method: $method")

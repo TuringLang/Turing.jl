@@ -61,10 +61,10 @@ end
 function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
   vi = current_trace().vi
   local r
-  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = rand(vi, vn, dist, :counter)
+  if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    r = rand(vi, vn, dist, spl)
   else
-    r = rand(vi, vn, dist, :name)
+    r = rand(vi, vn, dist, spl, false)
     produce(log(1.0))
   end
   r
@@ -89,4 +89,11 @@ function Base.run(model, data, spl::Sampler{PG})
   chain = Chain(exp(mean(logevidence)), samples)
 end
 
-# rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}) = rand(vi, vn, dist, :counter)
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}, inside=true) = begin
+  # TODO: calling of rand() should be updated when group filed is added
+  if inside == true
+    rand(vi, vn, dist, :bycounter)
+  else
+    rand(vi, vn, dist, :byname)
+  end
+end
