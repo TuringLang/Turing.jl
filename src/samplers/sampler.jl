@@ -49,11 +49,6 @@ predict(spl, var_name :: Symbol, value) =
 
 predict(spl::Void, var_name :: Symbol, value) = nothing
 
-function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(model, data, sampler)
-end
-
 assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), dist)
 
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))

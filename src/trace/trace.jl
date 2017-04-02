@@ -55,14 +55,14 @@ function (::Type{Trace{T}}){T}(f::Function)
   res
 end
 
-function (::Type{Trace{T}}){T}(f::Function, data, spl, vi :: VarInfo)
+function (::Type{Trace{T}}){T}(f::Function, spl, vi :: VarInfo)
   res = Trace{T}();
   # Task(()->f());
   res.vi.idcs = vi.idcs
   res.vi.vals = vi.vals
   res.vi.syms = vi.syms
   res.vi.dists = vi.dists
-  res.task = Task( () -> begin res=f(data, vi, spl); produce(Val{:done}); res; end )
+  res.task = Task( () -> begin res=f(vi=vi, sampler=spl); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end

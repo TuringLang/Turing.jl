@@ -34,12 +34,12 @@ immutable PG <: InferenceAlgorithm
   end
 end
 
-function step(model, data, spl::Sampler{PG}, vi, ref_particle)
+function step(model, spl::Sampler{PG}, vi, ref_particle)
   spl.particles = ParticleContainer{TraceR}(spl.model)
   if ref_particle == nothing
-    push!(spl.particles, spl.alg.n_particles, data, spl, vi)
+    push!(spl.particles, spl.alg.n_particles, spl, vi)
   else
-    push!(spl.particles, spl.alg.n_particles-1, data, spl, vi)
+    push!(spl.particles, spl.alg.n_particles-1, spl, vi)
     push!(spl.particles, ref_particle)
   end
 
@@ -79,7 +79,10 @@ function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::V
   end
 end
 
-function Base.run(model, data, spl::Sampler{PG})
+
+function sample(model, alg::PG)
+  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  spl = sampler
   n = spl.alg.n_iterations
   t_start = time()  # record the start time of PG
   samples = Vector{Sample}()
@@ -89,7 +92,7 @@ function Base.run(model, data, spl::Sampler{PG})
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
   for i = 1:n
-    ref_particle, s = step(model, data, spl, VarInfo(), ref_particle)
+    ref_particle, s = step(model, spl, VarInfo(), ref_particle)
     logevidence[i] = spl.particles.logE
     push!(samples, Sample(1/n, s.value))
   end

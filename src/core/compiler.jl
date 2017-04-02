@@ -240,7 +240,7 @@ macro model(fexpr)
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
   fname2 = deepcopy(fname)
   fname2.args = fname2.args[1:2]
-  fname2.args[2].args[2] = Expr(:kw, :sampler, :(sampler))
+  fname2.args[2].args[2] = Expr(:kw, :sampler, :(sampler)) # alg ==> sampler
   dprintln(1, fname2)
 
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
