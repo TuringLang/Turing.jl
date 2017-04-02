@@ -40,10 +40,13 @@ type ImportanceSampler{IS} <: Sampler{IS}
   end
 end
 
-function Base.run(spl::Sampler{IS})
+function sample(model::Function, alg::IS)
+  global sampler = ImportanceSampler{IS}(alg, model);
+  spl = sampler
+
   n = spl.alg.n_samples
   for i = 1:n
-    consume(Task(spl.model))
+    consume(Task(()->spl.model(vi = VarInfo(), sampler = spl)))
     spl.samples[i] = Sample(spl.logevidence, spl.predicts)
     spl.logweights[i] = spl.logevidence
     spl.logevidence = 0
@@ -62,6 +65,3 @@ end
 
 function predict(spl::ImportanceSampler{IS}, name::Symbol, value) spl.predicts[name] = value
 end
-
-sample(model::Function, data::Dict, alg::IS) =
-  (global sampler = ImportanceSampler{IS}(alg, model); run(sampler))
