@@ -249,12 +249,13 @@ macro model(fexpr)
   dprintln(1, :($fname = begin @model($fname2, $fbody) end))
   esc(quote
       $fname = begin
-        sampler = ImportanceSampler{typeof(alg)}(alg, println) # Default sampler is IS.
+        # Default sampler is IS.
+        # model is not defined yet, use `()->nothing` as a place holder for model.
+        sampler = ImportanceSampler{typeof(alg)}(alg, ()->nothing)
         dprintln(1, sampler)
         f = @model($fname2, $fbody, $farglist)
-        sampler.model = f
+        sampler.model = f # Set model. See comment above.
         return f
       end
-    end
-      )
+    end)
 end

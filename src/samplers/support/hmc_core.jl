@@ -1,6 +1,6 @@
-function runmodel(model, data, vi, spl)
+function runmodel(model, vi, spl)
   vi.index = 0
-  model(data, vi, spl) # run model
+  model(vi=vi, sampler=spl) # run model
 end
 
 # Half momentum step
@@ -13,14 +13,14 @@ function half_momentum_step(p, ϵ, val∇E)
 end
 
 # Leapfrog step
-function leapfrog(values, val∇E, p, ϵ, model, data, spl)
+function leapfrog(values, val∇E, p, ϵ, model, spl)
   dprintln(3, "leapfrog...")
 
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
   for k in keys(val∇E)                # full step for state
     values[k] = Vector{Dual}(values[k] + ϵ * p[k])
   end
-  val∇E = gradient(values, model, data, spl)
+  val∇E = gradient(values, model, spl)
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
 
   # Return updated θ and momentum
@@ -29,19 +29,19 @@ end
 
 # Find logjoint
 # NOTE: it returns logjoint but not -logjoint
-function find_logjoint(model, data, values, spl)
-  values = runmodel(model, data, values, spl)
+function find_logjoint(model, values, spl)
+  values = runmodel(model, values, spl)
   logjoint = values.logjoint        # get logjoint
   values.logjoint = Dual(0)         # reset logjoint
   logjoint
 end
 
 # Compute Hamiltonian
-function find_H(p, model, data, values, spl)
+function find_H(p, model, values, spl)
   H = 0
   for k in keys(p)
     H += p[k]' * p[k] / 2
   end
-  H += realpart(-find_logjoint(model, data, values, spl))
+  H += realpart(-find_logjoint(model, values, spl))
   H[1]  # Vector{Any, 1} -> Any
 end
