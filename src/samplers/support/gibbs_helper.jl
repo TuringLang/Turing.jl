@@ -30,27 +30,14 @@ function varInfo2samples(vi)
     val = vi[uid]
     val = reconstruct(dist, val)
     val = invlink(dist, val)
-    sym = getsym(vi, uid)
-    if ~(sym in keys(samples))
-      samples[sym] = Any[realpart(val)]
-    else
-      push!(samples[sym], realpart(val))
-    end
+    val = Any[realpart(val)]
+    val = length(val) == 1 ? val[1] : val   # Remove un-necessary []'s
+    samples[sym(uid)] = val
   end
-  for i = 1:length(vi.tsyms)
+  for i = 1:length(vi.names)
+    uid = vi.names[i]
     val = vi.randomness[i]
-    sym = vi.tsyms[i]
-    if ~(sym in keys(samples))
-      samples[sym] = Any[val]
-    else
-      push!(samples[sym], val)
-    end
-  end
-  # Remove un-necessary []'s
-  for k in keys(samples)
-    if isa(samples[k], Array) && length(samples[k]) == 1
-      samples[k] = samples[k][1]
-    end
+    samples[sym(uid)] = val
   end
   samples
 end

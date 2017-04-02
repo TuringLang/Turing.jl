@@ -15,6 +15,9 @@ end
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
 string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
+sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
+sym(t::Tuple{Symbol,Symbol,String,Int64}) = Symbol("$(t[2])$(t[3])")
+
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName) = isequal(x, y)
 
@@ -103,9 +106,6 @@ uids(vi::VarInfo) = union(Set(keys(vi.idcs)), Set(vi.names))
 Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
 Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
 
-
-
-
 nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when VarInfo internal structure is updated
   VarName(csym, sym, indexing, 1)
@@ -147,6 +147,21 @@ function randrc(vi::VarInfo, vn::VarName, dist::Distribution)
   else # sample, record
     @assert ~(vn in vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(vi)"
     r = Distributions.rand(dist)
+    push!(vi.randomness, r)
+    push!(vi.names, vn)
+    push!(vi.tsyms, vn.sym)
+  end
+  r
+end
+
+# Randome with force overwriting by counter
+function randoc(vi::VarInfo, vn::VarName, dist::Distribution)
+  vi.index += 1
+  r = Distributions.rand(dist)
+  if vi.index <= length(vi.randomness)
+    vi.randomness[vi.index] = r
+  else # sample, record
+    @assert ~(vn in vi.names) "[randr(trace)] attempt to generate an exisitng variable $name to $(vi)"
     push!(vi.randomness, r)
     push!(vi.names, vn)
     push!(vi.tsyms, vn.sym)

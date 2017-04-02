@@ -65,14 +65,8 @@ function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   Base.run(model, data, sampler)
 end
 
-assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), dist)
+assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), vn, dist)
 
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
-function predict(spl :: Sampler, v_name :: Symbol, value)
-  task = current_task()
-  if ~haskey(task.storage, :turing_predicts)
-    task.storage[:turing_predicts] = Dict{Symbol,Any}()
-  end
-  task.storage[:turing_predicts][v_name] = isa(value, Dual) ? realpart(value) : value
-end
+predict(spl :: Sampler, v_name :: Symbol, value) = nothing

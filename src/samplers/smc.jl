@@ -42,7 +42,6 @@ function Base.run(model, data, spl::Sampler{SMC})
       resample!(spl.particles,use_replay=spl.alg.use_replay)
     end
   end
-
   res = Chain(getsample(spl.particles)...)
 
 end

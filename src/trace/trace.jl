@@ -10,7 +10,7 @@ Notes:
 module Traces
 using Distributions
 using Turing: VarName, VarInfo
-import Turing.randrc
+import Turing.randrc, Turing.randoc
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -78,10 +78,10 @@ typealias TraceC Trace{:C} # Replay
 randr(t::Trace, vn::VarName, distr::Distribution) = randrc(t.vi, vn, distr)
 
 # generate a new random variable, no replay
-randc(t::Trace, distr :: Distribution) = Distributions.rand(distr)
+randc(t::Trace, vn::VarName, distr :: Distribution) = randoc(t.vi, vn, distr)
 
 Distributions.rand(t::TraceR, vn::VarName, dist::Distribution) = randr(t, vn, dist)
-Distributions.rand(t::TraceC, vn::VarName, dist::Distribution) = randc(t, dist)
+Distributions.rand(t::TraceC, vn::VarName, dist::Distribution) = randc(t, vn, dist)
 
 Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
 Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
@@ -98,7 +98,7 @@ function forkc(trace :: Trace)
   newtrace.vi.vals = trace.vi.vals
   newtrace.vi.syms = trace.vi.syms
   newtrace.vi.dists = trace.vi.dists
-  newtrace.vi.randomness = trace.vi.randomness[1:n_rand]
+  newtrace.vi.randomness = deepcopy(trace.vi.randomness[1:n_rand])
   newtrace.vi.names = trace.vi.names[1:n_rand]
   newtrace.vi.tsyms = trace.vi.tsyms[1:n_rand]
   newtrace.vi.index = trace.vi.index
