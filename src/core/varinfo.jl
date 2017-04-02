@@ -59,8 +59,18 @@ getidx(vi::VarInfo, uid::Tuple) = vi.idcs[uid]
 
 getval(vi::VarInfo, vn::VarName) = vi.vals[getidx(vi, vn)]
 getval(vi::VarInfo, uid::Tuple) = vi.vals[getidx(vi, uid)]
-setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = vi.vals[getidx(vi, vn)] = val
-setval!(vi::VarInfo, val, uid::Tuple, overwrite=false) = vi.vals[getidx(vi, uid)] = val
+setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
+  if ~overwrite
+    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
+  end
+  vi.vals[getidx(vi, vn)] = val
+end
+setval!(vi::VarInfo, val, uid::Tuple, overwrite=false) = begin
+  if ~overwrite
+    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
+  end
+  vi.vals[getidx(vi, uid)] = val
+end
 
 getsym(vi::VarInfo, vn::VarName) = vi.syms[getidx(vi, vn)]
 getsym(vi::VarInfo, uid::Tuple) = vi.syms[getidx(vi, uid)]
