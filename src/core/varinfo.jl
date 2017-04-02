@@ -59,8 +59,8 @@ getidx(vi::VarInfo, uid::Tuple) = vi.idcs[uid]
 
 getval(vi::VarInfo, vn::VarName) = vi.vals[getidx(vi, vn)]
 getval(vi::VarInfo, uid::Tuple) = vi.vals[getidx(vi, uid)]
-setval!(vi::VarInfo, val, vn::VarName) = vi.vals[getidx(vi, vn)] = val
-setval!(vi::VarInfo, val, uid::Tuple) = vi.vals[getidx(vi, uid)] = val
+setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = vi.vals[getidx(vi, vn)] = val
+setval!(vi::VarInfo, val, uid::Tuple, overwrite=false) = vi.vals[getidx(vi, uid)] = val
 
 getsym(vi::VarInfo, vn::VarName) = vi.syms[getidx(vi, vn)]
 getsym(vi::VarInfo, uid::Tuple) = vi.syms[getidx(vi, uid)]
@@ -75,8 +75,8 @@ setdist!(vi::VarInfo, dist, uid::Tuple) = vi.dists[getidx(vi, uid)] = dist
 # The default getindex & setindex!() for get & set values
 Base.getindex(vi::VarInfo, vn::VarName) = getval(vi, vn)
 Base.getindex(vi::VarInfo, uid::Tuple) = getval(vi, uid)
-Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn)
-Base.setindex!(vi::VarInfo, val, uid::Tuple) = setval!(vi, val, uid)
+Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn, true)
+Base.setindex!(vi::VarInfo, val, uid::Tuple) = setval!(vi, val, uid, true)
 
 addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution) = begin
   @assert ~haskey(vi, vn)
