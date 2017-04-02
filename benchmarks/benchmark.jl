@@ -6,6 +6,7 @@ CONFIG = Dict(
     #"naive-bayes",
     #"normal-loc",
     #"normal-mixture",
+    "simplegauss",
     "gauss",
     "bernoulli",
     "gdemo-geweke"
