@@ -20,4 +20,4 @@ xs = rand(Normal(0.5, 1), 100)
 end
 
 # Sampling
-chain = @sample(priorsinarray(xs), HMC(10, 0.01, 10))
+chain = sample(priorsinarray(xs), HMC(10, 0.01, 10))

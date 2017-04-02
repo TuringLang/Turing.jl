@@ -12,7 +12,7 @@ obs12 = [1,2,1,2,2,2,2,2,2,2]
   return ps
 end
 
-chain = @sample(constrained_simplex_test(obs12), HMC(1000, 0.75, 2))
+chain = sample(constrained_simplex_test(obs12), HMC(1000, 0.75, 2))
 println(mean(chain[:ps]))
 
 @test_approx_eq_eps mean(chain[:ps]) [5/16 11/16] 0.015

@@ -19,7 +19,7 @@ xs = [1.5 2.0]
 end
 
 gibbs = Gibbs(2, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
-chain = @sample(fggibbstest(xs), gibbs);
+chain = sample(fggibbstest(xs), gibbs);
 
 
 #
@@ -36,4 +36,4 @@ chain = @sample(fggibbstest(xs), gibbs);
 #
 # a = 1
 #
-# @sample(ttt(a), SMC(10));
+# sample(ttt(a), SMC(10));

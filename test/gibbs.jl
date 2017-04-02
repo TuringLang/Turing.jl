@@ -14,7 +14,7 @@ x = [1.5 2.0]
 end
 
 gibbs = Gibbs(2000, PG(30, 3, :s), HMC(2, 0.1, 3, :m))
-chain = @sample(gibbstest(x), gibbs)
+chain = sample(gibbstest(x), gibbs)
 
 Turing.TURING[:modelex]
 # # print(mean(chain[:s]) )

@@ -14,5 +14,5 @@ priors = 0
   priors
 end
 
-chain = @sample(gauss(x), PG(10, 10))
-chain = @sample(gauss(x), SMC(10))
+chain = sample(gauss(x), PG(10, 10))
+chain = sample(gauss(x), SMC(10))

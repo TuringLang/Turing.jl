@@ -24,11 +24,11 @@ s = SMC(10000)
 p = PG(100,1000)
 g = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
 
-res = @sample(testbb(obs), s)
+res = sample(testbb(obs), s)
 @test_approx_eq_eps mean(res[:p]) meanp 0.05
 
-res = @sample(testbb(obs), p)
+res = sample(testbb(obs), p)
 @test_approx_eq_eps mean(res[:x]) meanp 0.10
 
-res = @sample(testbb(obs), g)
+res = sample(testbb(obs), g)
 @test_approx_eq_eps mean(res[:x]) meanp 0.10
