@@ -6,7 +6,7 @@ using ForwardDiff: Dual
 using Base.Test
 
 # Define model
-@model ad_test begin
+@model ad_test() = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   1.5 ~ Normal(m, sqrt(s))
