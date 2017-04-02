@@ -28,8 +28,8 @@ NSamples = 30000
         x[1] ~ Normal(m, sqrt(s))
         x[2] ~ Normal(m, sqrt(s))
         # Backward Step 2: x ~ x | theta
-        y[1] = rand(Normal(m, sqrt(s)))
-        y[2] = rand(Normal(m, sqrt(s)))
+        y[1] ~ Normal(m, sqrt(s))
+        y[2] ~ Normal(m, sqrt(s))
     end
     return s, m, y
 end
