@@ -4,7 +4,7 @@ using Base.Test
 
 obs12 = [1,2,1,2,2,2,2,2,2,2]
 
-@model constrained_simplex_test(obs12) begin
+@model constrained_simplex_test(obs12) = begin
   ps ~ Dirichlet(2, 3)
   for i = 1:length(obs12)
     obs12[i] ~ Categorical(ps)
