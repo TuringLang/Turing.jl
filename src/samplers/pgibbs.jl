@@ -60,23 +60,14 @@ end
 
 function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
   vi = current_trace().vi
-  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    randr(vi, vn, dist)
+  local r
+  if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    r = rand(vi, vn, dist, spl)
   else
-    local r
-    if ~haskey(vi, vn)
-      dprintln(2, "sampling prior...")
-      r = rand(dist)
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, vn, val, dist)
-    else
-      dprintln(2, "fetching vals...")
-      val = vi[vn]
-      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-    end
+    r = rand(vi, vn, dist, spl, false)
     produce(log(1.0))
-    r
   end
+  r
 end
 
 
@@ -99,4 +90,13 @@ function sample(model, alg::PG)
 
   println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
+end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}, inside=true) = begin
+  # TODO: calling of rand() should be updated when group filed is added
+  if inside == true
+    rand(vi, vn, dist, :bycounter)
+  else
+    rand(vi, vn, dist, :byname)
+  end
 end
