@@ -4,7 +4,7 @@ using Base.Test
 
 x = [1.5 2.0]
 
-@model gibbstest(x) begin
+@model gibbstest(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   for i in 1:length(x)

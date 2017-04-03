@@ -4,7 +4,7 @@ using Base.Test
 
 D = [1.0 1.0 4.0 4.0]
 
-@model MoGtest(D) begin
+@model MoGtest(D) = begin
   mu1 ~ Normal(1, 1)
   mu2 ~ Normal(4, 1)
   z1 ~ Categorical(2)

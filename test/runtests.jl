@@ -23,7 +23,7 @@ testcases = [
           "new_grammar",
           "newinterface",
           # "noreturn",
-          "samplemacro",
+          "sample",
           "forbid_global",
 #       conditional.jl
 #       container.jl
