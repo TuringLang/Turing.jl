@@ -16,7 +16,7 @@ end
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
 string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
 sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
-sym(t::Tuple{Symbol,Symbol,String,Int64}) = Symbol("$(t[2])$(t[3])")
+sym(t::Tuple{Symbol,Symbol,String,Int}) = Symbol("$(t[2])$(t[3])")
 
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName) = isequal(x, y)
