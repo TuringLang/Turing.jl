@@ -52,11 +52,11 @@ type HMCSampler{HMC} <: GradientSampler{HMC}
   end
 end
 
-function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
+function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
-    varInfo = runmodel(model, data, varInfo, spl)
+    varInfo = runmodel(model, varInfo, spl)
     # Return
     true, varInfo
   else
@@ -70,18 +70,18 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     end
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, model, data, varInfo, spl)
+    oldH = find_H(p, model, varInfo, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = gradient(varInfo, model, data, spl)
+    val∇E = gradient(varInfo, model, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      varInfo, val∇E, p = leapfrog(varInfo, val∇E, p, ϵ, model, data, spl)
+      varInfo, val∇E, p = leapfrog(varInfo, val∇E, p, ϵ, model, spl)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, model, data, varInfo, spl)
+    H = find_H(p, model, varInfo, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
@@ -95,7 +95,13 @@ function step(model, data, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   end
 end
 
-function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
+# NOTE: in the previous code, `sample` would call `run`; this is
+# now simplified: `sample` and `run` are merged into one function.
+function sample(model::Function, alg::HMC, chunk_size::Int = 5)
+  global CHUNKSIZE = chunk_size;
+  global sampler = HMCSampler{HMC}(alg);
+
+  spl = sampler
   # initialization
   n =  spl.alg.n_samples
   task = current_task()
@@ -108,7 +114,7 @@ function Base.run(model::Function, data::Dict, spl::Sampler{HMC})
     dprintln(2, "recording old θ...")
     old_vals = deepcopy(varInfo.vals)
     dprintln(2, "HMC stepping...")
-    is_accept, varInfo = step(model, data, spl, varInfo, i==1)
+    is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
       spl.samples[i].value = varInfo2samples(varInfo)
       accept_num = accept_num + 1
@@ -138,6 +144,7 @@ function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarIn
   r
 end
 
+# NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
 function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
@@ -146,28 +153,6 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
     vi.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
-end
-
-function sample(model::Function, data::Dict, alg::HMC, chunk_size::Int)
-  global CHUNKSIZE = chunk_size;
-  sampler = HMCSampler{HMC}(alg);
-  run(model, data, sampler)
-end
-
-function sample(model::Function, alg::HMC, chunk_size::Int)
-  global CHUNKSIZE = chunk_size;
-  sampler = HMCSampler{HMC}(alg);
-  run(model, Dict(), sampler)
-end
-
-function sample(model::Function, data::Dict, alg::HMC)
-  sampler = HMCSampler{HMC}(alg);
-  run(model, data, sampler)
-end
-
-function sample(model::Function, alg::HMC)
-  sampler = HMCSampler{HMC}(alg);
-  run(model, Dict(), sampler)
 end
 
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{Sampler{HMC}, Void}, inside=true) = begin

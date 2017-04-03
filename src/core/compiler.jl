@@ -160,34 +160,14 @@ Example:
 end
 ```
 """
-macro model(name, fbody)
+macro model(fname, fbody, farglist)
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
   # This varinfo array is useful is task cloning.
 
-  # Turn f into f() if necessary.
-  fname = isa(name, Symbol) ? Expr(:call, name) : name
-
-  # Get parameters from the argument list
-  arglist = fname.args[2:end]
-  TURING[:modelarglist] = arglist
+  TURING[:modelarglist]    = farglist
   TURING[:model_dvar_list] = Set{Symbol}() # Data
   TURING[:model_pvar_list] = Set{Symbol}() # Parameter
-  fname.args = fname.args[1:1]  # remove arguments
-
-  # Set parameters as model(data, vi, sampler)
-  push!(fname.args, Expr(Symbol("kw"), :data, :(Dict())))
-  push!(fname.args, Expr(Symbol("kw"), :vi, :(VarInfo())))
-  push!(fname.args, Expr(Symbol("kw"), :sampler, :(Turing.sampler)))
-
-  # Assign variables in data locally
-  local_assign_ex = quote
-    for k in keys(data)
-      ex = Expr(Symbol("="), k, data[k])
-      eval(ex)
-    end
-  end
-  unshift!(fbody.args, local_assign_ex)
 
   # Always return VarInfo
   return_ex = fbody.args[end]   # get last statement of defined model
@@ -232,40 +212,48 @@ end
 ```
 """
 macro model(fexpr)
-  name = fexpr.args[1]
+  dprintln(1, fexpr)
+
+  # Get func name f
+  fname = fexpr.args[1]
+
+  # Get parameters from the argument list, e.g. f(x, y, ...)
+  if length(fname.args) > 1
+    farglist = fname.args[2:end] #  (x,y,...)
+  else
+    farglist = []
+  end
+
+
+  # Add keyword arguments, e.g.
+  #   f(x,y,z; c=1)
+  #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
+  if length(fname.args) == 1 || isa(fname.args[2], Symbol) || fname.args[2].head == :kw # e.g. f(x) or f(x=1,y)
+    args1 = Expr(:parameters)
+    insert!(fname.args, 2, args1)
+  # else # e.g. f(x,y;k=1)
+  end
+
+  dprintln(1, fname)
+
+  # Remove positional arguments, e.g.
+  #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
+  #      ==>   f(; vi=VarInfo(),sampler=IS(1))
+  fname2 = deepcopy(fname)
+  fname2.args = fname2.args[1:2]
+  push!(fname2.args[2].args, Expr(:kw, :vi, :(VarInfo())))
+  push!(fname2.args[2].args, Expr(:kw, :sampler, :(nothing)))
+  push!(fname2.args[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+  dprintln(1, fname2)
+
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
-  esc(:(@model $name $fbody))
-end
+  dprintln(1, fbody)
 
-doc"""
-    @sample(modelcall, alg)
-
-Macro for running the inference engine.
-
-Usage:
-
-```julia
-@sample(modelf(params), alg)
-```
-
-Example:
-
-```julia
-@sample(gauss(x), SMC(100))
-```
-"""
-macro sample(modelcall, alg, optionalps...)
-  modelf = modelcall.args[1]      # get the function symbol for model
-  psyms = modelcall.args[2:end]   # get the (passed-in) symbols
+  dprintln(1, :($fname = begin @model($fname2, $fbody) end))
   esc(quote
-    data_ = Dict()
-    arglist_ = Turing.TURING[:modelarglist]
-    localsyms_ = $psyms
-    for i_ = 1:length(arglist_)
-      localsym_ = localsyms_[i_]     # passed-in symbols are local
-      arg_ = arglist_[i_]            # arglist are symbols in model scope
-      data_[arg_] = eval(localsym_)
-    end
-    sample($modelf, data_, $alg, $optionalps...)
-  end)
+      $fname = begin
+        f = @model($fname2, $fbody, $farglist)
+        return f
+      end
+    end)
 end

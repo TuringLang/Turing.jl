@@ -55,7 +55,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
           old_vals = deepcopy(varInfo.vals)
-          is_accept, varInfo = step(model, data, local_spl, varInfo, i==1)
+          is_accept, varInfo = step(model, local_spl, varInfo, i==1)
           if ~is_accept
             varInfo.vals = old_vals
           end
@@ -72,7 +72,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         end
         # local samples
         for _ in local_spl.alg.n_iterations
-          ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
+          ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
       end

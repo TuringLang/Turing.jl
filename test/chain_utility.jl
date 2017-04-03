@@ -30,5 +30,5 @@ samples = c2[:samples]
   return(m, x, y)
 end
 
-chain = @sample(mamba_chain_test(), PG(5,300));
+chain = sample(mamba_chain_test(), PG(5,300));
 describe(chain)

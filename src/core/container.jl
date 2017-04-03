@@ -50,11 +50,11 @@ function Base.push!(pc :: ParticleContainer, n :: Int)
   pc
 end
 
-function Base.push!(pc :: ParticleContainer, n :: Int, data, spl, varInfo)
+function Base.push!(pc :: ParticleContainer, n :: Int, spl, varInfo)
   vals = Array{eltype(pc.vals), 1}(n)
   logWs = Array{eltype(pc.logWs), 1}(n)
   for i=1:n
-    vals[i]  = eltype(pc.vals)(pc.model, data, spl, varInfo)
+    vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
     logWs[i] = 0
   end
   append!(pc.vals, vals)

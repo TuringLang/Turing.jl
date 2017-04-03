@@ -6,22 +6,23 @@ using ForwardDiff: Dual
 using Base.Test
 
 # Define model
-@model ad_test begin
+@model ad_test() = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   1.5 ~ Normal(m, sqrt(s))
   2.0 ~ Normal(m, sqrt(s))
-  s, m
+  return s, m
 end
 Turing.TURING[:modelex]
 # Call Turing's AD
 # The result out is the gradient information on R
-vi = ad_test()
+ad_test_f = ad_test()
+vi = ad_test_f()
 svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(vi[svn][1])
 _m = realpart(vi[mvn][1])
-∇E = gradient(vi, ad_test, Dict(), nothing)
+∇E = gradient(vi, ad_test_f)
 grad_Turing = sort([∇E[v][1] for v in keys(vi)])
 
 # Hand-written logjoint

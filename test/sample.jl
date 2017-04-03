@@ -15,7 +15,7 @@ x = [2.0, 3.0]
 alg = Gibbs(1000, HMC(1, 0.2, 3, :m), PG(10, 1, :s))
 # NOTE: want to translate below to
 #       chn = sample(gdemo, Dict(:x => x), alg)
-chn = @sample(gdemo2(x), alg);
+chn = sample(gdemo2(x), alg);
 mean(chn[:s])
 
 Turing.TURING[:modelex]

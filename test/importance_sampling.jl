@@ -39,7 +39,7 @@ function reference()
   return d
 end
 
-@model normal begin
+@model normal() = begin
   a ~ Normal(4,5)
   3 ~ Normal(a,2)
   b ~ Normal(a,1)
@@ -55,7 +55,7 @@ for i=1:100
   srand(seed)
   exact = reference(n)
   srand(seed)
-  tested = @sample(normal(), alg)
+  tested = sample(normal(), alg)
   for i = 1:n
     @test exact[:samples][i][:a] == tested[:samples][i][:a]
     @test exact[:samples][i][:b] == tested[:samples][i][:b]
