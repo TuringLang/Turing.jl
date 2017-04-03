@@ -39,7 +39,7 @@ function reference()
   return d
 end
 
-@model normal begin
+@model normal() = begin
   a ~ Normal(4,5)
   3 ~ Normal(a,2)
   b ~ Normal(a,1)

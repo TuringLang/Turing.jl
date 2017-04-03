@@ -214,10 +214,8 @@ end
 macro model(fexpr)
   dprintln(1, fexpr)
 
-  # Get func name f and turn f into f() if necessary.
-  name = fexpr.args[1]
-  fname = isa(name, Symbol) ? Expr(:call, name) : name
-  dprintln(1, name)
+  # Get func name f
+  fname = fexpr.args[1]
 
   # Get parameters from the argument list, e.g. f(x, y, ...)
   if length(fname.args) > 1
