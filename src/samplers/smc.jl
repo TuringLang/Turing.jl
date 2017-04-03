@@ -31,11 +31,11 @@ end
 
 ## wrapper for smc: run the sampler, collect results.
 function sample(model, alg::SMC)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  global sampler = ParticleSampler{SMC}(alg);
   spl = sampler
 
   TraceType = spl.alg.use_replay ? TraceR : TraceC
-  spl.particles = ParticleContainer{TraceType}(spl.model)
+  spl.particles = ParticleContainer{TraceType}(model)
   push!(spl.particles, spl.alg.n_particles, spl, VarInfo())
 
   while consume(spl.particles) != Val{:done}

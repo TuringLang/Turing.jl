@@ -37,7 +37,7 @@ immutable PG <: InferenceAlgorithm
 end
 
 function step(model, spl::Sampler{PG}, vi, ref_particle)
-  spl.particles = ParticleContainer{TraceR}(spl.model)
+  spl.particles = ParticleContainer{TraceR}(model)
   if ref_particle == nothing
     push!(spl.particles, spl.alg.n_particles, spl, vi)
   else
@@ -74,7 +74,7 @@ end
 
 
 function sample(model, alg::PG)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  global sampler = ParticleSampler{PG}(alg);
   spl = sampler
   n = spl.alg.n_iterations
   t_start = time()  # record the start time of PG

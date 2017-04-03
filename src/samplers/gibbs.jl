@@ -22,7 +22,7 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
       if isa(alg, HMC)
         samplers[i] = HMCSampler{HMC}(HMC(alg, i))
       elseif isa(alg, PG)
-        samplers[i] = ParticleSampler{PG}(model, PG(alg, i))
+        samplers[i] = ParticleSampler{PG}(PG(alg, i))
       else
         error("[GibbsSampler] unsupport base sampling algorithm $alg")
       end

@@ -18,10 +18,13 @@ To include a new inference algorithm implement the requirements mentioned above 
 then include that file at the end of this one.
 """
 type ParticleSampler{T} <: Sampler{T}
-  alg ::  T
-  particles :: ParticleContainer
-  model :: Function
-  ParticleSampler(m :: Function, a :: T) = (s = new(); s.alg = a; s.model = m; s)
+  alg         ::  T
+  particles   ::  ParticleContainer
+  ParticleSampler(alg::T) = begin
+    s = new()
+    s.alg = alg
+    s
+  end
 end
 
 # Concrete algorithm implementations.

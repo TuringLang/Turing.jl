@@ -27,27 +27,26 @@ end
 
 type ImportanceSampler{IS} <: Sampler{IS}
   alg         ::  IS
-  model       ::  Function
   samples     ::  Vector{Sample}
   logweights  ::  Array{Float64}
   logevidence ::  Float64
   predicts    ::  Dict{Symbol,Any}
-  function ImportanceSampler(alg::IS, model::Function)
+  function ImportanceSampler(alg::IS)
     samples = Array{Sample}(alg.n_samples)
     logweights = zeros(Float64, alg.n_samples)
     logevidence = 0
     predicts = Dict{Symbol,Any}()
-    new(alg, model, samples, logweights, logevidence, predicts)
+    new(alg, samples, logweights, logevidence, predicts)
   end
 end
 
 function sample(model::Function, alg::IS)
-  global sampler = ImportanceSampler{IS}(alg, model);
+  global sampler = ImportanceSampler{IS}(alg);
   spl = sampler
 
   n = spl.alg.n_samples
   for i = 1:n
-    consume(Task(()->spl.model(vi = VarInfo(), sampler = spl)))
+    consume(Task(()->model(vi = VarInfo(), sampler = spl)))
     spl.samples[i] = Sample(spl.logevidence, spl.predicts)
     spl.logweights[i] = spl.logevidence
     spl.logevidence = 0
