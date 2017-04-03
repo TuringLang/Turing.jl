@@ -212,25 +212,28 @@ end
 ```
 """
 macro model(fexpr)
+  dprintln(1, fexpr)
+
   # Get func name f and turn f into f() if necessary.
   name = fexpr.args[1]
   fname = isa(name, Symbol) ? Expr(:call, name) : name
   dprintln(1, name)
 
   # Get parameters from the argument list, e.g. f(x, y, ...)
-  farglist = fname.args[2:end] #  (x,y,...)
+  if length(fname.args) > 1
+    farglist = fname.args[2:end] #  (x,y,...)
+  else
+    farglist = []
+  end
+
 
   # Add keyword arguments, e.g.
   #   f(x,y,z; c=1)
   #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
-  if isa(fname.args[2], Symbol) || fname.args[2].head == :kw # e.g. f(x) or f(x=1,y)
+  if length(fname.args) == 1 || isa(fname.args[2], Symbol) || fname.args[2].head == :kw # e.g. f(x) or f(x=1,y)
     args1 = Expr(:parameters)
     insert!(fname.args, 2, args1)
-    fname.args[2].args = [Expr(:kw, :vi, :(VarInfo())), Expr(:kw, :alg, :(IS(1)))]
-  else # e.g. f(x,y;k=1)
-    args1 = fname.args[2].args
-    fname.args[2].args = [Expr(:kw, :vi, :(VarInfo())), Expr(:kw, :alg, :(IS(1)))]
-    fname.args[2].args = push!(fname.args[2].args, args1...)
+  # else # e.g. f(x,y;k=1)
   end
 
   dprintln(1, fname)
@@ -240,7 +243,9 @@ macro model(fexpr)
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
   fname2 = deepcopy(fname)
   fname2.args = fname2.args[1:2]
-  fname2.args[2].args[2] = Expr(:kw, :sampler, :(sampler)) # alg ==> sampler
+  push!(fname2.args[2].args, Expr(:kw, :vi, :(VarInfo())))
+  push!(fname2.args[2].args, Expr(:kw, :sampler, :(nothing)))
+  push!(fname2.args[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
   dprintln(1, fname2)
 
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
@@ -249,12 +254,7 @@ macro model(fexpr)
   dprintln(1, :($fname = begin @model($fname2, $fbody) end))
   esc(quote
       $fname = begin
-        # Default sampler is IS.
-        # model is not defined yet, use `()->nothing` as a place holder for model.
-        sampler = ImportanceSampler{typeof(alg)}(alg, ()->nothing)
-        dprintln(1, sampler)
         f = @model($fname2, $fbody, $farglist)
-        sampler.model = f # Set model. See comment above.
         return f
       end
     end)

@@ -4,7 +4,7 @@ using Turing
 using Distributions
 using Base.Test
 
-@model testnoparam begin
+@model testnoparam() = begin
   x ~ Bernoulli(1)
   1 ~ Bernoulli(x / 2)
   0 ~ Bernoulli(x / 2)

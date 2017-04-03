@@ -4,7 +4,7 @@ using Turing
 using Distributions
 using Base.Test
 
-@model test_assume() begin
+@model test_assume() = begin
   x ~ Bernoulli(1)
   y ~ Bernoulli(x / 2)
   x, y

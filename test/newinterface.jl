@@ -4,7 +4,7 @@ using Base.Test
 
 obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
-@model newinterface(obs) begin
+@model newinterface(obs) = begin
   p ~ Beta(2,2)
   for i = 1:length(obs)
     obs[i] ~ Bernoulli(p)

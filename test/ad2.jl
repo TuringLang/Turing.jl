@@ -3,7 +3,7 @@ using Turing
 using Base.Test
 
 # Define model
-@model ad_test2(xs) begin
+@model ad_test2(xs) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   xs[1] ~ Normal(m, sqrt(s))

@@ -4,7 +4,7 @@ using Turing
 using Distributions
 using Base.Test
 
-@model test begin
+@model test() = begin
   z ~ Normal(0,1)
   x ~ Bernoulli(1)
   1 ~ Bernoulli(x / 2)
