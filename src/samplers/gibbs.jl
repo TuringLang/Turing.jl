@@ -1,9 +1,11 @@
 include("support/gibbs_helper.jl")
 
 immutable Gibbs <: InferenceAlgorithm
-  n_iters ::  Int
-  algs    ::  Tuple
-  Gibbs(n_iters::Int, algs...) = new(n_iters, algs)
+  n_iters   ::  Int
+  algs      ::  Tuple
+  group_id  ::  Int
+  Gibbs(n_iters::Int, algs...) = new(n_iters, algs, 0)
+  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, new_group_id)
 end
 
 type GibbsSampler{Gibbs} <: Sampler{Gibbs}

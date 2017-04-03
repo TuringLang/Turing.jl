@@ -22,6 +22,7 @@ sample(example, IS(1000))
 """
 immutable IS <: InferenceAlgorithm
   n_samples   ::  Int
+  IS(n) = new(n)
 end
 
 type ImportanceSampler{IS} <: Sampler{IS}

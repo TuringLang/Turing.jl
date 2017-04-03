@@ -21,10 +21,10 @@ sample(example, SMC(1000))
 ```
 """
 immutable SMC <: InferenceAlgorithm
-  n_particles :: Int
-  resampler :: Function
-  resampler_threshold :: Float64
-  use_replay :: Bool
+  n_particles           ::  Int
+  resampler             ::  Function
+  resampler_threshold   ::  Float64
+  use_replay            ::  Bool
   SMC(n) = new(n, resampleSystematic, 0.5, false)
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b)
 end
