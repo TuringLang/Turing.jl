@@ -31,7 +31,7 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 alpha = 0.16            # regularizatin term
 var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
-@model bnn(ts) begin
+@model bnn(ts) = begin
   b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])
   w11 ~ MvNormal([0; 0], [var 0; 0 var])
   w12 ~ MvNormal([0; 0], [var 0; 0 var])
@@ -47,4 +47,4 @@ var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 end
 
 # Sampling
-chain = @sample(bnn(ts), HMC(10, 0.1, 5))
+chain = sample(bnn(ts), HMC(10, 0.1, 5))
