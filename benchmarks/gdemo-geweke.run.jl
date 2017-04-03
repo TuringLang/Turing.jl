@@ -14,22 +14,18 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 NSamples = 30000
 
 @model gdemo2(x, bkstep) = begin
-    y = similar(x)
     if bkstep == false
         # Forward Sample
         s ~ InverseGamma(2,3)
         m ~ Normal(0,sqrt(s))
-        y[1] ~ Normal(m, sqrt(s))
-        y[2] ~ Normal(m, sqrt(s))
+        y ~ MvNormal([m; m], [sqrt(s) 0; 0 sqrt(s)])
     elseif bkstep == true
         # Backward Step 1: theta ~ theta | x
         s ~ InverseGamma(2,3)
         m ~ Normal(0,sqrt(s))
-        x[1] ~ Normal(m, sqrt(s))
-        x[2] ~ Normal(m, sqrt(s))
+        x ~ MvNormal([m; m], [sqrt(s) 0; 0 sqrt(s)])
         # Backward Step 2: x ~ x | theta
-        y[1] ~ Normal(m, sqrt(s))
-        y[2] ~ Normal(m, sqrt(s))
+        y ~ MvNormal([m; m], [sqrt(s) 0; 0 sqrt(s)])
     end
     return s, m, y
 end
