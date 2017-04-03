@@ -72,7 +72,7 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         end
         # local samples
         for _ in local_spl.alg.n_iterations
-          ref_particle, samples = step(model, data, local_spl, varInfo, ref_particle)
+          ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
       end
