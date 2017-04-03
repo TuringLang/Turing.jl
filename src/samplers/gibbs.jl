@@ -20,9 +20,11 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
     for i in 1:n_samplers
       alg = gibbs.algs[i]
       if isa(alg, HMC)
-        samplers[i] = HMCSampler{HMC}(alg)
+        samplers[i] = HMCSampler{HMC}(HMC(alg, i))
       elseif isa(alg, PG)
-        samplers[i] = ParticleSampler{PG}(model, alg)
+        samplers[i] = ParticleSampler{PG}(model, PG(alg, i))
+      else
+        error("[GibbsSampler] unsupport base sampling algorithm $alg")
       end
     end
 

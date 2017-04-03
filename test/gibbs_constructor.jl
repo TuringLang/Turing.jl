@@ -1,4 +1,5 @@
 using Turing, Distributions
+using Turing: GibbsSampler
 using Base.Test
 
 @model gdemo() = begin
@@ -25,3 +26,10 @@ c3 = sample(gdemo(), s3)
 @test_approx_eq_eps mean(c2[:m]) 7/6 1
 @test_approx_eq_eps mean(c3[:s]) 49/24 1
 @test_approx_eq_eps mean(c3[:m]) 7/6 1
+
+
+# Test group_id of each samplers
+g = GibbsSampler{Gibbs}(gdemo(), s3)
+
+@test g.samplers[1].alg.group_id == 1
+@test g.samplers[2].alg.group_id == 2
