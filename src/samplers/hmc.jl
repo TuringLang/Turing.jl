@@ -116,7 +116,7 @@ function sample(model::Function, alg::HMC, chunk_size::Int = 5)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
-      spl.samples[i].value = deepcopy(task.storage[:turing_predicts])
+      spl.samples[i].value = varInfo2samples(varInfo)
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
       varInfo.vals = old_vals
@@ -129,30 +129,22 @@ function sample(model::Function, alg::HMC, chunk_size::Int = 5)
   return Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::Union{Void, HMCSampler{HMC}}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
+  local r
   if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    local r
-    if ~haskey(vi, vn)
-      dprintln(2, "sampling prior...")
-      r = rand(dist)
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-      addvar!(vi, vn, val, dist)
-    else
-      dprintln(2, "fetching vals...")
-      val = vi[vn]
-      r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-    end
+    r = rand(vi, vn, dist, spl)
     vi.logjoint += logpdf(dist, r, true)
-    r
   else
-    r = randr(vi, vn, dist)                     # replay by randomness
-    vi.logjoint += logpdf(dist, r, false)       # observe data, non-transformed variable
-    r
+    r = rand(vi, vn, dist, spl, false)
+    # Observe data, non-transformed variable
+    vi.logjoint += logpdf(dist, r, false)
   end
+  r
 end
 
+# NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
 function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
@@ -161,4 +153,13 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
     vi.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
+end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{Sampler{HMC}, Void}, inside=true) = begin
+  # TODO: calling of rand() should be updated when group filed is added
+  if inside == true
+    rand(vi, vn, dist, :byname)
+  else
+    rand(vi, vn, dist, :bycounter)
+  end
 end
