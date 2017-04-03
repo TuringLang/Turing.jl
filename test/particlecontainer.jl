@@ -5,13 +5,20 @@ using Distributions
 
 import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, TraceC, TraceR, Trace, current_trace
 
+global n = 0
+
 function f()
+  global n
   t = TArray(Float64, 1);
   t[1] = 0;
   while true
-    rand(current_trace(), Normal(0,1))
+    vn = VarName(gensym(), :x, "[$n]", 1)
+    rand(current_trace(), vn, Normal(0,1))
+    n += 1
     produce(0)
-    rand(current_trace(), Normal(0,1))
+    vn = VarName(gensym(), :x, "[$n]", 1)
+    rand(current_trace(), vn, Normal(0,1))
+    n += 1
     t[1] = 1 + t[1]
   end
 end

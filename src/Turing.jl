@@ -18,7 +18,7 @@ import Base: ~, convert, promote_rule
 
 # Turing essentials - modelling macros and inference algorithms
 export @model, @sample, @~, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler
-export VarName, VarInfo, nextvn, randr
+export VarName, VarInfo, nextvn, randrn, randrc, randoc
 export Dual
 
 # Export Mamba Chain utility functions
