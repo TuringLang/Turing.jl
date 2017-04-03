@@ -4,7 +4,7 @@ using Turing
 x = Float64[1 2]
 priors = 0
 
-@model gauss(x) begin
+@model gauss(x) = begin
   priors = TArray{Float64}(2)
   priors[1] ~ InverseGamma(2,3)         # s
   priors[2] ~ Normal(0,sqrt(priors[1])) # m

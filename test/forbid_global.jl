@@ -5,7 +5,7 @@ using Base.Test
 xs = [1.5 2.0]
 # xx = 1
 
-@model fggibbstest(xs) begin
+@model fggibbstest(xs) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
   xx ~ Normal(m, sqrt(s)) # this is illegal
