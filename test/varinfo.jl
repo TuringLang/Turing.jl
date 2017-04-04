@@ -1,5 +1,6 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink
+using Turing: uid, cuid, reconstruct, invlink, groupvals, retain
+using Turing: GibbsSampler
 
 # Test for uid() (= string())
 csym = gensym()
@@ -15,15 +16,89 @@ vn11 = VarName(csym, :x, "[1]", 1)
 
 
 vi = VarInfo()
+dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
+
+vn_w = VarName(gensym(), :w, "", 1)
+randrc(vi, vn_w, dists[1], 2)
+
 vn_x = VarName(gensym(), :x, "", 1)
 vn_y = VarName(gensym(), :y, "", 1)
 vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
-dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
+
 for i = 1:3
-  r = randrn(vi, vns[i], dists[i])
+  r = randrn(vi, vns[i], dists[i], 1)
   val = vi[vns[i]]
   val = reconstruct(dists[i], val)
   val = invlink(dists[i], val)
   @test sum(realpart(val) - r) <= 1e-9
 end
+
+# println(vi)
+
+@test length(groupvals(vi, 1)) == 3
+@test length(groupvals(vi, 2)) == 1
+
+vn_u = VarName(gensym(), :u, "", 1)
+randrc(vi, vn_u, dists[1], 2)
+
+println(vi)
+
+retain(vi, 2, 1)
+
+println(vi)
+
+@test length(groupvals(vi, 1)) == 3
+@test length(groupvals(vi, 2)) == 1
+
+@model gdemo() = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  1.5 ~ Normal(m, sqrt(s))
+  2.0 ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+println("Test 2")
+
+g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :s), HMC(1, 0.4, 8, :m)))
+
+pg = g.samplers[1]
+println(pg)
+hmc = g.samplers[2]
+dist= Normal(0, 1)
+
+vi = VarInfo()
+
+r = rand(vi, vn_w, dist, pg, false)
+r = rand(vi, vn_u, dist, pg, false)
+r = rand(vi, vn_x, dist, pg)
+r = rand(vi, vn_y, dist, pg)
+r = rand(vi, vn_z, dist, pg)
+
+@test vi.gids == [0,0,1,1,1]
+
+# println(vi)
+#
+# println(vi)
+#
+# r = rand(vi, vn_w, dist, hmc)
+# r = rand(vi, vn_u, dist, hmc)
+# r = rand(vi, vn_x, dist, hmc, false)
+# r = rand(vi, vn_y, dist, hmc, false)
+# r = rand(vi, vn_z, dist, hmc, false)
+#
+#
+# println(vi)
+#
+# vi.index = 0
+# retain(vi, 1, 0)
+#
+# r = rand(vi, vn_w, dist, pg, false)
+# r = rand(vi, vn_u, dist, pg, false)
+# r = rand(vi, vn_x, dist, pg)
+# r = rand(vi, vn_y, dist, pg)
+# r = rand(vi, vn_z, dist, pg)
+#
+#
+# println(vi)
