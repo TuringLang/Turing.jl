@@ -54,8 +54,9 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     for local_spl in spl.samplers
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
-
+      # println(varInfo)
       if isa(local_spl, Sampler{HMC})
+
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
           old_vals = deepcopy(varInfo.vals)
@@ -66,21 +67,19 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         end
       elseif isa(local_spl, Sampler{PG})
         # Update new VarInfo to the reference particle
+        varInfo.index = 0
+        varInfo.num_produce = 0
         if ref_particle != nothing
-          ref_particle.vi.idcs = varInfo.idcs
-          ref_particle.vi.vals = varInfo.vals
-          ref_particle.vi.syms = varInfo.syms
-          ref_particle.vi.dists = varInfo.dists
-          ref_particle.vi.index = 0
-          ref_particle.vi.num_produce = 0
+          ref_particle.vi = varInfo
         end
-        # local samples
+        # Clean variables belonging to the current sampler
+        varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0)
+        # Local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
       end
-      # println(varInfo)
     end
     spl.samples[i].value = varInfo2samples(varInfo)
   end

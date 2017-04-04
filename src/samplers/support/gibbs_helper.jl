@@ -26,17 +26,14 @@ end
 function varInfo2samples(vi)
   samples = Dict{Symbol, Any}()
   for uid in keys(vi)
-    dist = getdist(vi, uid)
     val = vi[uid]
-    val = reconstruct(dist, val)
-    val = invlink(dist, val)
-    val = Any[realpart(val)]
-    val = length(val) == 1 ? val[1] : val   # Remove un-necessary []'s
-    samples[sym(uid)] = val
-  end
-  for i = 1:length(vi.names)
-    uid = vi.names[i]
-    val = vi.randomness[i]
+    if istrans(vi, uid)
+      dist = getdist(vi, uid)
+      val = reconstruct(dist, val)
+      val = invlink(dist, val)
+      val = Any[realpart(val)]
+      val = length(val) == 1 ? val[1] : val   # Remove un-necessary []'s
+    end
     samples[sym(uid)] = val
   end
   samples

@@ -93,12 +93,3 @@ function sample(model, alg::PG)
   println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
 end
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}, inside=true) = begin
-  # TODO: calling of rand() should be updated when group filed is added
-  if inside == true
-    rand(vi, vn, dist, :bycounter)
-  else
-    rand(vi, vn, dist, :byname)
-  end
-end

@@ -1,7 +1,3 @@
-abstract InferenceAlgorithm{P}
-abstract Sampler{T<:InferenceAlgorithm}
-abstract GradientSampler{T} <: Sampler{T}
-
 doc"""
     ParticleSampler{T}
 
@@ -51,7 +47,7 @@ predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
 function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
-  r = rand(vi, vn, dist, spl)
+  r = rand(vi, vn, dist)
   vi.logjoint += logpdf(dist, r, true)
   r
 end

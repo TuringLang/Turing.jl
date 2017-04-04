@@ -1,6 +1,6 @@
 function runmodel(model, vi, spl)
   vi.index = 0
-  model(vi=vi, sampler=spl) # run model
+  model(vi=vi, sampler=spl) # run model\
 end
 
 # Half momentum step

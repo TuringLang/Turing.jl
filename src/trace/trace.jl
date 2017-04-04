@@ -9,7 +9,7 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarName, VarInfo
+using Turing: VarName, VarInfo, Sampler, retain, groupvals
 import Turing.randrc, Turing.randoc
 
 # Trick for supressing some warning messages.
@@ -38,9 +38,10 @@ export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
        localcopy, @suppress_err
 
 type Trace{T}
-  task :: Task
-  vi   :: VarInfo
-  Trace() = (res = new(); res.vi = VarInfo(); res)
+  task  ::  Task
+  vi    ::  VarInfo
+  spl   ::  Union{Void, Sampler}
+  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
 end
 
 # NOTE: this function is called by `forkr`
@@ -55,13 +56,13 @@ function (::Type{Trace{T}}){T}(f::Function)
   res
 end
 
-function (::Type{Trace{T}}){T}(f::Function, spl, vi :: VarInfo)
+function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res = Trace{T}();
+  res.spl = spl
   # Task(()->f());
-  res.vi.idcs = vi.idcs
-  res.vi.vals = vi.vals
-  res.vi.syms = vi.syms
-  res.vi.dists = vi.dists
+  res.vi = deepcopy(vi)
+  res.vi.index = 0
+  res.vi.num_produce = 0
   res.task = Task( () -> begin res=f(vi=vi, sampler=spl); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
@@ -93,16 +94,15 @@ Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
-  n_rand = min(trace.vi.index, length(trace.vi.randomness))
-  newtrace.vi.idcs = trace.vi.idcs
-  newtrace.vi.vals = trace.vi.vals
-  newtrace.vi.syms = trace.vi.syms
-  newtrace.vi.dists = trace.vi.dists
-  newtrace.vi.randomness = deepcopy(trace.vi.randomness[1:n_rand])
-  newtrace.vi.names = trace.vi.names[1:n_rand]
-  newtrace.vi.tsyms = trace.vi.tsyms[1:n_rand]
-  newtrace.vi.index = trace.vi.index
-  newtrace.vi.num_produce = trace.vi.num_produce
+  newtrace.spl = trace.spl
+  if trace.spl != nothing
+    gid = trace.spl.alg.group_id
+  else
+    gid = 0
+  end
+
+  n_rand = min(trace.vi.index, length(groupvals(trace.vi, gid, trace.spl)))
+  newtrace.vi = retain(deepcopy(trace.vi), gid, n_rand)
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -112,15 +112,11 @@ end
 function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 0: create new task and copy randomness
   newtrace = TraceR(trace.task.code)
-  newtrace.vi.idcs = trace.vi.idcs
-  newtrace.vi.vals = trace.vi.vals
-  newtrace.vi.syms = trace.vi.syms
-  newtrace.vi.dists = trace.vi.dists
-  newtrace.vi.randomness = deepcopy(trace.vi.randomness)
-  # NOTE: use deepcopy below directly will cause error
-  newtrace.vi.names = map(vn -> identity(vn), trace.vi.names)
+  newtrace.spl = trace.spl
 
-  newtrace.vi.tsyms = deepcopy(trace.vi.tsyms)
+  newtrace.vi = deepcopy(trace.vi)
+  newtrace.vi.index = 0
+  newtrace.vi.num_produce = 0
 
   # Step 1: Call consume t times to replay randomness
   map(i -> consume(newtrace), 1:t)
@@ -128,10 +124,14 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    newtrace.vi.randomness = newtrace.vi.randomness[1:index]
-    newtrace.vi.names = newtrace.vi.names[1:index]
-    newtrace.vi.tsyms = newtrace.vi.tsyms[1:index]
+    if trace.spl != nothing
+      gid = trace.spl.alg.group_id
+    else
+      gid = 0
+    end
+    retain(newtrace.vi, gid, index)
   end
+
   newtrace
 end
 

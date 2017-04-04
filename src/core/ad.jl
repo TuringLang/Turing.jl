@@ -21,7 +21,13 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
   prior_key_chunks = []
   key_chunk = []
   prior_dim = 0
-  for k in keys(vi)
+
+  gkeys = keys(vi)
+  if spl != nothing   # Deal with Void sampler
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  end
+
+  for k in gkeys
     if spl == nothing || isempty(spl.alg.space) || getsym(vi, k) in spl.alg.space
       l = length(vi[k])
       if prior_dim + l > CHUNKSIZE
@@ -49,7 +55,7 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
     dprintln(4, "set dual...")
     dps = zeros(prior_dim)
     prior_count = 1
-    for k in keys(vi)
+    for k in gkeys
       l = length(vi[k])
       reals = realpart(vi[k])
       val_vect = vi[k]        # get a reference for the value vector
