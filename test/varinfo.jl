@@ -42,11 +42,11 @@ end
 vn_u = VarName(gensym(), :u, "", 1)
 randrc(vi, vn_u, dists[1], 2)
 
-println(vi)
+# println(vi)
 
 retain(vi, 2, 1)
 
-println(vi)
+# println(vi)
 
 @test length(groupvals(vi, 1)) == 3
 @test length(groupvals(vi, 2)) == 1
@@ -59,9 +59,9 @@ println(vi)
   return s, m
 end
 
-println("Test 2")
+# println("Test 2")
 
-g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :s), HMC(1, 0.4, 8, :m)))
+g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg = g.samplers[1]
 println(pg)
@@ -79,26 +79,13 @@ r = rand(vi, vn_z, dist, pg)
 @test vi.gids == [0,0,1,1,1]
 
 # println(vi)
-#
+
 # println(vi)
-#
-# r = rand(vi, vn_w, dist, hmc)
-# r = rand(vi, vn_u, dist, hmc)
-# r = rand(vi, vn_x, dist, hmc, false)
-# r = rand(vi, vn_y, dist, hmc, false)
-# r = rand(vi, vn_z, dist, hmc, false)
-#
-#
-# println(vi)
-#
-# vi.index = 0
-# retain(vi, 1, 0)
-#
-# r = rand(vi, vn_w, dist, pg, false)
-# r = rand(vi, vn_u, dist, pg, false)
-# r = rand(vi, vn_x, dist, pg)
-# r = rand(vi, vn_y, dist, pg)
-# r = rand(vi, vn_z, dist, pg)
-#
-#
-# println(vi)
+
+r = rand(vi, vn_w, dist, hmc)
+r = rand(vi, vn_u, dist, hmc)
+r = rand(vi, vn_x, dist, hmc, false)
+r = rand(vi, vn_y, dist, hmc, false)
+r = rand(vi, vn_z, dist, hmc, false)
+
+@test vi.gids == [2,2,1,1,1]
