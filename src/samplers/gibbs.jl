@@ -15,6 +15,9 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   function GibbsSampler(model::Function, gibbs::Gibbs)
     n_samplers = length(gibbs.algs)
     samplers = Array{Sampler}(n_samplers)
+
+    space = Set{Symbol}()
+
     for i in 1:n_samplers
       alg = gibbs.algs[i]
       if isa(alg, HMC)
@@ -24,6 +27,15 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
       else
         error("[GibbsSampler] unsupport base sampling algorithm $alg")
       end
+      space = union(space, alg.space)
+    end
+
+
+
+    @assert issubset(TURING[:model_pvar_list], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(TURING[:model_pvar_list]))"
+
+    if TURING[:model_pvar_list] != space
+      warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, TURING[:model_pvar_list]))")
     end
 
     samples = Array{Sample}(gibbs.n_iters)

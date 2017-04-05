@@ -52,11 +52,11 @@ retain(vi, 2, 1)
 @test length(groupvals(vi, 2)) == 1
 
 @model gdemo() = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
-  return s, m
+  x ~ InverseGamma(2,3)
+  y ~ InverseGamma(2,3)
+  z ~ InverseGamma(2,3)
+  w ~ InverseGamma(2,3)
+  u ~ InverseGamma(2,3)
 end
 
 # println("Test 2")
