@@ -1,5 +1,3 @@
-include("support/gibbs_helper.jl")
-
 immutable Gibbs <: InferenceAlgorithm
   n_iters   ::  Int
   algs      ::  Tuple

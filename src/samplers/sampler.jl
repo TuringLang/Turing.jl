@@ -24,6 +24,7 @@ type ParticleSampler{T} <: Sampler{T}
 end
 
 # Concrete algorithm implementations.
+include("support/helper.jl")
 include("support/resample.jl")
 @suppress_err begin
   include("support/transform.jl")

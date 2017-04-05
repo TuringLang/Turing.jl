@@ -1,4 +1,3 @@
-include("support/hmc_helper.jl")
 include("support/hmc_core.jl")
 
 doc"""
