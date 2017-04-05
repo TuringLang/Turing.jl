@@ -55,7 +55,7 @@ end
 predict(spl::Void, var_name :: Symbol, value) = nothing
 
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl:: Void) = begin
-  # TODO: calling of rand() should be updated when group filed is added
+  # NOTE: Void sampler uses replaying by name method by default
   rand(vi, vn, dist, :byname)
 end
 

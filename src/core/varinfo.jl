@@ -114,16 +114,15 @@ end
 uids(vi::VarInfo) = Set(keys(vi.idcs))
 syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))
 
-# TODO: change below after randr() is unified
 Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
 Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
 
 nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
-  # TODO: update this method when VarInfo internal structure is updated
+  # TODO: update this method when implementing the sanity check
   VarName(csym, sym, indexing, 1)
 end
 
-# TODO: below should be updated when the field group is add to InferenceAlgorithm
+# Main behaviour control of rand() depending on sampler type and if sampler inside
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, inside=true) = begin
   local method, trans
 
@@ -143,9 +142,6 @@ rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, inside=true) = 
       randrn(vi, vn, dist, gid, spl)
     elseif method == :bycounter
       randrc(vi, vn, dist, gid, spl)
-    else
-      # TODO: actually never reached, remove below
-      error("[rand]: unsupported replaying method: $method")
     end
   else
     replay(vi, vn, dist, trans)

@@ -137,8 +137,6 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
   lp
 end
 
-# TODO: logpdf for SimplexDistribution
-
 ############### PDMatDistribution ##############
 
 typealias PDMatDistribution Union{InverseWishart, Wishart}
