@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, groupvals, retain
+using Turing: uid, cuid, reconstruct, invlink, groupvals, retain, randr
 using Turing: GibbsSampler
 
 # Test for uid() (= string())
@@ -19,7 +19,7 @@ vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
 vn_w = VarName(gensym(), :w, "", 1)
-randrc(vi, vn_w, dists[1], 2)
+randr(vi, vn_w, dists[1], 2, false, nothing, true)
 
 vn_x = VarName(gensym(), :x, "", 1)
 vn_y = VarName(gensym(), :y, "", 1)
@@ -27,7 +27,7 @@ vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
 for i = 1:3
-  r = randrn(vi, vns[i], dists[i], 1)
+  r = randr(vi, vns[i], dists[i], 1, true, nothing, false)
   val = vi[vns[i]]
   val = reconstruct(dists[i], val)
   val = invlink(dists[i], val)
@@ -40,7 +40,7 @@ end
 @test length(groupvals(vi, 2)) == 1
 
 vn_u = VarName(gensym(), :u, "", 1)
-randrc(vi, vn_u, dists[1], 2)
+randr(vi, vn_u, dists[1], 2, false, nothing, true)
 
 # println(vi)
 
