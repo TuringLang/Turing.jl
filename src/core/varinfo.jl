@@ -217,43 +217,6 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, trans=false, spl=noth
   r
 end
 
-# Random with replaying by name
-randrn(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int, spl=nothing) = begin
-  local r
-  if ~haskey(vi, vn)
-    dprintln(2, "sampling prior...")
-    r = rand(dist)
-    val = vectorize(dist, link(dist, r))      # X -> R and vectorize
-    addvar!(vi, vn, val, dist, gid, true)
-  else
-    dprintln(2, "fetching vals...")
-    if getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-      setgid!(vi, gid, vn)
-    end
-    val = vi[vn]
-    r = invlink(dist, reconstruct(dist, val)) # R -> X and reconstruct
-  end
-  r
-end
-
-# Random with replaying by counter
-randrc(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing) = begin
-  vi.index += 1
-  local r
-  gidcs = groupidcs(vi, gid, spl)
-  if vi.index <= length(gidcs)
-    r = vi.vals[gidcs[vi.index]]
-    if vi.gids[gidcs[vi.index]] == 0
-      vi.gids[gidcs[vi.index]] = gid
-    end
-  else # sample, record
-    @assert ~(uid(vn) in groupuids(vi, gid, spl)) "[randrc] attempt to generate an exisitng variable $(sym(vn)) to $vi"
-    r = Distributions.rand(dist)
-    addvar!(vi, vn, r, dist, gid)
-  end
-  r
-end
-
 # Randome with force overwriting by counter
 function randoc(vi::VarInfo, vn::VarName, dist::Distribution, gid=0)
   vi.index += 1
