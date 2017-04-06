@@ -213,6 +213,10 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, trans=false, spl=noth
     else
       r = vi[vn]
     end
+    if count  # sanity check for VarInfo.index
+      uid_replay = groupuids(vi, gid, spl)[vi.index]
+      @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
+    end
   end
   r
 end
