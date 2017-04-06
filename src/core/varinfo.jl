@@ -169,55 +169,52 @@ end
 
 # Main behaviour control of rand() depending on sampler type and if sampler inside
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, inside=true) = begin
-  local method, trans
+  local count, trans
 
   if isa(spl, HMCSampler{HMC})
-    method = :byname
-    trans = false   # trans is used when inside is fasle only
+    count, trans = false, true
   elseif isa(spl, ParticleSampler{PG})
-    method = :bycounter
-    trans = true
+    count, trans = true, false
   else
     error("[rand]: unsupported sampler: $spl")
   end
 
   if inside
-    gid = spl.alg.group_id
-    if method == :byname
-      randrn(vi, vn, dist, gid, spl)
-    elseif method == :bycounter
-      randrc(vi, vn, dist, gid, spl)
-    end
+    randr(vi, vn, dist, spl.alg.group_id, trans, spl, count)
   else
-    replay(vi, vn, dist, trans)
+    randr(vi, vn, dist, 0, ~trans, nothing, false)
   end
 end
 
+# This method is called when sampler is Void
 rand(vi::VarInfo, vn::VarName, dist::Distribution) = begin
-  replay(vi, vn, dist, true)
+  randr(vi, vn, dist, 0, true, nothing, false)
 end
 
-# Replay
-replay(vi::VarInfo, vn::VarName, dist::Distribution, trans) = begin
+# Random with replaying
+randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, trans=false, spl=nothing, count=false) = begin
+  vi.index = count ? vi.index + 1 : vi.index
+  local r
   if ~haskey(vi, vn)
-    local val
     r = rand(dist)
     if trans
-      val = vectorize(dist, link(dist, r))      # X -> R and vectorize
+      addvar!(vi, vn, vectorize(dist, link(dist, r)), dist, gid, trans)
     else
-      val = r
+      addvar!(vi, vn, r, dist, gid, trans)
     end
-    addvar!(vi, vn, val, dist, 0, trans)
     r
   else
-    val = vi[vn]
+    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
+      setgid!(vi, gid, vn)
+    end
     if trans
       dist = getdist(vi, vn)
-      r = invlink(dist, reconstruct(dist, val))
+      r = invlink(dist, reconstruct(dist, vi[vn]))
     else
-      val
+      r = vi[vn]
     end
   end
+  r
 end
 
 # Random with replaying by name
