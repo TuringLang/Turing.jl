@@ -12,7 +12,7 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   samples     ::  Array{Sample}       # samples
   predicts    ::  Dict{Symbol, Any}   # outputs
 
-  function GibbsSampler(model::Function, gibbs::Gibbs)
+  function GibbsSampler(gibbs::Gibbs)
     n_samplers = length(gibbs.algs)
     samplers = Array{Sampler}(n_samplers)
 
@@ -49,7 +49,9 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   end
 end
 
-function Base.run(model, data, spl::Sampler{Gibbs})
+function sample(model::Function, gibbs::Gibbs)
+  global sampler = GibbsSampler{Gibbs}(gibbs);
+  spl = sampler
   # initialization
   task = current_task()
   n = spl.gibbs.n_iters
@@ -96,14 +98,4 @@ function Base.run(model, data, spl::Sampler{Gibbs})
 
   println("[Gibbs]: Finshed within $(time() - t_start) seconds")
   return Chain(0, spl.samples)    # wrap the result by Chain
-end
-
-function sample(model::Function, data::Dict, gibbs::Gibbs)
-  global sampler = GibbsSampler{Gibbs}(model, gibbs);
-  run(model, data, sampler)
-end
-
-function sample(model::Function, gibbs::Gibbs)
-  global sampler = GibbsSampler{Gibbs}(model, gibbs);
-  run(model, Dict(), sampler)
 end
