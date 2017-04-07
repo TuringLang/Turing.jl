@@ -33,7 +33,36 @@ type Sample
   value :: Dict{Symbol,Any}
 end
 
-Base.getindex(s::Sample, v::Symbol) = Base.getindex(s.value, v)
+Base.getindex(s::Sample, v::Symbol) = begin
+  if typeof(parse(string(v))) == Expr
+    Base.getindex(s.value, v)
+  else
+    # Get all keys associated with the given symbol
+    kys = collect(filter(ky -> split(string(ky), '[')[1] == string(v), keys(s.value)))
+    # Compute dimension of the original Julia type by counting '['
+    nested_dim = length(split(string(kys[1]), '[')) - 1
+    if nested_dim == 0
+      Base.getindex(s.value, v)
+    elseif nested_dim == 1
+      dim = length(split(string(kys[1]), ','))
+      if dim == 1
+        sample = Vector(length(kys))
+      else
+        d = max(map(k -> eval(parse(replace(split(string(k), '[')[2], ']', ""))), kys)...)
+        sample = Array{Any, 2}(d)
+      end
+      for k in kys
+        # Get indexing
+        idx = eval(parse(replace(split(string(k), '[')[2], ']', "")))
+        # Fill sample
+        setindex!(sample, getindex(s.value, k), idx...)
+      end
+      sample
+    else
+      error("[Turing] indexing for complex Julia type with original symbol is not supported yet. Please index with the flatten symbol.")
+    end
+  end
+end
 
 #########
 # Chain #

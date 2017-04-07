@@ -1,4 +1,4 @@
-using Distributions
+using Distributions, Turing
 using Turing: Chain, Sample
 using Base.Test
 
@@ -32,3 +32,21 @@ end
 
 chain = sample(mamba_chain_test(), PG(5,300));
 describe(chain)
+
+
+
+d2 = Dict{Symbol, Any}()
+d2[Symbol("x[1]")] = 1
+d2[Symbol("x[2]")] = 2
+sp2 = Sample(1, d2)
+
+@test sp2[:x] == [1, 2]
+
+d3 = Dict{Symbol, Any}()
+d3[Symbol("x[1,1]")] = 1.1
+d3[Symbol("x[1,2]")] = 2.2
+d3[Symbol("x[2,1]")] = 3.3
+d3[Symbol("x[2,2]")] = 4.4
+sp3 = Sample(1, d3)
+
+@test sp3[:x] == [1.1 2.2; 3.3 4.4]
