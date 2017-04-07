@@ -35,9 +35,14 @@ end
 
 Base.getindex(s::Sample, v::Symbol) = getjuliatype(s, v)
 
-getjuliatype(s::Sample, v::Symbol) = begin
-  # Get all keys associated with the given symbol
-  syms = collect(filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
+  # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
+  if cached_syms == nothing
+    # Get all keys associated with the given symbol
+    syms = collect(filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+  else
+    syms = filter(k -> search(string(k), string(v)) != 0:-1, cached_syms)
+  end
   # Map to the corresponding indices part
   idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
   # Get the indexing component
@@ -67,7 +72,7 @@ getjuliatype(s::Sample, v::Symbol) = begin
       setindex!(sample, getindex(s.value, syms[i]), idx...)
     else  # nested case, iteratively evaluation
       v_indexed = Symbol("$v[$(idx_comp[i][1])]")
-      setindex!(sample, getjuliatype(s, v_indexed), idx...)
+      setindex!(sample, getjuliatype(s, v_indexed, syms), idx...)
     end
   end
   sample
