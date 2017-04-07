@@ -1,7 +1,3 @@
-abstract InferenceAlgorithm{P}
-abstract Sampler{T<:InferenceAlgorithm}
-abstract GradientSampler{T} <: Sampler{T}
-
 doc"""
     ParticleSampler{T}
 
@@ -18,13 +14,17 @@ To include a new inference algorithm implement the requirements mentioned above 
 then include that file at the end of this one.
 """
 type ParticleSampler{T} <: Sampler{T}
-  alg ::  T
-  particles :: ParticleContainer
-  model :: Function
-  ParticleSampler(m :: Function, a :: T) = (s = new(); s.alg = a; s.model = m; s)
+  alg         ::  T
+  particles   ::  ParticleContainer
+  ParticleSampler(alg::T) = begin
+    s = new()
+    s.alg = alg
+    s
+  end
 end
 
 # Concrete algorithm implementations.
+include("support/helper.jl")
 include("support/resample.jl")
 @suppress_err begin
   include("support/transform.jl")
@@ -48,7 +48,7 @@ predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
 function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
-  r = rand(vi, vn, dist, spl)
+  r = rand(vi, vn, dist)
   vi.logjoint += logpdf(dist, r, true)
   r
 end
@@ -56,7 +56,7 @@ end
 predict(spl::Void, var_name :: Symbol, value) = nothing
 
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl:: Void) = begin
-  # TODO: calling of rand() should be updated when group filed is added
+  # NOTE: Void sampler uses replaying by name method by default
   rand(vi, vn, dist, :byname)
 end
 

@@ -21,21 +21,23 @@ sample(example, SMC(1000))
 ```
 """
 immutable SMC <: InferenceAlgorithm
-  n_particles :: Int
-  resampler :: Function
-  resampler_threshold :: Float64
-  use_replay :: Bool
-  SMC(n) = new(n, resampleSystematic, 0.5, false)
-  SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b)
+  n_particles           ::  Int
+  resampler             ::  Function
+  resampler_threshold   ::  Float64
+  use_replay            ::  Bool
+  space                 ::  Set
+  group_id              ::  Int
+  SMC(n) = new(n, resampleSystematic, 0.5, false, Set(), 0)
+  SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
 end
 
 ## wrapper for smc: run the sampler, collect results.
 function sample(model, alg::SMC)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  global sampler = ParticleSampler{SMC}(alg);
   spl = sampler
 
   TraceType = spl.alg.use_replay ? TraceR : TraceC
-  spl.particles = ParticleContainer{TraceType}(spl.model)
+  spl.particles = ParticleContainer{TraceType}(model)
   push!(spl.particles, spl.alg.n_particles, spl, VarInfo())
 
   while consume(spl.particles) != Val{:done}

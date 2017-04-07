@@ -1,4 +1,3 @@
-include("support/hmc_helper.jl")
 include("support/hmc_core.jl")
 
 doc"""
@@ -23,23 +22,25 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples:: Int       # number of samples
-  lf_size  :: Float64   # leapfrog step size
-  lf_num   :: Int       # leapfrog step number
-  space    :: Set       # sampling space, emtpy means all
+  n_samples ::  Int       # number of samples
+  lf_size   ::  Float64   # leapfrog step size
+  lf_num    ::  Int       # leapfrog step number
+  space     ::  Set       # sampling space, emtpy means all
+  group_id  ::  Int
   function HMC(lf_size::Float64, lf_num::Int, space...)
-    HMC(1, lf_size, lf_num, space...)
+    HMC(1, lf_size, lf_num, space..., 0)
   end
   function HMC(n_samples, lf_size, lf_num)
-    new(n_samples, lf_size, lf_num, Set())
+    new(n_samples, lf_size, lf_num, Set(), 0)
   end
   function HMC(n_samples, lf_size, lf_num, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_samples, lf_size, lf_num, space)
+    new(n_samples, lf_size, lf_num, space, 0)
   end
+  HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-type HMCSampler{HMC} <: GradientSampler{HMC}
+type HMCSampler{HMC} <: Sampler{HMC}
   alg        ::HMC                          # the HMC algorithm info
   samples    ::Array{Sample}                # samples
   function HMCSampler(alg::HMC)
@@ -153,13 +154,4 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
     vi.logjoint += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
-end
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{Sampler{HMC}, Void}, inside=true) = begin
-  # TODO: calling of rand() should be updated when group filed is added
-  if inside == true
-    rand(vi, vn, dist, :byname)
-  else
-    rand(vi, vn, dist, :bycounter)
-  end
 end

@@ -34,7 +34,7 @@ fw = PG(20, NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
 bk = PG(20,50);
 
-s = @sample(gdemo2([1.5, 2], false), fw);
+s = sample(gdemo2([1.5, 2], false), fw);
 describe(s)
 
 N = div(NSamples, 50)
@@ -43,7 +43,7 @@ x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)
 
 for i = 1:N
-    s_bk[i] = @sample(gdemo2(x, true), bk);
+    s_bk[i] = sample(gdemo2(x, true), bk);
     x = [s_bk[i][:y][end]...];
 end
 

@@ -1,9 +1,9 @@
-include("support/gibbs_helper.jl")
-
 immutable Gibbs <: InferenceAlgorithm
-  n_iters ::  Int
-  algs    ::  Tuple
-  Gibbs(n_iters::Int, algs...) = new(n_iters, algs)
+  n_iters   ::  Int
+  algs      ::  Tuple
+  group_id  ::  Int
+  Gibbs(n_iters::Int, algs...) = new(n_iters, algs, 0)
+  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, new_group_id)
 end
 
 type GibbsSampler{Gibbs} <: Sampler{Gibbs}
@@ -15,13 +15,27 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   function GibbsSampler(model::Function, gibbs::Gibbs)
     n_samplers = length(gibbs.algs)
     samplers = Array{Sampler}(n_samplers)
+
+    space = Set{Symbol}()
+
     for i in 1:n_samplers
       alg = gibbs.algs[i]
       if isa(alg, HMC)
-        samplers[i] = HMCSampler{HMC}(alg)
+        samplers[i] = HMCSampler{HMC}(HMC(alg, i))
       elseif isa(alg, PG)
-        samplers[i] = ParticleSampler{PG}(model, alg)
+        samplers[i] = ParticleSampler{PG}(PG(alg, i))
+      else
+        error("[GibbsSampler] unsupport base sampling algorithm $alg")
       end
+      space = union(space, alg.space)
+    end
+
+
+
+    @assert issubset(TURING[:model_pvar_list], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(TURING[:model_pvar_list]))"
+
+    if TURING[:model_pvar_list] != space
+      warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, TURING[:model_pvar_list]))")
     end
 
     samples = Array{Sample}(gibbs.n_iters)
@@ -50,8 +64,9 @@ function Base.run(model, data, spl::Sampler{Gibbs})
     for local_spl in spl.samplers
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
-
+      # println(varInfo)
       if isa(local_spl, Sampler{HMC})
+
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
           old_vals = deepcopy(varInfo.vals)
@@ -62,21 +77,19 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         end
       elseif isa(local_spl, Sampler{PG})
         # Update new VarInfo to the reference particle
+        varInfo.index = 0
+        varInfo.num_produce = 0
         if ref_particle != nothing
-          ref_particle.vi.idcs = varInfo.idcs
-          ref_particle.vi.vals = varInfo.vals
-          ref_particle.vi.syms = varInfo.syms
-          ref_particle.vi.dists = varInfo.dists
-          ref_particle.vi.index = 0
-          ref_particle.vi.num_produce = 0
+          ref_particle.vi = varInfo
         end
-        # local samples
+        # Clean variables belonging to the current sampler
+        varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0)
+        # Local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
       end
-      # println(varInfo)
     end
     spl.samples[i].value = varInfo2samples(varInfo)
   end

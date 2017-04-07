@@ -47,3 +47,19 @@ function reconstruct(d::Distribution, val)
 end
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
+
+function varInfo2samples(vi)
+  samples = Dict{Symbol, Any}()
+  for uid in keys(vi)
+    val = vi[uid]
+    if istrans(vi, uid)
+      dist = getdist(vi, uid)
+      val = reconstruct(dist, val)
+      val = invlink(dist, val)
+      val = Any[realpart(val)]
+      val = length(val) == 1 ? val[1] : val   # Remove un-necessary []'s
+    end
+    samples[sym(uid)] = val
+  end
+  samples
+end

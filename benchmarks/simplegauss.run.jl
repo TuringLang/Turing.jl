@@ -5,7 +5,7 @@ using Base.Test
 include("simplegauss.data.jl")
 include("simplegauss.model.jl")
 alg = Gibbs(2000, PG(30, 3, :s), HMC(2, 0.1, 3, :m))
-sim = @sample(simplegaussmodel(simplegaussdata), alg)
+sim = sample(simplegaussmodel(simplegaussdata), alg)
 describe(sim)
 
 print("  1. s ≈ 49/24 (ϵ = 0.15)")

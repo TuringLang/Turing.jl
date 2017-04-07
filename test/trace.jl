@@ -16,10 +16,10 @@ function f2()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); addvar!(ct.vi, vn, nothing, Normal(0,1)); n += 1;
+    rand(ct, vn, Normal(0,1)); n += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); addvar!(ct.vi, vn, nothing, Normal(0,1)); n += 1;
+    rand(ct, vn, Normal(0,1)); n += 1;
     t[1] = 1 + t[1]
   end
 end
@@ -46,6 +46,6 @@ Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
 a2 = fork(t)
-Base.@assert length(a2.vi.randomness) == 5
-Base.@assert t.vi.randomness == a2.vi.randomness
+Base.@assert length(a2.vi.vals) == 5
+Base.@assert t.vi.vals == a2.vi.vals
 Base.@assert t.vi.index == a2.vi.index

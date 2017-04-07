@@ -22,20 +22,22 @@ sample(example, PG(100, 100))
 ```
 """
 immutable PG <: InferenceAlgorithm
-  n_particles :: Int
-  n_iterations :: Int
-  resampler :: Function
-  resampler_threshold :: Float64
-  space :: Set
-  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set())
+  n_particles           ::    Int
+  n_iterations          ::    Int
+  resampler             ::    Function
+  resampler_threshold   ::    Float64
+  space                 ::    Set
+  group_id              ::    Int
+  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, resampleSystematic, 0.5, space)
+    new(n1, n2, resampleSystematic, 0.5, space, 0)
   end
+  PG(alg::PG, new_group_id::Int) = new(alg.n_particles, alg.n_iterations, alg.resampler, alg.resampler_threshold, alg.space, new_group_id)
 end
 
 function step(model, spl::Sampler{PG}, vi, ref_particle)
-  spl.particles = ParticleContainer{TraceR}(spl.model)
+  spl.particles = ParticleContainer{TraceR}(model)
   if ref_particle == nothing
     push!(spl.particles, spl.alg.n_particles, spl, vi)
   else
@@ -72,7 +74,7 @@ end
 
 
 function sample(model, alg::PG)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
+  global sampler = ParticleSampler{PG}(alg);
   spl = sampler
   n = spl.alg.n_iterations
   t_start = time()  # record the start time of PG
@@ -90,13 +92,4 @@ function sample(model, alg::PG)
 
   println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
-end
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}, inside=true) = begin
-  # TODO: calling of rand() should be updated when group filed is added
-  if inside == true
-    rand(vi, vn, dist, :bycounter)
-  else
-    rand(vi, vn, dist, :byname)
-  end
 end

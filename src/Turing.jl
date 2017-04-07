@@ -3,6 +3,9 @@ module Turing
 using Distributions
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 
+abstract InferenceAlgorithm{P}
+abstract Sampler{T<:InferenceAlgorithm}
+
 # Code associated with running probabilistic programs as tasks. REVIEW: can we find a way to move this to where the other included files locate.
 include("core/varinfo.jl")
 include("trace/trace.jl")
@@ -17,8 +20,8 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @sample, @~, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler
-export VarName, VarInfo, nextvn, randrn, randrc, randoc
+export @model, @~, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler
+export VarName, VarInfo, nextvn, randr, randoc, retain, groupvals
 export Dual
 
 # Export Mamba Chain utility functions
