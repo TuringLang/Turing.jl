@@ -5,7 +5,7 @@ CONFIG = Dict(
   "model-list" => [
     #"naive-bayes",
     #"normal-loc",
-    #"normal-mixture",
+    "simple-normal-mixture",
     "simplegauss",
     "gauss",
     "bernoulli",
