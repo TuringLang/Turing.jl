@@ -33,7 +33,45 @@ type Sample
   value :: Dict{Symbol,Any}
 end
 
-Base.getindex(s::Sample, v::Symbol) = Base.getindex(s.value, v)
+Base.getindex(s::Sample, v::Symbol) = getjuliatype(s, v)
+
+getjuliatype(s::Sample, v::Symbol) = begin
+  # Get all keys associated with the given symbol
+  syms = collect(filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+  # Map to the corresponding indices part
+  idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
+  # Get the indexing component
+  idx_comp = map(idx -> filter(str -> str != "", split(string(idx), [']','['])), idx_str)
+
+  # Deal with v is really a symbol, e.g. :x
+  if length(idx_comp) == 0
+    return Base.getindex(s.value, v)
+  end
+
+  # Construct container for the frist nesting layer
+  dim = length(split(idx_comp[1][1], ','))
+  if dim == 1
+    sample = Vector(length(unique(map(c -> c[1], idx_comp))))
+  else
+    d = max(map(c -> eval(parse(c[1])), idx_comp)...)
+    sample = Array{Any, length(d)}(d)
+  end
+
+  # Fill sample
+  for i = 1:length(syms)
+    # Get indexing
+    idx = eval(parse(idx_comp[i][1]))
+    # Determine if nesting
+    nested_dim = length(idx_comp[1]) # how many nested layers?
+    if nested_dim == 1
+      setindex!(sample, getindex(s.value, syms[i]), idx...)
+    else  # nested case, iteratively evaluation
+      v_indexed = Symbol("$v[$(idx_comp[i][1])]")
+      setindex!(sample, getjuliatype(s, v_indexed), idx...)
+    end
+  end
+  sample
+end
 
 #########
 # Chain #
