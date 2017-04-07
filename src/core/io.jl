@@ -33,44 +33,44 @@ type Sample
   value :: Dict{Symbol,Any}
 end
 
-Base.getindex(s::Sample, v::Symbol) = begin
-  if typeof(parse(string(v))) == Expr
-    Base.getindex(s.value, v)
-  else
-    getjuliatype(s, v)
-  end
-end
+Base.getindex(s::Sample, v::Symbol) = getjuliatype(s, v)
 
 getjuliatype(s::Sample, v::Symbol) = begin
   # Get all keys associated with the given symbol
-  syms = collect(filter(k -> split(string(k), '[')[1] == string(v), keys(s.value)))
+  syms = collect(filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
   # Map to the corresponding indices part
   idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
   # Get the indexing component
   idx_comp = map(idx -> filter(str -> str != "", split(string(idx), [']','['])), idx_str)
 
-  nested_dim = length(idx_comp[1]) # how many nested layers
-
-  if nested_dim == 0
-    Base.getindex(s.value, syms[1])
-  elseif nested_dim == 1
-    dim = length(split(idx_comp[1][1], ','))
-    if dim == 1
-      sample = Vector(length(syms))
-    else
-      d = max(map(c -> eval(parse(c[1])), idx_comp)...)
-      sample = Array{Any, 2}(d)
-    end
-    for i = 1:length(syms)
-      # Get indexing
-      idx = eval(parse(idx_comp[i][1]))
-      # Fill sample
-      setindex!(sample, getindex(s.value, syms[i]), idx...)
-    end
-    sample
-  else
-    error("[Turing] indexing for complex Julia type with original symbol is not supported yet. Please index with the flatten symbol.")
+  # Deal with v is really a symbol, e.g. :x
+  if length(idx_comp) == 0
+    return Base.getindex(s.value, v)
   end
+
+  # Construct container for the frist nesting layer
+  dim = length(split(idx_comp[1][1], ','))
+  if dim == 1
+    sample = Vector(length(unique(map(c -> c[1], idx_comp))))
+  else
+    d = max(map(c -> eval(parse(c[1])), idx_comp)...)
+    sample = Array{Any, length(d)}(d)
+  end
+
+  # Fill sample
+  for i = 1:length(syms)
+    # Get indexing
+    idx = eval(parse(idx_comp[i][1]))
+    # Determine if nesting
+    nested_dim = length(idx_comp[1]) # how many nested layers?
+    if nested_dim == 1
+      setindex!(sample, getindex(s.value, syms[i]), idx...)
+    else  # nested case, iteratively evaluation
+      v_indexed = Symbol("$v[$(idx_comp[i][1])]")
+      setindex!(sample, getjuliatype(s, v_indexed), idx...)
+    end
+  end
+  sample
 end
 
 #########
