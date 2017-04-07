@@ -37,30 +37,39 @@ Base.getindex(s::Sample, v::Symbol) = begin
   if typeof(parse(string(v))) == Expr
     Base.getindex(s.value, v)
   else
-    # Get all keys associated with the given symbol
-    kys = collect(filter(ky -> split(string(ky), '[')[1] == string(v), keys(s.value)))
-    # Compute dimension of the original Julia type by counting '['
-    nested_dim = length(split(string(kys[1]), '[')) - 1
-    if nested_dim == 0
-      Base.getindex(s.value, v)
-    elseif nested_dim == 1
-      dim = length(split(string(kys[1]), ','))
-      if dim == 1
-        sample = Vector(length(kys))
-      else
-        d = max(map(k -> eval(parse(replace(split(string(k), '[')[2], ']', ""))), kys)...)
-        sample = Array{Any, 2}(d)
-      end
-      for k in kys
-        # Get indexing
-        idx = eval(parse(replace(split(string(k), '[')[2], ']', "")))
-        # Fill sample
-        setindex!(sample, getindex(s.value, k), idx...)
-      end
-      sample
+    getjuliatype(s, v)
+  end
+end
+
+getjuliatype(s::Sample, v::Symbol) = begin
+  # Get all keys associated with the given symbol
+  syms = collect(filter(k -> split(string(k), '[')[1] == string(v), keys(s.value)))
+  # Map to the corresponding indices part
+  idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
+  # Get the indexing component
+  idx_comp = map(idx -> filter(str -> str != "", split(string(idx), [']','['])), idx_str)
+
+  nested_dim = length(idx_comp[1]) # how many nested layers
+
+  if nested_dim == 0
+    Base.getindex(s.value, syms[1])
+  elseif nested_dim == 1
+    dim = length(split(idx_comp[1][1], ','))
+    if dim == 1
+      sample = Vector(length(syms))
     else
-      error("[Turing] indexing for complex Julia type with original symbol is not supported yet. Please index with the flatten symbol.")
+      d = max(map(c -> eval(parse(c[1])), idx_comp)...)
+      sample = Array{Any, 2}(d)
     end
+    for i = 1:length(syms)
+      # Get indexing
+      idx = eval(parse(idx_comp[i][1]))
+      # Fill sample
+      setindex!(sample, getindex(s.value, syms[i]), idx...)
+    end
+    sample
+  else
+    error("[Turing] indexing for complex Julia type with original symbol is not supported yet. Please index with the flatten symbol.")
   end
 end
 
