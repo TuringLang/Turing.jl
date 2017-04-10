@@ -72,9 +72,9 @@ Inference methods are functions which take the probabilistic program as one of t
 
 ```julia
 #  Run sampler, collect results
-chain = @sample(gdemo([1.5, 2]), SMC(500))
-chain = @sample(gdemo([1.5, 2]), PG(10,500))
-chain = @sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))
+chain = sample(gdemo([1.5, 2]), SMC(500))
+chain = sample(gdemo([1.5, 2]), PG(10,500))
+chain = sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))
 ```
 
 The arguments for each sampler are
