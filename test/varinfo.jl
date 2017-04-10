@@ -28,7 +28,7 @@ vns = [vn_x, vn_y, vn_z]
 
 for i = 1:3
   r = randr(vi, vns[i], dists[i], 1, nothing, false)
-  val = vi[vns[i]]
+  val = reconstruct(dists[i], vi[vns[i]])
   @test sum(val - r) <= 1e-9
 end
 
@@ -62,7 +62,7 @@ end
 g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg = g.samplers[1]
-println(pg)
+# println(pg)
 hmc = g.samplers[2]
 dist= Normal(0, 1)
 

@@ -57,20 +57,29 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
     prior_count = 1
     for k in gkeys
       l = length(vi[k])
-      reals = realpart(vi[k])
       val_vect = vi[k]        # get a reference for the value vector
       if k in key_chunk       # to graidnet variables
+        dist = getdist(vi, k)
+
+        reals = realpart(vectorize(dist, link(dist, reconstruct(dist, vi[k]))))
+        dual_num = Vector(length(reals))
         dprintln(5, "making dual...")
         for i = 1:l
           dps[prior_count] = 1  # set dual part
-          val_vect[i] = Dual(reals[i], dps...)
+          dual_num[i] = Dual(reals[i], dps...)
           dps[prior_count] = 0  # reset dual part
-          prior_count += 1      # count
         end
+        dual_num = vectorize(dist, invlink(dist, reconstruct(dist, dual_num)))
+        for i = 1:l
+          val_vect[i] = dual_num[i]
+        end
+        prior_count += l      # count
+
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
+        reals = realpart(vi[k])
         for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
-          val_vect[i] = reals[i]
+          vi[k][i] = reals[i]
         end
       end
     end

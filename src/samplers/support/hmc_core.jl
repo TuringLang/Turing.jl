@@ -18,7 +18,19 @@ function leapfrog(values, val∇E, p, ϵ, model, spl)
 
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
   for k in keys(val∇E)                # full step for state
-    values[k] = Vector{Dual}(values[k] + ϵ * p[k])
+    dist = getdist(values, k)
+    val_vec = values[k]
+    val = reconstruct(dist, val_vec)
+    val_real = link(dist, val)
+    val_real_vec = vectorize(dist, val_real)
+
+    new_val_real_vec = val_real_vec + ϵ * p[k]
+
+    new_val_real = reconstruct(dist, new_val_real_vec)
+    new_val = invlink(dist, new_val_real)
+    new_val_vec = vectorize(dist, new_val)
+
+    values[k] = new_val_vec
   end
   val∇E = gradient(values, model, spl)
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum

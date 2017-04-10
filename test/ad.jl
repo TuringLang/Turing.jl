@@ -25,11 +25,12 @@ _m = realpart(vi[mvn][1])
 ∇E = gradient(vi, ad_test_f)
 grad_Turing = sort([∇E[v][1] for v in keys(vi)])
 
+dist_s = InverseGamma(2,3)
+
 # Hand-written logjoint
 function logjoint(x::Vector)
   s = x[2]
-  dist_s = InverseGamma(2,3)
-  s = invlink(dist_s, s)        # as we now work in R, we need to do R -> X for s
+  s = invlink(dist_s, s)
   m = x[1]
   lik_dist = Normal(m, sqrt(s))
   lp = logpdf(dist_s, s, true) + logpdf(Normal(0,sqrt(s)), m, true)
@@ -39,6 +40,7 @@ end
 
 # Call ForwardDiff's AD
 g = x -> ForwardDiff.gradient(logjoint, x);
+_s = link(dist_s, _s)
 _x = [_m, _s]
 grad_FWAD = sort(-g(_x))
 

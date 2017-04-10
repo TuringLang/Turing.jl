@@ -189,7 +189,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
   vi.index = count ? vi.index + 1 : vi.index
   local r
   if ~haskey(vi, vn)
-    r = rand(dist)
+    r = vectorize(dist, rand(dist)) # always store vector inside VarInfo
     addvar!(vi, vn, r, dist, gid)
     r
   else
@@ -202,7 +202,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
       @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
     end
   end
-  r
+  reconstruct(dist, r)              # reconstruct from vector
 end
 
 # Randome with force overwriting by counter
