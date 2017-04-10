@@ -37,6 +37,7 @@ type VarInfo
   vals        ::    Vector{Any}
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
+  trans       ::    Vector{Bool}
   logjoint    ::    Dual
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -46,6 +47,7 @@ type VarInfo
     Vector{Any}(),
     Vector{Distribution}(),
     Vector{Int}(),
+    Vector{Bool}(),
     Dual(0.0),
     0,
     0
@@ -54,7 +56,7 @@ end
 
 Base.show(io::IO, vi::VarInfo) = begin
   println(vi.idcs)
-  print("$(vi.uids)\n$(vi.vals)\n$(vi.gids)\n")
+  print("$(vi.uids)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
   print("$(vi.logjoint), $(vi.index), $(vi.num_produce)")
 end
 
@@ -90,6 +92,11 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 getgid(vi::VarInfo, uid::Tuple) = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 setgid!(vi::VarInfo, gid, uid::Tuple) = vi.gids[getidx(vi, uid)] = gid
+
+gettrans(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+gettrans(vi::VarInfo, uid::Tuple) = vi.trans[getidx(vi, uid)]
+settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
+settrans!(vi::VarInfo, trans, uid::Tuple) = vi.trans[getidx(vi, uid)] = trans
 
 # The default getindex & setindex!() for get & set values
 Base.getindex(vi::VarInfo, vn::VarName) = getval(vi, vn)
@@ -134,6 +141,7 @@ retain(vi::VarInfo, gid::Int, n_retain) = begin
     splice!(vi.vals, gidcs[i])
     splice!(vi.dists, gidcs[i])
     splice!(vi.gids, gidcs[i])
+    splice!(vi.trans, gidcs[i])
   end
 
   # Rebuild index dictionary
@@ -152,6 +160,7 @@ addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0) = begin
   push!(vi.vals, val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
+  push!(vi.trans, false)
 end
 
 # This method is use to generate a new VarName with the right count
@@ -187,22 +196,25 @@ end
 # Random with replaying
 randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=false) = begin
   vi.index = count ? vi.index + 1 : vi.index
-  local r
   if ~haskey(vi, vn)
-    r = vectorize(dist, rand(dist)) # always store vector inside VarInfo
-    addvar!(vi, vn, r, dist, gid)
+    r = rand(dist)
+    # Always store vector inside VarInfo
+    addvar!(vi, vn, vectorize(dist, r), dist, gid)
     r
   else
-    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-      setgid!(vi, gid, vn)
-    end
-    r = vi[vn]
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]
       @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
     end
+    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
+      setgid!(vi, gid, vn)
+    end
+    if gettrans(vi, vn)
+      invlink(dist, reconstruct(dist, vi[vn]))
+    else
+      reconstruct(dist, vi[vn])
+    end
   end
-  reconstruct(dist, r)              # reconstruct from vector
 end
 
 # Randome with force overwriting by counter

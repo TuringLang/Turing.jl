@@ -66,9 +66,12 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
 
     dprintln(2, "sampling momentum...")
     p = Dict(uid(k) => randn(length(varInfo[k])) for k in keys(varInfo))
-    if spl != nothing && ~isempty(spl.alg.space)
+    if ~isempty(spl.alg.space)
       p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
     end
+
+    dprintln(3, "X -> R...")
+    varInfo = link(varInfo, spl)
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, varInfo, spl)
@@ -83,6 +86,9 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, varInfo, spl)
+
+    dprintln(3, "R -> X...")
+    varInfo = invlink(varInfo, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
@@ -133,15 +139,10 @@ end
 function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  local r
-  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = rand(vi, vn, dist, spl)
-    vi.logjoint += logpdf(dist, r, true)
-  else
-    r = rand(vi, vn, dist, spl, false)
-    # Observe data, non-transformed variable
-    vi.logjoint += logpdf(dist, r, false)
-  end
+  inside = isempty(spl.alg.space) || vn.sym in spl.alg.space ? true : false
+  r = rand(vi, vn, dist, spl, inside)
+  trans = gettrans(vi, vn)
+  vi.logjoint += logpdf(dist, r, trans)
   r
 end
 

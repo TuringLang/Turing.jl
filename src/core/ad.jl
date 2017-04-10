@@ -57,29 +57,20 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
     prior_count = 1
     for k in gkeys
       l = length(vi[k])
+      reals = realpart(vi[k])
       val_vect = vi[k]        # get a reference for the value vector
       if k in key_chunk       # to graidnet variables
-        dist = getdist(vi, k)
-
-        reals = realpart(vectorize(dist, link(dist, reconstruct(dist, vi[k]))))
-        dual_num = Vector(length(reals))
         dprintln(5, "making dual...")
         for i = 1:l
           dps[prior_count] = 1  # set dual part
-          dual_num[i] = Dual(reals[i], dps...)
+          val_vect[i] = Dual(reals[i], dps...)
           dps[prior_count] = 0  # reset dual part
+          prior_count += 1      # count
         end
-        dual_num = vectorize(dist, invlink(dist, reconstruct(dist, dual_num)))
-        for i = 1:l
-          val_vect[i] = dual_num[i]
-        end
-        prior_count += l      # count
-
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
-        reals = realpart(vi[k])
-        for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
-          vi[k][i] = reals[i]
+        for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
+          val_vect[i] = reals[i]
         end
       end
     end
@@ -95,7 +86,7 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
       duals = dualpart(-vi.logjoint)
       # To store the gradient vector
       g = zeros(l)
-      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed to support Matrix
+      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
         dprintln(5, "taking from logjoint...")
         g[i] = duals[prior_count] # collect
         prior_count += 1          # count

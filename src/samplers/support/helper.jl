@@ -48,11 +48,50 @@ end
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
 
+# VarInfo -> Dict{Symbol, Any}
 function varInfo2samples(vi)
   samples = Dict{Symbol, Any}()
   for uid in keys(vi)
     dist = getdist(vi, uid)
-    samples[sym(uid)] = realpart(reconstruct(dist, vi[uid]))
+    r = reconstruct(dist, vi[uid])
+    r = gettrans(vi, uid) ? invlink(dist, r) : r
+    samples[sym(uid)] = realpart(r)
   end
   samples
+end
+
+# X -> R for all variables associated with given sampler
+function link(vi, spl)
+  gkeys = keys(vi)
+  if spl != nothing   # Deal with Void sampler
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  end
+  for k in gkeys
+    dist = getdist(vi, k)
+    val_vec = vi[k]
+    new_vec = vectorize(dist, link(dist, reconstruct(dist, val_vec)))
+    for i = 1:length(val_vec)
+      val_vec[i] = new_vec[i]
+    end
+    settrans!(vi, true, k)
+  end
+  vi
+end
+
+# R -> X for all variables associated with given sampler
+function invlink(vi, spl)
+  gkeys = keys(vi)
+  if spl != nothing   # Deal with Void sampler
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  end
+  for k in gkeys
+    dist = getdist(vi, k)
+    val_vec = vi[k]
+    new_vec = vectorize(dist, invlink(dist, reconstruct(dist, val_vec)))
+    for i = 1:length(val_vec)
+      val_vec[i] = new_vec[i]
+    end
+    settrans!(vi, false, k)
+  end
+  vi
 end
