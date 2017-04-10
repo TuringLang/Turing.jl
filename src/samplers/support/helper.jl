@@ -68,11 +68,7 @@ function link(vi, spl)
   end
   for k in gkeys
     dist = getdist(vi, k)
-    val_vec = vi[k]
-    new_vec = vectorize(dist, link(dist, reconstruct(dist, val_vec)))
-    for i = 1:length(val_vec)
-      val_vec[i] = new_vec[i]
-    end
+    vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
     settrans!(vi, true, k)
   end
   vi
@@ -86,11 +82,7 @@ function invlink(vi, spl)
   end
   for k in gkeys
     dist = getdist(vi, k)
-    val_vec = vi[k]
-    new_vec = vectorize(dist, invlink(dist, reconstruct(dist, val_vec)))
-    for i = 1:length(val_vec)
-      val_vec[i] = new_vec[i]
-    end
+    vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
     settrans!(vi, false, k)
   end
   vi
