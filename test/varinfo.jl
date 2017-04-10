@@ -19,7 +19,7 @@ vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
 vn_w = VarName(gensym(), :w, "", 1)
-randr(vi, vn_w, dists[1], 2, false, nothing, true)
+randr(vi, vn_w, dists[1], 2, nothing, true)
 
 vn_x = VarName(gensym(), :x, "", 1)
 vn_y = VarName(gensym(), :y, "", 1)
@@ -27,11 +27,9 @@ vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
 for i = 1:3
-  r = randr(vi, vns[i], dists[i], 1, true, nothing, false)
+  r = randr(vi, vns[i], dists[i], 1, nothing, false)
   val = vi[vns[i]]
-  val = reconstruct(dists[i], val)
-  val = invlink(dists[i], val)
-  @test sum(realpart(val) - r) <= 1e-9
+  @test sum(val - r) <= 1e-9
 end
 
 # println(vi)
@@ -40,7 +38,7 @@ end
 @test length(groupvals(vi, 2)) == 1
 
 vn_u = VarName(gensym(), :u, "", 1)
-randr(vi, vn_u, dists[1], 2, false, nothing, true)
+randr(vi, vn_u, dists[1], 2, nothing, true)
 
 # println(vi)
 
