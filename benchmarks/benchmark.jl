@@ -11,6 +11,7 @@ CONFIG = Dict(
     "simplegauss-stan",
     "gauss",
     "bernoulli",
+    "bernoulli-stan",
     "gdemo-geweke"
     #"negative-binomial"
   ],
