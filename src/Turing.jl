@@ -20,7 +20,7 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler
+export @model, @~, InferenceAlgorithm, HMC, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, setchunksize
 export VarName, VarInfo, nextvn, randr, randoc, retain, groupvals
 export Dual
 
@@ -37,7 +37,7 @@ export dprintln
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
 global debug_level = 0
-global CHUNKSIZE = 1000
+global CHUNKSIZE = 50
 
 ##########
 # Helper #
