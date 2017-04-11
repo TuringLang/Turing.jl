@@ -1,5 +1,5 @@
 
-const simplegaussmodel = "
+const simplegaussstanmodel = "
 data {
   int<lower=0>  N;
   real x[N];
