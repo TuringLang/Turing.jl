@@ -30,9 +30,6 @@ notifications:
 script:
   - if [ "$(uname)" != "Darwin" ]; then ln -s `which gcc-5` gcc && export PATH=`pwd`:$PATH && echo $PATH; fi
   - gcc -v
-  - wget https://github.com/stan-dev/cmdstan/releases/download/v2.14.0/cmdstan-2.14.0.zip
-  - unzip cmdstan-2.14.0.zip -d cmdstan
-  - echo "CMDSTAN_HOME = `pwd`/cmdstan" >> ~/.juliarc.jl
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --check-bounds=yes -e 'Pkg.update();
              Pkg.clone(pwd(), "Turing");
@@ -40,6 +37,9 @@ script:
              if ENV["GROUP"] != "Bench"
                 Pkg.test("Turing"; coverage=true)
              else
+                run(`wget https://github.com/stan-dev/cmdstan/releases/download/v2.14.0/cmdstan-2.14.0.zip`)
+                run(`unzip cmdstan-2.14.0.zip -d cmdstan`)
+                CMDSTAN_HOME = pwd() * "/cmdstan"
                 Pkg.add("Stan"); Pkg.build("Stan");
                 include(Pkg.dir("Turing")*"/benchmarks/benchmark.jl")
              end'
