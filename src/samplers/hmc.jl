@@ -96,9 +96,12 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   end
 end
 
+setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
+sample(model::Function, alg::HMC) = sample(model, alg, CHUNKSIZE)
+
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
-function sample(model::Function, alg::HMC, chunk_size::Int = 5)
+function sample(model::Function, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   global sampler = HMCSampler{HMC}(alg);
 
