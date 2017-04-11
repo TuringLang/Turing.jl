@@ -6,9 +6,12 @@ CONFIG = Dict(
     #"naive-bayes",
     #"normal-loc",
     "simple-normal-mixture",
+    "simple-normal-mixture-stan",
     "simplegauss",
+    "simplegauss-stan",
     "gauss",
     "bernoulli",
+    "bernoulli-stan",
     "gdemo-geweke"
     #"negative-binomial"
   ],
