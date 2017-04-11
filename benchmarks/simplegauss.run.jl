@@ -8,6 +8,8 @@ alg = Gibbs(1000, PG(100, 3, :s), HMC(2, 0.1, 3, :m))
 simple_gauss_sim = sample(simplegaussmodel(simplegaussdata), alg)
 describe(simple_gauss_sim)
 
+println("Correctness check for Turing:")
+
 print("  1. s ≈ 49/24 (ϵ = 0.15)")
 ans1 = abs(mean(simple_gauss_sim[:s]) - 49/24) <= 0.15
 if ans1
