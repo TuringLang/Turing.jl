@@ -5,6 +5,6 @@ using Base.Test
 include("bernoulli.data.jl")
 include("bernoulli.model.jl")
 
-sim1 = sample(bermodel(berdata), HMC(2000, 0.25, 5))
+ber_sim = sample(bermodel(berdata), Turing.HMC(1000, 0.25, 5))
 
-describe(sim1)
+describe(ber_sim)
