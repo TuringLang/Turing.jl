@@ -37,7 +37,7 @@ script:
              if ENV["GROUP"] != "Bench"
                 Pkg.test("Turing"; coverage=true)
              else
-                include(Pkg.dir("Turing")*"/benchmarks/installstan.jl")
+                include(Pkg.dir("Turing")*"/benchmarks/installstan.jl");
                 include(Pkg.dir("Turing")*"/benchmarks/benchmark.jl")
              end'
 after_success:
