@@ -54,7 +54,7 @@ function varInfo2samples(vi)
   for uid in keys(vi)
     dist = getdist(vi, uid)
     r = reconstruct(dist, vi[uid])
-    r = gettrans(vi, uid) ? invlink(dist, r) : r
+    r = istransformed(vi, uid) ? invlink(dist, r) : r
     samples[sym(uid)] = realpart(r)
   end
   samples

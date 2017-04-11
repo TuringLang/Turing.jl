@@ -49,7 +49,7 @@ predict(spl, var_name :: Symbol, value) =
 
 function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
   r = rand(vi, vn, dist)
-  trans = gettrans(vi, vn)
+  trans = istransformed(vi, vn)
   vi.logjoint += logpdf(dist, r, trans)
   r
 end

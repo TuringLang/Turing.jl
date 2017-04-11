@@ -93,8 +93,8 @@ getgid(vi::VarInfo, uid::Tuple) = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 setgid!(vi::VarInfo, gid, uid::Tuple) = vi.gids[getidx(vi, uid)] = gid
 
-gettrans(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-gettrans(vi::VarInfo, uid::Tuple) = vi.trans[getidx(vi, uid)]
+istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+istransformed(vi::VarInfo, uid::Tuple) = vi.trans[getidx(vi, uid)]
 settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
 settrans!(vi::VarInfo, trans, uid::Tuple) = vi.trans[getidx(vi, uid)] = trans
 
@@ -209,7 +209,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
     if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
       setgid!(vi, gid, vn)
     end
-    if gettrans(vi, vn)
+    if istransformed(vi, vn)
       invlink(dist, reconstruct(dist, vi[vn]))
     else
       reconstruct(dist, vi[vn])

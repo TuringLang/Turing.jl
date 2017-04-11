@@ -141,7 +141,7 @@ function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarIn
   dprintln(2, "assuming...")
   inside = isempty(spl.alg.space) || vn.sym in spl.alg.space ? true : false
   r = rand(vi, vn, dist, spl, inside)
-  trans = gettrans(vi, vn)
+  trans = istransformed(vi, vn)
   vi.logjoint += logpdf(dist, r, trans)
   r
 end
