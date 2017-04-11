@@ -8,6 +8,7 @@ CONFIG = Dict(
     "simple-normal-mixture",
     "simple-normal-mixture-stan",
     "simplegauss",
+    "simplegauss-stan",
     "gauss",
     "bernoulli",
     "gdemo-geweke"
