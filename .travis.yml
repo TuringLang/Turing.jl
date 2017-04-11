@@ -37,10 +37,7 @@ script:
              if ENV["GROUP"] != "Bench"
                 Pkg.test("Turing"; coverage=true)
              else
-                run(`wget https://github.com/stan-dev/cmdstan/releases/download/v2.14.0/cmdstan-2.14.0.zip`)
-                run(`unzip cmdstan-2.14.0.zip -d cmdstan`)
-                CMDSTAN_HOME = pwd() * "/cmdstan"
-                Pkg.add("Stan"); Pkg.build("Stan");
+                include(Pkg.dir("Turing")*"/benchmarks/installstan.jl")
                 include(Pkg.dir("Turing")*"/benchmarks/benchmark.jl")
              end'
 after_success:
