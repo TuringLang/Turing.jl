@@ -68,8 +68,8 @@ dist= Normal(0, 1)
 
 vi = VarInfo()
 
-r = rand(vi, vn_w, dist, pg, false)
-r = rand(vi, vn_u, dist, pg, false)
+r = rand(vi, vn_w, dist, pg)
+r = rand(vi, vn_u, dist, pg)
 r = rand(vi, vn_x, dist, pg)
 r = rand(vi, vn_y, dist, pg)
 r = rand(vi, vn_z, dist, pg)
@@ -82,8 +82,8 @@ r = rand(vi, vn_z, dist, pg)
 
 r = rand(vi, vn_w, dist, hmc)
 r = rand(vi, vn_u, dist, hmc)
-r = rand(vi, vn_x, dist, hmc, false)
-r = rand(vi, vn_y, dist, hmc, false)
-r = rand(vi, vn_z, dist, hmc, false)
+r = rand(vi, vn_x, dist, hmc)
+r = rand(vi, vn_y, dist, hmc)
+r = rand(vi, vn_z, dist, hmc)
 
 @test vi.gids == [2,2,1,1,1]

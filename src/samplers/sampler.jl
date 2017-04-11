@@ -48,18 +48,12 @@ predict(spl, var_name :: Symbol, value) =
   error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
 
 function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
-  r = rand(vi, vn, dist)
-  trans = istransformed(vi, vn)
-  vi.logjoint += logpdf(dist, r, trans)
+  r = rand(vi, vn, dist, spl)
+  vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
 predict(spl::Void, var_name :: Symbol, value) = nothing
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl:: Void) = begin
-  # NOTE: Void sampler uses replaying by name method by default
-  rand(vi, vn, dist, :byname)
-end
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);

@@ -60,18 +60,7 @@ function step(model, spl::Sampler{PG}, vi, ref_particle)
   ref_particle, s
 end
 
-function assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo)
-  vi = current_trace().vi
-  local r
-  if isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = rand(vi, vn, dist, spl)
-  else
-    r = rand(vi, vn, dist, spl, false)
-    produce(log(1.0))
-  end
-  r
-end
-
+assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo) = rand(current_trace().vi, vn, dist, spl)
 
 function sample(model, alg::PG)
   global sampler = ParticleSampler{PG}(alg);
