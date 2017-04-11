@@ -154,3 +154,5 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
   end
   dprintln(2, "observe done")
 end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{HMC}) = isempty(spl.alg.space) || vn.sym in spl.alg.space ? randr(vi, vn, dist, spl.alg.group_id, spl, false) : randr(vi, vn, dist)

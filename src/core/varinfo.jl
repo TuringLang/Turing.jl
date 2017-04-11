@@ -169,30 +169,8 @@ nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
-# Main behaviour control of rand() depending on sampler type and if sampler inside
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
-  local count
-
-  if isa(spl, HMCSampler{HMC})
-    count = false
-  elseif isa(spl, ParticleSampler{PG})
-    count = true
-  else
-    error("[rand]: unsupported sampler: $spl")
-  end
-
-  inside = isempty(spl.alg.space) || vn.sym in spl.alg.space ? true : false
-
-  if inside
-    randr(vi, vn, dist, spl.alg.group_id, spl, count)
-  else
-    randr(vi, vn, dist, 0, nothing, false)
-  end
-end
-
-# This method is called when sampler is Void
+# Default behaviour for Void
 rand(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, 0, nothing, false)
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Void) = rand(vi, vn, dist)
 
 # Random with replaying
 randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=false) = begin

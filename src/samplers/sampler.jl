@@ -65,3 +65,6 @@ assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(curren
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
 
 predict(spl :: Sampler, v_name :: Symbol, value) = nothing
+
+# This method is called when sampler is Void
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Void) = rand(vi, vn, dist)

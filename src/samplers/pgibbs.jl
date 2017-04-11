@@ -82,3 +82,5 @@ function sample(model, alg::PG)
   println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
 end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::ParticleSampler{PG}) = isempty(spl.alg.space) || vn.sym in spl.alg.space ? randr(vi, vn, dist, spl.alg.group_id, spl, true) : randr(vi, vn, dist)
