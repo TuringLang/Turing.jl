@@ -66,9 +66,12 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
 
     dprintln(2, "sampling momentum...")
     p = Dict(uid(k) => randn(length(varInfo[k])) for k in keys(varInfo))
-    if spl != nothing && ~isempty(spl.alg.space)
+    if ~isempty(spl.alg.space)
       p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
     end
+
+    dprintln(3, "X -> R...")
+    varInfo = link(varInfo, spl)
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, varInfo, spl)
@@ -84,6 +87,9 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     dprintln(2, "computing new H...")
     H = find_H(p, model, varInfo, spl)
 
+    dprintln(3, "R -> X...")
+    varInfo = invlink(varInfo, spl)
+
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
@@ -96,9 +102,12 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   end
 end
 
+setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
+sample(model::Function, alg::HMC) = sample(model, alg, CHUNKSIZE)
+
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
-function sample(model::Function, alg::HMC, chunk_size::Int = 5)
+function sample(model::Function, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   global sampler = HMCSampler{HMC}(alg);
 
@@ -133,15 +142,8 @@ end
 function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  local r
-  if spl == nothing || isempty(spl.alg.space) || vn.sym in spl.alg.space
-    r = rand(vi, vn, dist, spl)
-    vi.logjoint += logpdf(dist, r, true)
-  else
-    r = rand(vi, vn, dist, spl, false)
-    # Observe data, non-transformed variable
-    vi.logjoint += logpdf(dist, r, false)
-  end
+  r = rand(vi, vn, dist, spl)
+  vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
@@ -155,3 +157,5 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
   end
   dprintln(2, "observe done")
 end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{HMC}) = isempty(spl.alg.space) || vn.sym in spl.alg.space ? randr(vi, vn, dist, spl.alg.group_id, spl, false) : randr(vi, vn, dist)
