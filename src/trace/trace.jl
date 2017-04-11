@@ -75,7 +75,7 @@ typealias TraceR Trace{:R} # Task Copy
 typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
-randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr, 0, false, nothing, true)
+randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr, 0, nothing, true)
 
 # generate a new random variable, no replay
 randc(t::Trace, vn::VarName, distr :: Distribution) = randoc(t.vi, vn, distr)

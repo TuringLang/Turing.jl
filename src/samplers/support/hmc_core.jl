@@ -18,6 +18,7 @@ function leapfrog(values, val∇E, p, ϵ, model, spl)
 
   p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
   for k in keys(val∇E)                # full step for state
+    # NOTE: Vector{Dual} is necessary magic conversion
     values[k] = Vector{Dual}(values[k] + ϵ * p[k])
   end
   val∇E = gradient(values, model, spl)

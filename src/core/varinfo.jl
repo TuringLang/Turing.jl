@@ -37,7 +37,7 @@ type VarInfo
   vals        ::    Vector{Any}
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
-  istrans     ::    Vector{Bool}  # is transformed?
+  trans       ::    Vector{Bool}
   logjoint    ::    Dual
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -56,7 +56,7 @@ end
 
 Base.show(io::IO, vi::VarInfo) = begin
   println(vi.idcs)
-  print("$(vi.uids)\n$(vi.vals)\n$(vi.gids)\n$(vi.istrans)\n")
+  print("$(vi.uids)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
   print("$(vi.logjoint), $(vi.index), $(vi.num_produce)")
 end
 
@@ -93,8 +93,10 @@ getgid(vi::VarInfo, uid::Tuple) = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 setgid!(vi::VarInfo, gid, uid::Tuple) = vi.gids[getidx(vi, uid)] = gid
 
-istrans(vi::VarInfo, vn::VarName) = vi.istrans[getidx(vi, vn)]
-istrans(vi::VarInfo, uid::Tuple) = vi.istrans[getidx(vi, uid)]
+istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+istransformed(vi::VarInfo, uid::Tuple) = vi.trans[getidx(vi, uid)]
+settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
+settrans!(vi::VarInfo, trans, uid::Tuple) = vi.trans[getidx(vi, uid)] = trans
 
 # The default getindex & setindex!() for get & set values
 Base.getindex(vi::VarInfo, vn::VarName) = getval(vi, vn)
@@ -139,7 +141,7 @@ retain(vi::VarInfo, gid::Int, n_retain) = begin
     splice!(vi.vals, gidcs[i])
     splice!(vi.dists, gidcs[i])
     splice!(vi.gids, gidcs[i])
-    splice!(vi.istrans, gidcs[i])
+    splice!(vi.trans, gidcs[i])
   end
 
   # Rebuild index dictionary
@@ -151,14 +153,14 @@ retain(vi::VarInfo, gid::Int, n_retain) = begin
 end
 
 # Add a new entry to VarInfo
-addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0, istrans=false) = begin
-  @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid, istrans=$istrans"
+addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0) = begin
+  @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
   vi.idcs[uid(vn)] = length(vi.idcs) + 1
   push!(vi.uids, uid(vn))
   push!(vi.vals, val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
-  push!(vi.istrans, istrans)
+  push!(vi.trans, false)
 end
 
 # This method is use to generate a new VarName with the right count
@@ -167,58 +169,31 @@ nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
-# Main behaviour control of rand() depending on sampler type and if sampler inside
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, inside=true) = begin
-  local count, trans
-
-  if isa(spl, HMCSampler{HMC})
-    count, trans = false, true
-  elseif isa(spl, ParticleSampler{PG})
-    count, trans = true, false
-  else
-    error("[rand]: unsupported sampler: $spl")
-  end
-
-  if inside
-    randr(vi, vn, dist, spl.alg.group_id, trans, spl, count)
-  else
-    randr(vi, vn, dist, 0, ~trans, nothing, false)
-  end
-end
-
-# This method is called when sampler is Void
-rand(vi::VarInfo, vn::VarName, dist::Distribution) = begin
-  randr(vi, vn, dist, 0, true, nothing, false)
-end
+# Default behaviour for Void
+rand(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, 0, nothing, false)
 
 # Random with replaying
-randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, trans=false, spl=nothing, count=false) = begin
+randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=false) = begin
   vi.index = count ? vi.index + 1 : vi.index
-  local r
   if ~haskey(vi, vn)
     r = rand(dist)
-    if trans
-      addvar!(vi, vn, vectorize(dist, link(dist, r)), dist, gid, trans)
-    else
-      addvar!(vi, vn, r, dist, gid, trans)
-    end
+    # Always store vector inside VarInfo
+    addvar!(vi, vn, vectorize(dist, r), dist, gid)
     r
   else
-    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-      setgid!(vi, gid, vn)
-    end
-    if trans
-      dist = getdist(vi, vn)
-      r = invlink(dist, reconstruct(dist, vi[vn]))
-    else
-      r = vi[vn]
-    end
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]
       @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
     end
+    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
+      setgid!(vi, gid, vn)
+    end
+    if istransformed(vi, vn)
+      invlink(dist, reconstruct(dist, vi[vn]))
+    else
+      reconstruct(dist, vi[vn])
+    end
   end
-  r
 end
 
 # Randome with force overwriting by counter

@@ -69,7 +69,7 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
         end
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
-        for i = 1:l           # NOTE: we cannot use map here as we dont' want the reference of val_vect is changed to support Matrix
+        for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
           val_vect[i] = reals[i]
         end
       end
@@ -86,7 +86,7 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
       duals = dualpart(-vi.logjoint)
       # To store the gradient vector
       g = zeros(l)
-      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed to support Matrix
+      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
         dprintln(5, "taking from logjoint...")
         g[i] = duals[prior_count] # collect
         prior_count += 1          # count

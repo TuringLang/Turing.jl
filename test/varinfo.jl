@@ -19,7 +19,7 @@ vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
 vn_w = VarName(gensym(), :w, "", 1)
-randr(vi, vn_w, dists[1], 2, false, nothing, true)
+randr(vi, vn_w, dists[1], 2, nothing, true)
 
 vn_x = VarName(gensym(), :x, "", 1)
 vn_y = VarName(gensym(), :y, "", 1)
@@ -27,11 +27,9 @@ vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
 for i = 1:3
-  r = randr(vi, vns[i], dists[i], 1, true, nothing, false)
-  val = vi[vns[i]]
-  val = reconstruct(dists[i], val)
-  val = invlink(dists[i], val)
-  @test sum(realpart(val) - r) <= 1e-9
+  r = randr(vi, vns[i], dists[i], 1, nothing, false)
+  val = reconstruct(dists[i], vi[vns[i]])
+  @test sum(val - r) <= 1e-9
 end
 
 # println(vi)
@@ -40,7 +38,7 @@ end
 @test length(groupvals(vi, 2)) == 1
 
 vn_u = VarName(gensym(), :u, "", 1)
-randr(vi, vn_u, dists[1], 2, false, nothing, true)
+randr(vi, vn_u, dists[1], 2, nothing, true)
 
 # println(vi)
 
@@ -64,14 +62,14 @@ end
 g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg = g.samplers[1]
-println(pg)
+# println(pg)
 hmc = g.samplers[2]
 dist= Normal(0, 1)
 
 vi = VarInfo()
 
-r = rand(vi, vn_w, dist, pg, false)
-r = rand(vi, vn_u, dist, pg, false)
+r = rand(vi, vn_w, dist, pg)
+r = rand(vi, vn_u, dist, pg)
 r = rand(vi, vn_x, dist, pg)
 r = rand(vi, vn_y, dist, pg)
 r = rand(vi, vn_z, dist, pg)
@@ -84,8 +82,8 @@ r = rand(vi, vn_z, dist, pg)
 
 r = rand(vi, vn_w, dist, hmc)
 r = rand(vi, vn_u, dist, hmc)
-r = rand(vi, vn_x, dist, hmc, false)
-r = rand(vi, vn_y, dist, hmc, false)
-r = rand(vi, vn_z, dist, hmc, false)
+r = rand(vi, vn_x, dist, hmc)
+r = rand(vi, vn_y, dist, hmc)
+r = rand(vi, vn_z, dist, hmc)
 
 @test vi.gids == [2,2,1,1,1]
