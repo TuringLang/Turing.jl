@@ -39,11 +39,11 @@ print_log(logd::Dict) = begin
       println("|")
       println("| E[$v] = $m")
       println("|")
-      if haskey(logd, "analytic") && haskey(v ,logd["analytic"])
+      if haskey(logd, "analytic") && haskey(logd["analytic"], v)
         println("| -> analytic = $(logd["analytic"][v])")
         println("|    diff     = $(abs(m - logd["analytic"][v]))")
       end
-      if haskey(logd, "stan") && haskey(v ,logd["stan"])
+      if haskey(logd, "stan") && haskey(logd["stan"], v)
         println("| -> Stan = $(logd["stan"][v])")
         println("|    diff = $(abs(m - logd["stan"][v]))")
       end
