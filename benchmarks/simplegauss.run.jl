@@ -7,8 +7,7 @@ simple_gauss_sim, time, mem, _, _ = @timed sample(simplegaussmodel(simplegaussda
 
 logd = Dict(
   "name" => "Simple Gaussian Model",
-  "engine" => "Turing",
-  "config" => "$alg_str",
+  "engine" => "$alg_str",
   "time" => time,
   "mem" => mem,
   "turing" => Dict("s" => mean(simple_gauss_sim[:s]), "m" => mean(simple_gauss_sim[:m])),

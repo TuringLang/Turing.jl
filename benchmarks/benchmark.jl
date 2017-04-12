@@ -12,7 +12,6 @@ print_log(logd::Dict) = begin
   println("| Overview")
   println("|-----------------------------------------------------------------------")
   println("| Inference Engine  : $(logd["engine"])")
-  println("| Config            : $(logd["config"])")
   println("| Time Used (s)     : $(logd["time"])")
   println("| Mem Alloc (bytes) : $(logd["mem"])")
   if haskey(logd, "turing")
@@ -28,14 +27,15 @@ print_log(logd::Dict) = begin
         println("|    diff     = $(abs(m - logd["analytic"][v]))")
       end
       if haskey(logd, "stan")
-        println("| -> Stan     = $(logd["stan"][v])")
-        println("|    diff     = $(abs(m - logd["stan"][v]))")
+        println("| -> Stan = $(logd["stan"][v])")
+        println("|    diff = $(abs(m - logd["stan"][v]))")
       end
     end
   end
   println("\\=======================================================================")
 end
 
+# NOTE: put Stan models before Turing ones if you want to compare them in print_log
 CONFIG = Dict(
   "model-list" => [
     #"naive-bayes",
