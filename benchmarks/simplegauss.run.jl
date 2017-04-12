@@ -1,29 +1,19 @@
-using Turing
-using Distributions
-using Base.Test
-
 include("simplegauss.data.jl")
 include("simplegauss.model.jl")
-alg = Gibbs(1000, PG(100, 3, :s), HMC(2, 0.1, 3, :m))
-simple_gauss_sim = sample(simplegaussmodel(simplegaussdata), alg)
-describe(simple_gauss_sim)
 
-println("Correctness check for Turing:")
+alg_str = "Gibbs(1000, PG(100, 3, :s), HMC(2, 0.1, 3, :m))"
+alg = eval(parse(alg_str))
+simple_gauss_sim, time, mem, _, _ = @timed sample(simplegaussmodel(simplegaussdata), alg)
 
-print("  1. s ≈ 49/24 (ϵ = 0.15)")
-ans1 = abs(mean(simple_gauss_sim[:s]) - 49/24) <= 0.15
-if ans1
-  print_with_color(:green, " ✓\n")
-else
-  print_with_color(:red, " X\n")
-  print_with_color(:red, "    s = $(mean(simple_gauss_sim[:s])), diff = $(abs(mean(simple_gauss_sim[:s]) - 49/24))\n")
-end
+logd = Dict(
+  "name" => "Simple Gaussian Model",
+  "engine" => "Turing",
+  "config" => "$alg_str",
+  "time" => time,
+  "mem" => mem,
+  "turing" => Dict("s" => mean(simple_gauss_sim[:s]), "m" => mean(simple_gauss_sim[:m])),
+  "analytic" => Dict("s" => 49/24, "m" => 7/6),
+  "stan" => Dict("s" => mean(s_stan), "m" => mean(m_stan))
+)
 
-print("  2. m ≈ 7/6 (ϵ = 0.15)")
-ans2 = abs(mean(simple_gauss_sim[:m]) - 7/6) <= 0.15
-if ans2
-  print_with_color(:green, "   ✓\n")
-else
-  print_with_color(:red, "   X\n")
-  print_with_color(:red, "     m = $(mean(simple_gauss_sim[:m])), diff = $(abs(mean(simple_gauss_sim[:m]) - 7/6))\n")
-end
+print_log(logd)

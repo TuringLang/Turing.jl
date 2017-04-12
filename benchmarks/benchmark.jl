@@ -1,24 +1,58 @@
+using Distributions
 using Turing
+using Stan
+
 include("ASCIIPlot.jl");
+
+# Log function
+print_log(logd::Dict) = begin
+  println("/=======================================================================")
+  println("| Benchmark Result for >>> $(logd["name"]) <<<")
+  println("|-----------------------------------------------------------------------")
+  println("| Overview")
+  println("|-----------------------------------------------------------------------")
+  println("| Inference Engine  : $(logd["engine"])")
+  println("| Config            : $(logd["config"])")
+  println("| Time Used (s)     : $(logd["time"])")
+  println("| Mem Alloc (bytes) : $(logd["mem"])")
+  if haskey(logd, "turing")
+    println("|-----------------------------------------------------------------------")
+    println("| Turing Inference Result")
+    println("|-----------------------------------------------------------------------")
+    for (v, m) = logd["turing"]
+      println("|")
+      println("| E[$v] = $m")
+      println("|")
+      if haskey(logd, "analytic")
+        println("| -> analytic = $(logd["analytic"][v])")
+        println("|    diff     = $(abs(m - logd["analytic"][v]))")
+      end
+      if haskey(logd, "stan")
+        println("| -> Stan     = $(logd["stan"][v])")
+        println("|    diff     = $(abs(m - logd["stan"][v]))")
+      end
+    end
+  end
+  println("\\=======================================================================")
+end
 
 CONFIG = Dict(
   "model-list" => [
     #"naive-bayes",
     #"normal-loc",
-    "simple-normal-mixture",
     "simple-normal-mixture-stan",
-    "simplegauss",
+    "simple-normal-mixture",
     "simplegauss-stan",
+    "simplegauss",
     "gauss",
-    "bernoulli",
     "bernoulli-stan",
+    "bernoulli",
     "gdemo-geweke"
     #"negative-binomial"
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface
 )
-
 
 if CONFIG["test-level"] == 1
 
