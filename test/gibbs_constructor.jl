@@ -29,7 +29,7 @@ c3 = sample(gdemo(), s3)
 
 
 # Test group_id of each samplers
-g = GibbsSampler{Gibbs}(gdemo(), s3)
+g = GibbsSampler{Gibbs}(s3)
 
 @test g.samplers[1].alg.group_id == 1
 @test g.samplers[2].alg.group_id == 2
