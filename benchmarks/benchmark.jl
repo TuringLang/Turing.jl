@@ -22,7 +22,7 @@ build_logd(name::String, engine::String, time, mem, tchain) = begin
 end
 
 # Log function
-print_log(logd::Dict) = begin
+print_log(logd::Dict, monitor=[]) = begin
   println("/=======================================================================")
   println("| Benchmark Result for >>> $(logd["name"]) <<<")
   println("|-----------------------------------------------------------------------")
@@ -36,15 +36,17 @@ print_log(logd::Dict) = begin
     println("| Turing Inference Result")
     println("|-----------------------------------------------------------------------")
     for (v, m) = logd["turing"]
-      println("|")
-      println("| E[$v] = $m")
-      if haskey(logd, "analytic") && haskey(logd["analytic"], v)
-        println("| -> analytic = $(logd["analytic"][v])")
-        println("|    diff     = $(abs(m - logd["analytic"][v]))")
-      end
-      if haskey(logd, "stan") && haskey(logd["stan"], v)
-        println("| -> Stan = $(logd["stan"][v])")
-        println("|    diff = $(abs(m - logd["stan"][v]))")
+      if isempty(monitor) || v in monitor
+        println("|")
+        println("| E[$v] = $m")
+        if haskey(logd, "analytic") && haskey(logd["analytic"], v)
+          println("| -> analytic = $(logd["analytic"][v])")
+          println("|    diff     = $(abs(m - logd["analytic"][v]))")
+        end
+        if haskey(logd, "stan") && haskey(logd["stan"], v)
+          println("| -> Stan = $(logd["stan"][v])")
+          println("|    diff = $(abs(m - logd["stan"][v]))")
+        end
       end
     end
   end
@@ -56,8 +58,8 @@ CONFIG = Dict(
   "model-list" => [
     #"naive-bayes",
     #"normal-loc",
-    # "simple-normal-mixture-stan",
-    # "simple-normal-mixture",
+    "simple-normal-mixture-stan",
+    "simple-normal-mixture",
     "simplegauss-stan",
     "simplegauss",
     "gauss",
