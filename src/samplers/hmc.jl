@@ -135,8 +135,12 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
-  return Chain(0, spl.samples)    # wrap the result by Chain
+
+  if VERBOSITY > 0
+      println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
+  end
+
+  Chain(0, spl.samples)    # wrap the result by Chain
 end
 
 function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
