@@ -160,7 +160,7 @@ Example:
 end
 ```
 """
-macro model(fname, fbody, farglist)
+macro model_inner(fname, fbody, farglist)
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
   # This varinfo array is useful is task cloning.
@@ -236,24 +236,58 @@ macro model(fexpr)
 
   dprintln(1, fname)
 
-  # Remove positional arguments, e.g.
+  fname_outer1 = deepcopy(fname)
+  fname_outer2 = deepcopy(fname)
+  fname_inner  = deepcopy(fname)
+
+  # outer function def 2: f(x,y) ==> f(;data=Dict())
+  fname_outer2.args = fname_outer2.args[1:2]
+  push!(fname_outer2.args[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}()))) # Add data argument to outer function
+
+  # Remove positional arguments from inner function, e.g.
   #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
-  fname2 = deepcopy(fname)
-  fname2.args = fname2.args[1:2]
-  push!(fname2.args[2].args, Expr(:kw, :vi, :(VarInfo())))
-  push!(fname2.args[2].args, Expr(:kw, :sampler, :(nothing)))
-  push!(fname2.args[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
-  dprintln(1, fname2)
+  fname_inner.args = fname_inner.args[1:2]
+  push!(fname_inner.args[2].args, Expr(:kw, :vi, :(VarInfo())))
+  push!(fname_inner.args[2].args, Expr(:kw, :sampler, :(nothing)))
+  dprintln(1, fname_inner)
 
   fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
+
+
   dprintln(1, fbody)
 
-  dprintln(1, :($fname = begin @model($fname2, $fbody) end))
-  esc(quote
-      $fname = begin
-        f = @model($fname2, $fbody, $farglist)
-        return f
+  dprintln(1, :($fname = begin @model($fname_inner, $fbody) end))
+
+
+  _fbody_ = :(Turing.@model_inner() )
+  push!(_fbody_.args, fname_inner)
+  push!(_fbody_.args, fbody)
+  push!(_fbody_.args, farglist) # TODO: merge farglist into modelInfo.
+  dprintln(1, _fbody_)
+
+  _fbody2_ = :(function inner_f() end)
+  push!(_fbody2_.args[2].args, _fbody_)
+  push!(_fbody2_.args[2].args, :(return $(fname_inner.args[1])))
+  push!(fname_outer2.args[2].args, Expr(:kw, :fbody, [_fbody2_])) # Add data argument to outer function
+
+  ex = quote # Using `esc` here will disable variable interpolation
+      # outer function def 1: f(x, y, ...)
+      $fname_outer1 = begin
+        return Main.eval($_fbody_)
       end
-    end)
+      # outer function def 2 : f(;data=Dict(:x=>[..],:y=>[..]))
+      $fname_outer2 = begin
+        # Assign variables in data locally
+        # TODO: get data from fname.args..
+        fbody = fbody[1]
+        for k in keys(data)
+          unshift!(fbody.args[2].args, Expr(Symbol("="), k, data[k]))
+        end
+        fbody = Expr(:block, fbody, :(return inner_f())) # Call inner_f()
+        return Main.eval(fbody)
+      end
+  end
+  dprintln(1, ex)
+  esc(ex)
 end
