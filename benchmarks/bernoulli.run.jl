@@ -3,7 +3,7 @@ include("bernoulli.model.jl")
 
 alg_str = "HMC(1000, 0.25, 5)"
 alg = eval(parse(alg_str))
-ber_sim = sample(bermodel(berdata), alg)
+ber_sim, time, mem, _, _  = @timed sample(bermodel(berdata), alg)
 
 logd = Dict(
   "name" => "Bernoulli Model",
