@@ -38,7 +38,6 @@ print_log(logd::Dict) = begin
     for (v, m) = logd["turing"]
       println("|")
       println("| E[$v] = $m")
-      println("|")
       if haskey(logd, "analytic") && haskey(logd["analytic"], v)
         println("| -> analytic = $(logd["analytic"][v])")
         println("|    diff     = $(abs(m - logd["analytic"][v]))")
@@ -61,7 +60,7 @@ CONFIG = Dict(
     # "simple-normal-mixture",
     "simplegauss-stan",
     "simplegauss",
-    # "gauss",
+    "gauss",
     "bernoulli-stan",
     "bernoulli",
     # "gdemo-geweke"
