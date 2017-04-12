@@ -4,6 +4,17 @@ using Stan
 
 include("ASCIIPlot.jl");
 
+# Build logd from Turing chain
+build_logd(name::String, engine::String, time, mem, tchain) = begin
+  Dict(
+    "name" => name,
+    "engine" => engine,
+    "time" => time,
+    "mem" => mem,
+    "turing" => Dict(v => mean(tchain[Symbol(v)]) for v in keys(tchain))
+  )
+end
+
 # Log function
 print_log(logd::Dict) = begin
   println("/=======================================================================")
@@ -40,14 +51,14 @@ CONFIG = Dict(
   "model-list" => [
     #"naive-bayes",
     #"normal-loc",
-    "simple-normal-mixture-stan",
-    "simple-normal-mixture",
+    # "simple-normal-mixture-stan",
+    # "simple-normal-mixture",
     "simplegauss-stan",
     "simplegauss",
-    "gauss",
+    # "gauss",
     "bernoulli-stan",
     "bernoulli",
-    "gdemo-geweke"
+    # "gdemo-geweke"
     #"negative-binomial"
   ],
 
