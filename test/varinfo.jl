@@ -59,7 +59,7 @@ end
 
 # println("Test 2")
 
-g = GibbsSampler{Gibbs}(gdemo(), Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
+g = GibbsSampler{Gibbs}(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg = g.samplers[1]
 # println(pg)
