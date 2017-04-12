@@ -4,6 +4,12 @@ using Stan
 
 include("ASCIIPlot.jl");
 
+# Run benchmark
+tbenchmark(alg::String, model::String, data::String) = begin
+  chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
+  alg, time, mem, chain
+end
+
 # Build logd from Turing chain
 build_logd(name::String, engine::String, time, mem, tchain) = begin
   Dict(
@@ -33,11 +39,11 @@ print_log(logd::Dict) = begin
       println("|")
       println("| E[$v] = $m")
       println("|")
-      if haskey(logd, "analytic")
+      if haskey(logd, "analytic") && haskey(v ,logd["analytic"])
         println("| -> analytic = $(logd["analytic"][v])")
         println("|    diff     = $(abs(m - logd["analytic"][v]))")
       end
-      if haskey(logd, "stan")
+      if haskey(logd, "stan") && haskey(v ,logd["stan"])
         println("| -> Stan = $(logd["stan"][v])")
         println("|    diff = $(abs(m - logd["stan"][v]))")
       end
