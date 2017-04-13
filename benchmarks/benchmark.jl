@@ -53,7 +53,7 @@ print_log(logd::Dict, monitor=[]) = begin
           print("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
           diff = abs(m - logd["analytic"][v])
           diff_output = "diff = $(round(diff, 3))"
-          if diff > 0.2
+          if sum(diff) > 0.2
             print_with_color(:red, diff_output*"\n")
           else
             println(diff_output)
@@ -63,7 +63,7 @@ print_log(logd::Dict, monitor=[]) = begin
           print("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
           diff = abs(m - logd["stan"][v])
           diff_output = "diff = $(round(diff, 3))"
-          if diff > 0.2
+          if sum(diff) > 0.2
             print_with_color(:red, diff_output*"\n")
           else
             println(diff_output)
