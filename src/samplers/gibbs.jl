@@ -91,11 +91,22 @@ function Base.run(model, data, spl::Sampler{Gibbs})
         varInfo = ref_particle.vi
       end
     end
-    spl.samples[i].value = varInfo2samples(varInfo)
+    spl.samples[i].value = Sample(varInfo).value
+
+    if VERBOSITY > 0
+      if i == n
+        println(". Done")
+      elseif i % floor(n / 100) == 0
+        print(".")
+      end
+    end
   end
 
-  println("[Gibbs]: Finshed within $(time() - t_start) seconds")
-  return Chain(0, spl.samples)    # wrap the result by Chain
+  if VERBOSITY > 0
+    println("[Gibbs]: Finshed within $(time() - t_start) seconds")
+  end
+
+  Chain(0, spl.samples)    # wrap the result by Chain
 end
 
 function sample(model::Function, data::Dict, gibbs::Gibbs)

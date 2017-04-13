@@ -126,7 +126,7 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
-      spl.samples[i].value = varInfo2samples(varInfo)
+      spl.samples[i].value = Sample(varInfo).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
       varInfo.vals = old_vals

@@ -37,15 +37,15 @@ print_log(logd::Dict, monitor=[]) = begin
     println("|-----------------------------------------------------------------------")
     for (v, m) = logd["turing"]
       if isempty(monitor) || v in monitor
-        println("|")
-        println("| E[$v] = $m")
+        println("| >> $v <<")
+        println("| mean = $(round(m, 3))")
         if haskey(logd, "analytic") && haskey(logd["analytic"], v)
-          println("| -> analytic = $(logd["analytic"][v])")
-          println("|    diff     = $(abs(m - logd["analytic"][v]))")
+          print("|   -> analytic = $(round(logd["analytic"][v], 3))")
+          println(", diff = $(round(abs(m - logd["analytic"][v]), 3))")
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
-          println("| -> Stan = $(logd["stan"][v])")
-          println("|    diff = $(abs(m - logd["stan"][v]))")
+          print("|   -> Stan     = $(round(logd["stan"][v], 3))")
+          println(", diff = $(round(abs(m - logd["stan"][v]), 3))")
         end
       end
     end

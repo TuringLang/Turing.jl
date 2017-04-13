@@ -48,16 +48,20 @@ end
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
 
-# VarInfo -> Dict{Symbol, Any}
-function varInfo2samples(vi)
-  samples = Dict{Symbol, Any}()
+# VarInfo to Sample
+Sample(vi::VarInfo) = begin
+  weight = 0.0
+  value = Dict{Symbol, Any}()
   for uid in keys(vi)
     dist = getdist(vi, uid)
     r = reconstruct(dist, vi[uid])
     r = istransformed(vi, uid) ? invlink(dist, r) : r
-    samples[sym(uid)] = realpart(r)
+    value[sym(uid)] = realpart(r)
   end
-  samples
+  if vi.logjoint != 0 # prevent PG to store lp
+    value[:lp] = realpart(vi.logjoint)
+  end
+  Sample(weight, value)
 end
 
 # X -> R for all variables associated with given sampler
