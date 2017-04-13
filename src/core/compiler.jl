@@ -160,29 +160,12 @@ Example:
 end
 ```
 """
-macro model_inner(fname, fbody, farglist)
+macro model_inner(fname, fbody, fargs)
   dprintln(1, "marco modelling...")
   # Functions defined via model macro have an implicit varinfo array.
   # This varinfo array is useful is task cloning.
 
-  TURING[:modelarglist]    = farglist
-  TURING[:model_dvar_list] = Set{Symbol}() # Data
-  TURING[:model_pvar_list] = Set{Symbol}() # Parameter
 
-  # Always return VarInfo
-  return_ex = fbody.args[end]   # get last statement of defined model
-  vi_ex = quote
-    vi
-  end
-  if typeof(return_ex) == Symbol || return_ex.head == :return || return_ex.head == :tuple
-    fbody.args[end] = vi_ex
-  else
-    push!(fbody.args, vi_ex)
-  end
-
-  # Generate model declaration
-  ex = Expr(:function, fname, fbody)
-  TURING[:modelex] = ex
   return esc(ex)  # NOTE: esc() makes sure that ex is resovled where @model is called
 end
 
@@ -212,64 +195,100 @@ end
 ```
 """
 macro model(fexpr)
+   # compiler design: sample(fname_compiletime(x,y), sampler)
+   #   fname_compiletime(x,y;fname=fname,fargs=fargs,fbody=fbody) = begin
+   #      ex = quote
+   #          fname_runtime(x,y,fobs) = begin
+   #              x=x,y=y,fobs=Set(:x,:y)
+   #              fname(vi=VarInfo,sampler=nothing) = begin
+   #              end
+   #          end
+   #          fname_runtime(x,y,fobs)
+   #      end
+   #      Main.eval(ex)
+   #   end
+   #   fname_compiletime(;data::Dict{Symbol,Any}=data) = begin
+   #      ex = quote
+   #          # check fargs[2:end] == symbols(data)
+   #          fname_runtime(x,y,fobs) = begin
+   #          end
+   #          fname_runtime(data[:x],data[:y],Set(:x,:y))
+   #      end
+   #      Main.eval(ex)
+   #   end
+
+
   dprintln(1, fexpr)
 
-  # Get func name f
-  fname = fexpr.args[1]
-
-  # Get parameters from the argument list, e.g. f(x, y, ...)
-  if length(fname.args) > 1
-    farglist = fname.args[2:end] #  (x,y,...)
-  else
-    farglist = []
-  end
+  fname = fexpr.args[1].args[1]      # Get model name f
+  fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
+  fbody = fexpr.args[2].args[end]    # NOTE: nested args is used here because the orignal model expr is in a block
 
 
   # Add keyword arguments, e.g.
   #   f(x,y,z; c=1)
   #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
-  if length(fname.args) == 1 || isa(fname.args[2], Symbol) || fname.args[2].head == :kw # e.g. f(x) or f(x=1,y)
-    args1 = Expr(:parameters)
-    insert!(fname.args, 2, args1)
-  # else # e.g. f(x,y;k=1)
+  if (length(fargs) == 1 ||         # e.g. f(x)
+          isa(fargs[1], Symbol) ||  # e.g. f(x,y)
+          fargs[1].head == :kw)     # e.g. f(x,y=1)
+    insert!(fargs, 1, Expr(:parameters))
+  # else                  # e.g. f(x,y; k=1)
+  #  do nothing;
   end
 
   dprintln(1, fname)
+  dprintln(1, fargs)
+  dprintln(1, fbody)
 
-  fname_outer1 = deepcopy(fname)
-  fname_outer2 = deepcopy(fname)
-  fname_inner  = deepcopy(fname)
+
+  fargs_outer1 = deepcopy(fargs)
 
   # outer function def 2: f(x,y) ==> f(;data=Dict())
-  fname_outer2.args = fname_outer2.args[1:2]
-  push!(fname_outer2.args[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}()))) # Add data argument to outer function
+  fargs_outer2 = deepcopy(fargs)[1:2]
+  # Add data argument to outer function
+  push!(fargs_outer2[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
 
   # Remove positional arguments from inner function, e.g.
   #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
-  fname_inner.args = fname_inner.args[1:2]
-  push!(fname_inner.args[2].args, Expr(:kw, :vi, :(VarInfo())))
-  push!(fname_inner.args[2].args, Expr(:kw, :sampler, :(nothing)))
-  dprintln(1, fname_inner)
-
-  fbody = fexpr.args[2].args[end] # NOTE: nested args is used here because the orignal model expr is in a block
+  fargs_inner = deepcopy(fargs)[1:2]
+  push!(fargs_inner[1].args, Expr(:kw, :vi, :(VarInfo())))
+  push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
+  dprintln(1, fargs_inner)
 
 
-  dprintln(1, fbody)
+  # Modify fbody, so that we always return VarInfo
+  fbody2 = deepcopy(fbody)
+  return_ex = fbody.args[end]   # get last statement of defined model
+  if typeof(return_ex) == Symbol ||
+       return_ex.head == :return ||
+       return_ex.head == :tuple
+    pop!(fbody2.args)
+  end
+  push!(fbody2.args, Expr(:return, :vi))
+  dprintln(1, fbody2)
 
-  dprintln(1, :($fname = begin @model($fname_inner, $fbody) end))
+  ## Create function definition
+  fdefn = Expr(:function, Expr(:call, fname)) # fdefn = :( $fname() )
+  push!(fdefn.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
+  push!(fdefn.args, fbody2)                   # Set function definition
+  dprintln(1, fdefn)
 
 
-  _fbody_ = :(Turing.@model_inner() )
-  push!(_fbody_.args, fname_inner)
-  push!(_fbody_.args, fbody)
-  push!(_fbody_.args, farglist) # TODO: merge farglist into modelInfo.
-  dprintln(1, _fbody_)
-
-  _fbody2_ = :(function inner_f() end)
+  fdefn_outer2 = :(function inner_f() end)
   push!(_fbody2_.args[2].args, _fbody_)
   push!(_fbody2_.args[2].args, :(return $(fname_inner.args[1])))
   push!(fname_outer2.args[2].args, Expr(:kw, :fbody, [_fbody2_])) # Add data argument to outer function
+
+
+  TURING[:modelarglist]    = fargs
+  TURING[:model_dvar_list] = Set{Symbol}() # Data
+  TURING[:model_pvar_list] = Set{Symbol}() # Parameter
+
+  TURING[:modelex] = fbody
+
+
+
 
   ex = quote # Using `esc` here will disable variable interpolation
       # outer function def 1: f(x, y, ...)
