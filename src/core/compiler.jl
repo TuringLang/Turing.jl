@@ -101,8 +101,6 @@ macro ~(left, right)
             vn,         # VarName
             vi          # VarInfo
           )
-          ct = current_task();
-          Turing.predict(sampler, sym, get(ct, $(left)))
         end
       else
         # Indexing
@@ -121,8 +119,6 @@ macro ~(left, right)
               vn,         # VarName
               vi          # VarInfo
             )
-            ct = current_task();
-            Turing.predict(sampler, sym, get(ct, $(sym)))
           end
         )
       end

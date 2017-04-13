@@ -44,16 +44,11 @@ assume(spl, distr :: Distribution) =
 observe(spl, weight :: Float64) =
   error("[observe]: unmanaged inference algorithm: $(typeof(spl))")
 
-predict(spl, var_name :: Symbol, value) =
-  error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
-
 function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
   r = rand(vi, vn, dist, spl)
   vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
-
-predict(spl::Void, var_name :: Symbol, value) = nothing
 
 function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
   global sampler = ParticleSampler{typeof(alg)}(model, alg);
@@ -63,8 +58,6 @@ end
 assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), vn, dist)
 
 observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
-
-predict(spl :: Sampler, v_name :: Symbol, value) = nothing
 
 # This method is called when sampler is Void
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Void) = rand(vi, vn, dist)
