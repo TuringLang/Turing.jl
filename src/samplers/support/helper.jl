@@ -58,9 +58,8 @@ Sample(vi::VarInfo) = begin
     r = istransformed(vi, uid) ? invlink(dist, r) : r
     value[sym(uid)] = realpart(r)
   end
-  if vi.logjoint != 0 # prevent PG to store lp
-    value[:lp] = realpart(vi.logjoint)
-  end
+  # NOTE: do we need to check if lp is 0?
+  value[:lp] = realpart(vi.logjoint)
   Sample(weight, value)
 end
 
