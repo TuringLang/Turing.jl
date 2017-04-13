@@ -3,7 +3,8 @@ include("ASCIIPlot.jl");
 
 CONFIG = Dict(
   "model-list" => [
-    #"naive-bayes",
+    "naive-bayes-stan",
+    "naive-bayes",
     #"normal-loc",
     "simple-normal-mixture",
     "simple-normal-mixture-stan",
