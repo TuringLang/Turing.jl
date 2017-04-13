@@ -8,8 +8,9 @@
   for i = 1:2
     mu[i] ~ Normal(0, 10)
   end
+  theta_p = map(yᵢ -> [theta * pdf(Normal(mu[1], 1.0), yᵢ), (1 - theta) * pdf(Normal(mu[2], 1.0), yᵢ)], y)
+  map!(theta_pᵢ -> theta_pᵢ / sum(theta_pᵢ), theta_p)   # normalization
   for i = 1:N
-    k[i] ~ Categorical([theta, 1.0 - theta])
-    y[i] ~ Normal(mu[k[i]], 1.0)
+    k[i] ~ Categorical(theta_p[i])
   end
 end

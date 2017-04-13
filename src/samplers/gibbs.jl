@@ -95,9 +95,9 @@ function Base.run(model, data, spl::Sampler{Gibbs})
 
     if VERBOSITY > 0
       if i == n
-        println(". Done")
+        println("100% Done")
       elseif i % floor(n / 100) == 0
-        print(".")
+        print("$(i / floor(n / 100))% ")
       end
     end
   end

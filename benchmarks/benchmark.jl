@@ -4,6 +4,13 @@ using Stan
 
 include("ASCIIPlot.jl");
 
+# Get running time of Stan
+get_stan_time(stan_model_name::String) = begin
+  s = readlines(pwd()*"/tmp/$(stan_model_name)_samples_1.csv")
+  m = match(r"(?<time>[0-9].[0-9]*)", s[end-1])
+  float(m[:time])
+end
+
 # Run benchmark
 tbenchmark(alg::String, model::String, data::String) = begin
   chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
@@ -30,6 +37,9 @@ print_log(logd::Dict, monitor=[]) = begin
   println("|-----------------------------------------------------------------------")
   println("| Inference Engine  : $(logd["engine"])")
   println("| Time Used (s)     : $(logd["time"])")
+  if haskey(logd, "time_stan")
+    println("|   -> time by Stan : $(logd["time_stan"])")
+  end
   println("| Mem Alloc (bytes) : $(logd["mem"])")
   if haskey(logd, "turing")
     println("|-----------------------------------------------------------------------")
@@ -40,12 +50,24 @@ print_log(logd::Dict, monitor=[]) = begin
         println("| >> $v <<")
         println("| mean = $(round(m, 3))")
         if haskey(logd, "analytic") && haskey(logd["analytic"], v)
-          print("|   -> analytic = $(round(logd["analytic"][v], 3))")
-          println(", diff = $(round(abs(m - logd["analytic"][v]), 3))")
+          print("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
+          diff = abs(m - logd["analytic"][v])
+          diff_output = "diff = $(round(diff, 3))"
+          if diff > 0.2
+            print_with_color(:red, diff_output*"\n")
+          else
+            println(diff_output)
+          end
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
-          print("|   -> Stan     = $(round(logd["stan"][v], 3))")
-          println(", diff = $(round(abs(m - logd["stan"][v]), 3))")
+          print("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
+          diff = abs(m - logd["stan"][v])
+          diff_output = "diff = $(round(diff, 3))"
+          if diff > 0.2
+            print_with_color(:red, diff_output*"\n")
+          else
+            println(diff_output)
+          end
         end
       end
     end
