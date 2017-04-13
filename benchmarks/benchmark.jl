@@ -78,7 +78,7 @@ end
 # NOTE: put Stan models before Turing ones if you want to compare them in print_log
 CONFIG = Dict(
   "model-list" => [
-    # "naive-bayes-stan",
+    "naive-bayes-stan",
     "naive-bayes",
     #"normal-loc",
     "simple-normal-mixture-stan",
@@ -88,8 +88,10 @@ CONFIG = Dict(
     "gauss",
     "bernoulli-stan",
     "bernoulli",
-    "gdemo-geweke"
-    #"negative-binomial"
+    "gdemo-geweke",
+    #"negative-binomial",
+    "lda-stan",
+    "lda"
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface
