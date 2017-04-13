@@ -42,10 +42,12 @@ N = div(NSamples, 50)
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)
 
+set_verbosity(0)
 for i = 1:N
     s_bk[i] = sample(gdemo2(x, true), bk);
     x = [s_bk[i][:y][end]...];
 end
+set_verbosity(1)
 
 s2 = vcat(s_bk...);
 describe(s2)

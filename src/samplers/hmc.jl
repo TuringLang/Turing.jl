@@ -126,7 +126,7 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
-      spl.samples[i].value = varInfo2samples(varInfo)
+      spl.samples[i].value = Sample(varInfo).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
       varInfo.vals = old_vals
@@ -135,8 +135,12 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
-  return Chain(0, spl.samples)    # wrap the result by Chain
+
+  if VERBOSITY > 0
+      println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
+  end
+
+  Chain(0, spl.samples)    # wrap the result by Chain
 end
 
 function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)

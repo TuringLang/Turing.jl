@@ -1,13 +1,10 @@
-using Distributions
-using Turing
-using Base.Test
-
 include("simple-normal-mixture.data.jl")
 include("simple-normal-mixture.model.jl")
 
 # NOTE: I only run a sub-set of the data as running the whole is quite slow
-nmchain = sample(nmmodel(y[1:100]), Gibbs(250, PG(20, 1, :k), HMC(1, 0.2, 3, :mu, :theta)))
-# describe(nmchain)
-println("Result from Turing for Simple Normal Mixture model")
-println("means, 250 iteration from Gibbs with PG(20, 1, :k), HMC(1, 0.2, 3, :mu, :theta):")
-println(mean([[Float64(n) for n in ns] for ns in nmchain[:mu]]))
+bench_res = tbenchmark("Gibbs(1000, PG(20, 1, :k), HMC(1, 0.25, 1, :theta), HMC(1, 2.0, 3, :mu))", "nmmodel", "y[1:100]")
+logd = build_logd("Simple Gaussian Mixture Model", bench_res...)
+
+logd["stan"] = Dict("theta" => mean(nm_theta), "mu[1]" => mean(nm_mu_1), "mu[2]" =>mean(nm_mu_2))
+
+print_log(logd, ["theta", "mu[1]", "mu[2]"])

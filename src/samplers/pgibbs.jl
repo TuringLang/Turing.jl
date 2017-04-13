@@ -78,8 +78,10 @@ function sample(model, alg::PG)
     logevidence[i] = spl.particles.logE
     push!(samples, Sample(1/n, s.value))
   end
-
-  println("[PG]: Finshed within $(time() - t_start) seconds")
+  
+  if VERBOSITY > 0
+    println("[PG]: Finshed within $(time() - t_start) seconds")
+  end
   chain = Chain(exp(mean(logevidence)), samples)
 end
 
