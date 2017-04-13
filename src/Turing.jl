@@ -31,13 +31,15 @@ export describe, plot, write, heideldiag, rafterydiag, gelmandiag
 export TArray, tzeros, localcopy, IArray
 
 # Debugging helpers
-export dprintln
+export dprintln, set_verbosity
 
 # Global data structures
 const TURING = Dict{Symbol, Any}()
 global sampler = nothing
 global debug_level = 0
 global CHUNKSIZE = 50
+global VERBOSITY = 1
+set_verbosity(v::Int) = global VERBOSITY = v
 
 ##########
 # Helper #
