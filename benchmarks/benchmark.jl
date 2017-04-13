@@ -6,7 +6,7 @@ include("ASCIIPlot.jl");
 
 # Get running time of Stan
 get_stan_time(stan_model_name::String) = begin
-  s = readlines(Pkg.dir("Turing")*"/tmp/$(stan_model_name)_samples_1.csv")
+  s = readlines(pwd()*"/tmp/$(stan_model_name)_samples_1.csv")
   m = match(r"(?<time>[0-9].[0-9]*)", s[end-1])
   float(m[:time])
 end
