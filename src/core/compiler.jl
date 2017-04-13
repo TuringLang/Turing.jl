@@ -143,42 +143,8 @@ Wrapper for models.
 Usage:
 
 ```julia
-@model model() begin
-  body
-end
-```
-
-Example:
-
-```julia
-@model gauss() begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
-  return(s, m)
-end
-```
-"""
-macro model_inner(fname, fbody, fargs)
-  dprintln(1, "marco modelling...")
-  # Functions defined via model macro have an implicit varinfo array.
-  # This varinfo array is useful is task cloning.
-
-
-  return esc(ex)  # NOTE: esc() makes sure that ex is resovled where @model is called
-end
-
-doc"""
-    @model(fexpr)
-
-Wrapper for models.
-
-Usage:
-
-```julia
-@model f() = begin
-  body
+@model model() = begin
+  # body
 end
 ```
 
@@ -241,12 +207,15 @@ macro model(fexpr)
   dprintln(1, fbody)
 
 
+  # outer function def 1: f(x,y) ==> f(x,y;data=Dict())
   fargs_outer1 = deepcopy(fargs)
+  # Add data argument to outer function
+  push!(fargs_outer1[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
 
   # outer function def 2: f(x,y) ==> f(;data=Dict())
-  fargs_outer2 = deepcopy(fargs)[1:2]
+  fargs_outer2 = deepcopy(fargs)[1:1]
   # Add data argument to outer function
-  push!(fargs_outer2[2].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+  push!(fargs_outer2[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
 
   # Remove positional arguments from inner function, e.g.
   #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
@@ -271,14 +240,14 @@ macro model(fexpr)
   ## Create function definition
   fdefn = Expr(:function, Expr(:call, fname)) # fdefn = :( $fname() )
   push!(fdefn.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
-  push!(fdefn.args, fbody2)                   # Set function definition
+  push!(fdefn.args, deepcopy(fbody2))                   # Set function definition
   dprintln(1, fdefn)
 
 
-  fdefn_outer2 = :(function inner_f() end)
-  push!(_fbody2_.args[2].args, _fbody_)
-  push!(_fbody2_.args[2].args, :(return $(fname_inner.args[1])))
-  push!(fname_outer2.args[2].args, Expr(:kw, :fbody, [_fbody2_])) # Add data argument to outer function
+  fdefn2 = Expr(:function, Expr(:call, fname))
+  #push!(fdefn2.args[1].args, fargs...)   # Set parameters (x,y;data..)
+  push!(fdefn2.args, deepcopy(fbody2))    # Set function definition
+  dprintln(1, fdefn2)
 
 
   TURING[:modelarglist]    = fargs
@@ -292,19 +261,24 @@ macro model(fexpr)
 
   ex = quote # Using `esc` here will disable variable interpolation
       # outer function def 1: f(x, y, ...)
-      $fname_outer1 = begin
-        return Main.eval($_fbody_)
+      $fname $fargs_outer1 = begin # NOTE: Fixme
+        return Main.eval($fdefn)
       end
       # outer function def 2 : f(;data=Dict(:x=>[..],:y=>[..]))
-      $fname_outer2 = begin
+      $fname $fargs_outer1  = begin # NOTE: Fixme
         # Assign variables in data locally
         # TODO: get data from fname.args..
-        fbody = fbody[1]
+        fdefn2 = fbody[1]
         for k in keys(data)
-          unshift!(fbody.args[2].args, Expr(Symbol("="), k, data[k]))
+          if fdefn2.args[2].args[1].head == :line
+            # Preserve comments, useful for debuggers to correctly locate source code.
+            insert!(fdefn2.args[2].args, 2, Expr(Symbol("="), k, data[k]))
+          else
+            insert!(fdefn2.args[2].args, 1, Expr(Symbol("="), k, data[k]))
+          end
         end
-        fbody = Expr(:block, fbody, :(return inner_f())) # Call inner_f()
-        return Main.eval(fbody)
+        block = Expr(:block, fdefn2, Expr(:return, Expr(:call, fname))) # Call inner_f()
+        return Main.eval(block)
       end
   end
   dprintln(1, ex)
