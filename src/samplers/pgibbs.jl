@@ -66,20 +66,18 @@ function sample(model, alg::PG)
   global sampler = ParticleSampler{PG}(alg);
   spl = sampler
   n = spl.alg.n_iterations
-  t_start = time()  # record the start time of PG
   samples = Vector{Sample}()
   logevidence = Vector{Float64}(n)
 
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
-  for i = 1:n
+  @showprogress 1 "[PG] Sampling..." for i = 1:n
     ref_particle, s = step(model, spl, VarInfo(), ref_particle)
     logevidence[i] = spl.particles.logE
     push!(samples, Sample(1/n, s.value))
   end
 
-  println("[PG]: Finshed within $(time() - t_start) seconds")
   chain = Chain(exp(mean(logevidence)), samples)
 end
 

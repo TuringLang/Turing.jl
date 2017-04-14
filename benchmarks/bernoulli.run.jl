@@ -1,10 +1,12 @@
-using Turing
-using Distributions
-using Base.Test
-
 include("bernoulli.data.jl")
 include("bernoulli.model.jl")
 
-sim1 = sample(bermodel(berdata), HMC(2000, 0.25, 5))
+bench_res = tbenchmark("HMC(1000, 0.25, 5)", "bermodel", "berdata")
+logd = build_logd("Bernoulli Model", bench_res...)
 
-describe(sim1)
+
+include("bernoulli-stan.run.jl")
+logd["stan"] = Dict("theta" => mean(theta_stan))
+logd["time_stan"] = ber_time
+
+print_log(logd)

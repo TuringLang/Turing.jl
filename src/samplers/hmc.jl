@@ -93,6 +93,8 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
+    realpart!(varInfo)
+
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
       true, varInfo
@@ -115,18 +117,17 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   # initialization
   n =  spl.alg.n_samples
   task = current_task()
-  t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
   varInfo = VarInfo()
 
   # HMC steps
-  for i = 1:n
+  @showprogress 1 "[HMC] Sampling..." for i = 1:n
     dprintln(2, "recording old θ...")
     old_vals = deepcopy(varInfo.vals)
     dprintln(2, "HMC stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
-      spl.samples[i].value = varInfo2samples(varInfo)
+      spl.samples[i].value = Sample(varInfo).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
       varInfo.vals = old_vals
@@ -135,8 +136,8 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-  println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
-  return Chain(0, spl.samples)    # wrap the result by Chain
+
+  Chain(0, spl.samples)    # wrap the result by Chain
 end
 
 function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)

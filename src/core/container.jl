@@ -185,7 +185,8 @@ end
 # ParticleContainer: particles ==> (weight, results)
 function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
   p = pc.vals[i]
-  predicts = varInfo2samples(p.vi)
+  predicts = Sample(p.vi).value
+  predicts[:le] = pc.logE
   return Sample(w, predicts)
 end
 

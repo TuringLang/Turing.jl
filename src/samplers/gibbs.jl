@@ -55,12 +55,11 @@ function sample(model::Function, gibbs::Gibbs)
   # initialization
   task = current_task()
   n = spl.gibbs.n_iters
-  t_start = time()  # record the start time of HMC
   varInfo = VarInfo()
   ref_particle = nothing
 
-  # HMC steps
-  for i = 1:n
+  # Gibbs steps
+  @showprogress 1 "[Gibbs] Sampling..." for i = 1:n
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.samplers
@@ -93,9 +92,8 @@ function sample(model::Function, gibbs::Gibbs)
         varInfo = ref_particle.vi
       end
     end
-    spl.samples[i].value = varInfo2samples(varInfo)
+    spl.samples[i].value = Sample(varInfo).value
   end
 
-  println("[Gibbs]: Finshed within $(time() - t_start) seconds")
-  return Chain(0, spl.samples)    # wrap the result by Chain
+  Chain(0, spl.samples)    # wrap the result by Chain
 end

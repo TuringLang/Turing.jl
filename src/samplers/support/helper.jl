@@ -4,7 +4,7 @@
 
 realpart(f)        = f
 realpart(d::Dual)  = d.value
-realpart(d::Array) = map(x -> x.value, d)
+realpart(d::Array) = map(x -> realpart(x), d)
 dualpart(d::Dual)  = d.partials.values
 dualpart(d::Array) = map(x -> x.partials.values, d)
 
@@ -48,16 +48,26 @@ end
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
 
-# VarInfo -> Dict{Symbol, Any}
-function varInfo2samples(vi)
-  samples = Dict{Symbol, Any}()
+# VarInfo to Sample
+Sample(vi::VarInfo) = begin
+  weight = 0.0
+  value = Dict{Symbol, Any}()
   for uid in keys(vi)
     dist = getdist(vi, uid)
     r = reconstruct(dist, vi[uid])
     r = istransformed(vi, uid) ? invlink(dist, r) : r
-    samples[sym(uid)] = realpart(r)
+    value[sym(uid)] = realpart(r)
   end
-  samples
+  # NOTE: do we need to check if lp is 0?
+  value[:lp] = realpart(vi.logjoint)
+  Sample(weight, value)
+end
+
+function realpart!(vi::VarInfo)
+  for uid in keys(vi)
+    vi[uid] = realpart(vi[uid])
+  end
+  vi.logjoint = realpart(vi.logjoint)
 end
 
 # X -> R for all variables associated with given sampler

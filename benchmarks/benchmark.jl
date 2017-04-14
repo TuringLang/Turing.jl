@@ -1,21 +1,23 @@
+using Distributions
 using Turing
-include("ASCIIPlot.jl");
+using Stan
 
+# NOTE: put Stan models before Turing ones if you want to compare them in print_log
 CONFIG = Dict(
   "model-list" => [
-    #"naive-bayes",
+    "naive.bayes",
     #"normal-loc",
     "simple-normal-mixture",
     "simplegauss",
     "gauss",
     "bernoulli",
-    "gdemo-geweke"
-    #"negative-binomial"
+    "gdemo-geweke",
+    #"negative-binomial",
+    "lda"
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface
 )
-
 
 if CONFIG["test-level"] == 1
 
@@ -35,7 +37,11 @@ elseif CONFIG["test-level"] == 2
 
   for model in CONFIG["model-list"]
     println("Benchmarking `$model` ... ")
-    include("$(model).run.jl")
+    job = `julia -e " cd(\"$(pwd())\");include(dirname(\"$(@__FILE__)\")*\"/benchmarkhelper.jl\");
+                         CMDSTAN_HOME = \"$CMDSTAN_HOME\";
+                         using Turing, Distributions, Stan;
+                         include(dirname(\"$(@__FILE__)\")*\"/$(model).run.jl\") "`
+    println(job); run(job)
     println("`$model` ✓")
   end
 
