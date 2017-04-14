@@ -38,6 +38,7 @@ elseif CONFIG["test-level"] == 2
   for model in CONFIG["model-list"]
     println("Benchmarking `$model` ... ")
     job = `julia -e " cd(\"$(pwd())\");include(dirname(\"$(@__FILE__)\")*\"/benchmarkhelper.jl\");
+                         CMDSTAN_HOME = $CMDSTAN_HOME;
                          using Turing, Distributions, Stan;
                          include(dirname(\"$(@__FILE__)\")*\"/$(model).run.jl\") "`
     println(job); run(job)
