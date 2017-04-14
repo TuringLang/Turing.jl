@@ -2,6 +2,7 @@ module Turing
 
 using Distributions
 using ForwardDiff: Dual, npartials  # for automatic differentiation
+using ProgressMeter
 
 abstract InferenceAlgorithm{P}
 abstract Sampler{T<:InferenceAlgorithm}

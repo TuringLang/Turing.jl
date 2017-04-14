@@ -115,12 +115,11 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   # initialization
   n =  spl.alg.n_samples
   task = current_task()
-  t_start = time()  # record the start time of HMC
   accept_num = 0    # record the accept number
   varInfo = VarInfo()
 
   # HMC steps
-  for i = 1:n
+  @showprogress 1 "[HMC] Sampling..." for i = 1:n
     dprintln(2, "recording old θ...")
     old_vals = deepcopy(varInfo.vals)
     dprintln(2, "HMC stepping...")
@@ -135,10 +134,6 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
-
-  if VERBOSITY > 0
-      println("[HMC]: Finshed with accept rate = $(accept_rate) within $(time() - t_start) seconds")
-  end
 
   Chain(0, spl.samples)    # wrap the result by Chain
 end

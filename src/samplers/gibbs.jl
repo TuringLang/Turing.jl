@@ -53,12 +53,11 @@ function Base.run(model, data, spl::Sampler{Gibbs})
   # initialization
   task = current_task()
   n = spl.gibbs.n_iters
-  t_start = time()  # record the start time of HMC
   varInfo = VarInfo()
   ref_particle = nothing
 
-  # HMC steps
-  for i = 1:n
+  # Gibbs steps
+  @showprogress 1 "[Gibbs] Sampling..." for i = 1:n
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.samplers
@@ -92,18 +91,6 @@ function Base.run(model, data, spl::Sampler{Gibbs})
       end
     end
     spl.samples[i].value = Sample(varInfo).value
-
-    if VERBOSITY > 0
-      if i == n
-        println("100% Done")
-      elseif i % floor(n / 100) == 0
-        print("$(i / floor(n / 100))% ")
-      end
-    end
-  end
-
-  if VERBOSITY > 0
-    println("[Gibbs]: Finshed within $(time() - t_start) seconds")
   end
 
   Chain(0, spl.samples)    # wrap the result by Chain
