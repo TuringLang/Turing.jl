@@ -202,17 +202,6 @@ macro model(fexpr)
   dprintln(1, fargs)
   dprintln(1, fbody)
 
-
-  # outer function def 1: f(x,y) ==> f(x,y;data=Dict())
-  fargs_outer1 = deepcopy(fargs)
-  # Add data argument to outer function
-  push!(fargs_outer1[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
-
-  # outer function def 2: f(x,y) ==> f(;data=Dict())
-  fargs_outer2 = deepcopy(fargs)[1:1]
-  # Add data argument to outer function
-  push!(fargs_outer2[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
-
   # Remove positional arguments from inner function, e.g.
   #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
@@ -236,9 +225,8 @@ macro model(fexpr)
   ## Create function definition
   fdefn = Expr(:function, Expr(:call, fname)) # fdefn = :( $fname() )
   push!(fdefn.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
-  push!(fdefn.args, deepcopy(fbody2))                   # Set function definition
+  push!(fdefn.args, deepcopy(fbody2))         # Set function definition
   dprintln(1, fdefn)
-
 
   fdefn2 = Expr(:function, Expr(:call, fname))
   #push!(fdefn2.args[1].args, fargs...)   # Set parameters (x,y;data..)
@@ -246,37 +234,48 @@ macro model(fexpr)
   dprintln(1, fdefn2)
 
 
-  TURING[:modelarglist]    = fargs
-  TURING[:model_dvar_list] = Set{Symbol}() # Data
-  TURING[:model_pvar_list] = Set{Symbol}() # Parameter
+  compiler = Dict(:fname => fname,
+                  :fargs => fargs,
+                  :fbody => fbody,
+                  :dvars => Set{Symbol}(), # Data
+                  :pvars => Set{Symbol}(), # Parameter
+                  :fdefn2 => fdefn2)
 
-  TURING[:modelex] = fbody
-
-
-
-
-  ex = quote # Using `esc` here will disable variable interpolation
-      # outer function def 1: f(x, y, ...)
-      $fname $fargs_outer1 = begin # NOTE: Fixme
-        return Main.eval($fdefn)
-      end
-      # outer function def 2 : f(;data=Dict(:x=>[..],:y=>[..]))
-      $fname $fargs_outer1  = begin # NOTE: Fixme
-        # Assign variables in data locally
-        # TODO: get data from fname.args..
-        fdefn2 = fbody[1]
-        for k in keys(data)
-          if fdefn2.args[2].args[1].head == :line
-            # Preserve comments, useful for debuggers to correctly locate source code.
-            insert!(fdefn2.args[2].args, 2, Expr(Symbol("="), k, data[k]))
-          else
-            insert!(fdefn2.args[2].args, 1, Expr(Symbol("="), k, data[k]))
-          end
-        end
-        block = Expr(:block, fdefn2, Expr(:return, Expr(:call, fname))) # Call inner_f()
-        return Main.eval(block)
-      end
+  # outer function def 1: f(x,y) ==> f(x,y;data=Dict())
+  fargs_outer1 = deepcopy(fargs)
+  # Add data argument to outer function
+  push!(fargs_outer1[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+  # Add data argument to outer function
+  push!(fargs_outer1[1].args, Expr(:kw, :compiler, compiler))
+  for i = 2:length(fargs_outer1)
+    s = fargs_outer1[i]
+    if isa(s, Symbol)
+      fargs_outer1[i] = Expr(:kw, s, :nothing) # Turn f(x;..) into f(x=nothing;..)
+    end
   end
+
+  # outer function def 2: f(x,y) ==> f(;data=Dict())
+  fargs_outer2 = deepcopy(fargs)[1:1]
+  # Add data argument to outer function
+  push!(fargs_outer2[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+
+  ex = Expr(:function, Expr(:call, fname, fargs_outer1...),
+                        Expr(:block, Expr(:return, fname)))
+  unshift!(ex.args[2].args, :(Main.eval(fdefn2)))
+  unshift!(ex.args[2].args,  quote
+      fdefn2 = deepcopy(compiler[:fdefn2]);
+      for k in keys(data)
+        if fdefn2.args[2].args[1].head == :line
+          # Preserve comments, useful for debuggers to correctly locate source code.
+          insert!(fdefn2.args[2].args, 2, Expr(:(=), k, data[k]))
+        else
+          insert!(fdefn2.args[2].args, 1, Expr(:(=), k, data[k]))
+        end
+      end
+      dprintln(1, fdefn2)
+  end )
+  # unshift!(ex.args[2].args, :(println(compiler)))
+
   dprintln(1, ex)
   esc(ex)
 end
