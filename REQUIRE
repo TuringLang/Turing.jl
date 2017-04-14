@@ -5,3 +5,4 @@ PDMats 0.5.1
 ForwardDiff
 Mamba
 Stats
+ProgressMeter
