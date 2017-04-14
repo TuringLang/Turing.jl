@@ -5,6 +5,7 @@ bench_res = tbenchmark("Gibbs(5, PG(5, 1, :z), HMC(1, 0.1, 1, :theta, :phi))", "
 bench_res[4].names = ["phi[1]", "phi[2]"]
 logd = build_logd("LDA", bench_res...)
 
+include("lda-stan.run.jl")
 logd["stan"] = lda_stan_d
 logd["time_stan"] = lda_time
 
