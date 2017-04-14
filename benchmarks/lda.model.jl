@@ -37,11 +37,21 @@
   for k = 1:K
     phi[k] ~ Dirichlet(β)
   end
+
+  # Compute posterior of z
+  # TODO: vectorize below
+  theta_p = Array{Vector{Float64}}(N)
+  map!(t -> Vector{Float64}(K), theta_p)
+  for n = 1:N
+    theta_p[n][1] = phi[1][w[n]] * theta[doc[n]][1]
+    theta_p[n][2] = phi[2][w[n]] * theta[doc[n]][2]
+    theta_p[n] = theta_p[n] / sum(theta_p[n])
+  end
+
+
   z = Array{Int}(N)
   for n = 1:N
-    z[n] ~ Categorical(theta[doc[n]])
+    z[n] ~ Categorical(theta_p[n])
   end
-  for n = 1:N
-    w[n] ~ Categorical(phi[z[n]])
-  end
+
 end
