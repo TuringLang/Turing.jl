@@ -48,8 +48,7 @@
     theta_p[n] = theta_p[n] / sum(theta_p[n])
   end
 
-
-  z = Array{Int}(N)
+  z = tzeros(Int, N)
   for n = 1:N
     z[n] ~ Categorical(theta_p[n])
   end
