@@ -4,7 +4,7 @@
 
 realpart(f)        = f
 realpart(d::Dual)  = d.value
-realpart(d::Array) = map(x -> x.value, d)
+realpart(d::Array) = map(x -> realpart(x), d)
 dualpart(d::Dual)  = d.partials.values
 dualpart(d::Array) = map(x -> x.partials.values, d)
 
@@ -61,6 +61,13 @@ Sample(vi::VarInfo) = begin
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(vi.logjoint)
   Sample(weight, value)
+end
+
+function realpart!(vi::VarInfo)
+  for uid in keys(vi)
+    vi[uid] = realpart(vi[uid])
+  end
+  vi.logjoint = realpart(vi.logjoint)
 end
 
 # X -> R for all variables associated with given sampler

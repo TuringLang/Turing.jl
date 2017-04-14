@@ -93,6 +93,8 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
+    realpart!(varInfo)
+
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
       true, varInfo
