@@ -65,10 +65,10 @@ macro ~(left, right)
     end
     left_sym = string(_left)
     # Require all data to be stored in data dictionary.
-    if _left in TURING[:modelarglist]
-      if ~(_left in TURING[:model_dvar_list])
+    if _left in Turing._compiler_[:fargs]
+      if ~(_left in Turing._compiler_[:dvars])
         println("[Turing]: Observe - `" * left_sym * "` is an observation")
-        push!(TURING[:model_dvar_list], _left)
+        push!(Turing._compiler_[:dvars], _left)
       end
       esc(
         quote
@@ -82,11 +82,11 @@ macro ~(left, right)
         end
       )
     else
-      if ~(_left in TURING[:model_pvar_list])
+      if ~(_left in Turing._compiler_[:pvars])
         msg = "[Turing]: Assume - `" * left_sym * "` is a parameter"
         isdefined(Symbol(left_sym)) && (msg  *= " (ignoring `$(left_sym)` found in global scope)")
         println(msg)
-        push!(TURING[:model_pvar_list], _left)
+        push!(Turing._compiler_[:pvars], _left)
       end
       # The if statement is to deterimnet how to pass the prior.
       # It only supports pure symbol and Array(/Dict) now.
@@ -228,7 +228,7 @@ macro model(fexpr)
   push!(fdefn.args, deepcopy(fbody2))         # Set function definition
   dprintln(1, fdefn)
 
-  fdefn2 = Expr(:function, Expr(:call, fname))
+  fdefn2 = Expr(:function, Expr(:call, Symbol("$(fname)_model")))
   #push!(fdefn2.args[1].args, fargs...)   # Set parameters (x,y;data..)
   push!(fdefn2.args, deepcopy(fbody2))    # Set function definition
   dprintln(1, fdefn2)
@@ -260,10 +260,12 @@ macro model(fexpr)
   push!(fargs_outer2[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
 
   ex = Expr(:function, Expr(:call, fname, fargs_outer1...),
-                        Expr(:block, Expr(:return, fname)))
+                        Expr(:block, Expr(:return, Symbol("$(fname)_model"))))
   unshift!(ex.args[2].args, :(Main.eval(fdefn2)))
   unshift!(ex.args[2].args,  quote
-      fdefn2 = deepcopy(compiler[:fdefn2]);
+      println(current_module())
+      eval(Turing, :(_compiler_ = deepcopy($compiler)))
+      fdefn2   = Turing._compiler_[:fdefn2];
       for k in keys(data)
         if fdefn2.args[2].args[1].head == :line
           # Preserve comments, useful for debuggers to correctly locate source code.
