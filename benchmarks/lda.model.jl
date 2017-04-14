@@ -37,12 +37,11 @@
   for k = 1:K
     phi[k] ~ Dirichlet(β)
   end
-  z = Array{Vector{Int}}(N)
-  map!(x -> Vector{Int}(M), z)
-  for n = 1:N, m = 1:M
-    z[n][m] ~ Categorical(theta[m])
+  z = Array{Int}(N)
+  for n = 1:N
+    z[n] ~ Categorical(theta[doc[n]])
   end
   for n = 1:N
-    w[n] ~ Categorical(phi[z[n][doc[n]]])
+    w[n] ~ Categorical(phi[z[n]])
   end
 end
