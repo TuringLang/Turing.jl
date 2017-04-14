@@ -37,10 +37,10 @@ elseif CONFIG["test-level"] == 2
   println("Turing benchmarking started.")
 
   for model in CONFIG["model-list"]
-    println("Benchmarking `$model` ... ")cd()
-    job = `julia -e " include(dirname($(@__FILE__))*\"\\benchmarkhelper.jl\");
+    println("Benchmarking `$model` ... ")
+    job = `julia -e " include(dirname(\"$(@__FILE__)\")*\"/benchmarkhelper.jl\");
                          using Turing, Distributions, Stan;
-                         include(\"$(model).run.jl\") "`
+                         include(dirname(\"$(@__FILE__)\")*\"/$(model).run.jl\") "`
     println(job); run(job)
     println("`$model` ✓")
   end
