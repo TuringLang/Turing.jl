@@ -190,7 +190,7 @@ macro model(fexpr)
   # Add keyword arguments, e.g.
   #   f(x,y,z; c=1)
   #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
-  if (length(fargs) == 1 ||         # e.g. f(x)
+  if (length(fargs) == 0 ||         # e.g. f()
           isa(fargs[1], Symbol) ||  # e.g. f(x,y)
           fargs[1].head == :kw)     # e.g. f(x,y=1)
     insert!(fargs, 1, Expr(:parameters))
