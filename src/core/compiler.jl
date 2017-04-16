@@ -205,7 +205,7 @@ macro model(fexpr)
   # Remove positional arguments from inner function, e.g.
   #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
   #      ==>   f(; vi=VarInfo(),sampler=IS(1))
-  fargs_inner = deepcopy(fargs)[1:2]
+  fargs_inner = deepcopy(fargs)[1:1]
   push!(fargs_inner[1].args, Expr(:kw, :vi, :(VarInfo())))
   push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
   dprintln(1, fargs_inner)
@@ -229,7 +229,7 @@ macro model(fexpr)
   dprintln(1, fdefn)
 
   fdefn2 = Expr(:function, Expr(:call, Symbol("$(fname)_model")))
-  #push!(fdefn2.args[1].args, fargs...)   # Set parameters (x,y;data..)
+  push!(fdefn2.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
   push!(fdefn2.args, deepcopy(fbody2))    # Set function definition
   dprintln(1, fdefn2)
 
@@ -261,14 +261,47 @@ macro model(fexpr)
 
   ex = Expr(:function, Expr(:call, fname, fargs_outer1...),
                         Expr(:block, Expr(:return, Symbol("$(fname)_model"))))
+
   unshift!(ex.args[2].args, :(Main.eval(fdefn2)))
   unshift!(ex.args[2].args,  quote
-      println(current_module())
+      # check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
+      fargs    = Turing._compiler_[:fargs];
       fdefn2   = Turing._compiler_[:fdefn2];
+      # copy (x,y,z) to fbody
+      # for k in fargs
+      #   if isa(k, Symbol)       # f(x,..)
+      #     if haskey(data, k)
+      #       warn("[Turing]: parameter $k found twice, value in data dictionary will be used.")
+      #       ex = nothing
+      #     else
+      #       ex = Expr(:(=), k, k)  # NOTE: need to get k's value
+      #     end
+      #   elseif k.head == :kw    # f(z=1,..)
+      #     if haskey(data, k.args[1])
+      #       warn("[Turing]: parameter $(k.args[1]) found twice, value in data dictionary will be used.")
+      #       ex = nothing
+      #     else
+      #       ex = Expr(:(=), k.args[1], k.args[1])
+      #     end
+      #   else
+      #     ex = nothing
+      #   end
+      #   if ex != nothing
+      #     if fdefn2.args[2].args[1].head == :line
+      #       # Preserve comments, useful for debuggers to correctly
+      #       #   locate source code oringin.
+      #       insert!(fdefn2.args[2].args, 2, ex)
+      #     else
+      #       insert!(fdefn2.args[2].args, 1, ex)
+      #     end
+      #   end
+      # end
+      # copy data dictionary
       for k in keys(data)
         if fdefn2.args[2].args[1].head == :line
-          # Preserve comments, useful for debuggers to correctly locate source code.
+          # Preserve comments, useful for debuggers to correctly
+          #   locate source code oringin.
           insert!(fdefn2.args[2].args, 2, Expr(:(=), k, data[k]))
         else
           insert!(fdefn2.args[2].args, 1, Expr(:(=), k, data[k]))
@@ -278,6 +311,39 @@ macro model(fexpr)
   end )
   # unshift!(ex.args[2].args, :(println(compiler)))
 
-  dprintln(1, ex)
+  # for k in fargs
+  #   if isa(k, Symbol)       # f(x,..)
+  #     _ = Expr(:(=), :(data[$(k)]), k)  # NOTE: need to get k's value
+  #   elseif k.head == :kw    # f(z=1,..)
+  #     _ = Expr(:(=), :(data[$(k.args[1])]), k.args[1])
+  #   else
+  #     _ = nothing
+  #   end
+  #   _ != nothing && unshift!(ex.args[2].args, _)
+  # end
+
+  for k in fargs
+    if isa(k, Symbol)       # f(x,..)
+      _k = k
+    elseif k.head == :kw    # f(z=1,..)
+      _k = k.args[1]
+    else
+      _k = nothing
+    end
+    if _k != nothing
+      _k_str = string(_k)
+      _ = quote
+            if haskey(data, Symbol($_k_str))
+              warn("[Turing]: parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+            else
+              data[Symbol($_k_str)] = $_k
+            end
+          end
+      unshift!(ex.args[2].args, _)
+    end
+  end
+  unshift!(ex.args[2].args, quote data = copy(data) end)
+
+  dprintln(1, esc(ex))
   esc(ex)
 end
