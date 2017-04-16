@@ -12,7 +12,7 @@ obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
   p
 end
 
-Turing.TURING[:modelex]
+# Turing.TURING[:modelex]
 
 # newinterface(data)
 #

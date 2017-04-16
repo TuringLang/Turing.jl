@@ -39,7 +39,7 @@ chain = sample(MoGtest(D), gibbs)
 
 # chain = sample(MoGtest, SMC(5000))
 
-Turing.TURING[:modelex]
+# Turing.TURING[:modelex]
 
 mean(chain[:z1])
 mean(chain[:z2])

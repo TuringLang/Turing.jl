@@ -32,10 +32,10 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 
 
 
-    @assert issubset(TURING[:model_pvar_list], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(TURING[:model_pvar_list]))"
+    @assert issubset(Turing._compiler_[:pvars], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
-    if TURING[:model_pvar_list] != space
-      warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, TURING[:model_pvar_list]))")
+    if Turing._compiler_[:pvars] != space
+      warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
     end
 
     samples = Array{Sample}(gibbs.n_iters)
