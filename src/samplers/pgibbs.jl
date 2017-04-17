@@ -80,7 +80,7 @@ sample(model, alg::PG) = begin
 end
 
 assume(spl::ParticleSampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
-  rand(current_trace().vi, vn, dist, spl)
+  rand(current_trace().vi, vn, d, spl)
 end
 
 rand(vi::VarInfo, vn::VarName, d::Distribution, spl::ParticleSampler{PG}) = begin
