@@ -73,6 +73,8 @@ function sample(model::Function, gibbs::Gibbs)
           old_vals = deepcopy(varInfo.vals)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
           if ~is_accept
+            # NOTE: this might cause problem if new variables is added to VarInfo,
+            #    which will add new elements to vi.idcs etc.
             varInfo.vals = old_vals
           end
         end
