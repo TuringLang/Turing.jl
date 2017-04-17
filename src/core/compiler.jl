@@ -181,117 +181,63 @@ macro model(fexpr)
   push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
   dprintln(1, fargs_inner)
 
-
   # Modify fbody, so that we always return VarInfo
-  fbody2 = deepcopy(fbody)
+  fbody_inner = deepcopy(fbody)
   return_ex = fbody.args[end]   # get last statement of defined model
   if typeof(return_ex) == Symbol ||
        return_ex.head == :return ||
        return_ex.head == :tuple
-    pop!(fbody2.args)
+    pop!(fbody_inner.args)
   end
-  push!(fbody2.args, Expr(:return, :vi))
-  dprintln(1, fbody2)
+  push!(fbody_inner.args, Expr(:return, :vi))
+  dprintln(1, fbody_inner)
 
-  ## Create function definition
-  fdefn = Expr(:function, Expr(:call, fname)) # fdefn = :( $fname() )
-  push!(fdefn.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
-  push!(fdefn.args, deepcopy(fbody2))         # Set function definition
-  dprintln(1, fdefn)
-
-  fdefn2 = Expr(:function, Expr(:call, Symbol("$(fname)_model")))
-  push!(fdefn2.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
-  push!(fdefn2.args, deepcopy(fbody2))    # Set function definition
-  dprintln(1, fdefn2)
-
+  fdefn_inner = Expr(:function, Expr(:call, Symbol("$(fname)_model"))) # fdefn = :( $fname() )
+  push!(fdefn_inner.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
+  push!(fdefn_inner.args, deepcopy(fbody_inner))    # Set function definition
+  dprintln(1, fdefn_inner)
 
   compiler = Dict(:fname => fname,
                   :fargs => fargs,
                   :fbody => fbody,
                   :dvars => Set{Symbol}(), # Data
                   :pvars => Set{Symbol}(), # Parameter
-                  :fdefn2 => fdefn2)
+                  :fdefn_inner => fdefn_inner)
 
   # outer function def 1: f(x,y) ==> f(x,y;data=Dict())
-  fargs_outer1 = deepcopy(fargs)
+  fargs_outer = deepcopy(fargs)
   # Add data argument to outer function
-  push!(fargs_outer1[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+  push!(fargs_outer[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
   # Add data argument to outer function
-  push!(fargs_outer1[1].args, Expr(:kw, :compiler, compiler))
-  for i = 2:length(fargs_outer1)
-    s = fargs_outer1[i]
+  push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
+  for i = 2:length(fargs_outer)
+    s = fargs_outer[i]
     if isa(s, Symbol)
-      fargs_outer1[i] = Expr(:kw, s, :nothing) # Turn f(x;..) into f(x=nothing;..)
+      fargs_outer[i] = Expr(:kw, s, :nothing) # Turn f(x;..) into f(x=nothing;..)
     end
   end
 
-  # outer function def 2: f(x,y) ==> f(;data=Dict())
-  fargs_outer2 = deepcopy(fargs)[1:1]
-  # Add data argument to outer function
-  push!(fargs_outer2[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
-
-  ex = Expr(:function, Expr(:call, fname, fargs_outer1...),
+  ex = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, Symbol("$(fname)_model"))))
 
-  unshift!(ex.args[2].args, :(Main.eval(fdefn2)))
+  unshift!(ex.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(ex.args[2].args,  quote
       # check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
       fargs    = Turing._compiler_[:fargs];
-      fdefn2   = Turing._compiler_[:fdefn2];
-      # copy (x,y,z) to fbody
-      # for k in fargs
-      #   if isa(k, Symbol)       # f(x,..)
-      #     if haskey(data, k)
-      #       warn("[Turing]: parameter $k found twice, value in data dictionary will be used.")
-      #       ex = nothing
-      #     else
-      #       ex = Expr(:(=), k, k)  # NOTE: need to get k's value
-      #     end
-      #   elseif k.head == :kw    # f(z=1,..)
-      #     if haskey(data, k.args[1])
-      #       warn("[Turing]: parameter $(k.args[1]) found twice, value in data dictionary will be used.")
-      #       ex = nothing
-      #     else
-      #       ex = Expr(:(=), k.args[1], k.args[1])
-      #     end
-      #   else
-      #     ex = nothing
-      #   end
-      #   if ex != nothing
-      #     if fdefn2.args[2].args[1].head == :line
-      #       # Preserve comments, useful for debuggers to correctly
-      #       #   locate source code oringin.
-      #       insert!(fdefn2.args[2].args, 2, ex)
-      #     else
-      #       insert!(fdefn2.args[2].args, 1, ex)
-      #     end
-      #   end
-      # end
+      fdefn_inner   = Turing._compiler_[:fdefn_inner];
       # copy data dictionary
       for k in keys(data)
-        if fdefn2.args[2].args[1].head == :line
+        if fdefn_inner.args[2].args[1].head == :line
           # Preserve comments, useful for debuggers to correctly
           #   locate source code oringin.
-          insert!(fdefn2.args[2].args, 2, Expr(:(=), k, data[k]))
+          insert!(fdefn_inner.args[2].args, 2, Expr(:(=), k, data[k]))
         else
-          insert!(fdefn2.args[2].args, 1, Expr(:(=), k, data[k]))
+          insert!(fdefn_inner.args[2].args, 1, Expr(:(=), k, data[k]))
         end
       end
-      dprintln(1, fdefn2)
+      dprintln(1, fdefn_inner)
   end )
-  # unshift!(ex.args[2].args, :(println(compiler)))
-
-  # for k in fargs
-  #   if isa(k, Symbol)       # f(x,..)
-  #     _ = Expr(:(=), :(data[$(k)]), k)  # NOTE: need to get k's value
-  #   elseif k.head == :kw    # f(z=1,..)
-  #     _ = Expr(:(=), :(data[$(k.args[1])]), k.args[1])
-  #   else
-  #     _ = nothing
-  #   end
-  #   _ != nothing && unshift!(ex.args[2].args, _)
-  # end
 
   for k in fargs
     if isa(k, Symbol)       # f(x,..)
@@ -319,7 +265,6 @@ macro model(fexpr)
   dprintln(1, esc(ex))
   esc(ex)
 end
-
 
 
 
