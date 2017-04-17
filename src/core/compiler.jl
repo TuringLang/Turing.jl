@@ -329,9 +329,11 @@ end
 
 insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
 
-function varname(expr)
+varname(s::Symbol)  = nothing, s
+varname(expr::Expr) = begin
   # Initialize an expression block to store the code for creating uid
   local sym
+  @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
   indexing_ex = Expr(:block)
   # Add the initialization statement for uid
   push!(indexing_ex.args, quote indexing_list = [] end)
