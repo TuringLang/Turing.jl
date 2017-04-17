@@ -38,7 +38,7 @@ type VarInfo
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
-  logjoint    ::    Dual
+  logjoint    ::    Real
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
@@ -48,7 +48,7 @@ type VarInfo
     Vector{Distribution}(),
     Vector{Int}(),
     Vector{Bool}(),
-    Dual(0.0),
+    0.0,
     0,
     0
   )
