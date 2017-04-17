@@ -192,7 +192,8 @@ macro model(fexpr)
   push!(fbody_inner.args, Expr(:return, :vi))
   dprintln(1, fbody_inner)
 
-  fdefn_inner = Expr(:function, Expr(:call, Symbol("$(fname)_model"))) # fdefn = :( $fname() )
+  suffix = gensym()
+  fdefn_inner = Expr(:function, Expr(:call, Symbol("$(fname)_model_$suffix"))) # fdefn = :( $fname() )
   push!(fdefn_inner.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
   push!(fdefn_inner.args, deepcopy(fbody_inner))    # Set function definition
   dprintln(1, fdefn_inner)
@@ -218,7 +219,7 @@ macro model(fexpr)
   end
 
   ex = Expr(:function, Expr(:call, fname, fargs_outer...),
-                        Expr(:block, Expr(:return, Symbol("$(fname)_model"))))
+                        Expr(:block, Expr(:return, Symbol("$(fname)_model_$suffix"))))
 
   unshift!(ex.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(ex.args[2].args,  quote
