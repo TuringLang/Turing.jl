@@ -199,13 +199,19 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
 end
 
 # Simple `randr` for simulating from the prior
-randr(vi::VarInfo, vn::VarName, dist::Distribution) = begin
+randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
   gid = 0 # Default gid without samplers
+  vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
     r = rand(dist)
     # Always store vector inside VarInfo
     addvar!(vi, vn, vectorize(dist, r), dist, gid)
   else
+    if count  # sanity check for VarInfo.index
+      uid_replay = groupuids(vi, gid, spl)[vi.index]
+      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
+                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
+    end
     _ = reconstruct(dist, vi[vn])
     if istransformed(vi, vn)
       r = invlink(dist, _)
