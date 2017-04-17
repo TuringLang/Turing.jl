@@ -1,44 +1,3 @@
-###################
-# Helper function #
-###################
-
-insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
-
-function varname(expr)
-  # Initialize an expression block to store the code for creating uid
-  local sym
-  indexing_ex = Expr(:block)
-  # Add the initialization statement for uid
-  push!(indexing_ex.args, quote indexing_list = [] end)
-  # Initialize a local container for parsing and add the expr to it
-  to_eval = []; unshift!(to_eval, expr)
-  # Parse the expression and creating the code for creating uid
-  find_head = false
-  while length(to_eval) > 0
-    evaling = shift!(to_eval)   # get the current expression to deal with
-    if isa(evaling, Expr) && evaling.head == :ref && ~find_head
-      # Add all the indexing arguments to the left
-      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
-      # Add first argument depending on its type
-      # If it is an expression, it means it's a nested array calling
-      # Otherwise it's the symbol for the calling
-      if isa(evaling.args[1], Expr)
-        unshift!(to_eval, evaling.args[1])
-      else
-        # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
-        push!(indexing_ex.args, quote sym = Symbol($(string(evaling.args[1]))) end) # store symbol in runtime
-        find_head = true
-        sym = evaling.args[1] # store symbol in compilation time
-      end
-    else
-      # Evaluting the concrete value of the indexing variable
-      push!(indexing_ex.args, quote push!(indexing_list, string($evaling)) end)
-    end
-  end
-  push!(indexing_ex.args, quote indexing = reduce(*, indexing_list) end)
-  indexing_ex, sym
-end
-
 #################
 # Overload of ~ #
 #################
@@ -61,17 +20,13 @@ macro ~(left, right)
       end
     )
   else
-    _left = left  # left is the variable (symbol) itself
-    # Get symbol from expr like x[1][2]
-    while typeof(_left) != Symbol
-      _left = _left.args[1]
-    end
-    left_sym = string(_left)
+    _, vsym = varname(left)
+    vsym_str = string(vsym)
     # Require all data to be stored in data dictionary.
-    if _left in Turing._compiler_[:fargs]
-      if ~(_left in Turing._compiler_[:dvars])
-        println("[Turing]: Observe - `" * left_sym * "` is an observation")
-        push!(Turing._compiler_[:dvars], _left)
+    if vsym in Turing._compiler_[:fargs]
+      if ~(vsym in Turing._compiler_[:dvars])
+        println("[Turing]: Observe - `" * vsym_str * "` is an observation")
+        push!(Turing._compiler_[:dvars], vsym)
       end
       esc(
         quote
@@ -88,11 +43,11 @@ macro ~(left, right)
         end
       )
     else
-      if ~(_left in Turing._compiler_[:pvars])
-        msg = "[Turing]: Assume - `" * left_sym * "` is a parameter"
-        isdefined(Symbol(left_sym)) && (msg  *= " (ignoring `$(left_sym)` found in global scope)")
+      if ~(vsym in Turing._compiler_[:pvars])
+        msg = "[Turing]: Assume - `" * vsym_str * "` is a parameter"
+        isdefined(Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
         println(msg)
-        push!(Turing._compiler_[:pvars], _left)
+        push!(Turing._compiler_[:pvars], vsym)
       end
       # The if statement is to deterimnet how to pass the prior.
       # It only supports pure symbol and Array(/Dict) now.
@@ -363,4 +318,48 @@ macro model(fexpr)
 
   dprintln(1, esc(ex))
   esc(ex)
+end
+
+
+
+
+###################
+# Helper function #
+###################
+
+insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+
+function varname(expr)
+  # Initialize an expression block to store the code for creating uid
+  local sym
+  indexing_ex = Expr(:block)
+  # Add the initialization statement for uid
+  push!(indexing_ex.args, quote indexing_list = [] end)
+  # Initialize a local container for parsing and add the expr to it
+  to_eval = []; unshift!(to_eval, expr)
+  # Parse the expression and creating the code for creating uid
+  find_head = false
+  while length(to_eval) > 0
+    evaling = shift!(to_eval)   # get the current expression to deal with
+    if isa(evaling, Expr) && evaling.head == :ref && ~find_head
+      # Add all the indexing arguments to the left
+      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
+      # Add first argument depending on its type
+      # If it is an expression, it means it's a nested array calling
+      # Otherwise it's the symbol for the calling
+      if isa(evaling.args[1], Expr)
+        unshift!(to_eval, evaling.args[1])
+      else
+        # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
+        push!(indexing_ex.args, quote sym = Symbol($(string(evaling.args[1]))) end) # store symbol in runtime
+        find_head = true
+        sym = evaling.args[1] # store symbol in compilation time
+      end
+    else
+      # Evaluting the concrete value of the indexing variable
+      push!(indexing_ex.args, quote push!(indexing_list, string($evaling)) end)
+    end
+  end
+  push!(indexing_ex.args, quote indexing = reduce(*, indexing_list) end)
+  indexing_ex, sym
 end
