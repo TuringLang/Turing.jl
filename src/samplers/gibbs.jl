@@ -10,7 +10,6 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
   gibbs       ::  Gibbs               # the sampling algorithm
   samplers    ::  Array{Sampler}      # samplers
   samples     ::  Array{Sample}       # samples
-  predicts    ::  Dict{Symbol, Any}   # outputs
 
   function GibbsSampler(gibbs::Gibbs)
     n_samplers = length(gibbs.algs)
@@ -44,8 +43,7 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
 
-    predicts = Dict{Symbol, Any}()
-    new(gibbs, samplers, samples, predicts)
+    new(gibbs, samplers, samples)
   end
 end
 
