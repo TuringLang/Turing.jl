@@ -55,7 +55,7 @@ function sample(model::Function, gibbs::Gibbs)
   # initialization
   task = current_task()
   n = spl.gibbs.n_iters
-  varInfo = VarInfo()
+  varInfo = model()
   ref_particle = nothing
 
   # Gibbs steps
