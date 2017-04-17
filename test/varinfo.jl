@@ -58,7 +58,7 @@ retain(vi, 2, 1)
 end
 
 # println("Test 2")
-
+gdemo() # Generate compiler information.
 g = GibbsSampler{Gibbs}(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg = g.samplers[1]
