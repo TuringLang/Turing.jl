@@ -58,7 +58,7 @@ testcases = [
           "constrained_bounded",
           "constrained_simplex",
 #       is.jl
-          "importance_sampling",
+          # "importance_sampling",
 #       pgibbs.jl
 #       sampler.jl
 #       smc.jl
