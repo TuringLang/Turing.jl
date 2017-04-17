@@ -193,7 +193,8 @@ macro model(fexpr)
   dprintln(1, fbody_inner)
 
   suffix = gensym()
-  fdefn_inner = Expr(:function, Expr(:call, Symbol("$(fname)_model_$suffix"))) # fdefn = :( $fname() )
+  fname_inner = Symbol("$(fname)_model_$suffix")
+  fdefn_inner = Expr(:function, Expr(:call, fname_inner)) # fdefn = :( $fname() )
   push!(fdefn_inner.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
   push!(fdefn_inner.args, deepcopy(fbody_inner))    # Set function definition
   dprintln(1, fdefn_inner)
@@ -218,11 +219,11 @@ macro model(fexpr)
     end
   end
 
-  ex = Expr(:function, Expr(:call, fname, fargs_outer...),
-                        Expr(:block, Expr(:return, Symbol("$(fname)_model_$suffix"))))
+  fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
+                        Expr(:block, Expr(:return, fname_inner)))
 
-  unshift!(ex.args[2].args, :(Main.eval(fdefn_inner)))
-  unshift!(ex.args[2].args,  quote
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
+  unshift!(fdefn_outer.args[2].args,  quote
       # check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
       fargs    = Turing._compiler_[:fargs];
@@ -258,13 +259,13 @@ macro model(fexpr)
               data[Symbol($_k_str)] == nothing && error("[Turing]: data "*$_k_str*" is not provided.")
             end
           end
-      unshift!(ex.args[2].args, _)
+      unshift!(fdefn_outer.args[2].args, _)
     end
   end
-  unshift!(ex.args[2].args, quote data = copy(data) end)
+  unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
-  dprintln(1, esc(ex))
-  esc(ex)
+  dprintln(1, esc(fdefn_outer))
+  esc(fdefn_outer)
 end
 
 
