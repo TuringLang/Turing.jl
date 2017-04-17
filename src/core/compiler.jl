@@ -49,6 +49,9 @@ macro ~(left, right)
     # Call observe
     esc(
       quote
+        if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+          vi = Turing.current_trace().vi
+        end
         Turing.observe(
           sampler,
           $(right),   # Distribution
@@ -72,6 +75,9 @@ macro ~(left, right)
       end
       esc(
         quote
+          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+            vi = Turing.current_trace().vi
+          end
           # Call observe
           Turing.observe(
             sampler,
