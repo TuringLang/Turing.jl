@@ -353,6 +353,7 @@ macro model(fexpr)
               warn("[Turing]: parameter "*$_k_str*" found twice, value in data dictionary will be used.")
             else
               data[Symbol($_k_str)] = $_k
+              data[Symbol($_k_str)] == nothing && error("[Turing]: data "*$_k_str*" is not provided.")
             end
           end
       unshift!(ex.args[2].args, _)
