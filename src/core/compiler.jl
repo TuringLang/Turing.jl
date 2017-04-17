@@ -90,11 +90,16 @@ macro ~(left, right)
       end
       # The if statement is to deterimnet how to pass the prior.
       # It only supports pure symbol and Array(/Dict) now.
+      #csym_str = string(gensym())
       if isa(left, Symbol)
         # Symbol
         assume_ex = quote
+          csym_str = string(Turing._compiler_[:fname])*"_var"* string(@__LINE__)
+          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+            vi = Turing.current_trace().vi
+          end
           sym = Symbol($(string(left)))
-          vn = nextvn(vi, Symbol($(string(gensym()))), sym, "")
+          vn = nextvn(vi, Symbol(csym_str), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -109,10 +114,15 @@ macro ~(left, right)
         # The initialization of assume_ex is indexing_ex,
         # in which sym will store the variable symbol (Symbol),
         # and indexing will store the indexing (String)
+        # csym_str = string(gensym())
         push!(
           assume_ex.args,
           quote
-            vn = nextvn(vi, Symbol($(string(gensym()))), sym, indexing)
+            csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
+            if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+              vi = Turing.current_trace().vi
+            end
+            vn = nextvn(vi, Symbol(csym_str), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist

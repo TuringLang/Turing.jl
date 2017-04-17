@@ -183,7 +183,8 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
   else
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]
-      @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
+      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
+                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
     end
     if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
       setgid!(vi, gid, vn)
