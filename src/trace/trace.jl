@@ -63,7 +63,7 @@ function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res.vi = deepcopy(vi)
   res.vi.index = 0
   res.vi.num_produce = 0
-  res.task = Task( () -> begin res=f(vi=vi, sampler=spl); produce(Val{:done}); res; end )
+  res.task = Task( () -> begin _=f(vi=res.vi, sampler=spl); produce(Val{:done}); _; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
