@@ -18,49 +18,49 @@ function step(model, spl::Sampler{HMCDA}, varInfo::VarInfo, is_first::Bool)
   if is_first
     # Run the model for the first time
     dprintln(2, "initialising...")
-    varInfo = runmodel(model, varInfo, spl)
+    vi = runmodel(model, vi, spl)
     # Return
-    true, varInfo
+    true, vi
   else
     # Set parameters
     ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
 
     dprintln(2, "sampling momentum...")
-    p = Dict(uid(k) => randn(length(varInfo[k])) for k in keys(varInfo))
+    p = Dict(uid(k) => randn(length(vi[k])) for k in keys(vi))
     if ~isempty(spl.alg.space)
-      p = filter((k, p) -> getsym(varInfo, k) in spl.alg.space, p)
+      p = filter((k, p) -> getsym(vi, k) in spl.alg.space, p)
     end
 
     dprintln(3, "X -> R...")
-    varInfo = link(varInfo, spl)
+    vi = link(vi, spl)
 
     dprintln(2, "recording old H...")
-    oldH = find_H(p, model, varInfo, spl)
+    oldH = find_H(p, model, vi, spl)
 
     dprintln(3, "first gradient...")
-    val∇E = gradient(varInfo, model, spl)
+    val∇E = gradient(vi, model, spl)
 
     dprintln(2, "leapfrog stepping...")
     for t in 1:τ  # do 'leapfrog' for each var
-      varInfo, val∇E, p = leapfrog(varInfo, val∇E, p, ϵ, model, spl)
+      vi, val∇E, p = leapfrog(vi, val∇E, p, ϵ, model, spl)
     end
 
     dprintln(2, "computing new H...")
-    H = find_H(p, model, varInfo, spl)
+    H = find_H(p, model, vi, spl)
 
     dprintln(3, "R -> X...")
-    varInfo = invlink(varInfo, spl)
+    vi = invlink(vi, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    realpart!(varInfo)
+    realpart!(vi)
 
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
-      true, varInfo
+      true, vi
     else                                # rejected
-      false, varInfo
+      false, vi
     end
   end
 end
