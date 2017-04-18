@@ -60,7 +60,7 @@ macro ~(left, right)
             vi = Turing.current_trace().vi
           end
           sym = Symbol($(string(left)))
-          vn = nextvn(vi, Symbol(csym_str), sym, "")
+          vn = VarName(vi, Symbol(csym_str), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -83,7 +83,7 @@ macro ~(left, right)
             if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
               vi = Turing.current_trace().vi
             end
-            vn = nextvn(vi, Symbol(csym_str), sym, indexing)
+            vn = VarName(vi, Symbol(csym_str), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
