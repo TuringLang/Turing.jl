@@ -128,24 +128,17 @@ end
 ```
 """
 macro model(fexpr)
-   # compiler design: sample(fname_compiletime(x,y), sampler)
-   #   fname_compiletime(x,y;fname=fname,fargs=fargs,fbody=fbody) = begin
+   # Compiler design: sample(fname_compiletime(x,y), sampler)
+   #   fname_compiletime(x=nothing,y=nothing; data=data,compiler=compiler) = begin
    #      ex = quote
-   #          fname_runtime(x,y,fobs) = begin
-   #              x=x,y=y,fobs=Set(:x,:y)
-   #              fname(vi=VarInfo,sampler=nothing) = begin
-   #              end
+   #          fname_runtime(;vi=VarInfo,sampler=nothing) = begin
+   #              x=x,y=y
+   #              # pour all variables in data dictionary, e.g.
+   #              k = data[:k]
+   #              # pour model definition `fbody`, e.g.
+   #              x ~ Normal(0,1)
+   #              k ~ Normal(x, 1)
    #          end
-   #          fname_runtime(x,y,fobs)
-   #      end
-   #      Main.eval(ex)
-   #   end
-   #   fname_compiletime(;data::Dict{Symbol,Any}=data) = begin
-   #      ex = quote
-   #          # check fargs[2:end] == symbols(data)
-   #          fname_runtime(x,y,fobs) = begin
-   #          end
-   #          fname_runtime(data[:x],data[:y],Set(:x,:y))
    #      end
    #      Main.eval(ex)
    #   end
