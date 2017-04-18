@@ -55,10 +55,6 @@ end
 
 function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
   if is_first
-    # Run the model for the first time
-    dprintln(2, "initialising...")
-    vi = runmodel(model, vi, spl)
-    # Return
     true, vi
   else
     # Set parameters
@@ -114,7 +110,7 @@ function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   n =  spl.alg.n_samples
   task = current_task()
   accept_num = 0    # record the accept number
-  varInfo = VarInfo()
+  varInfo = model()
 
   # HMC steps
   @showprogress 1 "[$alg_str] Sampling..." for i = 1:n

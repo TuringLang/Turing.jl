@@ -45,10 +45,6 @@ end
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
 
-    # Run the model for the first time
-    dprintln(2, "initialising...")
-    vi = runmodel(model, vi, spl)
-
     vi = link(vi, spl)
 
     # Heuristically find optimal ϵ

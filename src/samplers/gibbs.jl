@@ -68,12 +68,12 @@ function sample(model::Function, gibbs::Gibbs)
 
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
-          old_vi = deepcopy(varInfo)
+          old_vals = deepcopy(varInfo.vals)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
           if ~is_accept
             # NOTE: this might cause problem if new variables is added to VarInfo,
             #    which will add new elements to vi.idcs etc.
-            varInfo = old_vi
+            varInfo.vals = old_vals
           end
         end
       elseif isa(local_spl, Sampler{PG})
