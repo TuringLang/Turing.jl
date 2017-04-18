@@ -38,7 +38,8 @@ type VarInfo
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
-  logjoint    ::    Dual
+  logjoint    ::    Real
+  logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
@@ -48,7 +49,7 @@ type VarInfo
     Vector{Distribution}(),
     Vector{Int}(),
     Vector{Bool}(),
-    Dual(0.0),
+    0.0,0.0,
     0,
     0
   )
@@ -169,11 +170,12 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
-# Default behaviour for Void
-rand(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, 0, nothing, false)
+# This method is called when sampler is of type Void
+rand(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist)
 
 # Random with replaying
-randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=false) = begin
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) = begin
+  gid = spl.alg.group_id
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
     r = rand(dist)
@@ -183,9 +185,10 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
   else
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]
-      @assert uid_replay == uid(vn) "[randr] variable replayed doesn't match counting index"
+      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
+                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
     end
-    if ~(spl == nothing || isempty(spl.alg.space)) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
+    if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
       setgid!(vi, gid, vn)
     end
     if istransformed(vi, vn)
@@ -194,6 +197,30 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, gid=0, spl=nothing, count=fa
       reconstruct(dist, vi[vn])
     end
   end
+end
+
+# Simple `randr` for simulating from the prior
+randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
+  gid = 0 # Default gid without samplers
+  vi.index = count ? vi.index + 1 : vi.index
+  if ~haskey(vi, vn)
+    r = rand(dist)
+    # Always store vector inside VarInfo
+    addvar!(vi, vn, vectorize(dist, r), dist, gid)
+  else
+    if count  # sanity check for VarInfo.index
+      uid_replay = groupuids(vi, gid, spl)[vi.index]
+      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
+                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
+    end
+    _ = reconstruct(dist, vi[vn])
+    if istransformed(vi, vn)
+      r = invlink(dist, _)
+    else
+      r = _
+    end
+  end
+  r
 end
 
 # Randome with force overwriting by counter

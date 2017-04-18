@@ -28,15 +28,9 @@ end
 type ImportanceSampler{IS} <: Sampler{IS}
   alg         ::  IS
   samples     ::  Vector{Sample}
-  logweights  ::  Array{Float64}
-  logevidence ::  Float64
-  predicts    ::  Dict{Symbol,Any}
   function ImportanceSampler(alg::IS)
     samples = Array{Sample}(alg.n_samples)
-    logweights = zeros(Float64, alg.n_samples)
-    logevidence = 0
-    predicts = Dict{Symbol,Any}()
-    new(alg, samples, logweights, logevidence, predicts)
+    new(alg, samples)
   end
 end
 
@@ -46,22 +40,18 @@ function sample(model::Function, alg::IS)
 
   n = spl.alg.n_samples
   for i = 1:n
-    consume(Task(()->model(vi = VarInfo(), sampler = spl)))
-    spl.samples[i] = Sample(spl.logevidence, spl.predicts)
-    spl.logweights[i] = spl.logevidence
-    spl.logevidence = 0
-    spl.predicts = Dict{Symbol,Any}()
+    vi = model(vi=VarInfo(), sampler=spl)
+    spl.samples[i] = Sample(vi)
   end
-  spl.logevidence = logsum(spl.logweights) - log(n)
-  chn = Chain(exp(spl.logevidence), spl.samples)
+  le = logsum(map(x->x[:lp], spl.samples)) - log(n)
+  chn = Chain(exp(le), spl.samples)
   return chn
 end
 
-assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, varInfo::VarInfo) = rand(d)
+assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
 
-function observe(spl::ImportanceSampler{IS}, d::Distribution, value, varInfo::VarInfo)
-  spl.logevidence += logpdf(d, value)
+observe(spl::ImportanceSampler{IS}, d::Distribution, value, vi::VarInfo) = begin
+  vi.logjoint   += logpdf(d, value)
 end
 
-function predict(spl::ImportanceSampler{IS}, name::Symbol, value) spl.predicts[name] = value
-end
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::ImportanceSampler{IS}) = randr(vi, vn, dist)

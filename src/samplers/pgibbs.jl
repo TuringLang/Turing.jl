@@ -60,9 +60,7 @@ function step(model, spl::Sampler{PG}, vi, ref_particle)
   ref_particle, s
 end
 
-assume(spl::ParticleSampler{PG}, dist::Distribution, vn::VarName, vi::VarInfo) = rand(current_trace().vi, vn, dist, spl)
-
-function sample(model, alg::PG)
+sample(model, alg::PG) = begin
   global sampler = ParticleSampler{PG}(alg);
   spl = sampler
   n = spl.alg.n_iterations
@@ -81,4 +79,12 @@ function sample(model, alg::PG)
   chain = Chain(exp(mean(logevidence)), samples)
 end
 
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::ParticleSampler{PG}) = isempty(spl.alg.space) || vn.sym in spl.alg.space ? randr(vi, vn, dist, spl.alg.group_id, spl, true) : randr(vi, vn, dist)
+assume(spl::ParticleSampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
+  rand(current_trace().vi, vn, d, spl)
+end
+
+rand(vi::VarInfo, vn::VarName, d::Distribution, spl::ParticleSampler{PG}) = begin
+  isempty(spl.alg.space) || vn.sym in spl.alg.space ?
+    randr(vi, vn, d, spl, true) :
+    randr(vi, vn, d)
+end

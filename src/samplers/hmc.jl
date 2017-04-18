@@ -149,7 +149,7 @@ function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarIn
 end
 
 # NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
-function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::VarInfo)
+function observe(spl::HMCSampler{HMC}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     vi.logjoint += logpdf(d, Dual(value))
@@ -159,4 +159,8 @@ function observe(spl::Union{Void, HMCSampler{HMC}}, d::Distribution, value, vi::
   dprintln(2, "observe done")
 end
 
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{HMC}) = isempty(spl.alg.space) || vn.sym in spl.alg.space ? randr(vi, vn, dist, spl.alg.group_id, spl, false) : randr(vi, vn, dist)
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{HMC}) = begin
+  isempty(spl.alg.space) || vn.sym in spl.alg.space ?
+    randr(vi, vn, dist, spl, false) :
+    randr(vi, vn, dist)
+end

@@ -35,36 +35,34 @@ include("smc.jl")
 include("pgibbs.jl")
 include("gibbs.jl")
 
-# Fallback functions
-Base.run(spl :: Sampler) = error("[sample]: unmanaged inference algorithm: $(typeof(spl))")
-
-assume(spl, distr :: Distribution) =
+## Fallback functions
+assume(spl, distr :: Distribution) = begin
   error("[assume]: unmanaged inference algorithm: $(typeof(spl))")
+end
 
-observe(spl, weight :: Float64) =
+observe(spl, weight :: Float64) = begin
   error("[observe]: unmanaged inference algorithm: $(typeof(spl))")
+end
 
-predict(spl, var_name :: Symbol, value) =
-  error("[predict]: unmanaged inference algorithm: $(typeof(spl))")
-
-function assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo)
-  r = rand(vi, vn, dist, spl)
+## Default definitions for assume, observe, when sampler = nothing.
+assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
+  r = rand(vi, vn, dist)
   vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
-predict(spl::Void, var_name :: Symbol, value) = nothing
-
-function sample(model::Function, data::Dict, alg::InferenceAlgorithm)
-  global sampler = ParticleSampler{typeof(alg)}(model, alg);
-  Base.run(model, data, sampler)
+observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
+  lp = logpdf(d, value)
+  vi.logw     += lp
+  vi.logjoint += lp
 end
 
-assume(spl::ParticleSampler, dist::Distribution, vn::VarName, vi)  = rand(current_trace(), vn, dist)
+assume(spl :: ParticleSampler, d :: Distribution, vn :: VarName, vi) = begin
+  rand(current_trace(), vn, d)
+end
 
-observe(spl :: ParticleSampler, d :: Distribution, value, varInfo) = produce(logpdf(d, value))
-
-predict(spl :: Sampler, v_name :: Symbol, value) = nothing
-
-# This method is called when sampler is Void
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Void) = rand(vi, vn, dist)
+observe(spl :: ParticleSampler, d :: Distribution, value, vi) = begin
+  lp          = logpdf(d, value)
+  vi.logjoint += lp
+  produce(lp)
+end

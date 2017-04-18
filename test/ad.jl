@@ -13,7 +13,7 @@ using Base.Test
   2.0 ~ Normal(m, sqrt(s))
   return s, m
 end
-Turing.TURING[:modelex]
+# Turing.TURING[:modelex]
 # Call Turing's AD
 # The result out is the gradient information on R
 ad_test_f = ad_test()
