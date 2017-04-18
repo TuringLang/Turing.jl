@@ -60,7 +60,7 @@ macro ~(left, right)
             vi = Turing.current_trace().vi
           end
           sym = Symbol($(string(left)))
-          vn = nextvn(vi, Symbol(csym_str), sym, "")
+          vn = VarName(vi, Symbol(csym_str), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -83,7 +83,7 @@ macro ~(left, right)
             if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
               vi = Turing.current_trace().vi
             end
-            vn = nextvn(vi, Symbol(csym_str), sym, indexing)
+            vn = VarName(vi, Symbol(csym_str), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
@@ -128,24 +128,17 @@ end
 ```
 """
 macro model(fexpr)
-   # compiler design: sample(fname_compiletime(x,y), sampler)
-   #   fname_compiletime(x,y;fname=fname,fargs=fargs,fbody=fbody) = begin
+   # Compiler design: sample(fname_compiletime(x,y), sampler)
+   #   fname_compiletime(x=nothing,y=nothing; data=data,compiler=compiler) = begin
    #      ex = quote
-   #          fname_runtime(x,y,fobs) = begin
-   #              x=x,y=y,fobs=Set(:x,:y)
-   #              fname(vi=VarInfo,sampler=nothing) = begin
-   #              end
+   #          fname_runtime(;vi=VarInfo,sampler=nothing) = begin
+   #              x=x,y=y
+   #              # pour all variables in data dictionary, e.g.
+   #              k = data[:k]
+   #              # pour model definition `fbody`, e.g.
+   #              x ~ Normal(0,1)
+   #              k ~ Normal(x, 1)
    #          end
-   #          fname_runtime(x,y,fobs)
-   #      end
-   #      Main.eval(ex)
-   #   end
-   #   fname_compiletime(;data::Dict{Symbol,Any}=data) = begin
-   #      ex = quote
-   #          # check fargs[2:end] == symbols(data)
-   #          fname_runtime(x,y,fobs) = begin
-   #          end
-   #          fname_runtime(data[:x],data[:y],Set(:x,:y))
    #      end
    #      Main.eval(ex)
    #   end
@@ -157,16 +150,15 @@ macro model(fexpr)
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
   fbody = fexpr.args[2].args[end]    # NOTE: nested args is used here because the orignal model expr is in a block
 
-
-  # Add keyword arguments, e.g.
-  #   f(x,y,z; c=1)
-  #       ==>  f(x,y,z; c=1, vi = VarInfo(), sampler = IS(1))
+  # Prepare for keyword arguments, e.g.
+  #   f(x,y)
+  #       ==> f(x,y;)
+  #   f(x,y; c=1)
+  #       ==> unchanged
   if (length(fargs) == 0 ||         # e.g. f()
           isa(fargs[1], Symbol) ||  # e.g. f(x,y)
           fargs[1].head == :kw)     # e.g. f(x,y=1)
     insert!(fargs, 1, Expr(:parameters))
-  # else                  # e.g. f(x,y; k=1)
-  #  do nothing;
   end
 
   dprintln(1, fname)
@@ -174,9 +166,17 @@ macro model(fexpr)
   dprintln(1, fbody)
 
   # Remove positional arguments from inner function, e.g.
-  #  f(y,z,w; vi=VarInfo(),sampler=IS(1))
-  #      ==>   f(; vi=VarInfo(),sampler=IS(1))
+  #  f((x,y; c=1)
+  #      ==> f(; c=1)
+  #  f(x,y;)
+  #      ==> f(;)
   fargs_inner = deepcopy(fargs)[1:1]
+
+  # Add keyword arguments, e.g.
+  #  f(; c=1)
+  #      ==> f(; c=1, :vi=VarInfo(), :sample=nothing)
+  #  f(;)
+  #      ==> f(; :vi=VarInfo(), :sample=nothing)
   push!(fargs_inner[1].args, Expr(:kw, :vi, :(VarInfo())))
   push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
   dprintln(1, fargs_inner)
@@ -195,18 +195,18 @@ macro model(fexpr)
   suffix = gensym()
   fname_inner = Symbol("$(fname)_model_$suffix")
   fdefn_inner = Expr(:function, Expr(:call, fname_inner)) # fdefn = :( $fname() )
-  push!(fdefn_inner.args[1].args, fargs_inner...)   # Set parameters (x,y;data..)
-  push!(fdefn_inner.args, deepcopy(fbody_inner))    # Set function definition
+  push!(fdefn_inner.args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+  push!(fdefn_inner.args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
 
   compiler = Dict(:fname => fname,
                   :fargs => fargs,
                   :fbody => fbody,
-                  :dvars => Set{Symbol}(), # Data
-                  :pvars => Set{Symbol}(), # Parameter
+                  :dvars => Set{Symbol}(),  # data
+                  :pvars => Set{Symbol}(),  # parameter
                   :fdefn_inner => fdefn_inner)
 
-  # outer function def 1: f(x,y) ==> f(x,y;data=Dict())
+  # Outer function defintion 1: f(x,y) ==> f(x,y;data=Dict())
   fargs_outer = deepcopy(fargs)
   # Add data argument to outer function
   push!(fargs_outer[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
@@ -215,7 +215,7 @@ macro model(fexpr)
   for i = 2:length(fargs_outer)
     s = fargs_outer[i]
     if isa(s, Symbol)
-      fargs_outer[i] = Expr(:kw, s, :nothing) # Turn f(x;..) into f(x=nothing;..)
+      fargs_outer[i] = Expr(:kw, s, :nothing) # turn f(x;..) into f(x=nothing;..)
     end
   end
 
@@ -224,15 +224,15 @@ macro model(fexpr)
 
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(fdefn_outer.args[2].args,  quote
-      # check fargs, data
+      # Check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
       fargs    = Turing._compiler_[:fargs];
       fdefn_inner   = Turing._compiler_[:fdefn_inner];
-      # copy data dictionary
+      # Copy data dictionary
       for k in keys(data)
         if fdefn_inner.args[2].args[1].head == :line
-          # Preserve comments, useful for debuggers to correctly
-          #   locate source code oringin.
+          # Preserve comments, useful for debuggers to
+          # correctly locate source code oringin.
           insert!(fdefn_inner.args[2].args, 2, Expr(:(=), k, data[k]))
         else
           insert!(fdefn_inner.args[2].args, 1, Expr(:(=), k, data[k]))

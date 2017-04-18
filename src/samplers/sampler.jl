@@ -54,7 +54,9 @@ assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
 end
 
 observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
-  vi.logjoint += logpdf(d, value)
+  lp = logpdf(d, value)
+  vi.logw     += lp
+  vi.logjoint += lp
 end
 
 assume(spl :: ParticleSampler, d :: Distribution, vn :: VarName, vi) = begin
