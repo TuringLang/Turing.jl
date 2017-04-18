@@ -55,7 +55,7 @@ end
 
 function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
   if is_first
-    realpart!(vi)
+    cleandual!(vi)
     true, vi
   else
     # Set parameters
@@ -86,7 +86,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    realpart!(vi)
+    cleandual!(vi)
 
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted

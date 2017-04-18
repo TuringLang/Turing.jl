@@ -24,7 +24,7 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
 
   gkeys = keys(vi)
   if spl != nothing   # Deal with Void sampler
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
   end
 
   for k in gkeys

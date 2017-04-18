@@ -63,9 +63,12 @@ Sample(vi::VarInfo) = begin
   Sample(weight, value)
 end
 
-function realpart!(vi::VarInfo)
+function cleandual!(vi::VarInfo)
   for uid in keys(vi)
-    vi[uid] = realpart(vi[uid])
+    val_vect = vi[uid]
+    for i = 1:length(val_vect)
+      val_vect[i] = realpart(val_vect[i])
+    end
   end
   vi.logjoint = realpart(vi.logjoint)
 end

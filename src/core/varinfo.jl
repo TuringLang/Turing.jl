@@ -151,7 +151,6 @@ retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
   for i = 1:length(vi.uids)
     vi.idcs[vi.uids[i]] = i
   end
-
   vi
 end
 

@@ -60,7 +60,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
-    realpart!(vi)
+    cleandual!(vi)
 
     true, vi
   else
@@ -100,7 +100,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    realpart!(vi)
+    cleandual!(vi)
 
     α = min(1, exp(-ΔH))  # MH accept rate
 
