@@ -164,7 +164,7 @@ addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0) = begin
 end
 
 # This method is use to generate a new VarName with the right count
-nextvn(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
+VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when implementing the sanity check
   VarName(csym, sym, indexing, 1)
 end

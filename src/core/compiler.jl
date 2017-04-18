@@ -94,7 +94,7 @@ macro ~(left, right)
         # Symbol
         assume_ex = quote
           sym = Symbol($(string(left)))
-          vn = nextvn(vi, Symbol($(string(gensym()))), sym, "")
+          vn = VarName(vi, Symbol($(string(gensym()))), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -114,7 +114,7 @@ macro ~(left, right)
         push!(
           assume_ex.args,
           quote
-            vn = nextvn(vi, Symbol($(string(gensym()))), sym, indexing)
+            vn = VarName(vi, Symbol($(string(gensym()))), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
