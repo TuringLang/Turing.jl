@@ -53,6 +53,8 @@ testcases = [
             "gibbs2",
             "gibbs_constructor",
 #       hmc.jl
+          "hmcda_cons",
+#       hmc.jl
           "multivariate_support",
           "matrix_support",
           "constrained_bounded",

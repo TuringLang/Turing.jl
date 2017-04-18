@@ -1,5 +1,3 @@
-include("support/hmc_core.jl")
-
 doc"""
     HMC(n_samples::Int, lf_size::Float64, lf_num::Int)
 
@@ -40,10 +38,10 @@ immutable HMC <: InferenceAlgorithm
   HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-type HMCSampler{HMC} <: Sampler{HMC}
-  alg        ::HMC                          # the HMC algorithm info
-  samples    ::Array{Sample}                # samples
-  function HMCSampler(alg::HMC)
+type HMCSampler{T} <: Sampler{T}
+  alg        ::T                          # the HMC algorithm info
+  samples    ::Array{Sample}              # samples
+  function HMCSampler(alg::T)
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
@@ -104,14 +102,14 @@ function step(model, spl::Sampler{HMC}, varInfo::VarInfo, is_first::Bool)
   end
 end
 
-setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
-sample(model::Function, alg::HMC) = sample(model, alg, CHUNKSIZE)
+sample(model::Function, alg::Union{HMC, HMCDA}) = sample(model, alg, CHUNKSIZE)
 
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
-function sample(model::Function, alg::HMC, chunk_size::Int)
+function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
-  global sampler = HMCSampler{HMC}(alg);
+  global sampler = HMCSampler{typeof(alg)}(alg);
+  alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
 
   spl = sampler
   # initialization
@@ -121,10 +119,10 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   varInfo = VarInfo()
 
   # HMC steps
-  @showprogress 1 "[HMC] Sampling..." for i = 1:n
+  @showprogress 1 "[$alg_str] Sampling..." for i = 1:n
     dprintln(2, "recording old θ...")
     old_vals = deepcopy(varInfo.vals)
-    dprintln(2, "HMC stepping...")
+    dprintln(2, "$alg_str stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
       spl.samples[i].value = Sample(varInfo).value
@@ -140,7 +138,7 @@ function sample(model::Function, alg::HMC, chunk_size::Int)
   Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
@@ -149,7 +147,7 @@ function assume(spl::HMCSampler{HMC}, dist::Distribution, vn::VarName, vi::VarIn
 end
 
 # NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
-function observe(spl::HMCSampler{HMC}, d::Distribution, value, vi::VarInfo)
+function observe(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     vi.logjoint += logpdf(d, Dual(value))
@@ -159,7 +157,7 @@ function observe(spl::HMCSampler{HMC}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observe done")
 end
 
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{HMC}) = begin
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, dist, spl, false) :
     randr(vi, vn, dist)

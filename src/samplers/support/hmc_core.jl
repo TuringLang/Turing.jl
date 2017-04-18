@@ -1,3 +1,5 @@
+setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
+
 function runmodel(model, vi, spl)
   vi.index = 0
   model(vi=vi, sampler=spl) # run model\
