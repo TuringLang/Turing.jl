@@ -129,9 +129,7 @@ groupuids(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.uids[i], groupidcs(v
 retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
   # NOTE: the sanity check below is commented because Void
   #       and standalone samplers uses gid = 0
-  if spl == nothing || isempty(spl.alg.space)
-    @assert ~(gid == 0) "[retain] wrong use of retain: gid = 0"
-  end
+  # @assert ~(gid == 0) "[retain] wrong use of retain: gid = 0"
 
   # Get all indices of variables belonging to gid
   gidcs = groupidcs(vi, gid, spl)

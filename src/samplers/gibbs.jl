@@ -90,6 +90,7 @@ function sample(model::Function, gibbs::Gibbs)
         end
         varInfo = ref_particle.vi
       end
+
     end
     spl.samples[i].value = Sample(varInfo).value
   end
