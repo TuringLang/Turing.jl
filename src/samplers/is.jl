@@ -40,18 +40,18 @@ function sample(model::Function, alg::IS)
 
   n = spl.alg.n_samples
   for i = 1:n
-    vi = model()
+    vi = model(vi=VarInfo(), sampler=spl)
     spl.samples[i] = Sample(vi)
   end
-  le = sum(map(x->x[:lp], spl.samples)) - log(n)
+  le = logsum(map(x->x[:lp], spl.samples)) - log(n)
   chn = Chain(exp(le), spl.samples)
   return chn
 end
 
-assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = begin
-  rand(d)
-end
+assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
 
-function observe(spl::ImportanceSampler{IS}, d::Distribution, value, vi::VarInfo)
+observe(spl::ImportanceSampler{IS}, d::Distribution, value, vi::VarInfo) = begin
   vi.logjoint   += logpdf(d, value)
 end
+
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::ImportanceSampler{IS}) = randr(vi, vn, dist)
