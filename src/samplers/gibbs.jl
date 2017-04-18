@@ -19,8 +19,8 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 
     for i in 1:n_samplers
       alg = gibbs.algs[i]
-      if isa(alg, HMC)
-        samplers[i] = HMCSampler{HMC}(HMC(alg, i))
+      if isa(alg, HMC) || isa(alg, HMCDA)
+        samplers[i] = HMCSampler{typeof(alg)}(typeof(alg)(alg, i))
       elseif isa(alg, PG)
         samplers[i] = ParticleSampler{PG}(PG(alg, i))
       else
@@ -64,16 +64,16 @@ function sample(model::Function, gibbs::Gibbs)
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
-      if isa(local_spl, Sampler{HMC})
+      if isa(local_spl, Sampler{HMC}) || isa(local_spl, Sampler{HMCDA})
 
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
-          old_vals = deepcopy(varInfo.vals)
+          old_vi = deepcopy(varInfo)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
           if ~is_accept
             # NOTE: this might cause problem if new variables is added to VarInfo,
             #    which will add new elements to vi.idcs etc.
-            varInfo.vals = old_vals
+            varInfo = old_vi
           end
         end
       elseif isa(local_spl, Sampler{PG})

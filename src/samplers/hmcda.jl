@@ -12,7 +12,7 @@ immutable HMCDA <: InferenceAlgorithm
     HMCDA(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, space)
   end
   HMCDA(alg::HMCDA, new_group_id::Int) =
-    HMCDA(alg.n_samples, alg.n_adapt, alg.lf_size, alg.lf_num, alg.space, new_group_id)
+    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_group_id)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
     new(n_samples, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 
