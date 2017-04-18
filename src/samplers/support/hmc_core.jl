@@ -5,6 +5,15 @@ function runmodel(model, vi, spl)
   model(vi=vi, sampler=spl) # run model\
 end
 
+function sample_momentum(vi::VarInfo, spl)
+  dprintln(2, "sampling momentum...")
+  p = Dict(uid(k) => randn(length(vi[k])) for k in keys(vi))
+  if ~isempty(spl.alg.space)
+    p = filter((k, p) -> getsym(vi, k) in spl.alg.space, p)
+  end
+  p
+end
+
 # Half momentum step
 function half_momentum_step(p, ϵ, val∇E)
   dprintln(3, "half_momentum_step...")

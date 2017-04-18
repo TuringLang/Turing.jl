@@ -39,15 +39,17 @@ immutable HMC <: InferenceAlgorithm
 end
 
 type HMCSampler{T} <: Sampler{T}
-  alg        ::T                          # the HMC algorithm info
-  samples    ::Array{Sample}              # samples
+  alg     ::  T                         # the HMC algorithm info
+  samples ::  Array{Sample}             # samples
+  info    ::  Dict{Symbol, Any}         # sampler infomation
   function HMCSampler(alg::T)
     samples = Array{Sample}(alg.n_samples)
     weight = 1 / alg.n_samples
     for i = 1:alg.n_samples
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
-    new(alg, samples)
+    info = Dict{Symbol, Any}()
+    new(alg, samples, info)
   end
 end
 
@@ -62,11 +64,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     # Set parameters
     ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
 
-    dprintln(2, "sampling momentum...")
-    p = Dict(uid(k) => randn(length(vi[k])) for k in keys(vi))
-    if ~isempty(spl.alg.space)
-      p = filter((k, p) -> getsym(vi, k) in spl.alg.space, p)
-    end
+    p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
     vi = link(vi, spl)
