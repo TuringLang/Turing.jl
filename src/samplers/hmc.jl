@@ -138,7 +138,7 @@ function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   Chain(0, spl.samples)    # wrap the result by Chain
 end
 
-function assume(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
@@ -147,7 +147,7 @@ function assume(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, dist::Distributi
 end
 
 # NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
-function observe(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, d::Distribution, value, vi::VarInfo)
+function observe{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     vi.logjoint += logpdf(d, Dual(value))
@@ -157,7 +157,7 @@ function observe(spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}, d::Distribution
   dprintln(2, "observe done")
 end
 
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Union{HMCSampler{HMC}, HMCSampler{HMCDA}}) = begin
+rand{T<:Union{HMC,HMCDA}}(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{T}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, dist, spl, false) :
     randr(vi, vn, dist)

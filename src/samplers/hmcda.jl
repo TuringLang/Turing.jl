@@ -11,6 +11,8 @@ immutable HMCDA <: InferenceAlgorithm
   HMCDA(alg::HMCDA, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
+function find_good_eps(vi::VarInfo)
+end
 
 function step(model, spl::Sampler{HMCDA}, varInfo::VarInfo, is_first::Bool)
   if is_first
