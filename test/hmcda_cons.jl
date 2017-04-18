@@ -1,6 +1,6 @@
 using Turing
 
-alg = HMCDA(1000, 0.65, 3)
+alg = HMCDA(1000, 0.65, 0.75)
 println(alg)
 sampler = HMCSampler{HMCDA}(alg)
 

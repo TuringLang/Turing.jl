@@ -50,9 +50,8 @@ end
 function sample(model::Function, gibbs::Gibbs)
   global sampler = GibbsSampler{Gibbs}(gibbs);
   spl = sampler
-  # initialization
-  task = current_task()
   n = spl.gibbs.n_iters
+  # initialization
   varInfo = model()
   ref_particle = nothing
 
