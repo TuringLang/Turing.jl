@@ -39,6 +39,7 @@ type VarInfo
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
   logjoint    ::    Real
+  logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
@@ -48,7 +49,7 @@ type VarInfo
     Vector{Distribution}(),
     Vector{Int}(),
     Vector{Bool}(),
-    0.0,
+    0.0,0.0,
     0,
     0
   )
