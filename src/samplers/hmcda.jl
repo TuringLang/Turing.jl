@@ -60,6 +60,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
+    realpart!(vi)
+
     true, vi
   else
     # Set parameters
