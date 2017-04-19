@@ -35,6 +35,19 @@ function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
   # println("[HMCDA] jointd: ", jointd)
   # println("[HMCDA] jointd_prime: ", jointd_prime)
 
+  # This trick prevents the log-joint or its graident from being infinte
+  # Ref: https://github.com/mfouesneau/NUTS/blob/master/nuts.py#L111
+  # QUES: will this lead to some bias of the sampler?
+  while isnan(jointd_prime)
+    ϵ *= 0.5
+    # println("[HMCDA] current ϵ: ", ϵ)
+    # println("[HMCDA] jointd_prime: ", jointd_prime)
+    # println("[HMCDA] vi_prime: ", vi_prime)
+    vi_prime, _, p_prime = leapfrog(deepcopy(vi), deepcopy(grad), deepcopy(p), ϵ, model, spl)
+    jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
+  end
+  ϵ_bar = ϵ
+  
   # Heuristically find optimal ϵ
   a = 2.0 * (jointd_prime / jointd > 0.5 ? 1 : 0) - 1
   while (jointd_prime / jointd)^a > 2.0^(-a)
@@ -46,7 +59,8 @@ function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
     jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
   end
 
-  ϵ
+  println("[HMCDA] found initial ϵ: ", ϵ)
+  ϵ_bar, ϵ
 end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
@@ -58,14 +72,14 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     # Heuristically find optimal ϵ
     # println("[HMCDA] finding for ϵ")
-    ϵ = find_good_eps(model, spl, vi)
-    dprintln(2, "[HMCDA] found initial ϵ:", ϵ)
+    ϵ_bar, ϵ = find_good_eps(model, spl, vi)
 
     vi = invlink(vi, spl)
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
-    spl.info[:ϵ_bar] = 1.0
+    # spl.info[:ϵ_bar] = 1.0
+    spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
