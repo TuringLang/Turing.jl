@@ -17,15 +17,13 @@ Example:
 # Define a model
 @model xxx begin
   ...
-  @predict mu sigma
+  return(mu,sigma)
 end
 
 # Run the inference engine
 chain = sample(xxx, SMC(1000))
 
 sample = chain[:mu][1]  # get the first sample
-sample.weight           # show the weight of this sample
-sample.value            # show the value of this sample (a dictionary)
 ```
 """
 type Sample
@@ -93,7 +91,7 @@ Example:
 # Define a model
 @model xxx begin
   ...
-  @predict mu sigma
+  return(mu,sigma)
 end
 
 # Run the inference engine
@@ -209,12 +207,3 @@ function Base.vcat(c1::Chain, args::Chain...)
   value2 = cat(1, c1.value2, map(c -> c.value2, args)...)
   Chain(0, value2)
 end
-
-## NOTE: depreciated functions
-# Base.push!(c::Chain, s::Sample) = push!(c.value2, s) #
-# compute mean(f(x).w), where (x, w) is a weighted sample
-# Base.mean(c::Chain, v::Symbol, f::Function) = mapreduce((s)->f(s[v]).*s.weight, +, c.value2)
-
-# tests
-# tr = Turing.sampler.particles[1]
-# tr = Chain(Turing.sampler.particles)
