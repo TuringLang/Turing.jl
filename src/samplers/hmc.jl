@@ -111,9 +111,8 @@ sample(model::Function, alg::HMC) = sample(model, alg, CHUNKSIZE)
 # now simplified: `sample` and `run` are merged into one function.
 function sample(model::Function, alg::HMC, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
-  global sampler = HMCSampler{HMC}(alg);
+  spl = HMCSampler{HMC}(alg);
 
-  spl = sampler
   # initialization
   n =  spl.alg.n_samples
   task = current_task()

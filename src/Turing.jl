@@ -7,7 +7,8 @@ using ProgressMeter
 abstract InferenceAlgorithm{P}
 abstract Sampler{T<:InferenceAlgorithm}
 
-# Code associated with running probabilistic programs as tasks. REVIEW: can we find a way to move this to where the other included files locate.
+# Code associated with running probabilistic programs as tasks.
+#  REVIEW: can we find a way to move this to where the other included files locate.
 include("core/varinfo.jl")
 include("trace/trace.jl")
 using Turing.Traces
@@ -35,9 +36,6 @@ export TArray, tzeros, localcopy, IArray
 export dprintln, set_verbosity
 
 # Global data structures
-const TURING = Dict{Symbol, Any}()
-global sampler = nothing
-global debug_level = 0
 global CHUNKSIZE = 50
 global VERBOSITY = 1
 set_verbosity(v::Int) = global VERBOSITY = v
@@ -50,7 +48,7 @@ doc"""
 
 Debugging print function: The first argument controls the verbosity of message, e.g. larger v leads to more verbose debugging messages.
 """
-dprintln(v, args...) = v < Turing.debug_level ? println(args...) : nothing
+dprintln(v, args...) = v < Turing.VERBOSITY ? println(args...) : nothing
 
 ##################
 # Inference code #

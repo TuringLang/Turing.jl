@@ -61,8 +61,7 @@ function step(model, spl::Sampler{PG}, vi, ref_particle)
 end
 
 sample(model, alg::PG) = begin
-  global sampler = ParticleSampler{PG}(alg);
-  spl = sampler
+  spl = ParticleSampler{PG}(alg);
   n = spl.alg.n_iterations
   samples = Vector{Sample}()
   logevidence = Vector{Float64}(n)

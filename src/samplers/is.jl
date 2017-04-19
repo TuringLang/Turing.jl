@@ -35,8 +35,7 @@ type ImportanceSampler{IS} <: Sampler{IS}
 end
 
 function sample(model::Function, alg::IS)
-  global sampler = ImportanceSampler{IS}(alg);
-  spl = sampler
+  spl = ImportanceSampler{IS}(alg);
 
   n = spl.alg.n_samples
   for i = 1:n
