@@ -48,8 +48,7 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 end
 
 function sample(model::Function, gibbs::Gibbs)
-  global sampler = GibbsSampler{Gibbs}(gibbs);
-  spl = sampler
+  spl = GibbsSampler{Gibbs}(gibbs);
   n = spl.gibbs.n_iters
   # initialization
   varInfo = model()
