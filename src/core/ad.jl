@@ -23,27 +23,25 @@ function gradient(vi::VarInfo, model::Function, spl=nothing)
   prior_dim = 0
 
   gkeys = keys(vi)
-  if spl != nothing   # Deal with Void sampler
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  if spl != nothing && !isempty(spl.alg.space)
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
   end
 
   for k in gkeys
-    if spl == nothing || isempty(spl.alg.space) || getsym(vi, k) in spl.alg.space
-      l = length(vi[k])
-      if prior_dim + l > CHUNKSIZE
-        # Store the old chunk
-        push!(prior_key_chunks, (key_chunk, prior_dim))
-        # Initialise new chunk
-        key_chunk = []
-        prior_dim = 0
-        # Update
-        push!(key_chunk, k)
-        prior_dim += l
-      else
-        # Update
-        push!(key_chunk, k)
-        prior_dim += l
-      end
+    l = length(vi[k])
+    if prior_dim + l > CHUNKSIZE
+      # Store the old chunk
+      push!(prior_key_chunks, (key_chunk, prior_dim))
+      # Initialise new chunk
+      key_chunk = []
+      prior_dim = 0
+      # Update
+      push!(key_chunk, k)
+      prior_dim += l
+    else
+      # Update
+      push!(key_chunk, k)
+      prior_dim += l
     end
   end
   if length(key_chunk) != 0

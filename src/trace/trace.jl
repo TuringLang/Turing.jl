@@ -101,7 +101,7 @@ function forkc(trace :: Trace)
   end
 
   n_rand = min(trace.vi.index, length(groupvals(trace.vi, gid, trace.spl)))
-  newtrace.vi = retain(deepcopy(trace.vi), gid, n_rand)
+  newtrace.vi = retain(deepcopy(trace.vi), gid, n_rand, trace.spl)
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -128,7 +128,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
     else
       gid = 0
     end
-    retain(newtrace.vi, gid, index)
+    retain(newtrace.vi, gid, index, trace.spl)
   end
 
   newtrace

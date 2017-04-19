@@ -29,6 +29,8 @@ include("support/resample.jl")
 @suppress_err begin
   include("support/transform.jl")
 end
+include("support/hmc_core.jl")
+include("hmcda.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")

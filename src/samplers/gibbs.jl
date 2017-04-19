@@ -19,8 +19,8 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 
     for i in 1:n_samplers
       alg = gibbs.algs[i]
-      if isa(alg, HMC)
-        samplers[i] = HMCSampler{HMC}(HMC(alg, i))
+      if isa(alg, HMC) || isa(alg, HMCDA)
+        samplers[i] = HMCSampler{typeof(alg)}(typeof(alg)(alg, i))
       elseif isa(alg, PG)
         samplers[i] = ParticleSampler{PG}(PG(alg, i))
       else
@@ -49,9 +49,8 @@ end
 
 function sample(model::Function, gibbs::Gibbs)
   spl = GibbsSampler{Gibbs}(gibbs);
-  # initialization
-  task = current_task()
   n = spl.gibbs.n_iters
+  # initialization
   varInfo = model()
   ref_particle = nothing
 
@@ -63,7 +62,7 @@ function sample(model::Function, gibbs::Gibbs)
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
-      if isa(local_spl, Sampler{HMC})
+      if isa(local_spl, Sampler{HMC}) || isa(local_spl, Sampler{HMCDA})
 
         for _ in local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
@@ -83,13 +82,14 @@ function sample(model::Function, gibbs::Gibbs)
           ref_particle.vi = varInfo
         end
         # Clean variables belonging to the current sampler
-        varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0)
+        varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0, local_spl)
         # Local samples
         for _ in local_spl.alg.n_iterations
           ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
         end
         varInfo = ref_particle.vi
       end
+
     end
     spl.samples[i].value = Sample(varInfo).value
   end

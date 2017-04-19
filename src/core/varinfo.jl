@@ -126,13 +126,13 @@ groupvals(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.vals[i], groupidcs(v
 # Get all uids of variables belonging to gid or 0
 groupuids(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
 
-retain(vi::VarInfo, gid::Int, n_retain) = begin
+retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
   # NOTE: the sanity check below is commented because Void
   #       and standalone samplers uses gid = 0
   # @assert ~(gid == 0) "[retain] wrong use of retain: gid = 0"
 
   # Get all indices of variables belonging to gid
-  gidcs = filter(i -> vi.gids[i] == gid, 1:length(vi.gids))
+  gidcs = groupidcs(vi, gid, spl)
   l = length(gidcs)
 
   # Remove corresponding entries
@@ -149,7 +149,6 @@ retain(vi::VarInfo, gid::Int, n_retain) = begin
   for i = 1:length(vi.uids)
     vi.idcs[vi.uids[i]] = i
   end
-
   vi
 end
 

@@ -63,9 +63,12 @@ Sample(vi::VarInfo) = begin
   Sample(weight, value)
 end
 
-function realpart!(vi::VarInfo)
+function cleandual!(vi::VarInfo)
   for uid in keys(vi)
-    vi[uid] = realpart(vi[uid])
+    val_vect = vi[uid]
+    for i = 1:length(val_vect)
+      val_vect[i] = realpart(val_vect[i])
+    end
   end
   vi.logjoint = realpart(vi.logjoint)
 end
@@ -73,8 +76,8 @@ end
 # X -> R for all variables associated with given sampler
 function link(vi, spl)
   gkeys = keys(vi)
-  if spl != nothing   # Deal with Void sampler
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  if spl != nothing && !isempty(spl.alg.space)
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
   end
   for k in gkeys
     dist = getdist(vi, k)
@@ -87,8 +90,8 @@ end
 # R -> X for all variables associated with given sampler
 function invlink(vi, spl)
   gkeys = keys(vi)
-  if spl != nothing   # Deal with Void sampler
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id, keys(vi))
+  if spl != nothing && !isempty(spl.alg.space)
+    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
   end
   for k in gkeys
     dist = getdist(vi, k)
