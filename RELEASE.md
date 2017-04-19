@@ -1,3 +1,8 @@
+# Release 0.2
+- Gibbs sampler ([#73])
+- HMC for constrained variables ([#66])
+- Bugfixes and general improvements (new compiler design ([#104]), `VarInfo` ([#96])) 
+
 # Release 0.1.0
 - Initial support for Hamiltonian Monte Carlo (no support for discrete/constrained variables)
 - Require Julia 0.5
