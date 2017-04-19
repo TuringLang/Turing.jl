@@ -12,3 +12,5 @@
 
 # Release 0.0.1-0.0.4
 The initial releases of Turing. 
+- Particle MCMC, SMC, IS
+- Implemented copying for Julia Task. 
