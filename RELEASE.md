@@ -1,7 +1,7 @@
 # Release 0.2
 - Gibbs sampler ([#73])
-- HMC for constrained variables ([#66])
-- Added support for `Mamba.Chain` ([#90])
+- HMC for constrained variables ([#66]; no support for varying dimensions)
+- Added support for `Mamba.Chain` ([#90]): describe, plot etc.
 - New interface degign ([#55]), ([#104])
 - Bugfixes and general improvements (e.g. `VarInfo` [#96]) 
 
