@@ -8,15 +8,15 @@ macro ~(left, right)
     # Call observe
     esc(
       quote
-        if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
-          vi = Turing.current_trace().vi
-        end
         Turing.observe(
           sampler,
           $(right),   # Distribution
           $(left),    # Data point
           vi
         )
+        if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+          vi = Turing.current_trace().vi
+        end
       end
     )
   else
@@ -30,9 +30,6 @@ macro ~(left, right)
       end
       esc(
         quote
-          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
-            vi = Turing.current_trace().vi
-          end
           # Call observe
           Turing.observe(
             sampler,
@@ -40,6 +37,9 @@ macro ~(left, right)
             $(left),    # Data point
             vi
           )
+          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+            vi = Turing.current_trace().vi
+          end
         end
       )
     else
@@ -56,9 +56,6 @@ macro ~(left, right)
         # Symbol
         assume_ex = quote
           csym_str = string(Turing._compiler_[:fname])*"_var"* string(@__LINE__)
-          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
-            vi = Turing.current_trace().vi
-          end
           sym = Symbol($(string(left)))
           vn = VarName(vi, Symbol(csym_str), sym, "")
           $(left) = Turing.assume(
@@ -80,9 +77,6 @@ macro ~(left, right)
           assume_ex.args,
           quote
             csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-            if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
-              vi = Turing.current_trace().vi
-            end
             vn = VarName(vi, Symbol(csym_str), sym, indexing)
             $(left) = Turing.assume(
               sampler,

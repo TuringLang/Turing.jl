@@ -102,10 +102,9 @@ sample(model::Function, alg::Union{HMC, HMCDA}) = sample(model, alg, CHUNKSIZE)
 # now simplified: `sample` and `run` are merged into one function.
 function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
-  global sampler = HMCSampler{typeof(alg)}(alg);
+  spl = HMCSampler{typeof(alg)}(alg);
   alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
 
-  spl = sampler
   # initialization
   n =  spl.alg.n_samples
   task = current_task()

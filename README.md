@@ -38,8 +38,6 @@ Turing is an officially registered Julia package, so the following should instal
 ```julia
 Pkg.update()
 Pkg.add("Turing")
-Pkg.build("Turing")
-Pkg.test("Turing")
 ```
 
 If you want to use the latest version of Turing with some experimental features, you can try the following instead:
