@@ -55,7 +55,6 @@ end
 
 function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
   if is_first
-    cleandual!(vi)
     true, vi
   else
     # Set parameters

@@ -55,15 +55,15 @@ s2 = vcat(s_bk...);
 # describe(s2)
 
 
-# qqplot(s[:m], s2[:m])
-# qqplot(s[:s], s2[:s])
+qqplot(s[:m], s2[:m])
+qqplot(s[:s], s2[:s])
 
 qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx
 y = qqm.qy
 slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
 
-print("  slope_s ≈ 1 (ϵ = 0.1)")
+print("  slopeₛ = $slope ≈ 1 (ϵ = 0.1)")
 ans1 = abs(slope - 1.0) <= 0.1
 if ans1
   print_with_color(:green, " ✓\n")

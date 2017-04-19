@@ -5,13 +5,16 @@ immutable HMCDA <: InferenceAlgorithm
   lambda    ::  Float64   # target leapfrog length
   space     ::  Set       # sampling space, emtpy means all
   group_id  ::  Int
+
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMCDA(n_samples::Int, delta::Float64, lambda::Float64, space...) = begin
+  HMCDA(n_samples::Int, delta::Float64, lambda::Float64) = begin
     n_adapt_default = Int(round(n_samples / 5))
     new(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
   end
   HMCDA(alg::HMCDA, new_group_id::Int) =
     new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_group_id)
+  HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
+    new(n_samples, n_adapt, delta, lambda, Set(), 0)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
     new(n_samples, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 
@@ -49,6 +52,8 @@ end
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
 
+    vi_0 = deepcopy(vi)
+
     vi = link(vi, spl)
 
     # Heuristically find optimal ϵ
@@ -64,9 +69,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
-    cleandual!(vi)
-
-    true, vi
+    true, vi_0
   else
     # Set parameters
     δ = spl.alg.delta
