@@ -13,7 +13,9 @@ function Base.run(spl :: Sampler{HMC})
 end
 ```
 """
-function gradient(vi::VarInfo, model::Function, spl=nothing)
+function gradient(_vi::VarInfo, model::Function, spl=nothing)
+
+  vi = deepcopy(_vi)
   # Initialisation
   val∇E = Dict{Tuple, Vector{Float64}}()
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
