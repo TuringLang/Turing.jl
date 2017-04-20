@@ -15,7 +15,8 @@ function sample_momentum(vi::VarInfo, spl)
 end
 
 # Half momentum step
-function half_momentum_step(p, ϵ, val∇E)
+function half_momentum_step(_p, ϵ, val∇E)
+  p = deepcopy(_p)
   dprintln(3, "half_momentum_step...")
   for k in keys(val∇E)
     p[k] -= ϵ * val∇E[k] / 2
@@ -24,27 +25,36 @@ function half_momentum_step(p, ϵ, val∇E)
 end
 
 # Leapfrog step
-function leapfrog(values, val∇E, p, ϵ, model, spl)
-  dprintln(3, "leapfrog...")
+function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
-  for k in keys(val∇E)                # full step for state
-    # NOTE: Vector{Dual} is necessary magic conversion
-    values[k] = Vector{Dual}(values[k] + ϵ * p[k])
+  vi = deepcopy(_vi)
+  p = deepcopy(_p)
+
+  dprintln(3, "first gradient...")
+  grad = gradient(vi, model, spl)
+
+  dprintln(2, "leapfrog stepping...")
+  for t in 1:τ  # do 'leapfrog' for each var
+    p = half_momentum_step(p, ϵ, grad) # half step for momentum
+    for k in keys(grad)                # full step for state
+      # NOTE: Vector{Dual} is necessary magic conversion
+      vi[k] = Vector{Dual}(vi[k] + ϵ * p[k])
+    end
+    grad = gradient(vi, model, spl)
+    p = half_momentum_step(p, ϵ, grad) # half step for momentum
   end
-  val∇E = gradient(values, model, spl)
-  p = half_momentum_step(p, ϵ, val∇E) # half step for momentum
 
   # Return updated θ and momentum
-  values, val∇E, p
+  vi, p
 end
 
 # Find logjoint
 # NOTE: it returns logjoint but not -logjoint
-function find_logjoint(model, values, spl)
-  values = runmodel(model, values, spl)
-  logjoint = values.logjoint        # get logjoint
-  values.logjoint = Dual(0)         # reset logjoint
+function find_logjoint(model, _vi, spl)
+  vi = deepcopy(_vi)
+  vi = runmodel(model, vi, spl)
+  logjoint = vi.logjoint        # get logjoint
+  vi.logjoint = Dual(0)         # reset logjoint
   logjoint
 end
 

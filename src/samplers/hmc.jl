@@ -68,13 +68,8 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
 
-    dprintln(3, "first gradient...")
-    grad = gradient(vi, model, spl)
-
     dprintln(2, "leapfrog stepping...")
-    for t in 1:τ  # do 'leapfrog' for each var
-      vi, grad, p = leapfrog(vi, grad, p, ϵ, model, spl)
-    end
+    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)

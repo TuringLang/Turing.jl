@@ -21,14 +21,13 @@ immutable HMCDA <: InferenceAlgorithm
 end
 
 function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
-  ϵ, p = 1.0, sample_momentum(deepcopy(vi), spl)                # set initial epsilon and momentums
-  jointd = exp(-find_H(deepcopy(p), model, deepcopy(vi), spl))  # calculate p(Θ, p) = exp(-H(Θ, p))
+  ϵ, p = 1.0, sample_momentum(vi, spl)                # set initial epsilon and momentums
+  jointd = exp(-find_H(p, model, vi, spl))  # calculate p(Θ, p) = exp(-H(Θ, p))
 
-  grad = gradient(deepcopy(vi), model, spl)                             # get inital gradient dictionary
   # println("[HMCDA] grad: ", grad)
   # println("[HMCDA] p: ", p)
   # println("[HMCDA] vi: ", vi)
-  vi_prime, _, p_prime = leapfrog(deepcopy(vi), deepcopy(grad), deepcopy(p), ϵ, model, spl) # make a leapfrog dictionary
+  vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl) # make a leapfrog dictionary
 
   jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))  # calculate new p(Θ, p)
 
@@ -43,11 +42,11 @@ function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
     # println("[HMCDA] current ϵ: ", ϵ)
     # println("[HMCDA] jointd_prime: ", jointd_prime)
     # println("[HMCDA] vi_prime: ", vi_prime)
-    vi_prime, _, p_prime = leapfrog(deepcopy(vi), deepcopy(grad), deepcopy(p), ϵ, model, spl)
+    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
     jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
   end
   ϵ_bar = ϵ
-  
+
   # Heuristically find optimal ϵ
   a = 2.0 * (jointd_prime / jointd > 0.5 ? 1 : 0) - 1
   while (jointd_prime / jointd)^a > 2.0^(-a)
@@ -55,7 +54,7 @@ function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
     # println("[HMCDA] jointd_prime: ", jointd_prime)
     # println("[HMCDA] vi_prime: ", vi_prime)
     ϵ = 2.0^a * ϵ
-    vi_prime, _, p_prime = leapfrog(deepcopy(vi), deepcopy(grad), deepcopy(p), ϵ, model, spl)
+    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
     jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
   end
 
@@ -103,14 +102,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
 
-    dprintln(3, "first gradient...")
-    grad = gradient(vi, model, spl)
-
     τ = max(1, round(λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    for t in 1:τ  # do 'leapfrog' for each var
-      vi, grad, p = leapfrog(vi, grad, p, ϵ, model, spl)
-    end
+    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
