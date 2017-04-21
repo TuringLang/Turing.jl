@@ -37,26 +37,27 @@ immutable PG <: InferenceAlgorithm
 end
 
 function step(model, spl::Sampler{PG}, vi, ref_particle)
-  spl.particles = ParticleContainer{TraceR}(model)
+  particles = ParticleContainer{TraceR}(model)
   if ref_particle == nothing
-    push!(spl.particles, spl.alg.n_particles, spl, vi)
+    push!(particles, spl.alg.n_particles, spl, vi)
   else
-    push!(spl.particles, spl.alg.n_particles-1, spl, vi)
-    push!(spl.particles, ref_particle)
+    push!(particles, spl.alg.n_particles-1, spl, vi)
+    push!(particles, ref_particle)
   end
 
-  while consume(spl.particles) != Val{:done}
-    ess = effectiveSampleSize(spl.particles)
-    if ess <= spl.alg.resampler_threshold * length(spl.particles)
-      resample!(spl.particles, spl.alg.resampler, ref_particle)
+  while consume(particles) != Val{:done}
+    ess = effectiveSampleSize(particles)
+    if ess <= spl.alg.resampler_threshold * length(particles)
+      resample!(particles, spl.alg.resampler, ref_particle)
     end
   end
 
   ## pick a particle to be retained.
-  Ws, _ = weights(spl.particles)
+  Ws, _ = weights(particles)
   indx = rand(Categorical(Ws))
-  ref_particle = fork2(spl.particles[indx])
-  s = getsample(spl.particles, indx)
+  ref_particle = fork2(particles[indx])
+  s = getsample(particles, indx)
+  push!(spl.info[:logevidence], particles.logE)
   ref_particle, s
 end
 
@@ -64,18 +65,16 @@ sample(model, alg::PG) = begin
   spl = ParticleSampler{PG}(alg);
   n = spl.alg.n_iterations
   samples = Vector{Sample}()
-  logevidence = Vector{Float64}(n)
 
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
   @showprogress 1 "[PG] Sampling..." for i = 1:n
     ref_particle, s = step(model, spl, VarInfo(), ref_particle)
-    logevidence[i] = spl.particles.logE
     push!(samples, Sample(1/n, s.value))
   end
 
-  chain = Chain(exp(mean(logevidence)), samples)
+  chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 
 assume(spl::ParticleSampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin

@@ -14,12 +14,12 @@ To include a new inference algorithm implement the requirements mentioned above 
 then include that file at the end of this one.
 """
 type ParticleSampler{T} <: Sampler{T}
-  alg         ::  T
-  particles   ::  ParticleContainer
+  alg   ::  T
+  info  ::  Dict{Symbol, Any}         # sampler infomation
   ParticleSampler(alg::T) = begin
-    s = new()
-    s.alg = alg
-    s
+    info = Dict{Symbol, Any}()
+    info[:logevidence] = []
+    new(alg, info)
   end
 end
 
