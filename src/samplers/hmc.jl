@@ -38,13 +38,9 @@ immutable HMC <: InferenceAlgorithm
   HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-type HMCSampler{T} <: Sampler{T}
-  alg     ::  T                         # the HMC algorithm info
-  info    ::  Dict{Symbol, Any}         # sampler infomation
-  function HMCSampler(alg::T)
-    info = Dict{Symbol, Any}()
-    new(alg, info)
-  end
+Sampler(alg::Union{HMC,HMCDA}) = begin
+  info = Dict{Symbol, Any}()
+  Sampler(alg, info)
 end
 
 function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
@@ -89,9 +85,9 @@ sample(model::Function, alg::Union{HMC, HMCDA}) = sample(model, alg, CHUNKSIZE)
 
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
-function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
+function sample{T<:Union{HMC, HMCDA}}(model::Function, alg::T, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
-  spl = HMCSampler{typeof(alg)}(alg);
+  spl = Sampler(alg);
   alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
 
 
@@ -127,7 +123,7 @@ function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   Chain(0, samples)    # wrap the result by Chain
 end
 
-function assume{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume{T<:Union{HMC,HMCDA}}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
@@ -136,7 +132,7 @@ function assume{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, dist::Distribution, vn:
 end
 
 # NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
-function observe{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, d::Distribution, value, vi::VarInfo)
+function observe{T<:Union{HMC,HMCDA}}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     vi.logjoint += logpdf(d, Dual(value))
@@ -146,7 +142,7 @@ function observe{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, d::Distribution, value
   dprintln(2, "observe done")
 end
 
-rand{T<:Union{HMC,HMCDA}}(vi::VarInfo, vn::VarName, dist::Distribution, spl::HMCSampler{T}) = begin
+rand{T<:Union{HMC,HMCDA}}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, dist, spl, false) :
     randr(vi, vn, dist)

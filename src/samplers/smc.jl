@@ -31,9 +31,14 @@ immutable SMC <: InferenceAlgorithm
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
 end
 
+Sampler(alg::SMC) = begin
+  info = Dict{Symbol, Any}()
+  Sampler(alg, info)
+end
+
 ## wrapper for smc: run the sampler, collect results.
-function sample(model, alg::SMC)
-  spl = ParticleSampler{SMC}(alg);
+function sample(model::Function, alg::SMC)
+  spl = Sampler(alg);
 
   TraceType = spl.alg.use_replay ? TraceR : TraceC
   particles = ParticleContainer{TraceType}(model)

@@ -36,6 +36,12 @@ immutable PG <: InferenceAlgorithm
   PG(alg::PG, new_group_id::Int) = new(alg.n_particles, alg.n_iterations, alg.resampler, alg.resampler_threshold, alg.space, new_group_id)
 end
 
+Sampler(alg::PG) = begin
+  info = Dict{Symbol, Any}()
+  info[:logevidence] = []
+  Sampler(alg, info)
+end
+
 function step(model, spl::Sampler{PG}, vi, ref_particle)
   particles = ParticleContainer{TraceR}(model)
   if ref_particle == nothing
@@ -61,8 +67,8 @@ function step(model, spl::Sampler{PG}, vi, ref_particle)
   ref_particle, s
 end
 
-sample(model, alg::PG) = begin
-  spl = ParticleSampler{PG}(alg);
+sample(model::Function, alg::PG) = begin
+  spl = Sampler(alg);
   n = spl.alg.n_iterations
   samples = Vector{Sample}()
 
@@ -77,11 +83,11 @@ sample(model, alg::PG) = begin
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 
-assume(spl::ParticleSampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Sampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
   rand(current_trace().vi, vn, d, spl)
 end
 
-rand(vi::VarInfo, vn::VarName, d::Distribution, spl::ParticleSampler{PG}) = begin
+rand(vi::VarInfo, vn::VarName, d::Distribution, spl::Sampler{PG}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, d, spl, true) :
     randr(vi, vn, d)

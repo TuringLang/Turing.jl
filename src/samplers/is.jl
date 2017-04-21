@@ -25,32 +25,29 @@ immutable IS <: InferenceAlgorithm
   IS(n) = new(n)
 end
 
-type ImportanceSampler{IS} <: Sampler{IS}
-  alg         ::  IS
-  samples     ::  Vector{Sample}
-  function ImportanceSampler(alg::IS)
-    samples = Array{Sample}(alg.n_samples)
-    new(alg, samples)
-  end
+Sampler(alg::IS) = begin
+  info = Dict{Symbol, Any}()
+  Sampler(alg, info)
 end
 
 function sample(model::Function, alg::IS)
-  spl = ImportanceSampler{IS}(alg);
+  spl = Sampler(alg);
+  samples = Array{Sample}(alg.n_samples)
 
   n = spl.alg.n_samples
   for i = 1:n
     vi = model(vi=VarInfo(), sampler=spl)
-    spl.samples[i] = Sample(vi)
+    samples[i] = Sample(vi)
   end
-  le = logsum(map(x->x[:lp], spl.samples)) - log(n)
-  chn = Chain(exp(le), spl.samples)
+  le = logsum(map(x->x[:lp], samples)) - log(n)
+  chn = Chain(exp(le), samples)
   return chn
 end
 
-assume(spl::ImportanceSampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
+assume(spl::Sampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
 
-observe(spl::ImportanceSampler{IS}, d::Distribution, value, vi::VarInfo) = begin
+observe(spl::Sampler{IS}, d::Distribution, value, vi::VarInfo) = begin
   vi.logjoint   += logpdf(d, value)
 end
 
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::ImportanceSampler{IS}) = randr(vi, vn, dist)
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{IS}) = randr(vi, vn, dist)

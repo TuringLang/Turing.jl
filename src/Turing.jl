@@ -5,7 +5,10 @@ using ForwardDiff: Dual, npartials  # for automatic differentiation
 using ProgressMeter
 
 abstract InferenceAlgorithm{P}
-abstract Sampler{T<:InferenceAlgorithm}
+type Sampler{T<:InferenceAlgorithm}
+  alg   ::  T
+  info  ::  Dict{Symbol, Any}         # sampler infomation
+end
 
 # Code associated with running probabilistic programs as tasks.
 #  REVIEW: can we find a way to move this to where the other included files locate.
@@ -22,7 +25,7 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, InferenceAlgorithm, HMC, HMCDA, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, ImportanceSampler, HMCSampler, setchunksize
+export @model, @~, InferenceAlgorithm, HMC, HMCDA, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
 export VarName, VarInfo, randr, randoc, retain, groupvals
 export Dual
 
