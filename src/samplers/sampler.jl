@@ -29,6 +29,11 @@ include("pgibbs.jl")
 include("gibbs.jl")
 
 ## Fallback functions
+
+# utility funcs for querying sampler information
+require_gradient(s :: Sampler) = false  
+require_particles(s :: Sampler) = false
+
 assume(spl, distr :: Distribution) = begin
   error("[assume]: unmanaged inference algorithm: $(typeof(spl))")
 end
