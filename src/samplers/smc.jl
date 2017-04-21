@@ -31,20 +31,25 @@ immutable SMC <: InferenceAlgorithm
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
 end
 
+Sampler(alg::SMC) = begin
+  info = Dict{Symbol, Any}()
+  Sampler(alg, info)
+end
+
 ## wrapper for smc: run the sampler, collect results.
-function sample(model, alg::SMC)
-  spl = ParticleSampler{SMC}(alg);
+function sample(model::Function, alg::SMC)
+  spl = Sampler(alg);
 
   TraceType = spl.alg.use_replay ? TraceR : TraceC
-  spl.particles = ParticleContainer{TraceType}(model)
-  push!(spl.particles, spl.alg.n_particles, spl, VarInfo())
+  particles = ParticleContainer{TraceType}(model)
+  push!(particles, spl.alg.n_particles, spl, VarInfo())
 
-  while consume(spl.particles) != Val{:done}
-    ess = effectiveSampleSize(spl.particles)
-    if ess <= spl.alg.resampler_threshold * length(spl.particles)
-      resample!(spl.particles,use_replay=spl.alg.use_replay)
+  while consume(particles) != Val{:done}
+    ess = effectiveSampleSize(particles)
+    if ess <= spl.alg.resampler_threshold * length(particles)
+      resample!(particles,use_replay=spl.alg.use_replay)
     end
   end
-  res = Chain(getsample(spl.particles)...)
+  res = Chain(getsample(particles)...)
 
 end

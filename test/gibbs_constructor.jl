@@ -1,5 +1,4 @@
 using Turing, Distributions
-using Turing: GibbsSampler
 using Base.Test
 
 @model gdemo() = begin
@@ -35,7 +34,7 @@ c4 = sample(gdemo(), s4)
 
 
 # Test group_id of each samplers
-g = GibbsSampler{Gibbs}(s3)
+g = Sampler(s3)
 
-@test g.samplers[1].alg.group_id == 1
-@test g.samplers[2].alg.group_id == 2
+@test g.info[:samplers][1].alg.group_id == 1
+@test g.info[:samplers][2].alg.group_id == 2
