@@ -34,5 +34,5 @@ check(chain) = begin
 end
 
 check(sample(gibbstest(x), Gibbs(2000, PG(30, 3, :s), HMC(2, 0.1, 7, :m))))
-
+check(sample(gibbstest(x), PG(30, 2000, :s)))
 # check(sample(gibbstest(x), PG(30, 2000)))
