@@ -1,9 +1,10 @@
 immutable Gibbs <: InferenceAlgorithm
-  n_iters   ::  Int
-  algs      ::  Tuple
+  n_iters   ::  Int     # number of Gibbs iterations
+  algs      ::  Tuple   # component sampling algorithms
+  thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
   group_id  ::  Int
-  Gibbs(n_iters::Int, algs...) = new(n_iters, algs, 0)
-  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, new_group_id)
+  Gibbs(n_iters::Int, algs...; thin=true) = new(n_iters, algs, thin, 0)
+  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, alg.thin, new_group_id)
 end
 
 type GibbsSampler{Gibbs} <: Sampler{Gibbs}
@@ -17,29 +18,39 @@ type GibbsSampler{Gibbs} <: Sampler{Gibbs}
 
     space = Set{Symbol}()
 
+    sub_sample_n = []   # record #samples for each sampler
     for i in 1:n_samplers
       alg = gibbs.algs[i]
       if isa(alg, HMC) || isa(alg, HMCDA)
         samplers[i] = HMCSampler{typeof(alg)}(typeof(alg)(alg, i))
+        push!(sub_sample_n, alg.n_samples)
       elseif isa(alg, PG)
         samplers[i] = ParticleSampler{PG}(PG(alg, i))
+        push!(sub_sample_n, alg.n_iterations)
       else
         error("[GibbsSampler] unsupport base sampling algorithm $alg")
       end
       space = union(space, alg.space)
     end
 
-
-
+    # Sanity check for space
     @assert issubset(Turing._compiler_[:pvars], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
     if Turing._compiler_[:pvars] != space
       warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
     end
 
-    samples = Array{Sample}(gibbs.n_iters)
-    weight = 1 / gibbs.n_iters
-    for i = 1:gibbs.n_iters
+    # Compute the number of samples to store
+    if gibbs.thin
+      sample_n = gibbs.n_iters
+    else
+      sample_n = gibbs.n_iters * sum(sub_sample_n)
+    end
+
+    # Initialize samples
+    samples = Array{Sample}(sample_n)
+    weight = 1 / sample_n
+    for i = 1:sample_n
       samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
 
@@ -53,6 +64,7 @@ function sample(model::Function, gibbs::Gibbs)
   # initialization
   varInfo = model()
   ref_particle = nothing
+  i_thin = 1
 
   # Gibbs steps
   @showprogress 1 "[Gibbs] Sampling..." for i = 1:n
@@ -64,7 +76,7 @@ function sample(model::Function, gibbs::Gibbs)
       # println(varInfo)
       if isa(local_spl, Sampler{HMC}) || isa(local_spl, Sampler{HMCDA})
 
-        for _ in local_spl.alg.n_samples
+        for _ = 1:local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
           old_vals = deepcopy(varInfo.vals)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
@@ -72,6 +84,10 @@ function sample(model::Function, gibbs::Gibbs)
             # NOTE: this might cause problem if new variables is added to VarInfo,
             #    which will add new elements to vi.idcs etc.
             varInfo.vals = old_vals
+          end
+          if ~spl.gibbs.thin
+            spl.samples[i_thin].value = Sample(varInfo).value
+            i_thin += 1
           end
         end
       elseif isa(local_spl, Sampler{PG})
@@ -84,14 +100,21 @@ function sample(model::Function, gibbs::Gibbs)
         # Clean variables belonging to the current sampler
         varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0, local_spl)
         # Local samples
-        for _ in local_spl.alg.n_iterations
+        for _ = 1:local_spl.alg.n_iterations
           ref_particle, samples = step(model, local_spl, varInfo, ref_particle)
+          if ~spl.gibbs.thin
+            spl.samples[i_thin].value = Sample(ref_particle.vi).value
+            i_thin += 1
+          end
         end
         varInfo = ref_particle.vi
       end
 
     end
-    spl.samples[i].value = Sample(varInfo).value
+    if spl.gibbs.thin
+      spl.samples[i].value = Sample(varInfo).value
+    end
+
   end
 
   Chain(0, spl.samples)    # wrap the result by Chain

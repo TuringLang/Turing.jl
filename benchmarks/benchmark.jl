@@ -5,13 +5,13 @@ using Stan
 # NOTE: put Stan models before Turing ones if you want to compare them in print_log
 CONFIG = Dict(
   "model-list" => [
+    "gdemo-geweke",
     "naive.bayes",
     #"normal-loc",
     "simple-normal-mixture",
     "simplegauss",
     "gauss",
     "bernoulli",
-    "gdemo-geweke",
     #"negative-binomial",
     "lda"
   ],
