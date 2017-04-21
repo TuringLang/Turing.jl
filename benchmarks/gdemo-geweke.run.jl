@@ -53,19 +53,15 @@ s2 = vcat(s_bk...);
 describe(s2)
 
 
-qqplot(s[:m], s2[:m])
-qqplot(s[:s], s2[:s])
+# qqplot(s[:m], s2[:m])
+# qqplot(s[:s], s2[:s])
+
+using UnicodePlots
 
 qqs = qqbuild(s[:s], s2[:s])
-println("QQ plot for s:")
-show(scatterplot(qqs.qx, qqs.qy))
-
-println("QQ plot for s (removing last 50 quantiles):")
-show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50]))
+show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s"))
+show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing last 50 quantiles)"))
 
 qqm = qqbuild(s[:m], s2[:m])
-println("QQ plot for m:")
-show(scatterplot(qqm.qx, qqm.qy))
-
-println("QQ plot for m (removing first and last 50 quantiles):")
-show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50]))
+show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
+show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
