@@ -40,16 +40,10 @@ end
 
 type HMCSampler{T} <: Sampler{T}
   alg     ::  T                         # the HMC algorithm info
-  samples ::  Array{Sample}             # samples
   info    ::  Dict{Symbol, Any}         # sampler infomation
   function HMCSampler(alg::T)
-    samples = Array{Sample}(alg.n_samples)
-    weight = 1 / alg.n_samples
-    for i = 1:alg.n_samples
-      samples[i] = Sample(weight, Dict{Symbol, Any}())
-    end
     info = Dict{Symbol, Any}()
-    new(alg, samples, info)
+    new(alg, info)
   end
 end
 
@@ -100,8 +94,15 @@ function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
   spl = HMCSampler{typeof(alg)}(alg);
   alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
 
+
+
   # initialization
   n =  spl.alg.n_samples
+  samples = Array{Sample}(n)
+  weight = 1 / n
+  for i = 1:n
+    samples[i] = Sample(weight, Dict{Symbol, Any}())
+  end
   task = current_task()
   accept_num = 0    # record the accept number
   varInfo = model()
@@ -113,17 +114,17 @@ function sample(model::Function, alg::Union{HMC, HMCDA}, chunk_size::Int)
     dprintln(2, "$alg_str stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
-      spl.samples[i].value = Sample(varInfo).value
+      samples[i].value = Sample(varInfo).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
       varInfo.vals = old_vals
-      spl.samples[i] = spl.samples[i - 1]
+      samples[i] = samples[i - 1]
     end
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
 
-  Chain(0, spl.samples)    # wrap the result by Chain
+  Chain(0, samples)    # wrap the result by Chain
 end
 
 function assume{T<:Union{HMC,HMCDA}}(spl::HMCSampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
