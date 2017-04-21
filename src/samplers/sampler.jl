@@ -50,11 +50,11 @@ observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
   vi.logjoint += lp
 end
 
-assume(spl :: Sampler, d :: Distribution, vn :: VarName, vi) = begin
+assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
   rand(current_trace(), vn, d)
 end
 
-observe(spl :: Sampler, d :: Distribution, value, vi) = begin
+observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
   lp          = logpdf(d, value)
   vi.logjoint += lp
   produce(lp)
