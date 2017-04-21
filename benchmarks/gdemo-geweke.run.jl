@@ -59,9 +59,9 @@ describe(s2)
 using UnicodePlots
 
 qqs = qqbuild(s[:s], s2[:s])
-show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s"))
-show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing last 50 quantiles)"))
+show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s", canvas = DotCanvas))
+show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing last 50 quantiles)", canvas = DotCanvas))
 
 qqm = qqbuild(s[:m], s2[:m])
-show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
-show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
+show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
+show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
