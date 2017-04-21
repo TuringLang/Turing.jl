@@ -111,17 +111,61 @@ function link(d::SimplexDistribution, x::Vector)
   push!(y, T(0))
 end
 
-function invlink(d::SimplexDistribution, y::Vector)
+function invlink(d::Dirichlet, y::Vector, logpdf=false)
   K = length(y)
   T = typeof(y[1])
-  z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
+  z = [loginvlogit(y[k] - log(K - k)) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
-    x[k] = (1 - sum(x[1:k-1])) * z[k]
+    x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
   end
-  x[K] = 1 - sum(x[1:K-1])
-  x
+  x[K] = log(-expm1(logsumexp(x[1:K-1])))
+  if logpdf
+    exp(x), logpdf(d, Nullable(x), true)
+  else
+    exp(x)
+  end
 end
+
+function logpdf(d::SimplexDistribution, x::Union{Vector,Nullable}, transform::Bool)
+  # if typeof(x) == Nullable{Vector}, then x is in log scale.
+  ## Step 0.
+  logx :: Vector = isa(x, Nullable)? get(x) : log(x)
+
+  ## Step 1: Compute logpdf(d, x)
+  # x is in the log scale
+  a = d.alpha
+  s = 0.
+  for i in 1:length(a)
+    # @inbounds s += (a[i] - 1.0) * log(x[i])
+    @inbounds s += (a[i] - 1.0) * logx[i]
+  end
+  lp = s - d.lmnB
+  ## Step 2: Compute the jocabian term if transform is true.
+  if transform
+    x = exp(logx)
+    K = length(x)
+    T = typeof(x[1])
+    logz = Vector{T}(K-1)
+    for k in 1:K-1
+      # z[k] = x[k] / (1 - sum(x[1:k-1]))
+      logz[k] = logx[k] - log(-expm1(logsumexp(logx[1:k-1])))
+    end
+    # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
+    lp += sum([logz[k] + log(-expm1(logz[k])) + log(-expm1(logsumexp(logx[1:k-1]))) for k in 1:K-1])
+  end
+  lp
+end
+
+# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1000., -1000., -1000.]), true)
+# NaN
+# julia> logpdf(Dirichlet([1., 1., 1.]), Nullable([-1000., -1000., -1000.]), true)
+# -1999.30685281944
+#
+# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1., -2., -3.]), true)
+# -3.006450206744678
+# julia> logpdf_logx(Dirichlet([1., 1., 1.]), Nullable([-1., -2., -3.]), true)
+# -3.006450206744678
 
 function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
   lp = logpdf(d, x)
