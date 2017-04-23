@@ -52,6 +52,9 @@ testcases = [
             "gibbs",
             "gibbs2",
             "gibbs_constructor",
+#       enuts.jl
+            "enuts_cons",
+            "enuts",
 #       hmcda.jl
           "hmcda_cons",
           "hmcda",

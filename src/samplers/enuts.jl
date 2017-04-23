@@ -41,7 +41,7 @@ function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
         end
       end
       n = n + n′
-      s = s′ & (dot(θp - θm, rm) >= 0) & (dot(θp - θm, rp) >= 0)
+      s = s′ & (direction(θm, θp, rm, model, spl) >= 0) & (direction(θm, θp, rp, model, spl) >= 0)
       j = j + 1
     end
 
