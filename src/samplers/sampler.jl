@@ -21,6 +21,7 @@ include("support/resample.jl")
   include("support/transform.jl")
 end
 include("support/hmc_core.jl")
+include("enuts.jl")
 include("hmcda.jl")
 include("hmc.jl")
 include("is.jl")
@@ -31,7 +32,7 @@ include("gibbs.jl")
 ## Fallback functions
 
 # utility funcs for querying sampler information
-require_gradient(s :: Sampler) = false  
+require_gradient(s :: Sampler) = false
 require_particles(s :: Sampler) = false
 
 assume(spl, distr :: Distribution) = begin
