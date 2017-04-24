@@ -81,7 +81,7 @@ function find_H(p, model, values, spl)
   H[1]  # Vector{Any, 1} -> Any
 end
 
-function find_good_eps(model::Function, spl::Sampler, vi::VarInfo)
+function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
   ϵ, p = 1.0, sample_momentum(vi, spl)                # set initial epsilon and momentums
   jointd = exp(-find_H(p, model, vi, spl))  # calculate p(Θ, p) = exp(-H(Θ, p))
 
@@ -119,6 +119,6 @@ function find_good_eps(model::Function, spl::Sampler, vi::VarInfo)
     jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
   end
 
-  println("[HMCDA] found initial ϵ: ", ϵ)
+  println("[$T] found initial ϵ: ", ϵ)
   ϵ_bar, ϵ
 end

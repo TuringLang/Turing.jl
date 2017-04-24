@@ -32,12 +32,12 @@ end
 
 fw = eNUTS(NSamples, 0.25)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = eNUTS(50, 0.25);
+bk = eNUTS(100, 0.25);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)
 
-N = div(NSamples, 50)
+N = div(NSamples, 100)
 
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)

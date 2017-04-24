@@ -90,9 +90,10 @@ sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   spl = Sampler(alg);
-  alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
-
-
+  alg_str = isa(alg, HMC)   ? "HMC"   :
+            isa(alg, HMCDA) ? "HMCDA" :
+            isa(alg, eNUTS) ? "eNUTS" :
+            isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # initialization
   n =  spl.alg.n_samples
