@@ -18,6 +18,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   vi = deepcopy(_vi)
   # Initialisation
   val∇E = Dict{Tuple, Vector{Float64}}()
+
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(4, "making chunks...")
   prior_key_chunks = []
@@ -49,6 +50,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   if length(key_chunk) != 0
     push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
   end
+
   # chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
@@ -70,12 +72,13 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
         for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-          val_vect[i] = reals[i]
+          val_vect[i] = Dual{prior_dim, Float64}(reals[i])
         end
       end
     end
     # Run the model
     dprintln(4, "run model...")
+    vi.logjoint = Dual{prior_dim, Float64}(0)
     vi = runmodel(model, vi, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
@@ -94,7 +97,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
       val∇E[k] = g
     end
     # Reset logjoint
-    vi.logjoint = Dual(0)
+    vi.logjoint = Dual{prior_dim, Float64}(0)
   end
   # Return
   return val∇E
