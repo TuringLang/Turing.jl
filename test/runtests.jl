@@ -49,12 +49,13 @@ testcases = [
             "resample",
             "particlecontainer",
 #       gibbs.jl
-            "gibbs",
-            "gibbs2",
-            "gibbs_constructor",
+          "gibbs",
+          "gibbs2",
+          "gibbs_constructor",
 #       enuts.jl
-            "enuts_cons",
-            "enuts",
+          "enuts_cons",
+          "enuts",
+          "enuts_geweke",
 #       hmcda.jl
           "hmcda_cons",
           "hmcda",
