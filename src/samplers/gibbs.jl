@@ -15,7 +15,7 @@ function Sampler(alg::Gibbs)
 
   for i in 1:n_samplers
     sub_alg = alg.algs[i]
-    if isa(sub_alg, HMC) || isa(sub_alg, HMCDA)
+    if isa(sub_alg, Hamiltonian)
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
     elseif isa(sub_alg, PG)
       samplers[i] = Sampler(PG(sub_alg, i))
@@ -46,7 +46,7 @@ function sample(model::Function, alg::Gibbs)
   sub_sample_n = []   # record #samples for each sampler
   for i in 1:length(alg.algs)
     sub_alg = alg.algs[i]
-    if isa(sub_alg, HMC) || isa(sub_alg, HMCDA)
+    if isa(sub_alg, Hamiltonian)
       push!(sub_sample_n, sub_alg.n_samples)
     elseif isa(sub_alg, PG)
       push!(sub_sample_n, sub_alg.n_iterations)
