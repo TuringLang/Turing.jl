@@ -30,7 +30,7 @@ end
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
-fw = eNUTS(NSamples, 0.25)
+fw = IS(NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
 bk = eNUTS(50, 0.25);
 
@@ -62,11 +62,11 @@ s2 = vcat(s_bk...);
 
 qqm = qqbuild(s[:m], s2[:m])
 
-using UnicodePlots
-
-qqm = qqbuild(s[:m], s2[:m])
-show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
-show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
+# using UnicodePlots
+#
+# qqm = qqbuild(s[:m], s2[:m])
+# show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
+# show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
 
 X = qqm.qx
 y = qqm.qy
