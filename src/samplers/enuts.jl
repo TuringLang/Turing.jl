@@ -4,6 +4,7 @@ immutable eNUTS <: InferenceAlgorithm
   space     ::  Set       # sampling space, emtpy means all
   group_id  ::  Int
 
+  eNUTS(step_size::Float64) = new(1, step_size, Set(), 0)
   eNUTS(n_samples::Int, step_size::Float64) = new(n_samples, step_size, Set(), 0)
   eNUTS(n_samples::Int, step_size::Float64, space...) = new(n_samples, step_size, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   eNUTS(alg::eNUTS, new_group_id::Int) = new(alg.n_samples, alg.step_size, alg.space, new_group_id)

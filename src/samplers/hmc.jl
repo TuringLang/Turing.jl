@@ -38,7 +38,9 @@ immutable HMC <: InferenceAlgorithm
   HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-Sampler(alg::Union{HMC,HMCDA,eNUTS}) = begin
+typealias Hamiltonian Union{HMC,HMCDA,eNUTS}
+
+Sampler(alg::Hamiltonian) = begin
   info = Dict{Symbol, Any}()
   Sampler(alg, info)
 end
@@ -81,11 +83,11 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
   end
 end
 
-sample(model::Function, alg::Union{HMC,HMCDA,eNUTS}) = sample(model, alg, CHUNKSIZE)
+sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
-function sample{T<:Union{HMC,HMCDA,eNUTS}}(model::Function, alg::T, chunk_size::Int)
+function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   global CHUNKSIZE = chunk_size;
   spl = Sampler(alg);
   alg_str = isa(alg, HMC) ? "HMC" : "HMCDA"
@@ -123,7 +125,7 @@ function sample{T<:Union{HMC,HMCDA,eNUTS}}(model::Function, alg::T, chunk_size::
   Chain(0, samples)    # wrap the result by Chain
 end
 
-function assume{T<:Union{HMC,HMCDA,eNUTS}}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
@@ -132,7 +134,7 @@ function assume{T<:Union{HMC,HMCDA,eNUTS}}(spl::Sampler{T}, dist::Distribution, 
 end
 
 # NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
-function observe{T<:Union{HMC,HMCDA,eNUTS}}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
+function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
     vi.logjoint += logpdf(d, Dual(value))
@@ -142,7 +144,7 @@ function observe{T<:Union{HMC,HMCDA,eNUTS}}(spl::Sampler{T}, d::Distribution, va
   dprintln(2, "observe done")
 end
 
-rand{T<:Union{HMC,HMCDA,eNUTS}}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
+rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, dist, spl, false) :
     randr(vi, vn, dist)
