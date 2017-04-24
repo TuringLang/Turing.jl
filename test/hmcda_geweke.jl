@@ -14,23 +14,25 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 NSamples = 5000
 
 @model gdemo_fw() = begin
-  s ~ InverseGamma(2,3)
+  # s ~ InverseGamma(2,3)
+  s = 1
   m ~ Normal(0,sqrt(s))
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
-  s ~ InverseGamma(2,3)
+  # s ~ InverseGamma(2,3)
+  s = 1
   m ~ Normal(0,sqrt(s))
   x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
   # Backward Step 2: x ~ x | theta
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
-fw = HMCDA(NSamples, 0.9, 0.1)
+fw = PG(50, NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = HMCDA(50, 0.9, 0.1);
+bk = HMCDA(50, 0.65, 0.2);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)
@@ -43,11 +45,9 @@ s_bk = Array{Turing.Chain}(N)
 set_verbosity(0)
 i = 1
 while i <= N
-  try
-    s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][:y][end]...];
-    i += 1
-  end
+  s_bk[i] = sample(gdemo_bk(x), bk);
+  x = [s_bk[i][:y][end]...];
+  i += 1
 end
 set_verbosity(1)
 
@@ -75,4 +75,4 @@ else
   print_with_color(:red, "    slope = $slope, diff = $(slope - 1.0)\n")
 end
 
-qqs = qqbuild(s[:s], s2[:s])
+# qqs = qqbuild(s[:s], s2[:s])

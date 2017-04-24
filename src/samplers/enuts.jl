@@ -36,18 +36,18 @@ function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
       end
       if s′ == 1
         if rand() < min(1, n′ / n)
-          vi_new = θ′
+          vi_new = deepcopy(θ′)
         end
       end
       n = n + n′
-      s = s′ & (direction(θm, θp, rm, model, spl) >= 0) & (direction(θm, θp, rp, model, spl) >= 0)
+      s = s′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
       j = j + 1
     end
 
     dprintln(3, "R -> X...")
-    vi = invlink(vi, spl)
+    vi_new = invlink(vi_new, spl)
 
-    cleandual!(vi)
+    cleandual!(vi_new)
 
     true, vi_new
   end
@@ -65,9 +65,9 @@ function build_tree(θ, r, u, v, j, ϵ, model, spl)
   if j == 0
     # Base case - take one leapfrog step in the direction v.
     θ′, r′ = leapfrog(θ, r, 1, v * ϵ, model, spl)
-    n′ = u <= exp(-find_H(r′, model, θ′, spl))
-    s′ = u < exp(Δ_max - find_H(r′, model, θ′, spl))
-    return θ′, r′, θ′, r′, θ′, n′, s′
+    n′ = u <= exp(-find_H(r′, model, θ′, spl)) ? 1 : 0
+    s′ = u < exp(Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
+    return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′
   else
     # Recursion - build the left and right subtrees.
     θm, rm, θp, rp, θ′, n′, s′ = build_tree(θ, r, u, v, j - 1, ϵ, model, spl)
@@ -78,9 +78,9 @@ function build_tree(θ, r, u, v, j, ϵ, model, spl)
         _, _, θp, rp, θ′′, n′′, s′′ = build_tree(θp, rp, u, v, j - 1, ϵ, model, spl)
       end
       if rand() < n′′ / (n′ + n′′)
-        θ′ = θ′′
+        θ′ = deepcopy(θ′′)
       end
-      s′ = s′′ & (direction(θm, θp, rm, model, spl) >= 0) & (direction(θm, θp, rp, model, spl) >= 0)
+      s′ = s′′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
       n′ = n′ + n′′
     end
     return θm, rm, θp, rp, θ′, n′, s′

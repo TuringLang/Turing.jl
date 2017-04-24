@@ -13,7 +13,8 @@ end
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model, vi, spl)
+function runmodel(model, _vi, spl)
+  vi = deepcopy(_vi)
   vi.index = 0
   model(vi=vi, sampler=spl) # run model\
 end
@@ -66,9 +67,7 @@ end
 function find_logjoint(model, _vi, spl)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
-  logjoint = vi.logjoint        # get logjoint
-  vi.logjoint = Dual(0)         # reset logjoint
-  logjoint
+  vi.logjoint        # get logjoint
 end
 
 # Compute Hamiltonian

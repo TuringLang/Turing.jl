@@ -5,7 +5,7 @@ immutable NUTS <: InferenceAlgorithm
   space     ::  Set       # sampling space, emtpy means all
   group_id  ::  Int
 
-  NUTS(n_adapt::Int, delta::Float64) = new(1, n_adapt, delta, Set(), 0)
+  NUTS(n_adapt::Int, delta::Float64, space...) = new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
   NUTS(n_samples::Int, n_adapt::Int, delta::Float64, space...) = new(n_samples, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_samples::Int, delta::Float64) = begin
     n_adapt_default = Int(round(n_samples / 5))

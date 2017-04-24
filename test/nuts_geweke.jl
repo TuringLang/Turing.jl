@@ -30,7 +30,7 @@ end
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
-fw = IS(NSamples)
+fw = PG(50, NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
 bk = NUTS(1000, 0.65);
 
