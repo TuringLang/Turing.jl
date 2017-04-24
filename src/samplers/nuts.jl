@@ -37,7 +37,6 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   else
     # Set parameters
     δ = spl.alg.delta
-    λ = spl.alg.lambda
     ϵ = spl.info[:ϵ]
 
     dprintln(2, "current ϵ: $ϵ")
@@ -54,6 +53,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     u = rand() * exp(-find_H(p, model, vi, spl))
 
     θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
+    local α, n_α
     while s == 1
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
@@ -77,8 +77,6 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     cleandual!(vi)
 
-    α = min(1, exp(-ΔH))  # MH accept rate
-
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m <= spl.alg.n_adapt
@@ -95,7 +93,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-function build_tree(θ, r, u, v, j, ϵ, θ0, r0)
+function build_tree(θ, r, u, v, j, ϵ, θ0, r0, model, spl)
     doc"""
       - θ   : model parameter
       - r   : momentum variable
@@ -114,12 +112,12 @@ function build_tree(θ, r, u, v, j, ϵ, θ0, r0)
       return θ′, r′, θ′, r′, θ′, n′, s′, min(1, exp(-find_H(r′, model, θ′, spl) - (-find_H(r0, model, θ0, spl)))), 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, u, v, j - 1, ϵ, θ0, r0)
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, u, v, j - 1, ϵ, θ0, r0, model, spl)
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, u, v, j - 1, ϵ, θ0, r0)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, u, v, j - 1, ϵ, θ0, r0, model, spl)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, u, v, j - 1, ϵ, θ0, r0)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, u, v, j - 1, ϵ, θ0, r0, model, spl)
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
