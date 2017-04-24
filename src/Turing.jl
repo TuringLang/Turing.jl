@@ -1,5 +1,6 @@
 module Turing
 
+using StatsFuns
 using Distributions
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 using ProgressMeter

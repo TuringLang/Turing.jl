@@ -180,7 +180,6 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
     r = rand(dist)
     # Always store vector inside VarInfo
     addvar!(vi, vn, vectorize(dist, r), dist, gid)
-    r
   else
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]
@@ -190,12 +189,21 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
     if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
       setgid!(vi, gid, vn)
     end
-    if istransformed(vi, vn)
-      invlink(dist, reconstruct(dist, vi[vn]))
+    if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
+      if isa(dist, SimplexDistribution)
+        logr = invlink(dist, reconstruct(dist, vi[vn]), true) #  logr = log(r)
+        vi.logjoint += logpdf(dist, logr, true, true) # logr preserves precision of r
+        r = exp(logr)
+      else
+        r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
+        vi.logjoint += logpdf(dist, r, true) # logr preserves precision of r
+      end
     else
-      reconstruct(dist, vi[vn])
+      r = reconstruct(dist, vi[vn])
+      vi.logjoint += logpdf(dist, r, false)
     end
   end
+  r
 end
 
 # Simple `randr` for simulating from the prior
@@ -212,11 +220,12 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
       @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
                     \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
     end
-    _ = reconstruct(dist, vi[vn])
-    if istransformed(vi, vn)
-      r = invlink(dist, _)
+    if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
+      r, logr = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
+      vi.logjoint += logpdf(dist, logr, true, true) # logr preserves precision of r
     else
-      r = _
+      r = reconstruct(dist, vi[vn])
+      vi.logjoint += logpdf(dist, r, false)
     end
   end
   r

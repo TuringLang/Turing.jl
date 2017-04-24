@@ -127,7 +127,8 @@ function assume{T<:Union{HMC,HMCDA}}(spl::Sampler{T}, dist::Distribution, vn::Va
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
-  vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+  # The following code has been merged into rand.
+  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 

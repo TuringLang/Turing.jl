@@ -40,7 +40,8 @@ end
 ## Default definitions for assume, observe, when sampler = nothing.
 assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
   r = rand(vi, vn, dist)
-  vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+  # The following code has been merged into rand.
+  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 

@@ -1,6 +1,34 @@
 import Distributions.logpdf
 
-# NOTE: Codes below are adapted from https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
+#=
+  NOTE: Codes below are adapted from
+  https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
+
+  The Mamba.jl package is licensed under the MIT License:
+
+  > Copyright (c) 2014: Brian J Smith and other contributors:
+  >
+  > https://github.com/brian-j-smith/Mamba.jl/contributors
+  >
+  > Permission is hereby granted, free of charge, to any person obtaining
+  > a copy of this software and associated documentation files (the
+  > "Software"), to deal in the Software without restriction, including
+  > without limitation the rights to use, copy, modify, merge, publish,
+  > distribute, sublicense, and/or sell copies of the Software, and to
+  > permit persons to whom the Software is furnished to do so, subject to
+  > the following conditions:
+  >
+  > The above copyright notice and this permission notice shall be
+  > included in all copies or substantial portions of the Software.
+  >
+  > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  > EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  > IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  > CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+=#
 
 #################### TransformDistribution ####################
 
@@ -26,6 +54,8 @@ function invlink(d::TransformDistribution, x::Real)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
     (b - a) * invlogit(x) + a
+    #_ = log(b - a) + loginvlogit(x)
+    #logsumexp(_, exp(a))
   elseif lowerbounded
     exp(x) + a
   elseif upperbounded
@@ -111,7 +141,7 @@ function link(d::SimplexDistribution, x::Vector)
   push!(y, T(0))
 end
 
-function invlink(d::Dirichlet, y::Vector, logpdf=false)
+function invlink(d::Dirichlet, y::Vector, is_logx=false)
   K = length(y)
   T = typeof(y[1])
   z = [loginvlogit(y[k] - log(K - k)) for k in 1:K-1]
@@ -120,17 +150,26 @@ function invlink(d::Dirichlet, y::Vector, logpdf=false)
     x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
   end
   x[K] = log(-expm1(logsumexp(x[1:K-1])))
-  if logpdf
-    exp(x), logpdf(d, Nullable(x), true)
-  else
-    exp(x)
-  end
+  is_logx ? x : exp(x)
 end
 
-function logpdf(d::SimplexDistribution, x::Union{Vector,Nullable}, transform::Bool)
-  # if typeof(x) == Nullable{Vector}, then x is in log scale.
-  ## Step 0.
-  logx :: Vector = isa(x, Nullable)? get(x) : log(x)
+# function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
+#   lp = logpdf(d, x)
+#   if transform
+#     K = length(x)
+#     T = typeof(x[1])
+#     z = Vector{T}(K-1)
+#     for k in 1:K-1
+#       z[k] = x[k] / (1 - sum(x[1:k-1]))
+#     end
+#     lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
+#   end
+#   lp
+# end
+
+function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
+  # NOTE: logx = log(x)
+  logx :: Vector = is_logx ? x : log(x)
 
   ## Step 1: Compute logpdf(d, x)
   # x is in the log scale
@@ -153,30 +192,6 @@ function logpdf(d::SimplexDistribution, x::Union{Vector,Nullable}, transform::Bo
     end
     # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
     lp += sum([logz[k] + log(-expm1(logz[k])) + log(-expm1(logsumexp(logx[1:k-1]))) for k in 1:K-1])
-  end
-  lp
-end
-
-# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1000., -1000., -1000.]), true)
-# NaN
-# julia> logpdf(Dirichlet([1., 1., 1.]), Nullable([-1000., -1000., -1000.]), true)
-# -1999.30685281944
-#
-# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1., -2., -3.]), true)
-# -3.006450206744678
-# julia> logpdf_logx(Dirichlet([1., 1., 1.]), Nullable([-1., -2., -3.]), true)
-# -3.006450206744678
-
-function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
-  lp = logpdf(d, x)
-  if transform
-    K = length(x)
-    T = typeof(x[1])
-    z = Vector{T}(K-1)
-    for k in 1:K-1
-      z[k] = x[k] / (1 - sum(x[1:k-1]))
-    end
-    lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
   end
   lp
 end
@@ -227,6 +242,4 @@ link(d::Distribution, x) = x
 
 invlink(d::Distribution, x) = x
 
-function logpdf(d::Distribution, x, transform::Bool)
-  logpdf(d, x)
-end
+logpdf(d::Distribution, x, transform::Bool) = logpdf(d, x)

@@ -29,6 +29,10 @@ invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
 
 logit(x) = log(x ./ (1.0 - x))
 
+# Numerically stable version of log invlogit
+#  See e.g. https://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/
+loginvlogit(x) = -logsumexp([0, -x])
+
 function randcat(p::Vector{Float64}) # More stable, faster version of rand(Categorical)
   # if(any(p .< 0)) error("Negative probabilities not allowed"); end
   r, s = rand(), 1.0
