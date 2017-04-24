@@ -8,6 +8,8 @@ realpart(d::Array) = map(x -> realpart(x), d)
 dualpart(d::Dual)  = d.partials.values
 dualpart(d::Array) = map(x -> x.partials.values, d)
 
+Base.promote_rule(D1::Type{Float64}, D2::Type{Dual}) = D2
+
 #####################################################
 # Helper functions for vectorize/reconstruct values #
 #####################################################

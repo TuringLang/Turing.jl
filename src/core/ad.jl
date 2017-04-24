@@ -51,17 +51,6 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
   end
 
-  # Set variables which not associated for the sampler with the correct partials
-  for k in keys(vi)
-    if ~(k in gkeys)
-      reals = realpart(vi[k])
-      val_vect = vi[k]
-      for i = 1:length(val_vect)
-        val_vect[i] = Dual{prior_dim, Float64}(reals[i])
-      end
-    end
-  end
-
   # chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
