@@ -221,8 +221,9 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
                     \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
     end
     if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
-      r, logr = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
+      logr = invlink(dist, reconstruct(dist, vi[vn]), true) #  logr = log(r)
       vi.logjoint += logpdf(dist, logr, true, true) # logr preserves precision of r
+      r = exp(logr)
     else
       r = reconstruct(dist, vi[vn])
       vi.logjoint += logpdf(dist, r, false)

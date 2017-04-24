@@ -54,12 +54,13 @@ function invlink(d::TransformDistribution, x::Real)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
     (b - a) * invlogit(x) + a
-    #_ = log(b - a) + loginvlogit(x)
-    #logsumexp(_, exp(a))
+    #_ = logsumexp(log(b - a) + loginvlogit(x), log(a))
   elseif lowerbounded
     exp(x) + a
+    # _ = logsumexp(x, log(a))
   elseif upperbounded
-    b - exp(x)
+    b - exp(x) # b(1-exp(x)/b)
+    # _ = log(b) + log1mexp(x-log(b)) #??
   else
     x
   end
@@ -141,15 +142,18 @@ function link(d::SimplexDistribution, x::Vector)
   push!(y, T(0))
 end
 
-function invlink(d::Dirichlet, y::Vector, is_logx=false)
+function Turing.invlink(d::Turing.SimplexDistribution, y::Vector, is_logx=false)
   K = length(y)
   T = typeof(y[1])
-  z = [loginvlogit(y[k] - log(K - k)) for k in 1:K-1]
+  z = [Turing.loginvlogit(y[k] - log(K - k)) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
-    x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
+    # x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
+    x[k] = log1mexp(logsumexp(x[1:k-1])) + z[k]
+    # x[k] = logsumexp(0, logsumexp(-x[1:k-1])) + z[k]
   end
-  x[K] = log(-expm1(logsumexp(x[1:K-1])))
+  x[K] = log1mexp(logsumexp(x[1:K-1]))
+  #x[K] = logsumexp([0, -x[1:K-1]...])
   is_logx ? x : exp(x)
 end
 
@@ -191,7 +195,7 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, is_logx=fals
       logz[k] = logx[k] - log(-expm1(logsumexp(logx[1:k-1])))
     end
     # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-    lp += sum([logz[k] + log(-expm1(logz[k])) + log(-expm1(logsumexp(logx[1:k-1]))) for k in 1:K-1])
+    lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
   end
   lp
 end
