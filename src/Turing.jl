@@ -25,7 +25,7 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, InferenceAlgorithm, HMC, HMCDA, eNUTS, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
+export @model, @~, InferenceAlgorithm, HMC, HMCDA, eNUTS, NUTS, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
 export VarName, VarInfo, randr, randoc, retain, groupvals
 export Dual
 

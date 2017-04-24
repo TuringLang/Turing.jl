@@ -10,8 +10,6 @@ immutable eNUTS <: InferenceAlgorithm
   eNUTS(alg::eNUTS, new_group_id::Int) = new(alg.n_samples, alg.step_size, alg.space, new_group_id)
 end
 
-global Δ_max = 1000
-
 function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
   if is_first
     true, vi
@@ -87,15 +85,4 @@ function build_tree(θ, r, u, v, j, ϵ, model, spl)
     end
     return θm, rm, θp, rp, θ′, n′, s′
   end
-end
-
-doc"""
-Calculate dot(θp - θm, r)
-"""
-function direction(θm, θp, r, model, spl)
-  s = 0
-  for k in keys(r)
-    s += dot(θp[k] - θm[k], r[k])
-  end
-  s
 end

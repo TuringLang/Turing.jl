@@ -23,6 +23,7 @@ end
 include("support/hmc_core.jl")
 include("enuts.jl")
 include("hmcda.jl")
+include("nuts.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")
