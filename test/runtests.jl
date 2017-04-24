@@ -54,8 +54,8 @@ testcases = [
           "gibbs_constructor",
 #       nuts.jl
           "nuts_cons",
-          # "nuts",
-          # "nuts_geweke",
+          "nuts",
+          "nuts_geweke",
 #       enuts.jl
           "enuts_cons",
           "enuts",
