@@ -11,7 +11,7 @@ dualpart(d::Array) = map(x -> x.partials.values, d)
 # (HG): Why do we need this function?
 # (Kai): The promotion below is used when HMC only samples for part of the space. In this case other variables are initialised with Dual(value)
 # @suppress_err begin
-  Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
+  # Base.promote_rule{N1,N2,A<:Real,B<:Real}(D1::Type{Dual{N1,A}}, D2::Type{Dual{N2,B}}) = Dual{max(N1, N2), promote_type(A, B)}
 # end
 
 # Base.promote_rule(D1::Type{Float64}, D2::Type{Dual}) = D2

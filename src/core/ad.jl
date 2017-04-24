@@ -50,6 +50,18 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   if length(key_chunk) != 0
     push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
   end
+
+  # Set variables which not associated for the sampler with the correct partials
+  for k in keys(vi)
+    if ~(k in gkeys)
+      reals = realpart(vi[k])
+      val_vect = vi[k]
+      for i = 1:length(val_vect)
+        val_vect[i] = Dual{prior_dim, Float64}(reals[i])
+      end
+    end
+  end
+
   # chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
@@ -71,7 +83,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
         for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-          val_vect[i] = reals[i]
+          val_vect[i] = Dual{prior_dim, Float64}(reals[i])
         end
       end
     end
