@@ -18,6 +18,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   vi = deepcopy(_vi)
   # Initialisation
   val∇E = Dict{Tuple, Vector{Float64}}()
+
   # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
   dprintln(4, "making chunks...")
   prior_key_chunks = []
@@ -76,6 +77,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
+    vi.logjoint = Dual{prior_dim, Float64}(0)
     vi = runmodel(model, vi, spl)
     # Collect gradient
     dprintln(4, "collect dual...")
@@ -94,7 +96,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
       val∇E[k] = g
     end
     # Reset logjoint
-    vi.logjoint = Dual(0)
+    vi.logjoint = Dual{prior_dim, Float64}(0)
   end
   # Return
   return val∇E
