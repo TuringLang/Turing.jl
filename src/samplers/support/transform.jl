@@ -132,11 +132,6 @@ end
 typealias SimplexDistribution Union{Dirichlet}
 
 function link(d::SimplexDistribution, x::Vector)
-  try @assert abs(sum(exp(x)) - 1) < 1e4
-  catch e
-    println(realpart(x))
-    throw(e)
-  end
   K = length(x)
   T = typeof(x[1])
   z = Vector{T}(K-1)
@@ -146,44 +141,33 @@ function link(d::SimplexDistribution, x::Vector)
   end
   y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
   push!(y, T(0))
+  if any(isnan(y)) || any(isinf(y)) || ~isprobvec(x)
+    println("link: d=$d")
+    println("x=$(realpart(x))")
+    println("y=$(realpart(y))")
+  end
+  y
 end
 
-function Turing.invlink(d::Turing.SimplexDistribution, y::Vector, is_logx=false)
+function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
   K = length(y)
   T = typeof(y[1])
   # z = exp([loginvlogit(y[k] - log(K - k)) for k in 1:K-1])
   z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
-    # x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
-    # try x[k] = log1mexp(logsumexp(x[1:k-1])) + z[k]
     #  0 <= exp(logsumexp(x[1:k-1])) <= 1
-    try x[k] = (1-sum(x[1:k-1]))*exp(z[k])
-    catch e
-      println("y=$(realpart(y))")
-      println("x=$(realpart(x))")
-      println("k=$k")
-      println("d=$d")
-      throw(e)
-    end
-    # x[k] = logsumexp(0, logsumexp(-x[1:k-1])) + z[k]
-  end
-  # try x[K] = log1mexp(logsumexp(x[1:K-1]))
-  try x[K] = 1 - sum(x[1:K-1])
-  catch e
-    println("y=$(realpart(y))")
-    println("x=$(realpart(x))")
-    throw(e)
+    x[k] = (1-sum(x[1:k-1]))*z[k]
   end
   #x[K] = logsumexp([0, -x[1:K-1]...])
-  try @assert isprobvec(x)
-  catch e
-    println("y=$(realpart(y))")
+  x[K] = 1 - sum(x[1:K-1])
+  if any(isnan(x)) || any(isinf(x)) || ~isprobvec(x)
+    println("link: d=$d")
     println("x=$(realpart(x))")
-    throw(e)
+    println("y=$(realpart(y))")
   end
   # is_logx ? x : exp(x)
-  is_logx ? log(x) : x
+  x
 end
 
 function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
