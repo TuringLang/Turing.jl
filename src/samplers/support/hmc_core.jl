@@ -19,6 +19,9 @@ function half_momentum_step(_p, ϵ, val∇E)
   p = deepcopy(_p)
   dprintln(3, "half_momentum_step...")
   for k in keys(val∇E)
+    if any(isnan(val∇E[k])) || any(isinf(val∇E[k]))
+      warn("[Turing]: val∇E = $(val∇E)")
+    end
     p[k] -= ϵ * val∇E[k] / 2
   end
   p
