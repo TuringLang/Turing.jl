@@ -11,7 +11,7 @@ Gadfly.plot(qq::QQPair, elements::ElementOrFunction...) = Gadfly.plot(x=qq.qx, y
 qqplot(x, y, elements::ElementOrFunction...) = Gadfly.plot(qqbuild(x, y), elements...)
 qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Theoretical Normal quantiles"), Guide.ylabel("Observed quantiles"), elements...)
 
-NSamples = 2000
+NSamples = 5000
 
 @model gdemo_fw() = begin
   # s ~ InverseGamma(2,3)
@@ -32,12 +32,13 @@ end
 
 fw = IS(NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = eNUTS(100, 0.2);
+bk_sample_n = 20
+bk = eNUTS(bk_sample_n, 0.2);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)
 
-N = div(NSamples, 100)
+N = div(NSamples, bk_sample_n)
 
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)
@@ -45,11 +46,9 @@ s_bk = Array{Turing.Chain}(N)
 set_verbosity(0)
 i = 1
 while i <= N
-  try
-    s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][:y][end]...];
-    i += 1
-  end
+  s_bk[i] = sample(gdemo_bk(x), bk);
+  x = [s_bk[i][:y][end]...];
+  i += 1
 end
 set_verbosity(1)
 
