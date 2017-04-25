@@ -51,8 +51,10 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   for t in 1:τ  # do 'leapfrog' for each var
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
     for k in keys(grad)                # full step for state
-      # NOTE: Vector{Dual} is necessary magic conversion
-      vi[k] = Vector{Dual}(vi[k] + ϵ * p[k])
+      val_vec = vi[k]
+      for i = 1:length(val_vec)
+        val_vec[i] = val_vec[i] + ϵ * p[k][i]
+      end
     end
     grad = gradient(vi, model, spl)
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
