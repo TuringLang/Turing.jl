@@ -176,12 +176,17 @@ end
 
 function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
   _,idx = findmax(x)
+  flag = false
   for i=1:length(x)
     if x[i]-0.0 < ϵ
       x[i]   += ϵ # Add ϵ for numerical stability when (1., 0. ...)
       x[idx] -= ϵ
-      warn("Turing: mis-formed simplex distribution.")
+      flag = true
     end
+  end
+  if flag
+    warn("Turing: mis-formed simplex distribution.")
+    println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
   end
   lp = logpdf(d, x)
   if transform
