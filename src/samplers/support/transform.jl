@@ -147,8 +147,8 @@ function link(d::SimplexDistribution, x::Vector, ϵ=1e-150)
   y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
   push!(y, T(0))
   if any(isnan(y)) || any(isinf(y)) || ~isprobvec(x)
-    println("link: d=$d")
-    println("x=$(realpart(x))")
+    println("[Turing]: link(d=$d,")
+    println("\t x=$(realpart(x)))")
     println("y=$(realpart(y))")
   end
   y
@@ -167,9 +167,9 @@ function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
   #x[K] = logsumexp([0, -x[1:K-1]...])
   x[K] = 1 - sum(x[1:K-1])
   if any(isnan(x)) || any(isinf(x)) || ~isprobvec(x)
-    println("link: d=$d")
+    println("[Turing]: invlink(d=$d, ")
+    println("\t y=$(realpart(y)))")
     println("x=$(realpart(x))")
-    println("y=$(realpart(y))")
   end
   # is_logx ? x : exp(x)
   x
