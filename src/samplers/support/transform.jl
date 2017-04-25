@@ -176,61 +176,62 @@ function Turing.invlink(d::Turing.SimplexDistribution, y::Vector, is_logx=false)
   #x[K] = logsumexp([0, -x[1:K-1]...])
   try @assert isprobvec(x)
   catch e
-    println(realpart(x))
+    println("y=$(realpart(y))")
+    println("x=$(realpart(x))")
     throw(e)
   end
   # is_logx ? x : exp(x)
   is_logx ? log(x) : x
 end
 
-# function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
-#   lp = logpdf(d, x)
-#   if transform
-#     K = length(x)
-#     T = typeof(x[1])
-#     z = Vector{T}(K-1)
-#     for k in 1:K-1
-#       z[k] = x[k] / (1 - sum(x[1:k-1]))
-#     end
-#     lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-#   end
-#   lp
-# end
-
-function Turing.logpdf(d::Turing.SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
-  # NOTE: logx = log(x)
-  logx :: Vector = is_logx ? x : log(x)
-
-  ## Step 1: Compute logpdf(d, x)
-  # x is in the log scale
-  a = d.alpha
-  s = 0.
-  for i in 1:length(a)
-    # @inbounds s += (a[i] - 1.0) * log(x[i])
-    @inbounds s += (a[i] - 1.0) * logx[i]
-  end
-  lp = s - d.lmnB
-  ## Step 2: Compute the jocabian term if transform is true.
+function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
+  lp = logpdf(d, x)
   if transform
-    x = exp(logx)
     K = length(x)
     T = typeof(x[1])
-    logz = Vector{T}(K-1)
+    z = Vector{T}(K-1)
     for k in 1:K-1
-      # z[k] = x[k] / (1 - sum(x[1:k-1]))
-      logz[k] = logx[k] - log1mexp(logsumexp(logx[1:k-1]))
+      z[k] = x[k] / (1 - sum(x[1:k-1]))
     end
-    # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-    # lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
-    for k in 1:K-1
-      lp += logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1]))
-      if lp == -Inf
-        println(lp, k, log1mexp(logz[k]), log1mexp(logsumexp(logx[1:k-1])))
-      end
-    end
+    lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
   end
   lp
 end
+
+# function Turing.logpdf(d::Turing.SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
+#   # NOTE: logx = log(x)
+#   logx :: Vector = is_logx ? x : log(x)
+#
+#   ## Step 1: Compute logpdf(d, x)
+#   # x is in the log scale
+#   a = d.alpha
+#   s = 0.
+#   for i in 1:length(a)
+#     # @inbounds s += (a[i] - 1.0) * log(x[i])
+#     @inbounds s += (a[i] - 1.0) * logx[i]
+#   end
+#   lp = s - d.lmnB
+#   ## Step 2: Compute the jocabian term if transform is true.
+#   if transform
+#     x = exp(logx)
+#     K = length(x)
+#     T = typeof(x[1])
+#     logz = Vector{T}(K-1)
+#     for k in 1:K-1
+#       # z[k] = x[k] / (1 - sum(x[1:k-1]))
+#       logz[k] = logx[k] - log1mexp(logsumexp(logx[1:k-1]))
+#     end
+#     # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
+#     # lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
+#     for k in 1:K-1
+#       lp += logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1]))
+#       if lp == -Inf
+#         println(lp, k, log1mexp(logz[k]), log1mexp(logsumexp(logx[1:k-1])))
+#       end
+#     end
+#   end
+#   lp
+# end
 
 ############### PDMatDistribution ##############
 
