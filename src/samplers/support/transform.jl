@@ -149,6 +149,7 @@ function link(d::SimplexDistribution, x::Vector, ϵ=1e-150)
   if any(isnan(y)) || any(isinf(y)) || ~isprobvec(x)
     println("[Turing]: link(d=$d, x=$(realpart(x)))")
     println("y=$(realpart(y))")
+    error("NaN or Inf")
   end
   y
 end
@@ -167,12 +168,21 @@ function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
   x[K] = 1 - sum(x[1:K-1])
   if any(isnan(x)) || any(isinf(x)) || ~isprobvec(x)
     println("[Turing]: invlink(d=$d, y=$(realpart(y)))")
-    println("x=$(realpart(x))")
+    println("[Turing]: x=$(realpart(x))")
+    error("NaN or Inf")
   end
   x
 end
 
-function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
+function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
+  _,idx = findmax(x)
+  for i=1:length(x)
+    if x[i]-0.0 < ϵ
+      x[i]   += ϵ # Add ϵ for numerical stability when (1., 0. ...)
+      x[idx] -= ϵ
+      warn("Turing: mis-formed simplex distribution.")
+    end
+  end
   lp = logpdf(d, x)
   if transform
     K = length(x)
@@ -186,7 +196,8 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
   if isnan(lp) || isinf(lp)
     println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
     println("[Turing]: lp=$lp")
-    isa(lp, Dual) && println("Dual: x=$(x)")
+    isa(lp, Dual) && println("[Turing]: (Dual) x=$(x)")
+    error("NaN or Inf")
   end
   lp
 end
