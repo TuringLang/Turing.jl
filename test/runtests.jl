@@ -55,15 +55,15 @@ testcases = [
 #       nuts.jl
           "nuts_cons",
           "nuts",
-          "nuts_geweke",
+          # "nuts_geweke",
 #       enuts.jl
           "enuts_cons",
           "enuts",
-          "enuts_geweke",
+          # "enuts_geweke",
 #       hmcda.jl
           "hmcda_cons",
           "hmcda",
-          "hmcda_geweke",
+          # "hmcda_geweke",
 #       hmc.jl
           "multivariate_support",
           "matrix_support",
