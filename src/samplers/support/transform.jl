@@ -132,6 +132,11 @@ end
 typealias SimplexDistribution Union{Dirichlet}
 
 function link(d::SimplexDistribution, x::Vector)
+  try @assert abs(sum(exp(x)) - 1) < 1e4
+  catch e
+    println(realpart(x))
+    throw(e)
+  end
   K = length(x)
   T = typeof(x[1])
   z = Vector{T}(K-1)
@@ -149,12 +154,33 @@ function Turing.invlink(d::Turing.SimplexDistribution, y::Vector, is_logx=false)
   x = Vector{T}(K)
   for k in 1:K-1
     # x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
-    x[k] = log1mexp(logsumexp(x[1:k-1])) + z[k]
+    # try x[k] = log1mexp(logsumexp(x[1:k-1])) + z[k]
+    #  0 <= exp(logsumexp(x[1:k-1])) <= 1
+    try x[k] = (1-sum(x[1:k-1]))*exp(z[k])
+    catch e
+      println("y=$(realpart(y))")
+      println("x=$(realpart(x))")
+      println("k=$k")
+      println("d=$d")
+      throw(e)
+    end
     # x[k] = logsumexp(0, logsumexp(-x[1:k-1])) + z[k]
   end
-  x[K] = log1mexp(logsumexp(x[1:K-1]))
+  # try x[K] = log1mexp(logsumexp(x[1:K-1]))
+  try x[K] = 1 - sum(x[1:K-1])
+  catch e
+    println("y=$(realpart(y))")
+    println("x=$(realpart(x))")
+    throw(e)
+  end
   #x[K] = logsumexp([0, -x[1:K-1]...])
-  is_logx ? x : exp(x)
+  try @assert isprobvec(x)
+  catch e
+    println(realpart(x))
+    throw(e)
+  end
+  # is_logx ? x : exp(x)
+  is_logx ? log(x) : x
 end
 
 # function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
@@ -171,7 +197,7 @@ end
 #   lp
 # end
 
-function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
+function Turing.logpdf(d::Turing.SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
   # NOTE: logx = log(x)
   logx :: Vector = is_logx ? x : log(x)
 
@@ -192,10 +218,16 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, is_logx=fals
     logz = Vector{T}(K-1)
     for k in 1:K-1
       # z[k] = x[k] / (1 - sum(x[1:k-1]))
-      logz[k] = logx[k] - log(-expm1(logsumexp(logx[1:k-1])))
+      logz[k] = logx[k] - log1mexp(logsumexp(logx[1:k-1]))
     end
     # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-    lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
+    # lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
+    for k in 1:K-1
+      lp += logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1]))
+      if lp == -Inf
+        println(lp, k, log1mexp(logz[k]), log1mexp(logsumexp(logx[1:k-1])))
+      end
+    end
   end
   lp
 end
