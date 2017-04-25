@@ -141,7 +141,8 @@ function link(d::SimplexDistribution, x::Vector)
   T = typeof(x[1])
   z = Vector{T}(K-1)
   for k in 1:K-1
-    z[k] = x[k] / (1 - sum(x[1:k-1]))
+    # z[k] = x[k] / (1 - sum(x[1:k-1]))
+    z[k] = x[k] / (1 - sum(x[1:k-1]) + 1e-80) # Add small value for numerical stability.
   end
   y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
   push!(y, T(0))
