@@ -150,7 +150,8 @@ end
 function Turing.invlink(d::Turing.SimplexDistribution, y::Vector, is_logx=false)
   K = length(y)
   T = typeof(y[1])
-  z = [Turing.loginvlogit(y[k] - log(K - k)) for k in 1:K-1]
+  # z = exp([loginvlogit(y[k] - log(K - k)) for k in 1:K-1])
+  z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
     # x[k] = log(-expm1(logsumexp(x[1:k-1]))) + z[k]
