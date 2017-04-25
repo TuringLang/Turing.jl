@@ -79,7 +79,7 @@ function sample(model::Function, alg::Gibbs)
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
-      if isa(local_spl, Sampler{HMC}) || isa(local_spl, Sampler{HMCDA})
+      if isa(local_spl.alg, Hamiltonian)
 
         for _ = 1:local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
@@ -95,7 +95,7 @@ function sample(model::Function, alg::Gibbs)
             i_thin += 1
           end
         end
-      elseif isa(local_spl, Sampler{PG})
+      elseif isa(local_spl.alg, PG)
         # Update new VarInfo to the reference particle
         varInfo.index = 0
         varInfo.num_produce = 0
@@ -113,6 +113,8 @@ function sample(model::Function, alg::Gibbs)
           end
         end
         varInfo = ref_particle.vi
+      else
+        error("[GibbsSampler] unsupport base sampler $local_spl")
       end
 
     end
