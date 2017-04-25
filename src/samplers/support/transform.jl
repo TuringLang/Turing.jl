@@ -175,19 +175,19 @@ function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
 end
 
 function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
-  _,idx = findmax(x)
-  flag = false
-  for i=1:length(x)
-    if x[i]-0.0 < ϵ
-      x[i]   += ϵ # Add ϵ for numerical stability when (1., 0. ...)
-      x[idx] -= ϵ
-      flag = true
-    end
-  end
-  if flag
-    warn("Turing: mis-formed simplex distribution.")
-    println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
-  end
+  # _,idx = findmax(x)
+  # flag = false
+  # for i=1:length(x)
+  #   if x[i]-0.0 < ϵ
+  #     x[i]   += ϵ # Add ϵ for numerical stability when (1., 0. ...)
+  #     x[idx] -= ϵ
+  #     flag = true
+  #   end
+  # end
+  # if flag
+  #   warn("Turing: mis-formed simplex distribution.")
+  #   println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
+  # end
   # for i=1:length(x)  # NOTE: requires reject.
   #   if x[i]-0.0 < ϵ
   #     warn("Turing: mis-formed simplex distribution:" *
@@ -195,7 +195,10 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
   #     return eltype(x)(-Inf)
   #   end
   # end
-  lp = logpdf(d, x)
+  lp = logpdf(d, x); lp1 = lp;
+  if isinf(lp) || isnan(lp)
+    return eltype(x)(-Inf)
+  end
   if transform
     K = length(x)
     T = typeof(x[1])
@@ -207,7 +210,8 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
   end
   if isnan(lp) || isinf(lp)
     println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
-    println("[Turing]: lp=$lp")
+    println("[Turing]: (before jocabian) lp=$lp1")
+    println("[Turing]: (after jocabian)  lp=$lp")
     isa(lp, Dual) && println("[Turing]: (Dual) x=$(x)")
     error("NaN or Inf")
   end

@@ -104,7 +104,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     τ = max(1, round(λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
+    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
@@ -132,7 +132,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α      # accepted
+    if reject
+      false, vi
+    elseif rand() < α      # accepted
       true, vi
     else                                # rejected
       false, vi

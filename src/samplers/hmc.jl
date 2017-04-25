@@ -59,7 +59,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     oldH = find_H(p, model, vi, spl)
 
     dprintln(2, "leapfrog stepping...")
-    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
+    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
@@ -73,7 +73,9 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     cleandual!(vi)
 
     dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)      # accepted
+    if reject
+      false, vi
+    elseif ΔH < 0 || rand() < exp(-ΔH)      # accepted
       true, vi
     else                                # rejected
       false, vi

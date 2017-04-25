@@ -1,3 +1,6 @@
+using Turing, Distributions, Stan
+
+include("benchmarkhelper.jl")
 include("naive.bayes-stan.data.jl")
 include("naive.bayes.model.jl")
 
