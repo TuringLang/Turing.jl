@@ -27,8 +27,15 @@ end
 
 invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
 
-# logit(x) = log(x ./ (1.0 - x))
-logit(x) = log(x + 1e-80 ./ (1.0 - x + 1e-80)) # Add a small value for numerical stability.
+logit2(x) = log(x ./ (1.0 - x))
+logit(x, ϵ=1e-150) = begin
+  logx   = log(x)
+  log1mx = log(1.0-x)
+  # Add a small value for numerical stability.
+  isinf(logx)  &&  (logx = log(x+ϵ)) # x = 0
+  isinf(log1mx) && (log1mx = log(1-x+ϵ)) # x=1
+  logx - log1mx
+end
 
 # Numerically stable version of log invlogit
 #  See e.g. https://lingpipe-blog.com/2012/02/16/howprevent-overflow-underflow-logistic-regression/

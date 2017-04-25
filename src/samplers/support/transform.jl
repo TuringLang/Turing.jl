@@ -131,13 +131,18 @@ end
 
 typealias SimplexDistribution Union{Dirichlet}
 
-function link(d::SimplexDistribution, x::Vector)
+function link(d::SimplexDistribution, x::Vector, ϵ=1e-150)
   K = length(x)
   T = typeof(x[1])
   z = Vector{T}(K-1)
   for k in 1:K-1
     # z[k] = x[k] / (1 - sum(x[1:k-1]))
-    z[k] = x[k] / (1 - sum(x[1:k-1]) + 1e-80) # Add small value for numerical stability.
+    s = 1 - sum(x[1:k-1])
+    if s==0.
+      z[k] = x[k] / (s + ϵ) # Add small value for numerical stability.
+    else
+      z[k] = x[k] / s
+    end
   end
   y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
   push!(y, T(0))
