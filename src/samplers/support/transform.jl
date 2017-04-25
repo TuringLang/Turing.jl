@@ -162,7 +162,7 @@ function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
   x = Vector{T}(K)
   for k in 1:K-1
     #  0 <= exp(logsumexp(x[1:k-1])) <= 1
-    x[k] = (1-sum(x[1:k-1])) * z[k]
+    x[k] = (1 - sum(x[1:k-1])) * z[k]
   end
   # x[K] = logsumexp([0, -x[1:K-1]...])
   x[K] = 1 - sum(x[1:K-1])
@@ -188,6 +188,13 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
     warn("Turing: mis-formed simplex distribution.")
     println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
   end
+  # for i=1:length(x)  # NOTE: requires reject.
+  #   if x[i]-0.0 < ϵ
+  #     warn("Turing: mis-formed simplex distribution:" *
+  #               "logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
+  #     return eltype(x)(-Inf)
+  #   end
+  # end
   lp = logpdf(d, x)
   if transform
     K = length(x)
@@ -206,41 +213,6 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
   end
   lp
 end
-
-# function Turing.logpdf(d::Turing.SimplexDistribution, x::Vector, transform::Bool, is_logx=false)
-#   # NOTE: logx = log(x)
-#   logx :: Vector = is_logx ? x : log(x)
-#
-#   ## Step 1: Compute logpdf(d, x)
-#   # x is in the log scale
-#   a = d.alpha
-#   s = 0.
-#   for i in 1:length(a)
-#     # @inbounds s += (a[i] - 1.0) * log(x[i])
-#     @inbounds s += (a[i] - 1.0) * logx[i]
-#   end
-#   lp = s - d.lmnB
-#   ## Step 2: Compute the jocabian term if transform is true.
-#   if transform
-#     x = exp(logx)
-#     K = length(x)
-#     T = typeof(x[1])
-#     logz = Vector{T}(K-1)
-#     for k in 1:K-1
-#       # z[k] = x[k] / (1 - sum(x[1:k-1]))
-#       logz[k] = logx[k] - log1mexp(logsumexp(logx[1:k-1]))
-#     end
-#     # lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
-#     # lp += sum([logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1])) for k in 1:K-1])
-#     for k in 1:K-1
-#       lp += logz[k] + log1mexp(logz[k]) + log1mexp(logsumexp(logx[1:k-1]))
-#       if lp == -Inf
-#         println(lp, k, log1mexp(logz[k]), log1mexp(logsumexp(logx[1:k-1])))
-#       end
-#     end
-#   end
-#   lp
-# end
 
 ############### PDMatDistribution ##############
 
