@@ -20,51 +20,8 @@ immutable HMCDA <: InferenceAlgorithm
 
 end
 
-function find_good_eps(model::Function, spl::Sampler{HMCDA}, vi::VarInfo)
-  ϵ, p = 1.0, sample_momentum(vi, spl)                # set initial epsilon and momentums
-  jointd = exp(-find_H(p, model, vi, spl))  # calculate p(Θ, p) = exp(-H(Θ, p))
-
-  # println("[HMCDA] grad: ", grad)
-  # println("[HMCDA] p: ", p)
-  # println("[HMCDA] vi: ", vi)
-  vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl) # make a leapfrog dictionary
-
-  jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))  # calculate new p(Θ, p)
-
-  # println("[HMCDA] jointd: ", jointd)
-  # println("[HMCDA] jointd_prime: ", jointd_prime)
-
-  # This trick prevents the log-joint or its graident from being infinte
-  # Ref: https://github.com/mfouesneau/NUTS/blob/master/nuts.py#L111
-  # QUES: will this lead to some bias of the sampler?
-  while isnan(jointd_prime)
-    ϵ *= 0.5
-    # println("[HMCDA] current ϵ: ", ϵ)
-    # println("[HMCDA] jointd_prime: ", jointd_prime)
-    # println("[HMCDA] vi_prime: ", vi_prime)
-    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
-    jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
-  end
-  ϵ_bar = ϵ
-
-  # Heuristically find optimal ϵ
-  a = 2.0 * (jointd_prime / jointd > 0.5 ? 1 : 0) - 1
-  while (jointd_prime / jointd)^a > 2.0^(-a)
-    # println("[HMCDA] current ϵ: ", ϵ)
-    # println("[HMCDA] jointd_prime: ", jointd_prime)
-    # println("[HMCDA] vi_prime: ", vi_prime)
-    ϵ = 2.0^a * ϵ
-    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
-    jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
-  end
-
-  println("[HMCDA] found initial ϵ: ", ϵ)
-  ϵ_bar, ϵ
-end
-
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
-
     vi_0 = deepcopy(vi)
 
     vi = link(vi, spl)

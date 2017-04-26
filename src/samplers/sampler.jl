@@ -21,7 +21,9 @@ include("support/resample.jl")
   include("support/transform.jl")
 end
 include("support/hmc_core.jl")
+include("enuts.jl")
 include("hmcda.jl")
+include("nuts.jl")
 include("hmc.jl")
 include("is.jl")
 include("smc.jl")
@@ -29,6 +31,11 @@ include("pgibbs.jl")
 include("gibbs.jl")
 
 ## Fallback functions
+
+# utility funcs for querying sampler information
+require_gradient(s :: Sampler) = false
+require_particles(s :: Sampler) = false
+
 assume(spl, distr :: Distribution) = begin
   error("[assume]: unmanaged inference algorithm: $(typeof(spl))")
 end
@@ -51,11 +58,11 @@ observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
   vi.logjoint += lp
 end
 
-assume(spl :: Sampler, d :: Distribution, vn :: VarName, vi) = begin
+assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
   rand(current_trace(), vn, d)
 end
 
-observe(spl :: Sampler, d :: Distribution, value, vi) = begin
+observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
   lp          = logpdf(d, value)
   vi.logjoint += lp
   produce(lp)

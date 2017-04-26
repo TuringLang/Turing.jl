@@ -15,7 +15,7 @@ function Sampler(alg::Gibbs)
 
   for i in 1:n_samplers
     sub_alg = alg.algs[i]
-    if isa(sub_alg, HMC) || isa(sub_alg, HMCDA)
+    if isa(sub_alg, Hamiltonian)
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
     elseif isa(sub_alg, PG)
       samplers[i] = Sampler(PG(sub_alg, i))
@@ -46,7 +46,7 @@ function sample(model::Function, alg::Gibbs)
   sub_sample_n = []   # record #samples for each sampler
   for i in 1:length(alg.algs)
     sub_alg = alg.algs[i]
-    if isa(sub_alg, HMC) || isa(sub_alg, HMCDA)
+    if isa(sub_alg, Hamiltonian)
       push!(sub_sample_n, sub_alg.n_samples)
     elseif isa(sub_alg, PG)
       push!(sub_sample_n, sub_alg.n_iterations)
@@ -79,7 +79,7 @@ function sample(model::Function, alg::Gibbs)
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
-      if isa(local_spl, Sampler{HMC}) || isa(local_spl, Sampler{HMCDA})
+      if isa(local_spl.alg, Hamiltonian)
 
         for _ = 1:local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
@@ -95,7 +95,7 @@ function sample(model::Function, alg::Gibbs)
             i_thin += 1
           end
         end
-      elseif isa(local_spl, Sampler{PG})
+      elseif isa(local_spl.alg, PG)
         # Update new VarInfo to the reference particle
         varInfo.index = 0
         varInfo.num_produce = 0
@@ -113,6 +113,8 @@ function sample(model::Function, alg::Gibbs)
           end
         end
         varInfo = ref_particle.vi
+      else
+        error("[GibbsSampler] unsupport base sampler $local_spl")
       end
 
     end

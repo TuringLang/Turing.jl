@@ -12,3 +12,7 @@ print_log(logd)
 bench_res = tbenchmark("Gibbs(200, HMC(10, 0.25, 5, :mu), PG(20, 10, :lam))", "gaussmodel", "gaussdata")
 logd = build_logd("Gaussian Model", bench_res...)
 print_log(logd)
+
+bench_res = tbenchmark("Gibbs(200, eNUTS(5, 0.5, :mu), PG(50, 10, :lam))", "gaussmodel", "gaussdata")
+logd = build_logd("Gaussian Model", bench_res...)
+print_log(logd)

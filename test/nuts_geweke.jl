@@ -32,12 +32,13 @@ end
 
 fw = PG(50, NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = HMCDA(50, 0.65, 0.2);
+bk_sample_n = 20
+bk = NUTS(bk_sample_n, 100, 0.65);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)
 
-N = div(NSamples, 50)
+N = div(NSamples, bk_sample_n)
 
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(N)
@@ -45,9 +46,11 @@ s_bk = Array{Turing.Chain}(N)
 set_verbosity(0)
 i = 1
 while i <= N
-  s_bk[i] = sample(gdemo_bk(x), bk);
-  x = [s_bk[i][:y][end]...];
-  i += 1
+  try
+    s_bk[i] = sample(gdemo_bk(x), bk);
+    x = [s_bk[i][:y][end]...];
+    i += 1
+  end
 end
 set_verbosity(1)
 
@@ -55,13 +58,19 @@ s2 = vcat(s_bk...);
 # describe(s2)
 
 
+# qqplot(s[:m], s2[:m])
+# qqplot(s[:s], s2[:s])
+
+qqm = qqbuild(s[:m], s2[:m])
+
 using UnicodePlots
 
 qqm = qqbuild(s[:m], s2[:m])
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
+show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
+show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
 
-qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx
 y = qqm.qy
 slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
