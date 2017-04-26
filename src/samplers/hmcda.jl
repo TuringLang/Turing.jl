@@ -114,14 +114,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
+    isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
 
     cleandual!(vi)
 
-    α = min(1, exp(-ΔH))  # MH accept rate
+    α = reject ? 0 : min(1, exp(-ΔH))  # MH accept rate
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m <= spl.alg.n_adapt
+      dprintln(0, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))

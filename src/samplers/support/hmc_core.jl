@@ -36,6 +36,11 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
   dprintln(2, "leapfrog stepping...")
   for t in 1:τ  # do 'leapfrog' for each var
+    if haskey(spl.info, :m) && spl.info[:m] > spl.alg.n_adapt
+      dprintln(2, "[Turing]: p = $p")
+      dprintln(2, "[Turing]: vi = $vi")
+    end
+
     for k in keys(grad)
       if any(isnan(grad[k])) || any(isinf(grad[k]))
         warn("[Turing]: grad = $(grad)")
@@ -87,5 +92,6 @@ function find_H(p, model, vi, spl)
     H += p[k]' * p[k] / 2
   end
   H += realpart(-find_logjoint(model, vi, spl))
-  H[1]  # Vector{Any, 1} -> Any
+  H = H[1]  # Vector{Any, 1} -> Any
+  if isnan(H) || isinf(H); H = Inf else H end
 end

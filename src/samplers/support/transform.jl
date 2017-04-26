@@ -174,6 +174,10 @@ function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
   x
 end
 
+logpdf(d::Categorical, x::Int) = begin
+  d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
+end
+
 function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
   # _,idx = findmax(x)
   # flag = false
