@@ -9,10 +9,10 @@ using Base.Test
   return s, m
 end
 
-s1 = Gibbs(1000, HMC(10, 0.1, 5, :s, :m))
-s2 = Gibbs(1000, PG(10, 10, :s, :m))
-s3 = Gibbs(1000, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
-s4 = Gibbs(1000, PG(10, 3, :s), HMC(2, 0.4, 8, :m); thin=false)
+s1 = Gibbs(50, HMC(10, 0.1, 5, :s, :m))
+s2 = Gibbs(50, PG(10, 10, :s, :m))
+s3 = Gibbs(50, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
+s4 = Gibbs(50, PG(10, 3, :s), HMC(2, 0.4, 8, :m); thin=false)
 
 
 c1 = sample(gdemo(), s1)
@@ -28,7 +28,7 @@ c4 = sample(gdemo(), s4)
 @test_approx_eq_eps mean(c3[:s]) 49/24 1
 @test_approx_eq_eps mean(c3[:m]) 7/6 1
 
-@test length(c4[:s]) == 1000 * (3 + 2)
+@test length(c4[:s]) == 50 * (3 + 2)
 @test_approx_eq_eps mean(c4[:s]) 49/24 1
 @test_approx_eq_eps mean(c4[:m]) 7/6 1
 

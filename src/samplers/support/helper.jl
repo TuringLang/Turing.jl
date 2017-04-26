@@ -62,7 +62,8 @@ function cleandual!(vi::VarInfo)
 end
 
 # X -> R for all variables associated with given sampler
-function link(vi, spl)
+function link(_vi, spl)
+  vi = deepcopy(_vi)
   gkeys = keys(vi)
   if spl != nothing && !isempty(spl.alg.space)
     gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
@@ -76,7 +77,8 @@ function link(vi, spl)
 end
 
 # R -> X for all variables associated with given sampler
-function invlink(vi, spl)
+function invlink(_vi, spl)
+  vi = deepcopy(_vi)
   gkeys = keys(vi)
   if spl != nothing && !isempty(spl.alg.space)
     gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
