@@ -107,7 +107,8 @@ verifygrad(grad::Dict) = begin
   valid = true
   for k in keys(grad)
     if any(isnan(grad[k])) || any(isinf(grad[k]))
-      dwarn(0, "grad = $(grad)")
+      dwarn(0, "NaN/Inf gradients")
+      dwarn(1, "grad = $(grad)")
       valid = false
     end
   end
