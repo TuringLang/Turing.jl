@@ -60,7 +60,7 @@ function invlink(d::TransformDistribution, x::Real)
   end
 end
 
-function Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
@@ -101,7 +101,7 @@ link(d::PositiveDistribution, x::Real) = log(x)
 
 invlink(d::PositiveDistribution, x::Real) = exp(x)
 
-function  Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x) : lp
 end
@@ -148,7 +148,7 @@ function invlink(d::SimplexDistribution, y::Vector)
   x
 end
 
-logpdf(d::SimplexDistribution, x::Vector, transform::Bool) = begin
+Distributions.logpdf(d::SimplexDistribution, x::Vector, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     K = length(x)
