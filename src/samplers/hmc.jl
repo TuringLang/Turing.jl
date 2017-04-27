@@ -104,7 +104,6 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  task = current_task()
   accept_num = 0    # record the accept number
   varInfo = model()
 
@@ -124,6 +123,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   end
 
   accept_rate = accept_num / n    # calculate the accept rate
+
+  println("[$alg_str] Done with accept rate = $accept_rate.")
 
   Chain(0, samples)    # wrap the result by Chain
 end
