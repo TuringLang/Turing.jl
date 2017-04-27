@@ -52,7 +52,7 @@ doc"""
 
 Debugging print function: The first argument controls the verbosity of message, e.g. larger v leads to more verbose debugging messages.
 """
-dprintln(v, args...) = v < Turing.VERBOSITY ? println(args...) : nothing
+dprintln(v, args...) = v < Turing.VERBOSITY ? println("[Turing:$(stacktrace()[1])]", args...) : nothing
 
 ##################
 # Inference code #
