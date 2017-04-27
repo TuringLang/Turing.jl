@@ -79,15 +79,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
-    if m <= spl.alg.n_adapt
-      dprintln(0, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+    if m < spl.alg.n_adapt
+      # dprintln(1, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
       spl.info[:ϵ] = ϵ
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    else
+    elseif m == spl.alg.n_adapt
       spl.info[:ϵ] = spl.info[:ϵ_bar]
+      dprintln(0, "[Turing]: Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
 
     dprintln(2, "decide wether to accept...")

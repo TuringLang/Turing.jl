@@ -47,21 +47,11 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
   dprintln(3, "first gradient...")
   grad = gradient(vi, model, spl)
+  # Verify gradients; reject if gradients is NaN or Inf.
+  verifygrad(grad) || (reject = true)
 
   dprintln(2, "leapfrog stepping...")
   for t in 1:τ  # do 'leapfrog' for each var
-    if haskey(spl.info, :m) && spl.info[:m] > spl.alg.n_adapt
-      dprintln(2, "[Turing]: p = $p")
-      dprintln(2, "[Turing]: vi = $vi")
-    end
-
-    for k in keys(grad)
-      if any(isnan(grad[k])) || any(isinf(grad[k]))
-        warn("[Turing]: grad = $(grad)")
-        reject = true
-        break
-      end
-    end
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
     for k in keys(grad)                # full step for state
       val_vec = vi[k]
@@ -70,18 +60,15 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
       end
     end
     grad = gradient(vi, model, spl)
-    for k in keys(grad)
-      if any(isnan(grad[k])) || any(isinf(grad[k]))
-        warn("[Turing]: grad = $(grad)")
-        reject = true
-        break
-      end
-    end
+
+    # Verify gradients; reject if gradients is NaN or Inf.
+    verifygrad(grad) || (reject = true; break)
+
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
     if realpart(vi.logjoint) == -Inf
       break
     elseif isnan(realpart(vi.logjoint)) || realpart(vi.logjoint) == Inf
-      warn("[Turing]: Numerical error: vi.lojoint = $(vi.logjoint)")
+      dwarn(0, "Numerical error: vi.lojoint = $(vi.logjoint)")
       reject = true
       break
     end
