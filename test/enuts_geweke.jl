@@ -14,16 +14,16 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 NSamples = 5000
 
 @model gdemo_fw() = begin
-  # s ~ InverseGamma(2,3)
-  s = 1
+  s ~ InverseGamma(2,3)
+  # s = 1
   m ~ Normal(0,sqrt(s))
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
-  # s ~ InverseGamma(2,3)
-  s = 1
+  s ~ InverseGamma(2,3)
+  # s = 1
   m ~ Normal(0,sqrt(s))
   x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
   # Backward Step 2: x ~ x | theta
@@ -66,8 +66,12 @@ using UnicodePlots
 qqm = qqbuild(s[:m], s2[:m])
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
+
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
+qqs = qqbuild(s[:s], s2[:s])
+show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s"))
+show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing first and last 50 quantiles):"))
 
 
 X = qqm.qx

@@ -14,23 +14,23 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 NSamples = 5000
 
 @model gdemo_fw() = begin
-  # s ~ InverseGamma(2,3)
-  s = 1
+  s ~ InverseGamma(2,3)
+  # s = 1
   m ~ Normal(0,sqrt(s))
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
-  # s ~ InverseGamma(2,3)
-  s = 1
+  s ~ InverseGamma(2,3)
+  # s = 1
   m ~ Normal(0,sqrt(s))
   x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
   # Backward Step 2: x ~ x | theta
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
-fw = PG(50, NSamples)
+fw = IS(NSamples)
 # bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
 bk_sample_n = 20
 bk = NUTS(bk_sample_n, 100, 0.65);
@@ -46,11 +46,9 @@ s_bk = Array{Turing.Chain}(N)
 set_verbosity(0)
 i = 1
 while i <= N
-  try
-    s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][:y][end]...];
-    i += 1
-  end
+  s_bk[i] = sample(gdemo_bk(x), bk);
+  x = [s_bk[i][:y][end]...];
+  i += 1
 end
 set_verbosity(1)
 
@@ -70,6 +68,10 @@ show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
+
+qqs = qqbuild(s[:s], s2[:s])
+show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s"))
+show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing first and last 50 quantiles):"))
 
 X = qqm.qx
 y = qqm.qy

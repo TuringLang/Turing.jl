@@ -64,10 +64,15 @@ function build_tree(θ, r, u, v, j, ϵ, model, spl)
   """
   if j == 0
     # Base case - take one leapfrog step in the direction v.
-    θ′, r′ = leapfrog(θ, r, 1, v * ϵ, model, spl)
-    n′ = u <= exp(-find_H(r′, model, θ′, spl)) ? 1 : 0
-    s′ = u < exp(Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
-    return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′
+    θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
+    if ~reject
+      n′ = u <= exp(-find_H(r′, model, θ′, spl)) ? 1 : 0
+      s′ = u < exp(Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
+      return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′
+    else
+      # The value of n actually doesn't matter here
+      return deepcopy(θ), deepcopy(r), deepcopy(θ), deepcopy(r), deepcopy(θ), 0, 0
+    end
   else
     # Recursion - build the left and right subtrees.
     θm, rm, θp, rp, θ′, n′, s′ = build_tree(θ, r, u, v, j - 1, ϵ, model, spl)
