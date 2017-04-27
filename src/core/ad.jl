@@ -102,3 +102,14 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   # Return
   return val∇E
 end
+
+verifygrad(grad::Dict) = begin
+  valid = true
+  for k in keys(grad)
+    if any(isnan(grad[k])) || any(isinf(grad[k]))
+      dwarn(0, "grad = $(grad)")
+      valid = false
+    end
+  end
+  valid
+end
