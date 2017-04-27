@@ -1,11 +1,7 @@
-import Distributions.logpdf
-
 #=
   NOTE: Codes below are adapted from
   https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
-
   The Mamba.jl package is licensed under the MIT License:
-
   > Copyright (c) 2014: Brian J Smith and other contributors:
   >
   > https://github.com/brian-j-smith/Mamba.jl/contributors
@@ -29,6 +25,7 @@ import Distributions.logpdf
   > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
   > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =#
+
 
 #################### TransformDistribution ####################
 
@@ -54,19 +51,16 @@ function invlink(d::TransformDistribution, x::Real)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
     (b - a) * invlogit(x) + a
-    #_ = logsumexp(log(b - a) + loginvlogit(x), log(a))
   elseif lowerbounded
     exp(x) + a
-    # _ = logsumexp(x, log(a))
   elseif upperbounded
-    b - exp(x) # b(1-exp(x)/b)
-    # _ = log(b) + log1mexp(x-log(b)) #??
+    b - exp(x)
   else
     x
   end
 end
 
-function logpdf(d::TransformDistribution, x::Real, transform::Bool)
+function Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool)
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
@@ -93,7 +87,7 @@ link(d::RealDistribution, x::Real) = x
 
 invlink(d::RealDistribution, x::Real) = x
 
-logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
+Distributions.logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
 
 
 #################### PositiveDistribution ####################
@@ -107,7 +101,7 @@ link(d::PositiveDistribution, x::Real) = log(x)
 
 invlink(d::PositiveDistribution, x::Real) = exp(x)
 
-function  logpdf(d::PositiveDistribution, x::Real, transform::Bool)
+function  Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool)
   lp = logpdf(d, x)
   transform ? lp + log(x) : lp
 end
@@ -122,7 +116,7 @@ link(d::UnitDistribution, x::Real) = logit(x)
 
 invlink(d::UnitDistribution, x::Real) = invlogit(x)
 
-function logpdf(d::UnitDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::UnitDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x * (1.0 - x)) : lp
 end
@@ -131,78 +125,31 @@ end
 
 typealias SimplexDistribution Union{Dirichlet}
 
-function link(d::SimplexDistribution, x::Vector, ϵ=1e-150)
+function link(d::SimplexDistribution, x::Vector)
   K = length(x)
   T = typeof(x[1])
   z = Vector{T}(K-1)
   for k in 1:K-1
-    # z[k] = x[k] / (1 - sum(x[1:k-1]))
-    s = 1 - sum(x[1:k-1])
-    if s==0.
-      z[k] = x[k] / (s + ϵ) # Add small value for numerical stability.
-    else
-      z[k] = x[k] / s
-    end
+    z[k] = x[k] / (1 - sum(x[1:k-1]))
   end
   y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
   push!(y, T(0))
-  if any(isnan(y)) || any(isinf(y)) || ~isprobvec(x)
-    println("[Turing]: link(d=$d, x=$(realpart(x)))")
-    println("y=$(realpart(y))")
-    error("NaN or Inf")
-  end
-  y
 end
 
-function invlink(d::SimplexDistribution, y::Vector, is_logx=false)
+function invlink(d::SimplexDistribution, y::Vector)
   K = length(y)
   T = typeof(y[1])
-  # z = exp([loginvlogit(y[k] - log(K - k)) for k in 1:K-1])
   z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
-    #  0 <= exp(logsumexp(x[1:k-1])) <= 1
     x[k] = (1 - sum(x[1:k-1])) * z[k]
   end
-  # x[K] = logsumexp([0, -x[1:K-1]...])
   x[K] = 1 - sum(x[1:K-1])
-  if any(isnan(x)) || any(isinf(x)) || ~isprobvec(x)
-    println("[Turing]: invlink(d=$d, y=$(realpart(y)))")
-    println("[Turing]: x=$(realpart(x))")
-    error("NaN or Inf")
-  end
   x
 end
 
-logpdf(d::Categorical, x::Int) = begin
-  d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
-end
-
-function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
-  # _,idx = findmax(x)
-  # flag = false
-  # for i=1:length(x)
-  #   if x[i]-0.0 < ϵ
-  #     x[i]   += ϵ # Add ϵ for numerical stability when (1., 0. ...)
-  #     x[idx] -= ϵ
-  #     flag = true
-  #   end
-  # end
-  # if flag
-  #   warn("Turing: mis-formed simplex distribution.")
-  #   println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
-  # end
-  # for i=1:length(x)  # NOTE: requires reject.
-  #   if x[i]-0.0 < ϵ
-  #     warn("Turing: mis-formed simplex distribution:" *
-  #               "logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
-  #     return eltype(x)(-Inf)
-  #   end
-  # end
-  lp = logpdf(d, x); lp1 = lp;
-  if isinf(lp) || isnan(lp)
-    return eltype(x)(-Inf)
-  end
+logpdf(d::SimplexDistribution, x::Vector, transform::Bool) = begin
+  lp = logpdf(d, x)
   if transform
     K = length(x)
     T = typeof(x[1])
@@ -212,14 +159,11 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool, ϵ=1e-15)
     end
     lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
   end
-  if isnan(lp) || isinf(lp)
-    println("[Turing]: logpdf(d=$d, x=$(realpart(x)), transform=$transform))")
-    println("[Turing]: (before jocabian) lp=$lp1")
-    println("[Turing]: (after jocabian)  lp=$lp")
-    isa(lp, Dual) && println("[Turing]: (Dual) x=$(x)")
-    error("NaN or Inf")
-  end
   lp
+end
+
+Distributions.logpdf(d::Categorical, x::Int) = begin
+  d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
 
 ############### PDMatDistribution ##############
@@ -249,7 +193,7 @@ function invlink(d::PDMatDistribution, z::Union{Array, LowerTriangular})
   z * z'
 end
 
-function logpdf(d::PDMatDistribution, x::Array, transform::Bool)
+Distributions.logpdf(d::PDMatDistribution, x::Array, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
@@ -268,4 +212,4 @@ link(d::Distribution, x) = x
 
 invlink(d::Distribution, x) = x
 
-logpdf(d::Distribution, x, transform::Bool) = logpdf(d, x)
+Distributions.logpdf(d::Distribution, x, transform::Bool) = logpdf(d, x)
