@@ -82,6 +82,7 @@ end
 # NOTE: it returns logjoint but not -logjoint
 function find_logjoint(model, _vi, spl)
   vi = deepcopy(_vi)
+  vi.logjoint = 0
   vi = runmodel(model, vi, spl)
   vi.logjoint        # get logjoint
 end
