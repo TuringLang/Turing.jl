@@ -61,7 +61,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     τ = max(1, round(λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
+    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
@@ -71,25 +71,30 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
+    isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
 
     cleandual!(vi)
 
-    α = min(1, exp(-ΔH))  # MH accept rate
+    α = reject ? 0 : min(1, exp(-ΔH))  # MH accept rate
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
-    if m <= spl.alg.n_adapt
+    if m < spl.alg.n_adapt
+      # dprintln(1, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
       spl.info[:ϵ] = ϵ
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    else
+    elseif m == spl.alg.n_adapt
       spl.info[:ϵ] = spl.info[:ϵ_bar]
+      dprintln(0, "[Turing]: Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α      # accepted
+    if reject
+      false, vi
+    elseif rand() < α      # accepted
       true, vi
     else                                # rejected
       false, vi

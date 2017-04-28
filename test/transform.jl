@@ -10,3 +10,21 @@ for dist in dists
   # Test if R -> X is equal to the original value
   @test_approx_eq_eps invlink(dist, y) x 1e-9
 end
+
+
+# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1000., -1000., -1000.]), true)
+# NaN
+# julia> logpdf(Dirichlet([1., 1., 1.]), [-1000., -1000., -1000.], true, true)
+# -1999.30685281944
+#
+# julia> logpdf(Dirichlet([1., 1., 1.]), exp([-1., -2., -3.]), true)
+# -3.006450206744678
+# julia> logpdf(Dirichlet([1., 1., 1.]), [-1., -2., -3.], true, true)
+# -3.006450206744678
+d  = Dirichlet([1., 1., 1.])
+r  = [-1000., -1000., -1000.]
+r2 = [-1., -2., -3.]
+
+@test_approx_eq_eps invlink(d, r) [0., 0., 1.]  1e-9
+#@test_approx_eq_eps logpdf(d, invlink(d, r), true) -1999.30685281944 1e-9 # NaN
+@test_approx_eq_eps logpdf(d, invlink(d, r2), true) -3.760398892580863 1e-9

@@ -13,8 +13,9 @@ end
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model, _vi, spl)
+function runmodel(model, _vi, spl, default_logjoint=0.0)
   vi = deepcopy(_vi)
+  vi.logjoint = default_logjoint
   vi.index = 0
   model(vi=vi, sampler=spl) # run model\
 end
@@ -41,11 +42,14 @@ end
 # Leapfrog step
 function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
+  reject = false
   vi = deepcopy(_vi)
   p = deepcopy(_p)
 
   dprintln(3, "first gradient...")
   grad = gradient(vi, model, spl)
+  # Verify gradients; reject if gradients is NaN or Inf.
+  verifygrad(grad) || (reject = true)
 
   dprintln(2, "leapfrog stepping...")
   for t in 1:τ  # do 'leapfrog' for each var
@@ -57,11 +61,22 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
       end
     end
     grad = gradient(vi, model, spl)
+
+    # Verify gradients; reject if gradients is NaN or Inf.
+    verifygrad(grad) || (reject = true; break)
+
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
+    if realpart(vi.logjoint) == -Inf
+      break
+    elseif isnan(realpart(vi.logjoint)) || realpart(vi.logjoint) == Inf
+      dwarn(0, "Numerical error: vi.lojoint = $(vi.logjoint)")
+      reject = true
+      break
+    end
   end
 
   # Return updated θ and momentum
-  vi, p
+  vi, p, reject
 end
 
 # Find logjoint
@@ -69,55 +84,53 @@ end
 function find_logjoint(model, _vi, spl)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
-  vi.logjoint        # get logjoint
+  vi.logjoint   # get logjoint
 end
 
 # Compute Hamiltonian
-function find_H(p, model, values, spl)
+function find_H(p, model, vi, spl)
   H = 0
   for k in keys(p)
-    H += p[k]' * p[k] / 2
+    H += dot(p[k], p[k]) / 2
   end
-  H += realpart(-find_logjoint(model, values, spl))
-  H[1]  # Vector{Any, 1} -> Any
+  H += realpart(-find_logjoint(model, vi, spl))
+  H = H[1]  # Vector{Any, 1} -> Any
+  if isnan(H) || isinf(H); H = Inf else H end
 end
 
 function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
-  ϵ, p = 1.0, sample_momentum(vi, spl)                # set initial epsilon and momentums
-  jointd = exp(-find_H(p, model, vi, spl))  # calculate p(Θ, p) = exp(-H(Θ, p))
+  ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
+  log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  # println("[HMCDA] grad: ", grad)
-  # println("[HMCDA] p: ", p)
-  # println("[HMCDA] vi: ", vi)
+  # println("[$T] grad: ", grad)
+  # println("[$T] p: ", p)
+  # println("[$T] vi: ", vi)
   vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl) # make a leapfrog dictionary
 
-  jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))  # calculate new p(Θ, p)
-
-  # println("[HMCDA] jointd: ", jointd)
-  # println("[HMCDA] jointd_prime: ", jointd_prime)
+  log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
 
   # This trick prevents the log-joint or its graident from being infinte
   # Ref: https://github.com/mfouesneau/NUTS/blob/master/nuts.py#L111
   # QUES: will this lead to some bias of the sampler?
-  while isnan(jointd_prime)
+  while isnan(log_p_r_Θ′) || isinf(log_p_r_Θ′)
     ϵ *= 0.5
-    # println("[HMCDA] current ϵ: ", ϵ)
-    # println("[HMCDA] jointd_prime: ", jointd_prime)
-    # println("[HMCDA] vi_prime: ", vi_prime)
+    # println("[$T] current ϵ: ", ϵ)
+    # println("[$T] jointd_prime: ", jointd_prime)
+    # println("[$T] vi_prime: ", vi_prime)
     vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
-    jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
+    log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)
   end
   ϵ_bar = ϵ
 
   # Heuristically find optimal ϵ
-  a = 2.0 * (jointd_prime / jointd > 0.5 ? 1 : 0) - 1
-  while (jointd_prime / jointd)^a > 2.0^(-a)
-    # println("[HMCDA] current ϵ: ", ϵ)
-    # println("[HMCDA] jointd_prime: ", jointd_prime)
-    # println("[HMCDA] vi_prime: ", vi_prime)
+  a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
+  while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
+    # println("[$T] current ϵ: ", ϵ)
+    # println("[$T] jointd_prime: ", jointd_prime)
+    # println("[$T] vi_prime: ", vi_prime)
     ϵ = 2.0^a * ϵ
     vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
-    jointd_prime = exp(-find_H(p_prime, model, vi_prime, spl))
+    log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)
   end
 
   println("[$T] found initial ϵ: ", ϵ)

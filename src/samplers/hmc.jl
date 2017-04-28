@@ -38,7 +38,7 @@ immutable HMC <: InferenceAlgorithm
   HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-typealias Hamiltonian Union{HMC,HMCDA,eNUTS,NUTS}
+typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
 Sampler(alg::Hamiltonian) = begin
   info = Dict{Symbol, Any}()
@@ -61,7 +61,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     oldH = find_H(p, model, vi, spl)
 
     dprintln(2, "leapfrog stepping...")
-    vi, p = leapfrog(vi, p, τ, ϵ, model, spl)
+    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
@@ -75,7 +75,9 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     cleandual!(vi)
 
     dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)      # accepted
+    if reject
+      false, vi
+    elseif ΔH < 0 || rand() < exp(-ΔH)      # accepted
       true, vi
     else                                # rejected
       false, vi
@@ -92,7 +94,6 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   spl = Sampler(alg);
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
-            isa(alg, eNUTS) ? "eNUTS" :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # initialization
@@ -102,7 +103,6 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  task = current_task()
   accept_num = 0    # record the accept number
   varInfo = model()
 
@@ -123,6 +123,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
 
   accept_rate = accept_num / n    # calculate the accept rate
 
+  println("[$alg_str] Done with accept rate = $accept_rate.")
+
   Chain(0, samples)    # wrap the result by Chain
 end
 
@@ -130,7 +132,8 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
-  vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+  # The following code has been merged into rand.
+  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 

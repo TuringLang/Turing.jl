@@ -78,8 +78,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
-    vi.logjoint = Dual{prior_dim, Float64}(0)
-    vi = runmodel(model, vi, spl)
+    vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
@@ -101,4 +100,16 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   end
   # Return
   return val∇E
+end
+
+verifygrad(grad::Dict) = begin
+  valid = true
+  for k in keys(grad)
+    if any(isnan(grad[k])) || any(isinf(grad[k]))
+      dwarn(0, "NaN/Inf gradients")
+      dwarn(1, "grad = $(grad)")
+      valid = false
+    end
+  end
+  valid
 end

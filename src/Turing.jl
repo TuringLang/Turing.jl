@@ -1,5 +1,6 @@
 module Turing
 
+using StatsFuns
 using Distributions
 using ForwardDiff: Dual, npartials  # for automatic differentiation
 using ProgressMeter
@@ -25,7 +26,7 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, InferenceAlgorithm, HMC, HMCDA, eNUTS, NUTS, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
+export @model, @~, InferenceAlgorithm, HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
 export VarName, VarInfo, randr, randoc, retain, groupvals
 export Dual
 
@@ -51,7 +52,10 @@ doc"""
 
 Debugging print function: The first argument controls the verbosity of message, e.g. larger v leads to more verbose debugging messages.
 """
-dprintln(v, args...) = v < Turing.VERBOSITY ? println(args...) : nothing
+dprintln(v, args...) = v < Turing.VERBOSITY ? println("[Turing:$(stacktrace()[2])] ", args...) : nothing
+dwarn(v, args...) = v < Turing.VERBOSITY ? print_with_color(:red, "[Turing:$(stacktrace()[2])] ", mapreduce(string,*,args), "\n") : nothing
+
+
 
 ##################
 # Inference code #

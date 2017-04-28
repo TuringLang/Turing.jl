@@ -1,6 +1,31 @@
-import Distributions.logpdf
+#=
+  NOTE: Codes below are adapted from
+  https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
+  The Mamba.jl package is licensed under the MIT License:
+  > Copyright (c) 2014: Brian J Smith and other contributors:
+  >
+  > https://github.com/brian-j-smith/Mamba.jl/contributors
+  >
+  > Permission is hereby granted, free of charge, to any person obtaining
+  > a copy of this software and associated documentation files (the
+  > "Software"), to deal in the Software without restriction, including
+  > without limitation the rights to use, copy, modify, merge, publish,
+  > distribute, sublicense, and/or sell copies of the Software, and to
+  > permit persons to whom the Software is furnished to do so, subject to
+  > the following conditions:
+  >
+  > The above copyright notice and this permission notice shall be
+  > included in all copies or substantial portions of the Software.
+  >
+  > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  > EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  > MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  > IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  > CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+=#
 
-# NOTE: Codes below are adapted from https://github.com/brian-j-smith/Mamba.jl/blob/master/src/distributions/transformdistribution.jl
 
 #################### TransformDistribution ####################
 
@@ -35,7 +60,7 @@ function invlink(d::TransformDistribution, x::Real)
   end
 end
 
-function logpdf(d::TransformDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
@@ -62,7 +87,7 @@ link(d::RealDistribution, x::Real) = x
 
 invlink(d::RealDistribution, x::Real) = x
 
-logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
+Distributions.logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
 
 
 #################### PositiveDistribution ####################
@@ -76,7 +101,7 @@ link(d::PositiveDistribution, x::Real) = log(x)
 
 invlink(d::PositiveDistribution, x::Real) = exp(x)
 
-function  logpdf(d::PositiveDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x) : lp
 end
@@ -91,7 +116,7 @@ link(d::UnitDistribution, x::Real) = logit(x)
 
 invlink(d::UnitDistribution, x::Real) = invlogit(x)
 
-function logpdf(d::UnitDistribution, x::Real, transform::Bool)
+Distributions.logpdf(d::UnitDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x * (1.0 - x)) : lp
 end
@@ -123,7 +148,7 @@ function invlink(d::SimplexDistribution, y::Vector)
   x
 end
 
-function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
+Distributions.logpdf(d::SimplexDistribution, x::Vector, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     K = length(x)
@@ -135,6 +160,10 @@ function logpdf(d::SimplexDistribution, x::Vector, transform::Bool)
     lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
   end
   lp
+end
+
+Distributions.logpdf(d::Categorical, x::Int) = begin
+  d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
 
 ############### PDMatDistribution ##############
@@ -164,7 +193,7 @@ function invlink(d::PDMatDistribution, z::Union{Array, LowerTriangular})
   z * z'
 end
 
-function logpdf(d::PDMatDistribution, x::Array, transform::Bool)
+Distributions.logpdf(d::PDMatDistribution, x::Array, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
@@ -183,6 +212,4 @@ link(d::Distribution, x) = x
 
 invlink(d::Distribution, x) = x
 
-function logpdf(d::Distribution, x, transform::Bool)
-  logpdf(d, x)
-end
+Distributions.logpdf(d::Distribution, x, transform::Bool) = logpdf(d, x)

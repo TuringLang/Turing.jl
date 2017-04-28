@@ -227,9 +227,9 @@ macro model(fexpr)
         if fdefn_inner.args[2].args[1].head == :line
           # Preserve comments, useful for debuggers to
           # correctly locate source code oringin.
-          insert!(fdefn_inner.args[2].args, 2, Expr(:(=), k, data[k]))
+          insert!(fdefn_inner.args[2].args, 2, Expr(:(=), Symbol(k), data[k]))
         else
-          insert!(fdefn_inner.args[2].args, 1, Expr(:(=), k, data[k]))
+          insert!(fdefn_inner.args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
       dprintln(1, fdefn_inner)
@@ -246,11 +246,13 @@ macro model(fexpr)
     if _k != nothing
       _k_str = string(_k)
       _ = quote
-            if haskey(data, Symbol($_k_str))
-              warn("[Turing]: parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+            if haskey(data, keytype(data)($_k_str))
+              if nothing != $_k
+                warn("[Turing]: parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+              end
             else
-              data[Symbol($_k_str)] = $_k
-              data[Symbol($_k_str)] == nothing && error("[Turing]: data "*$_k_str*" is not provided.")
+              data[keytype(data)($_k_str)] = $_k
+              data[keytype(data)($_k_str)] == nothing && error("[Turing]: data "*$_k_str*" is not provided.")
             end
           end
       unshift!(fdefn_outer.args[2].args, _)
