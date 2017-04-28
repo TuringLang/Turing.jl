@@ -50,7 +50,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     vi = link(vi, spl)
 
     dprintln(3, "sample slice variable u")
-    u = rand() * exp(-find_H(p, model, vi, spl))
+    logu = log(rand()) + (-find_H(p, model, vi, spl))
 
     θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
     local α, n_α
@@ -58,17 +58,20 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, u, v_j, j, ϵ, vi, p, model, spl)
+        θm, rm, _, _, θ′, n′, s′, α, n_α, reject = build_tree(θm, rm, logu, v_j, j, ϵ, vi, p, model, spl)
       else
-        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, u, v_j, j, ϵ, vi, p, model, spl)
+        _, _, θp, rp, θ′, n′, s′, α, n_α, reject = build_tree(θp, rp, logu, v_j, j, ϵ, vi, p, model, spl)
       end
+
+      if reject break end
+      # TODO: should I record α and n_α here?
       if s′ == 1
         if rand() < min(1, n′ / n)
-          vi_new = θ′
+          vi_new = deepcopy(θ′)
         end
       end
       n = n + n′
-      s = s′ & (direction(θm, θp, rm, model, spl) >= 0) & (direction(θm, θp, rp, model, spl) >= 0)
+      s = s′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
       j = j + 1
     end
 
@@ -93,31 +96,44 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-function build_tree(θ, r, u, v, j, ϵ, θ0, r0, model, spl)
+function build_tree(θ, r, logu, v, j, ϵ, θ0, r0, model, spl)
     doc"""
-      - θ   : model parameter
-      - r   : momentum variable
-      - u   : slice variable
-      - v   : direction ∈ {-1, 1}
-      - j   : depth of tree
-      - ϵ   : leapfrog step size
-      - θ0  : initial model parameter
-      - r0  : initial mometum variable
+      - θ     : model parameter
+      - r     : momentum variable
+      - logu  : slice variable (in log scale)
+      - v     : direction ∈ {-1, 1}
+      - j     : depth of tree
+      - ϵ     : leapfrog step size
+      - θ0    : initial model parameter
+      - r0    : initial mometum variable
     """
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′ = leapfrog(θ, r, 1, v * ϵ, model, spl)
-      n′ = u <= exp(-find_H(r′, model, θ′, spl))
-      s′ = u < exp(Δ_max - find_H(r′, model, θ′, spl))
-      return θ′, r′, θ′, r′, θ′, n′, s′, min(1, exp(-find_H(r′, model, θ′, spl) - (-find_H(r0, model, θ0, spl)))), 1
+      θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
+      n′ = reject ?
+           0 :
+           (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
+      s′ = reject ?
+           0 :
+           (logu < Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
+      α = reject ?
+          0 :
+          min(1, exp(-find_H(r′, model, θ′, spl) - (-find_H(r0, model, θ0, spl))))
+      return θ′, r′, θ′, r′, θ′, n′, s′, α, 1, reject
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, u, v, j - 1, ϵ, θ0, r0, model, spl)
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject = build_tree(θ, r, logu, v, j - 1, ϵ, θ0, r0, model, spl)
+      if reject
+        return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, true
+      end
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, u, v, j - 1, ϵ, θ0, r0, model, spl)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α, reject = build_tree(θm, rm, logu, v, j - 1, ϵ, θ0, r0, model, spl)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, u, v, j - 1, ϵ, θ0, r0, model, spl)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α, reject = build_tree(θp, rp, logu, v, j - 1, ϵ, θ0, r0, model, spl)
+        end
+        if reject
+          return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, true
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
@@ -127,6 +143,6 @@ function build_tree(θ, r, u, v, j, ϵ, θ0, r0, model, spl)
         s′ = s′′ & (direction(θm, θp, rm, model, spl) >= 0) & (direction(θm, θp, rp, model, spl) >= 0)
         n′ = n′ + n′′
       end
-      return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
+      return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject
     end
   end

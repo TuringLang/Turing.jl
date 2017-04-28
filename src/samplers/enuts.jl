@@ -25,8 +25,9 @@ function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u (in log scale)")
     logu = log(rand()) + (-find_H(p, model, vi, spl))
 
+
     θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
-    
+
     while s == 1
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
@@ -35,7 +36,9 @@ function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
       else
         _, _, θp, rp, θ′, n′, s′, reject = build_tree(θp, rp, logu, v_j, j, ϵ, model, spl)
       end
+
       if reject break end
+
       if s′ == 1
         if rand() < min(1, n′ / n)
           vi_new = deepcopy(θ′)     # this vi_new will store the last successful vi
@@ -66,7 +69,12 @@ function build_tree(θ, r, logu, v, j, ϵ, model, spl)
   """
   if j == 0
     # Base case - take one leapfrog step in the direction v.
+    # println(θ)
+    # println(logu)
+    # println(-find_H(r, model, θ, spl))
     θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
+    # println(θ′)
+    # println(-find_H(r′, model, θ′, spl))
     if ~reject
       n′ = (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
       s′ = (logu < Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
@@ -74,6 +82,8 @@ function build_tree(θ, r, logu, v, j, ϵ, model, spl)
       n′ = 0
       s′ = 0
     end
+    # println(n′)
+    # exit()
     return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, reject
   else
     # Recursion - build the left and right subtrees.
@@ -96,6 +106,6 @@ function build_tree(θ, r, logu, v, j, ϵ, model, spl)
       s′ = s′′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
       n′ = n′ + n′′
     end
-    return θm, rm, θp, rp, θ′, n′, s′, true
+    return θm, rm, θp, rp, θ′, n′, s′, reject
   end
 end

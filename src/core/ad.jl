@@ -78,8 +78,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     end
     # Run the model
     dprintln(4, "run model...")
-    vi.logjoint = Dual{prior_dim, Float64}(0)
-    vi = runmodel(model, vi, spl)
+    vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
     # Collect gradient
     dprintln(4, "collect dual...")
     prior_count = 1
