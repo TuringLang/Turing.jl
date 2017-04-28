@@ -9,9 +9,9 @@ i = 1
 @test invlogit(1.1) == 1.0 / (exp(-1.1) + 1.0)
 @test_approx_eq_eps logit(0.3) -0.8472978603872036 1e-9
 @test isnan(logit(1.0)) == false
-@test isinf(logit(1.0)) == false
+@test isinf(logit(1.0)) == true
 @test isnan(logit(0.)) == false
-@test isinf(logit(0.)) == false
+@test isinf(logit(0.)) == true
 randcat([0.1, 0.9])
 @test kl(Normal(0, 1), Normal(0, 1)) == 0
 @test align([1, 2, 3], [1]) == ([1,2,3],[1,0,0])
