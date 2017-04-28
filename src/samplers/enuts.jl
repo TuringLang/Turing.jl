@@ -37,14 +37,11 @@ function step(model, spl::Sampler{eNUTS}, vi::VarInfo, is_first::Bool)
         _, _, θp, rp, θ′, n′, s′, reject = build_tree(θp, rp, logu, v_j, j, ϵ, model, spl)
       end
 
-      if reject break end
-
-      if s′ == 1
-        if rand() < min(1, n′ / n)
-          vi_new = deepcopy(θ′)     # this vi_new will store the last successful vi
-        end                         # note this is the previous vi by initialization
+      if ~reject && s′ == 1 && rand() < min(1, n′ / n)
+        vi_new = deepcopy(θ′)
       end
       n = n + n′
+      
       s = s′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
       j = j + 1
     end
@@ -69,21 +66,13 @@ function build_tree(θ, r, logu, v, j, ϵ, model, spl)
   """
   if j == 0
     # Base case - take one leapfrog step in the direction v.
-    # println(θ)
-    # println(logu)
-    # println(-find_H(r, model, θ, spl))
     θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
-    # println(θ′)
-    # println(-find_H(r′, model, θ′, spl))
-    if ~reject
-      n′ = (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
-      s′ = (logu < Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
-    else
-      n′ = 0
-      s′ = 0
-    end
-    # println(n′)
-    # exit()
+    n′ = reject ?
+         0 :
+         (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
+    s′ = reject ?
+         0 :
+         (logu < Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
     return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, reject
   else
     # Recursion - build the left and right subtrees.
@@ -97,10 +86,7 @@ function build_tree(θ, r, logu, v, j, ϵ, model, spl)
       else
         _, _, θp, rp, θ′′, n′′, s′′, reject = build_tree(θp, rp, logu, v, j - 1, ϵ, model, spl)
       end
-      if reject
-        return θm, rm, θp, rp, θ′, n′, s′, true
-      end
-      if rand() < n′′ / (n′ + n′′)
+      if ~reject && rand() < n′′ / (n′ + n′′)
         θ′ = deepcopy(θ′′)
       end
       s′ = s′′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
