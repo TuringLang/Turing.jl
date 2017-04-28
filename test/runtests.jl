@@ -57,8 +57,8 @@ testcases = [
           "nuts",
           # "nuts_geweke",
 #       enuts.jl
-          "enuts_cons",
-          "enuts",
+          # "enuts_cons",
+          # "enuts",
           # "enuts_geweke",
 #       hmcda.jl
           "hmcda_cons",
