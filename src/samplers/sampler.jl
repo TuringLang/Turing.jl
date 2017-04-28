@@ -21,7 +21,6 @@ include("support/resample.jl")
   include("support/transform.jl")
 end
 include("support/hmc_core.jl")
-include("enuts.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("hmc.jl")

@@ -38,7 +38,7 @@ immutable HMC <: InferenceAlgorithm
   HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
 end
 
-typealias Hamiltonian Union{HMC,HMCDA,eNUTS,NUTS}
+typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
 Sampler(alg::Hamiltonian) = begin
   info = Dict{Symbol, Any}()
