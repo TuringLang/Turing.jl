@@ -46,14 +46,21 @@ spl = Turing.Sampler(alg)
 vn_u = VarName(gensym(), :u, "", 1)
 randr(vi, vn_u, dists[1], spl, true)
 
-# println(vi)
+println(vi)
 
 retain(vi, 2, 1)
 
-# println(vi)
+println(vi)
 
-@test length(groupvals(vi, 1)) == 3
-@test length(groupvals(vi, 2)) == 1
+vals_of_1 = groupvals(vi, 1)
+println(vals_of_1)
+filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
+@test length(vals_of_1) == 3
+
+vals_of_2 = groupvals(vi, 2)
+println(vals_of_2)
+filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
+@test length(vals_of_2) == 1
 
 @model gdemo() = begin
   x ~ InverseGamma(2,3)

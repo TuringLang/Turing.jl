@@ -34,7 +34,8 @@ Base.convert(::Type{Tuple}, vn::VarName) = uid(vn)
 type VarInfo
   idcs        ::    Dict{Tuple, Int}
   uids        ::    Vector{Tuple}
-  vals        ::    Vector{Any}
+  ranges      ::    Vector{UnitRange{Int}}
+  vals        ::    Vector{Real}
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
@@ -45,7 +46,8 @@ type VarInfo
   VarInfo() = new(
     Dict{Tuple, Int}(),
     Vector{Tuple}(),
-    Vector{Any}(),
+    Vector{UnitRange{Int}}(),
+    Vector{Real}(),
     Vector{Distribution}(),
     Vector{Int}(),
     Vector{Bool}(),
@@ -57,28 +59,31 @@ end
 
 Base.show(io::IO, vi::VarInfo) = begin
   println(vi.idcs)
-  print("$(vi.uids)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
+  print("$(vi.uids)\n$(vi.ranges)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
   print("$(vi.logjoint), $(vi.index), $(vi.num_produce)")
 end
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
 getidx(vi::VarInfo, uid::Tuple) = vi.idcs[uid]
 
-getval(vi::VarInfo, vn::VarName) = vi.vals[getidx(vi, vn)]
-getval(vi::VarInfo, uid::Tuple) = vi.vals[getidx(vi, uid)]
+getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
+getrange(vi::VarInfo, uid::Tuple) = vi.ranges[getidx(vi, uid)]
+
+getval(vi::VarInfo, vn::VarName) = vi.vals[getrange(vi, vn)]
+getval(vi::VarInfo, uid::Tuple) = vi.vals[getrange(vi, uid)]
 
 setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[getidx(vi, vn)] = val
+  vi.vals[getrange(vi, vn)] = val
 end
 
 setval!(vi::VarInfo, val, uid::Tuple, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[getidx(vi, uid)] = val
+  vi.vals[getrange(vi, uid)] = val
 end
 
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
@@ -121,7 +126,7 @@ groupidcs(vi::VarInfo, gid::Int, spl=nothing) = begin
 end
 
 # Get all values of variables belonging to gid or 0
-groupvals(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.vals[i], groupidcs(vi, gid, spl))
+groupvals(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.vals[vi.ranges[i]], groupidcs(vi, gid, spl))
 
 # Get all uids of variables belonging to gid or 0
 groupuids(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
@@ -137,18 +142,21 @@ retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
 
   # Remove corresponding entries
   for i = l:-1:(n_retain + 1)
-    delete!(vi.idcs, vi.uids[gidcs[i]])
-    splice!(vi.uids, gidcs[i])
-    splice!(vi.vals, gidcs[i])
-    splice!(vi.dists, gidcs[i])
-    splice!(vi.gids, gidcs[i])
-    splice!(vi.trans, gidcs[i])
+    for r_i in vi.ranges[gidcs[i]]
+      vi.vals[r_i] = NaN
+    end
+    # delete!(vi.idcs, vi.uids[gidcs[i]])
+    # splice!(vi.uids, gidcs[i])
+    # splice!(vi.vals, gidcs[i])
+    # splice!(vi.dists, gidcs[i])
+    # splice!(vi.gids, gidcs[i])
+    # splice!(vi.trans, gidcs[i])
   end
 
   # Rebuild index dictionary
-  for i = 1:length(vi.uids)
-    vi.idcs[vi.uids[i]] = i
-  end
+  # for i = 1:length(vi.uids)
+  #   vi.idcs[vi.uids[i]] = i
+  # end
   vi
 end
 
@@ -157,7 +165,9 @@ addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0) = begin
   @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
   vi.idcs[uid(vn)] = length(vi.idcs) + 1
   push!(vi.uids, uid(vn))
-  push!(vi.vals, val)
+  l, n = length(vi.vals), length(val)
+  push!(vi.ranges, l+1:l+n)
+  append!(vi.vals, val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.trans, false)
