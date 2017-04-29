@@ -72,6 +72,8 @@ getrange(vi::VarInfo, uid::Tuple) = vi.ranges[getidx(vi, uid)]
 getval(vi::VarInfo, vn::VarName) = vi.vals[getrange(vi, vn)]
 getval(vi::VarInfo, uid::Tuple) = vi.vals[getrange(vi, uid)]
 getval(vi::VarInfo, idx::Int) = vi.vals[idx]
+getval(vi::VarInfo, range::UnitRange) = vi.vals[range]
+
 
 setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   if ~overwrite
@@ -92,6 +94,13 @@ setval!(vi::VarInfo, val, idx::Int, overwrite=false) = begin
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
   vi.vals[idx] = val
+end
+
+setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
+  if ~overwrite
+    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
+  end
+  vi.vals[range] = val
 end
 
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
@@ -116,9 +125,12 @@ settrans!(vi::VarInfo, trans, uid::Tuple) = vi.trans[getidx(vi, uid)] = trans
 Base.getindex(vi::VarInfo, vn::VarName) = getval(vi, vn)
 Base.getindex(vi::VarInfo, uid::Tuple) = getval(vi, uid)
 Base.getindex(vi::VarInfo, idx::Int) = getval(vi, idx)
+Base.getindex(vi::VarInfo, range::UnitRange) = getval(vi, range)
+
 Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn, true)
 Base.setindex!(vi::VarInfo, val, uid::Tuple) = setval!(vi, val, uid, true)
 Base.setindex!(vi::VarInfo, val, idx::Int) = setval!(vi, val, idx, true)
+Base.setindex!(vi::VarInfo, val, range::UnitRange) = setval!(vi, val, range, true)
 
 uids(vi::VarInfo) = Set(keys(vi.idcs))            # get all uids
 syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))  # get all symbols
