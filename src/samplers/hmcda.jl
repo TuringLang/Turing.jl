@@ -63,19 +63,18 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
-    dprintln(2, "computing new H...")
-    H = find_H(p, model, vi, spl)
+    if reject
+      α = 0
+    else
+      dprintln(2, "computing new H...")
+      H = find_H(p, model, vi, spl)
 
-    dprintln(3, "R -> X...")
-    vi = invlink(vi, spl)
+      dprintln(2, "computing ΔH...")
+      ΔH = H - oldH
+      isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
 
-    dprintln(2, "computing ΔH...")
-    ΔH = H - oldH
-    isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
-
-    cleandual!(vi)
-
-    α = reject ? 0 : min(1, exp(-ΔH))  # MH accept rate
+      α = min(1, exp(-ΔH))  # MH accept rate
+    end
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
@@ -91,10 +90,15 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       dprintln(0, "[Turing]: Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
 
+    if reject return false, vi end
+
+    dprintln(3, "R -> X...")
+    vi = invlink(vi, spl)
+
+    cleandual!(vi)
+
     dprintln(2, "decide wether to accept...")
-    if reject
-      false, vi
-    elseif rand() < α      # accepted
+    if rand() < α      # accepted
       true, vi
     else                                # rejected
       false, vi

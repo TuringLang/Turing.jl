@@ -79,21 +79,15 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   vi, p, reject
 end
 
-# Find logp
-# NOTE: it returns logp but not -logp
-function find_logp(model, _vi, spl)
-  vi = deepcopy(_vi)
-  vi = runmodel(model, vi, spl)
-  vi.logp   # get logp
-end
-
 # Compute Hamiltonian
-function find_H(p, model, vi, spl)
+function find_H(p, model, _vi, spl)
+  vi = deepcopy(_vi)
   H = 0
   for k in keys(p)
     H += dot(p[k], p[k]) / 2
   end
-  H += realpart(-find_logp(model, vi, spl))
+  vi = runmodel(model, vi, spl)
+  H += realpart(-vi.logp)
   H = H[1]  # Vector{Any, 1} -> Any
   if isnan(H) || isinf(H); H = Inf else H end
 end
