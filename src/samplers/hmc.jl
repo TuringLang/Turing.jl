@@ -109,14 +109,14 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   # HMC steps
   @showprogress 1 "[$alg_str] Sampling..." for i = 1:n
     dprintln(2, "recording old θ...")
-    old_vals = deepcopy(varInfo.vals)
+    old_vi = deepcopy(varInfo)
     dprintln(2, "$alg_str stepping...")
     is_accept, varInfo = step(model, spl, varInfo, i==1)
     if is_accept    # accepted => store the new predcits
       samples[i].value = Sample(varInfo).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
-      varInfo.vals = old_vals
+      varInfo = old_vi
       samples[i] = samples[i - 1]
     end
   end

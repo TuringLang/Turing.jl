@@ -65,14 +65,14 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
         dprintln(5, "making dual...")
         for i = 1:l
           dps[prior_count] = 1  # set dual part
-          vi.vals[range[i]] = Dual(reals[i], dps...)
+          vi[range[i]] = Dual(reals[i], dps...)
           dps[prior_count] = 0  # reset dual part
           prior_count += 1      # count
         end
         dprintln(5, "make dual done")
       else                    # other varilables (not for gradient info)
         for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-          vi.vals[range[i]] = Dual{prior_dim, Float64}(reals[i])
+          vi[range[i]] = Dual{prior_dim, Float64}(reals[i])
         end
       end
     end

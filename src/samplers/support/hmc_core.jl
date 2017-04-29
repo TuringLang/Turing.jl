@@ -57,7 +57,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
     for k in keys(grad)                # full step for state
       range = getrange(vi, k)
       for i = 1:length(vi[k])
-        vi.vals[range[i]] = vi.vals[range[i]] + ϵ * p[k][i]
+        vi[range[i]] = vi[range[i]] + ϵ * p[k][i]
       end
     end
     grad = gradient(vi, model, spl)
