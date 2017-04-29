@@ -190,6 +190,9 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
     r = rand(dist)
     # Always store vector inside VarInfo
     addvar!(vi, vn, vectorize(dist, r), dist, gid)
+  elseif isnan(vi[vn][1])
+    r = rand(dist)
+    vi[vn] = vectorize(dist, r)
   else
     if count  # sanity check for VarInfo.index
       uid_replay = groupuids(vi, gid, spl)[vi.index]

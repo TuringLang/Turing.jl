@@ -39,7 +39,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
     # ϵ = 0.2
-    println("ϵ: $ϵ")
+    # println("ϵ: $ϵ")
 
     dprintln(2, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
@@ -109,7 +109,7 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
       - ϵ     : leapfrog step size
       - H0    : initial H
     """
-    print(j)
+    # print(j)
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
