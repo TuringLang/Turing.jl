@@ -95,8 +95,6 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
       end
       val∇E[k] = g
     end
-    # Reset logp
-    vi.logp = Dual{prior_dim, Float64}(0)
   end
   # Return
   return val∇E
