@@ -47,14 +47,14 @@ end
 assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
   r = rand(vi, vn, dist)
   # The following code has been merged into rand.
-  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+  # vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
 observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
   lp = logpdf(d, value)
   vi.logw     += lp
-  vi.logjoint += lp
+  vi.logp += lp
 end
 
 assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
@@ -63,6 +63,6 @@ end
 
 observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
   lp          = logpdf(d, value)
-  vi.logjoint += lp
+  vi.logp += lp
   produce(lp)
 end

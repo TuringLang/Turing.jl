@@ -47,7 +47,7 @@ end
 assume(spl::Sampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
 
 observe(spl::Sampler{IS}, d::Distribution, value, vi::VarInfo) = begin
-  vi.logjoint   += logpdf(d, value)
+  vi.logp   += logpdf(d, value)
 end
 
 rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{IS}) = randr(vi, vn, dist)

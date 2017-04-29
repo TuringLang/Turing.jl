@@ -27,8 +27,8 @@ grad_Turing = sort([∇E[v][1] for v in keys(vi)])
 
 dist_s = InverseGamma(2,3)
 
-# Hand-written logjoint
-function logjoint(x::Vector)
+# Hand-written logp
+function logp(x::Vector)
   s = x[2]
   # s = invlink(dist_s, s)
   m = x[1]
@@ -39,7 +39,7 @@ function logjoint(x::Vector)
 end
 
 # Call ForwardDiff's AD
-g = x -> ForwardDiff.gradient(logjoint, x);
+g = x -> ForwardDiff.gradient(logp, x);
 # _s = link(dist_s, _s)
 _x = [_m, _s]
 grad_FWAD = sort(-g(_x))

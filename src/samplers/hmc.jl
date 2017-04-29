@@ -133,7 +133,7 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   dprintln(2, "assuming...")
   r = rand(vi, vn, dist, spl)
   # The following code has been merged into rand.
-  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+  # vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
@@ -141,9 +141,9 @@ end
 function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
   if length(value) == 1
-    vi.logjoint += logpdf(d, Dual(value))
+    vi.logp += logpdf(d, Dual(value))
   else
-    vi.logjoint += logpdf(d, map(x -> Dual(x), value))
+    vi.logp += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
 end

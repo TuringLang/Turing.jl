@@ -39,7 +39,7 @@ type VarInfo
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
-  logjoint    ::    Real
+  logp        ::    Real
   logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -60,7 +60,7 @@ end
 Base.show(io::IO, vi::VarInfo) = begin
   println(vi.idcs)
   print("$(vi.uids)\n$(vi.ranges)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
-  print("$(vi.logjoint), $(vi.index), $(vi.num_produce)")
+  print("$(vi.logp), $(vi.index), $(vi.num_produce)")
 end
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
@@ -205,14 +205,14 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
     if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
       if isa(dist, SimplexDistribution)
         r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-        vi.logjoint += logpdf(dist, r, true) # logr preserves precision of r
+        vi.logp += logpdf(dist, r, true) # logr preserves precision of r
       else
         r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-        vi.logjoint += logpdf(dist, r, true) # logr preserves precision of r
+        vi.logp += logpdf(dist, r, true) # logr preserves precision of r
       end
     else
       r = reconstruct(dist, vi[vn])
-      vi.logjoint += logpdf(dist, r, false)
+      vi.logp += logpdf(dist, r, false)
     end
   end
   r
@@ -234,10 +234,10 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
     end
     if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
       r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-      vi.logjoint += logpdf(dist, r, true) # logr preserves precision of r
+      vi.logp += logpdf(dist, r, true) # logr preserves precision of r
     else
       r = reconstruct(dist, vi[vn])
-      vi.logjoint += logpdf(dist, r, false)
+      vi.logp += logpdf(dist, r, false)
     end
   end
   r

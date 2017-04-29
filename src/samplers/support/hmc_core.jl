@@ -13,9 +13,9 @@ end
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model, _vi, spl, default_logjoint=0.0)
+function runmodel(model, _vi, spl, default_logp=0.0)
   vi = deepcopy(_vi)
-  vi.logjoint = default_logjoint
+  vi.logp = default_logp
   vi.index = 0
   model(vi=vi, sampler=spl) # run model\
 end
@@ -66,10 +66,10 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
     verifygrad(grad) || (reject = true; break)
 
     p = half_momentum_step(p, ϵ, grad) # half step for momentum
-    if realpart(vi.logjoint) == -Inf
+    if realpart(vi.logp) == -Inf
       break
-    elseif isnan(realpart(vi.logjoint)) || realpart(vi.logjoint) == Inf
-      dwarn(0, "Numerical error: vi.lojoint = $(vi.logjoint)")
+    elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
+      dwarn(0, "Numerical error: vi.lojoint = $(vi.logp)")
       reject = true
       break
     end
@@ -79,12 +79,12 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   vi, p, reject
 end
 
-# Find logjoint
-# NOTE: it returns logjoint but not -logjoint
-function find_logjoint(model, _vi, spl)
+# Find logp
+# NOTE: it returns logp but not -logp
+function find_logp(model, _vi, spl)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
-  vi.logjoint   # get logjoint
+  vi.logp   # get logp
 end
 
 # Compute Hamiltonian
@@ -93,7 +93,7 @@ function find_H(p, model, vi, spl)
   for k in keys(p)
     H += dot(p[k], p[k]) / 2
   end
-  H += realpart(-find_logjoint(model, vi, spl))
+  H += realpart(-find_logp(model, vi, spl))
   H = H[1]  # Vector{Any, 1} -> Any
   if isnan(H) || isinf(H); H = Inf else H end
 end

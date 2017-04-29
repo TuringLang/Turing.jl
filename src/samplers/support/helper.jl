@@ -47,7 +47,7 @@ Sample(vi::VarInfo) = begin
     value[sym(uid)] = realpart(r)
   end
   # NOTE: do we need to check if lp is 0?
-  value[:lp] = realpart(vi.logjoint)
+  value[:lp] = realpart(vi.logp)
   Sample(weight, value)
 end
 
@@ -58,7 +58,7 @@ function cleandual!(vi::VarInfo)
       val_vect[i] = realpart(val_vect[i])
     end
   end
-  vi.logjoint = realpart(vi.logjoint)
+  vi.logp = realpart(vi.logp)
 end
 
 # X -> R for all variables associated with given sampler

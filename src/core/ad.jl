@@ -1,7 +1,7 @@
 doc"""
     gradient(spl :: GradientSampler)
 
-Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint. This function uses chunk-wise forward AD with a chunk of size 10, which is limited by the ForwardDiff package.
+Function to generate the gradient dictionary, with each prior map to its derivative of the logp. This function uses chunk-wise forward AD with a chunk of size 10, which is limited by the ForwardDiff package.
 
 Example:
 
@@ -85,18 +85,18 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     for k in key_chunk
       dprintln(5, "for each prior...")
       l = length(vi[k])
-      duals = dualpart(-vi.logjoint)
+      duals = dualpart(-vi.logp)
       # To store the gradient vector
       g = zeros(l)
       for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-        dprintln(5, "taking from logjoint...")
+        dprintln(5, "taking from logp...")
         g[i] = duals[prior_count] # collect
         prior_count += 1          # count
       end
       val∇E[k] = g
     end
-    # Reset logjoint
-    vi.logjoint = Dual{prior_dim, Float64}(0)
+    # Reset logp
+    vi.logp = Dual{prior_dim, Float64}(0)
   end
   # Return
   return val∇E
