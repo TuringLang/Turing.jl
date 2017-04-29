@@ -96,32 +96,18 @@ function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  # println("[$T] grad: ", grad)
-  # println("[$T] p: ", p)
-  # println("[$T] vi: ", vi)
-  vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl) # make a leapfrog dictionary
-
-  log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
-
-  # This trick prevents the log-joint or its graident from being infinte
-  # Ref: https://github.com/mfouesneau/NUTS/blob/master/nuts.py#L111
-  # QUES: will this lead to some bias of the sampler?
-  while isnan(log_p_r_Θ′) || isinf(log_p_r_Θ′)
+  # Make a leapfrog step until accept
+  vi_prime, p_prime, reject = leapfrog(vi, p, 1, ϵ, model, spl)
+  while reject
     ϵ *= 0.5
-    # println("[$T] current ϵ: ", ϵ)
-    # println("[$T] jointd_prime: ", jointd_prime)
-    # println("[$T] vi_prime: ", vi_prime)
-    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
-    log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)
+    vi_prime, p_prime, reject = leapfrog(vi, p, 1, ϵ, model, spl)
   end
   ϵ_bar = ϵ
+  log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
-    # println("[$T] current ϵ: ", ϵ)
-    # println("[$T] jointd_prime: ", jointd_prime)
-    # println("[$T] vi_prime: ", vi_prime)
     ϵ = 2.0^a * ϵ
     vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
     log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)
