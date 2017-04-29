@@ -153,7 +153,7 @@ retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
   # Remove corresponding entries
   for i = l:-1:(n_retain + 1)
     for r_i in vi.ranges[gidcs[i]]
-      vi.vals[r_i] = NaN
+      vi[r_i] = NaN
     end
     # delete!(vi.idcs, vi.uids[gidcs[i]])
     # splice!(vi.uids, gidcs[i])
