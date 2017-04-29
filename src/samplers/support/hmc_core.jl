@@ -22,21 +22,19 @@ end
 
 function sample_momentum(vi::VarInfo, spl)
   dprintln(2, "sampling momentum...")
-  p = Dict(uid(k) => randn(length(vi[k])) for k in keys(vi))
+  kys = keys(vi)
   if ~isempty(spl.alg.space)
-    p = filter((k, p) -> getsym(vi, k) in spl.alg.space, p)
+    filter!(k -> getsym(vi, k) in spl.alg.space, kys)
   end
-  p
+  Dict(uid(k) => randn(length(vi[k])) for k in kys)
 end
 
 # Half momentum step
-function half_momentum_step(_p, ϵ, val∇E)
-  p = deepcopy(_p)
+function half_momentum_step!(p, ϵ, grad)
   dprintln(3, "half_momentum_step...")
-  for k in keys(val∇E)
-    p[k] -= ϵ * val∇E[k] / 2
+  for k in keys(grad)
+    p[k] -= ϵ * grad[k] / 2
   end
-  p
 end
 
 # Leapfrog step
@@ -53,19 +51,22 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
   dprintln(2, "leapfrog stepping...")
   for t in 1:τ  # do 'leapfrog' for each var
-    p = half_momentum_step(p, ϵ, grad) # half step for momentum
+    half_momentum_step!(p, ϵ, grad) # half step for momentum
+
     for k in keys(grad)                # full step for state
       range = getrange(vi, k)
       for i = 1:length(vi[k])
         vi[range[i]] = vi[range[i]] + ϵ * p[k][i]
       end
     end
+
     grad = gradient(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf.
     verifygrad(grad) || (reject = true; break)
 
-    p = half_momentum_step(p, ϵ, grad) # half step for momentum
+    half_momentum_step!(p, ϵ, grad) # half step for momentum
+
     if realpart(vi.logp) == -Inf
       break
     elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
