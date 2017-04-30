@@ -44,7 +44,7 @@ type VarInfo
   idcs        ::    Dict{UID, Int}
   uids        ::    Vector{UID}
   ranges      ::    Vector{UnitRange{Int}}
-  vals        ::    Vector{Real}
+  vals        ::    Vector{Vector{Real}}
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
@@ -56,7 +56,7 @@ type VarInfo
     Dict{UID, Int}(),
     Vector{UID}(),
     Vector{UnitRange{Int}}(),
-    Vector{Real}(),
+    Vector{Vector{Real}}(),
     Vector{Distribution}(),
     Vector{Int}(),
     Vector{Bool}(),
@@ -72,37 +72,37 @@ getidx(vi::VarInfo, uid::UID) = vi.idcs[uid]
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getrange(vi::VarInfo, uid::UID) = vi.ranges[getidx(vi, uid)]
 
-getval(vi::VarInfo, vn::VarName) = vi.vals[getrange(vi, vn)]
-getval(vi::VarInfo, uid::UID) = vi.vals[getrange(vi, uid)]
-getval(vi::VarInfo, idx::Int) = vi.vals[idx]
-getval(vi::VarInfo, range::UnitRange) = vi.vals[range]
+getval(vi::VarInfo, vn::VarName) = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, uid::UID) = vi.vals[end][getrange(vi, uid)]
+getval(vi::VarInfo, idx::Int) = vi.vals[end][idx]
+getval(vi::VarInfo, range::UnitRange) = vi.vals[end][range]
 
 setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[getrange(vi, vn)] = val
+  vi.vals[end][getrange(vi, vn)] = val
 end
 
 setval!(vi::VarInfo, val, uid::UID, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[getrange(vi, uid)] = val
+  vi.vals[end][getrange(vi, uid)] = val
 end
 
 setval!(vi::VarInfo, val, idx::Int, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[idx] = val
+  vi.vals[end][idx] = val
 end
 
 setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
-  vi.vals[range] = val
+  vi.vals[end][range] = val
 end
 
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
@@ -148,7 +148,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   |-----------------------------------------------------------------------
   | UIDs      :   $(string(vi.uids))
   | Range     :   $(vi.ranges)
-  | Vals      :   $(vi.vals)
+  | Vals      :   $(vi.vals[end])
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
   | Logp      :   $(vi.logp)
@@ -172,7 +172,7 @@ groupidcs(vi::VarInfo, gid::Int, spl::Sampler) =
 
 # Get all values of variables belonging to gid or 0
 groupvals(vi::VarInfo, gid::Int) = groupvals(vi, gid, nothing)
-groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[vi.ranges[i]], groupidcs(vi, gid, spl))
+groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[end][vi.ranges[i]], groupidcs(vi, gid, spl))
 
 # Get all uids of variables belonging to gid or 0
 groupuids(vi::VarInfo, gid::Int) = groupuids(vi, gid, nothing)
@@ -196,11 +196,12 @@ end
 addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution) = addvar!(vi, vn, val, dist, 0)
 addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid::Int) = begin
   @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
+  if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
   vi.idcs[uid(vn)] = length(vi.idcs) + 1
   push!(vi.uids, uid(vn))
-  l, n = length(vi.vals), length(val)
+  l, n = length(vi.vals[end]), length(val)
   push!(vi.ranges, l+1:l+n)
-  append!(vi.vals, val)
+  append!(vi.vals[end], val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.trans, false)
