@@ -67,10 +67,9 @@ end
 # X -> R for all variables associated with given sampler
 function link(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = keys(vi)
-  if spl != nothing && !isempty(spl.alg.space)
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
-  end
+  gkeys = spl == nothing ?
+          keys(vi) :
+          groupuids(vi, spl.alg.group_id, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
@@ -82,10 +81,9 @@ end
 # R -> X for all variables associated with given sampler
 function invlink(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = keys(vi)
-  if spl != nothing && !isempty(spl.alg.space)
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
-  end
+  gkeys = spl == nothing ?
+          keys(vi) :
+          groupuids(vi, spl.alg.group_id, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
