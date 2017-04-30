@@ -19,7 +19,9 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   dprintln(4, "making chunks...")
   prior_key_chunks = []; key_chunk = []; prior_dim = 0
 
-  gkeys = groupuids(vi, spl.alg.group_id, spl)
+  gkeys = spl == nothing ?
+          keys(vi) :
+          groupuids(vi, spl.alg.group_id, spl)
 
   for k in gkeys
     l = length(vi[k])         # dimension for the current variable

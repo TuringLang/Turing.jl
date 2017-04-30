@@ -19,12 +19,9 @@ function runmodel(model, _vi, spl, default_logp=0.0)
   model(vi=vi, sampler=spl) # run model\
 end
 
-function sample_momentum(vi::VarInfo, spl)
+function sample_momentum(vi::VarInfo, spl::Sampler)
   dprintln(2, "sampling momentum...")
-  kys = keys(vi)
-  if ~isempty(spl.alg.space)
-    filter!(k -> getsym(vi, k) in spl.alg.space, kys)
-  end
+  kys = groupuids(vi, spl.alg.group_id, spl)
   randn(reduce(+, map(k -> length(vi[k]), kys)))
 end
 
