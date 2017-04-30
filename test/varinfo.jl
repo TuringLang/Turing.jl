@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, groupvals, retain, randr
+using Turing: uid, cuid, reconstruct, invlink, groupvals, retain, randr, step
 
 # Test for uid() (= string())
 csym = gensym()
@@ -46,19 +46,19 @@ spl = Turing.Sampler(alg)
 vn_u = VarName(gensym(), :u, "", 1)
 randr(vi, vn_u, dists[1], spl, true)
 
-println(vi)
+# println(vi)
 
 retain(vi, 2, 1)
 
-println(vi)
+# println(vi)
 
 vals_of_1 = groupvals(vi, 1)
-println(vals_of_1)
+# println(vals_of_1)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
 @test length(vals_of_1) == 3
 
 vals_of_2 = groupvals(vi, 2)
-println(vals_of_2)
+# println(vals_of_2)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
 @test length(vals_of_2) == 1
 
@@ -70,33 +70,17 @@ filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
   u ~ InverseGamma(2,3)
 end
 
-# println("Test 2")
-gdemo() # Generate compiler information.
+# Test the update of group IDs
+g_demo_f = gdemo()
 g = Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
-pg = g.info[:samplers][1]
-# println(pg)
-hmc = g.info[:samplers][2]
-dist= Normal(0, 1)
+pg, hmc = g.info[:samplers]
 
-vi = VarInfo()
+vi = g_demo_f()
 
-r = rand(vi, vn_w, dist, pg)
-r = rand(vi, vn_u, dist, pg)
-r = rand(vi, vn_x, dist, pg)
-r = rand(vi, vn_y, dist, pg)
-r = rand(vi, vn_z, dist, pg)
+ref_particle, s = step(g_demo_f, pg, vi, nothing)
+vi = ref_particle.vi
+@test vi.gids == [1,1,1,0,0]
 
-@test vi.gids == [0,0,1,1,1]
-
-# println(vi)
-
-# println(vi)
-
-r = rand(vi, vn_w, dist, hmc)
-r = rand(vi, vn_u, dist, hmc)
-r = rand(vi, vn_x, dist, hmc)
-r = rand(vi, vn_y, dist, hmc)
-r = rand(vi, vn_z, dist, hmc)
-
-@test vi.gids == [2,2,1,1,1]
+vi = g_demo_f(vi=vi, sampler=hmc)
+@test vi.gids == [1,1,1,2,2]

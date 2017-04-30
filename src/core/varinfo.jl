@@ -201,66 +201,73 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
-# This method is called when sampler is of type Void
-rand(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist)
+#######################################
+# Rand & replaying method for VarInfo #
+#######################################
 
-# Random with replaying
-randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) = begin
-  gid = spl.alg.group_id
+# Sanity check for VarInfo.index
+checkindex(vn::VarName, vi::VarInfo, gid::Int, spl=nothing) = begin
+  uid_replay = groupuids(vi, gid, spl)[vi.index]
+  @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
+                \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
+end
+
+# This method is called when sampler is missing
+# NOTE: this used for initialize VarInfo, i.e. vi = model()
+# NOTE: this method is also used by IS
+# NOTE: this method is also used by TraceR
+randr(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, false)
+randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    r = rand(dist)
-    # Always store vector inside VarInfo
-    addvar!(vi, vn, vectorize(dist, r), dist, gid)
-  elseif isnan(vi[vn][1])
-    r = rand(dist)
-    vi[vn] = vectorize(dist, r)
+    initvar(vi, vn, dist)
   else
-    if count  # sanity check for VarInfo.index
-      uid_replay = groupuids(vi, gid, spl)[vi.index]
-      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
-                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
-    end
-    if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-      setgid!(vi, gid, vn)
-    end
-    if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
-      if isa(dist, SimplexDistribution)
-        r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-        vi.logp += logpdf(dist, r, true) # logr preserves precision of r
-      else
-        r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-        vi.logp += logpdf(dist, r, true) # logr preserves precision of r
-      end
-    else
-      r = reconstruct(dist, vi[vn])
-      vi.logp += logpdf(dist, r, false)
-    end
+    if count checkindex(vn, vi, 0, nothing) end
+    replayvar(vi, vn, dist)
+  end
+end
+
+# Initialize VarInfo, i.e. sampling from priors
+initvar(vi::VarInfo, vn::VarName, dist::Distribution) = initvar(vi, vn, dist, 0)
+initvar(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
+  @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
+  r = rand(dist)
+  addvar!(vi, vn, vectorize(dist, r), dist, gid)
+  r
+end
+
+# Replay variables
+replayvar(vi::VarInfo, vn::VarName, dist::Distribution) = begin
+  @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
+  if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
+    r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
+    vi.logp += logpdf(dist, r, true) # logr preserves precision of r
+  else
+    r = reconstruct(dist, vi[vn])
+    vi.logp += logpdf(dist, r, false)
   end
   r
 end
 
-# Simple `randr` for simulating from the prior
-randr(vi::VarInfo, vn::VarName, dist::Distribution, count = false) = begin
-  gid = 0 # Default gid without samplers
+# Replay variables with group IDs updated
+replayvar(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
+  if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
+    setgid!(vi, spl.alg.group_id, vn)
+  end
+  replayvar(vi, vn, dist)
+end
+
+# Random with replaying
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
+    r = initvar(vi, vn, dist, spl.alg.group_id)
+  elseif isnan(vi[vn][1])
     r = rand(dist)
-    # Always store vector inside VarInfo
-    addvar!(vi, vn, vectorize(dist, r), dist, gid)
+    vi[vn] = vectorize(dist, r)
   else
-    if count  # sanity check for VarInfo.index
-      uid_replay = groupuids(vi, gid, spl)[vi.index]
-      @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
-                    \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
-    end
-    if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
-      r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-      vi.logp += logpdf(dist, r, true) # logr preserves precision of r
-    else
-      r = reconstruct(dist, vi[vn])
-      vi.logp += logpdf(dist, r, false)
-    end
+    if count checkindex(vn, vi, spl.alg.group_id, spl) end
+    r = replayvar(vi, vn, dist, spl)
   end
   r
 end

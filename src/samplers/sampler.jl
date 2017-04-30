@@ -45,7 +45,7 @@ end
 
 ## Default definitions for assume, observe, when sampler = nothing.
 assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
-  r = rand(vi, vn, dist)
+  r = randr(vi, vn, dist)
   # The following code has been merged into rand.
   # vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r

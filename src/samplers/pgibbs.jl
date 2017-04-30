@@ -90,5 +90,5 @@ end
 rand(vi::VarInfo, vn::VarName, d::Distribution, spl::Sampler{PG}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, d, spl, true) :
-    randr(vi, vn, d)
+    replayvar(vi, vn, d)
 end

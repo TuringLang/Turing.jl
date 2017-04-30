@@ -149,8 +149,4 @@ function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::Va
   dprintln(2, "observe done")
 end
 
-rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
-  isempty(spl.alg.space) || vn.sym in spl.alg.space ?
-    randr(vi, vn, dist, spl, false) :
-    randr(vi, vn, dist)
-end
+rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = replayvar(vi, vn, dist, spl)
