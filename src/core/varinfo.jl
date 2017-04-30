@@ -67,15 +67,16 @@ type VarInfo
 end
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
-getidx(vi::VarInfo, uid::UID) = vi.idcs[uid]
+getidx(vi::VarInfo, uid::UID)    = vi.idcs[uid]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
-getrange(vi::VarInfo, uid::UID) = vi.ranges[getidx(vi, uid)]
+getrange(vi::VarInfo, uid::UID)    = vi.ranges[getidx(vi, uid)]
 
-getval(vi::VarInfo, vn::VarName) = vi.vals[end][getrange(vi, vn)]
-getval(vi::VarInfo, uid::UID) = vi.vals[end][getrange(vi, uid)]
-getval(vi::VarInfo, idx::Int) = vi.vals[end][idx]
-getval(vi::VarInfo, range::UnitRange) = vi.vals[end][range]
+getval(vi::VarInfo, vn::VarName)        = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, uid::UID)           = vi.vals[end][getrange(vi, uid)]
+getval(vi::VarInfo, idx::Int)           = vi.vals[end][idx]
+getval(vi::VarInfo, range::UnitRange)   = vi.vals[end][range]
+getval(vi::VarInfo, range::Vector{Int}) = vi.vals[end][range]
 
 setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   if ~overwrite
@@ -105,37 +106,46 @@ setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
   vi.vals[end][range] = val
 end
 
+setval!(vi::VarInfo, val, range::Vector{Int}, overwrite=false) = begin
+  if ~overwrite
+    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
+  end
+  vi.vals[end][range] = val
+end
+
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
-getsym(vi::VarInfo, uid::UID)  = vi.uids[getidx(vi, uid)][2]
+getsym(vi::VarInfo, uid::UID)    = vi.uids[getidx(vi, uid)][2]
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
-getdist(vi::VarInfo, uid::UID)  = vi.dists[getidx(vi, uid)]
+getdist(vi::VarInfo, uid::UID)    = vi.dists[getidx(vi, uid)]
 setdist!(vi::VarInfo, dist, vn::VarName) = vi.dists[getidx(vi, vn)] = dist
-setdist!(vi::VarInfo, dist, uid::UID)  = vi.dists[getidx(vi, uid)] = dist
+setdist!(vi::VarInfo, dist, uid::UID)    = vi.dists[getidx(vi, uid)] = dist
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
-getgid(vi::VarInfo, uid::UID)  = vi.gids[getidx(vi, uid)]
+getgid(vi::VarInfo, uid::UID)    = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
-setgid!(vi::VarInfo, gid, uid::UID)  = vi.gids[getidx(vi, uid)] = gid
+setgid!(vi::VarInfo, gid, uid::UID)    = vi.gids[getidx(vi, uid)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-istransformed(vi::VarInfo, uid::UID)  = vi.trans[getidx(vi, uid)]
+istransformed(vi::VarInfo, uid::UID)    = vi.trans[getidx(vi, uid)]
 settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
-settrans!(vi::VarInfo, trans, uid::UID)  = vi.trans[getidx(vi, uid)] = trans
+settrans!(vi::VarInfo, trans, uid::UID)    = vi.trans[getidx(vi, uid)] = trans
 
 uids(vi::VarInfo) = Set(keys(vi.idcs))            # get all uids
 syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName)      = getval(vi, vn)
-Base.getindex(vi::VarInfo, uid::UID)       = getval(vi, uid)
-Base.getindex(vi::VarInfo, idx::Int)         = getval(vi, idx)
-Base.getindex(vi::VarInfo, range::UnitRange) = getval(vi, range)
+Base.getindex(vi::VarInfo, vn::VarName)        = getval(vi, vn)
+Base.getindex(vi::VarInfo, uid::UID)           = getval(vi, uid)
+Base.getindex(vi::VarInfo, idx::Int)           = getval(vi, idx)
+Base.getindex(vi::VarInfo, range::UnitRange)   = getval(vi, range)
+Base.getindex(vi::VarInfo, range::Vector{Int}) = getval(vi, range)
 
-Base.setindex!(vi::VarInfo, val, vn::VarName)      = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, uid::UID)       = setval!(vi, val, uid, true)
-Base.setindex!(vi::VarInfo, val, idx::Int)         = setval!(vi, val, idx, true)
-Base.setindex!(vi::VarInfo, val, range::UnitRange) = setval!(vi, val, range, true)
+Base.setindex!(vi::VarInfo, val, vn::VarName)        = setval!(vi, val, vn, true)
+Base.setindex!(vi::VarInfo, val, uid::UID)           = setval!(vi, val, uid, true)
+Base.setindex!(vi::VarInfo, val, idx::Int)           = setval!(vi, val, idx, true)
+Base.setindex!(vi::VarInfo, val, range::UnitRange)   = setval!(vi, val, range, true)
+Base.setindex!(vi::VarInfo, val, range::Vector{Int}) = setval!(vi, val, range, true)
 
 Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
 
@@ -180,6 +190,9 @@ groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[e
 # Get all uids of variables belonging to gid or 0
 groupuids(vi::VarInfo, gid::Int) = groupuids(vi, gid, nothing)
 groupuids(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
+
+# Get all uids of variables belonging to gid or 0
+getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl.alg.group_id, spl))...)
 
 retain(vi::VarInfo, gid::Int, n_retain::Int) = retain(vi, gid, n_retain, nothing)
 retain(vi::VarInfo, gid::Int, n_retain::Int, spl::Union{Void, Sampler}) = begin

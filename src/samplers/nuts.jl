@@ -74,7 +74,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       end
       n = n + n′
 
-      s = s′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
+      s = s′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
       j = j + 1
     end
 
@@ -118,7 +118,7 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
            (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
       s′ = reject ?
            0 :
-           (logu < Δ_max - find_H(r′, model, θ′, spl)) ? 1 : 0
+           (logu < Δ_max + -find_H(r′, model, θ′, spl)) ? 1 : 0
       α′ = reject ?
            0 :
            exp(min(0, -find_H(r′, model, θ′, spl) - (-H0)))
@@ -140,7 +140,7 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
         end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
-        s′ = s′′ * (direction(θm, θp, rm, model, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, model, spl) >= 0 ? 1 : 0)
+        s′ = s′′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
       return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject

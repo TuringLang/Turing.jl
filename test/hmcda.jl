@@ -1,7 +1,7 @@
 using Turing
 using Base.Test
 
-alg1 = HMCDA(3000, 200, 0.65, 0.2)
+alg1 = HMCDA(3000, 500, 0.65, 0.25)
 # alg2 = Gibbs(3000, HMCDA(1, 200, 0.65, 0.35, :m), HMC(1, 0.25, 3, :s))
 alg3 = Gibbs(3000, PG(50, 10, :s), HMCDA(1, 500, 0.65, 0.05, :m))
 # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))

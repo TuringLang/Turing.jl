@@ -13,7 +13,7 @@ end
 gradient(_vi::VarInfo, model::Function) = gradient(_vi, model, nothing)
 gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Initialisation
-  vi = deepcopy(_vi); grad = Dict{UID, Vector{Float64}}()
+  vi = deepcopy(_vi); grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")
@@ -68,26 +68,18 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
     # Collect gradient
     dprintln(4, "collect gradients from logp...")
-    duals = dualpart(-vi.logp)
-    prior_count = 1
-    for k in key_chunk
-      l = length(vi[k])
-      grad[k] = collect(duals[prior_count:prior_count+l-1])
-      prior_count += l
-    end
+    append!(grad, collect(dualpart(-vi.logp)))
   end
 
   grad
 end
 
-verifygrad(grad::Dict) = begin
-  valid = true
-  for k in keys(grad)
-    if any(isnan(grad[k])) || any(isinf(grad[k]))
-      dwarn(0, "NaN/Inf gradients")
-      dwarn(1, "grad = $(grad)")
-      valid = false
-    end
+verifygrad(grad::Vector{Float64}) = begin
+  if any(isnan(grad)) || any(isinf(grad))
+    dwarn(0, "NaN/Inf gradients")
+    dwarn(1, "grad = $(grad)")
+    false
+  else
+    true
   end
-  valid
 end

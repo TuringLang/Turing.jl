@@ -3,12 +3,10 @@ global Δ_max = 1000
 doc"""
 Calculate dot(θp - θm, r)
 """
-function direction(θm, θp, r, model, spl)
-  s = 0
-  for k in keys(r)
-    s += dot(θp[k] - θm[k], r[k])
-  end
-  s
+function direction(θm, θp, r, spl)
+  rangesm = getranges(θm, spl)
+  rangesp = getranges(θp, spl)
+  dot(θp[rangesm] - θm[rangesp], r)
 end
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
@@ -27,15 +25,7 @@ function sample_momentum(vi::VarInfo, spl)
   if ~isempty(spl.alg.space)
     filter!(k -> getsym(vi, k) in spl.alg.space, kys)
   end
-  Dict(uid(k) => randn(length(vi[k])) for k in kys)
-end
-
-# Half momentum step
-function half_momentum_step!(p, ϵ, grad)
-  dprintln(3, "half_momentum_step...")
-  for k in keys(grad)
-    p[k] -= ϵ * grad[k] / 2
-  end
+  randn(reduce(+, map(k -> length(vi[k]), kys)))
 end
 
 # Leapfrog step
@@ -52,21 +42,19 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
   dprintln(2, "leapfrog stepping...")
   for t in 1:τ  # do 'leapfrog' for each var
-    half_momentum_step!(p, ϵ, grad) # half step for momentum
+    p -= ϵ * grad / 2
 
     duplicate!(vi)
 
-    for k in keys(grad)                # full step for state
-      range = getrange(vi, k)
-      vi[range] = vi[range] + ϵ * p[k]
-    end
+    ranges = getranges(vi, spl)
+    vi[ranges] += ϵ * p             # full step for state
 
     grad = gradient(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf.
     verifygrad(grad) || (reject = true; break)
 
-    half_momentum_step!(p, ϵ, grad) # half step for momentum
+    p -= ϵ * grad / 2
 
     if realpart(vi.logp) == -Inf
       break
@@ -86,13 +74,8 @@ end
 # Compute Hamiltonian
 function find_H(p, model, _vi, spl)
   vi = deepcopy(_vi)
-  H = 0
-  for k in keys(p)
-    H += dot(p[k], p[k]) / 2
-  end
   vi = runmodel(model, vi, spl)
-  H += realpart(-vi.logp)
-  H = H[1]  # Vector{Any, 1} -> Any
+  H = dot(p, p) / 2 + realpart(-vi.logp)
   if isnan(H) || isinf(H); H = Inf else H end
 end
 

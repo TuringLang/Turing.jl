@@ -23,7 +23,7 @@ mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(vi[svn][1])
 _m = realpart(vi[mvn][1])
 ∇E = gradient(vi, ad_test_f)
-grad_Turing = sort([∇E[v][1] for v in keys(vi)])
+grad_Turing = sort(∇E)
 
 dist_s = InverseGamma(2,3)
 
