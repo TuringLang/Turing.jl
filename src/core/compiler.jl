@@ -25,7 +25,7 @@ macro ~(left, right)
     # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
       if ~(vsym in Turing._compiler_[:dvars])
-        println("[Turing]: Observe - `" * vsym_str * "` is an observation")
+        dprintln(FCOMPILER, "[Turing]: Observe - `" * vsym_str * "` is an observation")
         push!(Turing._compiler_[:dvars], vsym)
       end
       esc(
@@ -46,7 +46,7 @@ macro ~(left, right)
       if ~(vsym in Turing._compiler_[:pvars])
         msg = "[Turing]: Assume - `" * vsym_str * "` is a parameter"
         isdefined(Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
-        println(msg)
+        dprintln(FCOMPILER, msg)
         push!(Turing._compiler_[:pvars], vsym)
       end
       # The if statement is to deterimnet how to pass the prior.

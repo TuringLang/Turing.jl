@@ -55,7 +55,7 @@ Debugging print function: The first argument controls the verbosity of message, 
 dprintln(v, args...) = v < Turing.VERBOSITY ? println("[Turing:$(stacktrace()[2])] ", args...) : nothing
 dwarn(v, args...) = v < Turing.VERBOSITY ? print_with_color(:red, "[Turing:$(stacktrace()[2])] ", mapreduce(string,*,args), "\n") : nothing
 
-
+global FCOMPILER = 1
 
 ##################
 # Inference code #
