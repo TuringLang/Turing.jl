@@ -53,12 +53,8 @@ end
 
 function cleandual!(vi::VarInfo)
   for uid in keys(vi)
-    l = length(vi[uid])
-    reals = realpart(vi[uid])
     range = getrange(vi, uid)
-    for i = 1:l
-      vi[range[i]] = reals[i]
-    end
+    vi[range] = realpart(vi[uid])
   end
   vi.logp = realpart(vi.logp)
   vi.logw = realpart(vi.logw)
