@@ -2,8 +2,9 @@ import Base.string, Base.isequal, Base.==, Base.convert
 import Base.getindex, Base.setindex!
 import Base.rand, Base.show
 
-########## VarName ##########
-
+###########
+# VarName #
+###########
 immutable VarName
   csym      ::    Symbol        # symbol generated in compilation time
   sym       ::    Symbol        # variable symbol
@@ -29,7 +30,9 @@ Base.setindex!(graddict::Dict, val, vn::VarName) = graddict[uid(vn)] = val
 
 Base.convert(::Type{Tuple}, vn::VarName) = uid(vn)
 
-########## VarInfo ##########
+###########
+# VarInfo #
+###########
 
 type VarInfo
   idcs        ::    Dict{Tuple, Int}
@@ -57,12 +60,6 @@ type VarInfo
   )
 end
 
-Base.show(io::IO, vi::VarInfo) = begin
-  println(vi.idcs)
-  print("$(vi.uids)\n$(vi.ranges)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
-  print("$(vi.logp), $(vi.index), $(vi.num_produce)")
-end
-
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
 getidx(vi::VarInfo, uid::Tuple) = vi.idcs[uid]
 
@@ -73,7 +70,6 @@ getval(vi::VarInfo, vn::VarName) = vi.vals[getrange(vi, vn)]
 getval(vi::VarInfo, uid::Tuple) = vi.vals[getrange(vi, uid)]
 getval(vi::VarInfo, idx::Int) = vi.vals[idx]
 getval(vi::VarInfo, range::UnitRange) = vi.vals[range]
-
 
 setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   if ~overwrite
@@ -104,81 +100,76 @@ setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
 end
 
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
-getsym(vi::VarInfo, uid::Tuple) = vi.uids[getidx(vi, uid)][2]
+getsym(vi::VarInfo, uid::Tuple)  = vi.uids[getidx(vi, uid)][2]
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
-getdist(vi::VarInfo, uid::Tuple) = vi.dists[getidx(vi, uid)]
+getdist(vi::VarInfo, uid::Tuple)  = vi.dists[getidx(vi, uid)]
 setdist!(vi::VarInfo, dist, vn::VarName) = vi.dists[getidx(vi, vn)] = dist
-setdist!(vi::VarInfo, dist, uid::Tuple) = vi.dists[getidx(vi, uid)] = dist
+setdist!(vi::VarInfo, dist, uid::Tuple)  = vi.dists[getidx(vi, uid)] = dist
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
-getgid(vi::VarInfo, uid::Tuple) = vi.gids[getidx(vi, uid)]
+getgid(vi::VarInfo, uid::Tuple)  = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
-setgid!(vi::VarInfo, gid, uid::Tuple) = vi.gids[getidx(vi, uid)] = gid
+setgid!(vi::VarInfo, gid, uid::Tuple)  = vi.gids[getidx(vi, uid)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-istransformed(vi::VarInfo, uid::Tuple) = vi.trans[getidx(vi, uid)]
+istransformed(vi::VarInfo, uid::Tuple)  = vi.trans[getidx(vi, uid)]
 settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
-settrans!(vi::VarInfo, trans, uid::Tuple) = vi.trans[getidx(vi, uid)] = trans
-
-# The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName) = getval(vi, vn)
-Base.getindex(vi::VarInfo, uid::Tuple) = getval(vi, uid)
-Base.getindex(vi::VarInfo, idx::Int) = getval(vi, idx)
-Base.getindex(vi::VarInfo, range::UnitRange) = getval(vi, range)
-
-Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, uid::Tuple) = setval!(vi, val, uid, true)
-Base.setindex!(vi::VarInfo, val, idx::Int) = setval!(vi, val, idx, true)
-Base.setindex!(vi::VarInfo, val, range::UnitRange) = setval!(vi, val, range, true)
+settrans!(vi::VarInfo, trans, uid::Tuple)  = vi.trans[getidx(vi, uid)] = trans
 
 uids(vi::VarInfo) = Set(keys(vi.idcs))            # get all uids
 syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))  # get all symbols
 
+# The default getindex & setindex!() for get & set values
+Base.getindex(vi::VarInfo, vn::VarName)      = getval(vi, vn)
+Base.getindex(vi::VarInfo, uid::Tuple)       = getval(vi, uid)
+Base.getindex(vi::VarInfo, idx::Int)         = getval(vi, idx)
+Base.getindex(vi::VarInfo, range::UnitRange) = getval(vi, range)
+
+Base.setindex!(vi::VarInfo, val, vn::VarName)      = setval!(vi, val, vn, true)
+Base.setindex!(vi::VarInfo, val, uid::Tuple)       = setval!(vi, val, uid, true)
+Base.setindex!(vi::VarInfo, val, idx::Int)         = setval!(vi, val, idx, true)
+Base.setindex!(vi::VarInfo, val, range::UnitRange) = setval!(vi, val, range, true)
+
 Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
+
 Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
 
-# Get all indices of variables belonging to gid or 0
-groupidcs(vi::VarInfo, gid::Int, spl=nothing) = begin
-  if spl == nothing || isempty(spl.alg.space)
-    filter(i -> vi.gids[i] == gid || vi.gids[i] == 0, 1:length(vi.gids))
-  else
-    filter(i -> (vi.gids[i] == gid || vi.gids[i] == 0) && (vi.uids[i][2] in spl.alg.space), 1:length(vi.gids))
-  end
+Base.show(io::IO, vi::VarInfo) = begin
+  println(vi.idcs)
+  print("$(vi.uids)\n$(vi.ranges)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
+  print("$(vi.logp), $(vi.index), $(vi.num_produce)")
 end
 
+#################################
+# Utility functions for VarInfo #
+#################################
+
+# Get all indices of variables belonging to gid or 0
+groupidcs(vi::VarInfo, gid::Int) = groupidcs(vi, gid, nothing)
+groupidcs(vi::VarInfo, gid::Int, spl::Void) = filter(i -> vi.gids[i] == gid || vi.gids[i] == 0, 1:length(vi.gids))
+groupidcs(vi::VarInfo, gid::Int, spl::Sampler) =
+  filter(i -> (vi.gids[i] == gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.uids[i][2] in spl.alg.space), 1:length(vi.gids))
+
 # Get all values of variables belonging to gid or 0
-groupvals(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.vals[vi.ranges[i]], groupidcs(vi, gid, spl))
+groupvals(vi::VarInfo, gid::Int) = groupvals(vi, gid, nothing)
+groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[vi.ranges[i]], groupidcs(vi, gid, spl))
 
 # Get all uids of variables belonging to gid or 0
-groupuids(vi::VarInfo, gid::Int, spl=nothing) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
+groupuids(vi::VarInfo, gid::Int) = groupuids(vi, gid, nothing)
+groupuids(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
 
-retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
-  # NOTE: the sanity check below is commented because Void
-  #       and standalone samplers uses gid = 0
-  # @assert ~(gid == 0) "[retain] wrong use of retain: gid = 0"
-
-  # Get all indices of variables belonging to gid
+retain(vi::VarInfo, gid::Int, n_retain::Int) = retain(vi, gid, n_retain, nothing)
+retain(vi::VarInfo, gid::Int, n_retain::Int, spl::Union{Void, Sampler}) = begin
   gidcs = groupidcs(vi, gid, spl)
-  l = length(gidcs)
 
-  # Remove corresponding entries
-  for i = l:-1:(n_retain + 1)
-    for r_i in vi.ranges[gidcs[i]]
-      vi[r_i] = NaN
-    end
-    # delete!(vi.idcs, vi.uids[gidcs[i]])
-    # splice!(vi.uids, gidcs[i])
-    # splice!(vi.vals, gidcs[i])
-    # splice!(vi.dists, gidcs[i])
-    # splice!(vi.gids, gidcs[i])
-    # splice!(vi.trans, gidcs[i])
+  # Set all corresponding entries to NaN
+  l = length(gidcs)
+  for i = l:-1:(n_retain + 1),  # for each variable (in reversed order)
+      j = vi.ranges[gidcs[i]]   # for each index of variable range
+    vi[j] = NaN
   end
 
-  # Rebuild index dictionary
-  # for i = 1:length(vi.uids)
-  #   vi.idcs[vi.uids[i]] = i
-  # end
   vi
 end
 
@@ -208,10 +199,9 @@ end
 
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo, gid::Int) = checkindex(vn, vi, gid, nothing)
-checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Sampler, Void}) = begin
-  uid_replay = groupuids(vi, gid, spl)[vi.index]
-  @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
-                \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
+checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = begin
+  uid_index = groupuids(vi, gid, spl)[vi.index]
+  @assert uid_index == uid(vn) "[Turing]: sanity check for VarInfo.index failed: uid_index=$uid_index, vi.index=$(vi.index), uid_now=$(uid(vn))"
 end
 
 # This method is called when sampler is missing
