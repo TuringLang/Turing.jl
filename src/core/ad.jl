@@ -19,10 +19,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   dprintln(4, "making chunks...")
   prior_key_chunks = []; key_chunk = []; prior_dim = 0
 
-  gkeys = keys(vi)
-  if spl != nothing && !isempty(spl.alg.space)
-    gkeys = filter(k -> getgid(vi, k) == spl.alg.group_id || (getgid(vi, k) == 0 && getsym(vi, k) in spl.alg.space), keys(vi))
-  end
+  gkeys = groupuids(vi, spl.alg.group_id, spl)
 
   for k in gkeys
     l = length(vi[k])         # dimension for the current variable
