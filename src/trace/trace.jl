@@ -1,7 +1,7 @@
 """
 Notes:
  - `rand` will store randomness only when trace type matches TraceR.
- - `randc` never stores randomness.
+ - `randc` never stores randomness. [REMOVED]
  - `randr` will store and replay randomness regardless trace type (N.B. Particle Gibbs uses `randr`).
  - `fork1` will perform replaying immediately and fix the particle weight to 1.
  - `fork2` will perform lazy replaying and accumulate likelihoods like a normal particle.
@@ -10,7 +10,7 @@ Notes:
 module Traces
 using Distributions
 using Turing: VarName, VarInfo, Sampler, retain, groupvals
-import Turing.randr, Turing.randoc
+import Turing.randr
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -76,15 +76,7 @@ typealias TraceC Trace{:C} # Replay
 
 # generate a new random variable, replay if t.counter < length(t.randomness)
 randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr, true)
-
-# generate a new random variable, no replay
-randc(t::Trace, vn::VarName, distr :: Distribution) = randoc(t.vi, vn, distr)
-
-Distributions.rand(t::TraceR, vn::VarName, dist::Distribution) = randr(t, vn, dist)
-Distributions.rand(t::TraceC, vn::VarName, dist::Distribution) = randc(t, vn, dist)
-
-Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
-Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
+Distributions.rand(t::Trace, vn::VarName, dist::Distribution) = randr(t, vn, dist)
 
 # step to the next observe statement, return log likelihood
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))

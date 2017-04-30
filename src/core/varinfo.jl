@@ -183,7 +183,8 @@ retain(vi::VarInfo, gid::Int, n_retain, spl=nothing) = begin
 end
 
 # Add a new entry to VarInfo
-addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid=0) = begin
+addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution) = addvar!(vi, vn, val, dist, 0)
+addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid::Int) = begin
   @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
   vi.idcs[uid(vn)] = length(vi.idcs) + 1
   push!(vi.uids, uid(vn))
@@ -206,7 +207,8 @@ end
 #######################################
 
 # Sanity check for VarInfo.index
-checkindex(vn::VarName, vi::VarInfo, gid::Int, spl=nothing) = begin
+checkindex(vn::VarName, vi::VarInfo, gid::Int) = checkindex(vn, vi, gid, nothing)
+checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Sampler, Void}) = begin
   uid_replay = groupuids(vi, gid, spl)[vi.index]
   @assert uid_replay == uid(vn) "[Turing]: `randr` variable replayed doesn't match counting index.\n
                 \t Details: uid_replay=$uid_replay, vi.index=$(vi.index), uid(vn)=$(uid(vn))"
@@ -258,7 +260,8 @@ replayvar(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
 end
 
 # Random with replaying
-randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) = begin
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn, dist, spl, false)
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
     r = initvar(vi, vn, dist, spl.alg.group_id)
@@ -268,20 +271,6 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count=false) =
   else
     if count checkindex(vn, vi, spl.alg.group_id, spl) end
     r = replayvar(vi, vn, dist, spl)
-  end
-  r
-end
-
-# Randome with force overwriting by counter
-function randoc(vi::VarInfo, vn::VarName, dist::Distribution, gid=0)
-  vi.index += 1
-  r = Distributions.rand(dist)
-  vals = groupvals(vi, 0)
-  if vi.index <= length(vi.vals)
-    vals[vi.index] = r
-  else # sample, record
-    @assert ~(uid(vn) in groupuids(vi, gid)) "[randoc] attempt to generate an exisitng variable $(sym(vn)) to $vi"
-    addvar!(vi, vn, r, dist, 0)
   end
   r
 end
