@@ -54,7 +54,7 @@ testcases = [
           "gibbs_constructor",
 #       nuts.jl
           "nuts_cons",
-          # "nuts", # NOTE: fix this
+          "nuts",
           # "nuts_geweke",
 #       enuts.jl
           # "enuts_cons",
@@ -62,7 +62,7 @@ testcases = [
           # "enuts_geweke",
 #       hmcda.jl
           "hmcda_cons",
-          # "hmcda",  # NOTE: fix this
+          "hmcda",
           # "hmcda_geweke",
 #       hmc.jl
           "multivariate_support",

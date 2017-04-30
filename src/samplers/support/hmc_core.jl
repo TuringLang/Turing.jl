@@ -51,8 +51,11 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
     grad = gradient(vi, model, spl)
 
-    # Verify gradients; reject if gradients is NaN or Inf.
-    verifygrad(grad) || (reject = true; break)
+    # Verify gradients; reject if gradients is NaN or Inf
+    if ~verifygrad(grad)
+     reject = true
+     break
+    end
 
     p -= ϵ * grad / 2
 
