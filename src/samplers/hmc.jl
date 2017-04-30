@@ -55,7 +55,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    vi = link(vi, spl)
+    if spl.alg.group_id != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
@@ -69,13 +69,11 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)
 
-    dprintln(3, "R -> X...")
-    vi = invlink(vi, spl)
-
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    cleandual!(vi)
+    dprintln(3, "R -> X...")
+    if spl.alg.group_id != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
@@ -105,19 +103,21 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
   accept_num = 0    # record the accept number
-  varInfo = model()
+  vi = model()
+
+  if spl.alg.group_id == 0 vi = link(vi, spl) end
 
   # HMC steps
   @showprogress 1 "[$alg_str] Sampling..." for i = 1:n
     dprintln(2, "recording old θ...")
-    old_vi = deepcopy(varInfo)
+    old_vi = deepcopy(vi)
     dprintln(2, "$alg_str stepping...")
-    is_accept, varInfo = step(model, spl, varInfo, i==1)
+    is_accept, vi = step(model, spl, vi, i==1)
     if is_accept    # accepted => store the new predcits
-      samples[i].value = Sample(varInfo).value
+      samples[i].value = Sample(vi).value
       accept_num = accept_num + 1
     else            # rejected => store the previous predcits
-      varInfo = old_vi
+      vi = old_vi
       samples[i] = samples[i - 1]
     end
   end
