@@ -14,6 +14,7 @@ end
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
 function runmodel(model, _vi, spl, default_logp=0.0)
+  dprintln(4, "run model...")
   vi = deepcopy(_vi)
   vi.logp = default_logp
   vi.index = 0

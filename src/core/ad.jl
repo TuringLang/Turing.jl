@@ -1,29 +1,23 @@
 doc"""
-    gradient(spl :: GradientSampler)
+    gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler})
 
-Function to generate the gradient dictionary, with each prior map to its derivative of the logp. This function uses chunk-wise forward AD with a chunk of size 10, which is limited by the ForwardDiff package.
+Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint probibilioty. This function uses chunk-wise forward AD with a chunk of size $(CHUNKSIZE) as default.
 
 Example:
 
 ```julia
-function Base.run(spl :: Sampler{HMC})
-  ...
-  val∇E = gradient(spl.priors, spl.model)
-  ...
+grad = gradient(vi, model, spl)
 end
 ```
 """
-function gradient(_vi::VarInfo, model::Function, spl=nothing)
-
-  vi = deepcopy(_vi)
+gradient(_vi::VarInfo, model::Function) = gradient(_vi, model, nothing)
+gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Initialisation
-  val∇E = Dict{Tuple, Vector{Float64}}()
+  vi = deepcopy(_vi); grad = Dict{Tuple, Vector{Float64}}()
 
-  # Split keys(values) into CHUNKSIZE, CHUNKSIZE, CHUNKSIZE, m-size chunks,
+  # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")
-  prior_key_chunks = []
-  key_chunk = []
-  prior_dim = 0
+  prior_key_chunks = []; key_chunk = []; prior_dim = 0
 
   gkeys = keys(vi)
   if spl != nothing && !isempty(spl.alg.space)
@@ -31,27 +25,20 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
   end
 
   for k in gkeys
-    l = length(vi[k])
+    l = length(vi[k])         # dimension for the current variable
     if prior_dim + l > CHUNKSIZE
-      # Store the old chunk
-      push!(prior_key_chunks, (key_chunk, prior_dim))
-      # Initialise new chunk
-      key_chunk = []
-      prior_dim = 0
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
-    else
-      # Update
-      push!(key_chunk, k)
-      prior_dim += l
+      push!(prior_key_chunks, # store the previous chunk
+            (key_chunk, prior_dim))
+      key_chunk = []          # initialise a new chunk
+      prior_dim = 0           # reset dimension counter
     end
+    push!(key_chunk, k)       # put the current variable into the current chunk
+    prior_dim += l            # update dimension counter
   end
-  if length(key_chunk) != 0
-    push!(prior_key_chunks, (key_chunk, prior_dim))  # push the last chunk
-  end
+  push!(prior_key_chunks,     # push the last chunk
+        (key_chunk, prior_dim))
 
-  # chunk-wise forward AD
+  # Chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
     # Set dual part correspondingly
     dprintln(4, "set dual...")
@@ -65,7 +52,7 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
       l = length(vi[k])
       reals = realpart(vi[k])
       range = getrange(vi, k)
-      if k in key_chunk       # to graidnet variables
+      if k in key_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")
         for i = 1:l
           dps[prior_count] = 1  # set dual part
@@ -74,34 +61,29 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
           prior_count += 1      # count
         end
         dprintln(5, "make dual done")
-      else                    # other varilables (not for gradient info)
-        for i = 1:l           # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-          vi[range[i]] = Dual{prior_dim, Float64}(reals[i])
+      else                      # for other varilables (no gradient in this round)
+        for i = 1:l
+          vi[range[i]] = (reals[i])
         end
       end
     end
-    # Run the model
-    dprintln(4, "run model...")
     vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
     # Collect gradient
-    dprintln(4, "collect dual...")
+    dprintln(4, "collect gradients from logp...")
     prior_count = 1
     for k in key_chunk
-      dprintln(5, "for each prior...")
       l = length(vi[k])
       duals = dualpart(-vi.logp)
-      # To store the gradient vector
-      g = zeros(l)
-      for i = 1:l # NOTE: we cannot use direct assignment here as we dont' want the reference of val_vect is changed (Mv and Mat support)
-        dprintln(5, "taking from logp...")
-        g[i] = duals[prior_count] # collect
-        prior_count += 1          # count
+      g = zeros(l)  # init a container to store the gradient vector
+      for i = 1:l
+        g[i] = duals[prior_count] # collect current dim
+        prior_count += 1          # dim counter
       end
-      val∇E[k] = g
+      grad[k] = g
     end
   end
-  # Return
-  return val∇E
+
+  grad
 end
 
 verifygrad(grad::Dict) = begin
