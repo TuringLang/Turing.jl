@@ -164,6 +164,9 @@ end
 # Utility functions for VarInfo #
 #################################
 
+duplicate!(vi::VarInfo) = push!(vi.vals, vi.vals[end])
+keeplast!(vi::VarInfo) = splice!(vi.vals, 1:length(vi.vals)-1)
+
 # Get all indices of variables belonging to gid or 0
 groupidcs(vi::VarInfo, gid::Int) = groupidcs(vi, gid, nothing)
 groupidcs(vi::VarInfo, gid::Int, spl::Void) = filter(i -> vi.gids[i] == gid || vi.gids[i] == 0, 1:length(vi.gids))

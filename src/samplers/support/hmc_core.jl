@@ -53,6 +53,8 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   for t in 1:τ  # do 'leapfrog' for each var
     half_momentum_step!(p, ϵ, grad) # half step for momentum
 
+    duplicate!(vi)
+
     for k in keys(grad)                # full step for state
       range = getrange(vi, k)
       vi[range] = vi[range] + ϵ * p[k]
@@ -73,6 +75,8 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
       break
     end
   end
+
+  keeplast!(vi)
 
   # Return updated θ and momentum
   vi, p, reject

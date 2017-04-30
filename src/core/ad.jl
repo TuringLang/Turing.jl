@@ -58,6 +58,10 @@ function gradient(_vi::VarInfo, model::Function, spl=nothing)
     dps = zeros(prior_dim)
     prior_count = 1
     for k in gkeys
+
+      duplicate!(vi)    # NOTE: we don't have to call keeplast! in the end
+                        #       because we don't return the amended VarInfo
+
       l = length(vi[k])
       reals = realpart(vi[k])
       range = getrange(vi, k)
