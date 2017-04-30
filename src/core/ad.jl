@@ -39,15 +39,13 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
+    duplicate!(vi)    # NOTE: we don't have to call keeplast! in the end
+                      #       because we don't return the amended VarInfo
     # Set dual part correspondingly
     dprintln(4, "set dual...")
     dps = zeros(prior_dim)
     prior_count = 1
     for k in gkeys
-
-      duplicate!(vi)    # NOTE: we don't have to call keeplast! in the end
-                        #       because we don't return the amended VarInfo
-
       l = length(vi[k])
       reals = realpart(vi[k])
       range = getrange(vi, k)
