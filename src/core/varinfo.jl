@@ -12,12 +12,18 @@ immutable VarName
   counter   ::    Int           # counter of same {csym, uid}
 end
 
+typealias UID Tuple{Symbol,Symbol,String,Int}
+
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
-string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
+
+Base.string(vn::VarName) = string(uid(vn))
+Base.string(uid::UID) = "{$(uid[1]),$(uid[2])$(uid[3])}:$(uid[4])"
+Base.string(uids::Vector{UID}) = replace(string(map(uid -> string(uid), uids)), "String", "")
+
 sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
-sym(t::Tuple{Symbol,Symbol,String,Int}) = Symbol("$(t[2])$(t[3])")
+sym(t::UID) = Symbol("$(t[2])$(t[3])")
 
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName) = isequal(x, y)
@@ -28,15 +34,15 @@ cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing) # the uid which is only avail
 Base.getindex(graddict::Dict, vn::VarName) = graddict[uid(vn)]
 Base.setindex!(graddict::Dict, val, vn::VarName) = graddict[uid(vn)] = val
 
-Base.convert(::Type{Tuple}, vn::VarName) = uid(vn)
+Base.convert(::Type{UID}, vn::VarName) = uid(vn)
 
 ###########
 # VarInfo #
 ###########
 
 type VarInfo
-  idcs        ::    Dict{Tuple, Int}
-  uids        ::    Vector{Tuple}
+  idcs        ::    Dict{UID, Int}
+  uids        ::    Vector{UID}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Real}
   dists       ::    Vector{Distribution}
@@ -47,8 +53,8 @@ type VarInfo
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
-    Dict{Tuple, Int}(),
-    Vector{Tuple}(),
+    Dict{UID, Int}(),
+    Vector{UID}(),
     Vector{UnitRange{Int}}(),
     Vector{Real}(),
     Vector{Distribution}(),
@@ -61,13 +67,13 @@ type VarInfo
 end
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
-getidx(vi::VarInfo, uid::Tuple) = vi.idcs[uid]
+getidx(vi::VarInfo, uid::UID) = vi.idcs[uid]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
-getrange(vi::VarInfo, uid::Tuple) = vi.ranges[getidx(vi, uid)]
+getrange(vi::VarInfo, uid::UID) = vi.ranges[getidx(vi, uid)]
 
 getval(vi::VarInfo, vn::VarName) = vi.vals[getrange(vi, vn)]
-getval(vi::VarInfo, uid::Tuple) = vi.vals[getrange(vi, uid)]
+getval(vi::VarInfo, uid::UID) = vi.vals[getrange(vi, uid)]
 getval(vi::VarInfo, idx::Int) = vi.vals[idx]
 getval(vi::VarInfo, range::UnitRange) = vi.vals[range]
 
@@ -78,7 +84,7 @@ setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
   vi.vals[getrange(vi, vn)] = val
 end
 
-setval!(vi::VarInfo, val, uid::Tuple, overwrite=false) = begin
+setval!(vi::VarInfo, val, uid::UID, overwrite=false) = begin
   if ~overwrite
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
@@ -100,34 +106,34 @@ setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
 end
 
 getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
-getsym(vi::VarInfo, uid::Tuple)  = vi.uids[getidx(vi, uid)][2]
+getsym(vi::VarInfo, uid::UID)  = vi.uids[getidx(vi, uid)][2]
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
-getdist(vi::VarInfo, uid::Tuple)  = vi.dists[getidx(vi, uid)]
+getdist(vi::VarInfo, uid::UID)  = vi.dists[getidx(vi, uid)]
 setdist!(vi::VarInfo, dist, vn::VarName) = vi.dists[getidx(vi, vn)] = dist
-setdist!(vi::VarInfo, dist, uid::Tuple)  = vi.dists[getidx(vi, uid)] = dist
+setdist!(vi::VarInfo, dist, uid::UID)  = vi.dists[getidx(vi, uid)] = dist
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
-getgid(vi::VarInfo, uid::Tuple)  = vi.gids[getidx(vi, uid)]
+getgid(vi::VarInfo, uid::UID)  = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
-setgid!(vi::VarInfo, gid, uid::Tuple)  = vi.gids[getidx(vi, uid)] = gid
+setgid!(vi::VarInfo, gid, uid::UID)  = vi.gids[getidx(vi, uid)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-istransformed(vi::VarInfo, uid::Tuple)  = vi.trans[getidx(vi, uid)]
+istransformed(vi::VarInfo, uid::UID)  = vi.trans[getidx(vi, uid)]
 settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
-settrans!(vi::VarInfo, trans, uid::Tuple)  = vi.trans[getidx(vi, uid)] = trans
+settrans!(vi::VarInfo, trans, uid::UID)  = vi.trans[getidx(vi, uid)] = trans
 
 uids(vi::VarInfo) = Set(keys(vi.idcs))            # get all uids
 syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
 Base.getindex(vi::VarInfo, vn::VarName)      = getval(vi, vn)
-Base.getindex(vi::VarInfo, uid::Tuple)       = getval(vi, uid)
+Base.getindex(vi::VarInfo, uid::UID)       = getval(vi, uid)
 Base.getindex(vi::VarInfo, idx::Int)         = getval(vi, idx)
 Base.getindex(vi::VarInfo, range::UnitRange) = getval(vi, range)
 
 Base.setindex!(vi::VarInfo, val, vn::VarName)      = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, uid::Tuple)       = setval!(vi, val, uid, true)
+Base.setindex!(vi::VarInfo, val, uid::UID)       = setval!(vi, val, uid, true)
 Base.setindex!(vi::VarInfo, val, idx::Int)         = setval!(vi, val, idx, true)
 Base.setindex!(vi::VarInfo, val, range::UnitRange) = setval!(vi, val, range, true)
 
@@ -136,9 +142,22 @@ Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
 Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
 
 Base.show(io::IO, vi::VarInfo) = begin
-  println(vi.idcs)
-  print("$(vi.uids)\n$(vi.ranges)\n$(vi.vals)\n$(vi.gids)\n$(vi.trans)\n")
-  print("$(vi.logp), $(vi.index), $(vi.num_produce)")
+  vi_str = """
+  /=======================================================================
+  | VarInfo
+  |-----------------------------------------------------------------------
+  | UIDs      :   $(string(vi.uids))
+  | Range     :   $(vi.ranges)
+  | Vals      :   $(vi.vals)
+  | GIDs      :   $(vi.gids)
+  | Trans?    :   $(vi.trans)
+  | Logp      :   $(vi.logp)
+  | Logw      :   $(vi.logw)
+  | Index     :   $(vi.index)
+  | #produce  :   $(vi.num_produce)
+  \\=======================================================================
+  """
+  print(io, vi_str)
 end
 
 #################################
