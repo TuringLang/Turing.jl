@@ -52,19 +52,16 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
     grad = gradient(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf
-    if ~verifygrad(grad)
-     reject = true
-     break
-    end
+    verifygrad(grad) || (reject = true; break)
 
     p -= ϵ * grad / 2
 
     if realpart(vi.logp) == -Inf
+      dwarn(0, "Log-joint is -Inf")
       break
     elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
       dwarn(0, "Numerical error: vi.lojoint = $(vi.logp)")
-      reject = true
-      break
+      reject = true; break
     end
   end
 
@@ -79,7 +76,7 @@ function find_H(p, model, _vi, spl)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
   H = dot(p, p) / 2 + realpart(-vi.logp)
-  if isnan(H) || isinf(H); H = Inf else H end
+  if isnan(H) H = Inf else H end
 end
 
 function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
@@ -99,7 +96,7 @@ function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
     ϵ = 2.0^a * ϵ
-    vi_prime, p_prime = leapfrog(vi, p, 1, ϵ, model, spl)
+    vi_prime, p_prime, _ = leapfrog(vi, p, 1, ϵ, model, spl)
     log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)
   end
 
