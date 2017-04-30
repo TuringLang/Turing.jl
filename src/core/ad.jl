@@ -62,9 +62,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         end
         dprintln(5, "make dual done")
       else                      # for other varilables (no gradient in this round)
-        for i = 1:l
-          vi[range[i]] = (reals[i])
-        end
+        vi[range] = map(r -> Dual{prior_dim, Float64}(r), reals)
       end
     end
     vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
