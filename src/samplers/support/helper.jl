@@ -53,12 +53,15 @@ end
 
 function cleandual!(vi::VarInfo)
   for uid in keys(vi)
-    val_vect = vi[uid]
-    for i = 1:length(val_vect)
-      val_vect[i] = realpart(val_vect[i])
+    l = length(vi[uid])
+    reals = realpart(vi[uid])
+    range = getrange(vi, uid)
+    for i = 1:l
+      vi[range[i]] = reals[i]
     end
   end
   vi.logp = realpart(vi.logp)
+  vi.logw = realpart(vi.logw)
 end
 
 # X -> R for all variables associated with given sampler
