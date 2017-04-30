@@ -24,13 +24,14 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     vi_0 = deepcopy(vi)
 
-    vi = link(vi, spl)
+    dprintln(3, "X -> R...")
+    if spl.alg.group_id != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
-    # println("[HMCDA] finding for ϵ")
     ϵ_bar, ϵ = find_good_eps(model, spl, vi)
 
-    vi = invlink(vi, spl)
+    dprintln(3, "R -> X...")
+    if spl.alg.group_id != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -54,7 +55,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    vi = link(vi, spl)
+    if spl.alg.group_id != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
@@ -93,9 +94,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if reject return false, vi end
 
     dprintln(3, "R -> X...")
-    vi = invlink(vi, spl)
-
-    cleandual!(vi)
+    if spl.alg.group_id != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     dprintln(2, "decide wether to accept...")
     if rand() < α      # accepted
