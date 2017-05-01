@@ -23,14 +23,14 @@ grad_Turing = gradient(vi, ad_test_3_f)
 dist_v = Wishart(7, [1 0.5; 0.5 1])
 
 # Hand-written logp
-function logp(x::Vector)
+function logp3(x::Vector)
   v = [x[1] x[3]; x[2] x[4]]
   lp = logpdf(dist_v, v, false)
   lp
 end
 
 # Call ForwardDiff's AD
-g = x -> ForwardDiff.gradient(logp, x);
+g = x -> ForwardDiff.gradient(logp3, x);
 # _s = link(dist_v, _s)
 grad_FWAD = -g(_v)
 

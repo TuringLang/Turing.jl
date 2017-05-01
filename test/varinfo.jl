@@ -18,9 +18,9 @@ vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
 alg = PG(PG(5,5),2)
-spl = Turing.Sampler(alg)
+spl2 = Turing.Sampler(alg)
 vn_w = VarName(gensym(), :w, "", 1)
-randr(vi, vn_w, dists[1], spl, true)
+randr(vi, vn_w, dists[1], spl2, true)
 
 vn_x = VarName(gensym(), :x, "", 1)
 vn_y = VarName(gensym(), :y, "", 1)
@@ -28,36 +28,34 @@ vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
 alg = PG(PG(5,5),1)
-spl = Turing.Sampler(alg)
+spl1 = Turing.Sampler(alg)
 for i = 1:3
-  r = randr(vi, vns[i], dists[i], spl, false)
+  r = randr(vi, vns[i], dists[i], spl1, false)
   val = reconstruct(dists[i], vi[vns[i]])
   @test sum(val - r) <= 1e-9
 end
 
 # println(vi)
 
-@test length(groupvals(vi, 1)) == 3
-@test length(groupvals(vi, 2)) == 1
+@test length(groupvals(vi, spl1)) == 3
+@test length(groupvals(vi, spl2)) == 1
 
 
-alg = PG(PG(5,5),2)
-spl = Turing.Sampler(alg)
 vn_u = VarName(gensym(), :u, "", 1)
-randr(vi, vn_u, dists[1], spl, true)
+randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 
-retain(vi, 2, 1)
+retain(vi, 1, spl2)
 
 # println(vi)
 
-vals_of_1 = groupvals(vi, 1)
+vals_of_1 = groupvals(vi, spl1)
 # println(vals_of_1)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
 @test length(vals_of_1) == 3
 
-vals_of_2 = groupvals(vi, 2)
+vals_of_2 = groupvals(vi, spl2)
 # println(vals_of_2)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
 @test length(vals_of_2) == 1

@@ -86,14 +86,9 @@ function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   newtrace.spl = trace.spl
-  if trace.spl != nothing
-    gid = trace.spl.alg.group_id
-  else
-    gid = 0
-  end
 
-  n_rand = min(trace.vi.index, length(groupvals(trace.vi, gid, trace.spl)))
-  newtrace.vi = retain(deepcopy(trace.vi), gid, n_rand, trace.spl)
+  n_rand = min(trace.vi.index, length(groupvals(trace.vi, trace.spl)))
+  newtrace.vi = retain(deepcopy(trace.vi), n_rand, trace.spl)
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -115,12 +110,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    if trace.spl != nothing
-      gid = trace.spl.alg.group_id
-    else
-      gid = 0
-    end
-    retain(newtrace.vi, gid, index, trace.spl)
+    retain(newtrace.vi, index, trace.spl)
   end
 
   newtrace

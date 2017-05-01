@@ -71,7 +71,6 @@ setval!(vi::VarInfo, val, i::Union{VarName,Int,VarRange}, overwrite=false) = beg
   if ~overwrite warn("[setval!] overwritting values in VarInfo with overwrite = false") end
   setval!(vi, val, i)
 end
-
 setval!(vi::VarInfo, val, vn::VarName)     = vi.vals[end][getrange(vi, vn)] = val
 setval!(vi::VarInfo, val, idx::Int)        = vi.vals[end][idx] = val
 setval!(vi::VarInfo, val, range::VarRange) = vi.vals[end][range] = val
@@ -81,6 +80,7 @@ getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
+
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
@@ -88,9 +88,7 @@ istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
 # X -> R for all variables associated with given sampler
 function link(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = spl == nothing ?
-          keys(vi) :
-          groupvns(vi, spl.alg.group_id, spl)
+  gkeys = groupvns(vi, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
@@ -102,9 +100,7 @@ end
 # R -> X for all variables associated with given sampler
 function invlink(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = spl == nothing ?
-          keys(vi) :
-          groupvns(vi, spl.alg.group_id, spl)
+  gkeys = groupvns(vi, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
@@ -160,25 +156,28 @@ last(_vi::VarInfo) = begin
 end
 
 # Get all indices of variables belonging to gid or 0
-groupidcs(vi::VarInfo, gid::Int) = groupidcs(vi, gid, nothing)
-groupidcs(vi::VarInfo, gid::Int, spl::Void) = filter(i -> vi.gids[i] == gid || vi.gids[i] == 0, 1:length(vi.gids))
-groupidcs(vi::VarInfo, gid::Int, spl::Sampler) =
-  filter(i -> (vi.gids[i] == gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space), 1:length(vi.gids))
+groupidcs(vi::VarInfo) = groupidcs(vi, nothing)
+groupidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
+groupidcs(vi::VarInfo, spl::Sampler) =
+  filter(i ->
+    (vi.gids[i] == spl.alg.group_id || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+    1:length(vi.gids)
+  )
 
 # Get all values of variables belonging to gid or 0
-groupvals(vi::VarInfo, gid::Int) = groupvals(vi, gid, nothing)
-groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[end][vi.ranges[i]], groupidcs(vi, gid, spl))
+groupvals(vi::VarInfo) = groupvals(vi, nothing)
+groupvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vals[end][vi.ranges[i]], groupidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
-groupvns(vi::VarInfo, gid::Int) = groupvns(vi, gid, nothing)
-groupvns(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs(vi, gid, spl))
+groupvns(vi::VarInfo) = groupvns(vi, nothing)
+groupvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
-getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl.alg.group_id, spl))...)
+getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
 
-retain(vi::VarInfo, gid::Int, n_retain::Int) = retain(vi, gid, n_retain, nothing)
-retain(vi::VarInfo, gid::Int, n_retain::Int, spl::Union{Void, Sampler}) = begin
-  gidcs = groupidcs(vi, gid, spl)
+retain(vi::VarInfo, n_retain::Int) = retain(vi, n_retain, nothing)
+retain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+  gidcs = groupidcs(vi, spl)
 
   # Set all corresponding entries to NaN
   l = length(gidcs)
@@ -218,7 +217,7 @@ end
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo, gid::Int) = checkindex(vn, vi, gid, nothing)
 checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = begin
-  vn_index = groupvns(vi, gid, spl)[vi.index]
+  vn_index = groupvns(vi, spl)[vi.index]
   @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
