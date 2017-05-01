@@ -26,7 +26,7 @@ immutable SMC <: InferenceAlgorithm
   resampler_threshold   ::  Float64
   use_replay            ::  Bool
   space                 ::  Set
-  group_id              ::  Int
+  gid                   ::  Int
   SMC(n) = new(n, resampleSystematic, 0.5, false, Set(), 0)
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
 end

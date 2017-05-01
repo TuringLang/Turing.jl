@@ -160,7 +160,7 @@ groupidcs(vi::VarInfo) = groupidcs(vi, nothing)
 groupidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
 groupidcs(vi::VarInfo, spl::Sampler) =
   filter(i ->
-    (vi.gids[i] == spl.alg.group_id || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+    (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
     1:length(vi.gids)
   )
 
@@ -261,7 +261,7 @@ end
 # Replay variables with group IDs updated
 replayvar(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-    setgid!(vi, spl.alg.group_id, vn)
+    setgid!(vi, spl.alg.gid, vn)
   end
   replayvar(vi, vn, dist)
 end
@@ -271,12 +271,12 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    r = initvar(vi, vn, dist, spl.alg.group_id)
+    r = initvar(vi, vn, dist, spl.alg.gid)
   elseif isnan(vi[vn][1])
     r = rand(dist)
     vi[vn] = vectorize(dist, r)
   else
-    if count checkindex(vn, vi, spl.alg.group_id, spl) end
+    if count checkindex(vn, vi, spl.alg.gid, spl) end
     r = replayvar(vi, vn, dist, spl)
   end
   r

@@ -4,15 +4,15 @@ immutable HMCDA <: InferenceAlgorithm
   delta     ::  Float64   # target accept rate
   lambda    ::  Float64   # target leapfrog length
   space     ::  Set       # sampling space, emtpy means all
-  group_id  ::  Int
+  gid  ::  Int
 
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMCDA(n_samples::Int, delta::Float64, lambda::Float64) = begin
     n_adapt_default = Int(round(n_samples / 5))
     new(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
   end
-  HMCDA(alg::HMCDA, new_group_id::Int) =
-    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_group_id)
+  HMCDA(alg::HMCDA, new_gid::Int) =
+    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
     new(n_samples, n_adapt, delta, lambda, Set(), 0)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
@@ -25,13 +25,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     vi_0 = deepcopy(vi)
 
     dprintln(3, "X -> R...")
-    if spl.alg.group_id != 0 vi = link(vi, spl) end
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
     ϵ_bar, ϵ = find_good_eps(model, spl, vi)
 
     dprintln(3, "R -> X...")
-    if spl.alg.group_id != 0 vi = invlink(vi, spl) end
+    if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -55,7 +55,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    if spl.alg.group_id != 0 vi = link(vi, spl) end
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
@@ -94,7 +94,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if reject return false, vi end
 
     dprintln(3, "R -> X...")
-    if spl.alg.group_id != 0 vi = invlink(vi, spl); cleandual!(vi) end
+    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     dprintln(2, "decide wether to accept...")
     if rand() < α      # accepted

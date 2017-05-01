@@ -2,9 +2,9 @@ immutable Gibbs <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
   algs      ::  Tuple   # component sampling algorithms
   thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
-  group_id  ::  Int
+  gid       ::  Int
   Gibbs(n_iters::Int, algs...; thin=true) = new(n_iters, algs, thin, 0)
-  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, alg.thin, new_group_id)
+  Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
 
 function Sampler(alg::Gibbs)

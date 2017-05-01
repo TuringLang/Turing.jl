@@ -24,7 +24,7 @@ immutable HMC <: InferenceAlgorithm
   lf_size   ::  Float64   # leapfrog step size
   lf_num    ::  Int       # leapfrog step number
   space     ::  Set       # sampling space, emtpy means all
-  group_id  ::  Int
+  gid       ::  Int
   function HMC(lf_size::Float64, lf_num::Int, space...)
     HMC(1, lf_size, lf_num, space..., 0)
   end
@@ -35,7 +35,7 @@ immutable HMC <: InferenceAlgorithm
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n_samples, lf_size, lf_num, space, 0)
   end
-  HMC(alg::HMC, new_group_id::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_group_id)
+  HMC(alg::HMC, new_gid::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_gid)
 end
 
 typealias Hamiltonian Union{HMC,HMCDA,NUTS}
@@ -55,7 +55,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    if spl.alg.group_id != 0 vi = link(vi, spl) end
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
@@ -73,7 +73,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     ΔH = H - oldH
 
     dprintln(3, "R -> X...")
-    if spl.alg.group_id != 0 vi = invlink(vi, spl); cleandual!(vi) end
+    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     dprintln(2, "decide wether to accept...")
     if ΔH < 0 || rand() < exp(-ΔH)      # accepted
@@ -105,7 +105,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   accept_num = 0    # record the accept number
   vi = model()
 
-  if spl.alg.group_id == 0 vi = link(vi, spl) end
+  if spl.alg.gid == 0 vi = link(vi, spl) end
 
   # HMC steps
   @showprogress 1 "[$alg_str] Sampling..." for i = 1:n

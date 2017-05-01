@@ -3,7 +3,7 @@ immutable NUTS <: InferenceAlgorithm
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   space     ::  Set       # sampling space, emtpy means all
-  group_id  ::  Int
+  gid       ::  Int
 
   NUTS(n_adapt::Int, delta::Float64, space...) = new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
   NUTS(n_samples::Int, n_adapt::Int, delta::Float64, space...) = new(n_samples, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
@@ -11,7 +11,7 @@ immutable NUTS <: InferenceAlgorithm
     n_adapt_default = Int(round(n_samples / 5))
     new(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
   end
-  NUTS(alg::NUTS, new_group_id::Int) = new(alg.n_samples, alg.n_adapt, alg.delta, alg.space, new_group_id)
+  NUTS(alg::NUTS, new_gid::Int) = new(alg.n_samples, alg.n_adapt, alg.delta, alg.space, new_gid)
 end
 
 function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
@@ -19,13 +19,13 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     vi_0 = deepcopy(vi)
 
     dprintln(3, "X -> R...")
-    if spl.alg.group_id != 0 vi = link(vi, spl) end
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
     ϵ_bar, ϵ = find_good_eps(model, spl, vi)
 
     dprintln(3, "R -> X...")
-    if spl.alg.group_id != 0 vi = invlink(vi, spl) end
+    if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -50,7 +50,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    if spl.alg.group_id != 0 vi = link(vi, spl) end
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     H0 = find_H(p, model, vi, spl)
@@ -80,7 +80,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(3, "R -> X...")
-    if spl.alg.group_id != 0 vi = invlink(vi, spl); cleandual!(vi) end
+    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
