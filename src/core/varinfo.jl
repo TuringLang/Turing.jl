@@ -1,5 +1,5 @@
 import Base.string, Base.isequal, Base.==, Base.hash
-import Base.getindex, Base.setindex!
+import Base.getindex, Base.setindex!, Base.push!
 import Base.rand, Base.show
 
 ###########
@@ -189,11 +189,21 @@ retain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   vi
 end
 
+immutable Var
+  vn    ::  VarName
+  val   ::  Vector{Real}
+  dist  ::  Distribution
+  gid   ::  Int
+end
+
 # Add a new entry to VarInfo
-addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution) = addvar!(vi, vn, val, dist, 0)
-addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid::Int) = begin
-  @assert ~(vn in vns(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
+push!(vi::VarInfo, v::Var) = begin
+  vn, val, dist, gid = v.vn, v.val, v.dist, v.gid
+
+  @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
+
   if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
+
   vi.idcs[vn] = length(vi.idcs) + 1
   push!(vi.vns, vn)
   l, n = length(vi.vals[end]), length(val)
@@ -202,6 +212,8 @@ addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid::Int) = begin
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.trans, false)
+
+  vi
 end
 
 # This method is use to generate a new VarName with the right count
@@ -229,7 +241,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, false)
 randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    initvar(vi, vn, dist)
+    initvar!(vi, vn, dist)
   else
     if count checkindex(vn, vi, 0, nothing) end
     replayvar(vi, vn, dist)
@@ -237,11 +249,11 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
 end
 
 # Initialize VarInfo, i.e. sampling from priors
-initvar(vi::VarInfo, vn::VarName, dist::Distribution) = initvar(vi, vn, dist, 0)
-initvar(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
+initvar!(vi::VarInfo, vn::VarName, dist::Distribution) = initvar!(vi, vn, dist, 0)
+initvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
   @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
   r = rand(dist)
-  addvar!(vi, vn, vectorize(dist, r), dist, gid)
+  push!(vi, Var(vn, vectorize(dist, r), dist, gid))
   r
 end
 
@@ -271,7 +283,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    r = initvar(vi, vn, dist, spl.alg.gid)
+    r = initvar!(vi, vn, dist, spl.alg.gid)
   elseif isnan(vi[vn][1])
     r = rand(dist)
     vi[vn] = vectorize(dist, r)
