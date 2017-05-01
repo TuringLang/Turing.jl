@@ -227,8 +227,8 @@ end
 #######################################
 
 # Sanity check for VarInfo.index
-checkindex(vn::VarName, vi::VarInfo, gid::Int) = checkindex(vn, vi, gid, nothing)
-checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = begin
+checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
+checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
   vn_index = groupvns(vi, spl)[vi.index]
   @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
@@ -243,7 +243,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   if ~haskey(vi, vn)
     initvar!(vi, vn, dist)
   else
-    if count checkindex(vn, vi, 0, nothing) end
+    if count checkindex(vn, vi) end
     replayvar(vi, vn, dist)
   end
 end
@@ -288,7 +288,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
     r = rand(dist)
     vi[vn] = vectorize(dist, r)
   else
-    if count checkindex(vn, vi, spl.alg.gid, spl) end
+    if count checkindex(vn, vi, spl) end
     r = replayvar(vi, vn, dist, spl)
   end
   r
