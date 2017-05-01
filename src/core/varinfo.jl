@@ -97,13 +97,39 @@ end
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
-setdist!(vi::VarInfo, dist, vn::VarName) = vi.dists[getidx(vi, vn)] = dist
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
+
+# X -> R for all variables associated with given sampler
+function link(_vi, spl)
+  vi = deepcopy(_vi)
+  gkeys = spl == nothing ?
+          keys(vi) :
+          groupvns(vi, spl.alg.group_id, spl)
+  for k in gkeys
+    dist = getdist(vi, k)
+    vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
+    vi.trans[getidx(vi, k)] = true
+  end
+  vi
+end
+
+# R -> X for all variables associated with given sampler
+function invlink(_vi, spl)
+  vi = deepcopy(_vi)
+  gkeys = spl == nothing ?
+          keys(vi) :
+          groupvns(vi, spl.alg.group_id, spl)
+  for k in gkeys
+    dist = getdist(vi, k)
+    vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
+    vi.trans[getidx(vi, k)] = false
+  end
+  vi
+end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols

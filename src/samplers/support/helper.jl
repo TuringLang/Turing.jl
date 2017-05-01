@@ -59,31 +59,3 @@ function cleandual!(vi::VarInfo)
   vi.logp = realpart(vi.logp)
   vi.logw = realpart(vi.logw)
 end
-
-# X -> R for all variables associated with given sampler
-function link(_vi, spl)
-  vi = deepcopy(_vi)
-  gkeys = spl == nothing ?
-          keys(vi) :
-          groupvns(vi, spl.alg.group_id, spl)
-  for k in gkeys
-    dist = getdist(vi, k)
-    vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
-    settrans!(vi, true, k)
-  end
-  vi
-end
-
-# R -> X for all variables associated with given sampler
-function invlink(_vi, spl)
-  vi = deepcopy(_vi)
-  gkeys = spl == nothing ?
-          keys(vi) :
-          groupvns(vi, spl.alg.group_id, spl)
-  for k in gkeys
-    dist = getdist(vi, k)
-    vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
-    settrans!(vi, false, k)
-  end
-  vi
-end
