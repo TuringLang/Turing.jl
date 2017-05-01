@@ -1,4 +1,4 @@
-import Base.string, Base.isequal, Base.==, Base.convert
+import Base.string, Base.isequal, Base.==, Base.hash
 import Base.getindex, Base.setindex!
 import Base.rand, Base.show
 
@@ -12,37 +12,28 @@ immutable VarName
   counter   ::    Int           # counter of same {csym, uid}
 end
 
-typealias UID Tuple{Symbol,Symbol,String,Int}
-
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
 
-Base.string(vn::VarName) = string(uid(vn))
-Base.string(uid::UID) = "{$(uid[1]),$(uid[2])$(uid[3])}:$(uid[4])"
-Base.string(uids::Vector{UID}) = replace(string(map(uid -> string(uid), uids)), "String", "")
+Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
+Base.string(vns::Vector{VarName}) = replace(string(map(vn -> string(vn), vns)), "String", "")
 
 sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
-sym(t::UID) = Symbol("$(t[2])$(t[3])")
 
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName) = isequal(x, y)
+hash(vn::VarName) =  hash(hash(vn.csym) + hash(vn.sym) + hash(vn.indexing) + hash(vn.counter))
 
 cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing) # the uid which is only available at compile time
-
-# This two function is necessary because vn itself cannot be used as a key
-Base.getindex(graddict::Dict, vn::VarName) = graddict[uid(vn)]
-Base.setindex!(graddict::Dict, val, vn::VarName) = graddict[uid(vn)] = val
-
-Base.convert(::Type{UID}, vn::VarName) = uid(vn)
 
 ###########
 # VarInfo #
 ###########
 
 type VarInfo
-  idcs        ::    Dict{UID, Int}
-  uids        ::    Vector{UID}
+  idcs        ::    Dict{VarName, Int}
+  vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Vector{Real}}
   dists       ::    Vector{Distribution}
@@ -53,8 +44,8 @@ type VarInfo
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = new(
-    Dict{UID, Int}(),
-    Vector{UID}(),
+    Dict{VarName, Int}(),
+    Vector{VarName}(),
     Vector{UnitRange{Int}}(),
     Vector{Vector{Real}}(),
     Vector{Distribution}(),
@@ -66,14 +57,11 @@ type VarInfo
   )
 end
 
-getidx(vi::VarInfo, vn::VarName) = vi.idcs[uid(vn)]
-getidx(vi::VarInfo, uid::UID)    = vi.idcs[uid]
+getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
-getrange(vi::VarInfo, uid::UID)    = vi.ranges[getidx(vi, uid)]
 
 getval(vi::VarInfo, vn::VarName)        = vi.vals[end][getrange(vi, vn)]
-getval(vi::VarInfo, uid::UID)           = vi.vals[end][getrange(vi, uid)]
 getval(vi::VarInfo, idx::Int)           = vi.vals[end][idx]
 getval(vi::VarInfo, range::UnitRange)   = vi.vals[end][range]
 getval(vi::VarInfo, range::Vector{Int}) = vi.vals[end][range]
@@ -83,13 +71,6 @@ setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
     warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
   end
   vi.vals[end][getrange(vi, vn)] = val
-end
-
-setval!(vi::VarInfo, val, uid::UID, overwrite=false) = begin
-  if ~overwrite
-    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
-  end
-  vi.vals[end][getrange(vi, uid)] = val
 end
 
 setval!(vi::VarInfo, val, idx::Int, overwrite=false) = begin
@@ -113,50 +94,41 @@ setval!(vi::VarInfo, val, range::Vector{Int}, overwrite=false) = begin
   vi.vals[end][range] = val
 end
 
-getsym(vi::VarInfo, vn::VarName) = vi.uids[getidx(vi, vn)][2]
-getsym(vi::VarInfo, uid::UID)    = vi.uids[getidx(vi, uid)][2]
+getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
-getdist(vi::VarInfo, uid::UID)    = vi.dists[getidx(vi, uid)]
 setdist!(vi::VarInfo, dist, vn::VarName) = vi.dists[getidx(vi, vn)] = dist
-setdist!(vi::VarInfo, dist, uid::UID)    = vi.dists[getidx(vi, uid)] = dist
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
-getgid(vi::VarInfo, uid::UID)    = vi.gids[getidx(vi, uid)]
 setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
-setgid!(vi::VarInfo, gid, uid::UID)    = vi.gids[getidx(vi, uid)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-istransformed(vi::VarInfo, uid::UID)    = vi.trans[getidx(vi, uid)]
 settrans!(vi::VarInfo, trans, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
-settrans!(vi::VarInfo, trans, uid::UID)    = vi.trans[getidx(vi, uid)] = trans
 
-uids(vi::VarInfo) = Set(keys(vi.idcs))            # get all uids
-syms(vi::VarInfo) = map(uid -> uid[2], uids(vi))  # get all symbols
+vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
+syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
 Base.getindex(vi::VarInfo, vn::VarName)        = getval(vi, vn)
-Base.getindex(vi::VarInfo, uid::UID)           = getval(vi, uid)
 Base.getindex(vi::VarInfo, idx::Int)           = getval(vi, idx)
 Base.getindex(vi::VarInfo, range::UnitRange)   = getval(vi, range)
 Base.getindex(vi::VarInfo, range::Vector{Int}) = getval(vi, range)
 
 Base.setindex!(vi::VarInfo, val, vn::VarName)        = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, uid::UID)           = setval!(vi, val, uid, true)
 Base.setindex!(vi::VarInfo, val, idx::Int)           = setval!(vi, val, idx, true)
 Base.setindex!(vi::VarInfo, val, range::UnitRange)   = setval!(vi, val, range, true)
 Base.setindex!(vi::VarInfo, val, range::Vector{Int}) = setval!(vi, val, range, true)
 
-Base.keys(vi::VarInfo) = map(t -> VarName(t...), keys(vi.idcs))
+Base.keys(vi::VarInfo) = keys(vi.idcs)
 
-Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, uid(vn))
+Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, vn)
 
 Base.show(io::IO, vi::VarInfo) = begin
   vi_str = """
   /=======================================================================
   | VarInfo
   |-----------------------------------------------------------------------
-  | UIDs      :   $(string(vi.uids))
+  | Varnames  :   $(string(vi.vns))
   | Range     :   $(vi.ranges)
   | Vals      :   $(vi.vals[end])
   | GIDs      :   $(vi.gids)
@@ -181,17 +153,17 @@ keeplast!(vi::VarInfo) = splice!(vi.vals, 1:length(vi.vals)-1)
 groupidcs(vi::VarInfo, gid::Int) = groupidcs(vi, gid, nothing)
 groupidcs(vi::VarInfo, gid::Int, spl::Void) = filter(i -> vi.gids[i] == gid || vi.gids[i] == 0, 1:length(vi.gids))
 groupidcs(vi::VarInfo, gid::Int, spl::Sampler) =
-  filter(i -> (vi.gids[i] == gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.uids[i][2] in spl.alg.space), 1:length(vi.gids))
+  filter(i -> (vi.gids[i] == gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space), 1:length(vi.gids))
 
 # Get all values of variables belonging to gid or 0
 groupvals(vi::VarInfo, gid::Int) = groupvals(vi, gid, nothing)
 groupvals(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vals[end][vi.ranges[i]], groupidcs(vi, gid, spl))
 
-# Get all uids of variables belonging to gid or 0
-groupuids(vi::VarInfo, gid::Int) = groupuids(vi, gid, nothing)
-groupuids(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.uids[i], groupidcs(vi, gid, spl))
+# Get all vns of variables belonging to gid or 0
+groupvns(vi::VarInfo, gid::Int) = groupvns(vi, gid, nothing)
+groupvns(vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs(vi, gid, spl))
 
-# Get all uids of variables belonging to gid or 0
+# Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl.alg.group_id, spl))...)
 
 retain(vi::VarInfo, gid::Int, n_retain::Int) = retain(vi, gid, n_retain, nothing)
@@ -211,10 +183,10 @@ end
 # Add a new entry to VarInfo
 addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution) = addvar!(vi, vn, val, dist, 0)
 addvar!(vi::VarInfo, vn::VarName, val, dist::Distribution, gid::Int) = begin
-  @assert ~(uid(vn) in uids(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(uid(vn))) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
+  @assert ~(vn in vns(vi)) "[addvar!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
   if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
-  vi.idcs[uid(vn)] = length(vi.idcs) + 1
-  push!(vi.uids, uid(vn))
+  vi.idcs[vn] = length(vi.idcs) + 1
+  push!(vi.vns, vn)
   l, n = length(vi.vals[end]), length(val)
   push!(vi.ranges, l+1:l+n)
   append!(vi.vals[end], val)
@@ -236,8 +208,8 @@ end
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo, gid::Int) = checkindex(vn, vi, gid, nothing)
 checkindex(vn::VarName, vi::VarInfo, gid::Int, spl::Union{Void, Sampler}) = begin
-  uid_index = groupuids(vi, gid, spl)[vi.index]
-  @assert uid_index == uid(vn) "[Turing]: sanity check for VarInfo.index failed: uid_index=$uid_index, vi.index=$(vi.index), uid_now=$(uid(vn))"
+  vn_index = groupvns(vi, gid, spl)[vi.index]
+  @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
 # This method is called when sampler is missing

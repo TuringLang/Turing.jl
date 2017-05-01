@@ -21,7 +21,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   gkeys = spl == nothing ?
           keys(vi) :
-          groupuids(vi, spl.alg.group_id, spl)
+          groupvns(vi, spl.alg.group_id, spl)
 
   for k in gkeys
     l = length(vi[k])         # dimension for the current variable

@@ -65,7 +65,7 @@ function link(_vi, spl)
   vi = deepcopy(_vi)
   gkeys = spl == nothing ?
           keys(vi) :
-          groupuids(vi, spl.alg.group_id, spl)
+          groupvns(vi, spl.alg.group_id, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
@@ -79,7 +79,7 @@ function invlink(_vi, spl)
   vi = deepcopy(_vi)
   gkeys = spl == nothing ?
           keys(vi) :
-          groupuids(vi, spl.alg.group_id, spl)
+          groupvns(vi, spl.alg.group_id, spl)
   for k in gkeys
     dist = getdist(vi, k)
     vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
