@@ -149,4 +149,7 @@ function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::Va
   dprintln(2, "observe done")
 end
 
-rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = replayvar(vi, vn, dist, spl)
+rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
+  updategid!(vi, vn, spl)
+  replayvar(vi, vn, dist)
+end

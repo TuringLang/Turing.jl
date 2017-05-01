@@ -63,16 +63,6 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 
-getval(vi::VarInfo, vn::VarName)   = vi.vals[end][getrange(vi, vn)]
-getval(vi::VarInfo, view::VarView) = vi.vals[end][view]
-
-setval!(vi::VarInfo, val, i::Union{VarName,VarView}, overwrite=false) = begin
-  if ~overwrite warn("[setval!] overwritting values in VarInfo with overwrite = false") end
-  setval!(vi, val, i)
-end
-setval!(vi::VarInfo, val, vn::VarName)   = vi.vals[end][getrange(vi, vn)] = val
-setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
-
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
@@ -111,11 +101,11 @@ vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName)       = getval(vi, vn)
-Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn, true)
+Base.getindex(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
+Base.setindex!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
-Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
-Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view, true)
+Base.getindex(vi::VarInfo, view::VarView)       = vi.vals[end][view]
+Base.setindex!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
@@ -266,12 +256,10 @@ replayvar(vi::VarInfo, vn::VarName, dist::Distribution) = begin
   r
 end
 
-# Replay variables with group IDs updated
-replayvar(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
+updategid!(vi, vn, spl) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
     setgid!(vi, spl.alg.gid, vn)
   end
-  replayvar(vi, vn, dist)
 end
 
 # Random with replaying
@@ -285,7 +273,8 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
     vi[vn] = vectorize(dist, r)
   else
     if count checkindex(vn, vi, spl) end
-    r = replayvar(vi, vn, dist, spl)
+    updategid!(vi, vn, spl)
+    r = replayvar(vi, vn, dist)
   end
   r
 end
