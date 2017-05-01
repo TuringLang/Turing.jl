@@ -9,7 +9,7 @@ end
 
 vs = []
 for _ in 1:5
-  chain = sample(hmcmatrixsup(), HMC(1000, 0.05, 4))
+  chain = sample(hmcmatrixsup(), HMC(1000, 0.2, 3))
   push!(vs, mean(chain[:v]))
 end
 
