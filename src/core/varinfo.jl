@@ -15,7 +15,7 @@ end
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
-hash(vn::VarName) =  hash(hash(vn.csym) + hash(vn.sym) + hash(vn.indexing) + hash(vn.counter))
+hash(vn::VarName) = hash(uid(vn))
 
 isequal(x::VarName, y::VarName) = uid(x) == uid(y)
 ==(x::VarName, y::VarName)      = isequal(x, y)
