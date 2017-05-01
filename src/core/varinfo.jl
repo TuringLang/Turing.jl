@@ -156,7 +156,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   |-----------------------------------------------------------------------
   | Varnames  :   $(string(vi.vns))
   | Range     :   $(vi.ranges)
-  | Vals      :   $(vi.vals[end])
+  | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
   | Logp      :   $(vi.logp)
@@ -172,7 +172,7 @@ end
 # Utility functions for VarInfo #
 #################################
 
-expand!(vi::VarInfo) = push!(vi.vals, vi.vals[end])
+expand!(vi::VarInfo) = push!(vi.vals, deepcopy(vi.vals[end]))
 last(_vi::VarInfo) = begin
   vi = deepcopy(_vi)
   splice!(vi.vals, 1:length(vi.vals)-1)
