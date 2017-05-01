@@ -172,8 +172,12 @@ end
 # Utility functions for VarInfo #
 #################################
 
-duplicate!(vi::VarInfo) = push!(vi.vals, vi.vals[end])
-keeplast!(vi::VarInfo) = splice!(vi.vals, 1:length(vi.vals)-1)
+expand!(vi::VarInfo) = push!(vi.vals, vi.vals[end])
+last(_vi::VarInfo) = begin
+  vi = deepcopy(_vi)
+  splice!(vi.vals, 1:length(vi.vals)-1)
+  vi
+end
 
 # Get all indices of variables belonging to gid or 0
 groupidcs(vi::VarInfo, gid::Int) = groupidcs(vi, gid, nothing)

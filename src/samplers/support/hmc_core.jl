@@ -41,7 +41,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   for t in 1:τ  # do 'leapfrog' for each var
     p -= ϵ * grad / 2
 
-    duplicate!(vi)
+    expand!(vi)
 
     ranges = getranges(vi, spl)
     vi[ranges] += ϵ * p             # full step for state
@@ -62,10 +62,8 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
     end
   end
 
-  keeplast!(vi)
-
   # Return updated θ and momentum
-  vi, p, reject
+  last(vi), p, reject
 end
 
 # Compute Hamiltonian
