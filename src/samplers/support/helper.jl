@@ -22,16 +22,15 @@ vectorize(d::MatrixDistribution,       r) = Vector{Real}(vec(r))
 function reconstruct(d::Distribution, val)
   if isa(d, UnivariateDistribution)
     # Turn Array{Any} to Any if necessary (this is due to randn())
-    val = length(val) == 1 ? val[1] : val
+    length(val) == 1 ? val[1] : val
   elseif isa(d, MultivariateDistribution)
     # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
     T = typeof(val[1])
-    val = Vector{T}(val)
+    Vector{T}(val)
   elseif isa(d, MatrixDistribution)
     T = typeof(val[1])
-    val = Array{T, 2}(reshape(val, size(d)...))
+    Array{T, 2}(reshape(val, size(d)...))
   end
-  val
 end
 
 export realpart, dualpart, make_dual, vectorize, reconstruct
@@ -40,11 +39,10 @@ export realpart, dualpart, make_dual, vectorize, reconstruct
 Sample(vi::VarInfo) = begin
   weight = 0.0
   value = Dict{Symbol, Any}()
-  for uid in keys(vi)
-    dist = getdist(vi, uid)
-    r = reconstruct(dist, vi[uid])
-    r = istransformed(vi, uid) ? invlink(dist, r) : r
-    value[sym(uid)] = realpart(r)
+  for vn in keys(vi)
+    dist = getdist(vi, vn)
+    r = vi[vn]
+    value[sym(vn)] = realpart(r)
   end
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(vi.logp)
@@ -52,9 +50,9 @@ Sample(vi::VarInfo) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for uid in keys(vi)
-    range = getrange(vi, uid)
-    vi[range] = realpart(vi[uid])
+  for vn in keys(vi)
+    range = getrange(vi, vn)
+    vi[range] = realpart(vi[range])
   end
   vi.logp = realpart(vi.logp)
   vi.logw = realpart(vi.logw)

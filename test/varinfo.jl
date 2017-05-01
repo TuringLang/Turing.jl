@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, groupvals, retain, randr, step
+using Turing: uid, cuid, reconstruct, invlink, groupvals, retain!, randr, step
 
 # Test for uid() (= string())
 csym = gensym()
@@ -31,7 +31,7 @@ alg = PG(PG(5,5),1)
 spl1 = Turing.Sampler(alg)
 for i = 1:3
   r = randr(vi, vns[i], dists[i], spl1, false)
-  val = reconstruct(dists[i], vi[vns[i]])
+  val = vi[vns[i]]
   @test sum(val - r) <= 1e-9
 end
 
@@ -46,7 +46,7 @@ randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 
-retain(vi, 1, spl2)
+retain!(vi, 1, spl2)
 
 # println(vi)
 

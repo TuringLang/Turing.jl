@@ -9,7 +9,7 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarName, VarInfo, Sampler, retain, groupvals
+using Turing: VarName, VarInfo, Sampler, retain!, groupvals
 import Turing.randr
 
 # Trick for supressing some warning messages.
@@ -88,7 +88,8 @@ function forkc(trace :: Trace)
   newtrace.spl = trace.spl
 
   n_rand = min(trace.vi.index, length(groupvals(trace.vi, trace.spl)))
-  newtrace.vi = retain(deepcopy(trace.vi), n_rand, trace.spl)
+  newtrace.vi = deepcopy(trace.vi)
+  retain!(newtrace.vi, n_rand, trace.spl)
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -110,7 +111,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    retain(newtrace.vi, index, trace.spl)
+    retain!(newtrace.vi, index, trace.spl)
   end
 
   newtrace

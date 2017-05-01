@@ -151,5 +151,7 @@ end
 
 rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
   updategid!(vi, vn, spl)
-  replayvar(vi, vn, dist)
+  r = vi[vn]
+  vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  r
 end

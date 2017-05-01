@@ -53,7 +53,7 @@ end
 
 observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
   lp = logpdf(d, value)
-  vi.logw     += lp
+  vi.logw += lp
   vi.logp += lp
 end
 
@@ -62,7 +62,7 @@ assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi
 end
 
 observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
-  lp          = logpdf(d, value)
+  lp = logpdf(d, value)
   vi.logp += lp
   produce(lp)
 end

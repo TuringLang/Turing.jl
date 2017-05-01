@@ -1,6 +1,6 @@
 import Base.string, Base.isequal, Base.==, Base.hash
 import Base.getindex, Base.setindex!, Base.push!
-import Base.rand, Base.show
+import Base.rand, Base.show, Base.isnan
 
 ###########
 # VarName #
@@ -63,6 +63,12 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 
+getval(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
+setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
+
+getval(vi::VarInfo, view::VarView)       = vi.vals[end][view]
+setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
+
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
@@ -79,7 +85,7 @@ function link(_vi, spl)
   gkeys = groupvns(vi, spl)
   for k in gkeys
     dist = getdist(vi, k)
-    vi[k] = vectorize(dist, link(dist, reconstruct(dist, vi[k])))
+    vi[k] = link(dist, reconstruct(dist, getval(vi, k)))
     vi.trans[getidx(vi, k)] = true
   end
   vi
@@ -91,7 +97,7 @@ function invlink(_vi, spl)
   gkeys = groupvns(vi, spl)
   for k in gkeys
     dist = getdist(vi, k)
-    vi[k] = vectorize(dist, invlink(dist, reconstruct(dist, vi[k])))
+    vi[k] = invlink(dist, reconstruct(dist, getval(vi, k)))
     vi.trans[getidx(vi, k)] = false
   end
   vi
@@ -101,11 +107,21 @@ vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
-Base.setindex!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
+# NOTE: vi[vn] will always transform the variable to its original space and Julia type
+Base.getindex(vi::VarInfo, vn::VarName) = begin
+  @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
+  dist = getdist(vi, vn)
+  r = reconstruct(dist, getval(vi, vn))
+  r = istransformed(vi, vn) ? invlink(dist, r) : r
+end
 
-Base.getindex(vi::VarInfo, view::VarView)       = vi.vals[end][view]
-Base.setindex!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
+Base.setindex!(vi::VarInfo, r, vn::VarName) = begin
+  dist = getdist(vi, vn)
+  setval!(vi, vectorize(dist, r), vn)
+end
+
+Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
+Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
@@ -152,7 +168,7 @@ groupidcs(vi::VarInfo, spl::Sampler) =
 
 # Get all values of variables belonging to gid or 0
 groupvals(vi::VarInfo) = groupvals(vi, nothing)
-groupvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vals[end][vi.ranges[i]], groupidcs(vi, spl))
+groupvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], groupidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 groupvns(vi::VarInfo) = groupvns(vi, nothing)
@@ -161,8 +177,8 @@ groupvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
 
-retain(vi::VarInfo, n_retain::Int) = retain(vi, n_retain, nothing)
-retain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+retain!(vi::VarInfo, n_retain::Int) = retain!(vi, n_retain, nothing)
+retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   gidcs = groupidcs(vi, spl)
 
   # Set all corresponding entries to NaN
@@ -174,6 +190,8 @@ retain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
 
   vi
 end
+
+isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
 
 immutable Var
   vn    ::  VarName
@@ -192,7 +210,7 @@ push!(vi::VarInfo, v::Var) = begin
 
   vi.idcs[vn] = length(vi.idcs) + 1
   push!(vi.vns, vn)
-  l, n = length(vi.vals[end]), length(val)
+  l = length(vi.vals[end]); n = length(val)
   push!(vi.ranges, l+1:l+n)
   append!(vi.vals[end], val)
   push!(vi.dists, dist)
@@ -230,7 +248,9 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
     initvar!(vi, vn, dist)
   else
     if count checkindex(vn, vi) end
-    replayvar(vi, vn, dist)
+    r = vi[vn]
+    vi.logp += logpdf(dist, r, istransformed(vi, vn))
+    r
   end
 end
 
@@ -240,19 +260,6 @@ initvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
   @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
   r = rand(dist)
   push!(vi, Var(vn, vectorize(dist, r), dist, gid))
-  r
-end
-
-# Replay variables
-replayvar(vi::VarInfo, vn::VarName, dist::Distribution) = begin
-  @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
-  if istransformed(vi, vn)  # NOTE: Implement: `vi[vn::VarName]`: (vn, vi) -> (r, lp)?
-    r = invlink(dist, reconstruct(dist, vi[vn])) #  logr = log(r)
-    vi.logp += logpdf(dist, r, true) # logr preserves precision of r
-  else
-    r = reconstruct(dist, vi[vn])
-    vi.logp += logpdf(dist, r, false)
-  end
   r
 end
 
@@ -267,14 +274,12 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    r = initvar!(vi, vn, dist, spl.alg.gid)
-  elseif isnan(vi[vn][1])
-    r = rand(dist)
-    vi[vn] = vectorize(dist, r)
+    initvar!(vi, vn, dist, spl.alg.gid)
+  elseif isnan(vi, vn)
+    vi[vn] = rand(dist)
   else
     if count checkindex(vn, vi, spl) end
     updategid!(vi, vn, spl)
-    r = replayvar(vi, vn, dist)
+    vi[vn]
   end
-  r
 end

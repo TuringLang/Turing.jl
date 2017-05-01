@@ -44,7 +44,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     prior_count = 1
     for k in gkeys
       l = length(getrange(vi, k))
-      reals = realpart(vi[getrange(vi, k)])
+      reals = realpart(getval(vi, k))
       range = getrange(vi, k)
       if k in key_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")

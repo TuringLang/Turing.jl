@@ -21,8 +21,7 @@ end
 
 function sample_momentum(vi::VarInfo, spl::Sampler)
   dprintln(2, "sampling momentum...")
-  kys = groupvns(vi, spl)
-  randn(reduce(+, map(k -> length(vi[k]), kys)))
+  randn(length(getranges(vi, spl)))
 end
 
 # Leapfrog step

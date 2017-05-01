@@ -30,7 +30,7 @@ function logp3(x::Vector)
 end
 
 # Call ForwardDiff's AD
-g = x -> ForwardDiff.gradient(logp3, x);
+g = x -> ForwardDiff.gradient(logp3, vec(x));
 # _s = link(dist_v, _s)
 grad_FWAD = -g(_v)
 

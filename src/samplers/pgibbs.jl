@@ -87,8 +87,8 @@ assume(spl::Sampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
   rand(current_trace().vi, vn, d, spl)
 end
 
-rand(vi::VarInfo, vn::VarName, d::Distribution, spl::Sampler{PG}) = begin
+rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}) = begin
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
-    randr(vi, vn, d, spl, true) :
-    replayvar(vi, vn, d)
+    randr(vi, vn, dist, spl, true) :
+    vi[vn]
 end
