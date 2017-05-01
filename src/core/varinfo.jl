@@ -57,23 +57,21 @@ type VarInfo
   )
 end
 
-typealias VarRange Union{UnitRange,Vector{Int}}
+typealias VarView Union{Int,UnitRange,Vector{Int}}
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 
-getval(vi::VarInfo, vn::VarName)     = vi.vals[end][getrange(vi, vn)]
-getval(vi::VarInfo, idx::Int)        = vi.vals[end][idx]
-getval(vi::VarInfo, range::VarRange) = vi.vals[end][range]
+getval(vi::VarInfo, vn::VarName)   = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, view::VarView) = vi.vals[end][view]
 
-setval!(vi::VarInfo, val, i::Union{VarName,Int,VarRange}, overwrite=false) = begin
+setval!(vi::VarInfo, val, i::Union{VarName,VarView}, overwrite=false) = begin
   if ~overwrite warn("[setval!] overwritting values in VarInfo with overwrite = false") end
   setval!(vi, val, i)
 end
-setval!(vi::VarInfo, val, vn::VarName)     = vi.vals[end][getrange(vi, vn)] = val
-setval!(vi::VarInfo, val, idx::Int)        = vi.vals[end][idx] = val
-setval!(vi::VarInfo, val, range::VarRange) = vi.vals[end][range] = val
+setval!(vi::VarInfo, val, vn::VarName)   = vi.vals[end][getrange(vi, vn)] = val
+setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
@@ -113,13 +111,11 @@ vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName)     = getval(vi, vn)
-Base.getindex(vi::VarInfo, idx::Int)        = getval(vi, idx)
-Base.getindex(vi::VarInfo, range::VarRange) = getval(vi, range)
+Base.getindex(vi::VarInfo, vn::VarName)       = getval(vi, vn)
+Base.setindex!(vi::VarInfo, val, vn::VarName) = setval!(vi, val, vn, true)
 
-Base.setindex!(vi::VarInfo, val, vn::VarName)     = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, idx::Int)        = setval!(vi, val, idx, true)
-Base.setindex!(vi::VarInfo, val, range::VarRange) = setval!(vi, val, range, true)
+Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
+Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view, true)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
