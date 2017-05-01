@@ -21,7 +21,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   gkeys = groupvns(vi, spl)
   for k in gkeys
-    l = length(vi[k])         # dimension for the current variable
+    l = length(getrange(vi, k))         # dimension for the current variable
     if prior_dim + l > CHUNKSIZE
       push!(prior_key_chunks, # store the previous chunk
             (key_chunk, prior_dim))
@@ -43,8 +43,8 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     dps = zeros(prior_dim)
     prior_count = 1
     for k in gkeys
-      l = length(vi[k])
-      reals = realpart(vi[k])
+      l = length(getrange(vi, k))
+      reals = realpart(vi[getrange(vi, k)])
       range = getrange(vi, k)
       if k in key_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")
