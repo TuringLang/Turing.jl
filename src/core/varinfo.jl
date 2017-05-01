@@ -15,17 +15,17 @@ end
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
+hash(vn::VarName) =  hash(hash(vn.csym) + hash(vn.sym) + hash(vn.indexing) + hash(vn.counter))
+
+isequal(x::VarName, y::VarName) = uid(x) == uid(y)
+==(x::VarName, y::VarName)      = isequal(x, y)
 
 Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
 Base.string(vns::Vector{VarName}) = replace(string(map(vn -> string(vn), vns)), "String", "")
 
 sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
 
-isequal(x::VarName, y::VarName) = uid(x) == uid(y)
-==(x::VarName, y::VarName) = isequal(x, y)
-hash(vn::VarName) =  hash(hash(vn.csym) + hash(vn.sym) + hash(vn.indexing) + hash(vn.counter))
-
-cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing) # the uid which is only available at compile time
+cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing)    # the uid which is only available at compile time
 
 ###########
 # VarInfo #
@@ -57,42 +57,24 @@ type VarInfo
   )
 end
 
+typealias VarRange Union{UnitRange,Vector{Int}}
+
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 
-getval(vi::VarInfo, vn::VarName)        = vi.vals[end][getrange(vi, vn)]
-getval(vi::VarInfo, idx::Int)           = vi.vals[end][idx]
-getval(vi::VarInfo, range::UnitRange)   = vi.vals[end][range]
-getval(vi::VarInfo, range::Vector{Int}) = vi.vals[end][range]
+getval(vi::VarInfo, vn::VarName)     = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, idx::Int)        = vi.vals[end][idx]
+getval(vi::VarInfo, range::VarRange) = vi.vals[end][range]
 
-setval!(vi::VarInfo, val, vn::VarName, overwrite=false) = begin
-  if ~overwrite
-    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
-  end
-  vi.vals[end][getrange(vi, vn)] = val
+setval!(vi::VarInfo, val, i::Union{VarName,Int,VarRange}, overwrite=false) = begin
+  if ~overwrite warn("[setval!] overwritting values in VarInfo with overwrite = false") end
+  setval!(vi, val, i)
 end
 
-setval!(vi::VarInfo, val, idx::Int, overwrite=false) = begin
-  if ~overwrite
-    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
-  end
-  vi.vals[end][idx] = val
-end
-
-setval!(vi::VarInfo, val, range::UnitRange, overwrite=false) = begin
-  if ~overwrite
-    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
-  end
-  vi.vals[end][range] = val
-end
-
-setval!(vi::VarInfo, val, range::Vector{Int}, overwrite=false) = begin
-  if ~overwrite
-    warn("[setval!] you are overwritting values in VarInfo without setting overwrite flag to be true")
-  end
-  vi.vals[end][range] = val
-end
+setval!(vi::VarInfo, val, vn::VarName)     = vi.vals[end][getrange(vi, vn)] = val
+setval!(vi::VarInfo, val, idx::Int)        = vi.vals[end][idx] = val
+setval!(vi::VarInfo, val, range::VarRange) = vi.vals[end][range] = val
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
@@ -135,15 +117,13 @@ vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
-Base.getindex(vi::VarInfo, vn::VarName)        = getval(vi, vn)
-Base.getindex(vi::VarInfo, idx::Int)           = getval(vi, idx)
-Base.getindex(vi::VarInfo, range::UnitRange)   = getval(vi, range)
-Base.getindex(vi::VarInfo, range::Vector{Int}) = getval(vi, range)
+Base.getindex(vi::VarInfo, vn::VarName)     = getval(vi, vn)
+Base.getindex(vi::VarInfo, idx::Int)        = getval(vi, idx)
+Base.getindex(vi::VarInfo, range::VarRange) = getval(vi, range)
 
-Base.setindex!(vi::VarInfo, val, vn::VarName)        = setval!(vi, val, vn, true)
-Base.setindex!(vi::VarInfo, val, idx::Int)           = setval!(vi, val, idx, true)
-Base.setindex!(vi::VarInfo, val, range::UnitRange)   = setval!(vi, val, range, true)
-Base.setindex!(vi::VarInfo, val, range::Vector{Int}) = setval!(vi, val, range, true)
+Base.setindex!(vi::VarInfo, val, vn::VarName)     = setval!(vi, val, vn, true)
+Base.setindex!(vi::VarInfo, val, idx::Int)        = setval!(vi, val, idx, true)
+Base.setindex!(vi::VarInfo, val, range::VarRange) = setval!(vi, val, range, true)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
