@@ -12,6 +12,7 @@ testcases = [
 #       ad.jl
           "ad",
           "ad2",
+          "ad3",
           "pass_dual_to_dists",
 #       compiler.jl
           "assume",
