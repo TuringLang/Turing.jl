@@ -103,6 +103,15 @@ function invlink(_vi, spl)
   vi
 end
 
+function cleandual!(vi::VarInfo)
+  for vn in keys(vi)
+    range = getrange(vi, vn)
+    vi[range] = realpart(vi[range])
+  end
+  vi.logp = realpart(vi.logp)
+  vi.logw = realpart(vi.logw)
+end
+
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 

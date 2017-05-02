@@ -35,6 +35,6 @@ check(chain) = begin
   end
 end
 
-check(sample(gibbstest(x), Gibbs(1000, PG(30, 3, :s), HMC(1, 0.2, 3, :m))))
+check(sample(gibbstest(x), Gibbs(1000, PG(30, 3, :s), HMC(1, 0.2, 4, :m))))
 check(sample(gibbstest(x), PG(30, 1000)))
 # check(sample(gibbstest(x), Gibbs(1000, HMC(3, 0.2, 1, :s), eNUTS(1, 0.2, :m))))

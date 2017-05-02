@@ -33,8 +33,6 @@ function reconstruct(d::Distribution, val)
   end
 end
 
-export realpart, dualpart, make_dual, vectorize, reconstruct
-
 # VarInfo to Sample
 Sample(vi::VarInfo) = begin
   weight = 0.0
@@ -47,13 +45,4 @@ Sample(vi::VarInfo) = begin
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(vi.logp)
   Sample(weight, value)
-end
-
-function cleandual!(vi::VarInfo)
-  for vn in keys(vi)
-    range = getrange(vi, vn)
-    vi[range] = realpart(vi[range])
-  end
-  vi.logp = realpart(vi.logp)
-  vi.logw = realpart(vi.logw)
 end
