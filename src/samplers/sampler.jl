@@ -44,14 +44,15 @@ observe(spl, weight :: Float64) = begin
 end
 
 ## Default definitions for assume, observe, when sampler = nothing.
-assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
-  r = randr(vi, vn, dist)
-  # The following code has been merged into rand.
-  # vi.logp += logpdf(dist, r, istransformed(vi, vn))
+assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+  r = haskey(vi, vn) ?
+      vi[vn] :
+      nwevar!(vi, vn, dist)
+  vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
-observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
+observe(spl::Void, d::Distribution, value, vi::VarInfo) = begin
   lp = logpdf(d, value)
   vi.logw += lp
   vi.logp += lp
