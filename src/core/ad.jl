@@ -19,7 +19,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   dprintln(4, "making chunks...")
   prior_key_chunks = []; key_chunk = []; prior_dim = 0
 
-  gkeys = groupvns(vi, spl)
+  gkeys = getvns(vi, spl)
   for k in gkeys
     l = length(getrange(vi, k))         # dimension for the current variable
     if prior_dim + l > CHUNKSIZE

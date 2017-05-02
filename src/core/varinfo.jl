@@ -82,7 +82,7 @@ istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
 # X -> R for all variables associated with given sampler
 function link(_vi, spl)
   vi = deepcopy(_vi)
-  gvns = groupvns(vi, spl)
+  gvns = getvns(vi, spl)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
@@ -94,7 +94,7 @@ end
 # R -> X for all variables associated with given sampler
 function invlink(_vi, spl)
   vi = deepcopy(_vi)
-  gvns = groupvns(vi, spl)
+  gvns = getvns(vi, spl)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
@@ -159,59 +159,6 @@ Base.show(io::IO, vi::VarInfo) = begin
   print(io, vi_str)
 end
 
-#################################
-# Utility functions for VarInfo #
-#################################
-
-expand!(vi::VarInfo) = push!(vi.vals, deepcopy(vi.vals[end]))
-last(_vi::VarInfo) = begin
-  vi = deepcopy(_vi)
-  splice!(vi.vals, 1:length(vi.vals)-1)
-  vi
-end
-
-# Get all indices of variables belonging to gid or 0
-groupidcs(vi::VarInfo) = groupidcs(vi, nothing)
-groupidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
-groupidcs(vi::VarInfo, spl::Sampler) =
-  filter(i ->
-    (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
-    1:length(vi.gids)
-  )
-
-# Get all values of variables belonging to gid or 0
-groupvals(vi::VarInfo) = groupvals(vi, nothing)
-groupvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], groupidcs(vi, spl))
-
-# Get all vns of variables belonging to gid or 0
-groupvns(vi::VarInfo) = groupvns(vi, nothing)
-groupvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs(vi, spl))
-
-# Get all vns of variables belonging to gid or 0
-getranges(vi::VarInfo, spl::Sampler) = begin
-  if haskey(spl.info, :ranges) && (~haskey(spl.info, :ranges_updated) || spl.info[:ranges_updated])
-    spl.info[:ranges]
-  else
-    spl.info[:ranges_updated] = true
-    spl.info[:ranges] = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
-  end
-end
-
-retain!(vi::VarInfo, n_retain::Int) = retain!(vi, n_retain, nothing)
-retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
-  gidcs = groupidcs(vi, spl)
-
-  # Set all corresponding entries to NaN
-  l = length(gidcs)
-  for i = l:-1:(n_retain + 1),  # for each variable (in reversed order)
-      j = vi.ranges[gidcs[i]]   # for each index of variable range
-    vi[j] = NaN
-  end
-
-  vi
-end
-
-
 # Add a new entry to VarInfo
 push!(vi::VarInfo, vn::VarName, r, dist::Distribution, gid::Int) = begin
 
@@ -239,6 +186,58 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   VarName(csym, sym, indexing, 1)
 end
 
+#################################
+# Utility functions for VarInfo #
+#################################
+
+expand!(vi::VarInfo) = push!(vi.vals, deepcopy(vi.vals[end]))
+last(_vi::VarInfo) = begin
+  vi = deepcopy(_vi)
+  splice!(vi.vals, 1:length(vi.vals)-1)
+  vi
+end
+
+# Get all indices of variables belonging to gid or 0
+getidcs(vi::VarInfo) = getidcs(vi, nothing)
+getidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
+getidcs(vi::VarInfo, spl::Sampler) =
+  filter(i ->
+    (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+    1:length(vi.gids)
+  )
+
+# Get all values of variables belonging to gid or 0
+getvals(vi::VarInfo) = getvals(vi, nothing)
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], getidcs(vi, spl))
+
+# Get all vns of variables belonging to gid or 0
+getvns(vi::VarInfo) = getvns(vi, nothing)
+getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi, spl))
+
+# Get all vns of variables belonging to gid or 0
+getranges(vi::VarInfo, spl::Sampler) = begin
+  if haskey(spl.info, :ranges) && (~haskey(spl.info, :ranges_updated) || spl.info[:ranges_updated])
+    spl.info[:ranges]
+  else
+    spl.info[:ranges_updated] = true
+    spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
+  end
+end
+
+retain!(vi::VarInfo, n_retain::Int) = retain!(vi, n_retain, nothing)
+retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+  gidcs = getidcs(vi, spl)
+
+  # Set all corresponding entries to NaN
+  l = length(gidcs)
+  for i = l:-1:(n_retain + 1),  # for each variable (in reversed order)
+      j = vi.ranges[gidcs[i]]   # for each index of variable range
+    vi[j] = NaN
+  end
+
+  vi
+end
+
 #######################################
 # Rand & replaying method for VarInfo #
 #######################################
@@ -249,7 +248,7 @@ isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
 checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
-  vn_index = groupvns(vi, spl)[vi.index]
+  vn_index = getvns(vi, spl)[vi.index]
   @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
@@ -258,37 +257,3 @@ updategid!(vi, vn, spl) = begin
     setgid!(vi, spl.alg.gid, vn)
   end
 end
-
-# # This method is called when sampler is missing
-# # NOTE: this used for initialize VarInfo, i.e. vi = model()
-# # NOTE: this method is also used by IS
-# randr(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, false)
-# randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
-#   vi.index = count ? vi.index + 1 : vi.index
-#   if ~haskey(vi, vn)
-#     newvar!(vi, vn, dist)
-#   else
-#     if count checkindex(vn, vi) end
-#     r = vi[vn]
-#     vi.logp += logpdf(dist, r, istransformed(vi, vn))
-#     r
-#   end
-# end
-#
-# # Random with replaying
-# # NOTE: this method is used by PG
-# randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn, dist, spl, false)
-# randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
-#   vi.index = count ? vi.index + 1 : vi.index
-#   if ~haskey(vi, vn)
-#     newvar!(vi, vn, dist, spl.alg.gid)
-#   elseif isnan(vi, vn)
-#     r = rand(dist)
-#     setval!(vi, vectorize(dist, r), vn)
-#     r
-#   else
-#     if count checkindex(vn, vi, spl) end
-#     updategid!(vi, vn, spl)
-#     vi[vn]
-#   end
-# end

@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, groupvals, retain!, step
+using Turing: uid, cuid, reconstruct, invlink, getvals, retain!, step
 
 # Test for uid() (= string())
 csym = gensym()
@@ -37,8 +37,8 @@ end
 
 # println(vi)
 
-@test length(groupvals(vi, spl1)) == 3
-@test length(groupvals(vi, spl2)) == 1
+@test length(getvals(vi, spl1)) == 3
+@test length(getvals(vi, spl2)) == 1
 
 
 vn_u = VarName(gensym(), :u, "", 1)
@@ -50,12 +50,12 @@ retain!(vi, 1, spl2)
 
 # println(vi)
 
-vals_of_1 = groupvals(vi, spl1)
+vals_of_1 = getvals(vi, spl1)
 # println(vals_of_1)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
 @test length(vals_of_1) == 3
 
-vals_of_2 = groupvals(vi, spl2)
+vals_of_2 = getvals(vi, spl2)
 # println(vals_of_2)
 filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
 @test length(vals_of_2) == 1
