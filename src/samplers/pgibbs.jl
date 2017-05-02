@@ -89,7 +89,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     vi.index += 1
     if ~haskey(vi, vn)
       r = rand(dist)
-      push!(vi, Var(vn, vectorize(dist, r), dist, spl.alg.gid))
+      push!(vi, vn, vectorize(dist, r), dist, spl.alg.gid)
       spl.info[:ranges_updated] = false
       r
     elseif isnan(vi, vn)

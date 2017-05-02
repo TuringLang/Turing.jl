@@ -211,16 +211,9 @@ retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   vi
 end
 
-immutable Var
-  vn    ::  VarName
-  val   ::  Vector{Real}
-  dist  ::  Distribution
-  gid   ::  Int
-end
 
 # Add a new entry to VarInfo
-push!(vi::VarInfo, v::Var) = begin
-  vn, val, dist, gid = v.vn, v.val, v.dist, v.gid
+push!(vi::VarInfo, vn::VarName, val::Vector{Real}, dist::Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
