@@ -27,7 +27,7 @@
 #   }
 # }
 
-@model ldamodel(K, V, M, N, w, doc, alpha, β) = begin
+@model ldamodel(K, V, M, N, w, doc, alpha, beta) = begin
   theta = Vector{Vector{Real}}(M)
   for m = 1:M
     theta[m] ~ Dirichlet(alpha)
