@@ -189,9 +189,10 @@ groupvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin
-  if haskey(spl.info, :ranges)
+  if haskey(spl.info, :ranges) && (~haskey(spl.info, :ranges_updated) || spl.info[:ranges_updated])
     spl.info[:ranges]
   else
+    spl.info[:ranges_updated] = true
     spl.info[:ranges] = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
   end
 end
@@ -259,6 +260,10 @@ end
 
 # Initialize VarInfo, i.e. sampling from priors
 newvar!(vi::VarInfo, vn::VarName, dist::Distribution) = newvar!(vi, vn, dist, 0)
+newvar!(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
+  spl.info[:ranges_updated] = false
+  newvar!(vi, vn, dist, spl.alg.gid)
+end
 newvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
   @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
   r = rand(dist)

@@ -88,7 +88,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
   if isempty(spl.alg.space) || vn.sym in spl.alg.space
     vi.index += 1
     if ~haskey(vi, vn)
-      newvar!(vi, vn, dist, spl.alg.gid)
+      newvar!(vi, vn, dist, spl)
     elseif isnan(vi, vn)
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
