@@ -20,8 +20,8 @@ ad_test_f = ad_test()
 vi = ad_test_f()
 svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
-_s = realpart((getval(vi, svn)[1])
-_m = realpart((getval(vi, mvn)[1])
+_s = realpart(getval(vi, svn)[1])
+_m = realpart(getval(vi, mvn)[1])
 ∇E = gradient(vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
