@@ -188,7 +188,13 @@ groupvns(vi::VarInfo) = groupvns(vi, nothing)
 groupvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], groupidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
-getranges(vi::VarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
+getranges(vi::VarInfo, spl::Sampler) = begin
+  if haskey(spl.info, :ranges)
+    spl.info[:ranges]
+  else
+    spl.info[:ranges] = union(map(i -> vi.ranges[i], groupidcs(vi, spl))...)
+  end
+end
 
 retain!(vi::VarInfo, n_retain::Int) = retain!(vi, n_retain, nothing)
 retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
