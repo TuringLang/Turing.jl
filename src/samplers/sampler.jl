@@ -56,13 +56,3 @@ observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
   vi.logw += lp
   vi.logp += lp
 end
-
-assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
-  randr(current_trace().vi, vn, d, true)
-end
-
-observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
-  lp = logpdf(d, value)
-  vi.logp += lp
-  produce(lp)
-end

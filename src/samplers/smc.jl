@@ -53,3 +53,9 @@ function sample(model::Function, alg::SMC)
   res = Chain(getsample(particles)...)
 
 end
+
+assume(spl::Sampler{SMC}, dist::Distribution, vn::VarName, _::VarInfo) = begin
+  vi = current_trace().vi
+  vi.index += 1
+  nwevar!(vi, vn, dist)
+end

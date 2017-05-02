@@ -89,3 +89,9 @@ assume(spl::Sampler{PG}, dist::Distribution, vn::VarName, _::VarInfo) = begin
     randr(vi, vn, dist, spl, true) :
     vi[vn]
 end
+
+observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
+  lp = logpdf(d, value)
+  vi.logp += lp
+  produce(lp)
+end
