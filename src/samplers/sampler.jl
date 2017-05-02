@@ -58,7 +58,7 @@ observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
 end
 
 assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
-  rand(current_trace(), vn, d)
+  randr(current_trace().vi, vn, d, true)
 end
 
 observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin

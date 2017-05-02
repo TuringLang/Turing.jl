@@ -74,10 +74,6 @@ end
 typealias TraceR Trace{:R} # Task Copy
 typealias TraceC Trace{:C} # Replay
 
-# generate a new random variable, replay if t.counter < length(t.randomness)
-randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr, true)
-Distributions.rand(t::Trace, vn::VarName, dist::Distribution) = randr(t, vn, dist)
-
 # step to the next observe statement, return log likelihood
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 

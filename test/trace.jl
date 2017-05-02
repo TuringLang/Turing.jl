@@ -16,10 +16,10 @@ function f2()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); n += 1;
+    randr(ct.vi, vn, Normal(0,1), true); n += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); n += 1;
+    randr(ct.vi, vn, Normal(0,1), true); n += 1;
     t[1] = 1 + t[1]
   end
 end
