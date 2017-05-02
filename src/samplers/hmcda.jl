@@ -72,7 +72,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       dprintln(2, "computing ΔH...")
       ΔH = H - oldH
-      isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
+      isnan(ΔH) && warn(" ΔH = NaN, H=$H, oldH=$oldH.")
 
       α = min(1, exp(-ΔH))  # MH accept rate
     end
@@ -80,7 +80,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      # dprintln(1, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      # dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
@@ -88,7 +88,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
     elseif m == spl.alg.n_adapt
       spl.info[:ϵ] = spl.info[:ϵ_bar]
-      dprintln(0, "[Turing]: Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
 
     if reject return false, vi end

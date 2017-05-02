@@ -258,7 +258,7 @@ isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
 checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
 checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
   vn_index = getvns(vi, spl)[vi.index]
-  @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
+  @assert vn_index == vn " sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
 updategid!(vi, vn, spl) = begin
