@@ -200,11 +200,22 @@ end
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
 getidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
-getidcs(vi::VarInfo, spl::Sampler) =
-  filter(i ->
-    (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
-    1:length(vi.gids)
-  )
+getidcs(vi::VarInfo, spl::Sampler) = begin
+  # NOTE: 0b00 is the sanity flag for
+  #         |\____ getidcs   (mask = 0b10)
+  #         \_____ getranges (mask = 0b01)
+  # TODO: set these as constants
+  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = 0b00 end
+  if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & 0b10) > 0
+    spl.info[:idcs]
+  else
+    spl.info[:cache_updated] = spl.info[:cache_updated] | 0b10
+    spl.info[:idcs] = filter(i ->
+      (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+      1:length(vi.gids)
+    )
+  end
+end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
@@ -216,10 +227,11 @@ getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi,
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin
-  if haskey(spl.info, :ranges) && (~haskey(spl.info, :ranges_updated) || spl.info[:ranges_updated])
+  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = 0b00 end
+  if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & 0b01) > 0
     spl.info[:ranges]
   else
-    spl.info[:ranges_updated] = true
+    spl.info[:cache_updated] = spl.info[:cache_updated] | 0b01
     spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
   end
 end

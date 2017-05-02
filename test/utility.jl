@@ -20,7 +20,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
   if ~haskey(vi, vn)
     r = rand(dist)
     push!(vi, vn, r, dist, spl.alg.gid)
-    spl.info[:ranges_updated] = false
+    spl.info[:cache_updated] = 0b00   # sanity flag mask for getidcs and getranges
     r
   elseif isnan(vi, vn)
     r = rand(dist)
