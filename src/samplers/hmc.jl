@@ -130,11 +130,10 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
 end
 
 function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
-  # Step 1 - Generate or replay variable
   dprintln(2, "assuming...")
-  r = rand(vi, vn, dist, spl)
-  # The following code has been merged into rand.
-  # vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  updategid!(vi, vn, spl)
+  r = vi[vn]
+  vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
@@ -147,11 +146,4 @@ function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::Va
     vi.logp += logpdf(d, map(x -> Dual(x), value))
   end
   dprintln(2, "observe done")
-end
-
-rand{T<:Hamiltonian}(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{T}) = begin
-  updategid!(vi, vn, spl)
-  r = vi[vn]
-  vi.logp += logpdf(dist, r, istransformed(vi, vn))
-  r
 end

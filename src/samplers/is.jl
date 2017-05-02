@@ -44,10 +44,8 @@ function sample(model::Function, alg::IS)
   return chn
 end
 
-assume(spl::Sampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = rand(vi, vn, d, spl)
+assume(spl::Sampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = randr(vi, vn, d)
 
 observe(spl::Sampler{IS}, d::Distribution, value, vi::VarInfo) = begin
   vi.logp += logpdf(d, value)
 end
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{IS}) = randr(vi, vn, dist)

@@ -83,11 +83,8 @@ sample(model::Function, alg::PG) = begin
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 
-assume(spl::Sampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
-  rand(current_trace().vi, vn, d, spl)
-end
-
-rand(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler{PG}) = begin
+assume(spl::Sampler{PG}, dist::Distribution, vn::VarName, _::VarInfo) = begin
+  vi = current_trace().vi
   isempty(spl.alg.space) || vn.sym in spl.alg.space ?
     randr(vi, vn, dist, spl, true) :
     vi[vn]
