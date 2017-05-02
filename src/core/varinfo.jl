@@ -249,8 +249,8 @@ checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
 end
 
 # Initialize VarInfo, i.e. sampling from priors
-nwevar!(vi::VarInfo, vn::VarName, dist::Distribution) = nwevar!(vi, vn, dist, 0)
-nwevar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
+newvar!(vi::VarInfo, vn::VarName, dist::Distribution) = newvar!(vi, vn, dist, 0)
+newvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
   @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
   r = rand(dist)
   push!(vi, Var(vn, vectorize(dist, r), dist, gid))
@@ -270,7 +270,7 @@ end
 # randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
 #   vi.index = count ? vi.index + 1 : vi.index
 #   if ~haskey(vi, vn)
-#     nwevar!(vi, vn, dist)
+#     newvar!(vi, vn, dist)
 #   else
 #     if count checkindex(vn, vi) end
 #     r = vi[vn]
@@ -285,7 +285,7 @@ end
 # randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
 #   vi.index = count ? vi.index + 1 : vi.index
 #   if ~haskey(vi, vn)
-#     nwevar!(vi, vn, dist, spl.alg.gid)
+#     newvar!(vi, vn, dist, spl.alg.gid)
 #   elseif isnan(vi, vn)
 #     r = rand(dist)
 #     setval!(vi, vectorize(dist, r), vn)

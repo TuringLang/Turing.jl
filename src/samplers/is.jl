@@ -51,5 +51,5 @@ sample(model::Function, alg::IS) = begin
   Chain(exp(le), samples)
 end
 
-assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = nwevar!(vi, vn, dist)
+assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = newvar!(vi, vn, dist)
 observe(spl::Sampler{IS}, dist::Distribution, value, vi::VarInfo)      = vi.logp += logpdf(dist, value)

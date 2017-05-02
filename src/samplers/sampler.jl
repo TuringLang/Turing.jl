@@ -47,7 +47,7 @@ end
 assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r = haskey(vi, vn) ?
       vi[vn] :
-      nwevar!(vi, vn, dist)
+      newvar!(vi, vn, dist)
   vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
