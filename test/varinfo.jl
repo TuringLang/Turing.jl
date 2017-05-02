@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, retain!, step
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain
 
 # Test for uid() (= string())
 csym = gensym()
@@ -46,7 +46,7 @@ randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 
-retain!(vi, 1, spl2)
+vi[spl2, getretain(vi, 1, spl2)] = NULL
 
 # println(vi)
 

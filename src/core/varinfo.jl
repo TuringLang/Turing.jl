@@ -236,25 +236,22 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-retain!(vi::VarInfo, n_retain::Int) = retain!(vi, n_retain, nothing)
-retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
+  union(map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...)
+end
 
-  # Set all corresponding entries to NaN
-  l = length(gidcs)
-  for i = l:-1:(n_retain + 1),  # for each variable (in reversed order)
-      j = vi.ranges[gidcs[i]]   # for each index of variable range
-    vi[j] = NaN
+Base.setindex!(vi::VarInfo, null, spl::Union{Void, Sampler}, range) = begin
+  for i = range
+    vi[i] = null
   end
-
-  vi
 end
 
 #######################################
 # Rand & replaying method for VarInfo #
 #######################################
 
-# Check if a vn is set to NaN (by retain!)
+# Check if a vn is set to NULL
 isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
 
 # Sanity check for VarInfo.index

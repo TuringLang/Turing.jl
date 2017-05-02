@@ -103,7 +103,8 @@ function sample(model::Function, alg::Gibbs)
           ref_particle.vi = varInfo
         end
         # Clean variables belonging to the current sampler
-        varInfo = retain!(deepcopy(varInfo), 0, local_spl)
+        varInfo = deepcopy(varInfo)
+        varInfo[local_spl, getretain(varInfo, 0, local_spl)] = NULL
         # Local samples
         for _ = 1:local_spl.alg.n_iterations
           ref_particle, _ = step(model, local_spl, varInfo, ref_particle)

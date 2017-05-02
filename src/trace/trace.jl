@@ -9,7 +9,7 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarName, VarInfo, Sampler, retain!, getvns
+using Turing: VarName, VarInfo, Sampler, getvns, NULL, getretain
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -84,7 +84,8 @@ function forkc(trace :: Trace)
 
   n_rand = min(trace.vi.index, length(getvns(trace.vi, trace.spl)))
   newtrace.vi = deepcopy(trace.vi)
-  retain!(newtrace.vi, n_rand, trace.spl)
+
+  newtrace.vi[trace.spl, getretain(newtrace.vi, n_rand, trace.spl)] = NULL
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -106,7 +107,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    retain!(newtrace.vi, index, trace.spl)
+    newtrace.vi[trace.spl, getretain(newtrace.vi, index, trace.spl)] = NULL
   end
 
   newtrace

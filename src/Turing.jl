@@ -14,6 +14,7 @@ end
 
 # Code associated with running probabilistic programs as tasks.
 #  REVIEW: can we find a way to move this to where the other included files locate.
+global NULL = NaN
 include("core/varinfo.jl")
 include("trace/trace.jl")
 using Turing.Traces
@@ -30,7 +31,7 @@ import Base: ~, convert, promote_rule
 export @model, @~
 export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs
 export sample, Chain, Sample, Sampler, setchunksize
-export VarName, VarInfo
+export VarName, VarInfo, NULL
 
 # Export Mamba Chain utility functions
 export describe, plot, write, heideldiag, rafterydiag, gelmandiag
