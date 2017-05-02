@@ -245,14 +245,15 @@ macro model(fexpr)
     end
     if _k != nothing
       _k_str = string(_k)
+      dprintln(1, _k_str, " = ", _k)
       _ = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
-                warn(" parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+                Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
               end
             else
               data[keytype(data)($_k_str)] = $_k
-              data[keytype(data)($_k_str)] == nothing && error(" data "*$_k_str*" is not provided.")
+              data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
       unshift!(fdefn_outer.args[2].args, _)
