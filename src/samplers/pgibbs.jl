@@ -83,15 +83,28 @@ sample(model::Function, alg::PG) = begin
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 
-assume(spl::Sampler{PG}, dist::Distribution, vn::VarName, _::VarInfo) = begin
+assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin
   vi = current_trace().vi
-  isempty(spl.alg.space) || vn.sym in spl.alg.space ?
-    randr(vi, vn, dist, spl, true) :
+  if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    vi.index += 1
+    if ~haskey(vi, vn)
+      nwevar!(vi, vn, dist, spl.alg.gid)
+    elseif isnan(vi, vn)
+      r = rand(dist)
+      setval!(vi, vectorize(dist, r), vn)
+      r
+    else
+      checkindex(vn, vi, spl)
+      updategid!(vi, vn, spl)
+      vi[vn]
+    end
+  else
     vi[vn]
+  end
 end
 
-observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
-  lp = logpdf(d, value)
+observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
+  lp = logpdf(dist, value)
   vi.logp += lp
   produce(lp)
 end
