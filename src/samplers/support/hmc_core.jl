@@ -37,13 +37,12 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   verifygrad(grad) || (reject = true)
 
   dprintln(2, "leapfrog stepping...")
-  for t in 1:τ  # do 'leapfrog' for each var
+  for t in 1:τ        # do 'leapfrog' for each var
     p -= ϵ * grad / 2
 
     expand!(vi)
 
-    ranges = getranges(vi, spl)
-    vi[ranges] += ϵ * p             # full step for state
+    vi[spl] += ϵ * p  # full step for state
 
     grad = gradient(vi, model, spl)
 

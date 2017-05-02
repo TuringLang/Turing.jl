@@ -133,6 +133,9 @@ end
 Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
 Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view)
 
+Base.getindex(vi::VarInfo, spl::Sampler)       = getval(vi, getranges(vi, spl))
+Base.setindex!(vi::VarInfo, val, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
+
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
 Base.haskey(vi::VarInfo, vn::VarName) = haskey(vi.idcs, vn)
