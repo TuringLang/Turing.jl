@@ -55,8 +55,8 @@ doc"""
 
 Debugging print function: The first argument controls the verbosity of message, e.g. larger v leads to more verbose debugging messages.
 """
-dprintln(v, args...) = v < Turing.VERBOSITY ? println("[Turing]: ", args..., "\n $(stacktrace()[2])") : nothing
-dwarn(v, args...) = v < Turing.VERBOSITY ? print_with_color(:red, "[Turing]: ", mapreduce(string,*,args), "\n $(stacktrace()[2])\n") : nothing
+dprintln(v, args...) = v < Turing.VERBOSITY ? println("\r[Turing]: ", args..., "\n $(stacktrace()[2])") : nothing
+dwarn(v, args...) = v < Turing.VERBOSITY ? print_with_color(:red, "\r[Turing]: ", mapreduce(string,*,args), "\n $(stacktrace()[2])\n") : nothing
 
 global FCOMPILER = 1
 
