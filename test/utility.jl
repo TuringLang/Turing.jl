@@ -1,10 +1,12 @@
 using Turing
-using Turing: newvar!, checkindex, setval!, updategid!
+using Turing: checkindex, setval!, updategid!, vectorize
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    newvar!(vi, vn, dist)
+    r = rand(dist)
+    push!(vi, Var(vn, vectorize(dist, r), dist, 0))
+    r
   else
     if count checkindex(vn, vi) end
     r = vi[vn]
@@ -16,7 +18,10 @@ end
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    newvar!(vi, vn, dist, spl.alg.gid)
+    r = rand(dist)
+    push!(vi, Var(vn, vectorize(dist, r), dist, spl.alg.gid))
+    spl.info[:ranges_updated] = false
+    r
   elseif isnan(vi, vn)
     r = rand(dist)
     setval!(vi, vectorize(dist, r), vn)

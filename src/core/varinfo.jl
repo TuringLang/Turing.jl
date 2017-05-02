@@ -258,19 +258,6 @@ checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
   @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
-# Initialize VarInfo, i.e. sampling from priors
-newvar!(vi::VarInfo, vn::VarName, dist::Distribution) = newvar!(vi, vn, dist, 0)
-newvar!(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = begin
-  spl.info[:ranges_updated] = false
-  newvar!(vi, vn, dist, spl.alg.gid)
-end
-newvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
-  @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
-  r = rand(dist)
-  push!(vi, Var(vn, vectorize(dist, r), dist, gid))
-  r
-end
-
 updategid!(vi, vn, spl) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
     setgid!(vi, spl.alg.gid, vn)

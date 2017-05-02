@@ -30,7 +30,7 @@ import Base: ~, convert, promote_rule
 export @model, @~
 export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs
 export sample, Chain, Sample, Sampler, setchunksize
-export VarName, VarInfo
+export Var, VarName, VarInfo
 
 # Export Mamba Chain utility functions
 export describe, plot, write, heideldiag, rafterydiag, gelmandiag

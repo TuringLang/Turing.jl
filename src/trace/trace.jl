@@ -9,7 +9,7 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarName, VarInfo, Sampler, retain!, groupvals
+using Turing: VarName, VarInfo, Sampler, retain!, groupvns
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -82,7 +82,7 @@ function forkc(trace :: Trace)
   newtrace.task = Base.copy(trace.task)
   newtrace.spl = trace.spl
 
-  n_rand = min(trace.vi.index, length(groupvals(trace.vi, trace.spl)))
+  n_rand = min(trace.vi.index, length(groupvns(trace.vi, trace.spl)))
   newtrace.vi = deepcopy(trace.vi)
   retain!(newtrace.vi, n_rand, trace.spl)
   newtrace.task.storage[:turing_trace] = newtrace

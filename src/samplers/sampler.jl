@@ -45,9 +45,12 @@ end
 
 ## Default definitions for assume, observe, when sampler = nothing.
 assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
-  r = haskey(vi, vn) ?
-      vi[vn] :
-      newvar!(vi, vn, dist)
+  if haskey(vi, vn)
+    r = vi[vn]
+  else
+    r = rand(dist)
+    push!(vi, Var(vn, vectorize(dist, r), dist, 0))
+  end
   vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
