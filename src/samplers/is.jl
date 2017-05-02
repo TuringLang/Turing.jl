@@ -53,7 +53,7 @@ end
 
 assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r = rand(dist)
-  push!(vi, vn, vectorize(dist, r), dist, 0)
+  push!(vi, vn, r, dist, 0)
   r
 end
 observe(spl::Sampler{IS}, dist::Distribution, value, vi::VarInfo) = vi.logp += logpdf(dist, value)

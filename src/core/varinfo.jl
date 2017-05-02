@@ -213,11 +213,13 @@ end
 
 
 # Add a new entry to VarInfo
-push!(vi::VarInfo, vn::VarName, val::Vector{Real}, dist::Distribution, gid::Int) = begin
+push!(vi::VarInfo, vn::VarName, r, dist::Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
   if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
+
+  val = vectorize(dist, r)
 
   vi.idcs[vn] = length(vi.idcs) + 1
   push!(vi.vns, vn)
