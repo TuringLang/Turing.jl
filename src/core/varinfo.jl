@@ -82,11 +82,11 @@ istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
 # X -> R for all variables associated with given sampler
 function link(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = groupvns(vi, spl)
-  for k in gkeys
-    dist = getdist(vi, k)
-    vi[k] = link(dist, reconstruct(dist, getval(vi, k)))
-    vi.trans[getidx(vi, k)] = true
+  gvns = groupvns(vi, spl)
+  for vn in gvns
+    dist = getdist(vi, vn)
+    setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
+    vi.trans[getidx(vi, vn)] = true
   end
   vi
 end
@@ -94,11 +94,11 @@ end
 # R -> X for all variables associated with given sampler
 function invlink(_vi, spl)
   vi = deepcopy(_vi)
-  gkeys = groupvns(vi, spl)
-  for k in gkeys
-    dist = getdist(vi, k)
-    vi[k] = invlink(dist, reconstruct(dist, getval(vi, k)))
-    vi.trans[getidx(vi, k)] = false
+  gvns = groupvns(vi, spl)
+  for vn in gvns
+    dist = getdist(vi, vn)
+    setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
+    vi.trans[getidx(vi, vn)] = false
   end
   vi
 end
@@ -115,11 +115,12 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
   r = istransformed(vi, vn) ? invlink(dist, r) : r
 end
 
-Base.setindex!(vi::VarInfo, r, vn::VarName) = begin
-  dist = getdist(vi, vn)
-  setval!(vi, vectorize(dist, r), vn)
-end
+# Base.setindex!(vi::VarInfo, r, vn::VarName) = begin
+#   dist = getdist(vi, vn)
+#   setval!(vi, vectorize(dist, r), vn)
+# end
 
+# NOTE: vi[view] will just return what insdie vi (no transformations applied)
 Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
 Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view)
 
@@ -276,7 +277,9 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
   if ~haskey(vi, vn)
     initvar!(vi, vn, dist, spl.alg.gid)
   elseif isnan(vi, vn)
-    vi[vn] = rand(dist)
+    r = rand(dist)
+    setval!(vi, vectorize(dist, r), vn)
+    r
   else
     if count checkindex(vn, vi, spl) end
     updategid!(vi, vn, spl)
