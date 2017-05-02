@@ -2,7 +2,9 @@
 doc"""
     IS(n_particles::Int)
 
-Importance sampler.
+Importance sampling algorithm object.
+
+- `n_particles` is the number of particles to use
 
 Usage:
 
@@ -13,16 +15,20 @@ IS(1000)
 Example:
 
 ```julia
-@model example begin
-  ...
+# Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
 end
 
-sample(example, IS(1000))
+sample(gdemo([1.5, 2]), IS(1000))
 ```
 """
 immutable IS <: InferenceAlgorithm
-  n_samples   ::  Int
-  IS(n) = new(n)
+  n_particles ::  Int
 end
 
 Sampler(alg::IS) = begin
@@ -30,22 +36,20 @@ Sampler(alg::IS) = begin
   Sampler(alg, info)
 end
 
-function sample(model::Function, alg::IS)
+sample(model::Function, alg::IS) = begin
   spl = Sampler(alg);
-  samples = Array{Sample}(alg.n_samples)
+  samples = Array{Sample}(alg.n_particles)
 
-  n = spl.alg.n_samples
+  n = spl.alg.n_particles
   for i = 1:n
     vi = model(vi=VarInfo(), sampler=spl)
     samples[i] = Sample(vi)
   end
+
   le = logsum(map(x->x[:lp], samples)) - log(n)
-  chn = Chain(exp(le), samples)
-  return chn
+
+  Chain(exp(le), samples)
 end
 
-assume(spl::Sampler{IS}, d::Distribution, vn::VarName, vi::VarInfo) = randr(vi, vn, d)
-
-observe(spl::Sampler{IS}, d::Distribution, value, vi::VarInfo) = begin
-  vi.logp += logpdf(d, value)
-end
+assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = nwevar!(vi, vn, dist)
+observe(spl::Sampler{IS}, dist::Distribution, value, vi::VarInfo)      = vi.logp += logpdf(dist, value)

@@ -201,8 +201,6 @@ retain!(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   vi
 end
 
-isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
-
 immutable Var
   vn    ::  VarName
   val   ::  Vector{Real}
@@ -240,6 +238,9 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
+# Check if a vn is set to NaN (by retain!)
+isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
+
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
 checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
@@ -247,26 +248,9 @@ checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
   @assert vn_index == vn "[Turing]: sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
-# This method is called when sampler is missing
-# NOTE: this used for initialize VarInfo, i.e. vi = model()
-# NOTE: this method is also used by IS
-# NOTE: this method is also used by TraceR
-randr(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, false)
-randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
-  vi.index = count ? vi.index + 1 : vi.index
-  if ~haskey(vi, vn)
-    initvar!(vi, vn, dist)
-  else
-    if count checkindex(vn, vi) end
-    r = vi[vn]
-    vi.logp += logpdf(dist, r, istransformed(vi, vn))
-    r
-  end
-end
-
 # Initialize VarInfo, i.e. sampling from priors
-initvar!(vi::VarInfo, vn::VarName, dist::Distribution) = initvar!(vi, vn, dist, 0)
-initvar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
+nwevar!(vi::VarInfo, vn::VarName, dist::Distribution) = nwevar!(vi, vn, dist, 0)
+nwevar!(vi::VarInfo, vn::VarName, dist::Distribution, gid::Int) = begin
   @assert ~haskey(vi, vn) "[Turing] attempted to initialize existing variables in VarInfo"
   r = rand(dist)
   push!(vi, Var(vn, vectorize(dist, r), dist, gid))
@@ -279,12 +263,29 @@ updategid!(vi, vn, spl) = begin
   end
 end
 
+# This method is called when sampler is missing
+# NOTE: this used for initialize VarInfo, i.e. vi = model()
+# NOTE: this method is also used by IS
+randr(vi::VarInfo, vn::VarName, dist::Distribution) = randr(vi, vn, dist, false)
+randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
+  vi.index = count ? vi.index + 1 : vi.index
+  if ~haskey(vi, vn)
+    nwevar!(vi, vn, dist)
+  else
+    if count checkindex(vn, vi) end
+    r = vi[vn]
+    vi.logp += logpdf(dist, r, istransformed(vi, vn))
+    r
+  end
+end
+
 # Random with replaying
+# NOTE: this method is used by PG
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler) = randr(vi, vn, dist, spl, false)
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
-    initvar!(vi, vn, dist, spl.alg.gid)
+    nwevar!(vi, vn, dist, spl.alg.gid)
   elseif isnan(vi, vn)
     r = rand(dist)
     setval!(vi, vectorize(dist, r), vn)
