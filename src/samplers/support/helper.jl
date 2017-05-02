@@ -2,11 +2,12 @@
 # Helper functions for Dual numbers #
 #####################################
 
-realpart(f)        = f
-realpart(d::Dual)  = d.value
-realpart(d::Array) = map(x -> realpart(x), d)
-dualpart(d::Dual)  = d.partials.values
-dualpart(d::Array) = map(x -> x.partials.values, d)
+realpart(r::Real)   = r
+realpart(d::Dual)   = d.value
+realpart(ds::Array) = map(d -> realpart(d), ds)
+
+dualpart(d::Dual)   = d.partials.values
+dualpart(ds::Array) = map(d -> dualpart(d), ds)
 
 Base.promote_rule(D1::Type{Real}, D2::Type{Dual}) = D2
 
@@ -14,24 +15,24 @@ Base.promote_rule(D1::Type{Real}, D2::Type{Dual}) = D2
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-# QUES: will use Any below lead to worse performance?
 vectorize(d::UnivariateDistribution,   r) = Vector{Real}([r])
 vectorize(d::MultivariateDistribution, r) = Vector{Real}(r)
 vectorize(d::MatrixDistribution,       r) = Vector{Real}(vec(r))
 
-function reconstruct(d::Distribution, val)
-  if isa(d, UnivariateDistribution)
-    # Turn Array{Any} to Any if necessary (this is due to randn())
-    length(val) == 1 ? val[1] : val
-  elseif isa(d, MultivariateDistribution)
-    # Turn Vector{Any} to Vector{T} if necessary (this is due to an update in Distributions.jl)
-    T = typeof(val[1])
-    Vector{T}(val)
-  elseif isa(d, MatrixDistribution)
-    T = typeof(val[1])
-    Array{T, 2}(reshape(val, size(d)...))
-  end
-end
+# NOTE:
+# We cannot use reconstruct{T} because val is always Vector{Real} then T will be Real.
+# However here we would like the result to be specifric type, e.g. Array{Dual{4,Float64}, 2},
+# otherwise we will have error for MatrixDistribution.
+# Note this is not the case for MultivariateDistribution so I guess this might be lack of
+# support for some types related to matrices (like PDMat).
+reconstruct(d::Distribution, val::Vector) = reconstruct(d, val, typeof(val[1]))
+reconstruct(d::UnivariateDistribution,   val::Vector, T::Type) = T(val[1])
+reconstruct(d::MultivariateDistribution, val::Vector, T::Type) = Vector{T}(val)
+reconstruct(d::MatrixDistribution,       val::Vector, T::Type) = Array{T, 2}(reshape(val, size(d)...))
+
+##########
+# Others #
+##########
 
 # VarInfo to Sample
 Sample(vi::VarInfo) = begin

@@ -137,13 +137,7 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   r
 end
 
-# NOTE: TRY TO REMOVE Void through defining a special type for gradient based algs.
 function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
   dprintln(2, "observing...")
-  if length(value) == 1
-    vi.logp += logpdf(d, Dual(value))
-  else
-    vi.logp += logpdf(d, map(x -> Dual(x), value))
-  end
-  dprintln(2, "observe done")
+  vi.logp += logpdf(d, map(x -> Dual(x), value))
 end
