@@ -106,6 +106,7 @@ testcases_excluded = [
 # Run tests
 path = dirname(@__FILE__)
 cd(path)
+include("utility.jl")
 println("[runtests.jl] testing starts")
 for t in testcases
   if ~ (t in testcases_excluded)

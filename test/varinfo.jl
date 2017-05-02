@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, groupvals, retain!, randr, step
+using Turing: uid, cuid, reconstruct, invlink, groupvals, retain!, step
 
 # Test for uid() (= string())
 csym = gensym()

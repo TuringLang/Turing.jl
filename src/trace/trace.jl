@@ -10,7 +10,6 @@ Notes:
 module Traces
 using Distributions
 using Turing: VarName, VarInfo, Sampler, retain!, groupvals
-import Turing.randr
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953

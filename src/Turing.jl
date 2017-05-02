@@ -3,6 +3,7 @@ module Turing
 using StatsFuns
 using Distributions
 using ForwardDiff: Dual, npartials  # for automatic differentiation
+export Dual
 using ProgressMeter
 
 abstract InferenceAlgorithm{P}
@@ -26,9 +27,10 @@ import Base: ~, convert, promote_rule
 #################
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, InferenceAlgorithm, HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs, sample, Chain, Sample, Sampler, setchunksize
-export VarName, VarInfo, randr, retain!, groupvals
-export Dual
+export @model, @~
+export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs
+export sample, Chain, Sample, Sampler, setchunksize
+export VarName, VarInfo
 
 # Export Mamba Chain utility functions
 export describe, plot, write, heideldiag, rafterydiag, gelmandiag
