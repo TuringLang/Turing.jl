@@ -67,17 +67,17 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     vi, p, τ_valid = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
-    H = τ_valid == 0 ? oldH : find_H(p, model, vi, spl)
+    H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    α = τ_valid == 0 ? 0 : min(1, exp(-ΔH))  # MH accept rate
+    α = min(1, exp(-ΔH))  # MH accept rate
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      dprintln(0, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
