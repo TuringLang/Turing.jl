@@ -57,7 +57,7 @@ type VarInfo
   )
 end
 
-typealias VarView Union{Int,UnitRange,Vector{Int}}
+typealias VarView Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
@@ -68,6 +68,8 @@ setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
 getval(vi::VarInfo, view::VarView)       = vi.vals[end][view]
 setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
+setval!(vi::VarInfo, val, view::Vector{UnitRange}) = map(v->vi.vals[end][v] = val, view)
+
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
@@ -238,13 +240,7 @@ end
 
 getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
-  union(map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...)
-end
-
-Base.setindex!(vi::VarInfo, null, spl::Union{Void, Sampler}, range) = begin
-  for i = range
-    vi[i] = null
-  end
+  UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...]
 end
 
 #######################################

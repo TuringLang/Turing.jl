@@ -46,7 +46,7 @@ randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 
-vi[spl2, getretain(vi, 1, spl2)] = NULL
+vi[getretain(vi, 1, spl2)] = NULL
 
 # println(vi)
 
