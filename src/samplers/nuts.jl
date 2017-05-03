@@ -112,10 +112,10 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
-      H = -find_H(r′, model, θ′, spl)
-      n′ = reject ? 0 : (logu <= H) ? 1 : 0
-      s′ = reject ? 0 : (logu < Δ_max + H) ? 1 : 0
-      α′ = reject ? 0 : exp(min(0, H - (-H0)))
+      H′ = reject ? H0 : find_H(r′, model, θ′, spl)
+      n′ = reject ? 0 : (logu <= -H′) ? 1 : 0
+      s′ = reject ? 0 : (logu < Δ_max + -H′) ? 1 : 0
+      α′ = reject ? 0 : exp(min(0, -H′ - (-H0)))
       return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1, reject
     else
       # Recursion - build the left and right subtrees.
