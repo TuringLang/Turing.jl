@@ -14,8 +14,8 @@ environment:
 notifications:
   - provider: Email
     on_build_success: false
-    on_build_failure: true
-    on_build_status_changed: false
+    on_build_failure: false
+    on_build_status_changed: true
 
 cache:
 # Cache large downloads to avoid network unreliability
