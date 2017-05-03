@@ -14,7 +14,7 @@ macro ~(left, right)
           $(left),    # Data point
           vi
         )
-        if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+        if isa(sampler, Union{Turing.Sampler{PG},Turing.Sampler{SMC}})
           vi = Turing.current_trace().vi
         end
       end
@@ -37,7 +37,7 @@ macro ~(left, right)
             $(left),    # Data point
             vi
           )
-          if isa(sampler, Union{Sampler{PG},Sampler{SMC}})
+          if isa(sampler, Union{Turing.Sampler{PG},Turing.Sampler{SMC}})
             vi = Turing.current_trace().vi
           end
         end
@@ -57,7 +57,7 @@ macro ~(left, right)
         assume_ex = quote
           csym_str = string(Turing._compiler_[:fname])*"_var"* string(@__LINE__)
           sym = Symbol($(string(left)))
-          vn = VarName(vi, Symbol(csym_str), sym, "")
+          vn = Turing.VarName(vi, Symbol(csym_str), sym, "")
           $(left) = Turing.assume(
             sampler,
             $(right),   # dist
@@ -77,7 +77,7 @@ macro ~(left, right)
           assume_ex.args,
           quote
             csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-            vn = VarName(vi, Symbol(csym_str), sym, indexing)
+            vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
             $(left) = Turing.assume(
               sampler,
               $(right),   # dist
@@ -171,7 +171,7 @@ macro model(fexpr)
   #      ==> f(; c=1, :vi=VarInfo(), :sample=nothing)
   #  f(;)
   #      ==> f(; :vi=VarInfo(), :sample=nothing)
-  push!(fargs_inner[1].args, Expr(:kw, :vi, :(VarInfo())))
+  push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
   push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
   dprintln(1, fargs_inner)
 
