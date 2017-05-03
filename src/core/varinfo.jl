@@ -205,11 +205,11 @@ getidcs(vi::VarInfo, spl::Sampler) = begin
   #         |\____ getidcs   (mask = 0b10)
   #         \_____ getranges (mask = 0b01)
   # TODO: set these as constants
-  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = 0b00 end
-  if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & 0b10) > 0
+  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+  if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
     spl.info[:idcs]
   else
-    spl.info[:cache_updated] = spl.info[:cache_updated] | 0b10
+    spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
     spl.info[:idcs] = filter(i ->
       (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
       1:length(vi.gids)
@@ -227,11 +227,11 @@ getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi,
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin
-  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = 0b00 end
-  if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & 0b01) > 0
+  if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+  if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
     spl.info[:ranges]
   else
-    spl.info[:cache_updated] = spl.info[:cache_updated] | 0b01
+    spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
     spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
   end
 end

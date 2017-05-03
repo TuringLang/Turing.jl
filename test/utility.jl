@@ -1,5 +1,5 @@
 using Turing
-using Turing: checkindex, setval!, updategid!, vectorize
+using Turing: checkindex, setval!, updategid!, vectorize, CACHERESET, VarInfo, VarName, Sampler
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
@@ -20,7 +20,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
   if ~haskey(vi, vn)
     r = rand(dist)
     push!(vi, vn, r, dist, spl.alg.gid)
-    spl.info[:cache_updated] = 0b00   # sanity flag mask for getidcs and getranges
+    spl.info[:cache_updated] = CACHERESET   # sanity flag mask for getidcs and getranges
     r
   elseif isnan(vi, vn)
     r = rand(dist)
