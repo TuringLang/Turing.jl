@@ -75,7 +75,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       end
       n = n + n′
 
-      s = s′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
+      s = s′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
       j = j + 1
     end
 
@@ -84,7 +84,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
-    if m <= spl.alg.n_adapt
+    if m < spl.alg.n_adapt
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α / n_α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
@@ -112,16 +112,11 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
-      n′ = reject ?
-           0 :
-           (logu <= -find_H(r′, model, θ′, spl)) ? 1 : 0
-      s′ = reject ?
-           0 :
-           (logu < Δ_max + -find_H(r′, model, θ′, spl)) ? 1 : 0
-      α′ = reject ?
-           0 :
-           exp(min(0, -find_H(r′, model, θ′, spl) - (-H0)))
-      return deepcopy(θ′), deepcopy(r′), deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1, reject
+      H = -find_H(r′, model, θ′, spl)
+      n′ = reject ? 0 : (logu <= H) ? 1 : 0
+      s′ = reject ? 0 : (logu < Δ_max + H) ? 1 : 0
+      α′ = reject ? 0 : exp(min(0, H - (-H0)))
+      return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1, reject
     else
       # Recursion - build the left and right subtrees.
       θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
@@ -139,7 +134,7 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
         end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
-        s′ = s′′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
+        s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
       return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject

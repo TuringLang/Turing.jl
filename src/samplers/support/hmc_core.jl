@@ -1,14 +1,5 @@
 global Δ_max = 1000
 
-doc"""
-Calculate dot(θp - θm, r)
-"""
-function direction(θm, θp, r, spl)
-  rangesm = getranges(θm, spl)
-  rangesp = getranges(θp, spl)
-  dot(θp[rangesm] - θm[rangesp], r)
-end
-
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
 function runmodel(model, _vi, spl, default_logp=0.0)
