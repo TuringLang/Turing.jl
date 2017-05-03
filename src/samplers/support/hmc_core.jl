@@ -27,10 +27,9 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   verifygrad(grad) || (return vi, p, 0)
 
   dprintln(2, "leapfrog stepping...")
-  τ_valid = 0
+  τ_valid = 0; p_old = deepcopy(p)
   for t in 1:τ        # do 'leapfrog' for each var
-    vi_old = deepcopy(vi)
-    p_old = deepcopy(p)
+    p_old[1:end] = p[1:end]
 
     p -= ϵ * grad / 2
 
@@ -43,13 +42,13 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
       break
     elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
       dwarn(0, "Numerical error: vi.lojoint = $(vi.logp)")
-      vi = vi_old; p = p_old; break
+      pop!(vi.vals); p = p_old; break
     end
 
     grad = gradient(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf
-    verifygrad(grad) || (vi = vi_old; p = p_old; break)
+    verifygrad(grad) || (pop!(vi.vals); p = p_old; break)
 
     p -= ϵ * grad / 2
 

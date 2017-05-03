@@ -77,7 +77,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      # dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      dprintln(0, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
@@ -85,7 +85,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
     elseif m == spl.alg.n_adapt
       dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-      show(scatterplot(1:length(spl.info[:ϵ]), spl.info[:ϵ]))
+      show(scatterplot(1:length(spl.info[:ϵ]), spl.info[:ϵ]/spl.info[:ϵ][1]))
       push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
 
