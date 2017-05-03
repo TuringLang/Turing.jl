@@ -22,15 +22,16 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
-    ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    ϵ = find_good_eps(model, spl, vi)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
-    # spl.info[:ϵ_bar] = 1.0
-    spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
+    spl.info[:ϵ_bar] = 1.0
+    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
@@ -39,10 +40,8 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     # Set parameters
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
-    # ϵ = 0.2
-    println("ϵ: $ϵ")
 
-    dprintln(2, "current ϵ: $ϵ")
+    dprintln(0, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
@@ -112,9 +111,9 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, spl)
       # Use old H to save computation
-      H′ = τ_valid == 0 ? H0 : find_H(r′, model, θ′, spl)
+      H′ = τ_valid == 0 ? Inf : find_H(r′, model, θ′, spl)
       n′ = (logu <= -H′) ? 1 : 0
-      s′ = τ_valid == 0 ? 0 : (logu < Δ_max + -H′) ? 1 : 0
+      s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
       return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
     else

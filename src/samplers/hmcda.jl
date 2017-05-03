@@ -30,15 +30,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
-    ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    ϵ = find_good_eps(model, spl, vi)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = [ϵ]
     spl.info[:μ] = log(10 * ϵ)
-    # spl.info[:ϵ_bar] = 1.0
-    spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
+    spl.info[:ϵ_bar] = 1.0
+    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
