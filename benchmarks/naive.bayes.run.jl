@@ -1,10 +1,12 @@
-using Turing, Distributions, Stan
+using Distributions
+using Turing
+using Stan
 
-include("benchmarkhelper.jl")
-include("naive.bayes-stan.data.jl")
-include("naive.bayes.model.jl")
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/benchmarks/naive.bayes-stan.data.jl")
+include(Pkg.dir("Turing")*"/benchmarks/naive.bayes.model.jl")
 
-bench_res = tbenchmark("HMC(2000, 0.01, 10)", "nbmodel", "data=nbstandata[1]")
+bench_res = tbenchmark("HMCDA(1000, 0.65, 0.3)", "nbmodel", "data=nbstandata[1]")
 bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
 logd = build_logd("Naive Bayes", bench_res...)
 
