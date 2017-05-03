@@ -75,7 +75,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       end
       n = n + n′
 
-      s = s′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
+      s = s′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
       j = j + 1
     end
 
@@ -134,7 +134,7 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
         end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
-        s′ = s′′ * (direction(θm, θp, rm, spl) >= 0 ? 1 : 0) * (direction(θm, θp, rp, spl) >= 0 ? 1 : 0)
+        s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
       return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject
