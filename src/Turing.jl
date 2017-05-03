@@ -51,6 +51,9 @@ export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs # sampling algorithms
 export sample, setchunksize                 # inference
 export dprintln, set_verbosity              # debugging
 
+# TODO: remove the exports below
+export VarName, VarInfo, Sampler            # to be used in @model
+
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
 

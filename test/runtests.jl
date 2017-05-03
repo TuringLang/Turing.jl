@@ -2,94 +2,51 @@
 # Master file for running all test cases #
 ##########################################
 
+println("[runtests.jl] hello Turing")
+
 # NOTE: please keep this test list structured when adding new test cases
 # so that we can tell which test case is for which .jl file
 
-testcases = [
+testcases = Dict(
 # Turing.jl/
 #   src/
 #     core/
-#       ad.jl
-          "ad",
-          "ad2",
-          "ad3",
-          "pass_dual_to_dists",
-#       compiler.jl
-          "assume",
-          "observe",
-          "predict",
-          "beta_binomial",
-          "noparam",
-          #"opt_param_of_dist",
-          "new_grammar",
-          "newinterface",
-          # "noreturn",
-          "sample",
-          "forbid_global",
-#       conditional.jl
-#       container.jl
-          "copy_particle_container",
-#       varinfo.jl
-          "replay",
-          "test_varname",
-          "varinfo",
-#       IArray.jl
-#       intrinsic.jl
-#       io.jl
-          "chain_utility",
-#       util.jl
-          "util",
+        "ad.jl"        => ["ad1", "ad2", "ad3", "pass_dual_to_dists",],
+        "compiler.jl"  => ["assume", "observe", "predict", "sample",
+                           "beta_binomial", "noparam",
+                           #"opt_param_of_dist",
+                           "new_grammar", "newinterface", "noreturn", "forbid_global",],
+        "container.jl" => ["copy_particle_container",],
+        "varinfo.jl"   => ["replay", "test_varname", "varinfo",],
+        "io.jl"        => ["chain_utility",],
+        "util.jl"      => ["util",],
 #     distributions/
-#       bnp.jl
-#       distributions.jl
-#       transform.jl
-          "transform",
+        "transform.jl" => ["transform",],
 #     samplers/
 #       support/
-#         resample.jl
-            "resample",
-            "particlecontainer",
-#       gibbs.jl
-          "gibbs",
-          "gibbs2",
-          "gibbs_constructor",
-#       nuts.jl
-          "nuts_cons",
-          "nuts",
-          # "nuts_geweke",
-#       enuts.jl
-          # "enuts_cons",
-          # "enuts",
-          # "enuts_geweke",
-#       hmcda.jl
-          "hmcda_cons",
-          "hmcda",
-          # "hmcda_geweke",
-#       hmc.jl
-          "multivariate_support",
-          "matrix_support",
-          "constrained_bounded",
-          "constrained_simplex",
-#       is.jl
-          "importance_sampling",
+          "resample.jl" => ["resample", "particlecontainer",],
+        "gibbs.jl" => ["gibbs", "gibbs2", "gibbs_constructor",],
+        "nuts.jl"  => ["nuts_cons", "nuts",
+                      #  "nuts_geweke",
+                      ],
+        "hmcda.jl" => ["hmcda_cons", "hmcda",
+                      #  "hmcda_geweke",
+                      ],
+        "hmc.jl"   => ["multivariate_support", "matrix_support",
+                       "constrained_bounded", "constrained_simplex",],
+        "is.jl"    => ["importance_sampling",],
 #       pgibbs.jl
 #       sampler.jl
 #       smc.jl
 #     trace/
-#       tarray.jl
-          "tarray",
-          "tarray2",
-          "tarray3",
-#       taskcopy.jl
-          "clonetask",
-#       trace.jl
-          "trace",
+        "tarray.jl"   => ["tarray", "tarray2", "tarray3",],
+        "taskcopy.jl" => ["clonetask",],
+        "trace.jl"    => ["trace",],
 #   Turing.jl
       # "normal_loc",
       # "normal_mixture",
       # "naive_bayes"
-# NOTE: not comma for the last element
-]
+)
 
 # NOTE: put test cases which only want to be check in version 0.4.x here
 testcases_v04 = [
@@ -108,20 +65,22 @@ path = dirname(@__FILE__)
 cd(path)
 include("utility.jl")
 println("[runtests.jl] testing starts")
-for t in testcases
-  if ~ (t in testcases_excluded)
-    if t in testcases_v04
-      if VERSION < v"0.5"
+for (target, list) in testcases
+  for t in list
+    if ~ (t in testcases_excluded)
+      if t in testcases_v04
+        if VERSION < v"0.5"
+          println("[runtests.jl] \"$t.jl\" is running")
+          include(target*"/"t*".jl");
+          # readstring(`julia $t.jl`)
+          println("[runtests.jl] \"$t.jl\" is successful")
+        end
+      else
         println("[runtests.jl] \"$t.jl\" is running")
-        include(t*".jl");
+        include(target*"/"t*".jl");
         # readstring(`julia $t.jl`)
         println("[runtests.jl] \"$t.jl\" is successful")
       end
-    else
-      println("[runtests.jl] \"$t.jl\" is running")
-      include(t*".jl");
-      # readstring(`julia $t.jl`)
-      println("[runtests.jl] \"$t.jl\" is successful")
     end
   end
 end
