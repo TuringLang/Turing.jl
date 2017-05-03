@@ -61,10 +61,7 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     oldH = find_H(p, model, vi, spl)
 
     dprintln(2, "leapfrog stepping...")
-    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
-
-    # Directly reject this HMC step if leapfrog meets error
-    if reject return false, vi end
+    vi, p, _ = leapfrog(vi, p, τ, ϵ, model, spl)
 
     dprintln(2, "computing new H...")
     H = find_H(p, model, vi, spl)

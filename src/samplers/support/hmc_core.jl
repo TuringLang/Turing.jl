@@ -18,41 +18,46 @@ end
 # Leapfrog step
 function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
-  reject = false
   vi = deepcopy(_vi)
   p = deepcopy(_p)
 
   dprintln(3, "first gradient...")
   grad = gradient(vi, model, spl)
   # Verify gradients; reject if gradients is NaN or Inf.
-  verifygrad(grad) || (reject = true)
+  verifygrad(grad) || (return vi, p, 0)
 
   dprintln(2, "leapfrog stepping...")
+  τ_valid = 0
   for t in 1:τ        # do 'leapfrog' for each var
+    vi_old = deepcopy(vi)
+    p_old = deepcopy(p)
+
     p -= ϵ * grad / 2
 
     expand!(vi)
 
     vi[spl] += ϵ * p  # full step for state
 
-    grad = gradient(vi, model, spl)
-
-    # Verify gradients; reject if gradients is NaN or Inf
-    verifygrad(grad) || (reject = true; break)
-
-    p -= ϵ * grad / 2
-
     if realpart(vi.logp) == -Inf
       dwarn(0, "Log-joint is -Inf")
       break
     elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
       dwarn(0, "Numerical error: vi.lojoint = $(vi.logp)")
-      reject = true; break
+      vi = vi_old; p = p_old; break
     end
+
+    grad = gradient(vi, model, spl)
+
+    # Verify gradients; reject if gradients is NaN or Inf
+    verifygrad(grad) || (vi = vi_old; p = p_old; break)
+
+    p -= ϵ * grad / 2
+
+    τ_valid += 1
   end
 
   # Return updated θ and momentum
-  last(vi), p, reject
+  last(vi), p, τ_valid
 end
 
 # Compute Hamiltonian
@@ -68,10 +73,10 @@ function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
   # Make a leapfrog step until accept
-  vi_prime, p_prime, reject = leapfrog(vi, p, 1, ϵ, model, spl)
-  while reject
+  vi_prime, p_prime, τ_valid = leapfrog(vi, p, 1, ϵ, model, spl)
+  while τ_valid != 1
     ϵ *= 0.5
-    vi_prime, p_prime, reject = leapfrog(vi, p, 1, ϵ, model, spl)
+    vi_prime, p_prime, τ_valid = leapfrog(vi, p, 1, ϵ, model, spl)
   end
   ϵ_bar = ϵ
   log_p_r_Θ′ = -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)

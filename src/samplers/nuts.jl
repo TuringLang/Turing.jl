@@ -40,7 +40,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
     # ϵ = 0.2
-    # println("ϵ: $ϵ")
+    println("ϵ: $ϵ")
 
     dprintln(2, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
@@ -65,12 +65,12 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, n′, s′, α, n_α, reject = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl)
+        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl)
       else
-        _, _, θp, rp, θ′, n′, s′, α, n_α, reject = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
+        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
       end
 
-      if ~reject && s′ == 1 && rand() < min(1, n′ / n)
+      if s′ == 1 && rand() < min(1, n′ / n)
         vi_new = deepcopy(θ′)
       end
       n = n + n′
@@ -108,28 +108,26 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
       - ϵ     : leapfrog step size
       - H0    : initial H
     """
-    # print(j)
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′, reject = leapfrog(θ, r, 1, v * ϵ, model, spl)
-      H′ = reject ? H0 : find_H(r′, model, θ′, spl)
-      n′ = reject ? 0 : (logu <= -H′) ? 1 : 0
-      s′ = reject ? 0 : (logu < Δ_max + -H′) ? 1 : 0
-      α′ = reject ? 0 : exp(min(0, -H′ - (-H0)))
-      return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1, reject
+      θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, spl)
+      # Use old H to save computation
+      H′ = τ_valid == 0 ? H0 : find_H(r′, model, θ′, spl)
+      n′ = (logu <= -H′) ? 1 : 0
+      s′ = τ_valid == 0 ? 0 : (logu < Δ_max + -H′) ? 1 : 0
+      α′ = exp(min(0, -H′ - (-H0)))
+      return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
-      if reject
-        return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, true
-      end
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
+
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α, reject = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α, reject = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl)
         end
-        if ~reject && rand() < n′′ / (n′ + n′′)
+        if rand() < n′′ / (n′ + n′′)
           θ′ = deepcopy(θ′′)
         end
         α′ = α′ + α′′
@@ -137,6 +135,6 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
         s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
-      return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α, reject
+      return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
     end
   end
