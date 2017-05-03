@@ -2,9 +2,9 @@ immutable Gibbs <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
   algs      ::  Tuple   # component sampling algorithms
   thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
-  group_id  ::  Int
+  gid       ::  Int
   Gibbs(n_iters::Int, algs...; thin=true) = new(n_iters, algs, thin, 0)
-  Gibbs(alg::Gibbs, new_group_id) = new(alg.n_iters, alg.algs, alg.thin, new_group_id)
+  Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
 
 function Sampler(alg::Gibbs)
@@ -83,12 +83,12 @@ function sample(model::Function, alg::Gibbs)
 
         for _ = 1:local_spl.alg.n_samples
           dprintln(2, "recording old θ...")
-          old_vals = deepcopy(varInfo.vals)
+          old_vi = deepcopy(varInfo)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
           if ~is_accept
             # NOTE: this might cause problem if new variables is added to VarInfo,
             #    which will add new elements to vi.idcs etc.
-            varInfo.vals = old_vals
+            varInfo = old_vi
           end
           if ~spl.alg.thin
             samples[i_thin].value = Sample(varInfo).value
@@ -103,7 +103,8 @@ function sample(model::Function, alg::Gibbs)
           ref_particle.vi = varInfo
         end
         # Clean variables belonging to the current sampler
-        varInfo = retain(deepcopy(varInfo), local_spl.alg.group_id, 0, local_spl)
+        varInfo = deepcopy(varInfo)
+        varInfo[getretain(varInfo, 0, local_spl)] = NULL
         # Local samples
         for _ = 1:local_spl.alg.n_iterations
           ref_particle, _ = step(model, local_spl, varInfo, ref_particle)

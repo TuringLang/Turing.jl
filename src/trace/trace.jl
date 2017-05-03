@@ -1,7 +1,7 @@
 """
 Notes:
  - `rand` will store randomness only when trace type matches TraceR.
- - `randc` never stores randomness.
+ - `randc` never stores randomness. [REMOVED]
  - `randr` will store and replay randomness regardless trace type (N.B. Particle Gibbs uses `randr`).
  - `fork1` will perform replaying immediately and fix the particle weight to 1.
  - `fork2` will perform lazy replaying and accumulate likelihoods like a normal particle.
@@ -9,8 +9,7 @@ Notes:
 
 module Traces
 using Distributions
-using Turing: VarName, VarInfo, Sampler, retain, groupvals
-import Turing.randr, Turing.randoc
+using Turing: VarName, VarInfo, Sampler, getvns, NULL, getretain
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -74,18 +73,6 @@ end
 typealias TraceR Trace{:R} # Task Copy
 typealias TraceC Trace{:C} # Replay
 
-# generate a new random variable, replay if t.counter < length(t.randomness)
-randr(t::Trace, vn::VarName, distr::Distribution) = randr(t.vi, vn, distr, true)
-
-# generate a new random variable, no replay
-randc(t::Trace, vn::VarName, distr :: Distribution) = randoc(t.vi, vn, distr)
-
-Distributions.rand(t::TraceR, vn::VarName, dist::Distribution) = randr(t, vn, dist)
-Distributions.rand(t::TraceC, vn::VarName, dist::Distribution) = randc(t, vn, dist)
-
-Distributions.rand(t::TraceR, distr :: Distribution) = randr(t, distr)
-Distributions.rand(t::TraceC, distr :: Distribution) = randc(t, distr)
-
 # step to the next observe statement, return log likelihood
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 
@@ -94,14 +81,11 @@ function forkc(trace :: Trace)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   newtrace.spl = trace.spl
-  if trace.spl != nothing
-    gid = trace.spl.alg.group_id
-  else
-    gid = 0
-  end
 
-  n_rand = min(trace.vi.index, length(groupvals(trace.vi, gid, trace.spl)))
-  newtrace.vi = retain(deepcopy(trace.vi), gid, n_rand, trace.spl)
+  n_rand = min(trace.vi.index, length(getvns(trace.vi, trace.spl)))
+  newtrace.vi = deepcopy(trace.vi)
+
+  newtrace.vi[getretain(newtrace.vi, n_rand, trace.spl)] = NULL
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
@@ -123,12 +107,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    if trace.spl != nothing
-      gid = trace.spl.alg.group_id
-    else
-      gid = 0
-    end
-    retain(newtrace.vi, gid, index, trace.spl)
+    newtrace.vi[getretain(newtrace.vi, index, trace.spl)] = NULL
   end
 
   newtrace

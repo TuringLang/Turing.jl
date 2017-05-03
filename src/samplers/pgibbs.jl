@@ -27,13 +27,13 @@ immutable PG <: InferenceAlgorithm
   resampler             ::    Function
   resampler_threshold   ::    Float64
   space                 ::    Set
-  group_id              ::    Int
+  gid                   ::    Int
   PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n1, n2, resampleSystematic, 0.5, space, 0)
   end
-  PG(alg::PG, new_group_id::Int) = new(alg.n_particles, alg.n_iterations, alg.resampler, alg.resampler_threshold, alg.space, new_group_id)
+  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iterations, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
 
 Sampler(alg::PG) = begin
@@ -83,12 +83,31 @@ sample(model::Function, alg::PG) = begin
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 
-assume(spl::Sampler{PG}, d::Distribution, vn::VarName, vi::VarInfo) = begin
-  rand(current_trace().vi, vn, d, spl)
+assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin
+  vi = current_trace().vi
+  if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    vi.index += 1
+    if ~haskey(vi, vn)
+      r = rand(dist)
+      push!(vi, vn, r, dist, spl.alg.gid)
+      spl.info[:cache_updated] = 0b00   # sanity flag mask for getidcs and getranges
+      r
+    elseif isnan(vi, vn)
+      r = rand(dist)
+      setval!(vi, vectorize(dist, r), vn)
+      r
+    else
+      checkindex(vn, vi, spl)
+      updategid!(vi, vn, spl)
+      vi[vn]
+    end
+  else
+    vi[vn]
+  end
 end
 
-rand(vi::VarInfo, vn::VarName, d::Distribution, spl::Sampler{PG}) = begin
-  isempty(spl.alg.space) || vn.sym in spl.alg.space ?
-    randr(vi, vn, d, spl, true) :
-    randr(vi, vn, d)
+observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
+  lp = logpdf(dist, value)
+  vi.logp += lp
+  produce(lp)
 end

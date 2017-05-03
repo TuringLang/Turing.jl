@@ -34,8 +34,8 @@ c4 = sample(gdemo(), s4)
 @test_approx_eq_eps mean(c4[:m]) 7/6 1
 
 
-# Test group_id of each samplers
+# Test gid of each samplers
 g = Sampler(s3)
 
-@test g.info[:samplers][1].alg.group_id == 1
-@test g.info[:samplers][2].alg.group_id == 2
+@test g.info[:samplers][1].alg.gid == 1
+@test g.info[:samplers][2].alg.gid == 2

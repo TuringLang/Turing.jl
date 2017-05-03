@@ -13,11 +13,11 @@ function f()
   t[1] = 0;
   while true
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(current_trace(), vn, Normal(0,1))
+    randr(current_trace().vi, vn, Normal(0,1), true)
     n += 1
     produce(0)
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(current_trace(), vn, Normal(0,1))
+    randr(current_trace().vi, vn, Normal(0,1), true)
     n += 1
     t[1] = 1 + t[1]
   end

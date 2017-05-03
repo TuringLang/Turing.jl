@@ -1,0 +1,84 @@
+using Turing, Base.Test
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
+
+# Test for uid() (= string())
+csym = gensym()
+vn1 = VarName(csym, :x, "[1]", 1)
+@test string(vn1) == "{$csym,x[1]}:1"
+# println(string(vn1))
+
+vn2 = VarName(csym, :x, "[1]", 2)
+vn11 = VarName(csym, :x, "[1]", 1)
+
+@test cuid(vn1) == cuid(vn2)
+@test vn11 == vn1
+
+
+vi = VarInfo()
+dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
+
+alg = PG(PG(5,5),2)
+spl2 = Turing.Sampler(alg)
+vn_w = VarName(gensym(), :w, "", 1)
+randr(vi, vn_w, dists[1], spl2, true)
+
+vn_x = VarName(gensym(), :x, "", 1)
+vn_y = VarName(gensym(), :y, "", 1)
+vn_z = VarName(gensym(), :z, "", 1)
+vns = [vn_x, vn_y, vn_z]
+
+alg = PG(PG(5,5),1)
+spl1 = Turing.Sampler(alg)
+for i = 1:3
+  r = randr(vi, vns[i], dists[i], spl1, false)
+  val = vi[vns[i]]
+  @test sum(val - r) <= 1e-9
+end
+
+# println(vi)
+
+@test length(getvals(vi, spl1)) == 3
+@test length(getvals(vi, spl2)) == 1
+
+
+vn_u = VarName(gensym(), :u, "", 1)
+randr(vi, vn_u, dists[1], spl2, true)
+
+# println(vi)
+
+vi[getretain(vi, 1, spl2)] = NULL
+
+# println(vi)
+
+vals_of_1 = getvals(vi, spl1)
+# println(vals_of_1)
+filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
+@test length(vals_of_1) == 3
+
+vals_of_2 = getvals(vi, spl2)
+# println(vals_of_2)
+filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
+@test length(vals_of_2) == 1
+
+@model gdemo() = begin
+  x ~ InverseGamma(2,3)
+  y ~ InverseGamma(2,3)
+  z ~ InverseGamma(2,3)
+  w ~ InverseGamma(2,3)
+  u ~ InverseGamma(2,3)
+end
+
+# Test the update of group IDs
+g_demo_f = gdemo()
+g = Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
+
+pg, hmc = g.info[:samplers]
+
+vi = g_demo_f()
+
+ref_particle, s = step(g_demo_f, pg, vi, nothing)
+vi = ref_particle.vi
+@test vi.gids == [1,1,1,0,0]
+
+vi = g_demo_f(vi=vi, sampler=hmc)
+@test vi.gids == [1,1,1,2,2]

@@ -32,9 +32,9 @@ v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
   end
   p
 end
-chain = sample(mat_name_test(), HMC(1000, 0.75, 2))
+chain = sample(mat_name_test(), HMC(1000, 0.2, 4))
 
-@test_approx_eq_eps mean(mean(chain[Symbol("p[1,1]")])) 0 0.25
+@test_approx_eq_eps mean(chain[Symbol("p[1,1]")]) 0 0.25
 
 # Multi array
 i, j = 1, 2
@@ -50,5 +50,5 @@ v_arrarr = eval(varname(:(x[i][j]))[1])
   end
   p
 end
-chain = sample(marr_name_test(), HMC(1000, 0.75, 2))
-@test_approx_eq_eps mean(mean(mean(chain[Symbol("p[1][1]")]))) 0 0.25
+chain = sample(marr_name_test(), HMC(1000, 0.2, 4))
+@test_approx_eq_eps mean(chain[Symbol("p[1][1]")]) 0 0.25

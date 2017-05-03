@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, randr, addvar!, VarName
+import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, VarName
 
 global n = 0
 
@@ -16,10 +16,10 @@ function f2()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); n += 1;
+    randr(ct.vi, vn, Normal(0,1), true); n += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    rand(ct, vn, Normal(0,1)); n += 1;
+    randr(ct.vi, vn, Normal(0,1), true); n += 1;
     t[1] = 1 + t[1]
   end
 end
@@ -46,6 +46,7 @@ Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
 a2 = fork(t)
-Base.@assert length(a2.vi.vals) == 5
-Base.@assert t.vi.vals == a2.vi.vals
+a2_vals = filter(x -> ~isnan(x), a2.vi.vals[end])
+Base.@assert length(a2_vals) == 5
+Base.@assert t.vi.vals[end] == a2_vals
 Base.@assert t.vi.index == a2.vi.index

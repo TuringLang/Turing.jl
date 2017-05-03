@@ -25,7 +25,7 @@ macro ~(left, right)
     # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
       if ~(vsym in Turing._compiler_[:dvars])
-        println("[Turing]: Observe - `" * vsym_str * "` is an observation")
+        dprintln(FCOMPILER, " Observe - `" * vsym_str * "` is an observation")
         push!(Turing._compiler_[:dvars], vsym)
       end
       esc(
@@ -44,9 +44,9 @@ macro ~(left, right)
       )
     else
       if ~(vsym in Turing._compiler_[:pvars])
-        msg = "[Turing]: Assume - `" * vsym_str * "` is a parameter"
+        msg = " Assume - `" * vsym_str * "` is a parameter"
         isdefined(Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
-        println(msg)
+        dprintln(FCOMPILER, msg)
         push!(Turing._compiler_[:pvars], vsym)
       end
       # The if statement is to deterimnet how to pass the prior.
@@ -245,14 +245,15 @@ macro model(fexpr)
     end
     if _k != nothing
       _k_str = string(_k)
+      dprintln(1, _k_str, " = ", _k)
       _ = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
-                warn("[Turing]: parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+                Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
               end
             else
               data[keytype(data)($_k_str)] = $_k
-              data[keytype(data)($_k_str)] == nothing && error("[Turing]: data "*$_k_str*" is not provided.")
+              data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
       unshift!(fdefn_outer.args[2].args, _)

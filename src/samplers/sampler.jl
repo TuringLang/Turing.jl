@@ -44,25 +44,19 @@ observe(spl, weight :: Float64) = begin
 end
 
 ## Default definitions for assume, observe, when sampler = nothing.
-assume(spl :: Void, dist :: Distribution, vn :: VarName, vi :: VarInfo) = begin
-  r = rand(vi, vn, dist)
-  # The following code has been merged into rand.
-  # vi.logjoint += logpdf(dist, r, istransformed(vi, vn))
+assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+  if haskey(vi, vn)
+    r = vi[vn]
+  else
+    r = rand(dist)
+    push!(vi, vn, r, dist, 0)
+  end
+  vi.logp += logpdf(dist, r, istransformed(vi, vn))
   r
 end
 
-observe(spl :: Void, d :: Distribution, value, vi :: VarInfo) = begin
+observe(spl::Void, d::Distribution, value, vi::VarInfo) = begin
   lp = logpdf(d, value)
-  vi.logw     += lp
-  vi.logjoint += lp
-end
-
-assume{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, vn :: VarName, vi) = begin
-  rand(current_trace(), vn, d)
-end
-
-observe{T<:Union{PG,SMC}}(spl :: Sampler{T}, d :: Distribution, value, vi) = begin
-  lp          = logpdf(d, value)
-  vi.logjoint += lp
-  produce(lp)
+  vi.logw += lp
+  vi.logp += lp
 end

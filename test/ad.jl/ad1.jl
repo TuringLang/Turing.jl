@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: gradient, invlink, link
+using Turing: gradient, invlink, link, getval, realpart
 using ForwardDiff
 using ForwardDiff: Dual
 using Base.Test
@@ -20,15 +20,17 @@ ad_test_f = ad_test()
 vi = ad_test_f()
 svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
-_s = realpart(vi[svn][1])
-_m = realpart(vi[mvn][1])
+_s = realpart(getval(vi, svn)[1])
+_m = realpart(getval(vi, mvn)[1])
 ∇E = gradient(vi, ad_test_f)
-grad_Turing = sort([∇E[v][1] for v in keys(vi)])
+# println(vi.vns)
+# println(∇E)
+grad_Turing = sort(∇E)
 
 dist_s = InverseGamma(2,3)
 
-# Hand-written logjoint
-function logjoint(x::Vector)
+# Hand-written logp
+function logp(x::Vector)
   s = x[2]
   # s = invlink(dist_s, s)
   m = x[1]
@@ -39,7 +41,7 @@ function logjoint(x::Vector)
 end
 
 # Call ForwardDiff's AD
-g = x -> ForwardDiff.gradient(logjoint, x);
+g = x -> ForwardDiff.gradient(logp, x);
 # _s = link(dist_s, _s)
 _x = [_m, _s]
 grad_FWAD = sort(-g(_x))

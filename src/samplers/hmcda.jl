@@ -4,15 +4,15 @@ immutable HMCDA <: InferenceAlgorithm
   delta     ::  Float64   # target accept rate
   lambda    ::  Float64   # target leapfrog length
   space     ::  Set       # sampling space, emtpy means all
-  group_id  ::  Int
+  gid  ::  Int
 
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMCDA(n_samples::Int, delta::Float64, lambda::Float64) = begin
     n_adapt_default = Int(round(n_samples / 5))
     new(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
   end
-  HMCDA(alg::HMCDA, new_group_id::Int) =
-    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_group_id)
+  HMCDA(alg::HMCDA, new_gid::Int) =
+    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
     new(n_samples, n_adapt, delta, lambda, Set(), 0)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
@@ -24,13 +24,14 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     vi_0 = deepcopy(vi)
 
-    vi = link(vi, spl)
+    dprintln(3, "X -> R...")
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
-    # println("[HMCDA] finding for ϵ")
     ϵ_bar, ϵ = find_good_eps(model, spl, vi)
 
-    vi = invlink(vi, spl)
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -54,7 +55,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(3, "X -> R...")
-    vi = link(vi, spl)
+    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
@@ -63,24 +64,23 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
 
-    dprintln(2, "computing new H...")
-    H = find_H(p, model, vi, spl)
+    if reject
+      α = 0
+    else
+      dprintln(2, "computing new H...")
+      H = find_H(p, model, vi, spl)
 
-    dprintln(3, "R -> X...")
-    vi = invlink(vi, spl)
+      dprintln(2, "computing ΔH...")
+      ΔH = H - oldH
+      isnan(ΔH) && warn(" ΔH = NaN, H=$H, oldH=$oldH.")
 
-    dprintln(2, "computing ΔH...")
-    ΔH = H - oldH
-    isnan(ΔH) && warn("[Turing]: ΔH = NaN, H=$H, oldH=$oldH.")
-
-    cleandual!(vi)
-
-    α = reject ? 0 : min(1, exp(-ΔH))  # MH accept rate
+      α = min(1, exp(-ΔH))  # MH accept rate
+    end
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      # dprintln(1, "[Turing]: ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      # dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
@@ -88,13 +88,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
     elseif m == spl.alg.n_adapt
       spl.info[:ϵ] = spl.info[:ϵ_bar]
-      dprintln(0, "[Turing]: Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
 
+    if reject return false, vi end
+
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
+
     dprintln(2, "decide wether to accept...")
-    if reject
-      false, vi
-    elseif rand() < α      # accepted
+    if rand() < α      # accepted
       true, vi
     else                                # rejected
       false, vi
