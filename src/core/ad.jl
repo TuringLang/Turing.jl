@@ -59,7 +59,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         vi[range] = map(r -> Dual{prior_dim, Float64}(r), reals)
       end
     end
-    vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
+    vi = runmodel(model, vi, spl)
     # Collect gradient
     dprintln(4, "collect gradients from logp...")
     append!(grad, collect(dualpart(-vi.logp)))
