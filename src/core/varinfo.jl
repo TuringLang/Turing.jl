@@ -39,7 +39,7 @@ type VarInfo
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
-  logp        ::    Real
+  logp        ::    Real          # NOTE: logp should be a vector.
   logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.

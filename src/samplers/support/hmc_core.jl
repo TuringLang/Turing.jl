@@ -39,17 +39,8 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
     grad = gradient2(vi, model, spl)
 
-    if realpart(vi.logp) == -Inf
-      dwarn(0, "Log-joint is -Inf")
-      break
-    elseif isnan(realpart(vi.logp)) || realpart(vi.logp) == Inf
-      dwarn(0, "Numerical error: vi.lojoint = $(vi.logp)")
-      pop!(vi.vals); p = p_old; break
-    end
-
-    grad = gradient(vi, model, spl)
-
     # Verify gradients; reject if gradients is NaN or Inf
+    # verifygrad(grad) || (pop!(vi.vals); pop!(vi.logp); p = p_old; break)
     verifygrad(grad) || (pop!(vi.vals); p = p_old; break)
 
     p -= ϵ * grad / 2
