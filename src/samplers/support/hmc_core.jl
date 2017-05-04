@@ -23,7 +23,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   p = deepcopy(_p)
 
   dprintln(3, "first gradient...")
-  grad = gradient(vi, model, spl)
+  grad = gradient2(vi, model, spl)
   # Verify gradients; reject if gradients is NaN or Inf.
   verifygrad(grad) || (reject = true)
 
@@ -35,7 +35,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 
     vi[spl] += ϵ * p  # full step for state
 
-    grad = gradient(vi, model, spl)
+    grad = gradient2(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf
     verifygrad(grad) || (reject = true; break)
