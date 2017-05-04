@@ -39,7 +39,7 @@ type VarInfo
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
   trans       ::    Vector{Bool}
-  logp        ::    Real
+  logp        ::    Real          # NOTE: logp should be a vector.
   logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -69,6 +69,9 @@ setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 getval(vi::VarInfo, view::VarView)       = vi.vals[end][view]
 setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
 setval!(vi::VarInfo, val, view::Vector{UnitRange}) = map(v->vi.vals[end][v] = val, view)
+
+getall(vi::VarInfo)       = vi.vals[end]
+setall!(vi::VarInfo, val) = vi.vals[end] = val
 
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
@@ -137,6 +140,9 @@ Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view)
 
 Base.getindex(vi::VarInfo, spl::Sampler)       = getval(vi, getranges(vi, spl))
 Base.setindex!(vi::VarInfo, val, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
+
+Base.getindex(vi::VarInfo, spl::Void)       = getall(vi)
+Base.setindex!(vi::VarInfo, val, spl::Void) = setall!(vi, val)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 

@@ -2,7 +2,7 @@
 # Master file for running all test cases #
 ##########################################
 
-println("[runtests.jl] hello Turing")
+println("[runtests.jl] runtests.jl loaded")
 
 # NOTE: please keep this test list structured when adding new test cases
 # so that we can tell which test case is for which .jl file
@@ -63,9 +63,9 @@ testcases_excluded = [
 # Run tests
 path = dirname(@__FILE__)
 cd(path)
-println("after cd")
+println("[runtests.jl] CDed test path")
 include("utility.jl")
-println("after include utility.jl")
+println("[runtests.jl] utility.jl loaded")
 println("[runtests.jl] testing starts")
 for (target, list) in testcases
   for t in list
