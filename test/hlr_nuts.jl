@@ -8,7 +8,8 @@ x, y = readlrdata()
 logistic(x::Real) = invlogit(x)
 
 # Bayesian logistic regression (LR)
-@model lr_nuts(x, y, d, n, σ²) = begin
+@model hlr_nuts(x, y, d, n, Θ) = begin
+  σ² ~ Exponential(Θ)
   α ~ Normal(0, σ²)
   β ~ MvNormal(zeros(d), σ² * ones(d))
   for i = 1:n
@@ -18,6 +19,7 @@ logistic(x::Real) = invlogit(x)
 end
 
 n, d = size(x)
-chain = sample(lr_nuts(x, y, d, n, 100), NUTS(1000, 0.65))
+λ = 0.01; Θ = 1 \ λ
+chain = sample(lr_nuts(x, y, d, n, Θ), NUTS(1000, 0.65))
 
 describe(chain)
