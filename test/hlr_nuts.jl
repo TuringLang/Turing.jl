@@ -3,7 +3,13 @@ using Turing
 using Turing: invlogit
 include("lr_helper.jl")
 
-x, y = readlrdata()
+x_raw, y = readlrdata()
+n, d = size(x_raw)
+x = Matrix{Float64}(0, d * d + d)
+
+for i = 1:n
+  cat(1, x, [x_raw[i,:]' vec(x_raw[i,:] * x_raw[i,:]')'])
+end
 
 logistic(x::Real) = invlogit(x)
 
