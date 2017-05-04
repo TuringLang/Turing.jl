@@ -25,6 +25,7 @@ using Distributions
 using ForwardDiff
 
 using ForwardDiff: Dual, npartials    # for automatic differentiation
+using UnicodePlots
 
 abstract InferenceAlgorithm{P}
 type Sampler{T<:InferenceAlgorithm}

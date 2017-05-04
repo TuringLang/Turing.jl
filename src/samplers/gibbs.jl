@@ -72,10 +72,12 @@ function sample(model::Function, alg::Gibbs)
   i_thin = 1
 
   # Gibbs steps
-  @showprogress 1 "[Gibbs] Sampling..." for i = 1:n
+  spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)
+  for i = 1:n
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.info[:samplers]
+      local_spl.info[:progress] = spl.info[:progress]
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
@@ -122,6 +124,7 @@ function sample(model::Function, alg::Gibbs)
     if spl.alg.thin
       samples[i].value = Sample(varInfo).value
     end
+    ProgressMeter.next!(spl.info[:progress])
 
   end
 

@@ -28,15 +28,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if spl.alg.gid != 0 vi = link(vi, spl) end
 
     # Heuristically find optimal ϵ
-    ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+    ϵ = find_good_eps(model, spl, vi)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 vi = invlink(vi, spl) end
 
-    spl.info[:ϵ] = ϵ
+    spl.info[:ϵ] = [ϵ]
     spl.info[:μ] = log(10 * ϵ)
-    # spl.info[:ϵ_bar] = 1.0
-    spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
+    spl.info[:ϵ_bar] = 1.0
+    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
@@ -45,7 +46,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     # Set parameters
     δ = spl.alg.delta
     λ = spl.alg.lambda
-    ϵ = spl.info[:ϵ]
+    ϵ = spl.info[:ϵ][end]
 
     dprintln(2, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
@@ -62,36 +63,33 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     τ = max(1, round(λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    vi, p, reject = leapfrog(vi, p, τ, ϵ, model, spl)
+    vi, p, τ_valid = leapfrog(vi, p, τ, ϵ, model, spl)
 
-    if reject
-      α = 0
-    else
-      dprintln(2, "computing new H...")
-      H = find_H(p, model, vi, spl)
+    dprintln(2, "computing new H...")
+    H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
-      dprintln(2, "computing ΔH...")
-      ΔH = H - oldH
-      isnan(ΔH) && warn(" ΔH = NaN, H=$H, oldH=$oldH.")
+    dprintln(2, "computing ΔH...")
+    ΔH = H - oldH
 
-      α = min(1, exp(-ΔH))  # MH accept rate
-    end
+    α = min(1, exp(-ΔH))  # MH accept rate
+
+    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
+                                spl.info[:progress].counter;
+                                showvalues = [(:ϵ, ϵ), (:α, α)])
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      # dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-      spl.info[:ϵ] = ϵ
+      push!(spl.info[:ϵ], ϵ)
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
     elseif m == spl.alg.n_adapt
-      spl.info[:ϵ] = spl.info[:ϵ_bar]
       dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+      push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
-
-    if reject return false, vi end
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
