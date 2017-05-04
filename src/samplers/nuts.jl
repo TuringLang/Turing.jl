@@ -68,7 +68,8 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
         _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
       end
 
-      dprintln(1, "ϵ = $ϵ, s′ = $s′， j = $j.")
+      ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter;
+                                       showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
 
       if s′ == 1 && rand() < min(1, n′ / n)
         vi_new = deepcopy(θ′)
@@ -90,7 +91,8 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
       spl.info[:ϵ] = ϵ
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    else
+    elseif m == spl.alg.n_adapt
+      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
       spl.info[:ϵ] = spl.info[:ϵ_bar]
     end
 

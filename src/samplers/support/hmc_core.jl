@@ -87,7 +87,7 @@ function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
     ϵ = 2.0^a * ϵ
     vi_prime, p_prime, τ = leapfrog(vi, p, 1, ϵ, model, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)
-    dprintln(0, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
+    dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
   end
 
   println("\r[$T] found initial ϵ: ", ϵ)

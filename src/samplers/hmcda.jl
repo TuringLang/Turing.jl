@@ -1,5 +1,3 @@
-using UnicodePlots
-
 immutable HMCDA <: InferenceAlgorithm
   n_samples ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
@@ -74,6 +72,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     ΔH = H - oldH
 
     α = min(1, exp(-ΔH))  # MH accept rate
+
+    ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter;
+                                            showvalues = [(:ϵ, ϵ), (:α, α)])
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
