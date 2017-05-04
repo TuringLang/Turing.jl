@@ -44,6 +44,7 @@ build_script:
       rm(Pkg.dir(\"Turing\"), force=true, recursive=true);
       Pkg.clone(pwd(), \"Turing\"); 
       Pkg.pin(\"Gadfly\", v\"0.6.0\");
+      using Gadfly;
       Pkg.build(\"Turing\")"
 
 test_script:
