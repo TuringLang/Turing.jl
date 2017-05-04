@@ -73,8 +73,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     α = min(1, exp(-ΔH))  # MH accept rate
 
-    ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter;
-                                            showvalues = [(:ϵ, ϵ), (:α, α)])
+    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
+                                spl.info[:progress].counter;
+                                showvalues = [(:ϵ, ϵ), (:α, α)])
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1

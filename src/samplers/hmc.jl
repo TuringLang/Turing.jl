@@ -69,7 +69,8 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
-    ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter;
+    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
+                                spl.info[:progress].counter;
                                 showvalues = [(:ϵ, ϵ), (:α, min(1,exp(-ΔH)))])
 
     dprintln(3, "R -> X...")
