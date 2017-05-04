@@ -17,22 +17,28 @@ immutable HMCDA <: InferenceAlgorithm
     new(n_samples, n_adapt, delta, lambda, Set(), 0)
   HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
     new(n_samples, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-
+  HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space::Set, gid::Int) =
+    new(n_samples, n_adapt, delta, lambda, space, gid)
 end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     vi_0 = deepcopy(vi)
 
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 vi = link(vi, spl) end
+    if spl.alg.delta > 0
 
-    # Heuristically find optimal ϵ
-    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
-    ϵ = find_good_eps(model, spl, vi)
+      dprintln(3, "X -> R...")
+      if spl.alg.gid != 0 vi = link(vi, spl) end
 
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 vi = invlink(vi, spl) end
+      # Heuristically find optimal ϵ
+      # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
+      ϵ = find_good_eps(model, spl, vi)
+
+      # dprintln(3, "R -> X...")
+      # if spl.alg.gid != 0 vi = invlink(vi, spl) end
+    else
+      ϵ = spl.info[:ϵ][end]
+    end
 
     spl.info[:ϵ] = [ϵ]
     spl.info[:μ] = log(10 * ϵ)

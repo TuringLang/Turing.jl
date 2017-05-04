@@ -40,49 +40,15 @@ end
 
 typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
+Sampler(alg::HMC) = begin
+  info = Dict{Symbol, Any}()
+  info[:ϵ] = [alg.lf_size]
+  Sampler(HMCDA(alg.n_samples, 0, 0.0, alg.lf_size * alg.lf_num, alg.space, alg.gid), info)
+end
+
 Sampler(alg::Hamiltonian) = begin
   info = Dict{Symbol, Any}()
   Sampler(alg, info)
-end
-
-function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
-  if is_first
-    true, vi
-  else
-    # Set parameters
-    ϵ, τ = spl.alg.lf_size, spl.alg.lf_num
-
-    p = sample_momentum(vi, spl)
-
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 vi = link(vi, spl) end
-
-    dprintln(2, "recording old H...")
-    oldH = find_H(p, model, vi, spl)
-
-    dprintln(2, "leapfrog stepping...")
-    vi, p, _ = leapfrog(vi, p, τ, ϵ, model, spl)
-
-    dprintln(2, "computing new H...")
-    H = find_H(p, model, vi, spl)
-
-    dprintln(2, "computing ΔH...")
-    ΔH = H - oldH
-
-    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
-                                spl.info[:progress].counter;
-                                showvalues = [(:ϵ, ϵ), (:α, min(1,exp(-ΔH)))])
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
-
-    dprintln(2, "decide wether to accept...")
-    if ΔH < 0 || rand() < exp(-ΔH)      # accepted
-      true, vi
-    else                                # rejected
-      false, vi
-    end
-  end
 end
 
 sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
