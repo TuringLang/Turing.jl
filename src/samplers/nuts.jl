@@ -41,7 +41,6 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
 
-    dprintln(0, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
@@ -60,7 +59,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
 
     local α, n_α
-    while s == 1
+    while s == 1 && j <= 4
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
@@ -68,6 +67,8 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       else
         _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
       end
+
+      dprintln(1, "ϵ = $ϵ, s′ = $s′， j = $j.")
 
       if s′ == 1 && rand() < min(1, n′ / n)
         vi_new = deepcopy(θ′)
