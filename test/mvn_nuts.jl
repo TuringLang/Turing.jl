@@ -1,7 +1,7 @@
 using Distributions
 using Turing
 
-# 250-dimensional multivariate normal
+# 250-dimensional multivariate normal (MVN)
 @model mvn_nuts(A) = begin
   dim, _ = size(A)
   Θ ~ MvNormal(zeros(dim), A)
