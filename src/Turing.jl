@@ -9,7 +9,7 @@ global const NULL = NaN     # constant for "delete" vals
 global CHUNKSIZE = 50       # default chunksize used by AD
 
 global VERBOSITY = 1        # verbosity for dprintln & dwarn
-global const FCOMPILER = 1  # verbose printing flag for compiler
+global const FCOMPILER = 0  # verbose printing flag for compiler
 
 # Constans for caching
 global const CACHERESET  = 0b00
