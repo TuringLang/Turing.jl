@@ -22,7 +22,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
   p = deepcopy(_p)
 
   dprintln(3, "first gradient...")
-  grad = gradient(vi, model, spl)
+  grad = gradient2(vi, model, spl)
   # Verify gradients; reject if gradients is NaN or Inf.
   verifygrad(grad) || (return vi, p, 0)
 
@@ -36,6 +36,8 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
     expand!(vi)
 
     vi[spl] += ϵ * p  # full step for state
+
+    grad = gradient2(vi, model, spl)
 
     if realpart(vi.logp) == -Inf
       dwarn(0, "Log-joint is -Inf")

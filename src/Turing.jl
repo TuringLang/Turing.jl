@@ -22,6 +22,8 @@ global const CACHERANGES = 0b01
 
 using StatsFuns
 using Distributions
+using ForwardDiff
+
 using ForwardDiff: Dual, npartials    # for automatic differentiation
 using UnicodePlots
 

@@ -12,6 +12,21 @@ end
 """
 gradient(_vi::VarInfo, model::Function) = gradient(_vi, model, nothing)
 gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+
+  vi = deepcopy(_vi)
+
+  f(x::Vector) = begin
+    vi[spl] = x
+    -runmodel(model, vi, spl).logp
+  end
+
+  g = x -> ForwardDiff.gradient(f, x::Vector,
+      ForwardDiff.GradientConfig{min(length(x),CHUNKSIZE)}(x::Vector))
+
+  g(vi[spl])
+end
+
+gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Initialisation
   vi = deepcopy(_vi); grad = Vector{Float64}()
 
@@ -50,7 +65,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         dprintln(5, "making dual...")
         for i = 1:l
           dps[prior_count] = 1  # set dual part
-          vi[range[i]] = Dual(reals[i], dps...)
+          vi[range[i]] = ForwardDiff.Dual(reals[i], dps...)
           dps[prior_count] = 0  # reset dual part
           prior_count += 1      # count
         end
@@ -59,7 +74,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         vi[range] = map(r -> Dual{prior_dim, Float64}(r), reals)
       end
     end
-    vi = runmodel(model, vi, spl, Dual{prior_dim, Float64}(0))
+    vi = runmodel(model, vi, spl)
     # Collect gradient
     dprintln(4, "collect gradients from logp...")
     append!(grad, collect(dualpart(-vi.logp)))
