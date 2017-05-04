@@ -63,7 +63,9 @@ testcases_excluded = [
 # Run tests
 path = dirname(@__FILE__)
 cd(path)
+println("after cd")
 include("utility.jl")
+println("after include utility.jl")
 println("[runtests.jl] testing starts")
 for (target, list) in testcases
   for t in list
