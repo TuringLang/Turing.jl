@@ -1,5 +1,5 @@
 doc"""
-    HMC(n_samples::Int, lf_size::Float64, lf_num::Int)
+    HMC(n_iters::Int, epsilon::Float64, tau::Int)
 
 Hamiltonian Monte Carlo sampler.
 
@@ -20,30 +20,30 @@ sample(example, HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
-  n_samples ::  Int       # number of samples
-  lf_size   ::  Float64   # leapfrog step size
-  lf_num    ::  Int       # leapfrog step number
+  n_iters   ::  Int       # number of samples
+  epsilon   ::  Float64   # leapfrog step size
+  tau       ::  Int       # leapfrog step number
   space     ::  Set       # sampling space, emtpy means all
   gid       ::  Int
-  function HMC(lf_size::Float64, lf_num::Int, space...)
-    HMC(1, lf_size, lf_num, space..., 0)
+  function HMC(epsilon::Float64, tau::Int, space...)
+    HMC(1, epsilon, tau, space..., 0)
   end
-  function HMC(n_samples, lf_size, lf_num)
-    new(n_samples, lf_size, lf_num, Set(), 0)
+  function HMC(n_iters, epsilon, tau)
+    new(n_iters, epsilon, tau, Set(), 0)
   end
-  function HMC(n_samples, lf_size, lf_num, space...)
+  function HMC(n_iters, epsilon, tau, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_samples, lf_size, lf_num, space, 0)
+    new(n_iters, epsilon, tau, space, 0)
   end
-  HMC(alg::HMC, new_gid::Int) = new(alg.n_samples, alg.lf_size, alg.lf_num, alg.space, new_gid)
+  HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
 
 typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
 Sampler(alg::HMC) = begin
   info = Dict{Symbol, Any}()
-  info[:ϵ] = [alg.lf_size]
-  Sampler(HMCDA(alg.n_samples, 0, 0.0, alg.lf_size * alg.lf_num, alg.space, alg.gid), info)
+  info[:ϵ] = [alg.epsilon]
+  Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), info)
 end
 
 Sampler(alg::Hamiltonian) = begin
@@ -63,7 +63,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # initialization
-  n =  spl.alg.n_samples
+  n =  spl.alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
   for i = 1:n

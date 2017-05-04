@@ -1,7 +1,7 @@
 # Particle Gibbs sampler
 
 doc"""
-    PG(n_particles::Int, n_iterations::Int)
+    PG(n_particles::Int, n_iters::Int)
 
 Particle Gibbs sampler.
 
@@ -23,7 +23,7 @@ sample(example, PG(100, 100))
 """
 immutable PG <: InferenceAlgorithm
   n_particles           ::    Int
-  n_iterations          ::    Int
+  n_iters               ::    Int
   resampler             ::    Function
   resampler_threshold   ::    Float64
   space                 ::    Set
@@ -33,7 +33,7 @@ immutable PG <: InferenceAlgorithm
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n1, n2, resampleSystematic, 0.5, space, 0)
   end
-  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iterations, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
+  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
 
 Sampler(alg::PG) = begin
@@ -69,7 +69,7 @@ end
 
 sample(model::Function, alg::PG) = begin
   spl = Sampler(alg);
-  n = spl.alg.n_iterations
+  n = spl.alg.n_iters
   samples = Vector{Sample}()
 
   ## custom resampling function for pgibbs

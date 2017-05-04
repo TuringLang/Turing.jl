@@ -1,24 +1,24 @@
 immutable HMCDA <: InferenceAlgorithm
-  n_samples ::  Int       # number of samples
+  n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   lambda    ::  Float64   # target leapfrog length
   space     ::  Set       # sampling space, emtpy means all
-  gid  ::  Int
+  gid       ::  Int
 
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMCDA(n_samples::Int, delta::Float64, lambda::Float64) = begin
-    n_adapt_default = Int(round(n_samples / 5))
-    new(n_samples, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
+  HMCDA(n_iters::Int, delta::Float64, lambda::Float64) = begin
+    n_adapt_default = Int(round(n_iters / 5))
+    new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
   end
   HMCDA(alg::HMCDA, new_gid::Int) =
-    new(alg.n_samples, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
-  HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
-    new(n_samples, n_adapt, delta, lambda, Set(), 0)
-  HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
-    new(n_samples, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMCDA(n_samples::Int, n_adapt::Int, delta::Float64, lambda::Float64, space::Set, gid::Int) =
-    new(n_samples, n_adapt, delta, lambda, space, gid)
+    new(alg.n_iters, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
+  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
+    new(n_iters, n_adapt, delta, lambda, Set(), 0)
+  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
+    new(n_iters, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space::Set, gid::Int) =
+    new(n_iters, n_adapt, delta, lambda, space, gid)
 end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)

@@ -41,7 +41,7 @@ Sampler
 
        sample(example, SMC(1000))
 
-.. function:: PG(n_particles::Int, n_iterations::Int)
+.. function:: PG(n_particles::Int, n_iters::Int)
 
    Particle Gibbs sampler.
 
@@ -61,7 +61,7 @@ Sampler
 
        sample(example, PG(100, 100))
 
-.. function:: HMC(n_samples::Int64, lf_size::Float64, lf_num::Int64)
+.. function:: HMC(n_iters::Int64, lf_size::Float64, lf_num::Int64)
 
    Hamiltonian Monte Carlo sampler.
 
