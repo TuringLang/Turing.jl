@@ -10,7 +10,7 @@ readlrdata() = begin
       data_str = filter(str -> length(str) > 0, split(raw_line, r"[ ]+")[1:end-1])
       data = map(str -> parse(str), data_str)
       x = cat(1, x, data[1:end-1]')
-      y = cat(1, y, data[end])
+      y = cat(1, y, data[end] - 1)  # turn {1, 2} to {0, 1}
     end
   end
   x, y
