@@ -26,13 +26,14 @@
   > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =#
 
-
-#################### TransformDistribution ####################
+#############
+# a ≦ x ≦ b #
+#############
 
 typealias TransformDistribution{T<:ContinuousUnivariateDistribution}
-  Union{T, Truncated{T}}
+          Union{T, Truncated{T}}
 
-function link(d::TransformDistribution, x::Real)
+link(d::TransformDistribution, x::Real) = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
@@ -46,7 +47,7 @@ function link(d::TransformDistribution, x::Real)
   end
 end
 
-function invlink(d::TransformDistribution, x::Real)
+invlink(d::TransformDistribution, x::Real) = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
@@ -76,12 +77,13 @@ Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool) = begin
   lp
 end
 
-
-#################### RealDistribution ####################
+###############
+# -∞ < x < -∞ #
+###############
 
 typealias RealDistribution
-          Union{Cauchy, Gumbel, Laplace, Logistic, NoncentralT, Normal,
-                NormalCanon, TDist}
+          Union{Cauchy, Gumbel, Laplace, Logistic,
+                NoncentralT, Normal, NormalCanon, TDist}
 
 link(d::RealDistribution, x::Real) = x
 
@@ -90,7 +92,9 @@ invlink(d::RealDistribution, x::Real) = x
 Distributions.logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
 
 
-#################### PositiveDistribution ####################
+#########
+# 0 < x #
+#########
 
 typealias PositiveDistribution
           Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet,
@@ -107,7 +111,9 @@ Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool) = begin
 end
 
 
-#################### UnitDistribution ####################
+#############
+# 0 < x < 1 #
+#############
 
 typealias UnitDistribution
           Union{Beta, KSOneSided, NoncentralBeta}
@@ -118,46 +124,45 @@ invlink(d::UnitDistribution, x::Real) = invlogit(x)
 
 Distributions.logpdf(d::UnitDistribution, x::Real, transform::Bool) = begin
   lp = logpdf(d, x)
-  transform ? lp + log(x * (1.0 - x)) : lp
+  transform ? lp + log(x * (one(x) - x)) : lp
 end
 
-################### SimplexDistribution ###################
+###########
+# ∑xᵢ = 1 #
+###########
 
 typealias SimplexDistribution Union{Dirichlet}
 
-function link(d::SimplexDistribution, x::Vector)
+link{T}(d::SimplexDistribution, x::Vector{T}) = begin
   K = length(x)
-  T = typeof(x[1])
   z = Vector{T}(K-1)
   for k in 1:K-1
-    z[k] = x[k] / (1 - sum(x[1:k-1]))
+    z[k] = x[k] / (one(T) - sum(x[1:k-1]))
   end
-  y = [logit(z[k]) - log(1 / (K-k)) for k in 1:K-1]
-  push!(y, T(0))
+  y = [logit(z[k]) - log(one(T) / (K-k)) for k in 1:K-1]
+  push!(y, zero(T))
 end
 
-function invlink(d::SimplexDistribution, y::Vector)
+invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
-  T = typeof(y[1])
-  z = [invlogit(y[k] + log(1 / (K - k))) for k in 1:K-1]
+  z = [invlogit(y[k] + log(one(T) / (K - k))) for k in 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
-    x[k] = (1 - sum(x[1:k-1])) * z[k]
+    x[k] = (one(T) - sum(x[1:k-1])) * z[k]
   end
-  x[K] = 1 - sum(x[1:K-1])
+  x[K] = one(T) - sum(x[1:K-1])
   x
 end
 
-Distributions.logpdf(d::SimplexDistribution, x::Vector, transform::Bool) = begin
+Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     K = length(x)
-    T = typeof(x[1])
     z = Vector{T}(K-1)
     for k in 1:K-1
-      z[k] = x[k] / (1 - sum(x[1:k-1]))
+      z[k] = x[k] / (one(T) - sum(x[1:k-1]))
     end
-    lp += sum([log(z[k]) + log(1 - z[k]) + log(1 - sum(x[1:k-1])) for k in 1:K-1])
+    lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
   end
   lp
 end
@@ -166,50 +171,54 @@ Distributions.logpdf(d::Categorical, x::Int) = begin
   d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
 
-############### PDMatDistribution ##############
+#####################
+# Positive definite #
+#####################
 
 typealias PDMatDistribution Union{InverseWishart, Wishart}
 
-function link{T}(d::PDMatDistribution, x::Array{T,2})
+link{T}(d::PDMatDistribution, x::Array{T,2}) = begin
   z = chol(x)'
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = log(z[m, m])
   end
   for m in 1:dim[1], n in m+1:dim[2]
-    z[m, n] = 0
+    z[m, n] = zero(T)
   end
   Array{T,2}(z)
 end
 
-function invlink{T}(d::PDMatDistribution, z::Array{T,2})
+invlink{T}(d::PDMatDistribution, z::Array{T,2}) = begin
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp(z[m, m])
   end
   for m in 1:dim[1], n in m+1:dim[2]
-    z[m, n] = 0
+    z[m, n] = zero(T)
   end
   Array{T,2}(z * z')
 end
 
-Distributions.logpdf(d::PDMatDistribution, x::Array, transform::Bool) = begin
+Distributions.logpdf{T}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
     n = dim(d)
     for i in 1:n
-      lp += (n - i + 2) * log(U[i, i])
+      lp += (n - i + one(T) + one(T)) * log(U[i, i])
     end
-    lp += n * log(2)
+    lp += n * log(one(T) + one(T))
   end
   lp
 end
 
-################## Callback functions ##################
+#############
+# Callbacks #
+#############
 
-link(d::Distribution, x) = x
+link(d::Distribution, x::Any) = x
 
-invlink(d::Distribution, x) = x
+invlink(d::Distribution, x::Any) = x
 
-Distributions.logpdf(d::Distribution, x, transform::Bool) = logpdf(d, x)
+Distributions.logpdf(d::Distribution, x::Any, transform::Bool) = logpdf(d, x)

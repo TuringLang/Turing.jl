@@ -25,9 +25,9 @@ macro VarName(ex::Union{Expr, Symbol})
   end
 end
 
-invlogit(x) = 1.0 ./ (exp(-x) + 1.0)
+invlogit(x::Real) = one(x) / (one(x) + exp(-x))
 
-logit(x) = log(x ./ (1.0 - x))
+logit(x::Real) = log(x / (one(x) - x))
 
 function randcat(p::Vector{Float64}) # More stable, faster version of rand(Categorical)
   # if(any(p .< 0)) error("Negative probabilities not allowed"); end
