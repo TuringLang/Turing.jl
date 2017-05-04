@@ -69,6 +69,10 @@ function step(model, spl::Sampler{HMC}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing ΔH...")
     ΔH = H - oldH
 
+    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
+                                spl.info[:progress].counter;
+                                showvalues = [(:ϵ, ϵ), (:α, min(1,exp(-ΔH)))])
+
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
@@ -105,7 +109,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   if spl.alg.gid == 0 vi = link(vi, spl) end
 
   # HMC steps
-  @showprogress 1 "[$alg_str] Sampling..." for i = 1:n
+  spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
+  for i = 1:n
     dprintln(2, "recording old θ...")
     old_vi = deepcopy(vi)
     dprintln(2, "$alg_str stepping...")
@@ -117,6 +122,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
       vi = old_vi
       samples[i] = samples[i - 1]
     end
+    ProgressMeter.next!(spl.info[:progress])
   end
 
   accept_rate = accept_num / n    # calculate the accept rate

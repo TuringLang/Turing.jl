@@ -1,15 +1,18 @@
+using Distributions, Turing, Stan, Mamba
+
+include("benchmarkhelper.jl")
 include("lda-stan.data.jl")
 include("lda-stan.model.jl")
 
 stan_model_name = "LDA"
-ldastan = Stanmodel(name=stan_model_name, model=ldastanmodel, nchains=1);
+ldastan = Stanmodel(Sample(save_warmup=true), name=stan_model_name, model=ldastanmodel, nchains=1);
 
 lda_stan_sim = stan(ldastan, ldastandata, CmdStanDir=CMDSTAN_HOME, summary=false);
 # lda_stan_sim.names
 
 lda_stan_d_raw = Dict()
 for i = 1:2, j = 1:5
-  lda_stan_d_raw["phi[$i][$j]"] = lda_stan_sim[1:1000, ["phi.$i.$j"], :].value[:]
+  lda_stan_d_raw["phi[$i][$j]"] = lda_stan_sim[1001:2000, ["phi.$i.$j"], :].value[:]
 end
 
 lda_stan_d = Dict()
