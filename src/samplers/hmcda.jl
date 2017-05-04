@@ -88,7 +88,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
     elseif m == spl.alg.n_adapt
       dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-      show(scatterplot(1:length(spl.info[:ϵ]), spl.info[:ϵ]/spl.info[:ϵ][end]))
       push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
 
