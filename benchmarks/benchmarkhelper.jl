@@ -12,7 +12,7 @@ tbenchmark(alg::String, model::String, data::String) = begin
 end
 
 # Build logd from Turing chain
-build_logd(name::String, engine::String, time, mem, tchain) = begin
+build_logd(name::String, engine::String, time, mem, tchain, _) = begin
   Dict(
     "name" => name,
     "engine" => engine,

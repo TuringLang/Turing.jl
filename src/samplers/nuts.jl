@@ -59,7 +59,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
 
     local α, n_α
-    while s == 1 && j <= 4
+    while s == 1 && j <= 2
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
