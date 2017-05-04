@@ -170,7 +170,7 @@ end
 
 typealias PDMatDistribution Union{InverseWishart, Wishart}
 
-function link(d::PDMatDistribution, x::Array)
+function link{T}(d::PDMatDistribution, x::Array{T,2})
   z = chol(x)'
   dim = size(z)
   for m in 1:dim[1]
@@ -179,10 +179,10 @@ function link(d::PDMatDistribution, x::Array)
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = 0
   end
-  z
+  Array{T,2}(z)
 end
 
-function invlink(d::PDMatDistribution, z::Union{Array, LowerTriangular})
+function invlink{T}(d::PDMatDistribution, z::Array{T,2})
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp(z[m, m])
@@ -190,7 +190,7 @@ function invlink(d::PDMatDistribution, z::Union{Array, LowerTriangular})
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = 0
   end
-  z * z'
+  Array{T,2}(z * z')
 end
 
 Distributions.logpdf(d::PDMatDistribution, x::Array, transform::Bool) = begin
