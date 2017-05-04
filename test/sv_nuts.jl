@@ -12,8 +12,9 @@ y = readsvdata()
   s[1] ~ Exponential(1/100)
   for i = 2:N
     s[i] ~ Normal(log(s[i-1]), τ)
+    s[i] = exp(s[i])
     dy = log(y[i] / y[i-1]) / s[i]
-    dy ~ ???  # TODO: figure out what to put here
+    dy ~ TDist(ν)
   end
 end
 
