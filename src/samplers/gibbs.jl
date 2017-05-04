@@ -47,9 +47,9 @@ function sample(model::Function, alg::Gibbs)
   for i in 1:length(alg.algs)
     sub_alg = alg.algs[i]
     if isa(sub_alg, Hamiltonian)
-      push!(sub_sample_n, sub_alg.n_samples)
+      push!(sub_sample_n, sub_alg.n_iters)
     elseif isa(sub_alg, PG)
-      push!(sub_sample_n, sub_alg.n_iterations)
+      push!(sub_sample_n, sub_alg.n_iters)
     else
       error("[GibbsSampler] unsupport base sampling algorithm $alg")
     end
@@ -83,7 +83,7 @@ function sample(model::Function, alg::Gibbs)
       # println(varInfo)
       if isa(local_spl.alg, Hamiltonian)
 
-        for _ = 1:local_spl.alg.n_samples
+        for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
           old_vi = deepcopy(varInfo)
           is_accept, varInfo = step(model, local_spl, varInfo, i==1)
@@ -108,7 +108,7 @@ function sample(model::Function, alg::Gibbs)
         varInfo = deepcopy(varInfo)
         varInfo[getretain(varInfo, 0, local_spl)] = NULL
         # Local samples
-        for _ = 1:local_spl.alg.n_iterations
+        for _ = 1:local_spl.alg.n_iters
           ref_particle, _ = step(model, local_spl, varInfo, ref_particle)
           if ~spl.alg.thin
             samples[i_thin].value = Sample(ref_particle.vi).value
