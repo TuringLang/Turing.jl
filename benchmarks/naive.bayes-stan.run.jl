@@ -1,15 +1,18 @@
+using Distributions, Turing, Stan, Mamba
+
+include("benchmarkhelper.jl")
 include("naive.bayes-stan.data.jl")
 include("naive.bayes-stan.model.jl")
 
 stan_model_name = "Naive_Bayes"
-nbstan = Stanmodel(name=stan_model_name, model=naivebayesstanmodel, nchains=1);
+nbstan = Stanmodel(Sample(save_warmup=true), name=stan_model_name, model=naivebayesstanmodel, nchains=1);
 
 nb_stan_sim = stan(nbstan, nbstandata, CmdStanDir=CMDSTAN_HOME, summary=false);
 # nb_stan_sim.names
 
 stan_d_raw = Dict()
 for i = 1:4, j = 1:10
-  stan_d_raw["phi[$i][$j]"] = nb_stan_sim[1:1000, ["phi.$i.$j"], :].value[:]
+  stan_d_raw["phi[$i][$j]"] = nb_stan_sim[1001:2000, ["phi.$i.$j"], :].value[:]
 end
 
 stan_d = Dict()

@@ -8,7 +8,7 @@ end
 # Run benchmark
 tbenchmark(alg::String, model::String, data::String) = begin
   chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
-  alg, time, mem, chain
+  alg, time, mem, chain, chain
 end
 
 # Build logd from Turing chain
