@@ -1,6 +1,6 @@
 using Turing, Base.Test
 using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
-
+include("../utility.jl")
 # Test for uid() (= string())
 csym = gensym()
 vn1 = VarName(csym, :x, "[1]", 1)
@@ -75,9 +75,7 @@ g = Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 pg, hmc = g.info[:samplers]
 
 vi = g_demo_f()
-
-ref_particle = step(g_demo_f, pg, vi, nothing)
-vi = ref_particle.vi
+vi = step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 
 vi = g_demo_f(vi=vi, sampler=hmc)
