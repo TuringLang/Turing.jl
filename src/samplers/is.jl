@@ -1,4 +1,3 @@
-
 doc"""
     IS(n_particles::Int)
 
@@ -56,4 +55,6 @@ assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   push!(vi, vn, r, dist, 0)
   r
 end
-observe(spl::Sampler{IS}, dist::Distribution, value, vi::VarInfo) = vi.logp += logpdf(dist, value)
+
+observe(spl::Sampler{IS}, dist::Distribution, value::Any, vi::VarInfo) =
+  vi.logp += logpdf(dist, value)

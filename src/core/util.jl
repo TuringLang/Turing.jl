@@ -29,33 +29,32 @@ invlogit(x::Real) = one(x) / (one(x) + exp(-x))
 
 logit(x::Real) = log(x / (one(x) - x))
 
-function randcat(p::Vector{Float64}) # More stable, faster version of rand(Categorical)
+# More stable, faster version of rand(Categorical)
+function randcat(p::Vector{Float64})
   # if(any(p .< 0)) error("Negative probabilities not allowed"); end
   r, s = rand(), 1.0
   for j = 1:length(p)
     r -= p[j]
     if(r <= 0.0) s = j; break; end
   end
-  return s
+
+  s
 end
 
 type NotImplementedException <: Exception end
 
 # Numerically stable sum of values represented in log domain.
-function logsum(xs :: Vector{Float64})
+function logsum(xs::Vector{Float64})
   largest = maximum(xs)
   ys = map(x -> exp(x - largest), xs)
-  result = log(sum(ys)) + largest
-  return result
+
+  log(sum(ys)) + largest
 end
 
-using Distributions
 # KL-divergence
-function kl(p::Normal, q::Normal)
-  return (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
-end
+kl(p::Normal, q::Normal) = (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 
-function align(x,y)
+align(x,y) = begin
   if length(x) < length(y)
     z = zeros(y)
     z[1:length(x)] = x
@@ -66,13 +65,5 @@ function align(x,y)
     y = z
   end
 
-  return (x,y)
+  (x,y)
 end
-
-# REVIEW: this functions is no where used
-# function kl(p :: Categorical, q :: Categorical)
-#   a,b = align(p.p, q.p)
-#   return kl_divergence(a,b)
-# end
-
-export kl, align

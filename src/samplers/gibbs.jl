@@ -62,11 +62,7 @@ function sample(model::Function, alg::Gibbs)
   end
 
   # Init parameters
-  varInfo = model()
-  ref_particle = nothing
-  i_thin = 1
-
-  n = spl.alg.n_iters
+  varInfo = model(); ref_particle = nothing; n = spl.alg.n_iters; i_thin = 1
 
   # Gibbs steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)
@@ -96,14 +92,12 @@ function sample(model::Function, alg::Gibbs)
         end
       elseif isa(local_spl.alg, PG)
         # Update new VarInfo to the reference particle
-        varInfo.index = 0
-        varInfo.num_produce = 0
-        if ref_particle != nothing
-          ref_particle.vi = varInfo
-        end
+        varInfo.index = 0; varInfo.num_produce = 0
+        if ref_particle != nothing ref_particle.vi = varInfo end
+
         # Clean variables belonging to the current sampler
-        varInfo = deepcopy(varInfo)
-        varInfo[getretain(varInfo, 0, local_spl)] = NULL
+        varInfo = deepcopy(varInfo); varInfo[getretain(varInfo, 0, local_spl)] = NULL
+
         # Local samples
         for _ = 1:local_spl.alg.n_iters
           ref_particle, _ = step(model, local_spl, varInfo, ref_particle)
@@ -118,9 +112,7 @@ function sample(model::Function, alg::Gibbs)
       end
 
     end
-    if spl.alg.thin
-      samples[i].value = Sample(varInfo).value
-    end
+    if spl.alg.thin samples[i].value = Sample(varInfo).value end
     ProgressMeter.next!(spl.info[:progress])
 
   end

@@ -2,10 +2,10 @@ global Δ_max = 1000
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model, _vi, spl, default_logp=0.0)
+function runmodel(model::Function, _vi::VarInfo, spl::Union{Void,Sampler})
   dprintln(4, "run model...")
   vi = deepcopy(_vi)
-  vi.logp = default_logp
+  vi.logp = 0.0
   vi.index = 0
   model(vi=vi, sampler=spl) # run model\
 end
@@ -16,7 +16,7 @@ function sample_momentum(vi::VarInfo, spl::Sampler)
 end
 
 # Leapfrog step
-function leapfrog(_vi, _p, τ, ϵ, model, spl)
+function leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler)
 
   vi = deepcopy(_vi)
   p = deepcopy(_p)
@@ -53,7 +53,7 @@ function leapfrog(_vi, _p, τ, ϵ, model, spl)
 end
 
 # Compute Hamiltonian
-function find_H(p, model, _vi, spl)
+function find_H(p::Vector, model::Function, _vi::VarInfo, spl::Sampler)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
   H = dot(p, p) / 2 + realpart(-vi.logp)

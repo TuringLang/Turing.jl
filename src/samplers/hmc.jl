@@ -12,11 +12,16 @@ HMC(1000, 0.05, 10)
 Example:
 
 ```julia
-@model example begin
-  ...
+# Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
 end
 
-sample(example, HMC(1000, 0.05, 10))
+sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
 immutable HMC <: InferenceAlgorithm
@@ -24,32 +29,25 @@ immutable HMC <: InferenceAlgorithm
   epsilon   ::  Float64   # leapfrog step size
   tau       ::  Int       # leapfrog step number
   space     ::  Set       # sampling space, emtpy means all
-  gid       ::  Int
-  function HMC(epsilon::Float64, tau::Int, space...)
-    HMC(1, epsilon, tau, space..., 0)
-  end
-  function HMC(n_iters, epsilon, tau)
-    new(n_iters, epsilon, tau, Set(), 0)
-  end
-  function HMC(n_iters, epsilon, tau, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_iters, epsilon, tau, space, 0)
-  end
+  gid       ::  Int       # group ID
+  HMC(epsilon::Float64, tau::Int, space...) = HMC(1, epsilon, tau, space..., 0)
+  HMC(n_iters::Int, epsilon::Float64, tau::Int) = new(n_iters, epsilon, tau, Set(), 0)
+  HMC(n_iters::Int, epsilon::Float64, tau::Int, space...) =
+    new(n_iters, epsilon, tau, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
 
 typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
+# NOTE: the implementation of HMC is removed,
+#       it now reuses the one of HMCDA
 Sampler(alg::HMC) = begin
   info = Dict{Symbol, Any}()
   info[:ϵ] = [alg.epsilon]
   Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), info)
 end
 
-Sampler(alg::Hamiltonian) = begin
-  info = Dict{Symbol, Any}()
-  Sampler(alg, info)
-end
+Sampler(alg::Hamiltonian) = Sampler(alg, Dict{Symbol, Any}())
 
 sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 
@@ -62,14 +60,14 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
             isa(alg, HMCDA) ? "HMCDA" :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
-  # initialization
+  # Initialization
   n =  spl.alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  accept_num = 0    # record the accept number
+  accept_num = 0  # record the accept number
   vi = model()
 
   if spl.alg.gid == 0 vi = link(vi, spl) end
@@ -91,9 +89,10 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     ProgressMeter.next!(spl.info[:progress])
   end
 
-  accept_rate = accept_num / n    # calculate the accept rate
-
-  println("[$alg_str] Done with accept rate = $accept_rate.")
+  if ~isa(alg, NUTS)  # cccept rate for NUTS is meaningless - so no printing
+    accept_rate = accept_num / n  # calculate the accept rate
+    println("[$alg_str] Done with accept rate = $accept_rate.")
+  end
 
   Chain(0, samples)    # wrap the result by Chain
 end
@@ -106,7 +105,7 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   r
 end
 
-function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value, vi::VarInfo)
+function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo)
   dprintln(2, "observing...")
   vi.logp += logpdf(d, map(x -> Dual(x), value))
 end

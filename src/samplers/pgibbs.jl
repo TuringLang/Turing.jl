@@ -1,5 +1,3 @@
-# Particle Gibbs sampler
-
 doc"""
     PG(n_particles::Int, n_iters::Int)
 
@@ -14,20 +12,25 @@ PG(100, 100)
 Example:
 
 ```julia
-@model example begin
-  ...
+# Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
 end
 
-sample(example, PG(100, 100))
+sample(gdemo([1.5, 2]), PG(100, 100))
 ```
 """
 immutable PG <: InferenceAlgorithm
-  n_particles           ::    Int
-  n_iters               ::    Int
-  resampler             ::    Function
-  resampler_threshold   ::    Float64
-  space                 ::    Set
-  gid                   ::    Int
+  n_particles           ::    Int         # number of particles used
+  n_iters               ::    Int         # number of iterations
+  resampler             ::    Function    # function to resample
+  resampler_threshold   ::    Float64     # threshold of ESS for resampling
+  space                 ::    Set         # sampling space, emtpy means all
+  gid                   ::    Int         # group ID
   PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
@@ -42,7 +45,7 @@ Sampler(alg::PG) = begin
   Sampler(alg, info)
 end
 
-function step(model, spl::Sampler{PG}, vi, ref_particle)
+function step(model::Function, spl::Sampler{PG}, vi::VarInfo, ref_particle)
   particles = ParticleContainer{TraceR}(model)
   if ref_particle == nothing
     push!(particles, spl.alg.n_particles, spl, vi)

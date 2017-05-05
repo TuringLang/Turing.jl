@@ -1,12 +1,40 @@
+doc"""
+    NUTS(n_iters::Int, n_adapt::Int, delta::Float64)
+
+No-U-Turn Sampler (NUTS) sampler.
+
+Usage:
+
+```julia
+NUTS(1000, 200, 0.65)
+```
+
+Example:
+
+```julia
+# Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), NUTS(1000, 200, 0.65))
+```
+"""
 immutable NUTS <: InferenceAlgorithm
-  n_iters ::  Int       # number of samples
+  n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   space     ::  Set       # sampling space, emtpy means all
-  gid       ::  Int
+  gid       ::  Int       # group ID
 
-  NUTS(n_adapt::Int, delta::Float64, space...) = new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
-  NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) = new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+  NUTS(n_adapt::Int, delta::Float64, space...) =
+    new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
+  NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) =
+    new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, delta::Float64) = begin
     n_adapt_default = Int(round(n_iters / 5))
     new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
@@ -14,7 +42,7 @@ immutable NUTS <: InferenceAlgorithm
   NUTS(alg::NUTS, new_gid::Int) = new(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
 end
 
-function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
+function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
     vi_0 = deepcopy(vi)
 
@@ -101,7 +129,7 @@ function step(model, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
+function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64, model::Function, spl::Sampler)
     doc"""
       - θ     : model parameter
       - r     : momentum variable
@@ -119,7 +147,8 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
-      return θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
+
+      θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
       θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
@@ -130,14 +159,13 @@ function build_tree(θ, r, logu, v, j, ϵ, H0, model, spl)
         else
           _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl)
         end
-        if rand() < n′′ / (n′ + n′′)
-          θ′ = deepcopy(θ′′)
-        end
+        if rand() < n′′ / (n′ + n′′) θ′ = deepcopy(θ′′) end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
         s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
-      return θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
+
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
     end
   end
