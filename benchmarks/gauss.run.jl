@@ -1,14 +1,13 @@
-include("gauss.data.jl")
-include("gauss.model.jl")
+include("simplegauss.data.jl")
+include("simplegauss.model.jl")
 
-bench_res = tbenchmark("PG(20, 2000)", "gaussmodel", "gaussdata")
-logd = build_logd("Gaussian Model", bench_res...)
-print_log(logd)
+bench_res = tbenchmark("HMC(2000, 0.1, 3)", "simplegaussmodel", "simplegaussdata")
+logd = build_logd("Simple Gaussian Model", bench_res...)
+logd["analytic"] = Dict("s" => 49/24, "m" => 7/6)
 
-bench_res = tbenchmark("HMC(2000, 0.25, 5)", "gaussmodel", "gaussdata")
-logd = build_logd("Gaussian Model", bench_res...)
-print_log(logd)
+include("simplegauss-stan.run.jl")
 
-bench_res = tbenchmark("Gibbs(200, HMC(10, 0.25, 5, :mu), PG(20, 10, :lam))", "gaussmodel", "gaussdata")
-logd = build_logd("Gaussian Model", bench_res...)
+logd["stan"] = Dict("s" => mean(s_stan), "m" => mean(m_stan))
+logd["time_stan"] = sg_time
+
 print_log(logd)

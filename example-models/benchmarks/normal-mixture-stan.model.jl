@@ -1,3 +1,5 @@
+# https://github.com/stan-dev/example-models/blob/master/basic_estimators/normal_mixture.stan
+
 # normal mixture, unknown proportion and means, known variance
 # p(y|mu,theta) = theta * Normal(y|mu[1],1) + (1-theta) * Normal(y|mu[2],1);
 
