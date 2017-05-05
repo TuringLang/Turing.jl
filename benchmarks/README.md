@@ -1,7 +1,4 @@
-# Stan models implemented in Turing
+# Benchmarking 
 
-## Tests
+This folder holds benchmarking scripts for Turing. All models used here can be found in folder `example-models`.
 
-Settings for test are defined in `config.jl`.
-
-Test can be run by `julia test.jl`

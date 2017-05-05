@@ -1,3 +1,5 @@
+# https://github.com/stan-dev/example-models/blob/master/basic_estimators/bernoulli.stan
+
 "
 data {
   int<lower=0> N;
