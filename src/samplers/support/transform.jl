@@ -206,9 +206,9 @@ Distributions.logpdf{T}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = 
     U = chol(x)
     n = dim(d)
     for i in 1:n
-      lp += (n - i + one(T) + one(T)) * log(U[i, i])
+      lp += (n - i + T(2)) * log(U[i, i])
     end
-    lp += n * log(one(T) + one(T))
+    lp += n * log(T(2))
   end
   lp
 end

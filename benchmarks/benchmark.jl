@@ -8,7 +8,7 @@ CONFIG = Dict(
     "gdemo-geweke",
     "naive.bayes",
     #"normal-loc",
-    "simple-normal-mixture",
+    "normal-mixture",
     "simplegauss",
     "gauss",
     "bernoulli",

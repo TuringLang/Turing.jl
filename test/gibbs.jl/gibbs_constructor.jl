@@ -22,17 +22,11 @@ c3 = sample(gdemo(), s3)
 c4 = sample(gdemo(), s4)
 
 # Very loose bound, only for testing constructor.
-@test_approx_eq_eps mean(c1[:s]) 49/24 1
-@test_approx_eq_eps mean(c1[:m]) 7/6 1
-@test_approx_eq_eps mean(c2[:s]) 49/24 1
-@test_approx_eq_eps mean(c2[:m]) 7/6 1
-@test_approx_eq_eps mean(c3[:s]) 49/24 1
-@test_approx_eq_eps mean(c3[:m]) 7/6 1
+for c in [c1, c2, c3 ,c4]
+  check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
+end
 
 @test length(c4[:s]) == N * (3 + 2)
-@test_approx_eq_eps mean(c4[:s]) 49/24 1
-@test_approx_eq_eps mean(c4[:m]) 7/6 1
-
 
 # Test gid of each samplers
 g = Sampler(s3)

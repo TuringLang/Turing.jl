@@ -3,8 +3,8 @@ using Turing
 using Stan
 
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/simple-normal-mixture-stan.data.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/simple-normal-mixture-stan.model.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/normal-mixture-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/normal-mixture-stan.model.jl")
 
 stan_model_name = "normalmixture"
 simplenormalmixturestan = Stanmodel(name=stan_model_name, model=simplenormalmixturemodel, nchains=1);
