@@ -1,5 +1,10 @@
-include("gauss.data.jl")
-include("gauss.model.jl")
+using Distributions
+using Turing
+using Stan
+
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/benchmarks/gauss.data.jl")
+include(Pkg.dir("Turing")*"/example-models/benchmarks/gauss.model.jl")
 
 bench_res = tbenchmark("PG(20, 2000)", "gaussmodel", "gaussdata")
 logd = build_logd("Gaussian Model", bench_res...)

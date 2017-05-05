@@ -1,8 +1,10 @@
-using Distributions, Turing, Stan, Mamba
+using Distributions
+using Turing
+using Stan
 
-include("benchmarkhelper.jl")
-include("lda-stan.data.jl")
-include("lda-stan.model.jl")
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.model.jl")
 
 stan_model_name = "LDA"
 ldastan = Stanmodel(Sample(save_warmup=true), name=stan_model_name, model=ldastanmodel, nchains=1);
