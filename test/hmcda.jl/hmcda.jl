@@ -16,10 +16,8 @@ alg3 = Gibbs(1500, PG(30, 10, :s), HMCDA(1, 500, 0.65, 0.05, :m))
 end
 
 res1 = sample(gdemo([1.5, 2.0]), alg1)
-println("E[s] = $(mean(res1[:s]))")
-println("E[m] = $(mean(res1[:m]))")
-@test_approx_eq_eps mean(res1[:s]) 49/24 0.2
-@test_approx_eq_eps mean(res1[:m]) 7/6 0.2
+
+check_numerical(res1, [:s, :m], [49/24, 7/6])
 
 # res2 = sample(gdemo([1.5, 2.0]), alg2)
 #
@@ -28,8 +26,7 @@ println("E[m] = $(mean(res1[:m]))")
 
 res3 = sample(gdemo([1.5, 2.0]), alg3)
 
-@test_approx_eq_eps mean(res3[:m]) 7/6 0.15
-@test_approx_eq_eps mean(res3[:s]) 49/24 0.15
+check_numerical(res3, [:s, :m], [49/24, 7/6])
 
 # res1 = sample(gdemo([1.5, 2.0]), HMC(3000, 0.2, 4))
 # println("HMC")

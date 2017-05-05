@@ -14,5 +14,4 @@ end
 
 chain = sample(noreturn(xnoreturn), HMC(3000, 0.15, 6))
 
-@test_approx_eq_eps mean(chain[:s]) 49/24 0.2
-@test_approx_eq_eps mean(chain[:m]) 7/6 0.2
+check_numerical(chain, [:s, :m], [49/24, 7/6])

@@ -13,4 +13,5 @@ obs = [0,1,0,1,1,1,1,1,1,1]
 end
 
 chain = sample(constrained_test(obs), HMC(1000, 1.5, 3)) # using a large step size (1.5)
-@test_approx_eq_eps mean(chain[:p]) 10/14 0.10      # 0.716 is from SMC(10000)
+
+check_numerical(chain, [:p], [10/14], eps=0.1)
