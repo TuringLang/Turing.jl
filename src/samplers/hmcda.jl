@@ -69,8 +69,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
-    true, vi_0
+    push!(spl.info[:accept_his], true)
+
+    vi_0
   else
+    dprintln(2, "recording old θ...")
+    old_vi = deepcopy(vi)
+
     # Set parameters
     δ = spl.alg.delta
     λ = spl.alg.lambda
@@ -124,10 +129,12 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α      # accepted
-      true, vi
-    else                                # rejected
-      false, vi
+    if rand() < α       # accepted
+      push!(spl.info[:accept_his], true)
+      vi
+    else                # rejected
+      push!(spl.info[:accept_his], false)
+      old_vi
     end
   end
 end

@@ -42,12 +42,16 @@ typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 # NOTE: the implementation of HMC is removed,
 #       it now reuses the one of HMCDA
 Sampler(alg::HMC) = begin
-  info = Dict{Symbol, Any}()
-  info[:ϵ] = [alg.epsilon]
-  Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), info)
+  spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid))
+  spl.info[:ϵ] = [alg.epsilon]
+  spl
 end
 
-Sampler(alg::Hamiltonian) = Sampler(alg, Dict{Symbol, Any}())
+Sampler(alg::Hamiltonian) = begin
+  info=Dict{Symbol, Any}()
+  info[:accept_his] = []
+  Sampler(alg, info)
+end
 
 sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 
@@ -75,15 +79,11 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   # HMC steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
   for i = 1:n
-    dprintln(2, "recording old θ...")
-    old_vi = deepcopy(vi)
     dprintln(2, "$alg_str stepping...")
-    is_accept, vi = step(model, spl, vi, i==1)
-    if is_accept    # accepted => store the new predcits
+    vi = step(model, spl, vi, i==1)
+    if spl.info[:accept_his][end]     # accepted => store the new predcits
       samples[i].value = Sample(vi).value
-      accept_num = accept_num + 1
-    else            # rejected => store the previous predcits
-      vi = old_vi
+    else                              # rejected => store the previous predcits
       samples[i] = samples[i - 1]
     end
     ProgressMeter.next!(spl.info[:progress])
