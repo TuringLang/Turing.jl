@@ -6,26 +6,6 @@
 # Sample #
 ##########
 
-doc"""
-    Sample(weight::Float64, value::Dict{Symbol,Any})
-
-A wrapper of output samples.
-
-Example:
-
-```julia
-# Define a model
-@model xxx begin
-  ...
-  return(mu,sigma)
-end
-
-# Run the inference engine
-chain = sample(xxx, SMC(1000))
-
-sample = chain[:mu][1]  # get the first sample
-```
-"""
 type Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
@@ -105,12 +85,12 @@ mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
 type Chain <: Mamba.AbstractChains
-  weight :: Float64 # log model evidence
-  value2 :: Array{Sample}
-  value::Array{Float64, 3}
-  range::Range{Int}
-  names::Vector{AbstractString}
-  chains::Vector{Int}
+  weight  ::  Float64                 # log model evidence
+  value2  ::  Array{Sample}
+  value   ::  Array{Float64, 3}
+  range   ::  Range{Int}
+  names   ::  Vector{AbstractString}
+  chains  ::  Vector{Int}
 end
 
 Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(0,0,0), 0:0,

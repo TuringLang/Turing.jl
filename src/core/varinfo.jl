@@ -66,12 +66,12 @@ getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getval(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
 setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
-getval(vi::VarInfo, view::VarView)       = vi.vals[end][view]
-setval!(vi::VarInfo, val, view::VarView) = vi.vals[end][view] = val
-setval!(vi::VarInfo, val, view::Vector{UnitRange}) = map(v->vi.vals[end][v] = val, view)
+getval(vi::VarInfo, view::VarView)                      = vi.vals[end][view]
+setval!(vi::VarInfo, val::Any, view::VarView)           = vi.vals[end][view] = val
+setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v->vi.vals[end][v] = val, view)
 
-getall(vi::VarInfo)       = vi.vals[end]
-setall!(vi::VarInfo, val) = vi.vals[end] = val
+getall(vi::VarInfo)            = vi.vals[end]
+setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
 
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
@@ -80,12 +80,12 @@ getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
-setgid!(vi::VarInfo, gid, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
+setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
 
 # X -> R for all variables associated with given sampler
-function link(_vi, spl)
+function link(_vi::VarInfo, spl::Sampler)
   vi = deepcopy(_vi)
   gvns = getvns(vi, spl)
   for vn in gvns
@@ -97,7 +97,7 @@ function link(_vi, spl)
 end
 
 # R -> X for all variables associated with given sampler
-function invlink(_vi, spl)
+function invlink(_vi::VarInfo, spl::Sampler)
   vi = deepcopy(_vi)
   gvns = getvns(vi, spl)
   for vn in gvns
@@ -135,14 +135,14 @@ end
 # end
 
 # NOTE: vi[view] will just return what insdie vi (no transformations applied)
-Base.getindex(vi::VarInfo, view::VarView)       = getval(vi, view)
-Base.setindex!(vi::VarInfo, val, view::VarView) = setval!(vi, val, view)
+Base.getindex(vi::VarInfo, view::VarView)            = getval(vi, view)
+Base.setindex!(vi::VarInfo, val::Any, view::VarView) = setval!(vi, val, view)
 
-Base.getindex(vi::VarInfo, spl::Sampler)       = getval(vi, getranges(vi, spl))
-Base.setindex!(vi::VarInfo, val, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
+Base.getindex(vi::VarInfo, spl::Sampler)            = getval(vi, getranges(vi, spl))
+Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
-Base.getindex(vi::VarInfo, spl::Void)       = getall(vi)
-Base.setindex!(vi::VarInfo, val, spl::Void) = setall!(vi, val)
+Base.getindex(vi::VarInfo, spl::Void)            = getall(vi)
+Base.setindex!(vi::VarInfo, val::Any, spl::Void) = setall!(vi, val)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
@@ -168,7 +168,7 @@ Base.show(io::IO, vi::VarInfo) = begin
 end
 
 # Add a new entry to VarInfo
-push!(vi::VarInfo, vn::VarName, r, dist::Distribution, gid::Int) = begin
+push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
@@ -263,7 +263,7 @@ checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
   @assert vn_index == vn " sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
 end
 
-updategid!(vi, vn, spl) = begin
+updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
     setgid!(vi, spl.alg.gid, vn)
   end

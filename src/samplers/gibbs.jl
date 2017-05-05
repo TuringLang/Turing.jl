@@ -7,6 +7,8 @@ immutable Gibbs <: InferenceAlgorithm
   Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
 
+typealias GibbsComponent Union{Hamiltonian,PG}
+
 function Sampler(alg::Gibbs)
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(n_samplers)
@@ -15,10 +17,8 @@ function Sampler(alg::Gibbs)
 
   for i in 1:n_samplers
     sub_alg = alg.algs[i]
-    if isa(sub_alg, Hamiltonian)
+    if isa(sub_alg, GibbsComponent)
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
-    elseif isa(sub_alg, PG)
-      samplers[i] = Sampler(PG(sub_alg, i))
     else
       error("[GibbsSampler] unsupport base sampling algorithm $alg")
     end
@@ -39,37 +39,30 @@ function Sampler(alg::Gibbs)
 end
 
 function sample(model::Function, alg::Gibbs)
-  spl = Sampler(alg);
+  spl = Sampler(alg)  # init the (master) Gibbs sampler
 
   # Initialize samples
-  # Compute the number of samples to store
-  sub_sample_n = []   # record #samples for each sampler
-  for i in 1:length(alg.algs)
-    sub_alg = alg.algs[i]
-    if isa(sub_alg, Hamiltonian)
-      push!(sub_sample_n, sub_alg.n_iters)
-    elseif isa(sub_alg, PG)
+  sub_sample_n = []
+  for sub_alg in alg.algs
+    if isa(sub_alg, GibbsComponent)
       push!(sub_sample_n, sub_alg.n_iters)
     else
       error("[GibbsSampler] unsupport base sampling algorithm $alg")
     end
   end
-  if alg.thin
-    sample_n = alg.n_iters
-  else
-    sample_n = alg.n_iters * sum(sub_sample_n)
-  end
+
+  # Compute the number of samples to store
+  sample_n = alg.n_iters * (alg.thin ? 1 : sum(sub_sample_n))
+
+  # Init samples
   samples = Array{Sample}(sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  n = spl.alg.n_iters
 
-  # initialization
-  varInfo = model()
-  ref_particle = nothing
-  i_thin = 1
+  # Init parameters
+  varInfo = model(); ref_particle = nothing; n = spl.alg.n_iters; i_thin = 1
 
   # Gibbs steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)
@@ -99,14 +92,12 @@ function sample(model::Function, alg::Gibbs)
         end
       elseif isa(local_spl.alg, PG)
         # Update new VarInfo to the reference particle
-        varInfo.index = 0
-        varInfo.num_produce = 0
-        if ref_particle != nothing
-          ref_particle.vi = varInfo
-        end
+        varInfo.index = 0; varInfo.num_produce = 0
+        if ref_particle != nothing ref_particle.vi = varInfo end
+
         # Clean variables belonging to the current sampler
-        varInfo = deepcopy(varInfo)
-        varInfo[getretain(varInfo, 0, local_spl)] = NULL
+        varInfo = deepcopy(varInfo); varInfo[getretain(varInfo, 0, local_spl)] = NULL
+
         # Local samples
         for _ = 1:local_spl.alg.n_iters
           ref_particle, _ = step(model, local_spl, varInfo, ref_particle)
@@ -121,9 +112,7 @@ function sample(model::Function, alg::Gibbs)
       end
 
     end
-    if spl.alg.thin
-      samples[i].value = Sample(varInfo).value
-    end
+    if spl.alg.thin samples[i].value = Sample(varInfo).value end
     ProgressMeter.next!(spl.info[:progress])
 
   end

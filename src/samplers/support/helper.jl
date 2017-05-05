@@ -15,9 +15,9 @@ Base.promote_rule(D1::Type{Real}, D2::Type{Dual}) = D2
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-vectorize(d::UnivariateDistribution,   r) = Vector{Real}([r])
-vectorize(d::MultivariateDistribution, r) = Vector{Real}(r)
-vectorize(d::MatrixDistribution,       r) = Vector{Real}(vec(r))
+vectorize{T<:Real}(d::UnivariateDistribution,   r::T)         = Vector{Real}([r])
+vectorize{T<:Real}(d::MultivariateDistribution, r::Vector{T}) = Vector{Real}(r)
+vectorize{T<:Real}(d::MatrixDistribution,       r::Matrix{T}) = Vector{Real}(vec(r))
 
 # NOTE:
 # We cannot use reconstruct{T} because val is always Vector{Real} then T will be Real.
@@ -36,14 +36,11 @@ reconstruct(d::MatrixDistribution,       val::Vector, T::Type) = Array{T, 2}(res
 
 # VarInfo to Sample
 Sample(vi::VarInfo) = begin
-  weight = 0.0
-  value = Dict{Symbol, Any}()
+  value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
   for vn in keys(vi)
-    dist = getdist(vi, vn)
-    r = vi[vn]
-    value[sym(vn)] = realpart(r)
+    value[sym(vn)] = realpart(vi[vn])
   end
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(vi.logp)
-  Sample(weight, value)
+  Sample(0.0, value)
 end

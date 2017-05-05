@@ -1,5 +1,10 @@
-include("simple-normal-mixture.data.jl")
-include("simple-normal-mixture.model.jl")
+using Distributions
+using Turing
+using Stan
+
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/simple-normal-mixture-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/simple-normal-mixture.model.jl")
 
 # NOTE: I only run a sub-set of the data as running the whole is quite slow
 bench_res = tbenchmark("Gibbs(1000, HMC(1, 0.05, 1, :theta), PG(50, 1, :k), HMC(1, 0.2, 3, :mu))", "nmmodel", "y[1:100]")

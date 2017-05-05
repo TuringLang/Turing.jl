@@ -1,5 +1,10 @@
-include("simplegauss-stan.data.jl")
-include("simplegauss-stan.model.jl")
+using Distributions
+using Turing
+using Stan
+
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/simplegauss-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/simplegauss-stan.model.jl")
 
 stan_model_name = "simplegauss"
 simplegaussstan = Stanmodel(name=stan_model_name, model=simplegaussstanmodel, nchains=1);

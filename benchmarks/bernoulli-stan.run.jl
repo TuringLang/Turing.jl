@@ -1,5 +1,10 @@
-include("bernoulli-stan.data.jl")
-include("bernoulli-stan.model.jl")
+using Distributions
+using Turing
+using Stan
+
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/bernoulli-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/bernoulli-stan..model.jl")
 
 stan_model_name = "bernoulli"
 berstan = Stanmodel(name=stan_model_name, model=berstanmodel, nchains=1);

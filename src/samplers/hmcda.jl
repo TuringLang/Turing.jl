@@ -1,10 +1,36 @@
+doc"""
+    HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)
+
+Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.
+
+Usage:
+
+```julia
+HMCDA(1000, 200, 0.65, 0.3)
+```
+
+Example:
+
+```julia
+# Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
+```
+"""
 immutable HMCDA <: InferenceAlgorithm
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   lambda    ::  Float64   # target leapfrog length
   space     ::  Set       # sampling space, emtpy means all
-  gid       ::  Int
+  gid       ::  Int       # group ID
 
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMCDA(n_iters::Int, delta::Float64, lambda::Float64) = begin
@@ -31,11 +57,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       if spl.alg.gid != 0 vi = link(vi, spl) end
 
       # Heuristically find optimal ϵ
-      # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
       ϵ = find_good_eps(model, spl, vi)
 
-      # dprintln(3, "R -> X...")
-      # if spl.alg.gid != 0 vi = invlink(vi, spl) end
     else
       ϵ = spl.info[:ϵ][end]
     end
@@ -43,7 +66,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:ϵ] = [ϵ]
     spl.info[:μ] = log(10 * ϵ)
     spl.info[:ϵ_bar] = 1.0
-    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
@@ -67,7 +89,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "recording old H...")
     oldH = find_H(p, model, vi, spl)
 
-    τ = max(1, round(λ / ϵ))
+    τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     vi, p, τ_valid = leapfrog(vi, p, τ, ϵ, model, spl)
 
@@ -79,9 +101,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     α = min(1, exp(-ΔH))  # MH accept rate
 
-    haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
-                                spl.info[:progress].counter;
-                                showvalues = [(:ϵ, ϵ), (:α, α)])
+    haskey(spl.info, :progress) && ProgressMeter.update!(
+                                     spl.info[:progress],
+                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α)]
+                                   )
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
