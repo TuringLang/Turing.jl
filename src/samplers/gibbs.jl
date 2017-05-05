@@ -71,40 +71,36 @@ function sample(model::Function, alg::Gibbs)
 
     for local_spl in spl.info[:samplers]
       local_spl.info[:progress] = spl.info[:progress]
-      # dprintln(2, "Sampler stepping...")
+
       dprintln(2, "$(typeof(local_spl)) stepping...")
-      # println(varInfo)
-      if isa(local_spl.alg, Hamiltonian)
+
+      if isa(local_spl.alg, GibbsComponent)
+        if isa(local_spl.alg, PG)
+          # Clean possible wrong counter from HMC
+          # NOTE: can we move this into PG step? (or we actually don't need it)
+          varInfo.index = 0; varInfo.num_produce = 0
+        end
 
         for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
           varInfo = step(model, local_spl, varInfo, i==1)
           if ~spl.alg.thin
-            samples[i_thin].value = Sample(varInfo).value
-            i_thin += 1
-          end
-        end
-      elseif isa(local_spl.alg, PG)
-        # Clean possible wrong counter from HMC
-        # NOTE: can we move this into PG step?
-        varInfo.index = 0; varInfo.num_produce = 0
-
-        # Local samples
-        for _ = 1:local_spl.alg.n_iters
-          varInfo = step(model, local_spl, varInfo)
-          if ~spl.alg.thin
-            samples[i_thin].value = Sample(varInfo).value
+            if isa(local_spl.alg, Hamiltonian) && ~local_spl.info[:accept_his][end]
+              samples[i_thin] = samples[i_thin - 1]
+            else
+              samples[i_thin].value = Sample(varInfo).value
+            end
             i_thin += 1
           end
         end
       else
         error("[GibbsSampler] unsupport base sampler $local_spl")
       end
-
     end
-    if spl.alg.thin samples[i].value = Sample(varInfo).value end
-    ProgressMeter.next!(spl.info[:progress])
 
+    if spl.alg.thin samples[i].value = Sample(varInfo).value end
+
+    ProgressMeter.next!(spl.info[:progress])
   end
 
   Chain(0, samples)    # wrap the result by Chain
