@@ -7,6 +7,8 @@ immutable Gibbs <: InferenceAlgorithm
   Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
 
+typealias GibbsComponent Union{Hamiltonian,PG}
+
 function Sampler(alg::Gibbs)
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(n_samplers)
@@ -15,10 +17,8 @@ function Sampler(alg::Gibbs)
 
   for i in 1:n_samplers
     sub_alg = alg.algs[i]
-    if isa(sub_alg, Hamiltonian)
+    if isa(sub_alg, GibbsComponent)
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
-    elseif isa(sub_alg, PG)
-      samplers[i] = Sampler(PG(sub_alg, i))
     else
       error("[GibbsSampler] unsupport base sampling algorithm $alg")
     end
@@ -39,37 +39,34 @@ function Sampler(alg::Gibbs)
 end
 
 function sample(model::Function, alg::Gibbs)
-  spl = Sampler(alg);
+  spl = Sampler(alg)  # init the (master) Gibbs sampler
 
   # Initialize samples
-  # Compute the number of samples to store
-  sub_sample_n = []   # record #samples for each sampler
-  for i in 1:length(alg.algs)
-    sub_alg = alg.algs[i]
-    if isa(sub_alg, Hamiltonian)
-      push!(sub_sample_n, sub_alg.n_iters)
-    elseif isa(sub_alg, PG)
+  sub_sample_n = []
+  for sub_alg in alg.algs
+    if isa(sub_alg, GibbsComponent)
       push!(sub_sample_n, sub_alg.n_iters)
     else
       error("[GibbsSampler] unsupport base sampling algorithm $alg")
     end
   end
-  if alg.thin
-    sample_n = alg.n_iters
-  else
-    sample_n = alg.n_iters * sum(sub_sample_n)
-  end
+
+  # Compute the number of samples to store
+  sample_n = alg.n_iters * (alg.thin ? 1 : sum(sub_sample_n))
+
+  # Init samples
   samples = Array{Sample}(sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  n = spl.alg.n_iters
 
-  # initialization
+  # Init parameters
   varInfo = model()
   ref_particle = nothing
   i_thin = 1
+
+  n = spl.alg.n_iters
 
   # Gibbs steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)
