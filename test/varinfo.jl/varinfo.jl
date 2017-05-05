@@ -76,7 +76,7 @@ pg, hmc = g.info[:samplers]
 
 vi = g_demo_f()
 
-ref_particle, s = step(g_demo_f, pg, vi, nothing)
+ref_particle = step(g_demo_f, pg, vi, nothing)
 vi = ref_particle.vi
 @test vi.gids == [1,1,1,0,0]
 

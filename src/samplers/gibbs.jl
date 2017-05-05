@@ -100,7 +100,7 @@ function sample(model::Function, alg::Gibbs)
 
         # Local samples
         for _ = 1:local_spl.alg.n_iters
-          ref_particle, _ = step(model, local_spl, varInfo, ref_particle)
+          ref_particle = step(model, local_spl, varInfo, ref_particle)
           if ~spl.alg.thin
             samples[i_thin].value = Sample(ref_particle.vi).value
             i_thin += 1

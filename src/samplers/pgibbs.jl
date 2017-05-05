@@ -65,9 +65,8 @@ function step(model::Function, spl::Sampler{PG}, vi::VarInfo, ref_particle)
   Ws, _ = weights(particles)
   indx = rand(Categorical(Ws))
   ref_particle = fork2(particles[indx])
-  s = getsample(particles, indx)
   push!(spl.info[:logevidence], particles.logE)
-  ref_particle, s
+  ref_particle
 end
 
 sample(model::Function, alg::PG) = begin
@@ -79,8 +78,8 @@ sample(model::Function, alg::PG) = begin
   ## re-inserts reteined particle after each resampling step
   ref_particle = nothing
   @showprogress 1 "[PG] Sampling..." for i = 1:n
-    ref_particle, s = step(model, spl, VarInfo(), ref_particle)
-    push!(samples, Sample(1/n, s.value))
+    ref_particle = step(model, spl, VarInfo(), ref_particle)
+    push!(samples, Sample(ref_particle.vi))
   end
 
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
