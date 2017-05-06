@@ -70,7 +70,7 @@ function sample(model::Function, alg::Gibbs)
     dprintln(2, "Gibbs stepping...")
 
     for local_spl in spl.info[:samplers]
-      local_spl.info[:progress] = spl.info[:progress]
+      if haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
       # dprintln(2, "Sampler stepping...")
       dprintln(2, "$(typeof(local_spl)) stepping...")
       # println(varInfo)
@@ -113,7 +113,7 @@ function sample(model::Function, alg::Gibbs)
 
     end
     if spl.alg.thin samples[i].value = Sample(varInfo).value end
-    ProgressMeter.next!(spl.info[:progress])
+    haskey(spl.info, :progress) && ProgressMeter.next!(spl.info[:progress])
 
   end
 
