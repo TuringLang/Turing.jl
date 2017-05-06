@@ -81,8 +81,8 @@ c4 = sample(gdemo([1.5, 2]), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
 describe(c3)
 
 # Plot results 
-p = plot(c3)
-draw(p, "gdemo-plot.svg")
+p = Turing.plot(c3)
+Turing.draw(p, fmt=:pdf, filename="gdemo-plot.pdf")
 ```
 
 The arguments for each sampler are
