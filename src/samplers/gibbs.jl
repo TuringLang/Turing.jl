@@ -113,7 +113,8 @@ function sample(model::Function, alg::Gibbs)
 
     end
     if spl.alg.thin samples[i].value = Sample(varInfo).value end
-    haskey(spl.info, :progress) && ProgressMeter.next!(spl.info[:progress])
+    haskey(spl.info, :progress) &&
+        ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
 
   end
 
