@@ -75,12 +75,6 @@ function sample(model::Function, alg::Gibbs)
       dprintln(2, "$(typeof(local_spl)) stepping...")
 
       if isa(local_spl.alg, GibbsComponent)
-        if isa(local_spl.alg, PG)
-          # Clean possible wrong counter from HMC
-          # NOTE: can we move this into PG step? (or we actually don't need it)
-          varInfo.index = 0; varInfo.num_produce = 0
-        end
-
         for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
           varInfo = step(model, local_spl, varInfo, i==1)
