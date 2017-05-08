@@ -63,7 +63,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
 
-    true, vi_0
+    push!(spl.info[:accept_his], true)
+
+    vi_0
   else
     # Set parameters
     δ = spl.alg.delta
@@ -125,7 +127,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       spl.info[:ϵ] = spl.info[:ϵ_bar]
     end
 
-    true, vi_new
+    push!(spl.info[:accept_his], true)
+
+    vi_new
   end
 end
 

@@ -1,6 +1,6 @@
 import Base.string, Base.isequal, Base.==, Base.hash
 import Base.getindex, Base.setindex!, Base.push!
-import Base.rand, Base.show, Base.isnan
+import Base.rand, Base.show, Base.isnan, Base.isempty
 
 ###########
 # VarName #
@@ -83,6 +83,8 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+
+isempty(vi::VarInfo) = isempty(vi.idcs)
 
 # X -> R for all variables associated with given sampler
 function link(_vi::VarInfo, spl::Sampler)

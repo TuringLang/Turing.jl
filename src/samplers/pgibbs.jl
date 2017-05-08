@@ -45,8 +45,17 @@ Sampler(alg::PG) = begin
   Sampler(alg, info)
 end
 
-function step(model::Function, spl::Sampler{PG}, vi::VarInfo, ref_particle)
+step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
+
+step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles = ParticleContainer{TraceR}(model)
+
+  ref_particle = isempty(vi) ?
+                 nothing :
+                 fork2(TraceR(model, spl, vi))
+
+  vi[getretain(vi, 0, spl)] = NULL
+
   if ref_particle == nothing
     push!(particles, spl.alg.n_particles, spl, vi)
   else
@@ -64,10 +73,9 @@ function step(model::Function, spl::Sampler{PG}, vi::VarInfo, ref_particle)
   ## pick a particle to be retained.
   Ws, _ = weights(particles)
   indx = rand(Categorical(Ws))
-  ref_particle = fork2(particles[indx])
-  s = getsample(particles, indx)
+
   push!(spl.info[:logevidence], particles.logE)
-  ref_particle, s
+  particles[indx].vi
 end
 
 sample(model::Function, alg::PG) = begin
@@ -77,10 +85,10 @@ sample(model::Function, alg::PG) = begin
 
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
-  ref_particle = nothing
+  vi = VarInfo()
   @showprogress 1 "[PG] Sampling..." for i = 1:n
-    ref_particle, s = step(model, spl, VarInfo(), ref_particle)
-    push!(samples, Sample(1/n, s.value))
+    vi = step(model, spl, vi)
+    push!(samples, Sample(vi))
   end
 
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
@@ -98,6 +106,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     elseif isnan(vi, vn)
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
+      setgid!(vi, spl.alg.gid, vn)
       r
     else
       checkindex(vn, vi, spl)
