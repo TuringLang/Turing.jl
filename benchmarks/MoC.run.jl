@@ -3,8 +3,8 @@ using Turing
 using Stan
 
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/naive.bayes-stan.data.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/naive.bayes.model.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/MoC.model.jl")
 
 bench_res = tbenchmark("HMCDA(1000, 0.65, 0.3)", "nbmodel", "data=nbstandata[1]")
 bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
