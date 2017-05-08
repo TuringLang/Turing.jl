@@ -1,5 +1,5 @@
 # Turing.jl version of model at https://github.com/stan-dev/example-models/blob/master/misc/cluster/naive-bayes/naive-bayes.stan
-
+# Reference: http://mlg.eng.cam.ac.uk/teaching/4f13/1617/document%20models.pdf
 @model nbmodel(K, V, M, N, z, w, doc, alpha, beta) = begin
   theta ~ Dirichlet(alpha)
   phi = Array{Any}(K)
