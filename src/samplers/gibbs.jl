@@ -79,12 +79,7 @@ function sample(model::Function, alg::Gibbs)
           dprintln(2, "recording old θ...")
           varInfo = step(model, local_spl, varInfo, i==1)
           if ~spl.alg.thin
-            if isa(local_spl.alg, Hamiltonian) && ~local_spl.info[:accept_his][end]
-              samples[i_thin] = samples[i_thin - 1]
-            else
-              samples[i_thin].value = Sample(varInfo).value
-            end
-            i_thin += 1
+            samples[i_thin].value = Sample(varInfo).value; i_thin += 1
           end
         end
       else
