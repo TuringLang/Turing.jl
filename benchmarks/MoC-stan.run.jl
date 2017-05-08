@@ -3,8 +3,8 @@ using Turing
 using Stan
 
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/naive.bayes-stan.data.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/naive.bayes-stan.model.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.data.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.model.jl")
 
 stan_model_name = "Naive_Bayes"
 nbstan = Stanmodel(Sample(save_warmup=true), name=stan_model_name, model=naivebayesstanmodel, nchains=1);
