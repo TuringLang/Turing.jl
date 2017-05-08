@@ -6,7 +6,7 @@ using Stan
 CONFIG = Dict(
   "model-list" => [
     "gdemo-geweke",
-    "naive.bayes",
+    "MoC",
     #"normal-loc",
     "normal-mixture",
     "simplegauss",
