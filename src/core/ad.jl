@@ -28,7 +28,6 @@ end
 
 gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Initialisation
-  expand!(vi)
   grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
@@ -52,8 +51,8 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
-    expand!(vi)    # NOTE: we don't have to call last in the end
-                      #       because we don't return the amended VarInfo
+    expand!(vi)
+    
     # Set dual part correspondingly
     dprintln(4, "set dual...")
     dps = zeros(prior_dim)
