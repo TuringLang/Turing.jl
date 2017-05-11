@@ -48,8 +48,10 @@ function leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Functio
     τ_valid += 1
   end
 
+  last!(vi)
+
   # Return updated θ and momentum
-  last(vi), p, τ_valid
+  vi, p, τ_valid
 end
 
 # Compute Hamiltonian

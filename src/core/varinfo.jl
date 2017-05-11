@@ -73,7 +73,6 @@ setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v->vi.vals[end][v]
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
 
-
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
@@ -201,11 +200,7 @@ end
 #################################
 
 expand!(vi::VarInfo) = push!(vi.vals, deepcopy(vi.vals[end]))
-last(_vi::VarInfo) = begin
-  vi = deepcopy(_vi)
-  splice!(vi.vals, 1:length(vi.vals)-1)
-  vi
-end
+last!(vi::VarInfo) = splice!(vi.vals, 1:length(vi.vals)-1)
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
