@@ -125,10 +125,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "decide wether to accept...")
     if rand() < α       # accepted
       push!(spl.info[:accept_his], true)
-      vi
     else                # rejected
       push!(spl.info[:accept_his], false)
-      old_vi
+      vi = old_vi
     end
+    vi
   end
 end
