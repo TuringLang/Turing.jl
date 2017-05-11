@@ -15,6 +15,12 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
+leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler, θ::Vector) = begin
+  vi[spl] = θ
+  setlogp!(vi, zero(Real))
+  leapfrog(vi, p, τ, ϵ, model, spl)
+end
+
 leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
 
   dprintln(3, "first gradient...")
@@ -23,7 +29,7 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
   verifygrad(grad) || (return vi, p, 0)
 
   dprintln(2, "leapfrog stepping...")
-  τ_valid = 0; p_old = deepcopy(p)
+  τ_valid = 0; p_old = copy(p)
   for t in 1:τ        # do 'leapfrog' for each var
     p_old[1:end] = p[1:end]
 
@@ -63,21 +69,15 @@ find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  # # Make a leapfrog step until accept
-  # vi_prime, p_prime, τ_valid = leapfrog(vi, p, 1, ϵ, model, spl)
-  # while τ_valid == 0
-  #   ϵ *= 0.5
-  #   vi_prime, p_prime, τ_valid = leapfrog(vi, p, 1, ϵ, model, spl)
-  # end
-  # ϵ_bar = ϵ
-  vi_prime, p_prime, τ = leapfrog(deepcopy(vi), deepcopy(p), 1, ϵ, model, spl)
+  θ = vi[spl]
+  vi_prime, p_prime, τ = leapfrog(vi, copy(p), 1, ϵ, model, spl, θ)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
     ϵ = 2.0^a * ϵ
-    vi_prime, p_prime, τ = leapfrog(deepcopy(vi), deepcopy(p), 1, ϵ, model, spl)
+    vi_prime, p_prime, τ = leapfrog(vi, copy(p), 1, ϵ, model, spl, θ)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
   end

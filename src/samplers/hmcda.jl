@@ -68,7 +68,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     vi
   else
     dprintln(2, "recording old θ...")
-    old_vi = deepcopy(vi)
+    old_θ = vi[spl]
 
     # Set parameters
     δ = spl.alg.delta
@@ -127,7 +127,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       push!(spl.info[:accept_his], true)
     else                # rejected
       push!(spl.info[:accept_his], false)
-      vi = old_vi
+      vi[spl] = old_θ
+      setlogp!(vi, zero(Real))
     end
     vi
   end
