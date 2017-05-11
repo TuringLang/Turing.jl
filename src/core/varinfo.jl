@@ -209,7 +209,6 @@ getidcs(vi::VarInfo, spl::Sampler) = begin
   # NOTE: 0b00 is the sanity flag for
   #         |\____ getidcs   (mask = 0b10)
   #         \_____ getranges (mask = 0b01)
-  # TODO: set these as constants
   if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
   if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
     spl.info[:idcs]
