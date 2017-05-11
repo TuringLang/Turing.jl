@@ -53,15 +53,12 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   for (vn_chunk, chunk_dim) in vn_chunks
     expand!(vi) # NOTE: place where calling gradient should
                 #       be responsible for clean up the vals
+
     # Set dual part correspondingly
     dprintln(4, "set dual...")
     dps = zeros(chunk_dim)
+
     dim_count = 1
-
-    # vns = filter(vn -> vn in vn_chunk, vns_all)
-    # ranges = union(map(vn -> getrange(vi, vn), vns)...)
-    # vi[ranges] =
-
     for k in vns_all
       l = length(getrange(vi, k))
       reals = realpart(getval(vi, k))
