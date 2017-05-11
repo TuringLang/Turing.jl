@@ -1,6 +1,6 @@
 @model gaussmodel(x) = begin
     N = length(x)
-    lam = tzeros(Float64,N)
+    lam = tzeros(Real,N)
     mu ~ Normal(0, sqrt(1000));
     for i = 1:N
       lam[i] ~ Gamma(1, 1)
