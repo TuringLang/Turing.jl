@@ -204,11 +204,12 @@ end
 #################################
 
 expand!(vi::VarInfo) = begin
-  push!(vi.vals, deepcopy(vi.vals[end]))
+  push!(vi.vals, realpart(vi.vals[end]))
   push!(vi.trans, deepcopy(vi.trans[end]))
 end
 
 last!(vi::VarInfo) = begin
+  # QUESTION: is splice! slow?
   splice!(vi.vals, 1:length(vi.vals)-1)
   splice!(vi.trans, 1:length(vi.trans)-1)
 end
