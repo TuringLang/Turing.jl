@@ -2,22 +2,19 @@ global Δ_max = 1000
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler})
+runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
-  expand!(vi)
   vi.index = 0
-  vi = model(vi=vi, sampler=spl) # run model
-  last!(vi)
-  vi
+  model(vi=vi, sampler=spl) # run model
 end
 
-function sample_momentum(vi::VarInfo, spl::Sampler)
+sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
   randn(length(getranges(vi, spl)))
 end
 
 # Leapfrog step
-function leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler)
+leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
 
   vi = deepcopy(_vi)
   p = deepcopy(_p)
@@ -55,15 +52,15 @@ function leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Functio
 end
 
 # Compute Hamiltonian
-function find_H(p::Vector, model::Function, _vi::VarInfo, spl::Sampler)
-  vi = deepcopy(_vi)
+find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
+  expand!(vi)
   # TODO: remove below by making sure that the logp is always updated
   vi = runmodel(model, vi, spl)
   H = dot(p, p) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end
 end
 
-function find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo)
+find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 

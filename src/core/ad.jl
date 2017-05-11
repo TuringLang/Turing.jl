@@ -10,7 +10,7 @@ grad = gradient(vi, model, spl)
 end
 ```
 """
-gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
+gradient(vi::VarInfo, model::Function) = gradient2(vi, model, nothing)
 gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   vi = deepcopy(_vi)
@@ -51,8 +51,8 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Chunk-wise forward AD
   for (key_chunk, prior_dim) in prior_key_chunks
-    expand!(vi)
-    
+    expand!(vi) # NOTE: place where calling gradient should
+                #       be responsible for clean up the vals
     # Set dual part correspondingly
     dprintln(4, "set dual...")
     dps = zeros(prior_dim)
