@@ -53,9 +53,10 @@ end
 
 # Compute Hamiltonian
 find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
-  expand!(vi)
-  # TODO: remove below by making sure that the logp is always updated
-  vi = runmodel(model, vi, spl)
+  # NOTE: getlogp(vi) = 0 means the current vals[end] hasn't been used at all.
+  #       This can be a result of link/invlink (where expand! is used)
+  if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
+
   H = dot(p, p) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end
 end

@@ -119,8 +119,5 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
   end
 end
 
-observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
-  lp = logpdf(dist, value)
-  acclogp!(vi, lp)
-  produce(lp)
-end
+observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) =
+  produce(logpdf(dist, value))

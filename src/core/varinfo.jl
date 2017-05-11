@@ -97,30 +97,22 @@ acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
 # X -> R for all variables associated with given sampler
-function link(vi::VarInfo, spl::Sampler)
-  expand!(vi)
-  gvns = getvns(vi, spl)
-  for vn in gvns
+link!(vi::VarInfo, spl::Sampler) =
+  for vn in getvns(vi, spl)
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, true, vn)
+    setlogp!(vi, zero(Real))
   end
-  last!(vi)
-  vi
-end
 
 # R -> X for all variables associated with given sampler
-function invlink(vi::VarInfo, spl::Sampler)
-  expand!(vi)
-  gvns = getvns(vi, spl)
-  for vn in gvns
+invlink!(vi::VarInfo, spl::Sampler) =
+  for vn in getvns(vi, spl)
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, false, vn)
+    setlogp!(vi, zero(Real))
   end
-  last!(vi)
-  vi
-end
 
 function cleandual!(vi::VarInfo)
   for vn in keys(vi)
