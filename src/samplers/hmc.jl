@@ -71,7 +71,6 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  accept_num = 0  # record the accept number
   vi = model()
 
   if spl.alg.gid == 0 link!(vi, spl) end
@@ -90,7 +89,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   end
 
   if ~isa(alg, NUTS)  # cccept rate for NUTS is meaningless - so no printing
-    accept_rate = accept_num / n  # calculate the accept rate
+    accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
     println("[$alg_str] Done with accept rate = $accept_rate.")
   end
 
