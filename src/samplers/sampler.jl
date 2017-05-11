@@ -33,12 +33,12 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r = rand(dist)
     push!(vi, vn, r, dist, 0)
   end
-  vi.logp += logpdf(dist, r, istrans(vi, vn))
+  acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
 
-observe(spl::Void, d::Distribution, value::Any, vi::VarInfo) = begin
-  lp = logpdf(d, value)
+observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
+  lp = logpdf(dist, value)
   vi.logw += lp
-  vi.logp += lp
+  acclogp!(vi, lp)
 end

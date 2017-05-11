@@ -41,6 +41,6 @@ Sample(vi::VarInfo) = begin
     value[sym(vn)] = realpart(vi[vn])
   end
   # NOTE: do we need to check if lp is 0?
-  value[:lp] = realpart(vi.logp)
+  value[:lp] = realpart(getlogp(vi))
   Sample(0.0, value)
 end

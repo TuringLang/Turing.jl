@@ -17,7 +17,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   f(x::Vector) = begin
     vi[spl] = x
-    -runmodel(model, vi, spl).logp
+    -getlogp(runmodel(model, vi, spl))
   end
 
   g = x -> ForwardDiff.gradient(f, x::Vector,
@@ -77,7 +77,7 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     vi = runmodel(model, vi, spl)
     # Collect gradient
     dprintln(4, "collect gradients from logp...")
-    append!(grad, collect(dualpart(-vi.logp)))
+    append!(grad, collect(dualpart(-getlogp(vi))))
   end
 
   grad

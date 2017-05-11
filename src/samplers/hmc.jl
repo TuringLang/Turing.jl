@@ -101,11 +101,11 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
-  vi.logp += logpdf(dist, r, istrans(vi, vn))
+  acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
 
 function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo)
   dprintln(2, "observing...")
-  vi.logp += logpdf(d, map(x -> Dual(x), value))
+  acclogp!(vi, logpdf(d, map(x -> Dual(x), value)))
 end

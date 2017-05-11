@@ -50,7 +50,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl,
 step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles = ParticleContainer{TraceR}(model)
 
-  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`. 
+  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
   ref_particle = isempty(vi) ?
                  nothing :
                  fork2(TraceR(model, spl, vi))
@@ -121,6 +121,6 @@ end
 
 observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
   lp = logpdf(dist, value)
-  vi.logp += lp
+  acclogp!(vi, lp)
   produce(lp)
 end

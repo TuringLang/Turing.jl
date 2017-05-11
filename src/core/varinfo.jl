@@ -37,24 +37,30 @@ type VarInfo
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Vector{Real}}
   dists       ::    Vector{Distribution}
-  gids        ::    Vector{Int}   # group ids
+  gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
-  logp        ::    Real          # NOTE: logp should be a vector.
+  logp        ::    Vector{Real}
   logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
-  VarInfo() = new(
-    Dict{VarName, Int}(),
-    Vector{VarName}(),
-    Vector{UnitRange{Int}}(),
-    Vector{Vector{Real}}(),
-    Vector{Distribution}(),
-    Vector{Int}(),
-    Vector{Vector{Bool}}(),
-    0.0,0.0,
-    0,
-    0
-  )
+  VarInfo() = begin
+    vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
+    trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
+    logp = Vector{Real}(); push!(logp, zero(Real))
+
+    new(
+      Dict{VarName, Int}(),
+      Vector{VarName}(),
+      Vector{UnitRange{Int}}(),
+      vals,
+      Vector{Distribution}(),
+      Vector{Int}(),
+      trans, logp,
+      zero(Real),
+      0,
+      0
+    )
+  end
 end
 
 typealias VarView Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
@@ -83,6 +89,10 @@ setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istrans(vi::VarInfo, vn::VarName) = vi.trans[end][getidx(vi, vn)]
 settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)] = trans
+
+getlogp(vi::VarInfo) = vi.logp[end]
+setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
+acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
@@ -117,7 +127,7 @@ function cleandual!(vi::VarInfo)
     range = getrange(vi, vn)
     vi[range] = realpart(vi[range])
   end
-  vi.logp = realpart(vi.logp)
+  setlogp!(vi, realpart(getlogp(vi)))
   vi.logw = realpart(vi.logw)
 end
 
@@ -176,9 +186,6 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
-  if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
-  if isempty(vi.trans) push!(vi.trans, Vector{Bool}()) end
-
   val = vectorize(dist, r)
 
   vi.idcs[vn] = length(vi.idcs) + 1
@@ -204,13 +211,21 @@ end
 #################################
 
 expand!(vi::VarInfo) = begin
-  push!(vi.vals, realpart(vi.vals[end]))
+  push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
   push!(vi.trans, deepcopy(vi.trans[end]))
+  push!(vi.logp, zero(Real))
+end
+
+shrink!(vi::VarInfo) = begin
+  pop!(vi.vals)
+  pop!(vi.trans)
+  pop!(vi.logp)
 end
 
 last!(vi::VarInfo) = begin
-  vi.vals = [vi.vals[end]]
-  vi.trans = [vi.trans[end]]
+  vi.vals = vi.vals[end:end]
+  vi.trans = vi.trans[end:end]
+  vi.logp = vi.logp[end:end]
 end
 
 # Get all indices of variables belonging to gid or 0

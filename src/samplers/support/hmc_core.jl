@@ -2,12 +2,13 @@ global Δ_max = 1000
 
 setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 
-function runmodel(model::Function, _vi::VarInfo, spl::Union{Void,Sampler})
+function runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler})
   dprintln(4, "run model...")
-  vi = deepcopy(_vi)
-  vi.logp = 0.0
+  expand!(vi)
   vi.index = 0
-  model(vi=vi, sampler=spl) # run model\
+  vi = model(vi=vi, sampler=spl) # run model
+  last!(vi)
+  vi
 end
 
 function sample_momentum(vi::VarInfo, spl::Sampler)
@@ -40,8 +41,7 @@ function leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Functio
     grad = gradient2(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf
-    # verifygrad(grad) || (pop!(vi.vals); pop!(vi.logp); p = p_old; break)
-    verifygrad(grad) || (pop!(vi.vals); p = p_old; break)
+    verifygrad(grad) || (shrink!(vi); p = p_old; break)
 
     p -= ϵ * grad / 2
 
@@ -58,7 +58,7 @@ end
 function find_H(p::Vector, model::Function, _vi::VarInfo, spl::Sampler)
   vi = deepcopy(_vi)
   vi = runmodel(model, vi, spl)
-  H = dot(p, p) / 2 + realpart(-vi.logp)
+  H = dot(p, p) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end
 end
 
