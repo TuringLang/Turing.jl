@@ -44,17 +44,9 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
-    vi_0 = deepcopy(vi)
-
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 link!(vi, spl) end
-
-    # Heuristically find optimal ϵ
-    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
-    ϵ = find_good_eps(model, spl, vi)
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl) end
+    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+    ϵ = find_good_eps(model, spl, vi)           # heuristically find optimal ϵ
+    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -65,7 +57,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_0
+    vi
   else
     # Set parameters
     δ = spl.alg.delta

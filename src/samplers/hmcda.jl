@@ -49,16 +49,10 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
-    vi_0 = deepcopy(vi)
-
     if spl.alg.delta > 0
-
-      dprintln(3, "X -> R...")
-      if spl.alg.gid != 0 link!(vi, spl) end
-
-      # Heuristically find optimal ϵ
-      ϵ = find_good_eps(model, spl, vi)
-
+      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+      ϵ = find_good_eps(model, spl, vi)           # heuristically find optimal ϵ
+      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
     else
       ϵ = spl.info[:ϵ][end]
     end
@@ -71,7 +65,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_0
+    vi
   else
     dprintln(2, "recording old θ...")
     old_vi = deepcopy(vi)
