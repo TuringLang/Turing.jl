@@ -5,6 +5,7 @@ setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
   vi.index = 0
+  setlogp!(vi, zero(Real))
   model(vi=vi, sampler=spl) # run model
 end
 

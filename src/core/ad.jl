@@ -51,10 +51,7 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Chunk-wise forward AD
   for (vn_chunk, chunk_dim) in vn_chunks
-    expand!(vi) # NOTE: place where calling gradient should
-                #       be responsible for clean up the vals
-
-    # Set dual part correspondingly
+    # 1. Set dual part correspondingly
     dprintln(4, "set dual...")
     dps = zeros(chunk_dim)
 
@@ -76,8 +73,9 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         vi[range] = map(r -> Dual{chunk_dim, Float64}(r), reals)
       end
     end
+    
+    # 2. Run model and collect gradient
     vi = runmodel(model, vi, spl)
-    # Collect gradient
     dprintln(4, "collect gradients from logp...")
     append!(grad, collect(dualpart(-getlogp(vi))))
   end
