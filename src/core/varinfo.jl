@@ -38,7 +38,7 @@ type VarInfo
   vals        ::    Vector{Vector{Real}}
   dists       ::    Vector{Distribution}
   gids        ::    Vector{Int}   # group ids
-  trans       ::    Vector{Bool}
+  trans       ::    Vector{Vector{Bool}}
   logp        ::    Real          # NOTE: logp should be a vector.
   logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
@@ -50,7 +50,7 @@ type VarInfo
     Vector{Vector{Real}}(),
     Vector{Distribution}(),
     Vector{Int}(),
-    Vector{Bool}(),
+    Vector{Vector{Bool}}(),
     0.0,0.0,
     0,
     0
@@ -81,8 +81,8 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
-istrans(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
-settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
+istrans(vi::VarInfo, vn::VarName) = vi.trans[end][getidx(vi, vn)]
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)] = trans
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
@@ -175,6 +175,7 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
   if isempty(vi.vals) push!(vi.vals, Vector{Real}()) end
+  if isempty(vi.trans) push!(vi.trans, Vector{Bool}()) end
 
   val = vectorize(dist, r)
 
@@ -185,7 +186,7 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
   append!(vi.vals[end], val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
-  push!(vi.trans, false)
+  push!(vi.trans[end], false)
 
   vi
 end
