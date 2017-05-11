@@ -33,7 +33,9 @@ matrix:
     allow_failures:
        - env: GROUP=Test
          os: osx
-       - env: GROUP=Bench
+       - env: GROUP=LDA
+       - env: GROUP=MOC
+       - env: GROUP=SV
 
 notifications:
     email: false
