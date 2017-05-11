@@ -209,9 +209,8 @@ expand!(vi::VarInfo) = begin
 end
 
 last!(vi::VarInfo) = begin
-  # QUESTION: is splice! slow?
-  splice!(vi.vals, 1:length(vi.vals)-1)
-  splice!(vi.trans, 1:length(vi.trans)-1)
+  vi.vals = [vi.vals[end]]
+  vi.trans = [vi.trans[end]]
 end
 
 # Get all indices of variables belonging to gid or 0
