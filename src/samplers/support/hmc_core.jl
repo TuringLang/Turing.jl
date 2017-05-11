@@ -15,10 +15,7 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
-leapfrog(_vi::VarInfo, _p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
-
-  vi = deepcopy(_vi)
-  p = deepcopy(_p)
+leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
 
   dprintln(3, "first gradient...")
   grad = gradient2(vi, model, spl)
@@ -73,14 +70,14 @@ find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   #   vi_prime, p_prime, τ_valid = leapfrog(vi, p, 1, ϵ, model, spl)
   # end
   # ϵ_bar = ϵ
-  vi_prime, p_prime, τ = leapfrog(vi, p, 1, ϵ, model, spl)
+  vi_prime, p_prime, τ = leapfrog(deepcopy(vi), deepcopy(p), 1, ϵ, model, spl)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
     ϵ = 2.0^a * ϵ
-    vi_prime, p_prime, τ = leapfrog(vi, p, 1, ϵ, model, spl)
+    vi_prime, p_prime, τ = leapfrog(deepcopy(vi), deepcopy(p), 1, ϵ, model, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
   end
