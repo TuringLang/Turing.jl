@@ -33,7 +33,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r = rand(dist)
     push!(vi, vn, r, dist, 0)
   end
-  vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  vi.logp += logpdf(dist, r, istrans(vi, vn))
   r
 end
 

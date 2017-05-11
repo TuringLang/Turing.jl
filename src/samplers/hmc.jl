@@ -101,7 +101,7 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
-  vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  vi.logp += logpdf(dist, r, istrans(vi, vn))
   r
 end
 

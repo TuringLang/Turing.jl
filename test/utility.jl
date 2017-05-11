@@ -13,7 +13,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   else
     if count checkindex(vn, vi) end
     r = vi[vn]
-    vi.logp += logpdf(dist, r, istransformed(vi, vn))
+    vi.logp += logpdf(dist, r, istrans(vi, vn))
     r
   end
 end

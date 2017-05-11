@@ -81,7 +81,8 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
-istransformed(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+istrans(vi::VarInfo, vn::VarName) = vi.trans[getidx(vi, vn)]
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[getidx(vi, vn)] = trans
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
@@ -92,7 +93,7 @@ function link(_vi::VarInfo, spl::Sampler)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
-    vi.trans[getidx(vi, vn)] = true
+    settrans!(vi, true, vn)
   end
   vi
 end
@@ -104,7 +105,7 @@ function invlink(_vi::VarInfo, spl::Sampler)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
-    vi.trans[getidx(vi, vn)] = false
+    settrans!(vi, false, vn)
   end
   vi
 end
@@ -127,7 +128,7 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
   r = reconstruct(dist, getval(vi, vn))
-  r = istransformed(vi, vn) ? invlink(dist, r) : r
+  r = istrans(vi, vn) ? invlink(dist, r) : r
 end
 
 # Base.setindex!(vi::VarInfo, r, vn::VarName) = begin
