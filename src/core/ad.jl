@@ -10,7 +10,7 @@ grad = gradient(vi, model, spl)
 end
 ```
 """
-gradient(_vi::VarInfo, model::Function) = gradient(_vi, model, nothing)
+gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
 gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   vi = deepcopy(_vi)
@@ -26,9 +26,10 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   g(vi[spl])
 end
 
-gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Initialisation
-  vi = deepcopy(_vi); grad = Vector{Float64}()
+  expand!(vi)
+  grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")

@@ -57,6 +57,7 @@ end
 # Compute Hamiltonian
 function find_H(p::Vector, model::Function, _vi::VarInfo, spl::Sampler)
   vi = deepcopy(_vi)
+  # TODO: remove below by making sure that the logp is always updated
   vi = runmodel(model, vi, spl)
   H = dot(p, p) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end
