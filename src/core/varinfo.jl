@@ -87,26 +87,28 @@ settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)]
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
 # X -> R for all variables associated with given sampler
-function link(_vi::VarInfo, spl::Sampler)
-  vi = deepcopy(_vi)
+function link(vi::VarInfo, spl::Sampler)
+  expand!(vi)
   gvns = getvns(vi, spl)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, true, vn)
   end
+  last!(vi)
   vi
 end
 
 # R -> X for all variables associated with given sampler
-function invlink(_vi::VarInfo, spl::Sampler)
-  vi = deepcopy(_vi)
+function invlink(vi::VarInfo, spl::Sampler)
+  expand!(vi)
   gvns = getvns(vi, spl)
   for vn in gvns
     dist = getdist(vi, vn)
     setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, false, vn)
   end
+  last!(vi)
   vi
 end
 
@@ -201,8 +203,15 @@ end
 # Utility functions for VarInfo #
 #################################
 
-expand!(vi::VarInfo) = push!(vi.vals, deepcopy(vi.vals[end]))
-last!(vi::VarInfo) = splice!(vi.vals, 1:length(vi.vals)-1)
+expand!(vi::VarInfo) = begin
+  push!(vi.vals, deepcopy(vi.vals[end]))
+  push!(vi.trans, deepcopy(vi.trans[end]))
+end
+
+last!(vi::VarInfo) = begin
+  splice!(vi.vals, 1:length(vi.vals)-1)
+  splice!(vi.trans, 1:length(vi.trans)-1)
+end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
