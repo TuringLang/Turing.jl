@@ -59,7 +59,7 @@ script:
                 include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
                 include(Pkg.dir("Turing")*"/benchmarks/sv.run.jl")
              else
-                println("Unknown test command: $(ENV["GROUP"])")
+                println("Unknown test command.")
              end'
 after_success:
   - julia -e 'if ENV["GROUP"] != "Bench"
