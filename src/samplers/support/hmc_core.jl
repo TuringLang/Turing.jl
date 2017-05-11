@@ -29,27 +29,23 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
   verifygrad(grad) || (return vi, p, 0)
 
   dprintln(2, "leapfrog stepping...")
-  τ_valid = 0; p_old = copy(p)
+  τ_valid = 0;
   for t in 1:τ        # do 'leapfrog' for each var
-    p_old[1:end] = p[1:end]
+    p_old = copy(p); θ_old = vi[spl]
 
     p -= ϵ * grad / 2
-
-    expand!(vi)
 
     vi[spl] += ϵ * p  # full step for state
 
     grad = gradient2(vi, model, spl)
 
     # Verify gradients; reject if gradients is NaN or Inf
-    verifygrad(grad) || (shrink!(vi); p = p_old; break)
+    verifygrad(grad) || (vi[spl] = θ_old; p = p_old; break)
 
     p -= ϵ * grad / 2
 
     τ_valid += 1
   end
-
-  last!(vi)
 
   # Return updated θ and momentum
   vi, p, τ_valid
