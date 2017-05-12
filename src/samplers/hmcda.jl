@@ -76,41 +76,40 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
-    dprintln(2, "sampling momentum...")
-    p = sample_momentum(vi, spl)
-
+    dprintln(3, "X-> R...")
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
     end
 
-    oldH = find_H(p, getlogp(vi))
+    dprintln(2, "sampling momentum...")
+    p = sample_momentum(vi, spl)
 
-    dprintln(2, "recording old θ...")
+    dprintln(2, "recording old values...")
     old_θ = vi[spl]
     old_logp = getlogp(vi)
+    old_H = find_H(p, old_logp)
 
-    τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
+    τ = max(1, round(Int, λ / ϵ))
     θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
-    dprintln(2, "computing ΔH...")
-    ΔH = H - oldH
+    dprintln(2, "computing accept rate α...")
+    α = min(1, exp(-(H - old_H)))
 
-    α = min(1, exp(-ΔH))  # MH accept rate
 
     haskey(spl.info, :progress) && ProgressMeter.update!(
                                      spl.info[:progress],
                                      spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α)]
                                    )
 
-    # Use Dual Averaging to adapt ϵ
+    dprintln(2, "adapting step size ϵ...")
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      dprintln(1, " ϵ = $ϵ, α = $α")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
