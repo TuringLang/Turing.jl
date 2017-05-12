@@ -51,7 +51,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     if spl.alg.delta > 0
       if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
-      ϵ = find_good_eps(model, spl, vi)           # heuristically find optimal ϵ
+      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
       if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
     else
       ϵ = spl.info[:ϵ][end]
@@ -67,9 +67,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     vi
   else
-    dprintln(2, "recording old θ...")
-    old_θ = vi[spl]
-
     # Set parameters
     δ = spl.alg.delta
     λ = spl.alg.lambda
@@ -82,19 +79,22 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "sampling momentum...")
     p = sample_momentum(vi, spl)
 
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 link!(vi, spl) end
+    if spl.alg.gid != 0
+      link!(vi, spl)
+      runmodel(model, vi, spl)
+    end
 
-    dprintln(2, "recording old H...")
-    oldH = find_H(p, model, vi, spl)
+    oldH = find_H(p, getlogp(vi))
+
+    dprintln(2, "recording old θ...")
+    old_θ = vi[spl]
+    old_logp = getlogp(vi)
 
     τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
-    vi[spl] = θ
-    setlogp!(vi, zero(Real))
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
     dprintln(2, "computing ΔH...")
@@ -121,17 +121,18 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
 
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
-
     dprintln(2, "decide wether to accept...")
     if rand() < α       # accepted
       push!(spl.info[:accept_his], true)
     else                # rejected
       push!(spl.info[:accept_his], false)
       vi[spl] = old_θ
-      setlogp!(vi, zero(Real))
+      setlogp!(vi, old_logp)
     end
+
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+
     vi
   end
 end

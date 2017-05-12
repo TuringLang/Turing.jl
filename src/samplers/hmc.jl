@@ -73,7 +73,10 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   end
   vi = model()
 
-  if spl.alg.gid == 0 link!(vi, spl) end
+  if spl.alg.gid == 0
+    link!(vi, spl)
+    runmodel(model, vi, spl)
+  end
 
   # HMC steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
