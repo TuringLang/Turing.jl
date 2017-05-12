@@ -60,7 +60,9 @@ sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
 function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
-  global CHUNKSIZE = chunk_size;
+  default_chunk_size = CHUNKSIZE
+  global CHUNKSIZE = chunk_size
+
   spl = Sampler(alg);
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
@@ -102,6 +104,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     """
     println(log_str)
   end
+
+  global CHUNKSIZE = default_chunk_size
 
   Chain(0, samples)    # wrap the result by Chain
 end
