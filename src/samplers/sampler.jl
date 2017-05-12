@@ -42,6 +42,6 @@ observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
     println("catch you")
     exit()
   else
-    acclogp!(vi, logpdf(dist, map(x -> Dual(x), value)))
+    acclogp!(vi, logpdf(dist, value))
   end
 end
