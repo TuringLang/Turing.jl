@@ -121,7 +121,5 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   r
 end
 
-function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo)
-  dprintln(2, "observing...")
-  acclogp!(vi, logpdf(d, map(x -> Dual(x), value)))
-end
+observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo) =
+  observe(nothing, d, value, vi)  

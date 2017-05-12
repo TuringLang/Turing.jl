@@ -38,7 +38,10 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
 end
 
 observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
-  lp = logpdf(dist, value)
-  vi.logw += lp
-  acclogp!(vi, lp)
+  if isa(dist, UnivariateDistribution) && isa(value, Vector)
+    println("catch you")
+    exit()
+  else
+    acclogp!(vi, logpdf(dist, map(x -> Dual(x), value)))
+  end
 end
