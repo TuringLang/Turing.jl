@@ -83,6 +83,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     logu = log(rand()) + (-H0)
 
     θ = vi[spl]
+    logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
     local α, n_α
@@ -90,9 +91,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
+        θm, rm, _, _, θ′, logp′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
       else
-        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
+        _, _, θp, rp, θ′, logp′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
@@ -101,14 +102,13 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       if s′ == 1 && rand() < min(1, n′ / n)
         θ = θ′
+        logp = logp′
       end
       n = n + n′
 
       s = s′ * (dot(θp - θm, rm) >= 0 ? 1 : 0) * (dot(θp - θm, rp) >= 0 ? 1 : 0)
       j = j + 1
     end
-
-
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
@@ -126,7 +126,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     push!(spl.info[:accept_his], true)
 
     vi[spl] = θ
-    runmodel(model, vi, spl)
+    setlogp!(vi, logp)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
@@ -155,19 +155,20 @@ function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Fl
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
 
-      θ′, r′, θ′, r′, θ′, n′, s′, α′, 1
+      θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
+          θm, rm, _, _, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
+          _, _, θp, rp, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
+          logp′ = logp′′
         end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
@@ -175,6 +176,6 @@ function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Fl
         n′ = n′ + n′′
       end
 
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α
     end
   end
