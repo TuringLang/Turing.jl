@@ -69,6 +69,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # Initialization
+  time_total = zero(Float64)
   n =  spl.alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
@@ -86,7 +87,9 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
-    vi = step(model, spl, vi, i==1)
+
+    time_total += @elapsed vi = step(model, spl, vi, i==1)
+
     if spl.info[:accept_his][end]     # accepted => store the new predcits
       samples[i].value = Sample(vi).value
     else                              # rejected => store the previous predcits
@@ -95,15 +98,14 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     ProgressMeter.next!(spl.info[:progress])
   end
 
-  if ~isa(alg, NUTS)  # cccept rate for NUTS is meaningless - so no printing
+  println("[$alg_str] Finished with")
+  println("  Running time    = $time_total;")
+  if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
-    log_str = """
-[$alg_str] Done with accept rate     = $accept_rate;
-                     #lf / sample    = $(spl.info[:lf_num] / n);
-                     #evals / sample = $(spl.info[:eval_num] / n).
-    """
-    println(log_str)
+    println("  Accept rate     = $accept_rate;")
   end
+  println("  #lf / sample    = $(spl.info[:lf_num] / n);")
+  println("  #evals / sample = $(spl.info[:eval_num] / n).")
 
   global CHUNKSIZE = default_chunk_size
 

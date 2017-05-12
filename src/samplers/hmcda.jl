@@ -86,9 +86,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(2, "recording old values...")
-    old_θ = vi[spl]
-    old_logp = getlogp(vi)
-    old_H = find_H(p, old_logp)
+    old_θ = vi[spl]; old_logp = getlogp(vi)
+    old_H = find_H(p, model, vi, spl)
 
     τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")

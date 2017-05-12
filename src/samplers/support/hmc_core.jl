@@ -58,6 +58,7 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
     p -= ϵ * grad / 2
 
     vi[spl] += ϵ * p  # full step for state
+    spl.info[:lf_num] += 1  # record leapfrog num
 
     grad = gradient2(vi, model, spl)
 
@@ -71,11 +72,6 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
 
   # Return updated θ and momentum
   vi, p, τ_valid
-end
-
-find_H(p::Vector, logp::Real) = begin
-  H = dot(p, p) / 2 + realpart(-logp)
-  if isnan(H) H = Inf else H end
 end
 
 # Compute Hamiltonian
