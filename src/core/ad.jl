@@ -27,6 +27,14 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 end
 
 gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+
+  θ = vi[spl]
+  if spl != nothing && haskey(spl.info, :grad_cache)
+    if haskey(spl.info[:grad_cache], θ)
+      return spl.info[:grad_cache][θ]
+    end
+  end
+
   # Initialisation
   grad = Vector{Float64}()
 
@@ -73,11 +81,15 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         vi[range] = map(r -> Dual{chunk_dim, Float64}(r), reals)
       end
     end
-    
+
     # 2. Run model and collect gradient
     vi = runmodel(model, vi, spl)
     dprintln(4, "collect gradients from logp...")
     append!(grad, collect(dualpart(-getlogp(vi))))
+  end
+
+  if spl != nothing && haskey(spl.info, :grad_cache)
+    spl.info[:grad_cache][θ] = grad
   end
 
   grad

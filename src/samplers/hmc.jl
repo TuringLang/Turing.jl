@@ -52,6 +52,7 @@ Sampler(alg::Hamiltonian) = begin
   info[:accept_his] = []
   info[:lf_num] = 0
   info[:eval_num] = 0
+  info[:grad_cache] = Dict{Vector,Vector}()
   Sampler(alg, info)
 end
 
