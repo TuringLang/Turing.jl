@@ -66,11 +66,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
+    dprintln(3, "X -> R...")
+    if spl.alg.gid != 0
+      link!(vi, spl)
+      runmodel(model, vi, spl)
+    end
+
     dprintln(2, "sampling momentum...")
     p = sample_momentum(vi, spl)
-
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 link!(vi, spl) end
 
     dprintln(2, "recording old H...")
     H0 = find_H(p, model, vi, spl)
@@ -78,7 +81,8 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θm, θp, rm, rp, j, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, 1, 1
+    θ = vi[spl]
+    θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
     local α, n_α
     while s == 1 && j <= 2
@@ -95,11 +99,11 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
                                   showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
 
       if s′ == 1 && rand() < min(1, n′ / n)
-        vi = deepcopy(θ′)
+        θ = θ′
       end
       n = n + n′
 
-      s = s′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
+      s = s′ * (dot(θp - θm, rm) >= 0 ? 1 : 0) * (dot(θp - θm, rp) >= 0 ? 1 : 0)
       j = j + 1
     end
 
@@ -121,11 +125,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
+    vi[spl] = θ
+    runmodel(model, vi, spl)
+
     vi
   end
 end
 
-function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
+function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
                     model::Function, spl::Sampler, vi::VarInfo)
     doc"""
       - θ     : model parameter
@@ -138,14 +145,14 @@ function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::F
     """
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, spl)
+      θ′, r′, τ_valid = leapfrog2(θ, r, 1, v * ϵ, model, vi, spl)
       # Use old H to save computation
-      H′ = τ_valid == 0 ? Inf : find_H(r′, model, θ′, spl)
+      H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
 
-      θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
+      θ′, r′, θ′, r′, θ′, n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
       θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
@@ -156,10 +163,12 @@ function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::F
         else
           _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
         end
-        if rand() < n′′ / (n′ + n′′) θ′ = deepcopy(θ′′) end
+        if rand() < n′′ / (n′ + n′′)
+          θ′ = θ′′
+        end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
-        s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
+        s′ = s′′ * (dot(θp - θm, rm) >= 0 ? 1 : 0) * (dot(θp - θm, rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
 

@@ -47,7 +47,7 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
 
   dprintln(3, "first gradient...")
   grad = gradient2(vi, model, spl)
-  # Verify gradients; reject if gradients is NaN or Inf.
+  verifygrad(grad) || (return vi, p, 0)
 
 
   dprintln(2, "leapfrog stepping...")
