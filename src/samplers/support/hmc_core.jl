@@ -1,6 +1,9 @@
 global Δ_max = 1000
 
-setchunksize(chun_size::Int) = global CHUNKSIZE = chunk_size
+setchunksize(chunk_size::Int) = begin
+  println("[Turing]: AD chunk size is set as $chunk_size")
+  global CHUNKSIZE = chunk_size
+end
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
