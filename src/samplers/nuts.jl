@@ -32,7 +32,7 @@ immutable NUTS <: InferenceAlgorithm
   gid       ::  Int       # group ID
 
   NUTS(n_adapt::Int, delta::Float64, space...) =
-    new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
+    new(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) =
     new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, delta::Float64) = begin
@@ -63,6 +63,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
 
+    dprintln(2, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
@@ -107,8 +108,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       j = j + 1
     end
 
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
@@ -127,6 +127,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     vi[spl] = θ
     runmodel(model, vi, spl)
+
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi
   end

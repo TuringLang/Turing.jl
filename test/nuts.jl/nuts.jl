@@ -13,3 +13,9 @@ alg = NUTS(2500, 500, 0.65)
 res = sample(gdemo([1.5, 2.0]), alg)
 
 check_numerical(res, [:s, :m], [49/24, 7/6])
+
+
+alg = Gibbs(2500, PG(50, 1, :s), NUTS(500, 0.65, :m))
+res = sample(gdemo([1.5, 2.0]), alg)
+
+check_numerical(res, [:s, :m], [49/24, 7/6])
