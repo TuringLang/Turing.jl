@@ -38,9 +38,10 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
 end
 
 observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
-  if isa(dist, UnivariateDistribution) && isa(value, Vector)
-    println("catch you")
-    exit()
+  if isa(dist, UnivariateDistribution) && isa(value, Vector) ||
+     isa(dist, MultivariateDistribution) && isa(value, Matrix) || # Note: each value is a column vector
+     isa(dist, MatrixDistribution) && isa(value, Array{typeof(value[1]),3})
+    acclogp!(vi, sum(logpdf(dist, value)))
   else
     acclogp!(vi, logpdf(dist, value))
   end

@@ -32,17 +32,34 @@
 # print_log(logd)
 
 
-include("utility.jl")
 using Distributions, Turing
 
-@model gdemo(x) = begin
+# Test for vectorize UnivariateDistribution
+@model vdemo(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
-    x ~ Normal(m, sqrt(s))
+  x ~ Normal(m, sqrt(s))
+  # for i = 1:length(x)
+  #   x[i] ~ Normal(m, sqrt(s))
+  # end
   return s, m
 end
 
 alg = NUTS(2500, 500, 0.65)
-res = sample(gdemo([1.5, 2.0]), alg)
+x = randn(1000)
+res = sample(vdemo(x), alg)
 
-check_numerical(res, [:s, :m], [49/24, 7/6])
+check_numerical(res, [:s, :m], [1, sum(x) / (1 + length(x))])
+
+# Test for vectorize MultivariateDistribution
+
+D = 2
+@model vdemo2(x) = begin
+  μ ~ MvNormal(zeros(D), ones(D))
+  x ~ MvNormal(μ, ones(D))
+end
+
+alg = NUTS(2500, 500, 0.65)
+res = sample(vdemo2(randn(D,1000)), alg)
+
+# TODO: Test for vectorize MatrixDistribution
