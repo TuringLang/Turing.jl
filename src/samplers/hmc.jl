@@ -50,6 +50,8 @@ end
 Sampler(alg::Hamiltonian) = begin
   info=Dict{Symbol, Any}()
   info[:accept_his] = []
+  info[:lf_num] = 0
+  info[:eval_num] = 0
   Sampler(alg, info)
 end
 
@@ -93,7 +95,12 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
 
   if ~isa(alg, NUTS)  # cccept rate for NUTS is meaningless - so no printing
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
-    println("[$alg_str] Done with accept rate = $accept_rate.")
+    log_str = """
+    [$alg_str] Done with accept rate     = $accept_rate;
+                         #lf / sample    = $(spl.info[:lf_num] / n);
+                         #evals / sample = $(spl.info[:eval_num] / n).
+    """
+    println(log_str)
   end
 
   Chain(0, samples)    # wrap the result by Chain

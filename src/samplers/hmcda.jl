@@ -90,8 +90,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     old_logp = getlogp(vi)
     old_H = find_H(p, old_logp)
 
-    dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     τ = max(1, round(Int, λ / ϵ))
+    dprintln(2, "leapfrog for $τ steps with step size $ϵ")
     θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
@@ -99,7 +99,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     dprintln(2, "computing accept rate α...")
     α = min(1, exp(-(H - old_H)))
-
 
     haskey(spl.info, :progress) && ProgressMeter.update!(
                                      spl.info[:progress],
@@ -121,12 +120,12 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α       # accepted
+    if rand() < α             # accepted
       push!(spl.info[:accept_his], true)
-    else                # rejected
+    else                      # rejected
       push!(spl.info[:accept_his], false)
-      vi[spl] = old_θ
-      setlogp!(vi, old_logp)
+      vi[spl] = old_θ         # reset Θ
+      setlogp!(vi, old_logp)  # reset logp
     end
 
     dprintln(3, "R -> X...")
