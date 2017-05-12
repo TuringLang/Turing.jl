@@ -29,7 +29,7 @@ matrix:
          env: GROUP=MOC
        - os: osx
          env: GROUP=SV
-         
+
     allow_failures:
        - env: GROUP=Test
          os: osx
