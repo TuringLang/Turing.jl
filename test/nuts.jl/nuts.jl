@@ -8,7 +8,7 @@ using Distributions, Turing
   return s, m
 end
 
-alg = NUTS(1000, 200, 0.65)
+alg = NUTS(2500, 500, 0.65)
 res = sample(gdemo([1.5, 2.0]), alg)
 
 check_numerical(res, [:s, :m], [49/24, 7/6])

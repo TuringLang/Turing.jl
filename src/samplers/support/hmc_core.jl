@@ -15,10 +15,34 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
-leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler, θ::Vector) = begin
+leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler, vi::VarInfo) = begin
+
   vi[spl] = θ
-  setlogp!(vi, zero(Real))
-  leapfrog(vi, p, τ, ϵ, model, spl)
+  grad = gradient2(vi, model, spl)
+  verifygrad(grad) || (return vi, p, 0)
+
+  τ_valid = 0
+  for t in 1:τ
+    p_old = copy(p); θ_old = θ
+
+    p -= ϵ * grad / 2
+
+    θ += ϵ * p  # full step for state
+
+    vi[spl] = θ
+    grad = gradient2(vi, model, spl)
+
+    # Verify gradients; reject if gradients is NaN or Inf
+    verifygrad(grad) || (θ = θ_old; p = p_old; break)
+
+    p -= ϵ * grad / 2
+
+    τ_valid += 1
+  end
+
+  # Return updated θ and momentum
+  θ, p, τ_valid
+
 end
 
 leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
@@ -26,10 +50,10 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
   dprintln(3, "first gradient...")
   grad = gradient2(vi, model, spl)
   # Verify gradients; reject if gradients is NaN or Inf.
-  verifygrad(grad) || (return vi, p, 0)
+
 
   dprintln(2, "leapfrog stepping...")
-  τ_valid = 0;
+  τ_valid = 0
   for t in 1:τ        # do 'leapfrog' for each var
     p_old = copy(p); θ_old = vi[spl]
 
@@ -66,18 +90,24 @@ find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
   θ = vi[spl]
-  vi_prime, p_prime, τ = leapfrog(vi, copy(p), 1, ϵ, model, spl, θ)
-  log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)   # calculate new p(Θ, p)
+  θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, spl, vi)
+  vi[spl] = θ_prime
+  setlogp!(vi, zero(Real))
+  log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
     ϵ = 2.0^a * ϵ
-    vi_prime, p_prime, τ = leapfrog(vi, copy(p), 1, ϵ, model, spl, θ)
-    log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi_prime, spl)
+    θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, spl, vi)
+    vi[spl] = θ_prime
+    setlogp!(vi, zero(Real))
+    log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
   end
 
   println("\r[$T] found initial ϵ: ", ϵ)
+  vi[spl] = θ
+  setlogp!(vi, zero(Real))
   ϵ
 end

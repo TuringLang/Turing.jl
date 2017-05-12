@@ -78,16 +78,16 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
+    θm, θp, rm, rp, j, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, 1, 1
 
     local α, n_α
     while s == 1 && j <= 2
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl)
+        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
       else
-        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
+        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
@@ -95,7 +95,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
                                   showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
 
       if s′ == 1 && rand() < min(1, n′ / n)
-        vi_new = deepcopy(θ′)
+        vi = deepcopy(θ′)
       end
       n = n + n′
 
@@ -121,11 +121,12 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_new
+    vi
   end
 end
 
-function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64, model::Function, spl::Sampler)
+function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
+                    model::Function, spl::Sampler, vi::VarInfo)
     doc"""
       - θ     : model parameter
       - r     : momentum variable
@@ -147,13 +148,13 @@ function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::F
       θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
         end
         if rand() < n′′ / (n′ + n′′) θ′ = deepcopy(θ′′) end
         α′ = α′ + α′′
