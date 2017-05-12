@@ -15,7 +15,8 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
-leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler, vi::VarInfo) = begin
+leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64,
+          model::Function, vi::VarInfo, spl::Sampler) = begin
 
   vi[spl] = θ
   grad = gradient2(vi, model, spl)
@@ -26,13 +27,10 @@ leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
     p_old = copy(p); θ_old = θ
 
     p -= ϵ * grad / 2
-
     θ += ϵ * p  # full step for state
 
     vi[spl] = θ
     grad = gradient2(vi, model, spl)
-
-    # Verify gradients; reject if gradients is NaN or Inf
     verifygrad(grad) || (θ = θ_old; p = p_old; break)
 
     p -= ϵ * grad / 2
@@ -40,9 +38,7 @@ leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
     τ_valid += 1
   end
 
-  # Return updated θ and momentum
   θ, p, τ_valid
-
 end
 
 leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
@@ -90,7 +86,7 @@ find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
   θ = vi[spl]
-  θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, spl, vi)
+  θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, vi, spl)
   vi[spl] = θ_prime
   setlogp!(vi, zero(Real))
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
@@ -99,7 +95,7 @@ find_good_eps{T}(model::Function, spl::Sampler{T}, vi::VarInfo) = begin
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
     ϵ = 2.0^a * ϵ
-    θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, spl, vi)
+    θ_prime, p_prime, τ = leapfrog2(θ, copy(p), 1, ϵ, model, vi, spl)
     vi[spl] = θ_prime
     setlogp!(vi, zero(Real))
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
