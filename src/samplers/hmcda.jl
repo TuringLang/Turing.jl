@@ -90,9 +90,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    vi, p, τ_valid = leapfrog(vi, p, τ, ϵ, model, spl)
+    θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
+    vi[spl] = θ
+    setlogp!(vi, zero(Real))
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
     dprintln(2, "computing ΔH...")
