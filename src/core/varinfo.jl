@@ -70,13 +70,16 @@ typealias VarView Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
+getranges(vi::VarInfo, vns::Vector{VarName}) = union(map(vn -> getrange(vi, vn), vns)...)
 
 getval(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
 setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
+getval(vi::VarInfo, vns::Vector{VarName}) = vi.vals[end][getranges(vi, vns)]
+
 getval(vi::VarInfo, view::VarView)                      = vi.vals[end][view]
 setval!(vi::VarInfo, val::Any, view::VarView)           = vi.vals[end][view] = val
-setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v->vi.vals[end][v] = val, view)
+setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, view)
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
@@ -142,11 +145,8 @@ end
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
-  if istrans(vi, vns[1])
-    [reconstruct(dist, getval(vi, vn)) for vn in vns]
-  else
-    [invlink(dist, reconstruct(dist, getval(vi, vn))) for vn in vns]
-  end
+  rs = reconstruct(dist, getval(vi, vns))
+  rs = istrans(vi, vns[1]) ? invlink(dist, rs) : rs
 end
 
 # NOTE: vi[view] will just return what insdie vi (no transformations applied)
