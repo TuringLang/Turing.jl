@@ -27,6 +27,8 @@ sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
 
 cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing)    # the uid which is only available at compile time
 
+copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, vn.counter)
+
 ###########
 # VarInfo #
 ###########
@@ -137,10 +139,15 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
   r = istrans(vi, vn) ? invlink(dist, r) : r
 end
 
-# Base.setindex!(vi::VarInfo, r, vn::VarName) = begin
-#   dist = getdist(vi, vn)
-#   setval!(vi, vectorize(dist, r), vn)
-# end
+Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
+  @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
+  dist = getdist(vi, vns[1])
+  if istrans(vi, vns[1])
+    [reconstruct(dist, getval(vi, vn)) for vn in vns]
+  else
+    [invlink(dist, reconstruct(dist, getval(vi, vn))) for vn in vns]
+  end
+end
 
 # NOTE: vi[view] will just return what insdie vi (no transformations applied)
 Base.getindex(vi::VarInfo, view::VarView)            = getval(vi, view)

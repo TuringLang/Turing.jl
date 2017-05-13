@@ -113,12 +113,26 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   Chain(0, samples)    # wrap the result by Chain
 end
 
-function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
+assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
   acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
+end
+
+assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, variable::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+  dist = dists[1]
+  n = size(variable)[end]
+
+  vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+
+  rs = vi[vns]
+
+  acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
+
+  rs
 end
 
 observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
