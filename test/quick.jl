@@ -7,10 +7,8 @@ include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.data.jl")
 
 @model nbmodel(K, V, M, N, z, w, doc, alpha, beta) = begin
   theta ~ Dirichlet(alpha)
-  phi = Array{Any}(K)
-  for k = 1:K
-    phi[k] ~ Dirichlet(beta)
-  end
+  phi = Vector{Vector{Real}}(K)
+  phi ~ [Dirichlet(beta)]
 
   log_theta = log(theta)
   Turing.acclogp!(vi, sum(log_theta[z[1:M]]))
