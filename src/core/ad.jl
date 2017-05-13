@@ -28,7 +28,7 @@ end
 
 gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
-  θ = vi[spl]
+  θ = realpart(vi[spl])
   if spl != nothing && haskey(spl.info, :grad_cache)
     if haskey(spl.info[:grad_cache], θ)
       return spl.info[:grad_cache][θ]
