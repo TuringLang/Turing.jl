@@ -121,5 +121,8 @@ function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName
   r
 end
 
-observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo) =
-  observe(nothing, d, value, vi)  
+observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
+  observe(nothing, d, value, vi)
+
+observe{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+  observe(nothing, ds, value, vi)

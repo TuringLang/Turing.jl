@@ -31,14 +31,14 @@
 #
 # print_log(logd)
 
-
+include("../utility.jl")
 using Distributions, Turing
 
 # Test for vectorize UnivariateDistribution
 @model vdemo(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
-  x ~ Normal(m, sqrt(s))
+  x ~ [Normal(m, sqrt(s))]
   # for i = 1:length(x)
   #   x[i] ~ Normal(m, sqrt(s))
   # end
@@ -56,7 +56,7 @@ check_numerical(res, [:s, :m], [1, sum(x) / (1 + length(x))])
 D = 2
 @model vdemo2(x) = begin
   μ ~ MvNormal(zeros(D), ones(D))
-  x ~ MvNormal(μ, ones(D))
+  x ~ [MvNormal(μ, ones(D))]
 end
 
 alg = NUTS(2500, 500, 0.65)

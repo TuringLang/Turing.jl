@@ -37,12 +37,10 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r
 end
 
-observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
-  if isa(dist, UnivariateDistribution) && isa(value, Vector) ||
-     isa(dist, MultivariateDistribution) && isa(value, Matrix) || # Note: each value is a column vector
-     isa(dist, MatrixDistribution) && isa(value, Array{typeof(value[1]),3})
-    acclogp!(vi, sum(logpdf(dist, value)))
-  else
-    acclogp!(vi, logpdf(dist, value))
-  end
+observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =
+  acclogp!(vi, logpdf(dist, value))
+
+observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+  acclogp!(vi, sum(logpdf(dists[1], value)))
 end
