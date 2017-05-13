@@ -43,9 +43,11 @@
   #   z[n] ~ Categorical(theta[doc[n]])
   # end
 
+  phi_dot_theta = [log([dot(map(p -> p[i], phi), theta[m]) for i = 1:V]) for m=1:M]
   for n = 1:N
-    phi_dot_theta = [dot(map(p -> p[i], phi), theta[doc[n]]) for i = 1:V]
-    w[n] ~ Categorical(phi_dot_theta)
+    # phi_dot_theta = [dot(map(p -> p[i], phi), theta[doc[n]]) for i = 1:V]
+    # w[n] ~ Categorical(phi_dot_theta)
+    Turing.acclogp!(vi, phi_dot_theta[doc[n]][w[n]])
   end
 
 end
