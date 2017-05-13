@@ -10,7 +10,7 @@ include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
 
 setchunksize(60)
 
-for alg in ["HMC(1000, 0.25, 6)", "HMCDA(1000, 0.65, 1.5)"]
+for alg in ["HMC(1000, 0.25, 6)", "HMCDA(1000, 0.65, 1.5)", "NUTS(2000, 1000, 0.65)"]
   bench_res = tbenchmark(alg, "ldamodel", "data=ldastandata[1]")
   bench_res[4].names = ["phi[1]", "phi[2]"]
   logd = build_logd("LDA", bench_res...)
