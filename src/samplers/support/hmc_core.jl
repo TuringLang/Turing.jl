@@ -28,7 +28,9 @@ leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64,
 
   τ_valid = 0
   for t in 1:τ
-    p_old = copy(p); θ_old = θ; old_logp = getlogp(vi)
+    # NOTE: we dont need copy here becase arr += another_arr
+    #       doesn't change arr in-place
+    p_old = p; θ_old = (θ); old_logp = getlogp(vi)
 
     p -= ϵ * grad / 2
     θ += ϵ * p  # full step for state
@@ -56,7 +58,7 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
   dprintln(2, "leapfrog stepping...")
   τ_valid = 0
   for t in 1:τ        # do 'leapfrog' for each var
-    p_old = copy(p); θ_old = vi[spl]
+    p_old = p; θ_old = vi[spl]
 
     p -= ϵ * grad / 2
 
