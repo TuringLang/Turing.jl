@@ -6,14 +6,14 @@ using Stan
 CONFIG = Dict(
   "model-list" => [
     "gdemo-geweke",
-    "MoC",
+    # "MoC",
     #"normal-loc",
     "normal-mixture",
-    "simplegauss",
+    "gdemo",
     "gauss",
     "bernoulli",
     #"negative-binomial",
-    "lda"
+    # "lda"
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface

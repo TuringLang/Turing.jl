@@ -75,6 +75,10 @@ function sample(model::Function, alg::Gibbs)
       dprintln(2, "$(typeof(local_spl)) stepping...")
 
       if isa(local_spl.alg, GibbsComponent)
+        if isa(local_spl.alg, Hamiltonian)  # clean cache
+          local_spl.info[:grad_cache] = Dict{Vector,Vector}()
+        end
+
         for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
           varInfo = step(model, local_spl, varInfo, i==1)

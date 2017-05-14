@@ -33,12 +33,35 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r = rand(dist)
     push!(vi, vn, r, dist, 0)
   end
-  vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
 
-observe(spl::Void, d::Distribution, value::Any, vi::VarInfo) = begin
-  lp = logpdf(d, value)
-  vi.logw += lp
-  vi.logp += lp
+assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, variable::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+  dist = dists[1]
+  n = size(variable)[end]
+
+  vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+
+  if haskey(vi, vns[1])
+    rs = vi[vns]
+  else
+    rs = rand(dist, n)
+    for i = 1:n
+      push!(vi, vns[i], rs[i], dist, 0)
+    end
+  end
+
+  acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
+
+  rs
+end
+
+observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =
+  acclogp!(vi, logpdf(dist, value))
+
+observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+  acclogp!(vi, sum(logpdf(dists[1], value)))
 end

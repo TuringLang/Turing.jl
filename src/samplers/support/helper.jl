@@ -26,7 +26,13 @@ vectorize{T<:Real}(d::MatrixDistribution,       r::Matrix{T}) = Vector{Real}(vec
 # Note this is not the case for MultivariateDistribution so I guess this might be lack of
 # support for some types related to matrices (like PDMat).
 reconstruct(d::Distribution, val::Vector) = reconstruct(d, val, typeof(val[1]))
-reconstruct(d::UnivariateDistribution,   val::Vector, T::Type) = T(val[1])
+reconstruct(d::UnivariateDistribution,   val::Vector, T::Type) = begin
+  if length(val) == 1
+    T(val[1])
+  else
+    Vector{T}(val)
+  end
+end
 reconstruct(d::MultivariateDistribution, val::Vector, T::Type) = Vector{T}(val)
 reconstruct(d::MatrixDistribution,       val::Vector, T::Type) = Array{T, 2}(reshape(val, size(d)...))
 
@@ -41,6 +47,6 @@ Sample(vi::VarInfo) = begin
     value[sym(vn)] = realpart(vi[vn])
   end
   # NOTE: do we need to check if lp is 0?
-  value[:lp] = realpart(vi.logp)
+  value[:lp] = realpart(getlogp(vi))
   Sample(0.0, value)
 end

@@ -49,16 +49,10 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
-    vi_0 = deepcopy(vi)
-
     if spl.alg.delta > 0
-
-      dprintln(3, "X -> R...")
-      if spl.alg.gid != 0 vi = link(vi, spl) end
-
-      # Heuristically find optimal ϵ
-      ϵ = find_good_eps(model, spl, vi)
-
+      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
     else
       ϵ = spl.info[:ϵ][end]
     end
@@ -71,11 +65,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_0
+    vi
   else
-    dprintln(2, "recording old θ...")
-    old_vi = deepcopy(vi)
-
     # Set parameters
     δ = spl.alg.delta
     λ = spl.alg.lambda
@@ -85,36 +76,38 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
+    dprintln(3, "X-> R...")
+    if spl.alg.gid != 0
+      link!(vi, spl)
+      runmodel(model, vi, spl)
+    end
+
     dprintln(2, "sampling momentum...")
     p = sample_momentum(vi, spl)
 
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 vi = link(vi, spl) end
-
-    dprintln(2, "recording old H...")
-    oldH = find_H(p, model, vi, spl)
+    dprintln(2, "recording old values...")
+    old_θ = vi[spl]; old_logp = getlogp(vi)
+    old_H = find_H(p, model, vi, spl)
 
     τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    vi, p, τ_valid = leapfrog(vi, p, τ, ϵ, model, spl)
+    θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
-    dprintln(2, "computing ΔH...")
-    ΔH = H - oldH
-
-    α = min(1, exp(-ΔH))  # MH accept rate
+    dprintln(2, "computing accept rate α...")
+    α = min(1, exp(-(H - old_H)))
 
     haskey(spl.info, :progress) && ProgressMeter.update!(
                                      spl.info[:progress],
                                      spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α)]
                                    )
 
-    # Use Dual Averaging to adapt ϵ
+    dprintln(2, "adapting step size ϵ...")
     m = spl.info[:m] += 1
     if m < spl.alg.n_adapt
-      dprintln(1, " ϵ = $ϵ, α = $α, exp(-ΔH)=$(exp(-ΔH))")
+      dprintln(1, " ϵ = $ϵ, α = $α")
       H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
       ϵ = exp(μ - sqrt(m) / γ * H_bar)
       ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
@@ -125,16 +118,18 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
 
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
-
     dprintln(2, "decide wether to accept...")
-    if rand() < α       # accepted
+    if rand() < α             # accepted
       push!(spl.info[:accept_his], true)
-      vi
-    else                # rejected
+    else                      # rejected
       push!(spl.info[:accept_his], false)
-      old_vi
+      vi[spl] = old_θ         # reset Θ
+      setlogp!(vi, old_logp)  # reset logp
     end
+
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+
+    vi
   end
 end

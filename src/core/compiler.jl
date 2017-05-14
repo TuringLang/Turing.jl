@@ -58,12 +58,22 @@ macro ~(left, right)
           csym_str = string(Turing._compiler_[:fname])*"_var"* string(@__LINE__)
           sym = Symbol($(string(left)))
           vn = Turing.VarName(vi, Symbol(csym_str), sym, "")
-          $(left) = Turing.assume(
-            sampler,
-            $(right),   # dist
-            vn,         # VarName
-            vi          # VarInfo
-          )
+          if isa($(right), Vector)
+            $(left) = Turing.assume(
+              sampler,
+              $(right),   # dist
+              vn,         # VarName
+              $(left),
+              vi          # VarInfo
+            )
+          else
+            $(left) = Turing.assume(
+              sampler,
+              $(right),   # dist
+              vn,         # VarName
+              vi          # VarInfo
+            )
+          end
         end
       else
         # Indexing

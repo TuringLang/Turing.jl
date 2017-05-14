@@ -10,14 +10,14 @@ grad = gradient(vi, model, spl)
 end
 ```
 """
-gradient(_vi::VarInfo, model::Function) = gradient(_vi, model, nothing)
+gradient(vi::VarInfo, model::Function) = gradient2(vi, model, nothing)
 gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   vi = deepcopy(_vi)
 
   f(x::Vector) = begin
     vi[spl] = x
-    -runmodel(model, vi, spl).logp
+    -getlogp(runmodel(model, vi, spl))
   end
 
   g = x -> ForwardDiff.gradient(f, x::Vector,
@@ -26,58 +26,70 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   g(vi[spl])
 end
 
-gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+
+  θ = realpart(vi[spl])
+  if spl != nothing && haskey(spl.info, :grad_cache)
+    if haskey(spl.info[:grad_cache], θ)
+      return spl.info[:grad_cache][θ]
+    end
+  end
+
   # Initialisation
-  vi = deepcopy(_vi); grad = Vector{Float64}()
+  grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")
-  prior_key_chunks = []; key_chunk = []; prior_dim = 0
+  vn_chunks = []; vn_chunk = []; chunk_dim = 0
 
-  gkeys = getvns(vi, spl)
-  for k in gkeys
+  vns_all = getvns(vi, spl)
+  for k in vns_all
     l = length(getrange(vi, k))         # dimension for the current variable
-    if prior_dim + l > CHUNKSIZE
-      push!(prior_key_chunks, # store the previous chunk
-            (key_chunk, prior_dim))
-      key_chunk = []          # initialise a new chunk
-      prior_dim = 0           # reset dimension counter
+    if chunk_dim + l > CHUNKSIZE
+      push!(vn_chunks, # store the previous chunk
+            (vn_chunk, chunk_dim))
+      vn_chunk = []          # initialise a new chunk
+      chunk_dim = 0           # reset dimension counter
     end
-    push!(key_chunk, k)       # put the current variable into the current chunk
-    prior_dim += l            # update dimension counter
+    push!(vn_chunk, k)       # put the current variable into the current chunk
+    chunk_dim += l            # update dimension counter
   end
-  push!(prior_key_chunks,     # push the last chunk
-        (key_chunk, prior_dim))
+  push!(vn_chunks,     # push the last chunk
+        (vn_chunk, chunk_dim))
 
   # Chunk-wise forward AD
-  for (key_chunk, prior_dim) in prior_key_chunks
-    expand!(vi)    # NOTE: we don't have to call last in the end
-                      #       because we don't return the amended VarInfo
-    # Set dual part correspondingly
+  for (vn_chunk, chunk_dim) in vn_chunks
+    # 1. Set dual part correspondingly
     dprintln(4, "set dual...")
-    dps = zeros(prior_dim)
-    prior_count = 1
-    for k in gkeys
+    dps = zeros(chunk_dim)
+
+    dim_count = 1
+    for k in vns_all
       l = length(getrange(vi, k))
       reals = realpart(getval(vi, k))
       range = getrange(vi, k)
-      if k in key_chunk         # for each variable to compute gradient in this round
+      if k in vn_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")
         for i = 1:l
-          dps[prior_count] = 1  # set dual part
+          dps[dim_count] = 1  # set dual part
           vi[range[i]] = ForwardDiff.Dual(reals[i], dps...)
-          dps[prior_count] = 0  # reset dual part
-          prior_count += 1      # count
+          dps[dim_count] = 0  # reset dual part
+          dim_count += 1      # count
         end
         dprintln(5, "make dual done")
       else                      # for other varilables (no gradient in this round)
-        vi[range] = map(r -> Dual{prior_dim, Float64}(r), reals)
+        vi[range] = map(r -> Dual{chunk_dim, Float64}(r), reals)
       end
     end
+
+    # 2. Run model and collect gradient
     vi = runmodel(model, vi, spl)
-    # Collect gradient
     dprintln(4, "collect gradients from logp...")
-    append!(grad, collect(dualpart(-vi.logp)))
+    append!(grad, collect(dualpart(-getlogp(vi))))
+  end
+
+  if spl != nothing && haskey(spl.info, :grad_cache)
+    spl.info[:grad_cache][θ] = grad
   end
 
   grad

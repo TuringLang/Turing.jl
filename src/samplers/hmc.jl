@@ -50,6 +50,9 @@ end
 Sampler(alg::Hamiltonian) = begin
   info=Dict{Symbol, Any}()
   info[:accept_his] = []
+  info[:lf_num] = 0
+  info[:eval_num] = 0
+  info[:grad_cache] = Dict{Vector,Vector}()
   Sampler(alg, info)
 end
 
@@ -58,29 +61,36 @@ sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
 # NOTE: in the previous code, `sample` would call `run`; this is
 # now simplified: `sample` and `run` are merged into one function.
 function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
-  global CHUNKSIZE = chunk_size;
+  default_chunk_size = CHUNKSIZE
+  global CHUNKSIZE = chunk_size
+
   spl = Sampler(alg);
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # Initialization
+  time_total = zero(Float64)
   n =  spl.alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  accept_num = 0  # record the accept number
   vi = model()
 
-  if spl.alg.gid == 0 vi = link(vi, spl) end
+  if spl.alg.gid == 0
+    link!(vi, spl)
+    runmodel(model, vi, spl)
+  end
 
   # HMC steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
-    vi = step(model, spl, vi, i==1)
+
+    time_total += @elapsed vi = step(model, spl, vi, i==1)
+
     if spl.info[:accept_his][end]     # accepted => store the new predcits
       samples[i].value = Sample(vi).value
     else                              # rejected => store the previous predcits
@@ -89,23 +99,44 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     ProgressMeter.next!(spl.info[:progress])
   end
 
-  if ~isa(alg, NUTS)  # cccept rate for NUTS is meaningless - so no printing
-    accept_rate = accept_num / n  # calculate the accept rate
-    println("[$alg_str] Done with accept rate = $accept_rate.")
+  println("[$alg_str] Finished with")
+  println("  Running time    = $time_total;")
+  if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
+    accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
+    println("  Accept rate     = $accept_rate;")
   end
+  println("  #lf / sample    = $(spl.info[:lf_num] / n);")
+  println("  #evals / sample = $(spl.info[:eval_num] / n).")
+
+  global CHUNKSIZE = default_chunk_size
 
   Chain(0, samples)    # wrap the result by Chain
 end
 
-function assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo)
+assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
-  vi.logp += logpdf(dist, r, istransformed(vi, vn))
+  acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
 
-function observe{T<:Hamiltonian}(spl::Sampler{T}, d::Distribution, value::Any, vi::VarInfo)
-  dprintln(2, "observing...")
-  vi.logp += logpdf(d, map(x -> Dual(x), value))
+assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, variable::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+  dist = dists[1]
+  n = size(variable)[end]
+
+  vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+
+  rs = vi[vns]
+
+  acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
+
+  rs
 end
+
+observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
+  observe(nothing, d, value, vi)
+
+observe{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+  observe(nothing, ds, value, vi)

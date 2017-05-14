@@ -2,7 +2,7 @@
 # TODO: can we somehow update the tests so that we can remove these two functions below?
 
 using Turing
-using Turing: checkindex, setval!, updategid!, vectorize, CACHERESET, VarInfo, VarName, Sampler
+using Turing: checkindex, setval!, updategid!, acclogp!, vectorize, CACHERESET, VarInfo, VarName, Sampler
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
@@ -13,7 +13,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   else
     if count checkindex(vn, vi) end
     r = vi[vn]
-    vi.logp += logpdf(dist, r, istransformed(vi, vn))
+    acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
     r
   end
 end

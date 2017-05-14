@@ -32,7 +32,7 @@ immutable NUTS <: InferenceAlgorithm
   gid       ::  Int       # group ID
 
   NUTS(n_adapt::Int, delta::Float64, space...) =
-    new(1, isa(space, Symbol) ? Set([space]) : Set(space), delta, Set(), 0)
+    new(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) =
     new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, delta::Float64) = begin
@@ -44,17 +44,9 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
-    vi_0 = deepcopy(vi)
-
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 vi = link(vi, spl) end
-
-    # Heuristically find optimal ϵ
-    # ϵ_bar, ϵ = find_good_eps(model, spl, vi)
-    ϵ = find_good_eps(model, spl, vi)
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 vi = invlink(vi, spl) end
+    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+    ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
     spl.info[:ϵ] = ϵ
     spl.info[:μ] = log(10 * ϵ)
@@ -65,20 +57,24 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_0
+    vi
   else
     # Set parameters
     δ = spl.alg.delta
     ϵ = spl.info[:ϵ]
 
+    dprintln(2, "current ϵ: $ϵ")
     μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
     ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
 
+    dprintln(3, "X -> R...")
+    if spl.alg.gid != 0
+      link!(vi, spl)
+      runmodel(model, vi, spl)
+    end
+
     dprintln(2, "sampling momentum...")
     p = sample_momentum(vi, spl)
-
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0 vi = link(vi, spl) end
 
     dprintln(2, "recording old H...")
     H0 = find_H(p, model, vi, spl)
@@ -86,16 +82,18 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θm, θp, rm, rp, j, vi_new, n, s = deepcopy(vi), deepcopy(vi), deepcopy(p), deepcopy(p), 0, deepcopy(vi), 1, 1
+    θ = vi[spl]
+    logp = getlogp(vi)
+    θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
     local α, n_α
-    while s == 1 && j <= 2
+    while s == 1 && j <= 6
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl)
+        θm, rm, _, _, θ′, logp′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
       else
-        _, _, θp, rp, θ′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl)
+        _, _, θp, rp, θ′, logp′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
@@ -103,16 +101,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
                                   showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
 
       if s′ == 1 && rand() < min(1, n′ / n)
-        vi_new = deepcopy(θ′)
+        θ = θ′
+        logp = logp′
       end
       n = n + n′
 
-      s = s′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
+      s = s′ * (dot(θp - θm, rm) >= 0 ? 1 : 0) * (dot(θp - θm, rp) >= 0 ? 1 : 0)
       j = j + 1
     end
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 vi = invlink(vi, spl); cleandual!(vi) end
 
     # Use Dual Averaging to adapt ϵ
     m = spl.info[:m] += 1
@@ -129,11 +125,18 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
 
-    vi_new
+    vi[spl] = θ
+    setlogp!(vi, logp)
+
+    dprintln(3, "R -> X...")
+    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+
+    vi
   end
 end
 
-function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64, model::Function, spl::Sampler)
+function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
+                    model::Function, spl::Sampler, vi::VarInfo)
     doc"""
       - θ     : model parameter
       - r     : momentum variable
@@ -145,31 +148,34 @@ function build_tree(θ::VarInfo, r::Vector, logu::Float64, v::Int, j::Int, ϵ::F
     """
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, spl)
+      θ′, r′, τ_valid = leapfrog2(θ, r, 1, v * ϵ, model, vi, spl)
       # Use old H to save computation
-      H′ = τ_valid == 0 ? Inf : find_H(r′, model, θ′, spl)
+      H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
 
-      θ′, r′, deepcopy(θ′), deepcopy(r′), deepcopy(θ′), n′, s′, α′, 1
+      θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl)
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl)
+          θm, rm, _, _, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl)
+          _, _, θp, rp, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
         end
-        if rand() < n′′ / (n′ + n′′) θ′ = deepcopy(θ′′) end
+        if rand() < n′′ / (n′ + n′′)
+          θ′ = θ′′
+          logp′ = logp′′
+        end
         α′ = α′ + α′′
         n′_α = n′_α + n′′_α
-        s′ = s′′ * (dot(θp[spl] - θm[spl], rm) >= 0 ? 1 : 0) * (dot(θp[spl] - θm[spl], rp) >= 0 ? 1 : 0)
+        s′ = s′′ * (dot(θp - θm, rm) >= 0 ? 1 : 0) * (dot(θp - θm, rp) >= 0 ? 1 : 0)
         n′ = n′ + n′′
       end
 
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′_α
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α
     end
   end
