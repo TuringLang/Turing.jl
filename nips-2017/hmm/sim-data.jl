@@ -62,7 +62,7 @@ z[1] = rand(1:K);
 for t in 2:T
   z[t] = rand(Categorical(theta[:,z[t - 1]]))
 end
-for t in 2:T
+for t in 1:T
   w[t] = rand(Categorical(phi[:,z[t]]))
 end
 
@@ -72,7 +72,7 @@ y[1] = rand(1:K);
 for t in 2:T_unsup
   y[t] = rand(Categorical(theta[:,y[t - 1]]))
 end
-for t in 2:T_unsup
+for t in 1:T_unsup
   u[t] = rand(Categorical(phi[:,y[t]]))
 end
 

@@ -34,6 +34,8 @@ collapsed = true
   end
 end
 
+using HDF5, JLD
+
 include(TPATH*"/benchmarks/"*"lda-stan.run.jl")
 
 setchunksize(60)
@@ -65,6 +67,11 @@ for iscollapsed = [true,false]
     min_mcse = min(smr.value[:,mcse_idx,1]...)
 
     chain = bench_res[4]
+    if iscollapsed
+      save(TPATH*"/nips-2017/lda-exps-chain-$i.jld", "chain", chain)
+    else
+      save(TPATH*"/nips-2017/lda-exps-chain-$i-un.jld", "chain", chain)
+    end
     # describe(chain)
     bench_res[4].names = ["phi[1]", "phi[2]"]
 

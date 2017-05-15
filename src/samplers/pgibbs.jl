@@ -86,12 +86,17 @@ sample(model::Function, alg::PG) = begin
 
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
+  time_total = zero(Float64)
   vi = VarInfo()
   @showprogress 1 "[PG] Sampling..." for i = 1:n
-    vi = step(model, spl, vi)
+    time_elapsed = @elapsed vi = step(model, spl, vi)
     push!(samples, Sample(vi))
+    samples[i].value[:elapsed] = time_elapsed
+    time_total += time_elapsed
   end
 
+  println("[PG] Finished with")
+  println("  Running time    = $time_total;")
   chain = Chain(exp(mean(spl.info[:logevidence])), samples)
 end
 

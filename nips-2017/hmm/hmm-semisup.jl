@@ -66,8 +66,8 @@ using StatsFuns: logsumexp
     z[t] ~ Categorical(theta[z[t-1]])
   end
 
-  acc = Vector{Float64}(K)
-  gamma = Matrix{Float64}(T_unsup,K)
+  acc = Vector{Real}(K)
+  gamma = Matrix{Real}(T_unsup,K)
   for k = 1:K
     gamma[1,k] = log(phi[k][u[1]])
   end
@@ -78,7 +78,9 @@ using StatsFuns: logsumexp
       end
       gamma[t,k] = logsumexp(acc)
   end
-  Turing.acclogp!(logsumexp(gamma[T_unsup,:]))
+  Turing.acclogp!(vi, logsumexp(gamma[T_unsup,:]))
 end
 
-sample(hmm_semisup(data=hmm_semisup_data[1]), NUTS(200, 0.65))
+chain = sample(hmm_semisup(data=hmm_semisup_data[1]), NUTS(200, 0.65))
+
+describe(chain)
