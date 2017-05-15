@@ -96,9 +96,11 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
         _, _, θp, rp, θ′, logp′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
+      if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
                                   spl.info[:progress].counter;
                                   showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
+      end
 
       if s′ == 1 && rand() < min(1, n′ / n)
         θ = θ′

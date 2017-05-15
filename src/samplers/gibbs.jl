@@ -93,8 +93,10 @@ function sample(model::Function, alg::Gibbs)
 
     if spl.alg.thin samples[i].value = Sample(varInfo).value end
 
+    if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
     haskey(spl.info, :progress) &&
         ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
+    end
   end
 
   Chain(0, samples)    # wrap the result by Chain
