@@ -89,13 +89,15 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
 
-    time_total += @elapsed vi = step(model, spl, vi, i==1)
+    time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
+    time_total += time_elapsed
 
     if spl.info[:accept_his][end]     # accepted => store the new predcits
       samples[i].value = Sample(vi).value
     else                              # rejected => store the previous predcits
       samples[i] = samples[i - 1]
     end
+    samples[i].value[:elapsed] = time_elapsed
     ProgressMeter.next!(spl.info[:progress])
   end
 

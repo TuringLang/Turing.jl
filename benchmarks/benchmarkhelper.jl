@@ -16,7 +16,7 @@ build_logd(name::String, engine::String, time, mem, tchain, _) = begin
   Dict(
     "name" => name,
     "engine" => engine,
-    "time" => time,
+    "time" => sum(tchain[:elapsed]),
     "mem" => mem,
     "turing" => Dict(v => mean(tchain[Symbol(v)]) for v in keys(tchain))
   )
