@@ -93,30 +93,31 @@ N = 1000
 collapsed = false
 
 S = 4     # number of samplers
-spls = [Gibbs(N,PG(50,1,:y),HMC(1,0.15,6,:phi,:theta)),
+spls = [Gibbs(N,PG(50,1,:y),HMC(1,0.25,6,:phi,:theta)),
         Gibbs(N,PG(50,1,:y),HMCDA(1,200,0.65,0.75,:phi,:theta)),
         Gibbs(N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta)),
         PG(50,N)][1:S]
 
 
-spl_names = ["Gibbs($N,PG(50,1,:y),HMC(1,0.15,4,:phi,:theta))",
-             "Gibbs($N,PG(50,1,:y),HMCDA(1,200,0.65,07.5,:phi,:theta))",
+spl_names = ["Gibbs($N,PG(50,1,:y),HMC(1,0.25,6,:phi,:theta))",
+             "Gibbs($N,PG(50,1,:y),HMCDA(1,200,0.65,0.75,:phi,:theta))",
              "Gibbs($N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta))",
              "PG(50,$N)"][1:S]
 for i in 1:S
-  ;if i != 1 && i != 2 # i=1 already done
+  println("$(spl_names[i]) running")
+  #if i != 1 && i != 2 # i=1 already done
     chain = sample(hmm_semisup(data=hmm_semisup_data[1]), spls[i])
     # describe(chain)
 
     save(TPATH*"/nips-2017/hmm/hmm-uncollapsed-$(spl_names[i])-chain.jld", "chain", chain)
-  ;end
+  #end
 end
 
 collapsed = true
 
 S = 4     # number of samplers
-spls = [HMC(N,0.15,6),HMCDA(N,200,0.65,0.75),NUTS(N,200,0.65),PG(50,N)][1:S]
-spl_names = ["HMC($N,0.25,6)","HMCDA($N,200,0.65,1.5)","NUTS($N,200,0.65)","PG(50,$N)"][1:S]
+spls = [HMC(N,0.25,6),HMCDA(N,200,0.65,0.75),NUTS(N,200,0.65),PG(50,N)][1:S]
+spl_names = ["HMC($N,0.05,6)","HMCDA($N,200,0.65,0.35)","NUTS($N,200,0.65)","PG(50,$N)"][1:S]
 for i in 1:S
   chain = sample(hmm_semisup(data=hmm_semisup_data[1]), spls[i])
   # describe(chain)
