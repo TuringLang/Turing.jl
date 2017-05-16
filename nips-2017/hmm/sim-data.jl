@@ -41,7 +41,7 @@ using Distributions
 # CONSTANTS
 K = 3;
 V = 10;
-T = 100;
+T = 0;
 T_unsup = 500;
 alpha = collect(repeated(1,K));
 beta = collect(repeated(0.1,V));
@@ -58,7 +58,9 @@ phi = rand(Dirichlet(beta), K);
 # SIMULATE DATA
 theta[2,:]
 # supervised
-z[1] = rand(1:K);
+if T > 0
+  z[1] = rand(1:K);
+end
 for t in 2:T
   z[t] = rand(Categorical(theta[:,z[t - 1]]))
 end
