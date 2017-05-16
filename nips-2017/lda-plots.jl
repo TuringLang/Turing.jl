@@ -2,17 +2,28 @@
 # Plotting #
 ############
 
+using Turing
+using HDF5, JLD
+
 TPATH = Pkg.dir("Turing")
 
 include(TPATH*"/nips-2017/"*"lda-settings.jl")
 
+N = 3
+spls = spls[1:N]
+spls_un = spls_un[1:N]
+spl_colors = spl_colors[1:N]
+
 for iscollapsed = [true,false]
 
   layers = []
-  for i = 1:N
-    lps = iscollapsed ?
-          readdlm(TPATH*"/nips-2017/lda-exps-lp-$i.txt") :
-          readdlm(TPATH*"/nips-2017/lda-exps-lp-$i-un.txt")
+  for i = 1:N # N-1 here excludes PG
+
+    chain = iscollapsed ?
+            load(TPATH*"/nips-2017/lda-exps-chain-$i.jld")["chain"] :
+            load(TPATH*"/nips-2017/lda-exps-chain-$i-un.jld")["chain"]
+
+    lps = chain[:lp]
 
     l = layer(x = 1:length(lps), y = -lps, Geom.line,Theme(default_color=spl_colors[i]))
 
