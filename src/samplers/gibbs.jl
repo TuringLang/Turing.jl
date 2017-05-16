@@ -86,18 +86,19 @@ function sample(model::Function, alg::Gibbs)
         for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
           time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
+
           if ~spl.alg.thin
             samples[i_thin].value = Sample(varInfo).value
-            samples[i].value[:elapsed] = time_elapsed_thin
+            samples[i_thin].value[:elapsed] = time_elapsed_thin
             if ~isa(local_spl.alg, Hamiltonian)  # clean cache
-              samples[i].value[:lp] = lp
+              samples[i_thin].value[:lp] = lp
             end
             i_thin += 1
           end
           time_elapsed += time_elapsed_thin
         end
 
-        if isa(local_spl.alg, Hamiltonian)  # clean cache
+        if isa(local_spl.alg, Hamiltonian)
           lp = realpart(getlogp(varInfo))
         end
       else
