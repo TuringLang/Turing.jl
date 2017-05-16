@@ -23,10 +23,12 @@ y = readsvdata()
 end
 
 N = length(y)
-# chain = sample(sv_nuts(y, N, NaN), NUTS(10, 0.65))
-chain = sample(sv_nuts(y, N, NaN), Gibbs(1000,PG(50,1,:s),NUTS(1,200,0.65,:τ,:ν)))
-# chain = sample(sv_nuts(y, N, NaN), Gibbs(100, HMC(2, 0.002, 2, :τ, :ν), PG(50, 2, :s)))
+
+
+# chain = sample(sv_nuts(y, N, NaN), Gibbs(1000,PG(50,1,:s),NUTS(1,200,0.65,:τ,:ν)))
+# save(TPATH*"/nips-2017/sv/sv-exps-Gibbs(1000,PG(50,1),NUTS(1,200,0.65))-chain.jld", "chain", chain)
+
+chain = sample(sv_nuts(y, N, NaN), NUTS(1000,200,0.65))
+save(TPATH*"/nips-2017/sv/sv-exps-NUTS(1000,200,0.65)-chain.jld", "chain", chain)
 
 describe(chain)
-
-save(TPATH*"/nips-2017/sv/sv-exps-Gibbs(1000,PG(50,1),NUTS(1,200,0.65))-chain.jld", "chain", chain)
