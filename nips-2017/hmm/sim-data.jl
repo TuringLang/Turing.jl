@@ -42,7 +42,7 @@ using Distributions
 K = 3;
 V = 10;
 T = 0;
-T_unsup = 500;
+T_unsup = 200;
 alpha = collect(repeated(1,K));
 beta = collect(repeated(0.1,V));
 
