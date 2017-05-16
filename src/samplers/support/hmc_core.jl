@@ -15,7 +15,7 @@ end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
-  randn(length(getranges(vi, spl)))
+  randn(length(getranges(vi, spl))) .* spl.info[:stds]
 end
 
 # Leapfrog step
@@ -85,11 +85,14 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #       This can be a result of link/invlink (where expand! is used)
   if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
 
-  H = dot(p, p) / 2 + realpart(-getlogp(vi))
+  p_orig = p ./ spl.info[:stds]
+
+  H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end
 end
 
 find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
+  println("[Turing] looking for good initial eps...")
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 

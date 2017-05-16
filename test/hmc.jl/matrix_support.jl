@@ -7,9 +7,11 @@ using Base.Test
   v
 end
 
+model_f = hmcmatrixsup()
 vs = []
+chain = nothing
 for _ in 1:5
-  chain = sample(hmcmatrixsup(), HMC(1000, 0.2, 3))
+  chain = sample(model_f, HMC(3000, 0.1, 3))
   push!(vs, mean(chain[:v]))
 end
 

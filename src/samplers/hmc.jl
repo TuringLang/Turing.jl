@@ -49,9 +49,17 @@ end
 
 Sampler(alg::Hamiltonian) = begin
   info=Dict{Symbol, Any}()
+
+  # For sampler infomation
   info[:accept_his] = []
   info[:lf_num] = 0
   info[:eval_num] = 0
+
+  # For pre-conditioning
+  info[:θs] = Vector{Float64}[]
+  info[:stds] = nothing
+
+  # For caching gradient
   info[:grad_cache] = Dict{Vector,Vector}()
   Sampler(alg, info)
 end
@@ -102,13 +110,14 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   end
 
   println("[$alg_str] Finished with")
-  println("  Running time    = $time_total;")
+  println("  Running time        = $time_total;")
   if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
-    println("  Accept rate     = $accept_rate;")
+    println("  Accept rate         = $accept_rate;")
   end
-  println("  #lf / sample    = $(spl.info[:lf_num] / n);")
-  println("  #evals / sample = $(spl.info[:eval_num] / n).")
+  println("  #lf / sample        = $(spl.info[:lf_num] / n);")
+  println("  #evals / sample     = $(spl.info[:eval_num] / n);")
+  println("  pre-cond. diag mat  = $(spl.info[:stds]).")
 
   global CHUNKSIZE = default_chunk_size
 

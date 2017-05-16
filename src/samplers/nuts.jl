@@ -44,6 +44,9 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
+
+    spl.info[:stds] = ones(length(vi[spl]))
+
     if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
     ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X

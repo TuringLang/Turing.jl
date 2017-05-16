@@ -49,6 +49,9 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
+
+    spl.info[:stds] = ones(length(vi[spl]))
+
     if spl.alg.delta > 0
       if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
@@ -62,6 +65,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:ϵ_bar] = 1.0
     spl.info[:H_bar] = 0.0
     spl.info[:m] = 0
+
+
 
     push!(spl.info[:accept_his], true)
 
@@ -127,6 +132,15 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       push!(spl.info[:accept_his], false)
       vi[spl] = old_θ         # reset Θ
       setlogp!(vi, old_logp)  # reset logp
+    end
+
+    if length(spl.info[:θs]) < 500
+      push!(spl.info[:θs], realpart(vi[spl]))
+    else
+      D = length(spl.info[:stds])
+      spl.info[:stds] = map(d -> std(map(θs -> θs[d], spl.info[:θs])),
+                            1:D)
+      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
     end
 
     dprintln(3, "R -> X...")
