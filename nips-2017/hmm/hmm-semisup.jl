@@ -1,3 +1,5 @@
+using Stan
+
 const hmm_semisup_stan = "
 data {
   int<lower=1> K;  // num categories
@@ -41,15 +43,16 @@ model {
   }
 }
 "
-
+TPATH = Pkg.dir("Turing")
 using HDF5, JLD
-const hmm_semisup_data = load(Pkg.dir("Turing")*"/nips-2017/hmm/hmm_semisup_data.jld")["data"]
+const hmm_semisup_data = load(TPATH*"/nips-2017/hmm/hmm_semisup_data.jld")["data"]
 
 using Distributions
 using Turing
 using StatsFuns: logsumexp
 
-@model hmm_semisup(K,V,T,T_unsup,w,z,u,alpha,beta) = begin
+# @model hmm_semisup(K,V,T,T_unsup,w,z,u,alpha,beta) = begin
+@model hmm_semisup(K,V,T_unsup,u,alpha,beta) = begin
   theta = Vector{Vector{Real}}(K)
   for k = 1:K
     theta[k] ~ Dirichlet(alpha)
@@ -59,28 +62,62 @@ using StatsFuns: logsumexp
     phi[k] ~ Dirichlet(beta)
   end
 
-  for t = 1:T
-    w[t] ~ Categorical(phi[z[t]])
-  end
-  for t = 2:T
-    z[t] ~ Categorical(theta[z[t-1]])
-  end
+  if collapsed
+    acc = Vector{Real}(K)
+    gamma = Matrix{Real}(T_unsup,K)
+    for k = 1:K
+      gamma[1,k] = log(phi[k][u[1]])
+    end
+    for t = 2:T_unsup,
+        k = 1:K
+        for j = 1:K
+          acc[j] = gamma[t-1,j] + log(theta[j][k]) + log(phi[k][u[t]])
+        end
+        gamma[t,k] = logsumexp(acc)
+    end
+    Turing.acclogp!(vi, logsumexp(gamma[T_unsup,:]))
+  else
+    y = tzeros(Int64, T_unsup)
+    y[1] ~ Categorical(ones(Float64, K)/K)
+    u[1] ~ Categorical(phi[y[1]])
+    for t in 2:T_unsup
+      y[t] = rand(Categorical(theta[y[t - 1]]))
+      u[t] ~ Categorical(phi[y[t]])
+    end
 
-  acc = Vector{Real}(K)
-  gamma = Matrix{Real}(T_unsup,K)
-  for k = 1:K
-    gamma[1,k] = log(phi[k][u[1]])
   end
-  for t = 2:T_unsup,
-      k = 1:K
-      for j = 1:K
-        acc[j] = gamma[t-1,j] + log(theta[j][k]) + log(phi[k][u[t]])
-      end
-      gamma[t,k] = logsumexp(acc)
-  end
-  Turing.acclogp!(vi, logsumexp(gamma[T_unsup,:]))
 end
 
-chain = sample(hmm_semisup(data=hmm_semisup_data[1]), NUTS(200, 0.65))
+N = 1000
 
-describe(chain)
+collapsed = false
+
+S = 4     # number of samplers
+spls = [Gibbs(N,PG(50,1,:y),HMC(1,0.1,4,:phi,:theta)),
+        Gibbs(N,PG(50,1,:y),HMCDA(1,200,0.65,0.35,:phi,:theta)),
+        Gibbs(N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta)),
+        PG(50,N)][1:S]
+
+
+spl_names = ["Gibbs($N,PG(50,1,:y),HMC(1,0.25,6,:phi,:theta))",
+             "Gibbs($N,PG(50,1,:y),HMCDA(1,200,0.65,1.5,:phi,:theta))",
+             "Gibbs($N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta))",
+             "PG(50,$N)"][1:S]
+for i in 1:S
+  chain = sample(hmm_semisup(data=hmm_semisup_data[1]), spls[i])
+  # describe(chain)
+
+  save(TPATH*"/nips-2017/hmm/hmm-uncollapsed-$(spl_names[i])-chain.jld", "chain", chain)
+end
+
+collapsed = true
+
+S = 4     # number of samplers
+spls = [HMC(N,0.15,6),HMCDA(N,200,0.65,0.75),NUTS(N,200,0.65),PG(50,N)][1:S]
+spl_names = ["HMC($N,0.25,6)","HMCDA($N,200,0.65,1.5)","NUTS($N,200,0.65)","PG(50,$N)"][1:S]
+for i in 1:S
+  chain = sample(hmm_semisup(data=hmm_semisup_data[1]), spls[i])
+  # describe(chain)
+
+  save(TPATH*"/nips-2017/hmm/hmm-collapsed-$(spl_names[i])-chain.jld", "chain", chain)
+end
