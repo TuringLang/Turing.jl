@@ -56,8 +56,10 @@ Sampler(alg::Hamiltonian) = begin
   info[:eval_num] = 0
 
   # For pre-conditioning
-  info[:θs] = Vector{Float64}[]
+  info[:θ_mean] = nothing
+  info[:θ_num] = 0
   info[:stds] = nothing
+  info[:θ_vars] = nothing
 
   # For caching gradient
   info[:grad_cache] = Dict{Vector,Vector}()
