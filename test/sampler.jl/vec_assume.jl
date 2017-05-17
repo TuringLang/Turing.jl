@@ -14,7 +14,7 @@ alg = HMC(2000, 0.2, 4)
 end
 
 t_loop = @elapsed res = sample(vdemo(), alg)
-@test_approx_eq_eps mean(mean(res[:x])) 0 0.1
+@test_approx_eq_eps mean(mean(res[:x])) 0 0.2
 
 
 # Test for vectorize UnivariateDistribution
@@ -24,7 +24,7 @@ t_loop = @elapsed res = sample(vdemo(), alg)
 end
 
 t_vec = @elapsed res = sample(vdemo(), alg)
-@test_approx_eq_eps mean(mean(res[:x])) 0 0.1
+@test_approx_eq_eps mean(mean(res[:x])) 0 0.2
 
 
 @model vdemo() = begin
@@ -32,7 +32,7 @@ t_vec = @elapsed res = sample(vdemo(), alg)
 end
 
 t_mv = @elapsed res = sample(vdemo(), alg)
-@test_approx_eq_eps mean(mean(res[:x])) 0 0.1
+@test_approx_eq_eps mean(mean(res[:x])) 0 0.2
 
 println("Time for")
 println("  Loop : $t_loop")
