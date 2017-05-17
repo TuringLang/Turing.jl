@@ -26,7 +26,7 @@ make_sample_plot(EXPPATH, chain, val_name, dim) = begin
 end
 
 N = 1000
-col = false
+col = true
 
 spl_colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
 
@@ -41,6 +41,15 @@ spl_names = col? ["HMC($N,0.05,6)",
                   "Gibbs($N,PG(50,1,:y),HMCDA(1,200,0.65,0.75,:phi,:theta))",
                   "Gibbs($N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta))",
                   "PG(50,$N)"]
+
+spl_names_short = col? ["HMC",
+                        "HMCDA",
+                        "NUTS",
+                        "PG_col"] :
+                       ["Gibbs-PG-HMC",
+                        "Gibbs-PG-HMCDA",
+                        "Gibbs-PG-NUTS",
+                        "PG_uncol"]
 
 chain = nothing
 
@@ -63,7 +72,7 @@ for i = 1:4
   smr = summarystats(chain)
 
   # Create path if not exist
-  EXPPATH = HMMPATH*"/plots/$spl_name"
+  EXPPATH = HMMPATH*"/plots/$(spl_names_short[i])"
   ispath(EXPPATH) || mkdir(EXPPATH)
 
   # Write summary to file
