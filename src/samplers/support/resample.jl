@@ -97,7 +97,7 @@ function resampleSystematic( w::Vector{Float64}, num_particles::Int )
     else
       j=j+1
     end
-    if j == N, break; end
+    if j == N break; end
   end
 
   return indx
