@@ -55,11 +55,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     spl.info[:θ_num] = 1
     D = length(vi[spl])
     spl.info[:stds] = ones(D)
-    spl.info[:θ_vars] = ones(D)
+    spl.info[:θ_vars] = nothing
 
     if spl.alg.delta > 0
-      # ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      ϵ = 0.1
+      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+      # ϵ = 0.1
     else
       ϵ = spl.info[:ϵ][end]
     end
@@ -118,20 +118,19 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(2, "adapting step size ϵ...")
-    if spl.info[:θ_num] >= 200
-      m = spl.info[:m] += 1
-      if m < spl.alg.n_adapt
-        dprintln(1, " ϵ = $ϵ, α = $α")
-        H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
-        ϵ = exp(μ - sqrt(m) / γ * H_bar)
-        ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-        push!(spl.info[:ϵ], ϵ)
-        spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-      elseif m == spl.alg.n_adapt
-        dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-        push!(spl.info[:ϵ], spl.info[:ϵ_bar])
-      end
+    m = spl.info[:m] += 1
+    if m < spl.alg.n_adapt
+      dprintln(1, " ϵ = $ϵ, α = $α")
+      H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
+      ϵ = exp(μ - sqrt(m) / γ * H_bar)
+      ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
+      push!(spl.info[:ϵ], ϵ)
+      spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
+    elseif m == spl.alg.n_adapt
+      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+      push!(spl.info[:ϵ], spl.info[:ϵ_bar])
     end
+
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
       push!(spl.info[:accept_his], true)
@@ -147,15 +146,20 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     θ_mean_old = copy(spl.info[:θ_mean])                              # x_bar_t-1
     spl.info[:θ_mean] = (t - 1) / t * spl.info[:θ_mean] + θ_new / t   # x_bar_t
     θ_mean_new = spl.info[:θ_mean]                                    # x_bar_t
-    D = 2.4^2
-    if t <= 200
+
+    if t == 2
+      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
+      spl.info[:θ_vars] = diag(cov(first_two))
+    elseif t <= 1000
+      # D = length(θ_new)
+      D = 2.4^2
       spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] +
                           (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
     end
 
-    if t > 50
+    if t > 500
       spl.info[:stds] = sqrt(spl.info[:θ_vars])
-      # spl.info[:stds] = spl.info[:stds] / max(spl.info[:stds]...)
+      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
     end
 
     dprintln(3, "R -> X...")

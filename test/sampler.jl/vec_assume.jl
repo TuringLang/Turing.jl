@@ -3,7 +3,8 @@ using Distributions, Turing, Base.Test
 
 N = 100
 setchunksize(N)
-alg = HMCDA(2000, 0.65, 1.5)
+# alg = HMCDA(2000, 0.65, 1.5)
+alg = HMC(2000, 0.2, 4)
 
 @model vdemo() = begin
   x = Vector{Real}(N)
