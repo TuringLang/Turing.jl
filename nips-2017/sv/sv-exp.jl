@@ -16,7 +16,7 @@ y = readsvdata()
   s1 ~ Exponential(1/100)
   logs[1] = exp(s1)
   for i = 2:N
-    logs[i] ~ Normal(logs[i-1], 1/τ)
+    logs[i] ~ Normal(logs[i-1], sqrt(1/τ))
     # s[i] = exp(s[i])
     dy = typeof(ν)((logy[i] - logy[i-1]) / exp(logs[i]))
     dy ~ TDist(ν)
