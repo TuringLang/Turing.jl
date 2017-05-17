@@ -25,11 +25,10 @@ make_sample_plot(EXPPATH, chain, val_name, dim) = begin
   draw(PNG(EXPPATH*"/$val_name[$dim]_density.png", 8inch, 4.5inch), val_dim_density)
 end
 
-S = 3
 N = 1000
-col = true
+col = false
 
-spl_colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"][1:S]
+spl_colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
 
 TPATH = Pkg.dir("Turing")
 HMMPATH = TPATH*"/nips-2017/hmm"
@@ -37,11 +36,11 @@ HMMPATH = TPATH*"/nips-2017/hmm"
 spl_names = col? ["HMC($N,0.05,6)",
                   "HMCDA($N,200,0.65,0.35)",
                   "NUTS($N,200,0.65)",
-                  "PG(50,$N)"][1:S] :
+                  "PG(50,$N)"] :
                  ["Gibbs($N,PG(50,1,:y),HMC(1,0.25,6,:phi,:theta))",
                   "Gibbs($N,PG(50,1,:y),HMCDA(1,200,0.65,0.75,:phi,:theta))",
                   "Gibbs($N,PG(50,1,:y),NUTS(1,200,0.65,:phi,:theta))",
-                  "PG(50,$N)"][1:S]
+                  "PG(50,$N)"]
 
 chain = nothing
 
@@ -54,9 +53,9 @@ min_mcse_arr = []
 max_mcse_arr = []
 
 
-for i = 1:S
+for i = 1:4
 
-  spl_name = spl_names[i]; puhs!(spl_name_arr, spl_name)
+  spl_name = spl_names[i]; push!(spl_name_arr, spl_name)
 
   # Load chain and gen summary
   chain = col? load(HMMPATH*"/hmm-collapsed-$spl_name-chain.jld")["chain"] :
@@ -74,15 +73,15 @@ for i = 1:S
 
   # Get min/max ess/mcse
   ess_idx = findfirst(smr.colnames, "ESS")
-  min_ess = min(smr.value[:,ess_idx,1]...); puhs!(min_ess_arr, min_ess)
-  max_ess = max(smr.value[:,ess_idx,1]...); puhs!(max_ess_arr, max_ess)
+  min_ess = min(smr.value[:,ess_idx,1]...); push!(min_ess_arr, min_ess)
+  max_ess = max(smr.value[:,ess_idx,1]...); push!(max_ess_arr, max_ess)
 
   mcse_idx = findfirst(smr.colnames, "MCSE")
-  min_mcse = min(smr.value[:,mcse_idx,1]...); puhs!(min_mcse_arr, min_mcse)
-  max_mcse = max(smr.value[:,mcse_idx,1]...); puhs!(max_mcse_arr, max_mcse)
+  min_mcse = min(smr.value[:,mcse_idx,1]...); push!(min_mcse_arr, min_mcse)
+  max_mcse = max(smr.value[:,mcse_idx,1]...); push!(max_mcse_arr, max_mcse)
 
   # Get time elapsed
-  time_elpased = sum(chain[:elapsed]); puhs!(time_elpased_arr, time_elpased)
+  time_elpased = sum(chain[:elapsed]); push!(time_elpased_arr, time_elpased)
 
   # Traj of some samples
   make_sample_plot(EXPPATH, chain, "phi[1]", 2)
@@ -103,15 +102,16 @@ end
 EXPPATH = HMMPATH*"/plots/"
 ispath(EXPPATH) || mkdir(EXPPATH)
 
-lps_p = plot(lyrs...,
+lps_p = plot(lyrs[1:3]...,
              Guide.xlabel("Number of iterations"), Guide.ylabel("Negative log-posterior"),
              Guide.title("Negative Log-posterior for the HMM Model"),
-             Guide.manual_color_key("Legend", spl_names, spl_colors)
+             Guide.manual_color_key("Legend", spl_names[1:3], spl_colors[1:3])
         )
 
 # Gen summary table
-df = DataFrame(Sampler = spl_name_arr, Time_elpased = time_elpased_arr, Min_ESS = min_ess_arr, Max_ESS = max_ess_arr, Min_MCSE = min_mcse_arr, Max_MCSE = max_mcse_arr)
-writetable(EXPPATH*"/stats-table.csv", df)
+iscol = col ? "col" : "uncol"
 
-lps_plot_name = col ? "col-lps" : "uncol-lps"
-draw(PNG(EXPPATH*"/$lps_plot_name.png", 8inch, 4.5inch), lps_p)
+df = DataFrame(Sampler = spl_name_arr, Time_elpased = time_elpased_arr, Min_ESS = min_ess_arr, Max_ESS = max_ess_arr, Min_MCSE = min_mcse_arr, Max_MCSE = max_mcse_arr)
+writetable(EXPPATH*"/$iscol-stats-table.csv", df)
+
+draw(PNG(EXPPATH*"/$iscol-lps.png", 8inch, 4.5inch), lps_p)
