@@ -28,7 +28,7 @@ N = length(y)
 logy = log(y)
 
 
-chain = sample(sv_nuts(logy, N, NaN), Gibbs(1000,PG(50,1,:logs,:s1),HMC(1,0.2,4,:τ,:ν)))
+chain = sample(sv_nuts(logy, N, NaN), Gibbs(1000,PG(50,1,:logs,:s1),HMC(1,0.02,4,:τ,:ν)))
 save(TPATH*"/nips-2017/sv/sv-exps-Gibbs(1000,PG(50,1),HMC(1,0.2,4)))-chain.jld", "chain", chain)
 
 setchunksize(2600)
