@@ -73,8 +73,10 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
 
   ## pick a particle to be retained.
   Ws, _ = weights(particles)
-  indx = spl.alg.resampler(Ws, 1)[end]
-
+  # println(Ws)
+  indx = randcat(Ws)
+  # println(indx)
+  # exit()
   push!(spl.info[:logevidence], particles.logE)
   particles[indx].vi
 end
