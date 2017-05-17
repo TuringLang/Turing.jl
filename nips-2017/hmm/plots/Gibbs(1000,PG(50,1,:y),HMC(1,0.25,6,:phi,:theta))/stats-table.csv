@@ -1,0 +1,2 @@
+"Sampler","Time_elpased","Min_ESS","Max_ESS","Min_MCSE","Max_MCSE"
+"Gibbs(1000,PG(50,1,:y),HMC(1,0.25,6,:phi,:theta))",3369.488756442001,9.478583586482161,1000.0,0.0,7.296538721422795
