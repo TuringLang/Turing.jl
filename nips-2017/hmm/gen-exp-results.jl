@@ -27,12 +27,14 @@ make_sample_plot(EXPPATH, chain, val_name, dim) = begin
 end
 
 N = 1000
-col = false
+col = true
+MODELNAME = "LDA"
 
 spl_colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
 
 TPATH = Pkg.dir("Turing")
-HMMPATH = TPATH*"/nips-2017/hmm"
+MODELPATH = MODELNAME == "HMM" ? TPATH*"/nips-2017/hmm" :
+                                 TPATH*"/nips-2017"
 
 spl_names = col? ["HMC($N,0.05,6)",
                   "HMCDA($N,200,0.65,0.35)",
@@ -68,12 +70,17 @@ for i = 1:4
   spl_name = spl_names[i]; push!(spl_name_arr, spl_name)
 
   # Load chain and gen summary
-  chain = col? load(HMMPATH*"/hmm-collapsed-$spl_name-chain.jld")["chain"] :
-               load(HMMPATH*"/hmm-uncollapsed-$spl_name-chain.jld")["chain"]
+  if MODELNAME == "HMM"
+    chain = col? load(MODELPATH*"/hmm-collapsed-$spl_name-chain.jld")["chain"] :
+                 load(MODELPATH*"/hmm-uncollapsed-$spl_name-chain.jld")["chain"]
+  else
+    chain = col? load(MODELPATH*"/lda-exps-chain-$i.jld")["chain"] :
+                 load(MODELPATH*"/lda-exps-chain-$i-un.jld")["chain"]
+  end
   smr = summarystats(chain)
 
   # Create path if not exist
-  EXPPATH = HMMPATH*"/plots/$(spl_names_short[i])"
+  EXPPATH = MODELPATH*"/plots/$(spl_names_short[i])"
   ispath(EXPPATH) || mkdir(EXPPATH)
 
   # Write summary to file
@@ -94,11 +101,14 @@ for i = 1:4
   time_elpased = sum(chain[:elapsed]); push!(time_elpased_arr, time_elpased)
 
   # Traj of some samples
+  make_sample_plot(EXPPATH, chain, "phi[1]", 1)
   make_sample_plot(EXPPATH, chain, "phi[1]", 2)
-  make_sample_plot(EXPPATH, chain, "phi[2]", 4)
-  make_sample_plot(EXPPATH, chain, "phi[3]", 6)
+  make_sample_plot(EXPPATH, chain, "phi[2]", 1)
+  make_sample_plot(EXPPATH, chain, "phi[2]", 2)
+  make_sample_plot(EXPPATH, chain, "theta[1]", 1)
   make_sample_plot(EXPPATH, chain, "theta[1]", 2)
-  make_sample_plot(EXPPATH, chain, "theta[2]", 3)
+  make_sample_plot(EXPPATH, chain, "theta[2]", 1)
+  make_sample_plot(EXPPATH, chain, "theta[2]", 2)
 
   # Get lps
   lps = chain[:lp]
@@ -109,12 +119,12 @@ for i = 1:4
 
 end
 
-EXPPATH = HMMPATH*"/plots/"
+EXPPATH = MODELPATH*"/plots/"
 ispath(EXPPATH) || mkdir(EXPPATH)
 
 lps_p = plot(lyrs[1:3]...,
              Guide.xlabel("Number of iterations"), Guide.ylabel("Negative log-posterior"),
-             Guide.title("Negative Log-posterior for the HMM Model"),
+             Guide.title("Negative Log-posterior for the $MODELNAME Model"),
              Guide.manual_color_key("Legend", spl_names[1:3], spl_colors[1:3])
         )
 
