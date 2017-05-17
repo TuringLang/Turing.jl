@@ -5,7 +5,7 @@ CXXFLAGS += $(shell julia $(JL_SHARE)/julia-config.jl --cflags)
 LDFLAGS  += $(shell julia $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell julia $(JL_SHARE)/julia-config.jl --ldlibs)
 
-CFLAGS   += $(shell julia -e 'print("-std=c99 ")')$
+CFLAGS   += $(shell julia -e 'print("-std=gnu99 ")')$
 CFLAGS   += $(shell julia -e 'if is_windows() && Int == Int32 print("-march=pentium4 ") end')$
 
 task: task.c
