@@ -16,7 +16,7 @@ y = readsvdata()
   s1 ~ Exponential(1/100)
   logs[1] = exp(s1)
   for i = 2:N
-    logs[i] ~ Normal(logs[i-1], sqrt(1/τ))
+    logs[i] ~ Normal(logs[i-1], 1/τ)
     # s[i] = exp(s[i])
     dy = typeof(ν)((logy[i] - logy[i-1]) / exp(logs[i]))
     dy ~ TDist(ν)
@@ -28,8 +28,8 @@ N = length(y)
 logy = log(y)
 
 
-chain = sample(sv_nuts(logy, N, NaN), Gibbs(1000,PG(50,1,:logs,:s1),HMC(1,0.02,4,:τ,:ν)))
-save(TPATH*"/nips-2017/sv/sv-exps-Gibbs(1000,PG(50,1),HMC(1,0.2,4)))-chain.jld", "chain", chain)
+chain = sample(sv_nuts(logy, N, NaN), Gibbs(1000,PG(200,1,:logs,:s1),NUTS(1,200,0.65,:τ,:ν)))
+save(TPATH*"/nips-2017/sv/sv-exps-Gibbs(1000,PG(200,1),NUTS(1,200,0.65)))-chain.jld", "chain", chain)
 
 setchunksize(2600)
 
