@@ -8,25 +8,26 @@ make_sample_plot(EXPPATH, chain, val_name, dim) = begin
   val_vec = chain[Symbol("$val_name")]
   val_dim = map(p_1 -> p_1[1], val_vec)
 
+  val_name_simple = replace(val_name, r"\[|\]", "")
   val_dim_traj_p = plot(x=1:length(val_dim), y=val_dim,
                         Guide.xlabel("Number of iterations"),
-                        Guide.ylabel("Value of $val_name[$dim]"),
-                        Guide.title("Traj. Plot for $val_name[$dim]"),
+                        Guide.ylabel("Value of $val_name_simple-$dim"),
+                        Guide.title("Traj. Plot for $val_name_simple-$dim"),
                         Geom.line)
 
-  draw(PNG(EXPPATH*"/$val_name[$dim]_traj_p.png", 8inch, 4.5inch), val_dim_traj_p)
+  draw(PNG(EXPPATH*"/$val_name_simple-$dim-traj_p.png", 8inch, 4.5inch), val_dim_traj_p)
 
   val_dim_density = plot(x=val_dim,
                          Guide.xlabel("Number of iterations"),
-                         Guide.ylabel("Value of $val_name[$dim]"),
-                         Guide.title("Density Plot for $val_name[$dim]"),
+                         Guide.ylabel("Value of $val_name_simple-$dim"),
+                         Guide.title("Density Plot for $val_name_simple-$dim"),
                          Geom.density)
 
-  draw(PNG(EXPPATH*"/$val_name[$dim]_density.png", 8inch, 4.5inch), val_dim_density)
+  draw(PNG(EXPPATH*"/$val_name_simple-$dim-density.png", 8inch, 4.5inch), val_dim_density)
 end
 
 N = 1000
-col = true
+col = false
 
 spl_colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
 
