@@ -3,12 +3,13 @@ using Distributions, Turing, Base.Test
 
 N = 100
 setchunksize(N)
-alg = HMC(1000, 0.2, 4)
+# alg = HMCDA(2000, 0.65, 1.5)
+alg = HMC(2000, 0.2, 4)
 
 @model vdemo() = begin
   x = Vector{Real}(N)
   for i = 1:N
-    x[i] ~ Normal(0, sqrt(4))
+    x[i] ~ Normal(0, sqrt(4*i))
   end
 end
 

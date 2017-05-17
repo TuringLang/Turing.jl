@@ -49,16 +49,22 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
+    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
-    spl.info[:stds] = ones(length(vi[spl]))
+    spl.info[:θ_mean] = realpart(vi[spl])
+    spl.info[:θ_num] = 1
+    D = length(vi[spl])
+    spl.info[:stds] = ones(D)
+    spl.info[:θ_vars] = nothing
 
     if spl.alg.delta > 0
-      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
+      # ϵ = 0.1
     else
       ϵ = spl.info[:ϵ][end]
     end
+
+    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
     spl.info[:ϵ] = [ϵ]
     spl.info[:μ] = log(10 * ϵ)
@@ -107,7 +113,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
     haskey(spl.info, :progress) && ProgressMeter.update!(
                                      spl.info[:progress],
-                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α)]
+                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, spl.info[:stds])]
                                    )
     end
 
@@ -134,12 +140,25 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    if length(spl.info[:θs]) < 500
-      push!(spl.info[:θs], realpart(vi[spl]))
-    else
-      D = length(spl.info[:stds])
-      spl.info[:stds] = map(d -> std(map(θs -> θs[d], spl.info[:θs])),
-                            1:D)
+    θ_new = realpart(vi[spl])                                         # x_t
+    spl.info[:θ_num] += 1
+    t = spl.info[:θ_num]                                              # t
+    θ_mean_old = copy(spl.info[:θ_mean])                              # x_bar_t-1
+    spl.info[:θ_mean] = (t - 1) / t * spl.info[:θ_mean] + θ_new / t   # x_bar_t
+    θ_mean_new = spl.info[:θ_mean]                                    # x_bar_t
+
+    if t == 2
+      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
+      spl.info[:θ_vars] = diag(cov(first_two))
+    elseif t <= 1000
+      # D = length(θ_new)
+      D = 2.4^2
+      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] +
+                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
+    end
+
+    if t > 500
+      spl.info[:stds] = sqrt(spl.info[:θ_vars])
       spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
     end
 
