@@ -28,7 +28,7 @@ const sv_data = [
   )
 ]
 
-const sv_exact_result = Dict(
+const sv_exact = Dict(
   "ϕ" => phi,
   "σ" => sigma,
   "μ" => mu,
@@ -37,5 +37,5 @@ const sv_exact_result = Dict(
 
 using HDF5, JLD
 
-save(Pkg.dir("Turing")*"/nips-2017/sv/sv_data.jld", "data", sv_data)
-save(Pkg.dir("Turing")*"/nips-2017/sv/sv_exact_result.jld", "exact_result", sv_exact_result)
+save(Pkg.dir("Turing")*"/nips-2017/sv/sv-data.jld", "data", sv_data)
+save(Pkg.dir("Turing")*"/nips-2017/sv/sv-exact.jld", "exact", sv_exact)

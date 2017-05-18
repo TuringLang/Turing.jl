@@ -6,7 +6,9 @@ using HDF5, JLD
 
 TPATH = Pkg.dir("Turing")
 
-sv_data = load(TPATH*"/nips-2017/sv/sv_data.jld")["data"]
+dataset = 1
+
+sv_data = load(TPATH*"/nips-2017/sv/sv-data-$dataset.jld")["data"]
 
 # model {
 #   phi ~ uniform(-1,1);
@@ -18,7 +20,6 @@ sv_data = load(TPATH*"/nips-2017/sv/sv_data.jld")["data"]
 #   for (t in 1:T)
 #     y[t] ~ normal(0, exp(h[t] / 2));
 # }
-setchunksize(550)
 
 @model sv_model(y) = begin
   T = length(y)
@@ -37,8 +38,11 @@ setchunksize(550)
   end
 end
 
-sample_n = 1000
+model_f = sv_model(data=sv_data[1])
 
+sample_n = 10000
+
+for run = 1:10
 
 # Plot
 
@@ -48,19 +52,22 @@ sample_n = 1000
 # y = sv_data[1]["y"]
 # plot(x=1:length(y),y=y,Geom.line)
 
-# chain = sample(sv_model(data=sv_data[1]), NUTS(sample_n, 0.65))
-# save(Pkg.dir("Turing")*"/nips-2017/sv/chain-nuts.jld", "chain", chain)
+setchunksize(550)
+chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
+save(Pkg.dir("Turing")*"/nips-2017/sv/chain-nuts-data-$dataset-run-$run.jld", "chain", chain_nuts)
 # sum(chain[:elapsed])
 # lps = chain[:lp]
 # l1 = layer(x=25:sample_n, y=-lps[25:end], Geom.line, Geom.line,Theme(default_color=spl_colors[1]))
 # plot(l1)
 
 setchunksize(5)
-chain_gibbs = sample(sv_model(data=sv_data[1]), Gibbs(sample_n, PG(50,1,:h),NUTS(200,0.65,:ϕ,:σ,:μ)))
-save(Pkg.dir("Turing")*"/nips-2017/sv/chain-gibbs.jld", "chain", chain_gibbs)
+chain_gibbs = sample(model_f, Gibbs(sample_n, PG(50,1,:h),NUTS(1000,0.65,:ϕ,:σ,:μ)))
+save(Pkg.dir("Turing")*"/nips-2017/sv/chain-gibbs-data-$dataset-run-$run.jld", "chain", chain_gibbs)
 # sum(chain_gibbs[:elapsed])
 # lps_gibbs = chain_gibbs[:lp]
 # l2 = layer(x=2:sample_n, y=-lps_gibbs[2:end], Geom.line, Geom.line,Theme(default_color=spl_colors[2]))
 # plot(l2)
 
 # plot(l1, l2)
+
+end
