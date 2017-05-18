@@ -6,7 +6,7 @@ using HDF5, JLD
 
 TPATH = Pkg.dir("Turing")
 
-dataset = 1
+dataset = 3
 
 sv_data = load(TPATH*"/nips-2017/sv/sv-data-$dataset.jld")["data"]
 
