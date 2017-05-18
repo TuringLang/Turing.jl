@@ -40,9 +40,10 @@ end
 
 model_f = sv_model(data=sv_data[1])
 
-sample_n = 10000
+sample_n = 10
 
 for run = 1:10
+println("Current run = $run for dataset = $dataset")
 
 # Plot
 
