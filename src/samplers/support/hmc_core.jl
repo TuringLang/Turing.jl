@@ -101,12 +101,14 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
+  iter_num = 1
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
-  while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a)
+  while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a) && iter_num <= 12
     ϵ = 2.0^a * ϵ
     θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
+    iter_num += 1
   end
 
   println("\r[$T] found initial ϵ: ", ϵ)
