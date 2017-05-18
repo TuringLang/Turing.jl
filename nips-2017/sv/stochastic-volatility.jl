@@ -54,16 +54,29 @@ println("Current run = $run for dataset = $dataset")
 # plot(x=1:length(y),y=y,Geom.line)
 
 setchunksize(550)
-chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
-save(Pkg.dir("Turing")*"/nips-2017/sv/chain-nuts-data-$dataset-run-$run.jld", "chain", chain_nuts)
+done = false
+while ~done
+  try
+    chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
+    save(Pkg.dir("Turing")*"/nips-2017/sv/chain-nuts-data-$dataset-run-$run.jld", "chain", chain_nuts)
+    done = true
+  end
+end
 # sum(chain[:elapsed])
 # lps = chain[:lp]
 # l1 = layer(x=25:sample_n, y=-lps[25:end], Geom.line, Geom.line,Theme(default_color=spl_colors[1]))
 # plot(l1)
 
 setchunksize(5)
-chain_gibbs = sample(model_f, Gibbs(sample_n, PG(50,1,:h),NUTS(1000,0.65,:ϕ,:σ,:μ)))
-save(Pkg.dir("Turing")*"/nips-2017/sv/chain-gibbs-data-$dataset-run-$run.jld", "chain", chain_gibbs)
+done = false
+while ~done
+  try
+    chain_gibbs = sample(model_f, Gibbs(sample_n, PG(50,1,:h),NUTS(1000,0.65,:ϕ,:σ,:μ)))
+    save(Pkg.dir("Turing")*"/nips-2017/sv/chain-gibbs-data-$dataset-run-$run.jld", "chain", chain_gibbs)
+    done = true
+  end
+end
+
 # sum(chain_gibbs[:elapsed])
 # lps_gibbs = chain_gibbs[:lp]
 # l2 = layer(x=2:sample_n, y=-lps_gibbs[2:end], Geom.line, Geom.line,Theme(default_color=spl_colors[2]))
