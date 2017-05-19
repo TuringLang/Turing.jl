@@ -28,10 +28,10 @@ df = DataFrame(Run = [1,2,1,2], Engine = ["Gibbs", "Gibbs", "NUTS", "NUTS"], Tim
 p_ess = plot(df, xgroup="Run", x="Engine", y="ESS", Geom.subplot_grid(Geom.bar, Guide.title(nothing),Guide.xlabel(nothing), ),Guide.xlabel(nothing))
 p_time = plot(df, xgroup="Run", x="Engine", y="Time", Geom.subplot_grid(Geom.bar,Guide.xlabel(nothing)),Guide.xlabel(nothing),)
 
-p_stack = hstack(p_ess,p_time)
+p_stack = vstack(p_ess,p_time)
 
 Gadfly.push_theme(:default)
-draw(PDF(TPATH*"/nips-2017/gmm/gmm-ess-time.pdf", 4inch, 2inch), p_stack)
+draw(PDF(TPATH*"/nips-2017/gmm/gmm-ess-time.pdf", 4inch, 4inch), p_stack)
 
 
 x_gibbs = map(x_arr -> x_arr[1], chain_gibbs[:x])
