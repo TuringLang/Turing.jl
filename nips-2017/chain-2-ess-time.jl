@@ -41,9 +41,10 @@ for run  = [1,2]
     n_time = sum(n_chain[:elapsed]); push!(n_time_all, n_time)
 end
 
-df = DataFrame(Engine = [["Gibbs" for _ = 1:length(g_ess_all)]..., ["NUTS" for _ = 1:length(n_ess_all)]...],
-               ESS    = [g_ess_all; n_ess_all],
-               Time   = [g_time_all; n_time_all])
+df_all = DataFrame(Run = [collect(1:length(g_ess_all))..., collect(1:length(n_ess_all))...],
+                   Engine = [["Gibbs" for _ = 1:length(g_ess_all)]..., ["NUTS" for _ = 1:length(n_ess_all)]...],
+                   ESS    = [g_ess_all; n_ess_all],
+                   Time   = [g_time_all; n_time_all])
 
-save(TPATH*"/nips-2017/sv/sv-data-$data-df.jld", "df", df)
-save(TPATH*"/nips-2017/sv/sv-data-$data-smr.jld", "smr_all", smr_all)
+save(TPATH*"/nips-2017/sv/sv-data-$data-df.jld", "df", df_all)
+save(TPATH*"/nips-2017/sv/sv-data-$data-smr.jld", "smr", smr_all)
