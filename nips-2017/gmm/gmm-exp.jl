@@ -106,7 +106,7 @@ end
 
 M = 5
 p = [ 0.2,  0.2,   0.2, 0.2,  0.2]
-μ = [   0,    1,     2, 3.5, 4.25] + 2.5*collect(0:4)
+μ = [   0,    1,     2, 3.5, 4.25] + 0.5*collect(0:4)
 s = [-0.5, -1.5, -0.75,  -2, -0.5]
 σ = exp(s)
 
@@ -116,33 +116,45 @@ N = 100000
 
 # chain_gibbs = sample(gmm_gen(p, μ, σ), Gibbs(N, PG(50, 1, :z), NUTS(10, 1000, 0.65, :x)))
 K = 500
-# chain_gibbs = sample(gmm_gen(p, μ, σ), Gibbs(round(Int,N/K), PG(5, 1, :z), HMC(K-1, 0.2, 8, :x); thin=false))
-chain_gibbs = load(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld")["chain"]
+chain_gibbs = sample(gmm_gen(p, μ, σ), Gibbs(round(Int,N/K), PG(5, 1, :z), HMC(K-1, 0.2, 8, :x); thin=false))
+# chain_gibbs = load(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld")["chain"]
+
 x_gibbs = map(x_arr -> x_arr[1], chain_gibbs[:x])
 
 # save(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld", "chain", chain_gibbs)
+save(TPATH*"/nips-2017/gmm/gibbs-chain-0.5.jld", "chain", chain_gibbs)
 
-# chain_nuts = sample(gmm_gen_marg(p, μ, σ), NUTS(N, 0.65))
-chain_nuts = load(TPATH*"/nips-2017/gmm/nuts-chain-2.5.jld")["chain"]
+chain_nuts = sample(gmm_gen_marg(p, μ, σ), NUTS(N, 0.65))
+# chain_nuts = load(TPATH*"/nips-2017/gmm/nuts-chain-2.5.jld")["chain"]
+
 x_nuts = map(x_arr -> x_arr[1], chain_nuts[:x])
 
-# save(TPATH*"/nips-2017/gmm/nuts-chain-2.5.jld", "chain", chain_nuts)
+save(TPATH*"/nips-2017/gmm/nuts-chain-0.5.jld", "chain", chain_nuts)
 
 using Gadfly, DataFrames
+using Colors
 
-colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
-colors = [nothing, colorant"#56B4E9", colorant"#F0E442",colorant"#c0392b"]
+# colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
+# colors = [nothing, colorant"#56B4E9", colorant"#F0E442",colorant"#c0392b"]
+n = 3
+colors = distinguishable_colors(n, LCHab[LCHab(70, 60, 240)],
+                       transform=c -> deuteranopic(c, 0.5),
+                       lchoices=Float64[65, 70, 75, 80],
+                       cchoices=Float64[0, 50, 60, 70],
+                       hchoices=linspace(0, 330, 24))
+
+
 # plot_type = Geom.histogram(density=true)
 plot_type = Geom.density
 # pg_layer = layer(x=x_pg, plot_type, Theme(default_color=colors[1]))
-gibbs_layer = layer(x=x_gibbs, plot_type, Theme(default_color=colors[2]))
-nuts_layer = layer(x=x_nuts, plot_type, Theme(default_color=colors[3]))
+gibbs_layer = layer(x=x_gibbs, plot_type, Theme(default_color=colors[1]))
+nuts_layer = layer(x=x_nuts, plot_type, Theme(default_color=colors[2]))
 
 # plot(pg_layer)
 plot(gibbs_layer)
 plot(nuts_layer)
 
-contour_layer = layer([make_norm_pdf(μ, σ)], -5, 20, Theme(default_color=colors[4]))
+contour_layer = layer([make_norm_pdf(μ, σ)], -5, 10, Theme(default_color=colors[3]))
 
 plot(contour_layer)
 # plot(gibbs_layer, contour_layer)
@@ -153,23 +165,22 @@ layers = [gibbs_layer, nuts_layer, contour_layer]
 labels = ["Gibbs", "NUTS", "Exact"]
 
 select = [1,2,3]
-gmm_density = plot(layers[select]..., Guide.manual_color_key("", labels[select], colors[select+1]))
+gmm_density = plot(layers[select]..., Guide.manual_color_key("", labels[select], colors[select]))
 
 
 
-
-
+contour_layer = layer([make_norm_pdf(μ, σ)], -5, 10, Theme(default_color=colors[3]))
 
 x_gibbs_x, x_gibbs_c = make_vec(x_gibbs)
-gibbs_hist = layer(x=x_gibbs_x,y=x_gibbs_c, Geom.bar,  Theme(default_color=colors[2]))
+gibbs_hist = layer(x=x_gibbs_x,y=x_gibbs_c, Geom.bar,  Theme(default_color=colors[1]))
 
 x_nuts_x, x_nuts_c = make_vec(x_nuts)
-nuts_hist = layer(x=x_nuts_x,y=x_nuts_c, Geom.bar,  Theme(default_color=colors[3]))
+nuts_hist = layer(x=x_nuts_x,y=x_nuts_c, Geom.bar,  Theme(default_color=colors[2]))
 
 gmm_hist = plot(contour_layer, gibbs_hist, nuts_hist,
                 Guide.xlabel("Value of x"), Guide.ylabel("Density"),
-                Guide.manual_color_key("", labels[[2,1,3]], colors[[3,2,4]]),
-                Theme(major_label_font_size=9pt))
+                Guide.manual_color_key("", labels[[2,1,3]], colors[[2,1,3]]),
+                Theme(major_label_font_size=9pt),Coord.cartesian(xmin=-5, xmax=10, ymin=0, ymax=0.8))
 
 
 # gibbs_trace = layer(x=1:length(chain_gibbs[:x]),y=chain_gibbs[:x],Geom.line,Theme(default_color=colors[2]))
@@ -177,6 +188,8 @@ gmm_hist = plot(contour_layer, gibbs_hist, nuts_hist,
 # plot(gibbs_trace,nuts_trace,Guide.manual_color_key("Legend", labels[[2,3]], colors[[2,3]]))
 
 Gadfly.push_theme(:default)
+
+hstack(p3,p4)
 
 # draw(PDF(TPATH*"/nips-2017/gmm/gmm-density.pdf", 8inch, 4.5inch), gmm_density)
 draw(PDF(TPATH*"/nips-2017/gmm/gmm-hist.pdf", 8inch, 2inch), gmm_hist)
