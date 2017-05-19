@@ -50,7 +50,7 @@ trapz{Tx<:Number, Ty<:Number}(x::Vector{Tx}, y::Vector{Ty}) = begin
 end
 
 make_vec(img::Vector) = begin
-  nbin = 64
+  nbin = 100
   x, y = gen_hist(img, nbin)
   x, y./trapz(x,y)
 end
@@ -117,7 +117,7 @@ N = 100000
 # chain_gibbs = sample(gmm_gen(p, μ, σ), Gibbs(N, PG(50, 1, :z), NUTS(10, 1000, 0.65, :x)))
 K = 500
 # chain_gibbs = sample(gmm_gen(p, μ, σ), Gibbs(round(Int,N/K), PG(5, 1, :z), HMC(K-1, 0.2, 8, :x); thin=false))
-chain_nuts = load(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld")["chain"]
+chain_gibbs = load(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld")["chain"]
 x_gibbs = map(x_arr -> x_arr[1], chain_gibbs[:x])
 
 # save(TPATH*"/nips-2017/gmm/gibbs-chain-2.5.jld", "chain", chain_gibbs)
@@ -128,10 +128,10 @@ x_nuts = map(x_arr -> x_arr[1], chain_nuts[:x])
 
 # save(TPATH*"/nips-2017/gmm/nuts-chain-2.5.jld", "chain", chain_nuts)
 
-using Gadfly
+using Gadfly, DataFrames
 
 colors = [colorant"#16a085", colorant"#8e44ad", colorant"#7f8c8d", colorant"#c0392b"]
-
+colors = [nothing, colorant"#56B4E9", colorant"#F0E442",colorant"#c0392b"]
 # plot_type = Geom.histogram(density=true)
 plot_type = Geom.density
 # pg_layer = layer(x=x_pg, plot_type, Theme(default_color=colors[1]))
@@ -161,12 +161,15 @@ gmm_density = plot(layers[select]..., Guide.manual_color_key("", labels[select],
 
 
 x_gibbs_x, x_gibbs_c = make_vec(x_gibbs)
-gibbs_hist = layer(x=x_gibbs_x,y=x_gibbs_c, Geom.bar,  Theme(default_color=colors[1]))
+gibbs_hist = layer(x=x_gibbs_x,y=x_gibbs_c, Geom.bar,  Theme(default_color=colors[2]))
 
 x_nuts_x, x_nuts_c = make_vec(x_nuts)
 nuts_hist = layer(x=x_nuts_x,y=x_nuts_c, Geom.bar,  Theme(default_color=colors[3]))
 
-gmm_hist = plot(contour_layer, gibbs_hist, nuts_hist, Guide.xlabel("Value of x"), Guide.ylabel("Density"), Guide.manual_color_key("", labels[select], colors[[1,3,4]]))
+gmm_hist = plot(contour_layer, gibbs_hist, nuts_hist,
+                Guide.xlabel("Value of x"), Guide.ylabel("Density"),
+                Guide.manual_color_key("", labels[[2,1,3]], colors[[3,2,4]]),
+                Theme(major_label_font_size=9pt))
 
 
 # gibbs_trace = layer(x=1:length(chain_gibbs[:x]),y=chain_gibbs[:x],Geom.line,Theme(default_color=colors[2]))
@@ -175,5 +178,59 @@ gmm_hist = plot(contour_layer, gibbs_hist, nuts_hist, Guide.xlabel("Value of x")
 
 Gadfly.push_theme(:default)
 
-draw(PDF(TPATH*"/nips-2017/gmm/gmm-density.pdf", 8inch, 4.5inch), gmm_density)
-draw(PDF(TPATH*"/nips-2017/gmm/gmm-hist.pdf", (16/3)inch, 3inch), gmm_hist)
+# draw(PDF(TPATH*"/nips-2017/gmm/gmm-density.pdf", 8inch, 4.5inch), gmm_density)
+draw(PDF(TPATH*"/nips-2017/gmm/gmm-hist.pdf", 8inch, 2inch), gmm_hist)
+
+# Sample use of DF
+# lps_df = DataFrame(
+#   Samples=[collect(1:N); collect(1:N);
+#            collect(1:N); collect(1:N);
+#            collect(SV_start:N); collect(SV_start:N)],
+#   Engine=[["NUTS" for _ = 1:N]..., ["Gibbs" for _ = 1:N]...,
+#           ["NUTS" for _ = 1:N]..., ["Gibbs" for _ = 1:N]...,
+#           ["NUTS" for _ = SV_start:N]..., ["Gibbs" for _ = SV_start:N]...],
+#
+#         lda_nuts_lps; lda_gibbs_lps;
+#         sv_nuts_lps[SV_start:N]; sv_gibbs_lps[SV_start:N]],
+#   Model=[["HMM" for _ = 1:N]..., ["HMM" for _ = 1:N]...,
+#          ["LDA" for _ = 1:N]..., ["LDA" for _ = 1:N]...,
+#          ["SV" for _ = SV_start:N]..., ["SV" for _ = SV_start:N]...]
+# )
+
+N = 50000
+df_trace = DataFrame(Samples=[collect(1:N); collect(1:N)],
+                     Engine=[["Gibbs" for _ = 1:N]..., ["NUTS" for _ = 1:N]...],
+                     x=[x_gibbs; x_nuts])
+trace_x = plot(df_trace, x="Samples", y="x", color="Engine", Geom.line, Guide.xlabel(nothing))
+
+sv_nuts_chain = load(TPATH*"/nips-2017/sv/new-first/chain-nuts.jld")["chain"]
+sv_gibbs_chain = load(TPATH*"/nips-2017/sv/new-first/chain-gibbs.jld")["chain"]
+sv_nuts_lps = sv_nuts_chain[:lp]
+sv_gibbs_lps = sv_gibbs_chain[:lp]
+
+N = 1000
+SV_start = 10
+df_trace = DataFrame(Samples=[collect(SV_start:N); collect(SV_start:N)],
+                     Engine=[["Gibbs" for _ = SV_start:N]..., ["NUTS" for _ = SV_start:N]...],
+                     lp=[sv_gibbs_lps[SV_start:N]; sv_nuts_lps[SV_start:N]])
+trace_lp = plot(df_trace, x="Samples", y="lp", color="Engine", Geom.line, Guide.ylabel("lp"), Guide.xlabel("Number of iterations"), Theme(major_label_font_size=9pt))
+
+vs = vstack(trace_x,trace_lp)
+draw(PDF(TPATH*"/nips-2017/trace-sv-gmm.pdf", 8inch, 3.5inch), vs)
+
+# p1 = plot(x=[1,2,3], y=[4,5,6])
+# p2 = plot(x=[1,2,3], y=[6,7,8])
+# vs = vstack(p1,p2)
+# plot(vs, Geom.point)
+# draw(PDF(TPATH*"/nips-2017/gmm/test.pdf", (16/3)inch, 3inch), vs)
+#
+#
+# p3 = plot(x=[5,7,8], y=[8,9,10])
+# p4 = plot(x=[5,7,8], y=[10,11,12])
+#
+# # these two are equivalent
+# vstack(hstack(p1,p2),hstack(p3,p4))
+# gs = gridstack([p1 p2; p3 p4])
+# plot(gs)
+#
+# title("My great data", hstack(p3,p4))

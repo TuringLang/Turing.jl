@@ -26,3 +26,43 @@ draw(PDF(TPATH*"/nips-2017/sv/lp_plot.pdf", 8inch, 4.5inch), lp_plot)
 
 describe(chain_gibbs)
 describe(chain_nuts)
+
+
+
+#
+#
+#
+#
+#
+#
+# NNNNEW
+#
+#
+#
+#
+#
+#
+#
+
+sv_nuts_1_1 = load("/home/kai/sv-nuts-1-1.jld")["chain"]
+sv_gibbs_1_1 = load("/home/kai/sv-gibbs-1-1.jld")["chain"]
+
+sv_gibbs_1_2 = load("/home/kai/sv-gibbs-1-2.jld")["chain"]
+sv_gibbs_1_3 = load("/home/kai/sv-gibbs-1-3.jld")["chain"]
+
+
+lp_nuts_1_1 = sv_nuts_1_1[:lp]
+lp_gibbs_1_1 = sv_gibbs_1_1[:lp]
+lp_gibbs_1_2 = sv_gibbs_1_2[:lp]
+lp_gibbs_1_3 = sv_gibbs_1_3[:lp]
+
+using DataFrames
+N = 10000
+df_trace = DataFrame(Samples=[collect(1:N); collect(1:N); collect(1:N); collect(1:N)],
+                     Engine=[["Gibbs 1" for _ = 1:N]..., ["Gibbs 2" for _ = 1:N]..., ["Gibbs 3" for _ = 1:N]..., ["NUTS" for _ = 1:N]...],
+                     lp=[lp_gibbs_1_1; lp_gibbs_1_2; lp_gibbs_1_3; lp_nuts_1_1])
+
+# l1 = layer(x=1:10000, y=lp_nuts_1_1, Geom.line)
+# l2 = layer(x=1:10000, y=lp_gibbs_1_1, Geom.line)
+
+plot(df_trace, x="Samples", y="lp", color="Engine", Geom.line)
