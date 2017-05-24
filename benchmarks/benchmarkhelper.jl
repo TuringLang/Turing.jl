@@ -8,6 +8,7 @@ end
 # Run benchmark
 tbenchmark(alg::String, model::String, data::String) = begin
   chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
+  # alg, sum(chain[:elapsed]), mem, chain, deepcopy(chain)
   alg, time, mem, chain, deepcopy(chain)
 end
 
@@ -16,7 +17,7 @@ build_logd(name::String, engine::String, time, mem, tchain, _) = begin
   Dict(
     "name" => name,
     "engine" => engine,
-    "time" => sum(tchain[:elapsed]),
+    "time" => time,
     "mem" => mem,
     "turing" => Dict(v => mean(tchain[Symbol(v)]) for v in keys(tchain))
   )
