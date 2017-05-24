@@ -153,15 +153,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     elseif t <= 1000
       # D = length(θ_new)
       D = 2.4^2
-      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] +
+      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] .+ 100 * eps(Float64) +
                           (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
     end
 
     if t > 500
-      if ~any(spl.info[:θ_vars] .< 0)
-        spl.info[:stds] = sqrt(spl.info[:θ_vars])
-        spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
-      end
+      spl.info[:stds] = sqrt(spl.info[:θ_vars])
+      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
     end
 
     dprintln(3, "R -> X...")
