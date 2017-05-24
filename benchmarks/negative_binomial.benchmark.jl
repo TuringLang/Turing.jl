@@ -21,5 +21,5 @@ model {
 
 sm = Stanmodel(name="negativebinomial", model=negativebinomialstan, nchains=1)
 negativebinomialdata = [Dict("N" => length(negbindata), "y" => negbindata)]
-sim = stan(sm, negativebinomialdata)
+rc, sim = stan(sm, negativebinomialdata)
 describe(sim)

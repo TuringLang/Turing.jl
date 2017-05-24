@@ -9,7 +9,7 @@ include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.model.jl")
 stan_model_name = "Naive_Bayes"
 nbstan = Stanmodel(Sample(save_warmup=true), name=stan_model_name, model=naivebayesstanmodel, nchains=1);
 
-nb_stan_sim = stan(nbstan, nbstandata, CmdStanDir=CMDSTAN_HOME, summary=false);
+rc, nb_stan_sim = stan(nbstan, nbstandata, CmdStanDir=CMDSTAN_HOME, summary=false);
 # nb_stan_sim.names
 
 stan_d_raw = Dict()
