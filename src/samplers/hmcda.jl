@@ -158,8 +158,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     if t > 500
-      spl.info[:stds] = sqrt(spl.info[:θ_vars])
-      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
+      if ~any(spl.info[:θ_vars] .< 0)
+        spl.info[:stds] = sqrt(spl.info[:θ_vars])
+        spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
+      end
     end
 
     dprintln(3, "R -> X...")
