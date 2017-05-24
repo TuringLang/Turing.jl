@@ -1,1 +1,0 @@
-this hmm seems to be easy to meet domain error. I guess that's becasue the emission distribution used is also a categorical?
