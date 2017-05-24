@@ -88,7 +88,7 @@ Turing.draw(p, fmt=:pdf, filename="gdemo-plot.pdf")
 The arguments for each sampler are
 
 * SMC: number of particles
-* PG: number of praticles, number of iterations
+* PG: number of particles, number of iterations
 * HMC: number of samples, leapfrog step size, leapfrog step numbers
 * Gibbs: number of samples, component sampler 1, component sampler 2, ...
 
