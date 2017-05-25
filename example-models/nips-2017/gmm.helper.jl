@@ -43,7 +43,7 @@ trapz{Tx<:Number, Ty<:Number}(x::Vector{Tx}, y::Vector{Ty}) = begin
 end
 
 make_vec(img::Vector) = begin
-  nbin = 100
+  nbin = 128
   x, y = gen_hist(img, nbin)
   x, y./trapz(x,y)
 end
