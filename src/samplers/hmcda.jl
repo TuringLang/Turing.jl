@@ -49,24 +49,17 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
-    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+    if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-    spl.info[:θ_mean] = realpart(vi[spl])
-    spl.info[:θ_num] = 1
-    D = length(vi[spl])
-    spl.info[:stds] = ones(D)
-    spl.info[:θ_vars] = nothing
+    init_pre_cond_parameters(vi, spl)
 
-    if spl.alg.delta > 0
-      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      # ϵ = 0.1
-    else
-      ϵ = spl.info[:ϵ][end]
-    end
+    ϵ = spl.alg.delta > 0 ?
+        find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
+        spl.info[:ϵ][end]
 
-    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
+    if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 
-    @init_da_parameters
+    init_da_parameters(spl, ϵ)
 
     push!(spl.info[:accept_his], true)
 
@@ -107,7 +100,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl, α)
+    adapt_step_size(spl, α, spl.alg.delta)
 
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
@@ -118,27 +111,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    θ_new = realpart(vi[spl])                                         # x_t
-    spl.info[:θ_num] += 1
-    t = spl.info[:θ_num]                                              # t
-    θ_mean_old = copy(spl.info[:θ_mean])                              # x_bar_t-1
-    spl.info[:θ_mean] = (t - 1) / t * spl.info[:θ_mean] + θ_new / t   # x_bar_t
-    θ_mean_new = spl.info[:θ_mean]                                    # x_bar_t
-
-    if t == 2
-      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
-      spl.info[:θ_vars] = diag(cov(first_two))
-    elseif t <= 1000
-      # D = length(θ_new)
-      D = 2.4^2
-      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] .+ 100 * eps(Float64) +
-                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
-    end
-
-    if t > 500
-      spl.info[:stds] = sqrt(spl.info[:θ_vars])
-      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
-    end
+    # Update pre-conditioning matrix
+    update_pre_cond(vi, spl)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
