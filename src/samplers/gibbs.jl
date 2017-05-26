@@ -92,6 +92,7 @@ function sample(model::Function, alg::Gibbs)
             samples[i_thin].value[:elapsed] = time_elapsed_thin
             if ~isa(local_spl.alg, Hamiltonian)  # clean cache
               samples[i_thin].value[:lp] = lp
+              samples[i_thin].value[:epsilon] = epsilon
             end
             i_thin += 1
           end
@@ -112,8 +113,8 @@ function sample(model::Function, alg::Gibbs)
     if spl.alg.thin
       samples[i].value = Sample(varInfo).value
       samples[i].value[:elapsed] = time_elapsed
-      samples[i].value[:epsilon] = epsilon
-      samples[i].value[:lp] = lp
+      if epsilon != 0 samples[i].value[:epsilon] = epsilon end
+      if lp != 0 samples[i].value[:lp] = lp end
     end
 
     if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
