@@ -59,24 +59,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    spl.info[:ϵ] = ϵ
-    spl.info[:μ] = log(10 * ϵ)
-    spl.info[:ϵ_bar] = 1.0
-    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
-    spl.info[:H_bar] = 0.0
-    spl.info[:m] = 0
+    @init_da_parameters
 
     push!(spl.info[:accept_his], true)
 
     vi
   else
     # Set parameters
-    δ = spl.alg.delta
-    ϵ = spl.info[:ϵ]
-
-    dprintln(2, "current ϵ: $ϵ")
-    μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
-    ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
+    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
     dprintln(3, "X -> R...")
     if spl.alg.gid != 0
@@ -124,17 +114,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     end
 
     # Use Dual Averaging to adapt ϵ
-    m = spl.info[:m] += 1
-    if m < spl.alg.n_adapt
-      H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α / n_α)
-      ϵ = exp(μ - sqrt(m) / γ * H_bar)
-      ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-      spl.info[:ϵ] = ϵ
-      spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    elseif m == spl.alg.n_adapt
-      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-      spl.info[:ϵ] = spl.info[:ϵ_bar]
-    end
+    adapt_step_size(spl, α / n_α)
 
     push!(spl.info[:accept_his], true)
 

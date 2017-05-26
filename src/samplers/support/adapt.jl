@@ -24,3 +24,13 @@ adapt_step_size(spl::Sampler, stats::Float64) = begin
     end
   end
 end
+
+macro init_da_parameters()
+  quote
+    spl.info[:ϵ] = [ϵ]
+    spl.info[:μ] = log(10 * ϵ)
+    spl.info[:ϵ_bar] = 1.0
+    spl.info[:H_bar] = 0.0
+    spl.info[:m] = 0
+  end
+end

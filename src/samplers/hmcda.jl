@@ -66,20 +66,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    spl.info[:ϵ] = [ϵ]
-    spl.info[:μ] = log(10 * ϵ)
-    spl.info[:ϵ_bar] = 1.0
-    spl.info[:H_bar] = 0.0
-    spl.info[:m] = 0
-
-
+    @init_da_parameters
 
     push!(spl.info[:accept_his], true)
 
     vi
   else
     # Set parameters
-
     λ = spl.alg.lambda
     ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
@@ -113,6 +106,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
                                    )
     end
 
+    # Use Dual Averaging to adapt ϵ
     adapt_step_size(spl, α)
 
     dprintln(2, "decide wether to accept...")

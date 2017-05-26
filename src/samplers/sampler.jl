@@ -5,7 +5,7 @@ include("support/resample.jl")
   include("support/transform.jl")
 end
 include("support/hmc_core.jl")
-include("support/da.jl")
+include("support/adapt.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("hmc.jl")
