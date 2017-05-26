@@ -71,7 +71,7 @@ function sample(model::Function, alg::Gibbs)
     dprintln(2, "Gibbs stepping...")
 
     time_elapsed = zero(Float64)
-    lp = zero(Float64); epsilon = zero(Float64)
+    lp = nothing; epsilon = nothing
 
     for local_spl in spl.info[:samplers]
       if haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
@@ -90,9 +90,10 @@ function sample(model::Function, alg::Gibbs)
           if ~spl.alg.thin
             samples[i_thin].value = Sample(varInfo).value
             samples[i_thin].value[:elapsed] = time_elapsed_thin
-            if ~isa(local_spl.alg, Hamiltonian)  # clean cache
-              samples[i_thin].value[:lp] = lp
-              samples[i_thin].value[:epsilon] = epsilon
+            if ~isa(local_spl.alg, Hamiltonian)
+              # If statement below is true if there is a HMC component which provides lp and epsilon
+              if lp != nothing samples[i_thin].value[:lp] = lp end
+              if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
             end
             i_thin += 1
           end
@@ -113,13 +114,13 @@ function sample(model::Function, alg::Gibbs)
     if spl.alg.thin
       samples[i].value = Sample(varInfo).value
       samples[i].value[:elapsed] = time_elapsed
-      if epsilon != 0 samples[i].value[:epsilon] = epsilon end
-      if lp != 0 samples[i].value[:lp] = lp end
+      # If statement below is true if there is a HMC component which provides lp and epsilon
+      if lp != nothing samples[i].value[:lp] = lp end
+      if epsilon != nothing samples[i].value[:epsilon] = epsilon end
     end
 
-    if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
-    haskey(spl.info, :progress) &&
-        ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
+    if ~(isdefined(Main, :IJulia) && Main.IJulia.inited)  # fix for Jupyter notebook.
+      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
     end
   end
 
