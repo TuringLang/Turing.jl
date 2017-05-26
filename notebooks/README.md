@@ -1,5 +1,5 @@
 Here are some example models for Turing.
 
-- [Gaussian Mixture](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/gmm.ipynb)
-- [Bayesian Hidden Markov Models](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/BayesHmm.ipynb)
-- [Factorical Hidden Markov Model](https://github.com/yebai/Turing.jl/blob/master/example-models/notebooks/FHMM.pdf)
+- [Gaussian Mixture Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/gmm.ipynb)
+- [Bayesian Hidden Markov Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/BayesHmm.ipynb)
+- [Factorical Hidden Markov Model](https://github.com/yebai/Turing.jl/blob/master/notebooks/FHMM.pdf)
