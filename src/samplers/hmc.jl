@@ -103,7 +103,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     time_total += time_elapsed
 
     if spl.info[:accept_his][end]     # accepted => store the new predcits
-      samples[i].value = Sample(vi).value
+      samples[i].value = Sample(vi, spl).value
     else                              # rejected => store the previous predcits
       samples[i] = samples[i - 1]
     end

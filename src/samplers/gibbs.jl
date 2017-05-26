@@ -71,7 +71,7 @@ function sample(model::Function, alg::Gibbs)
     dprintln(2, "Gibbs stepping...")
 
     time_elapsed = zero(Float64)
-    lp = zero(Float64)
+    lp = zero(Float64); epsilon = zero(Float64)
 
     for local_spl in spl.info[:samplers]
       if haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
@@ -100,6 +100,7 @@ function sample(model::Function, alg::Gibbs)
 
         if isa(local_spl.alg, Hamiltonian)
           lp = realpart(getlogp(varInfo))
+          epsilon = local_spl.info[:ϵ][end]
         end
       else
         error("[Gibbs] unsupport base sampler $local_spl")
@@ -111,6 +112,7 @@ function sample(model::Function, alg::Gibbs)
     if spl.alg.thin
       samples[i].value = Sample(varInfo).value
       samples[i].value[:elapsed] = time_elapsed
+      samples[i].value[:epsilon] = epsilon
       samples[i].value[:lp] = lp
     end
 

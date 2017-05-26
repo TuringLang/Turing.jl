@@ -14,7 +14,7 @@ model_f = gdemo([1.5, 2.0])
 
 alg = NUTS(2500, 500, 0.65)
 res = sample(model_f, alg)
-
+describe(res)
 check_numerical(res, [:s, :m], [49/24, 7/6])
 
 
