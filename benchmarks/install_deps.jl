@@ -5,3 +5,6 @@ println("CMDStan is installed at path: $CMDSTAN_HOME")
 Pkg.add("Stan")
 
 Pkg.add("UnicodePlots")
+
+Pkg.add("HDF5")
+Pkg.add("JLD")

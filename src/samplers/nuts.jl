@@ -44,8 +44,19 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
+
+    spl.info[:stds] = ones(length(vi[spl]))
+
     if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+
+    spl.info[:θ_mean] = realpart(vi[spl])
+    spl.info[:θ_num] = 1
+    D = length(vi[spl])
+    spl.info[:stds] = ones(D)
+    spl.info[:θ_vars] = nothing
+
     ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
     spl.info[:ϵ] = ϵ
@@ -87,7 +98,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
     local α, n_α
-    while s == 1 && j <= 6
+    while s == 1 && j <= 5
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
@@ -129,6 +140,28 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     vi[spl] = θ
     setlogp!(vi, logp)
+
+    θ_new = realpart(vi[spl])                                         # x_t
+    spl.info[:θ_num] += 1
+    t = spl.info[:θ_num]                                              # t
+    θ_mean_old = copy(spl.info[:θ_mean])                              # x_bar_t-1
+    spl.info[:θ_mean] = (t - 1) / t * spl.info[:θ_mean] + θ_new / t   # x_bar_t
+    θ_mean_new = spl.info[:θ_mean]                                    # x_bar_t
+
+    if t == 2
+      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
+      spl.info[:θ_vars] = diag(cov(first_two))
+    elseif t <= 1000
+      # D = length(θ_new)
+      D = 2.4^2
+      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] +
+                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
+    end
+
+    if t > 500
+      spl.info[:stds] = sqrt(spl.info[:θ_vars])
+      # spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
+    end
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

@@ -108,7 +108,6 @@ link!(vi::VarInfo, spl::Sampler) = begin
     setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, true, vn)
   end
-  setlogp!(vi, zero(Real))
 end
 
 # R -> X for all variables associated with given sampler
@@ -118,7 +117,6 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
     setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
     settrans!(vi, false, vn)
   end
-  setlogp!(vi, zero(Real))
 end
 
 function cleandual!(vi::VarInfo)

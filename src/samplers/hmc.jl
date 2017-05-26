@@ -49,9 +49,19 @@ end
 
 Sampler(alg::Hamiltonian) = begin
   info=Dict{Symbol, Any}()
+
+  # For sampler infomation
   info[:accept_his] = []
   info[:lf_num] = 0
   info[:eval_num] = 0
+
+  # For pre-conditioning
+  info[:θ_mean] = nothing
+  info[:θ_num] = 0
+  info[:stds] = nothing
+  info[:θ_vars] = nothing
+
+  # For caching gradient
   info[:grad_cache] = Dict{Vector,Vector}()
   Sampler(alg, info)
 end
@@ -89,24 +99,27 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
 
-    time_total += @elapsed vi = step(model, spl, vi, i==1)
+    time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
+    time_total += time_elapsed
 
     if spl.info[:accept_his][end]     # accepted => store the new predcits
       samples[i].value = Sample(vi).value
     else                              # rejected => store the previous predcits
       samples[i] = samples[i - 1]
     end
+    samples[i].value[:elapsed] = time_elapsed
     ProgressMeter.next!(spl.info[:progress])
   end
 
   println("[$alg_str] Finished with")
-  println("  Running time    = $time_total;")
+  println("  Running time        = $time_total;")
   if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
-    println("  Accept rate     = $accept_rate;")
+    println("  Accept rate         = $accept_rate;")
   end
-  println("  #lf / sample    = $(spl.info[:lf_num] / n);")
-  println("  #evals / sample = $(spl.info[:eval_num] / n).")
+  println("  #lf / sample        = $(spl.info[:lf_num] / n);")
+  println("  #evals / sample     = $(spl.info[:eval_num] / n);")
+  println("  pre-cond. diag mat  = $(spl.info[:stds]).")
 
   global CHUNKSIZE = default_chunk_size
 

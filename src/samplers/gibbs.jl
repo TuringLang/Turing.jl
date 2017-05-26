@@ -20,16 +20,16 @@ function Sampler(alg::Gibbs)
     if isa(sub_alg, GibbsComponent)
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
     else
-      error("[GibbsSampler] unsupport base sampling algorithm $alg")
+      error("[Gibbs] unsupport base sampling algorithm $alg")
     end
     space = union(space, sub_alg.space)
   end
 
   # Sanity check for space
-  @assert issubset(Turing._compiler_[:pvars], space) "[GibbsSampler] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+  @assert issubset(Turing._compiler_[:pvars], space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
   if Turing._compiler_[:pvars] != space
-    warn("[GibbsSampler] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
   end
 
   info = Dict{Symbol, Any}()
@@ -47,7 +47,7 @@ function sample(model::Function, alg::Gibbs)
     if isa(sub_alg, GibbsComponent)
       push!(sub_sample_n, sub_alg.n_iters)
     else
-      error("[GibbsSampler] unsupport base sampling algorithm $alg")
+      error("[Gibbs] unsupport base sampling algorithm $alg")
     end
   end
 
@@ -55,6 +55,7 @@ function sample(model::Function, alg::Gibbs)
   sample_n = alg.n_iters * (alg.thin ? 1 : sum(sub_sample_n))
 
   # Init samples
+  time_total = zero(Float64)
   samples = Array{Sample}(sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
@@ -69,6 +70,9 @@ function sample(model::Function, alg::Gibbs)
   for i = 1:n
     dprintln(2, "Gibbs stepping...")
 
+    time_elapsed = zero(Float64)
+    lp = zero(Float64)
+
     for local_spl in spl.info[:samplers]
       if haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
@@ -81,23 +85,43 @@ function sample(model::Function, alg::Gibbs)
 
         for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
-          varInfo = step(model, local_spl, varInfo, i==1)
+          time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
+
           if ~spl.alg.thin
-            samples[i_thin].value = Sample(varInfo).value; i_thin += 1
+            samples[i_thin].value = Sample(varInfo).value
+            samples[i_thin].value[:elapsed] = time_elapsed_thin
+            if ~isa(local_spl.alg, Hamiltonian)  # clean cache
+              samples[i_thin].value[:lp] = lp
+            end
+            i_thin += 1
           end
+          time_elapsed += time_elapsed_thin
+        end
+
+        if isa(local_spl.alg, Hamiltonian)
+          lp = realpart(getlogp(varInfo))
         end
       else
-        error("[GibbsSampler] unsupport base sampler $local_spl")
+        error("[Gibbs] unsupport base sampler $local_spl")
       end
     end
 
-    if spl.alg.thin samples[i].value = Sample(varInfo).value end
+    time_total += time_elapsed
+
+    if spl.alg.thin
+      samples[i].value = Sample(varInfo).value
+      samples[i].value[:elapsed] = time_elapsed
+      samples[i].value[:lp] = lp
+    end
 
     if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
     haskey(spl.info, :progress) &&
         ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
     end
   end
+
+  println("[Gibbs] Finished with")
+  println("  Running time    = $time_total;")
 
   Chain(0, samples)    # wrap the result by Chain
 end
