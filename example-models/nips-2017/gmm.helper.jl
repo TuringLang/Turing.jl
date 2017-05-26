@@ -56,3 +56,28 @@ colors = distinguishable_colors(n, LCHab[LCHab(70, 60, 240)],
                                 lchoices=Float64[65, 70, 75, 80],
                                 cchoices=Float64[0, 50, 60, 70],
                                 hchoices=linspace(0, 330, 24))
+
+make_norm_pdf(p, μ, σ) = x -> map(i -> pdf(UnivariateGMM2(μ, σ, Categorical(p)), i), x)
+
+visualize(x_gibbs, x_nuts, xmin=-5, xmax=20) = begin
+    x, y_g = make_vec(x_gibbs)
+    gibbs_layer = layer(x=x, y=y_g, Geom.bar, Theme(default_color=colors[1]))
+    x, y_n = make_vec(x_nuts)
+    nuts_layer = layer(x=x, y=y_n, Geom.bar, Theme(default_color=colors[2]))
+    contour_layer = layer([make_norm_pdf(p, μ, σ)], xmin, xmax, Theme(default_color=colors[3]))
+
+    layers = [gibbs_layer, nuts_layer, contour_layer]
+    labels = ["Gibbs", "NUTS", "Exact"]
+
+    order = [3,1]
+    plot_g = plot(layers[order]..., Guide.manual_color_key("", labels[order], colors[order]),
+                 Coord.cartesian(xmin=xmin, xmax=xmax, ymin=0, ymax=1.0),
+                 Guide.xlabel(nothing), Guide.ylabel("Density"), Guide.title("NUTS v.s. Gibbs"))
+    
+    order = [3,2]
+    plot_n = plot(layers[order]..., Guide.manual_color_key("", labels[order], colors[order]),
+                 Coord.cartesian(xmin=xmin, xmax=xmax, ymin=0, ymax=1.0),
+                 Guide.xlabel(nothing), Guide.ylabel("Density"), Guide.title("NUTS v.s. Gibbs"))
+
+    vstack(plot_g, plot_n)
+end
