@@ -59,7 +59,7 @@ colors = distinguishable_colors(n, LCHab[LCHab(70, 60, 240)],
 
 make_norm_pdf(p, μ, σ) = x -> map(i -> pdf(UnivariateGMM2(μ, σ, Categorical(p)), i), x)
 
-visualize(x_gibbs, x_nuts, xmin=-5, xmax=20) = begin
+visualize(x_gibbs, x_nuts, μ, xmin=-5, xmax=20) = begin
     x, y_g = make_vec(x_gibbs)
     gibbs_layer = layer(x=x, y=y_g, Geom.bar, Theme(default_color=colors[1]))
     x, y_n = make_vec(x_nuts)
@@ -79,5 +79,5 @@ visualize(x_gibbs, x_nuts, xmin=-5, xmax=20) = begin
                  Coord.cartesian(xmin=xmin, xmax=xmax, ymin=0, ymax=1.0),
                  Guide.xlabel(nothing), Guide.ylabel("Density"), Guide.title("NUTS v.s. Gibbs"))
 
-    vstack(plot_g, plot_n)
+    draw(PNG(15cm, 10cm), vstack(plot_g, plot_n))
 end
