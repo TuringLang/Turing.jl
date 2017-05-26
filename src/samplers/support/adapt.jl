@@ -39,8 +39,8 @@ update_pre_cond(vi::VarInfo, spl::Sampler) = begin
     first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
     spl.info[:θ_vars] = diag(cov(first_two))
   elseif t <= 1000
-    # D = length(θ_new)
-    D = 2.4^2
+    D = length(θ_new)
+    # D = 2.4^2
     spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] .+ 100 * eps(Float64) +
                         (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
   end
