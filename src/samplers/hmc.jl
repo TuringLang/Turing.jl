@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-immutable HMC <: InferenceAlgorithm
+immutable HMC <: Hamiltonian
   n_iters   ::  Int       # number of samples
   epsilon   ::  Float64   # leapfrog step size
   tau       ::  Int       # leapfrog step number
@@ -36,8 +36,6 @@ immutable HMC <: InferenceAlgorithm
     new(n_iters, epsilon, tau, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
-
-typealias Hamiltonian Union{HMC,HMCDA,NUTS}
 
 # NOTE: the implementation of HMC is removed,
 #       it now reuses the one of HMCDA

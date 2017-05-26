@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), NUTS(1000, 200, 0.65))
 ```
 """
-immutable NUTS <: InferenceAlgorithm
+immutable NUTS <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate

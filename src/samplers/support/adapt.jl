@@ -1,4 +1,4 @@
-adapt_step_size(spl::Sampler, stats::Float64, δ::Float64) = begin
+adapt_step_size{T<:Hamiltonian}(spl::Sampler{T}, stats::Float64, δ::Float64) = begin
   dprintln(2, "adapting step size ϵ...")
   m = spl.info[:m] += 1
   if m <= spl.alg.n_adapt
@@ -19,7 +19,7 @@ adapt_step_size(spl::Sampler, stats::Float64, δ::Float64) = begin
   end
 end
 
-init_da_parameters(spl::Sampler, ϵ::Float64) = begin
+init_da_parameters{T<:Hamiltonian}(spl::Sampler{T}, ϵ::Float64) = begin
   spl.info[:ϵ] = [ϵ]
   spl.info[:μ] = log(10 * ϵ)
   spl.info[:ϵ_bar] = 1.0
@@ -27,7 +27,7 @@ init_da_parameters(spl::Sampler, ϵ::Float64) = begin
   spl.info[:m] = 0
 end
 
-update_pre_cond(vi::VarInfo, spl::Sampler) = begin
+update_pre_cond{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   θ_new = realpart(vi[spl])                                         # x_t
   spl.info[:θ_num] += 1
   t = spl.info[:θ_num]                                              # t
@@ -51,7 +51,7 @@ update_pre_cond(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-init_pre_cond_parameters(vi::VarInfo, spl::Sampler) = begin
+init_pre_cond_parameters{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   spl.info[:θ_mean] = realpart(vi[spl])
   spl.info[:θ_num] = 1
   D = length(vi[spl])
