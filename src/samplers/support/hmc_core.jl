@@ -9,7 +9,7 @@ runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
   vi.index = 0
   setlogp!(vi, zero(Real))
-  if spl != nothing spl.info[:eval_num] += 1 end
+  if spl != nothing spl.info[:total_eval_num] += 1 end
   model(vi=vi, sampler=spl) # run model
 end
 
@@ -34,7 +34,8 @@ leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64,
 
     p -= ϵ * grad / 2
     θ += ϵ * p  # full step for state
-    spl.info[:lf_num] += 1  # record leapfrog num
+    spl.info[:lf_num] += 1
+    spl.info[:total_lf_num] += 1  # record leapfrog num
 
     vi[spl] = θ
     grad = gradient2(vi, model, spl)
@@ -63,7 +64,7 @@ leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sam
     p -= ϵ * grad / 2
 
     vi[spl] += ϵ * p  # full step for state
-    spl.info[:lf_num] += 1  # record leapfrog num
+    spl.info[:total_lf_num] += 1  # record leapfrog num
 
     grad = gradient2(vi, model, spl)
 

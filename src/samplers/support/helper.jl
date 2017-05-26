@@ -60,5 +60,9 @@ Sample(vi::VarInfo, spl::Sampler) = begin
     s.value[:epsilon] = spl.info[:ϵ][end]
   end
 
+  if haskey(spl.info, :lf_num)
+    s.value[:lf_num] = spl.info[:lf_num][end]
+  end
+
   s
 end

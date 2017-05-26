@@ -69,6 +69,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     λ = spl.alg.lambda
     ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
+    spl.info[:lf_num] = 0   # reset current lf num counter
+
     dprintln(3, "X-> R...")
     if spl.alg.gid != 0
       link!(vi, spl)

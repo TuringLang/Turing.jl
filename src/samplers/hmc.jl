@@ -53,7 +53,8 @@ Sampler(alg::Hamiltonian) = begin
   # For sampler infomation
   info[:accept_his] = []
   info[:lf_num] = 0
-  info[:eval_num] = 0
+  info[:total_lf_num] = 0
+  info[:total_eval_num] = 0
 
   # For pre-conditioning
   info[:θ_mean] = nothing
@@ -117,8 +118,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
     println("  Accept rate         = $accept_rate;")
   end
-  println("  #lf / sample        = $(spl.info[:lf_num] / n);")
-  println("  #evals / sample     = $(spl.info[:eval_num] / n);")
+  println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
+  println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
   println("  pre-cond. diag mat  = $(spl.info[:stds]).")
 
   global CHUNKSIZE = default_chunk_size

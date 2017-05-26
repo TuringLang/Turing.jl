@@ -19,6 +19,6 @@ check_numerical(res, [:s, :m], [49/24, 7/6])
 
 
 alg = Gibbs(2500, NUTS(500, 0.65, :m), PG(50, 1, :s))
-res = sample(model_f, alg)
+res2 = sample(model_f, alg)
 
-check_numerical(res, [:s, :m], [49/24, 7/6])
+check_numerical(res2, [:s, :m], [49/24, 7/6])
