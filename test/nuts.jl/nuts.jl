@@ -1,3 +1,5 @@
+include("../utility.jl")
+
 using Distributions, Turing
 
 @model gdemo(x) = begin

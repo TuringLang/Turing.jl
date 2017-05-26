@@ -160,7 +160,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     if t > 500
       spl.info[:stds] = sqrt(spl.info[:θ_vars])
-      # spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
+      spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
     end
 
     dprintln(3, "R -> X...")
