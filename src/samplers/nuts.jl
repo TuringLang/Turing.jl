@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), NUTS(1000, 200, 0.65))
 ```
 """
-immutable NUTS <: InferenceAlgorithm
+immutable NUTS <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
@@ -44,39 +44,24 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
-
-    spl.info[:stds] = ones(length(vi[spl]))
-
     if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
-    spl.info[:θ_mean] = realpart(vi[spl])
-    spl.info[:θ_num] = 1
-    D = length(vi[spl])
-    spl.info[:stds] = ones(D)
-    spl.info[:θ_vars] = nothing
+    init_pre_cond_parameters(vi, spl)
 
     ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
 
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    spl.info[:ϵ] = ϵ
-    spl.info[:μ] = log(10 * ϵ)
-    spl.info[:ϵ_bar] = 1.0
-    # spl.info[:ϵ_bar] = ϵ_bar  # NOTE: is this correct?
-    spl.info[:H_bar] = 0.0
-    spl.info[:m] = 0
+    init_da_parameters(spl, ϵ)
 
     push!(spl.info[:accept_his], true)
 
     vi
   else
     # Set parameters
-    δ = spl.alg.delta
-    ϵ = spl.info[:ϵ]
+    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
-    dprintln(2, "current ϵ: $ϵ")
-    μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
-    ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
+    spl.info[:lf_num] = 0   # reset current lf num counter
 
     dprintln(3, "X -> R...")
     if spl.alg.gid != 0
@@ -124,44 +109,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     end
 
     # Use Dual Averaging to adapt ϵ
-    m = spl.info[:m] += 1
-    if m < spl.alg.n_adapt
-      H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α / n_α)
-      ϵ = exp(μ - sqrt(m) / γ * H_bar)
-      ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-      spl.info[:ϵ] = ϵ
-      spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    elseif m == spl.alg.n_adapt
-      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-      spl.info[:ϵ] = spl.info[:ϵ_bar]
-    end
+    adapt_step_size(spl, α / n_α, spl.alg.delta)
 
     push!(spl.info[:accept_his], true)
-
     vi[spl] = θ
     setlogp!(vi, logp)
 
-    θ_new = realpart(vi[spl])                                         # x_t
-    spl.info[:θ_num] += 1
-    t = spl.info[:θ_num]                                              # t
-    θ_mean_old = copy(spl.info[:θ_mean])                              # x_bar_t-1
-    spl.info[:θ_mean] = (t - 1) / t * spl.info[:θ_mean] + θ_new / t   # x_bar_t
-    θ_mean_new = spl.info[:θ_mean]                                    # x_bar_t
-
-    if t == 2
-      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
-      spl.info[:θ_vars] = diag(cov(first_two))
-    elseif t <= 1000
-      # D = length(θ_new)
-      D = 2.4^2
-      spl.info[:θ_vars] = (t - 1) / t * spl.info[:θ_vars] +
-                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
-    end
-
-    if t > 500
-      spl.info[:stds] = sqrt(spl.info[:θ_vars])
-      # spl.info[:stds] = spl.info[:stds] / min(spl.info[:stds]...)
-    end
+    # Update pre-conditioning matrix
+    update_pre_cond(vi, spl)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

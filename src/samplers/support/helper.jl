@@ -48,5 +48,21 @@ Sample(vi::VarInfo) = begin
   end
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(getlogp(vi))
+
   Sample(0.0, value)
+end
+
+# VarInfo, combined with spl.info, to Sample
+Sample(vi::VarInfo, spl::Sampler) = begin
+  s = Sample(vi)
+
+  if haskey(spl.info, :ϵ)
+    s.value[:epsilon] = spl.info[:ϵ][end]
+  end
+
+  if haskey(spl.info, :lf_num)
+    s.value[:lf_num] = spl.info[:lf_num][end]
+  end
+
+  s
 end
