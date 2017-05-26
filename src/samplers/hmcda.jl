@@ -79,13 +79,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     vi
   else
     # Set parameters
-    δ = spl.alg.delta
-    λ = spl.alg.lambda
-    ϵ = spl.info[:ϵ][end]
 
-    dprintln(2, "current ϵ: $ϵ")
-    μ, γ, t_0, κ = spl.info[:μ], 0.05, 10, 0.75
-    ϵ_bar, H_bar = spl.info[:ϵ_bar], spl.info[:H_bar]
+    λ = spl.alg.lambda
+    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
     dprintln(3, "X-> R...")
     if spl.alg.gid != 0
@@ -117,19 +113,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
                                    )
     end
 
-    dprintln(2, "adapting step size ϵ...")
-    m = spl.info[:m] += 1
-    if m < spl.alg.n_adapt
-      dprintln(1, " ϵ = $ϵ, α = $α")
-      H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - α)
-      ϵ = exp(μ - sqrt(m) / γ * H_bar)
-      ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-      push!(spl.info[:ϵ], ϵ)
-      spl.info[:ϵ_bar], spl.info[:H_bar] = ϵ_bar, H_bar
-    elseif m == spl.alg.n_adapt
-      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-      push!(spl.info[:ϵ], spl.info[:ϵ_bar])
-    end
+    adapt_step_size(spl, α)
 
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
