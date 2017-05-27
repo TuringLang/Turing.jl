@@ -5,3 +5,4 @@
 tmp/
 
 *.jld
+.ipynb_checkpoints
