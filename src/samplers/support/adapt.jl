@@ -1,3 +1,25 @@
+init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
+  # Pre-cond
+  spl.info[:θ_mean] = realpart(vi[spl])
+  spl.info[:θ_num] = 1
+  D = length(vi[spl])
+  spl.info[:stds] = ones(D)
+  spl.info[:θ_vars] = ones(D)
+  # DA
+  if ~haskey(spl.info, :ϵ)
+    spl.info[:ϵ] = nothing
+  end
+  spl.info[:μ] = nothing
+  spl.info[:ϵ_bar] = 1.0
+  spl.info[:H_bar] = 0.0
+  spl.info[:m] = 0
+end
+
+update_da_params{T<:Hamiltonian}(spl::Sampler{T}, ϵ::Float64) = begin
+  spl.info[:ϵ] = [ϵ]
+  spl.info[:μ] = log(10 * ϵ)
+end
+
 adapt_step_size{T<:Hamiltonian}(spl::Sampler{T}, stats::Float64, δ::Float64) = begin
   dprintln(2, "adapting step size ϵ...")
   m = spl.info[:m] += 1
@@ -17,14 +39,6 @@ adapt_step_size{T<:Hamiltonian}(spl::Sampler{T}, stats::Float64, δ::Float64) = 
       dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
     end
   end
-end
-
-init_da_parameters{T<:Hamiltonian}(spl::Sampler{T}, ϵ::Float64) = begin
-  spl.info[:ϵ] = [ϵ]
-  spl.info[:μ] = log(10 * ϵ)
-  spl.info[:ϵ_bar] = 1.0
-  spl.info[:H_bar] = 0.0
-  spl.info[:m] = 0
 end
 
 update_pre_cond{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
@@ -51,10 +65,14 @@ update_pre_cond{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   end
 end
 
-init_pre_cond_parameters{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
-  spl.info[:θ_mean] = realpart(vi[spl])
-  spl.info[:θ_num] = 1
-  D = length(vi[spl])
-  spl.info[:stds] = ones(D)
-  spl.info[:θ_vars] = nothing
+
+
+type WarmUpManager
+  state       ::    Int
+  curr_iter   ::    Int
+  info        ::    Dict
+end
+
+update_state(wum::WarmUpManager) = begin
+
 end

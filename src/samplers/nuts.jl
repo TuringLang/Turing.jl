@@ -46,13 +46,13 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
     if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
-    init_pre_cond_parameters(vi, spl)
+    init_warm_up_params(vi, spl)
 
     ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
 
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    init_da_parameters(spl, ϵ)
+    update_da_params(spl, ϵ)
 
     push!(spl.info[:accept_his], true)
 
