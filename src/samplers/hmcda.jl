@@ -110,11 +110,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl.info[:wum], α, spl.alg.delta)
-
-    # Update pre-conditioning matrix
-    update_pre_cond(spl.info[:wum], realpart(vi[spl]))
+    # Adapt step-size and pre-cond
+    adapt(spl.info[:wum], α, realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

@@ -1,7 +1,7 @@
 type WarmUpManager
-  state       ::    Int
-  curr_iter   ::    Int
-  params      ::    Dict
+  iter_n    ::    Int
+  state     ::    Int
+  params    ::    Dict
 end
 
 getindex(wum::WarmUpManager, param) = wum.params[param]
@@ -9,7 +9,26 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
 update_state(wum::WarmUpManager) = begin
+  wum.iter_n += 1   # update iteration number
 
+  # Update state
+  if wum.state == 1
+    if wum.iter_n >= 100
+      wum.state = 2
+    end
+  elseif wum.state == 2
+    if wum.iter_n >= 900
+      wum.state = 3
+    end
+  elseif wum.state == 3
+    if wum.iter_n >= 1000
+      wum.state = 4
+    end
+  elseif wum.state == 4
+    # no more change
+  else
+    error("[Turing.WarmUpManager] unknown state $(wum.state)")
+  end
 end
 
 init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
@@ -29,6 +48,7 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:H_bar] = 0.0
   wum[:m] = 0
   wum[:n_adapt] = spl.alg.n_adapt
+  wum[:δ] = spl.alg.delta
 
   spl.info[:wum] = wum
 end
@@ -38,11 +58,11 @@ update_da_params(wum::WarmUpManager, ϵ::Float64) = begin
   wum[:μ] = log(10 * ϵ)
 end
 
-adapt_step_size(wum::WarmUpManager, stats::Float64, δ::Float64) = begin
+adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   dprintln(2, "adapting step size ϵ...")
   m = wum[:m] += 1
   if m <= wum[:n_adapt]
-    γ = 0.05; t_0 = 10; κ = 0.75
+    γ = 0.05; t_0 = 10; κ = 0.75; δ = wum[:δ]
     μ = wum[:μ]; ϵ_bar = wum[:ϵ_bar]; H_bar = wum[:H_bar]
 
     H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - stats)
@@ -81,4 +101,18 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
     wum[:stds] = sqrt(wum[:vars])
     wum[:stds] = wum[:stds] / min(wum[:stds]...)
   end
+end
+
+adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
+  update_state(wum)
+
+  # Use Dual Averaging to adapt ϵ
+  # if wum.state in [1, 2, 3]
+    adapt_step_size(wum, stats)
+  # end
+
+  # Update pre-conditioning matrix
+  # if wum.state == 2
+    update_pre_cond(wum, θ_new)
+  # end
 end

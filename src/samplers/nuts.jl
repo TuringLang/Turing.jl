@@ -112,11 +112,8 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     vi[spl] = θ
     setlogp!(vi, logp)
 
-    # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl.info[:wum], α / n_α, spl.alg.delta)
-
-    # Update pre-conditioning matrix
-    update_pre_cond(spl.info[:wum], realpart(vi[spl]))
+    # Adapt step-size and pre-cond
+    adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
