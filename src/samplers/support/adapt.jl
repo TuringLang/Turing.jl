@@ -35,8 +35,8 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum = WarmUpManager(1, 1, Dict())
 
   # Pre-cond
-  wum[:θ_num] = 1
-  wum[:θ_mean] = realpart(vi[spl])
+  wum[:θ_num] = 0
+  wum[:θ_mean] = nothing
   D = length(vi[spl])
   wum[:stds] = ones(D)
   wum[:vars] = ones(D)
@@ -83,18 +83,23 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
   wum[:θ_num] += 1                                      # θ_new = x_t
   t = wum[:θ_num]                                       # t
-  θ_mean_old = copy(wum[:θ_mean])                       # x_bar_t-1
-  wum[:θ_mean] = (t - 1) / t * wum[:θ_mean] + θ_new / t # x_bar_t
-  θ_mean_new = wum[:θ_mean]                             # x_bar_t
 
-  if t == 2
-    first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
-    wum[:vars] = diag(cov(first_two))
-  elseif t <= 1000
-    D = length(θ_new)
-    # D = 2.4^2
-    wum[:vars] = (t - 1) / t * wum[:vars] .+ 100 * eps(Float64) +
-                        (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
+  if t == 1
+    wum[:θ_mean] = θ_new
+  else
+    θ_mean_old = copy(wum[:θ_mean])                       # x_bar_t-1
+    wum[:θ_mean] = (t - 1) / t * wum[:θ_mean] + θ_new / t # x_bar_t
+    θ_mean_new = wum[:θ_mean]                             # x_bar_t
+
+    if t == 2
+      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
+      wum[:vars] = diag(cov(first_two))
+    elseif t <= 1000
+      D = length(θ_new)
+      # D = 2.4^2
+      wum[:vars] = (t - 1) / t * wum[:vars] .+ 100 * eps(Float64) +
+                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
+    end
   end
 
   if t > 500
