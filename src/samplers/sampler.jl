@@ -36,6 +36,8 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r = init(dist)
     push!(vi, vn, r, dist, 0)
   end
+  # NOTE: The importance weight is not correctly computed here because
+  #       r is genereated from some uniform distribution which is different from the prior
   acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
