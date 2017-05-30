@@ -7,6 +7,7 @@ include("support/resample.jl")
 end
 include("support/hmc_core.jl")
 include("support/adapt.jl")
+include("support/init.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("hmc.jl")
@@ -32,9 +33,11 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   if haskey(vi, vn)
     r = vi[vn]
   else
-    r = rand(dist)
+    r = init(dist)
     push!(vi, vn, r, dist, 0)
   end
+  # NOTE: The importance weight is not correctly computed here because
+  #       r is genereated from some uniform distribution which is different from the prior
   acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
   r
 end
