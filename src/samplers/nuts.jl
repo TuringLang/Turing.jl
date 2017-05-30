@@ -108,12 +108,12 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       j = j + 1
     end
 
-    # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl.info[:wum], α / n_α, spl.alg.delta)
-
     push!(spl.info[:accept_his], true)
     vi[spl] = θ
     setlogp!(vi, logp)
+
+    # Use Dual Averaging to adapt ϵ
+    adapt_step_size(spl.info[:wum], α / n_α, spl.alg.delta)
 
     # Update pre-conditioning matrix
     update_pre_cond(spl.info[:wum], realpart(vi[spl]))

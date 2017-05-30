@@ -101,9 +101,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
                                    )
     end
 
-    # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl.info[:wum], α, spl.alg.delta)
-
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
       push!(spl.info[:accept_his], true)
@@ -112,6 +109,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       vi[spl] = old_θ         # reset Θ
       setlogp!(vi, old_logp)  # reset logp
     end
+
+    # Use Dual Averaging to adapt ϵ
+    adapt_step_size(spl.info[:wum], α, spl.alg.delta)
 
     # Update pre-conditioning matrix
     update_pre_cond(spl.info[:wum], realpart(vi[spl]))
