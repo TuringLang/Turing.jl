@@ -120,7 +120,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
   stds_str = string(spl.info[:wum][:stds])
   stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
-  println("  pre-cond. diag mat  = $stds_str.")
+  println("  pre-cond. diag mat  = $(stds_str).")
 
   global CHUNKSIZE = default_chunk_size
 

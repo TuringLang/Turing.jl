@@ -93,9 +93,12 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       end
 
       if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
-      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress],
-                                  spl.info[:progress].counter;
-                                  showvalues = [(:ϵ, ϵ), (:tree_depth, j)])
+      stds_str = string(spl.info[:wum][:stds])
+      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+      haskey(spl.info, :progress) && ProgressMeter.update!(
+                                       spl.info[:progress],
+                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:tree_depth, j), (:pre_cond, stds_str)]
+                                     )
       end
 
       if s′ == 1 && rand() < min(1, n′ / n)

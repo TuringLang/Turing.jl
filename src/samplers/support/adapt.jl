@@ -8,29 +8,6 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
-update_state(wum::WarmUpManager) = begin
-  wum.iter_n += 1   # update iteration number
-
-  # Update state
-  if wum.state == 1
-    if wum.iter_n >= 100
-      wum.state = 2
-    end
-  elseif wum.state == 2
-    if wum.iter_n >= 900
-      wum.state = 3
-    end
-  elseif wum.state == 3
-    if wum.iter_n >= 1000
-      wum.state = 4
-    end
-  elseif wum.state == 4
-    # no more change
-  else
-    error("[Turing.WarmUpManager] unknown state $(wum.state)")
-  end
-end
-
 init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum = WarmUpManager(1, 1, Dict())
 
@@ -94,17 +71,40 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
     if t == 2
       first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
       wum[:vars] = diag(cov(first_two))
-    elseif t <= 1000
+    else#if t <= 1000
       D = length(θ_new)
       # D = 2.4^2
       wum[:vars] = (t - 1) / t * wum[:vars] .+ 100 * eps(Float64) +
                           (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
     end
-  end
 
-  if t > 500
-    wum[:stds] = sqrt(wum[:vars])
-    wum[:stds] = wum[:stds] / min(wum[:stds]...)
+    if t > 100
+      wum[:stds] = sqrt(wum[:vars])
+      wum[:stds] = wum[:stds] / min(wum[:stds]...)
+    end
+  end
+end
+
+update_state(wum::WarmUpManager) = begin
+  wum.iter_n += 1   # update iteration number
+
+  # Update state
+  if wum.state == 1
+    if wum.iter_n > 100
+      wum.state = 2
+    end
+  elseif wum.state == 2
+    if wum.iter_n > 900
+      wum.state = 3
+    end
+  elseif wum.state == 3
+    if wum.iter_n > 1000
+      wum.state = 4
+    end
+  elseif wum.state == 4
+    # no more change
+  else
+    error("[Turing.WarmUpManager] unknown state $(wum.state)")
   end
 end
 
@@ -112,12 +112,12 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
   update_state(wum)
 
   # Use Dual Averaging to adapt ϵ
-  # if wum.state in [1, 2, 3]
+  if wum.state in [1, 2, 3]
     adapt_step_size(wum, stats)
-  # end
+  end
 
   # Update pre-conditioning matrix
-  # if wum.state == 2
+  if wum.state == 2
     update_pre_cond(wum, θ_new)
-  # end
+  end
 end
