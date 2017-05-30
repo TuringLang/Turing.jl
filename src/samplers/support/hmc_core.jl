@@ -15,7 +15,7 @@ end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
-  randn(length(getranges(vi, spl))) .* spl.info[:stds]
+  randn(length(getranges(vi, spl))) .* spl.info[:wum][:stds]
 end
 
 # Leapfrog step
@@ -86,7 +86,7 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #       This can be a result of link/invlink (where expand! is used)
   if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
 
-  p_orig = p ./ spl.info[:stds]
+  p_orig = p ./ spl.info[:wum][:stds]
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
   if isnan(H) H = Inf else H end

@@ -52,14 +52,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    update_da_params(spl, ϵ)
+    update_da_params(spl.info[:wum], ϵ)
 
     push!(spl.info[:accept_his], true)
 
     vi
   else
     # Set parameters
-    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
+    ϵ = spl.info[:wum][:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
@@ -109,14 +109,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     end
 
     # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl, α / n_α, spl.alg.delta)
+    adapt_step_size(spl.info[:wum], α / n_α, spl.alg.delta)
 
     push!(spl.info[:accept_his], true)
     vi[spl] = θ
     setlogp!(vi, logp)
 
     # Update pre-conditioning matrix
-    update_pre_cond(vi, spl)
+    update_pre_cond(spl.info[:wum], realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

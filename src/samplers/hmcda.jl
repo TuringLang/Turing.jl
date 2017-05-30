@@ -55,11 +55,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
     ϵ = spl.alg.delta > 0 ?
         find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
-        spl.info[:ϵ][end]
+        spl.info[:pre_set_ϵ]
 
     if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 
-    update_da_params(spl, ϵ)
+    update_da_params(spl.info[:wum], ϵ)
 
     push!(spl.info[:accept_his], true)
 
@@ -67,7 +67,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   else
     # Set parameters
     λ = spl.alg.lambda
-    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
+    ϵ = spl.info[:wum][:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
@@ -102,7 +102,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl, α, spl.alg.delta)
+    adapt_step_size(spl.info[:wum], α, spl.alg.delta)
 
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
@@ -114,7 +114,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     # Update pre-conditioning matrix
-    update_pre_cond(vi, spl)
+    update_pre_cond(spl.info[:wum], realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

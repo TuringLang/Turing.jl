@@ -41,7 +41,7 @@ end
 #       it now reuses the one of HMCDA
 Sampler(alg::HMC) = begin
   spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid))
-  spl.info[:ϵ] = [alg.epsilon]
+  spl.info[:pre_set_ϵ] = alg.epsilon
   spl
 end
 
@@ -58,7 +58,7 @@ Sampler(alg::Hamiltonian) = begin
   info[:θ_mean] = nothing
   info[:θ_num] = 0
   info[:stds] = nothing
-  info[:θ_vars] = nothing
+  info[:vars] = nothing
 
   # For caching gradient
   info[:grad_cache] = Dict{Vector,Vector}()
