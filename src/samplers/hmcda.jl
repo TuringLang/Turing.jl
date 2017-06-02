@@ -51,15 +51,15 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-    init_pre_cond_parameters(vi, spl)
+    init_warm_up_params(vi, spl)
 
     ϵ = spl.alg.delta > 0 ?
         find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
-        spl.info[:ϵ][end]
+        spl.info[:pre_set_ϵ]
 
     if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 
-    init_da_parameters(spl, ϵ)
+    update_da_params(spl.info[:wum], ϵ)
 
     push!(spl.info[:accept_his], true)
 
@@ -67,7 +67,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   else
     # Set parameters
     λ = spl.alg.lambda
-    ϵ = spl.info[:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
+    ϵ = spl.info[:wum][:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
@@ -95,14 +95,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     α = min(1, exp(-(H - old_H)))
 
     if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
+    stds_str = string(spl.info[:wum][:stds])
+    stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
     haskey(spl.info, :progress) && ProgressMeter.update!(
                                      spl.info[:progress],
-                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, spl.info[:stds])]
+                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
                                    )
     end
-
-    # Use Dual Averaging to adapt ϵ
-    adapt_step_size(spl, α, spl.alg.delta)
 
     dprintln(2, "decide wether to accept...")
     if rand() < α             # accepted
@@ -113,8 +112,8 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    # Update pre-conditioning matrix
-    update_pre_cond(vi, spl)
+    # Adapt step-size and pre-cond
+    adapt(spl.info[:wum], α, realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

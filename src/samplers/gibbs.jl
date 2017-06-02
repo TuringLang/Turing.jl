@@ -103,7 +103,7 @@ function sample(model::Function, alg::Gibbs)
 
         if isa(local_spl.alg, Hamiltonian)
           lp = realpart(getlogp(varInfo))
-          epsilon = local_spl.info[:ϵ][end]
+          epsilon = local_spl.info[:wum][:ϵ][end]
           lf_num = local_spl.info[:lf_num]
         end
       else

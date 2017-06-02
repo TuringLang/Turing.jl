@@ -41,7 +41,7 @@ end
 #       it now reuses the one of HMCDA
 Sampler(alg::HMC) = begin
   spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid))
-  spl.info[:ϵ] = [alg.epsilon]
+  spl.info[:pre_set_ϵ] = alg.epsilon
   spl
 end
 
@@ -58,7 +58,7 @@ Sampler(alg::Hamiltonian) = begin
   info[:θ_mean] = nothing
   info[:θ_num] = 0
   info[:stds] = nothing
-  info[:θ_vars] = nothing
+  info[:vars] = nothing
 
   # For caching gradient
   info[:grad_cache] = Dict{Vector,Vector}()
@@ -118,7 +118,9 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   end
   println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
   println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
-  println("  pre-cond. diag mat  = $(spl.info[:stds]).")
+  stds_str = string(spl.info[:wum][:stds])
+  stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+  println("  pre-cond. diag mat  = $(stds_str).")
 
   global CHUNKSIZE = default_chunk_size
 
