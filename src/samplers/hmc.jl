@@ -65,11 +65,7 @@ Sampler(alg::Hamiltonian) = begin
   Sampler(alg, info)
 end
 
-sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
-
-# NOTE: in the previous code, `sample` would call `run`; this is
-# now simplified: `sample` and `run` are merged into one function.
-function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
+function sample{T<:Hamiltonian}(model::Function, alg::T; chunk_size=CHUNKSIZE)
   default_chunk_size = CHUNKSIZE
   global CHUNKSIZE = chunk_size
 
