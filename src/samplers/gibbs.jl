@@ -38,7 +38,10 @@ function Sampler(alg::Gibbs)
   Sampler(alg, info)
 end
 
-function sample(model::Function, alg::Gibbs)
+sample(model::Function, alg::Gibbs;
+       save_state=false,         # flag for state saving
+       resume_from=nothing,      # chain to continue
+      ) = begin
   spl = Sampler(alg)  # init the (master) Gibbs sampler
 
   # Initialize samples
@@ -130,5 +133,14 @@ function sample(model::Function, alg::Gibbs)
   println("[Gibbs] Finished with")
   println("  Running time    = $time_total;")
 
-  Chain(0, samples)    # wrap the result by Chain
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+  end
+  c = Chain(0, samples)       # wrap the result by Chain
+
+  if save_state               # save state
+    save!(c, spl, model, varInfo)
+  end
+
+  c
 end

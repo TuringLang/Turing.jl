@@ -137,7 +137,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   end
   c = Chain(0, samples)       # wrap the result by Chain
   if save_state               # save state
-    save!(c, spl, model ,vi)
+    save!(c, spl, model, vi)
   end
 
   c

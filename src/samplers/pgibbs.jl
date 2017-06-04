@@ -108,12 +108,13 @@ sample(model::Function, alg::PG;
   if resume_from != nothing   # concat samples
     unshift!(samples, resume_from.value2...)
     pre_loge = resume_from.weight
+    # TODO: fix calculation of log-evidence
     loge = pre_loge
   end
   c = Chain(loge, samples)       # wrap the result by Chain
 
   if save_state               # save state
-    save!(c, spl, model ,vi)
+    save!(c, spl, model, vi)
   end
 
   c
