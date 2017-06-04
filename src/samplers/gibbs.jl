@@ -41,8 +41,15 @@ end
 sample(model::Function, alg::Gibbs;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
+       reuse_spl=false           # flag for spl re-using
       ) = begin
-  spl = Sampler(alg)  # init the (master) Gibbs sampler
+
+  # Init the (master) Gibbs sampler
+  spl = reuse_spl ?
+        resume_from.info[:spl] :
+        Sampler(alg)
+
+  @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
   # Initialize samples
   sub_sample_n = []

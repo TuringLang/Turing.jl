@@ -23,7 +23,7 @@ chn1_contd = sample(gdemo([1.5, 2.0]), alg1; resume_from=chn1)
 
 check_numerical(chn1_contd, [:s, :m], [49/24, 7/6])
 
-chn1_contd2 = sample(gdemo([1.5, 2.0]), alg1; resume_from=chn1, reuse_adapt=true)
+chn1_contd2 = sample(gdemo([1.5, 2.0]), alg1; resume_from=chn1, reuse_spl=true)
 
 check_numerical(chn1_contd2, [:s, :m], [49/24, 7/6])
 
