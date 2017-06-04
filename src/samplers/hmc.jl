@@ -69,17 +69,17 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
                                 chunk_size=CHUNKSIZE,     # set temporary chunk size
                                 save_state=false,         # flag for state saving
                                 resume_from=nothing,      # chain to continue
-                                reuse_spl=false           # flag for spl re-using
+                                reuse_spl_n=0             # flag for spl re-using
                                )
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
   global CHUNKSIZE = chunk_size   # set temp chunk size
 
-  spl = reuse_spl ?
+  spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg)
 
-  @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+  @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
@@ -87,7 +87,9 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
 
   # Initialization
   time_total = zero(Float64)
-  n =  spl.alg.n_iters
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
   for i = 1:n

@@ -194,3 +194,12 @@ save!(c::Chain, spl::Sampler, model::Function, vi::VarInfo) = begin
   c.info[:model] = model
   c.info[:vi] = vi
 end
+
+resume(c::Chain, n_iter::Int) = begin
+  @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
+  sample(c.info[:model],
+         c.info[:spl].alg;    # this is actually not used
+         resume_from=c,
+         reuse_spl_n=n_iter
+        )
+end

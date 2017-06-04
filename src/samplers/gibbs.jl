@@ -41,11 +41,11 @@ end
 sample(model::Function, alg::Gibbs;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
-       reuse_spl=false           # flag for spl re-using
+       reuse_spl_n=0             # flag for spl re-using
       ) = begin
 
   # Init the (master) Gibbs sampler
-  spl = reuse_spl ?
+  spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg)
 
@@ -62,7 +62,10 @@ sample(model::Function, alg::Gibbs;
   end
 
   # Compute the number of samples to store
-  sample_n = alg.n_iters * (alg.thin ? 1 : sum(sub_sample_n))
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
+  sample_n = n * (alg.thin ? 1 : sum(sub_sample_n))
 
   # Init samples
   time_total = zero(Float64)

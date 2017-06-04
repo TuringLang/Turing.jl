@@ -84,16 +84,18 @@ end
 sample(model::Function, alg::PG;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
-       reuse_spl=false           # flag for spl re-using
+       reuse_spl_n=0             # flag for spl re-using
       ) = begin
 
-  spl = reuse_spl ?
+  spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg)
 
   @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
-  n = alg.n_iters
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
   samples = Vector{Sample}()
 
   ## custom resampling function for pgibbs
