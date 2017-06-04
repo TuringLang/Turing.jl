@@ -65,11 +65,24 @@ Sampler(alg::Hamiltonian) = begin
   Sampler(alg, info)
 end
 
-function sample{T<:Hamiltonian}(model::Function, alg::T; chunk_size=CHUNKSIZE)
-  default_chunk_size = CHUNKSIZE
-  global CHUNKSIZE = chunk_size
+function sample{T<:Hamiltonian}(model::Function, alg::T;
+                                chunk_size=CHUNKSIZE,     # set temporary chunk size
+                                save_state=false,         # flag for state saving
+                                resume_from=nothing,      # chain to continue
+                                reuse_sampler=false       # flag for old spl using
+                               )
 
-  spl = Sampler(alg);
+  default_chunk_size = CHUNKSIZE  # record global chunk size
+  global CHUNKSIZE = chunk_size   # set temp chunk size
+
+  if reuse_sampler && resume_from != nothing
+    spl = resume_from.info[:spl]
+    alg = spl.alg
+    if ~isa(alg, Hamiltonian) error("[Turing] cannot reuse from sampler in different alg.") end
+  else
+    spl = Sampler(alg)
+  end
+
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
@@ -115,12 +128,20 @@ function sample{T<:Hamiltonian}(model::Function, alg::T; chunk_size=CHUNKSIZE)
   println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
   println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
   stds_str = string(spl.info[:wum][:stds])
-  stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+  stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
   println("  pre-cond. diag mat  = $(stds_str).")
 
-  global CHUNKSIZE = default_chunk_size
+  global CHUNKSIZE = default_chunk_size # revert global chunk size
 
-  Chain(0, samples)    # wrap the result by Chain
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+  end
+  c = Chain(0, samples)       # wrap the result by Chain
+  if save_state               # save state
+    save!(c, spl, model ,vi)
+  end
+
+  c
 end
 
 assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin

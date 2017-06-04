@@ -91,10 +91,11 @@ type Chain <: Mamba.AbstractChains
   range   ::  Range{Int}
   names   ::  Vector{AbstractString}
   chains  ::  Vector{Int}
+  info    ::  Dict{Symbol,Any}
 end
 
 Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(0,0,0), 0:0,
-                Vector{AbstractString}(), Vector{Int}())
+                Vector{AbstractString}(), Vector{Int}(), Dict{Symbol,Any}())
 
 Chain(w::Real, s::Array{Sample}) = begin
   chn = Chain()
@@ -186,4 +187,10 @@ function Base.vcat(c1::Chain, args::Chain...)
 
   value2 = cat(1, c1.value2, map(c -> c.value2, args)...)
   Chain(0, value2)
+end
+
+save!(c::Chain, spl::Sampler, model::Function, vi::VarInfo) = begin
+  c.info[:spl] = spl
+  c.info[:model] = model
+  c.info[:vi] = vi
 end
