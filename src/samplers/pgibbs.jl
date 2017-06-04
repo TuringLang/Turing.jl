@@ -117,7 +117,8 @@ sample(model::Function, alg::PG;
     unshift!(samples, resume_from.value2...)
     pre_loge = resume_from.weight
     # TODO: fix calculation of log-evidence
-    loge = pre_loge
+    pre_n = length(resume_from.value2)
+    loge = exp((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
   end
   c = Chain(loge, samples)       # wrap the result by Chain
 
