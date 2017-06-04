@@ -81,7 +81,11 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles[indx].vi
 end
 
-sample(model::Function, alg::PG) = begin
+sample(model::Function, alg::PG;
+       save_state=false,         # flag for state saving
+       resume_from=nothing,      # chain to continue
+      ) = begin
+
   spl = Sampler(alg);
   n = spl.alg.n_iters
   samples = Vector{Sample}()
@@ -99,7 +103,20 @@ sample(model::Function, alg::PG) = begin
 
   println("[PG] Finished with")
   println("  Running time    = $time_total;")
-  chain = Chain(exp(mean(spl.info[:logevidence])), samples)
+
+  loge = exp(mean(spl.info[:logevidence]))
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+    pre_loge = resume_from.weight
+    loge = pre_loge
+  end
+  c = Chain(loge, samples)       # wrap the result by Chain
+
+  if save_state               # save state
+    save!(c, spl, model ,vi)
+  end
+
+  c
 end
 
 assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin

@@ -69,18 +69,17 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
                                 chunk_size=CHUNKSIZE,     # set temporary chunk size
                                 save_state=false,         # flag for state saving
                                 resume_from=nothing,      # chain to continue
-                                reuse_sampler=false       # flag for old spl using
+                                reuse_adapt=false         # flag for old spl using
                                )
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
   global CHUNKSIZE = chunk_size   # set temp chunk size
 
-  if reuse_sampler && resume_from != nothing
-    spl = resume_from.info[:spl]
-    alg = spl.alg
-    if ~isa(alg, Hamiltonian) error("[Turing] cannot reuse from sampler in different alg.") end
-  else
-    spl = Sampler(alg)
+  spl = Sampler(alg)
+  if reuse_adapt && resume_from != nothing
+    spl2 = resume_from.info[:spl]
+    if ~isa(spl2.alg, Hamiltonian) error("[Turing] cannot reuse from sampler in different alg.") end
+    spl.info = spl2.info
   end
 
   alg_str = isa(alg, HMC)   ? "HMC"   :
