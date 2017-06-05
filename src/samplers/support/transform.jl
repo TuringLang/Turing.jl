@@ -225,7 +225,7 @@ end
 
 typealias PDMatDistribution Union{InverseWishart, Wishart}
 
-link{T}(d::PDMatDistribution, x::Array{T,2}) = begin
+link{T<:Real}(d::PDMatDistribution, x::Array{T,2}) = begin
   z = chol(x)'
   dim = size(z)
   for m in 1:dim[1]
@@ -237,7 +237,15 @@ link{T}(d::PDMatDistribution, x::Array{T,2}) = begin
   Array{T,2}(z)
 end
 
-invlink{T}(d::PDMatDistribution, z::Array{T,2}) = begin
+link{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}) = begin
+  n = length(X)
+  for i = 1:n
+    X[i] = link(d, X[i])
+  end
+  X
+end
+
+invlink{T<:Real}(d::PDMatDistribution, z::Array{T,2}) = begin
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp(z[m, m])
@@ -248,7 +256,17 @@ invlink{T}(d::PDMatDistribution, z::Array{T,2}) = begin
   Array{T,2}(z * z')
 end
 
-Distributions.logpdf{T}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
+invlink{T<:Real}(d::PDMatDistribution, Z::Vector{Matrix{T}}) = begin
+  n = length(Z)
+
+  for i = 1:n
+    Z[i] = invlink(d, Z[i])
+  end
+
+  Z
+end
+
+Distributions.logpdf{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
@@ -257,6 +275,24 @@ Distributions.logpdf{T}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = 
       lp += (n - i + T(2)) * log(U[i, i])
     end
     lp += n * log(T(2))
+  end
+  lp
+end
+
+Distributions.logpdf{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) = begin
+  lp = logpdf(d, X)
+  if transform && all(isfinite(lp))
+    n = length(X)
+    U = Vector{Matrix{T}}(n)
+    for i = 1:n
+      U[i] = chol(X[i])'
+    end
+    D = dim(d)
+
+    for j = 1:n, i in 1:D
+      lp[j] += (D - i + T(2)) * log(U[j][i,i])
+    end
+    lp += D * log(T(2))
   end
   lp
 end

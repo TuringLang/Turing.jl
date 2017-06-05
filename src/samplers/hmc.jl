@@ -163,7 +163,7 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
 
   acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
 
-  if isa(dist, UnivariateDistribution)
+  if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
     var = rs
   elseif isa(dist, MultivariateDistribution)
     if isa(var, Vector)
@@ -175,8 +175,6 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
     else
       error("[Turing] unsupported variable container")
     end
-  elseif isa(dist, MatrixDistribution)
-    # nothing now
   end
 
   var

@@ -54,7 +54,7 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
   else
     rs = rand(dist, n)
 
-    if isa(dist, UnivariateDistribution)
+    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
       for i = 1:n
         push!(vi, vns[i], rs[i], dist, 0)
       end
@@ -72,8 +72,6 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
       else
         error("[Turing] unsupported variable container")
       end
-    elseif isa(dist, MatrixDistribution)
-      # nothing now
     end
   end
 

@@ -33,6 +33,14 @@ reconstruct(d::MatrixDistribution,       val::Vector, T::Type) = Array{T, 2}(res
 reconstruct(d::Distribution, val::Vector, n::Int) = reconstruct(d, val, typeof(val[1]), n)
 reconstruct(d::UnivariateDistribution,   val::Vector, T::Type, n::Int) = Array{T, 1}(val)
 reconstruct(d::MultivariateDistribution, val::Vector, T::Type, n::Int) = Array{T, 2}(reshape(val, size(d)[1], n))
+reconstruct(d::MatrixDistribution,       val::Vector, T::Type, n::Int) = begin
+  orig = Vector{Matrix{T}}(n)
+  tmp = Array{T, 3}(reshape(val, size(d)[1], size(d)[2], n))
+  for i = 1:n
+    orig[i] = tmp[:,:,i]
+  end
+  orig
+end
 
 ##########
 # Others #
