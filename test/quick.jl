@@ -1,36 +1,31 @@
-using Distributions
 using Turing
-using Stan
 
-include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
-include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.data.jl")
-
-@model nbmodel(K, V, M, N, z, w, doc, alpha, beta) = begin
-  theta ~ Dirichlet(alpha)
-  phi = Vector{Vector{Real}}(K)
-  phi ~ [Dirichlet(beta)]
-
-  log_theta = log(theta)
-  Turing.acclogp!(vi, sum(log_theta[z[1:M]]))
-
-  log_phi = map(x->log(x), phi)
-  for n = 1:N
-  #  w[n] ~ Categorical(phi[z[doc[n]]])
-    Turing.acclogp!(vi, log_phi[z[doc[n]]][w[n]])
+@model ldamodel(K, V, M, N, w, doc, beta, alpha) = begin
+  theta = Matrix{Real}(K, M)
+  for m = 1:M
+    theta ~ [Dirichlet(alpha)]
   end
 
-  phi
+  phi = Matrix{Real}(V, K)
+  for k = 1:K
+    phi ~ [Dirichlet(beta)]
+  end
+  
+  phi_dot_theta = phi * theta
+  for n = 1:N
+    Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
+  end
 end
 
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.data.jl")
 
-# bench_res = tbenchmark("NUTS(1000, 0.65)", "nbmodel", "data=nbstandata[1]")
-# bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
-# logd = build_logd("Naive Bayes", bench_res...)
-#
-# include(Pkg.dir("Turing")*"/benchmarks/"*"MoC-stan.run.jl")
-# logd["stan"] = stan_d
-# logd["time_stan"] = nb_time
-#
-# print_log(logd)
+setchunksize(60)
 
-samples = sample(nbmodel(data=nbstandata[1]), HMC(1000, 0.1, 4))
+alg = "HMCDA(2000, 0.65, 1.5)"
+bench_res = tbenchmark(alg, "ldamodel", "data=ldastandata[1]")
+bench_res[4].names = ["phi[1]", "phi[2]"]
+logd = build_logd("LDA", bench_res...)
+# logd["stan"] = lda_stan_d
+# logd["time_stan"] = lda_time
+print_log(logd)
