@@ -44,6 +44,8 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
+    old_θ = vi[spl]
+
     if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
     init_warm_up_params(vi, spl)
@@ -54,6 +56,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     update_da_params(spl.info[:wum], ϵ)
 
+    vi[spl] = old_θ
     push!(spl.info[:accept_his], true)
 
     vi
