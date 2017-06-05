@@ -208,7 +208,7 @@ Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) =
       Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
     end
     for k = 1:K-1
-      lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))
+      lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))'
     end
   end
   lp
