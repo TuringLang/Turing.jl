@@ -143,7 +143,7 @@ end
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
-  rs = reconstruct(dist, getval(vi, vns))
+  rs = reconstruct(dist, getval(vi, vns), length(vns))
   rs = istrans(vi, vns[1]) ? invlink(dist, rs) : rs
 end
 

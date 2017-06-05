@@ -152,18 +152,34 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   r
 end
 
-assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, variable::Any, vi::VarInfo) = begin
+assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
-  n = size(variable)[end]
+  n = size(var)[end]
 
   vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
 
-  rs = vi[vns]
+  rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 
   acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
 
-  rs
+  if isa(dist, UnivariateDistribution)
+    var = rs
+  elseif isa(dist, MultivariateDistribution)
+    if isa(var, Vector)
+      for i = 1:n
+        var[i] = rs[:,i]
+      end
+    elseif isa(var, Matrix)
+      var = rs
+    else
+      error("[Turing] unsupported variable container")
+    end
+  elseif isa(dist, MatrixDistribution)
+    # nothing now
+  end
+
+  var
 end
 
 observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
