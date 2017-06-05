@@ -143,6 +143,21 @@ link{T}(d::SimplexDistribution, x::Vector{T}) = begin
   push!(y, zero(T))
 end
 
+link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = begin
+  nrow, ncol = size(X)
+  K = nrow
+  Z = Matrix{T}(nrow - 1, ncol)
+  for k = 1:K-1
+    Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
+  end
+  Y = zeros(T, nrow, ncol)
+  for k = 1:K-1
+    Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
+  end
+
+  Y
+end
+
 invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
   z = [invlogit(y[k] + log(one(T) / (K - k))) for k in 1:K-1]
@@ -152,6 +167,22 @@ invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   end
   x[K] = one(T) - sum(x[1:K-1])
   x
+end
+
+invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = begin
+  nrow, ncol = size(Y)
+  K = nrow
+  Z = Matrix{T}(nrow - 1, ncol)
+  for k = 1:K-1
+    Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
+  end
+  X = zeros(T, nrow, ncol)
+  for k = 1:K-1
+    X[k,:] = (one(T) - sum(X[1:k-1,:], 1)) .* Z[k,:]'
+  end
+  X[K,:] = one(T) - sum(X[1:K-1,:], 1)
+
+  X
 end
 
 Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = begin
@@ -167,6 +198,23 @@ Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) =
   lp
 end
 
+Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = begin
+  lp = logpdf(d, X)
+  if transform
+    nrow, ncol = size(X)
+    K = nrow
+    Z = Matrix{T}(nrow - 1, ncol)
+    for k = 1:K-1
+      Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
+    end
+    for k = 1:K-1
+      lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))
+    end
+  end
+  lp
+end
+
+# REVIEW: why do we put this piece of code here?
 Distributions.logpdf(d::Categorical, x::Int) = begin
   d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
