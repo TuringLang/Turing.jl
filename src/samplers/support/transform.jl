@@ -33,11 +33,11 @@
 typealias TransformDistribution{T<:ContinuousUnivariateDistribution}
           Union{T, Truncated{T}}
 
-link(d::TransformDistribution, x::Real) = begin
+link{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    logit((x - a) / (b - a))
+    logit((x - a) ./ (b - a))
   elseif lowerbounded
     log(x - a)
   elseif upperbounded
@@ -47,11 +47,11 @@ link(d::TransformDistribution, x::Real) = begin
   end
 end
 
-invlink(d::TransformDistribution, x::Real) = begin
+invlink{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    (b - a) * invlogit(x) + a
+    (b - a) .* invlogit(x) + a
   elseif lowerbounded
     exp(x) + a
   elseif upperbounded
@@ -61,13 +61,13 @@ invlink(d::TransformDistribution, x::Real) = begin
   end
 end
 
-Distributions.logpdf(d::TransformDistribution, x::Real, transform::Bool) = begin
+Distributions.logpdf{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
     lowerbounded, upperbounded = isfinite(a), isfinite(b)
     if lowerbounded && upperbounded
-      lp += log((x - a) * (b - x) / (b - a))
+      lp += log((x - a) .* (b - x) ./ (b - a))
     elseif lowerbounded
       lp += log(x - a)
     elseif upperbounded
@@ -85,11 +85,11 @@ typealias RealDistribution
           Union{Cauchy, Gumbel, Laplace, Logistic,
                 NoncentralT, Normal, NormalCanon, TDist}
 
-link(d::RealDistribution, x::Real) = x
+link{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
-invlink(d::RealDistribution, x::Real) = x
+invlink{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
-Distributions.logpdf(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
+Distributions.logpdf{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf(d, x)
 
 
 #########
@@ -101,11 +101,11 @@ typealias PositiveDistribution
                 Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
                 NoncentralChisq, NoncentralF, Rayleigh, Weibull}
 
-link(d::PositiveDistribution, x::Real) = log(x)
+link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 
-invlink(d::PositiveDistribution, x::Real) = exp(x)
+invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp(x)
 
-Distributions.logpdf(d::PositiveDistribution, x::Real, transform::Bool) = begin
+Distributions.logpdf{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x) : lp
 end
@@ -118,13 +118,13 @@ end
 typealias UnitDistribution
           Union{Beta, KSOneSided, NoncentralBeta}
 
-link(d::UnitDistribution, x::Real) = logit(x)
+link{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = logit(x)
 
-invlink(d::UnitDistribution, x::Real) = invlogit(x)
+invlink{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = invlogit(x)
 
-Distributions.logpdf(d::UnitDistribution, x::Real, transform::Bool) = begin
+Distributions.logpdf{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
-  transform ? lp + log(x * (one(x) - x)) : lp
+  transform ? lp + log(x .* (one(x) - x)) : lp
 end
 
 ###########
