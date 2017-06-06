@@ -103,7 +103,7 @@ sample(model::Function, alg::PG;
   time_total = zero(Float64)
 
   vi = resume_from == nothing ?
-       model() :
+       VarInfo() :
        resume_from.info[:vi]
 
   @showprogress 1 "[PG] Sampling..." for i = 1:n
