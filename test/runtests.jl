@@ -18,7 +18,7 @@ testcases = Dict(
                            "new_grammar", "newinterface", "noreturn", "forbid_global",],
         "container.jl" => ["copy_particle_container",],
         "varinfo.jl"   => ["replay", "test_varname", "varinfo",],
-        "io.jl"        => ["chain_utility",],
+        "io.jl"        => ["chain_utility", "save_resume_chain",],
         "util.jl"      => ["util",],
 #     distributions/
         "transform.jl" => ["transform",],

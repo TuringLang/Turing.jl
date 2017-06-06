@@ -73,7 +73,7 @@ export dprintln, set_verbosity              # debugging
 export TArray, tzeros, localcopy, IArray
 
 # Export Mamba Chain utility functions, used for checking results
-export describe, plot, write, heideldiag, rafterydiag, gelmandiag
+export describe, plot, write, heideldiag, rafterydiag, gelmandiag, resume
 
 export UnivariateGMM2
 

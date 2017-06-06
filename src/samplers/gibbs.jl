@@ -38,8 +38,18 @@ function Sampler(alg::Gibbs)
   Sampler(alg, info)
 end
 
-function sample(model::Function, alg::Gibbs)
-  spl = Sampler(alg)  # init the (master) Gibbs sampler
+sample(model::Function, alg::Gibbs;
+       save_state=false,         # flag for state saving
+       resume_from=nothing,      # chain to continue
+       reuse_spl_n=0             # flag for spl re-using
+      ) = begin
+
+  # Init the (master) Gibbs sampler
+  spl = reuse_spl_n > 0 ?
+        resume_from.info[:spl] :
+        Sampler(alg)
+
+  @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
   # Initialize samples
   sub_sample_n = []
@@ -52,7 +62,10 @@ function sample(model::Function, alg::Gibbs)
   end
 
   # Compute the number of samples to store
-  sample_n = alg.n_iters * (alg.thin ? 1 : sum(sub_sample_n))
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
+  sample_n = n * (alg.thin ? 1 : sum(sub_sample_n))
 
   # Init samples
   time_total = zero(Float64)
@@ -130,5 +143,14 @@ function sample(model::Function, alg::Gibbs)
   println("[Gibbs] Finished with")
   println("  Running time    = $time_total;")
 
-  Chain(0, samples)    # wrap the result by Chain
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+  end
+  c = Chain(0, samples)       # wrap the result by Chain
+
+  if save_state               # save state
+    save!(c, spl, model, varInfo)
+  end
+
+  c
 end

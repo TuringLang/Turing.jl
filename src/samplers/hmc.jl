@@ -65,22 +65,31 @@ Sampler(alg::Hamiltonian) = begin
   Sampler(alg, info)
 end
 
-sample(model::Function, alg::Hamiltonian) = sample(model, alg, CHUNKSIZE)
+function sample{T<:Hamiltonian}(model::Function, alg::T;
+                                chunk_size=CHUNKSIZE,     # set temporary chunk size
+                                save_state=false,         # flag for state saving
+                                resume_from=nothing,      # chain to continue
+                                reuse_spl_n=0             # flag for spl re-using
+                               )
 
-# NOTE: in the previous code, `sample` would call `run`; this is
-# now simplified: `sample` and `run` are merged into one function.
-function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
-  default_chunk_size = CHUNKSIZE
-  global CHUNKSIZE = chunk_size
+  default_chunk_size = CHUNKSIZE  # record global chunk size
+  global CHUNKSIZE = chunk_size   # set temp chunk size
 
-  spl = Sampler(alg);
+  spl = reuse_spl_n > 0 ?
+        resume_from.info[:spl] :
+        Sampler(alg)
+
+  @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
+
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # Initialization
   time_total = zero(Float64)
-  n =  spl.alg.n_iters
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
   samples = Array{Sample}(n)
   weight = 1 / n
   for i = 1:n
@@ -119,12 +128,20 @@ function sample{T<:Hamiltonian}(model::Function, alg::T, chunk_size::Int)
   println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
   println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
   stds_str = string(spl.info[:wum][:stds])
-  stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+  stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
   println("  pre-cond. diag mat  = $(stds_str).")
 
-  global CHUNKSIZE = default_chunk_size
+  global CHUNKSIZE = default_chunk_size # revert global chunk size
 
-  Chain(0, samples)    # wrap the result by Chain
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+  end
+  c = Chain(0, samples)       # wrap the result by Chain
+  if save_state               # save state
+    save!(c, spl, model, vi)
+  end
+
+  c
 end
 
 assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin

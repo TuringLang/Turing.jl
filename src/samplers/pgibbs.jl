@@ -81,9 +81,21 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles[indx].vi
 end
 
-sample(model::Function, alg::PG) = begin
-  spl = Sampler(alg);
-  n = spl.alg.n_iters
+sample(model::Function, alg::PG;
+       save_state=false,         # flag for state saving
+       resume_from=nothing,      # chain to continue
+       reuse_spl_n=0             # flag for spl re-using
+      ) = begin
+
+  spl = reuse_spl_n > 0 ?
+        resume_from.info[:spl] :
+        Sampler(alg)
+
+  @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+
+  n = reuse_spl_n > 0 ?
+      reuse_spl_n :
+      alg.n_iters
   samples = Vector{Sample}()
 
   ## custom resampling function for pgibbs
@@ -99,7 +111,22 @@ sample(model::Function, alg::PG) = begin
 
   println("[PG] Finished with")
   println("  Running time    = $time_total;")
-  chain = Chain(exp(mean(spl.info[:logevidence])), samples)
+
+  loge = exp(mean(spl.info[:logevidence]))
+  if resume_from != nothing   # concat samples
+    unshift!(samples, resume_from.value2...)
+    pre_loge = resume_from.weight
+    # Calculate new log-evidence
+    pre_n = length(resume_from.value2)
+    loge = exp((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
+  end
+  c = Chain(loge, samples)       # wrap the result by Chain
+
+  if save_state               # save state
+    save!(c, spl, model, vi)
+  end
+
+  c
 end
 
 assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin

@@ -23,4 +23,4 @@ end
 #
 # chain = sample(newinterface, HMC(100, 1.5, 3))
 
-chain = sample(newinterface(obs), HMC(100, 0.75, 3, :p, :x), 2)
+chain = sample(newinterface(obs), HMC(100, 0.75, 3, :p, :x); chunk_size=2)
