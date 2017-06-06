@@ -76,7 +76,10 @@ sample(model::Function, alg::Gibbs;
   end
 
   # Init parameters
-  varInfo = model(); n = spl.alg.n_iters; i_thin = 1
+  varInfo = resume_from == nothing ?
+            model() :
+            resume_from.info[:vi]
+  n = spl.alg.n_iters; i_thin = 1
 
   # Gibbs steps
   spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)

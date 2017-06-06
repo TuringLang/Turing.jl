@@ -95,7 +95,10 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  vi = model()
+
+  vi = resume_from == nothing ?
+       model() :
+       deepcopy(resume_from.info[:vi])
 
   if spl.alg.gid == 0
     link!(vi, spl)
@@ -107,7 +110,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
 
-    time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
+    time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed
 
     if spl.info[:accept_his][end]     # accepted => store the new predcits
@@ -138,6 +141,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   end
   c = Chain(0, samples)       # wrap the result by Chain
   if save_state               # save state
+    # Convert vi back to X if vi is required to be saved
+    if spl.alg.gid == 0 invlink!(vi, spl) end
     save!(c, spl, model, vi)
   end
 

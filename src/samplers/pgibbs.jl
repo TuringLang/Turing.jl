@@ -101,7 +101,11 @@ sample(model::Function, alg::PG;
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
   time_total = zero(Float64)
-  vi = VarInfo()
+
+  vi = resume_from == nothing ?
+       model() :
+       resume_from.info[:vi]
+
   @showprogress 1 "[PG] Sampling..." for i = 1:n
     time_elapsed = @elapsed vi = step(model, spl, vi)
     push!(samples, Sample(vi))
