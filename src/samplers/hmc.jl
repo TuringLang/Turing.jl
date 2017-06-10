@@ -169,13 +169,16 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
   acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
 
   if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
+    @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
     var = rs
   elseif isa(dist, MultivariateDistribution)
     if isa(var, Vector)
+      @assert length(var) == size(rs)[2] "[assume] variable and random number dimension unmatched"
       for i = 1:n
         var[i] = rs[:,i]
       end
     elseif isa(var, Matrix)
+      @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
       var = rs
     else
       error("[Turing] unsupported variable container")
