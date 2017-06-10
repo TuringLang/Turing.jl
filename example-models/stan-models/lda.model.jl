@@ -51,3 +51,21 @@
   end
 
 end
+
+
+@model ldamodel_vec(K, V, M, N, w, doc, beta, alpha) = begin
+  theta = Matrix{Real}(K, M)
+  for m = 1:M
+    theta ~ [Dirichlet(alpha)]
+  end
+
+  phi = Matrix{Real}(V, K)
+  for k = 1:K
+    phi ~ [Dirichlet(beta)]
+  end
+
+  phi_dot_theta = phi * theta
+  for n = 1:N
+    Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
+  end
+end
