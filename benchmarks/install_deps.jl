@@ -8,3 +8,5 @@ Pkg.add("UnicodePlots")
 
 Pkg.add("HDF5")
 Pkg.add("JLD")
+
+Pkg.add("Requests")

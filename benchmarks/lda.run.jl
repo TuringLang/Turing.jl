@@ -2,6 +2,9 @@ using Distributions
 using Turing
 using Stan
 
+using Requests
+import Requests: get, post, put, delete, options, FileParam
+
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.data.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/lda.model.jl")
@@ -19,4 +22,5 @@ for (modelc, modeln) in zip(["ldamodel_vec", "ldamodel"], ["LDA vec", "LDA"])
   logd["stan"] = lda_stan_d
   logd["time_stan"] = lda_time
   print_log(logd)
+  post("http://80.85.86.210:1110"; files = [FileParam(log2str(logd), "text","upfile","benchmark-$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))-$modelc.txt")])
 end
