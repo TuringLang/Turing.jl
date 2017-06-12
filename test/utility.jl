@@ -17,6 +17,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
     r
   end
 end
+println("[test/utility.jl] randr() reloaded")
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
@@ -35,6 +36,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) =
     vi[vn]
   end
 end
+println("[test/utility.jl] randr() reloaded")
 
 # Helper function for numerical tests
 
