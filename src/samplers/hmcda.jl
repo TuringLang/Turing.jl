@@ -114,8 +114,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    # Adapt step-size and pre-cond
-    adapt(spl.info[:wum], α, realpart(vi[spl]))
+
+    if spl.alg.delta > 0      # only do adaption for HMCDA
+      adapt(spl.info[:wum], α, realpart(vi[spl]))
+    end
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
