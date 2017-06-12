@@ -64,7 +64,7 @@ end
     phi ~ [Dirichlet(beta)]
   end
 
-  phi_dot_theta = phi * theta
+  phi_dot_theta = log(phi * theta)
   for n = 1:N
     Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
   end
