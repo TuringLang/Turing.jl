@@ -4,9 +4,6 @@
   σ ~ Truncated(Cauchy(0,5), 0, +Inf)
   μ ~ Cauchy(0, 10)
   h = tzeros(Real, T)
-  if σ / sqrt(1 - ϕ^2) <= 0
-    println(σ, ϕ)
-  end
   h[1] ~ Normal(μ, σ / sqrt(1 - ϕ^2))
   y[1] ~ Normal(0, exp(h[1] / 2))
   for t = 2:T
