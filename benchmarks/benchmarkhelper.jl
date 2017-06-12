@@ -45,21 +45,25 @@ log2str(logd::Dict, monitor=[]) = begin
         str *= ("| >> $v <<") * "\n"
         str *= ("| mean = $(round(m, 3))") * "\n"
         if haskey(logd, "analytic") && haskey(logd["analytic"], v)
-          print("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
+          str *= ("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
           diff = abs(m - logd["analytic"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2
+            # TODO: try to fix this
             print_with_color(:red, diff_output*"\n")
+            str *= (diff_output) * "\n"
           else
             str *= (diff_output) * "\n"
           end
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
-          print("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
+          str *= ("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
           diff = abs(m - logd["stan"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2
+            # TODO: try to fix this
             print_with_color(:red, diff_output*"\n")
+            str *= (diff_output) * "\n"
           else
             str *= (diff_output) * "\n"
           end
