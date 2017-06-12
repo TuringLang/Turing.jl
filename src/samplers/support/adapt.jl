@@ -80,7 +80,7 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
     if t > 100
       wum[:stds] = sqrt(wum[:vars])
-      wum[:stds] = wum[:stds] / min(wum[:stds]...)
+      # wum[:stds] = wum[:stds] / min(wum[:stds]...)
     end
   end
 end
