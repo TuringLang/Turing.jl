@@ -6,7 +6,7 @@ TPATH = Pkg.dir("Turing")
 include(TPATH*"/example-models/nips-2017/sv.model.jl")
 
 using HDF5, JLD
-sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld")["data"]
+sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
 model_f = sv_model(data=sv_data[1])
 sample_n = 5000
