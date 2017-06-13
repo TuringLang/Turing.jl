@@ -9,7 +9,7 @@ using HDF5, JLD
 sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
 model_f = sv_model(data=sv_data[1])
-sample_n = 5000
+sample_n = 500
 
 setchunksize(550)
 chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
