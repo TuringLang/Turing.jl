@@ -3,6 +3,7 @@
 
 using Turing
 using Turing: checkindex, setval!, updategid!, acclogp!, vectorize, CACHERESET, VarInfo, VarName, Sampler
+println("[test/utility.jl] packages loaded")
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
