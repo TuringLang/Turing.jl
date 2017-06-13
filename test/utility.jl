@@ -1,6 +1,7 @@
 # Helper functions used by tarce.jl and varinfo.jl
 # TODO: can we somehow update the tests so that we can remove these two functions below?
 
+println("[test/utility.jl] in utility.jl now")
 using Turing
 using Turing: checkindex, setval!, updategid!, acclogp!, vectorize, CACHERESET, VarInfo, VarName, Sampler
 println("[test/utility.jl] packages loaded")
