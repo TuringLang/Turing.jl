@@ -15,12 +15,12 @@ setchunksize(60)
 
 #for alg in ["HMC(2000, 0.25, 10)", "HMCDA(1000, 0.65, 1.5)", "NUTS(2000, 1000, 0.65)"]
 
-for (modelc, modeln) in zip(["ldamodel_vec", "ldamodel"], ["LDA vec", "LDA"])
+for (modelc, modeln) in zip(["ldamodel_vec", "ldamodel"], ["LDA-vec", "LDA"])
   bench_res = tbenchmark("HMC(2000, 0.025, 10)", modelc, "data=ldastandata[1]")
   bench_res[4].names = ["phi[1]", "phi[2]"]
   logd = build_logd(modeln, bench_res...)
   logd["stan"] = lda_stan_d
   logd["time_stan"] = lda_time
   print_log(logd)
-  post("http://80.85.86.210:1110"; files = [FileParam(log2str(logd), "text","upfile","benchmark-$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))-$modelc.txt")])
+  send_log(logd)
 end
