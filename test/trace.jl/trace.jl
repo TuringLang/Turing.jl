@@ -3,11 +3,13 @@
 using Turing
 using Distributions
 
-import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, VarName
+import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, VarName, Sampler
 
 global n = 0
 
-
+alg = PG(5, 1)
+spl = Turing.Sampler(alg)
+dist = Normal(0, 1)
 
 function f2()
   global n
@@ -16,10 +18,10 @@ function f2()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    randr(ct.vi, vn, Normal(0,1), true); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    randr(ct.vi, vn, Normal(0,1), true); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n += 1;
     t[1] = 1 + t[1]
   end
 end
