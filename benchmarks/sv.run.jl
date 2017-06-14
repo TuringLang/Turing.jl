@@ -13,8 +13,8 @@ sample_n = 500
 
 setchunksize(550)
 chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
-decribe(chain_nuts)
+describe(chain_nuts)
 
 setchunksize(5)
 chain_gibbs = sample(model_f, Gibbs(sample_n, PG(50,1,:h), NUTS(1000,0.65,:ϕ,:σ,:μ)))
-decribe(chain_gibbs)
+describe(chain_gibbs)
