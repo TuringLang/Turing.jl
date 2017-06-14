@@ -15,4 +15,7 @@ logd["stan"] = stan_d
 logd["time_stan"] = nb_time
 
 print_log(logd)
+
+using Requests
+import Requests: get, post, put, delete, options, FileParam
 send_log(logd)
