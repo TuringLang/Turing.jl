@@ -49,7 +49,7 @@
   #  # w[n] ~ Categorical(phi_dot_theta)
   #  Turing.acclogp!(vi, phi_dot_theta[doc[n]][w[n]])
   #end
-  lp = mapreduce(n->phi_dot_theta[w[n], doc[n]], +, 1:N)
+  lp = mapreduce(n->phi_dot_theta[doc[n]][w[n]], +, 1:N)
   Turing.acclogp!(vi, lp)
 
 end
