@@ -1,8 +1,8 @@
 using Turing, Base.Test
 using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
-using Turing: VarInfo, VarName, Sampler
+using Turing: VarInfo, VarName
 
-randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Sampler, count::Bool) = begin
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
   vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
     r = rand(dist)
@@ -88,7 +88,7 @@ end
 
 # Test the update of group IDs
 g_demo_f = gdemo()
-g = Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
+g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg, hmc = g.info[:samplers]
 

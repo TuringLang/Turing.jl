@@ -1,4 +1,5 @@
 using Turing
+using Turing: Sampler
 
 alg = HMCDA(1000, 0.65, 0.75)
 println(alg)

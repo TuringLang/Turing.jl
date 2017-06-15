@@ -1,11 +1,9 @@
 # Helper functions used by tarce.jl and varinfo.jl
 
 println("[Turing] in utility.jl")
-using Turing
-println("[Turing] used Turing")
 
 # Helper function for numerical tests
-check_numerical(chain::Turing.Chain, symbols::Vector{Symbol}, exact_vals::Vector;
+check_numerical(chain, symbols::Vector{Symbol}, exact_vals::Vector;
                 eps=0.2) = begin
   for (sym, val) in zip(symbols, exact_vals)
     E = mean(chain[sym])
@@ -21,6 +19,3 @@ check_numerical(chain::Turing.Chain, symbols::Vector{Symbol}, exact_vals::Vector
   end
 end
 println("[Turing] defined check_numerical")
-
-using Turing: Sampler
-println("[Turing] used Turing.Sampler")
