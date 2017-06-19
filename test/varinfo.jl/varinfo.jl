@@ -1,6 +1,24 @@
 using Turing, Base.Test
 using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
-include("../utility.jl")
+using Turing: VarInfo, VarName
+
+randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
+  vi.index = count ? vi.index + 1 : vi.index
+  if ~haskey(vi, vn)
+    r = rand(dist)
+    Turing.push!(vi, vn, r, dist, spl.alg.gid)
+    r
+  elseif isnan(vi, vn)
+    r = rand(dist)
+    Turing.setval!(vi, Turing.vectorize(dist, r), vn)
+    r
+  else
+    if count Turing.checkindex(vn, vi, spl) end
+    Turing.updategid!(vi, vn, spl)
+    vi[vn]
+  end
+end
+
 # Test for uid() (= string())
 csym = gensym()
 vn1 = VarName(csym, :x, "[1]", 1)
@@ -70,7 +88,7 @@ end
 
 # Test the update of group IDs
 g_demo_f = gdemo()
-g = Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
+g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg, hmc = g.info[:samplers]
 

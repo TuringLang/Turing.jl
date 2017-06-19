@@ -3,22 +3,25 @@
 using Turing
 using Distributions
 
-import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, TraceC, TraceR, Trace, current_trace
+import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, TraceC, TraceR, Trace, current_trace, VarName, Sampler
 
 global n = 0
+
+alg = PG(5, 1)
+spl = Turing.Sampler(alg)
+dist = Normal(0, 1)
 
 function f()
   global n
   t = TArray(Float64, 1);
   t[1] = 0;
   while true
+    ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    randr(current_trace().vi, vn, Normal(0,1), true)
-    n += 1
+    Turing.assume(spl, dist, vn, ct.vi); n += 1;
     produce(0)
     vn = VarName(gensym(), :x, "[$n]", 1)
-    randr(current_trace().vi, vn, Normal(0,1), true)
-    n += 1
+    Turing.assume(spl, dist, vn, ct.vi); n += 1;
     t[1] = 1 + t[1]
   end
 end

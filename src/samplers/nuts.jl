@@ -44,15 +44,17 @@ end
 
 function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
-    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+    if ~haskey(spl.info, :wum)
+      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
-    init_warm_up_params(vi, spl)
+      init_warm_up_params(vi, spl)
 
-    ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
 
-    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
+      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-    update_da_params(spl.info[:wum], ϵ)
+      update_da_params(spl.info[:wum], ϵ)
+    end
 
     push!(spl.info[:accept_his], true)
 

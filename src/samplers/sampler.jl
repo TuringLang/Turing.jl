@@ -42,10 +42,10 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r
 end
 
-assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, variable::Any, vi::VarInfo) = begin
-  @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
+assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) = begin
+  @assert length(dists) == 1 "[assume] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
-  n = size(variable)[end]
+  n = size(var)[end]
 
   vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
 
@@ -53,14 +53,34 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, variable::Any,
     rs = vi[vns]
   else
     rs = rand(dist, n)
-    for i = 1:n
-      push!(vi, vns[i], rs[i], dist, 0)
+
+    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
+      for i = 1:n
+        push!(vi, vns[i], rs[i], dist, 0)
+      end
+      @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+      var = rs
+    elseif isa(dist, MultivariateDistribution)
+      for i = 1:n
+        push!(vi, vns[i], rs[:,i], dist, 0)
+      end
+      if isa(var, Vector)
+        @assert length(var) == size(rs)[2] "[assume] variable and random number dimension unmatched"
+        for i = 1:n
+          var[i] = rs[:,i]
+        end
+      elseif isa(var, Matrix)
+        @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+        var = rs
+      else
+        error("[Turing] unsupported variable container")
+      end
     end
   end
 
   acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
 
-  rs
+  var
 end
 
 observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =

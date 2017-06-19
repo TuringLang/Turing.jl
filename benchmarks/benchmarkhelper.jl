@@ -23,48 +23,65 @@ build_logd(name::String, engine::String, time, mem, tchain, _) = begin
 end
 
 # Log function
-print_log(logd::Dict, monitor=[]) = begin
-  println("/=======================================================================")
-  println("| Benchmark Result for >>> $(logd["name"]) <<<")
-  println("|-----------------------------------------------------------------------")
-  println("| Overview")
-  println("|-----------------------------------------------------------------------")
-  println("| Inference Engine  : $(logd["engine"])")
-  println("| Time Used (s)     : $(logd["time"])")
+log2str(logd::Dict, monitor=[]) = begin
+  str = ""
+  str *= ("/=======================================================================") * "\n"
+  str *= ("| Benchmark Result for >>> $(logd["name"]) <<<") * "\n"
+  str *= ("|-----------------------------------------------------------------------") * "\n"
+  str *= ("| Overview") * "\n"
+  str *= ("|-----------------------------------------------------------------------") * "\n"
+  str *= ("| Inference Engine  : $(logd["engine"])") * "\n"
+  str *= ("| Time Used (s)     : $(logd["time"])") * "\n"
   if haskey(logd, "time_stan")
-    println("|   -> time by Stan : $(logd["time_stan"])")
+    str *= ("|   -> time by Stan : $(logd["time_stan"])") * "\n"
   end
-  println("| Mem Alloc (bytes) : $(logd["mem"])")
+  str *= ("| Mem Alloc (bytes) : $(logd["mem"])") * "\n"
   if haskey(logd, "turing")
-    println("|-----------------------------------------------------------------------")
-    println("| Turing Inference Result")
-    println("|-----------------------------------------------------------------------")
+    str *= ("|-----------------------------------------------------------------------") * "\n"
+    str *= ("| Turing Inference Result") * "\n"
+    str *= ("|-----------------------------------------------------------------------") * "\n"
     for (v, m) = logd["turing"]
       if isempty(monitor) || v in monitor
-        println("| >> $v <<")
-        println("| mean = $(round(m, 3))")
+        str *= ("| >> $v <<") * "\n"
+        str *= ("| mean = $(round(m, 3))") * "\n"
         if haskey(logd, "analytic") && haskey(logd["analytic"], v)
-          print("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
+          str *= ("|   -> analytic = $(round(logd["analytic"][v], 3)), ")
           diff = abs(m - logd["analytic"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2
+            # TODO: try to fix this
             print_with_color(:red, diff_output*"\n")
+            str *= (diff_output) * "\n"
           else
-            println(diff_output)
+            str *= (diff_output) * "\n"
           end
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
-          print("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
+          str *= ("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
           diff = abs(m - logd["stan"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2
+            # TODO: try to fix this
             print_with_color(:red, diff_output*"\n")
+            str *= (diff_output) * "\n"
           else
-            println(diff_output)
+            str *= (diff_output) * "\n"
           end
         end
       end
     end
   end
-  println("\\=======================================================================")
+  str *= ("\\=======================================================================") * "\n"
+end
+
+print_log(logd::Dict, monitor=[]) = print(log2str(logd, monitor))
+
+send_log(logd::Dict, monitor=[]) = begin
+  log_str = log2str(logd, monitor)
+  dir_old = pwd()
+  cd(Pkg.dir("Turing"))
+  commit_str = replace(split(readstring(pipeline(`git show --summary `, `grep "commit"`)), " ")[2], "\n", "")
+  cd(dir_old)
+  time_str = "$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))"
+  post("http://80.85.86.210:1110"; files = [FileParam(log_str, "text","upfile","benchmark-$time_str-$commit_str-$(logd["name"]).txt")])
 end

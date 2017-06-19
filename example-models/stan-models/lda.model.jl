@@ -44,10 +44,28 @@
   # end
 
   phi_dot_theta = [log([dot(map(p -> p[i], phi), theta[m]) for i = 1:V]) for m=1:M]
-  for n = 1:N
-    # phi_dot_theta = [dot(map(p -> p[i], phi), theta[doc[n]]) for i = 1:V]
-    # w[n] ~ Categorical(phi_dot_theta)
-    Turing.acclogp!(vi, phi_dot_theta[doc[n]][w[n]])
-  end
+  #for n = 1:N
+  #  # phi_dot_theta = [dot(map(p -> p[i], phi), theta[doc[n]]) for i = 1:V]
+  #  # w[n] ~ Categorical(phi_dot_theta)
+  #  Turing.acclogp!(vi, phi_dot_theta[doc[n]][w[n]])
+  #end
+  lp = mapreduce(n->phi_dot_theta[doc[n]][w[n]], +, 1:N)
+  Turing.acclogp!(vi, lp)
 
+end
+
+
+@model ldamodel_vec(K, V, M, N, w, doc, beta, alpha) = begin
+  theta = Matrix{Real}(K, M)
+  theta ~ [Dirichlet(alpha)]
+
+  phi = Matrix{Real}(V, K)
+  phi ~ [Dirichlet(beta)]
+
+  phi_dot_theta = log(phi * theta)
+  #for n = 1:N
+  #  Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
+  #end
+  lp = mapreduce(n->phi_dot_theta[w[n], doc[n]], +, 1:N)
+  Turing.acclogp!(vi, lp)
 end

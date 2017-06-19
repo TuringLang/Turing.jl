@@ -25,7 +25,7 @@ testcases = Dict(
 #     samplers/
 #       support/
           "resample.jl" => ["resample", "particlecontainer",],
-        "sampler.jl" => ["vectorize_observe", "vec_assume",],
+        "sampler.jl" => ["vectorize_observe", "vec_assume", "vec_assume_mv",],
         "gibbs.jl" => ["gibbs", "gibbs2", "gibbs_constructor",],
         "nuts.jl"  => ["nuts_cons", "nuts",
                       #  "nuts_geweke",

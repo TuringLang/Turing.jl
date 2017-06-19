@@ -49,17 +49,19 @@ end
 
 function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
-    if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
+    if ~haskey(spl.info, :wum)
+      if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-    init_warm_up_params(vi, spl)
+      init_warm_up_params(vi, spl)
 
-    ϵ = spl.alg.delta > 0 ?
-        find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
-        spl.info[:pre_set_ϵ]
+      ϵ = spl.alg.delta > 0 ?
+          find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
+          spl.info[:pre_set_ϵ]
 
-    if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
+      if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 
-    update_da_params(spl.info[:wum], ϵ)
+      update_da_params(spl.info[:wum], ϵ)
+    end
 
     push!(spl.info[:accept_his], true)
 
@@ -112,8 +114,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    # Adapt step-size and pre-cond
-    adapt(spl.info[:wum], α, realpart(vi[spl]))
+
+    if spl.alg.delta > 0      # only do adaption for HMCDA
+      adapt(spl.info[:wum], α, realpart(vi[spl]))
+    end
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

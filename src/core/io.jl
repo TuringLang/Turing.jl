@@ -192,7 +192,7 @@ end
 save!(c::Chain, spl::Sampler, model::Function, vi::VarInfo) = begin
   c.info[:spl] = spl
   c.info[:model] = model
-  c.info[:vi] = vi
+  c.info[:vi] = deepcopy(vi)
 end
 
 resume(c::Chain, n_iter::Int) = begin

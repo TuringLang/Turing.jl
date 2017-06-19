@@ -25,9 +25,8 @@ macro VarName(ex::Union{Expr, Symbol})
   end
 end
 
-invlogit(x::Real) = one(x) / (one(x) + exp(-x))
-
-logit(x::Real) = log(x / (one(x) - x))
+invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
+logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})

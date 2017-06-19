@@ -95,7 +95,10 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
-  vi = model()
+
+  vi = resume_from == nothing ?
+       model() :
+       deepcopy(resume_from.info[:vi])
 
   if spl.alg.gid == 0
     link!(vi, spl)
@@ -107,7 +110,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
 
-    time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
+    time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed
 
     if spl.info[:accept_his][end]     # accepted => store the new predcits
@@ -138,6 +141,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   end
   c = Chain(0, samples)       # wrap the result by Chain
   if save_state               # save state
+    # Convert vi back to X if vi is required to be saved
+    if spl.alg.gid == 0 invlink!(vi, spl) end
     save!(c, spl, model, vi)
   end
 
@@ -152,18 +157,35 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   r
 end
 
-assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, variable::Any, vi::VarInfo) = begin
+assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
-  n = size(variable)[end]
+  n = size(var)[end]
 
   vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
 
-  rs = vi[vns]
+  rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 
   acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
 
-  rs
+  if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
+    @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+    var = rs
+  elseif isa(dist, MultivariateDistribution)
+    if isa(var, Vector)
+      @assert length(var) == size(rs)[2] "[assume] variable and random number dimension unmatched"
+      for i = 1:n
+        var[i] = rs[:,i]
+      end
+    elseif isa(var, Matrix)
+      @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+      var = rs
+    else
+      error("[Turing] unsupported variable container")
+    end
+  end
+
+  var
 end
 
 observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =

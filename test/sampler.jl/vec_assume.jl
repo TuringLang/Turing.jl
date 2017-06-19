@@ -35,3 +35,12 @@ println("Time for")
 println("  Loop : $t_loop")
 println("  Vec  : $t_vec")
 println("  Mv   : $t_mv")
+
+
+# Transformed test
+@model vdemo() = begin
+  x = Vector{Real}(N)
+  x ~ [InverseGamma(2, 3)]
+end
+
+sample(vdemo(), alg)

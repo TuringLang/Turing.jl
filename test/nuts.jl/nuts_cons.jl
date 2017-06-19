@@ -1,4 +1,5 @@
 using Turing
+using Turing: Sampler
 
 alg = NUTS(1000, 200, 0.65)
 println(alg)

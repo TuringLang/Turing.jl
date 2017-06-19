@@ -101,7 +101,11 @@ sample(model::Function, alg::PG;
   ## custom resampling function for pgibbs
   ## re-inserts reteined particle after each resampling step
   time_total = zero(Float64)
-  vi = VarInfo()
+
+  vi = resume_from == nothing ?
+       VarInfo() :
+       resume_from.info[:vi]
+
   @showprogress 1 "[PG] Sampling..." for i = 1:n
     time_elapsed = @elapsed vi = step(model, spl, vi)
     push!(samples, Sample(vi))
@@ -136,7 +140,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     if ~haskey(vi, vn)
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
-      spl.info[:cache_updated] = 0b00   # sanity flag mask for getidcs and getranges
+      spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       r
     elseif isnan(vi, vn)
       r = rand(dist)
@@ -153,5 +157,11 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
   end
 end
 
+assume{T<:Union{PG,SMC}}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) =
+  error("[Turing] PG and SMC doesn't support vectorizing assume statement")
+
 observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) =
   produce(logpdf(dist, value))
+
+observe{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+  error("[Turing] PG and SMC doesn't support vectorizing observe statement")

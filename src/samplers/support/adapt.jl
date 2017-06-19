@@ -74,13 +74,14 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
     else#if t <= 1000
       D = length(θ_new)
       # D = 2.4^2
-      wum[:vars] = (t - 1) / t * wum[:vars] .+ 100 * eps(Float64) +
+      wum[:vars] = (t - 1) / t * wum[:vars] .+ 1e3 * eps(Float64) +
                           (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
     end
 
     if t > 100
       wum[:stds] = sqrt(wum[:vars])
-      wum[:stds] = wum[:stds] / min(wum[:stds]...)
+      # wum[:stds] = wum[:stds] / min(wum[:stds]...)  # old
+      wum[:stds] = wum[:stds] / mean([wum[:stds]...])
     end
   end
 end
