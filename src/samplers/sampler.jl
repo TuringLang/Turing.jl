@@ -33,7 +33,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   if haskey(vi, vn)
     r = vi[vn]
   else
-    r = init(dist)
+    r = invlink(dist, init(dist)) # init(dist) is assumed to give a initial value in R
     push!(vi, vn, r, dist, 0)
   end
   # NOTE: The importance weight is not correctly computed here because
