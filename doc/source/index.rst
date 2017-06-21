@@ -23,8 +23,6 @@ Contents
    :maxdepth: 2
    :caption: Development Notes
 
-   language
-   compiler
    samplerintro
    tarray
    workflow

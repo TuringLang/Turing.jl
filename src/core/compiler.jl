@@ -2,6 +2,13 @@
 # Overload of ~ #
 #################
 
+doc"""
+    var_name ~ Distribution()
+
+`~` notation is to specifiy *a variable follows a distributions*. 
+
+If `var_name` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if `var_name` is defined, this variable will be treated as data.
+"""
 macro ~(left, right)
   # Is multivariate a subtype of real, e.g. Vector, Matrix?
   if isa(left, Real)                  # value
