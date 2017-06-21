@@ -39,11 +39,11 @@ using Turing  # load the package to bind docs
 to_gen = Dict(                                                        #
   "compilerapi" => Dict(                                              #
     :title  =>  "Compiler",                                           #
-    :list   =>  ["@assume", "@observe", "@predict", "@model"]         #
+    :list   =>  ["@model", "@~"]                                      #
   ),                                                                  #
   "samplerapi" => Dict(                                               #
     :title  =>  "Sampler",                                            #
-    :list   =>  ["IS", "SMC", "PG", "HMC"]                            #
+    :list   =>  ["IS", "SMC", "PG", "HMC", "HMCDA", "NUTS", "Gibbs"]  #
   ),                                                                  #
   "tarrayapi" => Dict(                                                #
     :title  =>  "TArray",                                             #
@@ -51,7 +51,7 @@ to_gen = Dict(                                                        #
   ),                                                                  #
   "chainapi" => Dict(                                                 #
     :title  =>  "Chain",                                              #
-    :list   => ["Chain", "Sample"]                                    #
+    :list   => ["Turing.Chain"]                                       #
   )                                                                   #
 )                                                                     #
 #######################################################################
@@ -63,10 +63,10 @@ cd(joinpath(dirname(@__FILE__),"source")) do
       println(f,"$(to_gen[fname][:title])\n=========\n")
       for api in to_gen[fname][:list]
         md = include_string("@doc $api")
-        if isa(md,Markdown.MD)
-          isa(md.content[1].content[1],Markdown.Code) || error("Incorrect docstring format: $api")
+        if isa(md, Markdown.MD)
+          isa(md.content[1].content[1], Markdown.Code) || error("Incorrect docstring format: $api")
 
-          printrst(f,md)
+          printrst(f, md)
         else
           warn("$D is not documented.")
         end

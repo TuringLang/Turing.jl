@@ -1,61 +1,7 @@
 Compiler
 =========
 
-.. function:: assume(ex)
-
-   Operation for defining the prior.
-
-   Usage:
-
-   .. code-block:: julia
-
-       @assume x ~ Dist
-
-   Here ``x`` is a **symbol** to be used and ``Dist`` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-   Example:
-
-   .. code-block:: julia
-
-       @assume x ~ Normal(0, 1)
-       @assume x ~ Binomial(0, 1)
-       @assume x ~ Normal(0, 1; :static=true)
-       @assume x ~ Binomial(0, 1; :param=true)
-
-.. function:: observe(ex)
-
-   Operation for defining the likelihood.
-
-   Usage:
-
-   .. code-block:: julia
-
-       @observe x ~ Dist
-
-   Here ``x`` is a **concrete value** to be used and ``Dist`` is a valid distribution from the Distributions.jl package. Optional parameters can also be passed (see examples below).
-
-   Example:
-
-   .. code-block:: julia
-
-       @observe x ~ Normal(0, 1)
-       @observe x ~ Binomial(0, 1)
-       @observe x ~ Normal(0, 1; :static=true)
-       @observe x ~ Binomial(0, 1; :param=true)
-
-.. function:: predict(ex...)
-
-   Operation for defining the the variable(s) to return.
-
-   Usage:
-
-   .. code-block:: julia
-
-       @predict x y z
-
-   Here ``x``\ , ``y``\ , ``z`` are symbols.
-
-.. function:: model(name, fbody)
+.. function:: @model(name, fbody)
 
    Wrapper for models.
 
@@ -63,17 +9,25 @@ Compiler
 
    .. code-block:: julia
 
-       @model f body
+       @model model() = begin
+         # body
+       end
 
    Example:
 
    .. code-block:: julia
 
-       @model gauss begin
-         @assume s ~ InverseGamma(2,3)
-         @assume m ~ Normal(0,sqrt(s))
-         @observe 1.5 ~ Normal(m, sqrt(s))
-         @observe 2.0 ~ Normal(m, sqrt(s))
-         @predict s m
+       @model gauss() = begin
+         s ~ InverseGamma(2,3)
+         m ~ Normal(0,sqrt(s))
+         1.5 ~ Normal(m, sqrt(s))
+         2.0 ~ Normal(m, sqrt(s))
+         return(s, m)
        end
+
+.. function:: var_name ~ Distribution()
+
+   ``~`` notation is to specifiy *a variable follows a distributions*. 
+
+   If ``var_name`` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if ``var_name`` is defined, this variable will be treated as data.
 
