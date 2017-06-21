@@ -106,7 +106,6 @@ Contents
    :maxdepth: 2
    :caption: Development Notes
 
-   language
    samplerintro
    tarray
    workflow
