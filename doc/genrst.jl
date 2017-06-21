@@ -107,7 +107,6 @@ Contents
    :caption: Development Notes
 
    language
-   compiler
    samplerintro
    tarray
    workflow

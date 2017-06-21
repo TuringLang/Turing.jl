@@ -4,12 +4,14 @@ Get Started
 Introduction
 ------------
 
-Turing is a Julia library for probabilistic programming. A Turing probabilistic program is just a normal Julia program, wrapped in a ``@model`` macro, that uses some of the special macros listed below. Available inference methods include Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG) and Hamiltonian Monte Carlo (HMC).
+**Turing** is a Julia library for (_universal_) probabilistic programming. Current features include:
 
-Authors: `Hong Ge <http://mlg.eng.cam.ac.uk/hong/>`__, `Adam
-Scibior <http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior>`__, `Matej
-Balog <http://mlg.eng.cam.ac.uk/?portfolio=matej-balog>`__, `Zoubin
-Ghahramani <http://mlg.eng.cam.ac.uk/zoubin/>`__
+* Universal probabilistic programming with an intuitive modelling interface
+* Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
+* Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
+* Compositional MCMC sampling that combines particle MCMC and HMC
+
+Authors: `Hong Ge <http://mlg.eng.cam.ac.uk/hong/>`__, `Kai Xu <http://mlg.eng.cam.ac.uk/?portfolio=kai-xu>`__, `Adam Scibior <http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior>`__, `Matej Balog <http://mlg.eng.cam.ac.uk/?portfolio=matej-balog>`__, `Zoubin Ghahramani <http://mlg.eng.cam.ac.uk/zoubin/>`__
 
 Relevant papers
 ~~~~~~~~~~~~~~~
@@ -25,12 +27,12 @@ Below is a simple Gaussian model with unknown mean and variance.
 
 .. code:: julia
 
-    @model gaussdemo begin
-      @assume s ~ InverseGamma(2,3)
-      @assume m ~ Normal(0,sqrt(s))
-      @observe 1.5 ~ Normal(m, sqrt(s))
-      @observe 2.0 ~ Normal(m, sqrt(s))
-      @predict s m
+    @model gdemo(x) = begin
+        s ~ InverseGamma(2,3)
+        m ~ Normal(0,sqrt(s))
+        x[1] ~ Normal(m, sqrt(s))
+        x[2] ~ Normal(m, sqrt(s))
+        return s, m
     end
 
 Installation
@@ -54,10 +56,6 @@ For command line version, we recommend that you install a pre-compiled package, 
 Juno also needs the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.
 
 JuliaBox is a free-installed Jupyter notebook for Julia. You can follow the following section to give a shot to Turing without installing Julia on your machine in few seconds.
-
-  **IMPORTANT**: as JuliaBox is still in beta version, it has a bug which will cause Turing fail to build from Jupyter. For installation of Turing on JuliaBox, please go to ``Console`` tab (from the navigation bar on the top), run ``PATH=/opt/julia-0.5.0/bin:$PATH; export PATH`` and install Turing from terminal (see next section).
-
-  **TIP**: you can copy the command from here and paste it into JuliaBox by right click on the virtual terminal and choose paste from browser.
 
 Turing
 ~~~~~~
@@ -90,19 +88,11 @@ Below is a short but necessary introduction to our APIs and how to use them. For
 Modelling API
 ~~~~~~~~~~~~~
 
-A probabilistic program is Julia code wrapped in a ``@model`` macro. It can use arbitrary Julia code, but to ensure correctness of inference it should not have external effects or modify global state. Stack-allocated
-variables are safe, but mutable heap-allocated objects may lead to subtle bugs when using task copying. To help avoid those we provide a Turing-safe datatype ``TArray`` that can be used to create mutable arrays in Turing programs.
+A probabilistic program is Julia code wrapped in a ``@model`` macro. It can use arbitrary Julia code, but to ensure correctness of inference it should not have external effects or modify global state. Stack-allocated variables are safe, but mutable heap-allocated objects may lead to subtle bugs when using task copying. To help avoid those we provide a Turing-safe datatype ``TArray`` that can be used to create mutable arrays in Turing programs.
 
-For probabilistic effects, Turing programs should use the following macros:
+For probabilistic effects, Turing programs should use the ``~`` notation:
 
-``@assume x ~ distr`` where ``x`` is a symbol and ``distr`` is a distribution. Inside the probabilistic program this puts a random variable named ``x``, distributed according to ``distr``, in the current
-scope. ``distr`` can be a value of any type that implements ``rand(distr)``, which samples a value from the distribution ``distr``.
-
-``@observe y ~ distr`` This is used for conditioning in a style similar to Anglican. Here ``y`` should be a value that is observed to have been drawn from the distribution ``distr``. The likelihood is computed using
-``pdf(distr,y)`` and should always be positive to ensure correctness of inference algorithms. The observe statements should be arranged so that every possible run traverses all of them in exactly the same order. This
-is equivalent to demanding that they are not placed inside stochastic control flow.
-
-``@predict x`` Registers the current value of ``x`` to be inspected in the results of inference.
+``x ~ distr`` where ``x`` is a symbol and ``distr`` is a distribution. If ``x`` is undefined, inside the probabilistic program, this puts a random variable named ``x``, distributed according to ``distr``, in the current scope. ``distr`` can be a value of any type that implements ``rand(distr)``, which samples a value from the distribution ``distr``. If ``x`` is defined, this is used for conditioning in a style similar to Anglican (another PPL). Here ``x`` should be a value that is observed to have been drawn from the distribution ``distr``. The likelihood is computed using ``pdf(distr,y)`` and should always be positive to ensure correctness of inference algorithms. The observe statements should be arranged so that every possible run traverses all of them in exactly the same order. This is equivalent to demanding that they are not placed inside stochastic control flow.
 
 Inference API
 ~~~~~~~~~~~~~
@@ -112,15 +102,17 @@ Inference methods are functions which take the probabilistic program as one of t
 .. code:: julia
 
     #  Run sampler, collect results
-    chain = sample(gaussdemo, SMC(500))
-    chain = sample(gaussdemo, PG(10,500))
-    chain = sample(gaussdemo, HMC(1000, 0.1, 5))
+    c1 = sample(gaussdemo, SMC(500))
+    c2 = sample(gaussdemo, PG(10,500))
+    c3 = sample(gaussdemo, HMC(1000, 0.1, 5))
+    c4 = sample(gdemo([1.5, 2]), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
 
 The arguments for each sampler are
 
 * SMC: number of particles
 * PG: number of praticles, number of iterations
 * HMC: number of samples, leapfrog step size, leapfrog step numbers
+* Gibbs: number of samples, component sampler 1, component sampler 2, ...
 
 Task copying
 ~~~~~~~~~~~~
