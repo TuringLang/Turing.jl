@@ -21,6 +21,6 @@ Reference
 
 [1] Arnaud Doucet, Nando De Freitas, and NJ Gordon. An introduction to sequential monte carlo method. SMC in Practice, 2001.
 
-[2] Darren Wilkinson. Introduction to the particle gibbs sampler. `<https://darrenjw.wordpress.com/2014/01/25/>introduction-to-the-particle-gibbs-sampler/`_ , 2014. [Online; accessed 10-July-2016]
+[2] Darren Wilkinson. Introduction to the particle gibbs sampler.  `https://darrenjw.wordpress.com/2014/01/25/introduction-to-the-particle-gibbs-sampler/` , 2014. [Online; accessed 10-July-2016]
 
 [3] MacKay, David JC. Information theory, inference and learning algorithms. Cambridge university press, 2003.
