@@ -11,13 +11,11 @@
   #end
 
   log_theta = log(theta)
-  Turing.acclogp!(vi, sum(log_theta[z[1:M]]))
+  Turing.acclogp!(vi, sum(log_theta[z]))
 
   log_phi = map(x->log(x), phi)
-  for n = 1:N
-  #  w[n] ~ Categorical(phi[z[doc[n]]])
-    Turing.acclogp!(vi, log_phi[z[doc[n]]][w[n]])
-  end
+  lp = mapreduce(n->log_phi[z[doc[n]]][w[n]], +, 1:N)
+  Turing.acclogp!(vi, lp)
 
   phi
 end
