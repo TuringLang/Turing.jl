@@ -54,9 +54,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
+      oldθ = vi[spl]
       ϵ = spl.alg.delta > 0 ?
           find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
           spl.info[:pre_set_ϵ]
+      vi[spl] = oldθ
 
       if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 

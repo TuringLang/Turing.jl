@@ -1,7 +1,7 @@
 include("../utility.jl")
 using Distributions, Turing, Base.Test
 
-N = 50
+N = 10
 setchunksize(N)
 # alg = HMCDA(2000, 0.65, 1.5)
 alg = HMC(1000, 0.2, 4)

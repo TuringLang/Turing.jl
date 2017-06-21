@@ -1,7 +1,3 @@
-# Helper functions used by tarce.jl and varinfo.jl
-
-println("[Turing] in utility.jl")
-
 # Helper function for numerical tests
 check_numerical(chain, symbols::Vector{Symbol}, exact_vals::Vector;
                 eps=0.2) = begin
@@ -18,4 +14,3 @@ check_numerical(chain, symbols::Vector{Symbol}, exact_vals::Vector;
     end
   end
 end
-println("[Turing] defined check_numerical")
