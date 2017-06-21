@@ -1,3 +1,14 @@
+doc"""
+    Gibbs(n_iters, alg_1, alg_2)
+
+Compositional MCMC interface.
+
+Usage:
+
+```julia
+alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
+```
+"""
 immutable Gibbs <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
   algs      ::  Tuple   # component sampling algorithms
