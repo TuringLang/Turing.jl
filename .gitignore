@@ -3,6 +3,7 @@
 *.orig
 *.png
 tmp/
+.vscode/
 
 *.jld
 .ipynb_checkpoints
