@@ -111,7 +111,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
     iter_num += 1
   end
-
+  if log_p_r_Θ′ == -Inf ϵ = ϵ / 2 end
   println("\r[$T] found initial ϵ: ", ϵ)
   ϵ
 end
