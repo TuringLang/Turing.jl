@@ -111,7 +111,11 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
     iter_num += 1
   end
-  if log_p_r_Θ′ == -Inf ϵ = ϵ / 2 end
+  while log_p_r_Θ′ == -Inf  # revert if the last change is too big
+    ϵ = ϵ / 2               # safe is more important than large
+    θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
+    log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
+  end
   println("\r[$T] found initial ϵ: ", ϵ)
   ϵ
 end
