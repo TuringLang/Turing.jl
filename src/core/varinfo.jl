@@ -103,19 +103,29 @@ isempty(vi::VarInfo) = isempty(vi.idcs)
 
 # X -> R for all variables associated with given sampler
 link!(vi::VarInfo, spl::Sampler) = begin
-  for vn in getvns(vi, spl)
-    dist = getdist(vi, vn)
-    setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
-    settrans!(vi, true, vn)
+  vns = getvns(vi, spl)
+  if ~istrans(vi, vns[1])
+    for vn in vns
+      dist = getdist(vi, vn)
+      setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
+      settrans!(vi, true, vn)
+    end
+  else
+    warn("[Turing] attempt to link a linked vi")
   end
 end
 
 # R -> X for all variables associated with given sampler
 invlink!(vi::VarInfo, spl::Sampler) = begin
-  for vn in getvns(vi, spl)
-    dist = getdist(vi, vn)
-    setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
-    settrans!(vi, false, vn)
+  vns = getvns(vi, spl)
+  if istrans(vi, vns[1])
+    for vn in vns
+      dist = getdist(vi, vn)
+      setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
+      settrans!(vi, false, vn)
+    end
+  else
+    warn("[Turing] attempt to invlink an invlinked vi")
   end
 end
 

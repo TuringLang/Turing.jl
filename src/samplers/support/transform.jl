@@ -139,7 +139,7 @@ link{T}(d::SimplexDistribution, x::Vector{T}) = begin
   for k in 1:K-1
     z[k] = x[k] / (one(T) - sum(x[1:k-1]))
   end
-  y = [logit(z[k]) - log(one(T) / (K-k)) for k in 1:K-1]
+  y = [logit(z[k]) - log(one(T) / (K-k)) for k = 1:K-1]
   push!(y, zero(T))
 end
 
@@ -160,12 +160,13 @@ end
 
 invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
-  z = [invlogit(y[k] + log(one(T) / (K - k))) for k in 1:K-1]
+  z = [invlogit(y[k] + log(one(T) / (K - k))) for k = 1:K-1]
   x = Vector{T}(K)
   for k in 1:K-1
     x[k] = (one(T) - sum(x[1:k-1])) * z[k]
   end
   x[K] = one(T) - sum(x[1:K-1])
+  @assert sum(x) == 1 "[Turing] invlink of simplex distribution invalid"
   x
 end
 
