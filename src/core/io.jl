@@ -175,6 +175,8 @@ function Base.getindex(c::Chain, v::Symbol)
   end
 end
 
+Base.getindex(c::Chain, expr::Expr) = c[Symbol(string(expr))]
+
 function Base.vcat(c1::Chain, args::Chain...)
 
   names = c1.names
