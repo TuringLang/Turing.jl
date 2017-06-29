@@ -175,7 +175,11 @@ function Base.getindex(c::Chain, v::Symbol)
   end
 end
 
-Base.getindex(c::Chain, expr::Expr) = c[Symbol(string(expr))]
+Base.getindex(c::Chain, expr::Expr) = begin
+  str = replace(string(expr), r"\(|\)", "")
+  @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
+  c[Symbol(str)]
+end
 
 function Base.vcat(c1::Chain, args::Chain...)
 
