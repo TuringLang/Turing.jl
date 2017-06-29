@@ -102,9 +102,9 @@ Inference methods are functions which take the probabilistic program as one of t
 .. code:: julia
 
     #  Run sampler, collect results
-    c1 = sample(gdemo, SMC(500))
-    c2 = sample(gdemo, PG(10,500))
-    c3 = sample(gdemo, HMC(1000, 0.1, 5))
+    c1 = sample(gdemo([1.5, 2]), SMC(500))
+    c2 = sample(gdemo([1.5, 2]), PG(10,500))
+    c3 = sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))
     c4 = sample(gdemo([1.5, 2]), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
 
 The arguments for each sampler are
