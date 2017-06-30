@@ -1,6 +1,8 @@
 using Distributions
 using Turing
 using Turing: invlogit
+using Mamba: describe
+
 include("lr_helper.jl")
 
 x, y = readlrdata()

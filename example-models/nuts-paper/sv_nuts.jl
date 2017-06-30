@@ -1,5 +1,7 @@
 using Distributions
 using Turing
+using Mamba: describe
+
 include("sv_helper.jl")
 
 y = readsvdata()

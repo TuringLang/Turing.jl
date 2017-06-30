@@ -66,14 +66,11 @@ import Base: ~, convert, promote_rule
 # Turing essentials - modelling macros and inference algorithms
 export @model, @~                           # modelling
 export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs # sampling algorithms
-export sample, setchunksize                 # inference
+export sample, setchunksize, resume         # inference
 export dprintln, set_verbosity              # debugging
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
-
-# Export Mamba Chain utility functions, used for checking results
-export describe, plot, write, heideldiag, rafterydiag, gelmandiag, resume
 
 export @sym_str
 

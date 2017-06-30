@@ -1,4 +1,5 @@
-using Stan, Mamba
+using Stan
+using Mamba: describe
 
 include("data.jl")
 

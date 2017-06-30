@@ -1,6 +1,7 @@
 include("../utility.jl")
 
 using Distributions, Turing
+using Mamba: describe
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
