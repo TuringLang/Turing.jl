@@ -1,5 +1,6 @@
 using Distributions
 using Turing
+using Mamba: describe
 
 TPATH = Pkg.dir("Turing")
 

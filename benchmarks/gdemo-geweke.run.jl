@@ -1,5 +1,6 @@
 using Stats, Distributions, Turing
 using Gadfly
+using Mamba: describe
 
 # include("ASCIIPlot.jl")
 import Gadfly.ElementOrFunction

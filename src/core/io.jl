@@ -84,7 +84,7 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-type Chain <: Mamba.AbstractChains
+type Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
@@ -118,7 +118,7 @@ flatten!(chn::Chain) = begin
   # Assuming that names[i] == names[j] for all (i,j)
   vals2 = [v[i] for v in vals, i=1:length(names[1])]
   vals2 = reshape(vals2, length(vals), length(names[1]), 1)
-  c = Mamba.Chains(vals2, names = names[1])
+  c = Chains(vals2, names = names[1])
   chn.value = c.value
   chn.range = c.range
   chn.names = c.names
