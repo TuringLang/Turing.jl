@@ -88,5 +88,7 @@ observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =
 
 observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
-  acclogp!(vi, sum(logpdf(dists[1], value)))
+  dist = dists[1]
+  @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
+  acclogp!(vi, sum(logpdf(dist, value)))
 end
