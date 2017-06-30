@@ -54,10 +54,10 @@ include("trace/trace.jl")   # running probabilistic programs as tasks
 
 using Turing.Traces
 using ProgressMeter
-@suppress_err begin using Mamba end
 
 import Distributions: sample          # to orverload sample()
 import Base: ~, convert, promote_rule
+import Mamba: AbstractChains, Chains
 
 ###########
 # Exports #
