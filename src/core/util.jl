@@ -66,3 +66,8 @@ align(x,y) = begin
 
   (x,y)
 end
+
+macro sym_str(var)
+  var_str = string(var)
+  :(Symbol($var_str))
+end
