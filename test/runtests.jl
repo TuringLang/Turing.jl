@@ -2,6 +2,8 @@
 # Master file for running all test cases #
 ##########################################
 
+using Turing; turnprogress(false)
+
 println("[runtests.jl] runtests.jl loaded")
 
 # NOTE: please keep this test list structured when adding new test cases
