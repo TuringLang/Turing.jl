@@ -106,7 +106,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   end
 
   # HMC steps
-  spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0)
+  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
   for i = 1:n
     dprintln(2, "$alg_str stepping...")
 
@@ -119,7 +119,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
       samples[i] = samples[i - 1]
     end
     samples[i].value[:elapsed] = time_elapsed
-    ProgressMeter.next!(spl.info[:progress])
+    if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
   end
 
   println("[$alg_str] Finished with")
