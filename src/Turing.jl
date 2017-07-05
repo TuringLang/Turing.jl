@@ -28,18 +28,16 @@ global const CACHERANGES = 0b01
 
 ##############
 # Dependency #
-##############
+########################################################################
+# NOTE: when using anything from external packages,                    #
+#       let's keep the practice of explictly writing Package.something #
+#       to indicate that's not implemented inside Turing.jl            #
+########################################################################
 
-# NOTE: when using anything from external packages,
-#       let's keep the practice of explictly writing Package.something
-#       to indicate that's not implemented inside Turing.jl
-
-using StatsFuns
 using Distributions
 using ForwardDiff
 
 abstract InferenceAlgorithm
-
 abstract Hamiltonian <: InferenceAlgorithm
 
 doc"""
