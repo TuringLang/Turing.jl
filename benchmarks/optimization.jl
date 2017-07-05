@@ -40,7 +40,7 @@ t3 = @elapsed for i = 1:10000 f3() end
 
 optRes *= "$t3\n"
 
-optRes *= "~ notation with expression: "
+optRes *= "~ notation with expression   : "
 
 @model m4() = begin
   x = Vector{Real}(1)
