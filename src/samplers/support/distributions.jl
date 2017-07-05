@@ -138,8 +138,8 @@ function Distributions._mixlogpdf!(r::AbstractArray, d::AbstractMixtureModel, x)
     return r
 end
 
-# Temporary patch for trancated distributions. 
-#  Remove when PR #586 is accpted 
+# Temporary patch for trancated distributions.
+#  Remove when PR #586 is accpted
 #  https://github.com/JuliaStats/Distributions.jl/pull/586
 Distributions.Truncated(d::UnivariateDistribution, l::Real, u::Real) = Distributions.Truncated(d, Float64(l), Float64(u))
 
@@ -169,3 +169,40 @@ Distributions.logccdf{T<:Real}(d::Distributions.Truncated, x::T) =
     x <= d.lower ? zero(T) :
     x >= d.upper ? -T(Inf) :
     log(d.ucdf - cdf(d.untruncated, x)) - d.logtp
+
+
+
+
+
+using Distributions
+
+# No info
+immutable NoInfo <: ContinuousUnivariateDistribution
+end
+
+Distributions.rand(d::NoInfo) = rand()
+Distributions.logpdf{T<:Real}(d::NoInfo, x::T) = zero(x)
+Distributions.minimum(d::NoInfo) = -Inf
+Distributions.maximum(d::NoInfo) = +Inf
+
+# For vec support
+Distributions.rand(d::NoInfo, n::Int) = Vector([rand() for _ = 1:n])
+Distributions.logpdf{T<:Real}(d::NoInfo, x::Vector{T}) = zero(x)
+
+
+# Pos
+immutable NoInfoPos{T<:Real} <: ContinuousUnivariateDistribution
+    l::T
+    (::Type{NoInfoPos{T}}){T}(l::T) = new{T}(l)
+end
+
+NoInfoPos{T<:Real}(l::T) = NoInfoPos{T}(l)
+
+Distributions.rand(d::NoInfoPos) = rand() + d.l
+Distributions.logpdf{T<:Real}(d::NoInfoPos, x::T) = if x <= d.l -Inf else zero(x) end
+Distributions.minimum(d::NoInfoPos) = d.l
+Distributions.maximum(d::NoInfoPos) = +Inf
+
+# For vec support
+Distributions.rand(d::NoInfoPos, n::Int) = Vector([rand() for _ = 1:n] .+ d.l)
+Distributions.logpdf{T<:Real}(d::NoInfoPos, x::Vector{T}) = if any(x .<= d.l) -Inf else zero(x) end

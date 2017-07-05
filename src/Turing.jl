@@ -84,7 +84,7 @@ export TArray, tzeros, localcopy, IArray
 
 export @sym_str
 
-export UnivariateGMM2
+export UnivariateGMM2, NoInfo, NoInfoPos
 
 ##################
 # Turing helpers #
