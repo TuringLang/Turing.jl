@@ -13,7 +13,7 @@ CONFIG = Dict(
     "gauss",
     "bernoulli",
     #"negative-binomial",
-    # "lda"
+    # "lda",
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface
