@@ -244,6 +244,45 @@ optRes *= "$ts4, mean=$(mean(ts4)), var=$(var(ts4))\n"
 
 
 
+
+using Turing: VarName, insdelim, varname, @VarName
+
+optRes *= ">>> Gen VarName <<<\n"
+
+t_kai = @elapsed for i = 1:1000
+  ex, sym = varname(:(x[:i][2])); csym = gensym()
+  str = eval(ex)
+  VarName(csym, sym, str, 1)
+end
+
+t_hong = @elapsed for i = 1:1000
+  sym, idcs, csym = @VarName x[i]
+  str = reduce(*, "", map(idx -> string(idx), idcs))
+  VarName(csym, sym, str, 1)
+end
+
+optRes *= "1st Run: \n"
+optRes *= "Kai : $t_kai\n"
+optRes *= "Hong: $t_hong\n"
+
+t_kai = @elapsed for i = 1:1000
+  ex, sym = varname(:(x[:i][2])); csym = gensym()
+  str = eval(ex)
+  VarName(csym, sym, str, 1)
+end
+
+t_hong = @elapsed for i = 1:1000
+  sym, idcs, csym = @VarName x[i]
+  str = reduce(*, "", map(idx -> string(idx), idcs))
+  VarName(csym, sym, str, 1)
+end
+
+optRes *= "2nd Run: \n"
+optRes *= "Kai : $t_kai\n"
+optRes *= "Hong: $t_hong\n"
+
+
+
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 using Requests
 import Requests: get, post, put, delete, options, FileParam
