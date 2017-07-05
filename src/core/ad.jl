@@ -20,8 +20,7 @@ gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     -getlogp(runmodel(model, vi, spl))
   end
 
-  g = x -> ForwardDiff.gradient(f, x::Vector,
-      ForwardDiff.GradientConfig{min(length(x),CHUNKSIZE)}(x::Vector))
+  g = x -> ForwardDiff.gradient(f, x::Vector, ForwardDiff.GradientConfig{min(length(x),CHUNKSIZE)}(x::Vector))
 
   g(vi[spl])
 end

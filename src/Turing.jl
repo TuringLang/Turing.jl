@@ -30,11 +30,13 @@ global const CACHERANGES = 0b01
 # Dependency #
 ##############
 
+# NOTE: when using anything from external packages,
+#       let's keep the practice of explictly writing Package.something
+#       to indicate that's not implemented inside Turing.jl
+
 using StatsFuns
 using Distributions
 using ForwardDiff
-
-using ForwardDiff: Dual, npartials    # for automatic differentiation
 
 abstract InferenceAlgorithm
 
@@ -58,15 +60,16 @@ type Sampler{T<:InferenceAlgorithm}
 end
 
 # TODO: make VarInfo into a seperate module?
-include("core/varinfo.jl")  # internal variable container
-include("trace/trace.jl")   # running probabilistic programs as tasks
+include("core/varinfo.jl")  # core internal variable container
+include("trace/trace.jl")   # to run probabilistic programs as tasks
 
 using Turing.Traces
 using ProgressMeter
 
-import Distributions: sample          # to orverload sample()
+import Distributions: sample
 import Base: ~, convert, promote_rule
 import Mamba: AbstractChains, Chains
+import ForwardDiff: gradient
 
 ###########
 # Exports #

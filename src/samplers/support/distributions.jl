@@ -174,8 +174,6 @@ Distributions.logccdf{T<:Real}(d::Distributions.Truncated, x::T) =
 
 
 
-using Distributions
-
 # No info
 immutable NoInfo <: ContinuousUnivariateDistribution
 end

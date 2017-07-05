@@ -3,13 +3,13 @@
 #####################################
 
 realpart(r::Real)   = r
-realpart(d::Dual)   = d.value
+realpart(d::ForwardDiff.Dual)   = d.value
 realpart(ds::Array) = map(d -> realpart(d), ds)
 
-dualpart(d::Dual)   = d.partials.values
+dualpart(d::ForwardDiff.Dual)   = d.partials.values
 dualpart(ds::Array) = map(d -> dualpart(d), ds)
 
-Base.promote_rule(D1::Type{Real}, D2::Type{Dual}) = D2
+Base.promote_rule(D1::Type{Real}, D2::Type{ForwardDiff.Dual}) = D2
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #
