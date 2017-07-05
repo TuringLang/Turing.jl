@@ -98,13 +98,15 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing accept rate α...")
     α = min(1, exp(-(H - old_H)))
 
-    if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
-    stds_str = string(spl.info[:wum][:stds])
-    stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
-    haskey(spl.info, :progress) && ProgressMeter.update!(
-                                     spl.info[:progress],
-                                     spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
-                                   )
+    if PROGRESS
+      if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
+      stds_str = string(spl.info[:wum][:stds])
+      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+      haskey(spl.info, :progress) && ProgressMeter.update!(
+                                       spl.info[:progress],
+                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
+                                     )
+      end
     end
 
     dprintln(2, "decide wether to accept...")

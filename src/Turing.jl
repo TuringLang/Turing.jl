@@ -7,6 +7,16 @@ module Turing
 global const NULL = NaN     # constant for "delete" vals
 
 global CHUNKSIZE = 50       # default chunksize used by AD
+setchunksize(chunk_size::Int) = begin
+  println("[Turing]: AD chunk size is set as $chunk_size")
+  global CHUNKSIZE = chunk_size
+end
+
+global PROGRESS = true
+turnprogress(switch::Bool) = begin
+  println("[Turing]: global PROGRESS is set as $switch")
+  global PROGRESS = switch
+end
 
 global VERBOSITY = 1        # verbosity for dprintln & dwarn
 global const FCOMPILER = 0  # verbose printing flag for compiler
@@ -64,10 +74,10 @@ import Mamba: AbstractChains, Chains
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~                           # modelling
-export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs # sampling algorithms
-export sample, setchunksize, resume         # inference
-export dprintln, set_verbosity              # debugging
+export @model, @~                            # modelling
+export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs  # sampling algorithms
+export sample, setchunksize, resume          # inference
+export dprintln, set_verbosity, turnprogress # debugging
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
