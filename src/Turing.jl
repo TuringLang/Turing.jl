@@ -36,6 +36,12 @@ global const CACHERANGES = 0b01
 
 using Distributions
 using ForwardDiff
+using ProgressMeter
+
+import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
+import Distributions: sample
+import ForwardDiff: gradient
+import Mamba: AbstractChains, Chains
 
 abstract InferenceAlgorithm
 abstract Hamiltonian <: InferenceAlgorithm
@@ -62,12 +68,6 @@ include("core/varinfo.jl")  # core internal variable container
 include("trace/trace.jl")   # to run probabilistic programs as tasks
 
 using Turing.Traces
-using ProgressMeter
-
-import Distributions: sample
-import Base: ~, convert, promote_rule
-import Mamba: AbstractChains, Chains
-import ForwardDiff: gradient
 
 ###########
 # Exports #

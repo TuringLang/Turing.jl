@@ -1,7 +1,3 @@
-import Base.string, Base.isequal, Base.==, Base.hash
-import Base.getindex, Base.setindex!, Base.push!
-import Base.rand, Base.show, Base.isnan, Base.isempty
-
 ###########
 # VarName #
 ###########
@@ -38,7 +34,7 @@ type VarInfo
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Vector{Real}}
-  dists       ::    Vector{Distribution}
+  dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
@@ -55,7 +51,7 @@ type VarInfo
       Vector{VarName}(),
       Vector{UnitRange{Int}}(),
       vals,
-      Vector{Distribution}(),
+      Vector{Distributions.Distribution}(),
       Vector{Int}(),
       trans, logp,
       zero(Real),
@@ -191,7 +187,7 @@ Base.show(io::IO, vi::VarInfo) = begin
 end
 
 # Add a new entry to VarInfo
-push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
+push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
