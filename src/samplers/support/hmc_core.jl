@@ -14,6 +14,7 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
+# NOTE: leapfrog() doesn't change θ in place!
 leapfrog(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
