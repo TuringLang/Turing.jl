@@ -49,7 +49,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = vi[spl]
+      oldθ = copy(vi[spl])
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
       vi[spl] = oldθ
 
@@ -82,7 +82,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θ = vi[spl]
+    θ = copy(vi[spl])
     logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
@@ -129,7 +129,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
+function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
                     model::Function, spl::Sampler, vi::VarInfo)
     doc"""
       - θ     : model parameter

@@ -14,9 +14,10 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
-leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64,
+leapfrog2(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
+  θ = copy(_θ)
   vi[spl] = θ
   grad = gradient2(vi, model, spl)
   verifygrad(grad) || (return θ, p, 0)
@@ -25,7 +26,7 @@ leapfrog2(θ::Vector, p::Vector, τ::Int, ϵ::Float64,
   for t in 1:τ
     # NOTE: we dont need copy here becase arr += another_arr
     #       doesn't change arr in-place
-    p_old = p; θ_old = (θ); old_logp = getlogp(vi)
+    p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
 
     p -= ϵ * grad / 2
     θ += ϵ * p  # full step for state
@@ -92,7 +93,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  θ = vi[spl]
+  θ = copy(vi[spl])
   θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 

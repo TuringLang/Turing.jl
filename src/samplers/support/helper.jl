@@ -4,10 +4,10 @@
 
 realpart(r::Real)   = r
 realpart(d::ForwardDiff.Dual)   = d.value
-realpart(ds::Array) = map(d -> realpart(d), ds)
+realpart(ds::Union{Array,SubArray}) = map(d -> realpart(d), ds)
 
 dualpart(d::ForwardDiff.Dual)   = d.partials.values
-dualpart(ds::Array) = map(d -> dualpart(d), ds)
+dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)
 
 Base.promote_rule(D1::Type{Real}, D2::Type{ForwardDiff.Dual}) = D2
 
@@ -25,15 +25,15 @@ vectorize{T<:Real}(d::MatrixDistribution,       r::Matrix{T}) = Vector{Real}(vec
 # otherwise we will have error for MatrixDistribution.
 # Note this is not the case for MultivariateDistribution so I guess this might be lack of
 # support for some types related to matrices (like PDMat).
-reconstruct(d::Distribution, val::Vector) = reconstruct(d, val, typeof(val[1]))
-reconstruct(d::UnivariateDistribution,   val::Vector, T::Type) = T(val[1])
-reconstruct(d::MultivariateDistribution, val::Vector, T::Type) = Array{T, 1}(val)
-reconstruct(d::MatrixDistribution,       val::Vector, T::Type) = Array{T, 2}(reshape(val, size(d)...))
+reconstruct(d::Distribution, val::Union{Vector,SubArray}) = reconstruct(d, val, typeof(val[1]))
+reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type) = T(val[1])
+reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = Array{T, 1}(val)
+reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type) = Array{T, 2}(reshape(val, size(d)...))
 
-reconstruct(d::Distribution, val::Vector, n::Int) = reconstruct(d, val, typeof(val[1]), n)
-reconstruct(d::UnivariateDistribution,   val::Vector, T::Type, n::Int) = Array{T, 1}(val)
-reconstruct(d::MultivariateDistribution, val::Vector, T::Type, n::Int) = Array{T, 2}(reshape(val, size(d)[1], n))
-reconstruct(d::MatrixDistribution,       val::Vector, T::Type, n::Int) = begin
+reconstruct(d::Distribution, val::Union{Vector,SubArray}, n::Int) = reconstruct(d, val, typeof(val[1]), n)
+reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type, n::Int) = Array{T, 1}(val)
+reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type, n::Int) = Array{T, 2}(reshape(val, size(d)[1], n))
+reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type, n::Int) = begin
   orig = Vector{Matrix{T}}(n)
   tmp = Array{T, 3}(reshape(val, size(d)[1], size(d)[2], n))
   for i = 1:n

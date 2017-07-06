@@ -68,14 +68,14 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getranges(vi::VarInfo, vns::Vector{VarName}) = union(map(vn -> getrange(vi, vn), vns)...)
 
-getval(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, vn::VarName)       = view(vi.vals[end], getrange(vi, vn))
 setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
-getval(vi::VarInfo, vns::Vector{VarName}) = vi.vals[end][getranges(vi, vns)]
+getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns))
 
-getval(vi::VarInfo, view::VarView)                      = vi.vals[end][view]
-setval!(vi::VarInfo, val::Any, view::VarView)           = vi.vals[end][view] = val
-setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, view)
+getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
+setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, vview)
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
@@ -142,20 +142,22 @@ syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
-  r = reconstruct(dist, getval(vi, vn))
-  r = istrans(vi, vn) ? invlink(dist, r) : r
+  istrans(vi, vn) ?
+    invlink(dist, reconstruct(dist, getval(vi, vn))) :
+    reconstruct(dist, getval(vi, vn))
 end
 
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
-  rs = reconstruct(dist, getval(vi, vns), length(vns))
-  rs = istrans(vi, vns[1]) ? invlink(dist, rs) : rs
+  istrans(vi, vns[1]) ?
+    invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
+    reconstruct(dist, getval(vi, vns), length(vns))
 end
 
-# NOTE: vi[view] will just return what insdie vi (no transformations applied)
-Base.getindex(vi::VarInfo, view::VarView)            = getval(vi, view)
-Base.setindex!(vi::VarInfo, val::Any, view::VarView) = setval!(vi, val, view)
+# NOTE: vi[vview] will just return what insdie vi (no transformations applied)
+Base.getindex(vi::VarInfo, vview::VarView)            = getval(vi, vview)
+Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 
 Base.getindex(vi::VarInfo, spl::Sampler)            = getval(vi, getranges(vi, spl))
 Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))

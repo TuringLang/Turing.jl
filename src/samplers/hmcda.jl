@@ -54,7 +54,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = vi[spl]
+      oldθ = copy(vi[spl])
       ϵ = spl.alg.delta > 0 ?
           find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
           spl.info[:pre_set_ϵ]
@@ -85,7 +85,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(2, "recording old values...")
-    old_θ = vi[spl]; old_logp = getlogp(vi)
+    old_θ = copy(vi[spl]); old_logp = getlogp(vi)
     old_H = find_H(p, model, vi, spl)
 
     τ = max(1, round(Int, λ / ϵ))
