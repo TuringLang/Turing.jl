@@ -41,8 +41,7 @@ build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.update();Pkg.add(\"Cairo\"); Pkg.build(\"Cairo\");
-      rm(Pkg.dir(\"Turing\"), force=true, recursive=true);
+      Pkg.update(); rm(Pkg.dir(\"Turing\"), force=true, recursive=true);
       Pkg.clone(pwd(), \"Turing\");
       Pkg.build(\"Turing\")"
 
