@@ -2,10 +2,35 @@
 # Overload of ~ #
 #################
 
+macro VarName(ex::Union{Expr, Symbol})
+  # Usage: @VarName x[1,2][1+5][45][3]
+  #    return: (:x,[1,2],6,45,3)
+  s = string(gensym())
+  if isa(ex, Symbol)
+    _ = string(ex)
+    return :(Symbol($_), Symbol($s))
+  elseif ex.head == :ref
+    _2 = ex
+    _1 = ""
+    while _2.head == :ref
+      if length(_2.args) > 2
+        _1 = "[" * foldl( (x,y)-> "$x, $y", map(string, _2.args[2:end])) * "], $_1"
+      else
+        _1 = "[" * string(_2.args[2]) * "], $_1"
+      end
+      _2   = _2.args[1]
+      isa(_2, Symbol) && (_1 = ":($_2)" * ", ($_1), Symbol(\"$s\")"; break)
+    end
+    return esc(parse(_1))
+  else
+    error("VarName: Mis-formed variable name $(e)!")
+  end
+end
+
 doc"""
     var_name ~ Distribution()
 
-`~` notation is to specifiy *a variable follows a distributions*.
+Tilda notation `~` is to specifiy *a variable follows a distributions*.
 
 If `var_name` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if `var_name` is defined, this variable will be treated as data.
 """
@@ -57,7 +82,8 @@ macro ~(left, right)
       if isa(left, Symbol)
         # Symbol
         assume_ex = quote
-          csym_str = string(Turing._compiler_[:fname])*"_var"* string(@__LINE__)
+          # TODO: move this outside quote
+          csym_str = string(Turing._compiler_[:fname])*"_var"*string(@__LINE__)
           sym = Symbol($(string(left)))
           vn = Turing.VarName(vi, Symbol(csym_str), sym, "")
           if isa($(right), Vector)
@@ -78,26 +104,18 @@ macro ~(left, right)
           end
         end
       else
-        # Indexing
-        assume_ex, sym = varname(left)    # sym here is used in predict()
-        # NOTE:
-        # The initialization of assume_ex is indexing_ex,
-        # in which sym will store the variable symbol (Symbol),
-        # and indexing will store the indexing (String)
-        # csym_str = string(gensym())
-        push!(
-          assume_ex.args,
-          quote
-            csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-            vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-            $(left) = Turing.assume(
-              sampler,
-              $(right),   # dist
-              vn,         # VarName
-              vi          # VarInfo
-            )
-          end
-        )
+        assume_ex = quote
+          sym, idcs, csym = @VarName $left
+          csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
+          indexing = reduce(*, "", map(idx -> string(idx), idcs))
+          vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
+          $left = Turing.assume(
+            sampler,
+            $right,   # dist
+            vn,       # VarName
+            vi        # VarInfo
+          )
+        end
       end
       esc(assume_ex)
     end

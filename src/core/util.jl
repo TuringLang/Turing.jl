@@ -1,30 +1,5 @@
 # ---------   Utility Functions ----------- #
 
-macro VarName(ex::Union{Expr, Symbol})
-  # Usage: @VarName x[1,2][1+5][45][3]
-  #    return: (:x,[1,2],6,45,3)
-  s = string(gensym())
-  if isa(ex, Symbol)
-    _ = string(ex)
-    return :(Symbol($_), Symbol($s))
-  elseif ex.head == :ref
-    _2 = ex
-    _1 = ""
-    while _2.head == :ref
-      if length(_2.args) > 2
-        _1 = "[" * foldl( (x,y)-> "$x, $y", map(string, _2.args[2:end])) * "], $_1"
-      else
-        _1 = "[" * string(_2.args[2]) * "], $_1"
-      end
-      _2   = _2.args[1]
-      isa(_2, Symbol) && (_1 = ":($_2)" * ", ($_1), Symbol(\"$s\")"; break)
-    end
-    return esc(parse(_1))
-  else
-    error("VarName: Mis-formed variable name $(e)!")
-  end
-end
-
 invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
 logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
 

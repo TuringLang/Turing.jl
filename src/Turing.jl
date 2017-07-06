@@ -74,7 +74,7 @@ using Turing.Traces
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~                            # modelling
+export @model, @~, @VarName                  # modelling
 export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs  # sampling algorithms
 export sample, setchunksize, resume          # inference
 export dprintln, set_verbosity, turnprogress # debugging
