@@ -265,8 +265,9 @@ optRes *= "1st Run: \n"
 optRes *= "Kai : $t_kai\n"
 optRes *= "Hong: $t_hong\n"
 
-t_kai = @elapsed for i = 1:1000
-  ex, sym = varname(:(x[:i][2])); csym = gensym()
+t_kai = @elapsed ex, sym = varname(:(x[:i][2]))
+t_kai += @elapsed for i = 1:1000
+  csym = gensym()
   str = eval(ex)
   VarName(csym, sym, str, 1)
 end
