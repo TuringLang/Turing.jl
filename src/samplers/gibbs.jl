@@ -101,7 +101,7 @@ sample(model::Function, alg::Gibbs;
     lp = nothing; epsilon = nothing; lf_num = nothing
 
     for local_spl in spl.info[:samplers]
-      if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
+      # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
       dprintln(2, "$(typeof(local_spl)) stepping...")
 
@@ -149,8 +149,8 @@ sample(model::Function, alg::Gibbs;
       if lf_num != nothing samples[i].value[:lf_num] = lf_num end
     end
 
-    if PROGRESS && ~(isdefined(Main, :IJulia) && Main.IJulia.inited)  # fix for Jupyter notebook.
-      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
+    if PROGRESS
+      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
     end
   end
 
