@@ -49,7 +49,7 @@ macro ~(left, right)
       end
     )
   else
-    _, vsym = varname(left)
+    vsym = getvsym(left)
     vsym_str = string(vsym)
     # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
@@ -302,6 +302,22 @@ end
 ###################
 
 insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+
+getvsym(s::Symbol) = s
+getvsym(expr::Expr) = begin
+  @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
+  curr = expr
+  while isa(curr, Expr) && curr.head == :ref
+    curr = curr.args[1]
+  end
+  curr
+end
+
+####################
+# Deprecated codes #
+########################################################
+# TODO: remove related code of varname() in test files #
+########################################################
 
 varname(s::Symbol)  = nothing, s
 varname(expr::Expr) = begin
