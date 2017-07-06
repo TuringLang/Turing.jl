@@ -14,7 +14,7 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
 end
 
 # Leapfrog step
-leapfrog2(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
+leapfrog(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
   θ = copy(_θ)
@@ -45,37 +45,6 @@ leapfrog2(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
   θ, p, τ_valid
 end
 
-leapfrog(vi::VarInfo, p::Vector, τ::Int, ϵ::Float64, model::Function, spl::Sampler) = begin
-
-  dprintln(3, "first gradient...")
-  grad = gradient2(vi, model, spl)
-  verifygrad(grad) || (return vi, p, 0)
-
-
-  dprintln(2, "leapfrog stepping...")
-  τ_valid = 0
-  for t in 1:τ        # do 'leapfrog' for each var
-    p_old = p; θ_old = vi[spl]
-
-    p -= ϵ * grad / 2
-
-    vi[spl] += ϵ * p  # full step for state
-    spl.info[:total_lf_num] += 1  # record leapfrog num
-
-    grad = gradient2(vi, model, spl)
-
-    # Verify gradients; reject if gradients is NaN or Inf
-    verifygrad(grad) || (vi[spl] = θ_old; p = p_old; break)
-
-    p -= ϵ * grad / 2
-
-    τ_valid += 1
-  end
-
-  # Return updated θ and momentum
-  vi, p, τ_valid
-end
-
 # Compute Hamiltonian
 find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   # NOTE: getlogp(vi) = 0 means the current vals[end] hasn't been used at all.
@@ -94,7 +63,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
   θ = copy(vi[spl])
-  θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
+  θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 
   # Heuristically find optimal ϵ
@@ -102,14 +71,14 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
   while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a) && iter_num <= 12
     ϵ = 2.0^a * ϵ
-    θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
+    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
     dprintln(1, "a = $a, log_p_r_Θ′ = $log_p_r_Θ′")
     iter_num += 1
   end
   while log_p_r_Θ′ == -Inf  # revert if the last change is too big
     ϵ = ϵ / 2               # safe is more important than large
-    θ_prime, p_prime, τ = leapfrog2(θ, p, 1, ϵ, model, vi, spl)
+    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)
   end
   println("\r[$T] found initial ϵ: ", ϵ)

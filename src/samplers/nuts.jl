@@ -142,7 +142,7 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
     """
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′, τ_valid = leapfrog2(θ, r, 1, v * ϵ, model, vi, spl)
+      θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, vi, spl)
       # Use old H to save computation
       H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0
