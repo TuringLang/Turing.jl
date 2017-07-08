@@ -2,6 +2,7 @@
 
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 
+using Mamba: describe
 using Stan
 
 const kid = "
@@ -179,15 +180,15 @@ const kiddata = [
 
 global stanmodel, rc, sim
 
-stanmodel = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.05), Stan.diag_e(), 0.005, 0.0),
+stanmodel = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.005*10), Stan.diag_e(), 0.0025, 0.0),
   save_warmup=true, adapt=Stan.Adapt(engaged=false)),
   num_samples=2000, num_warmup=0, thin=1,
-  name="kid", model=kid, nchains=1, useMamba=false);
+  name="kid", model=kid, nchains=1);
 rc, sim = stan(stanmodel, kiddata, CmdStanDir=CMDSTAN_HOME, summary=false)
 
-if rc == 0
-  println("Test: 25.0 < round(mean(beta[1]), 0) == $(mean(sim[:,8,:])) < 27.0 ?")
-end
+# if rc == 0
+#   println("Test: 25.0 < round(mean(beta[1]), 0) == $(mean(sim[:,8,:])) < 27.0 ?")
+# end
 
 using Turing
 
@@ -195,9 +196,31 @@ using Turing
   sigma ~ NoInfoPos(0)
   beta = Vector{Real}(3)
   beta ~ [NoInfo()]
-  kid_score ~ MvNormal(beta[1] + beta[2] * mom_hs + beta[3] * mom_iq, sigma * ones(N));
+  kid_score ~ MvNormal(beta[1] .+ beta[2] .* mom_hs .+ beta[3] .* mom_iq, sigma .* ones(N));
 end
 
-chn = sample(kid_turing(data=kiddata[1]), HMC(2000, 0.005, 10))
+# chn = sample(kid_turing(data=kiddata[1]), HMC(2000, 0.0025, 10))
+bench_res = tbenchmark("HMC(2000, 0.0025, 10)", "kid_turing", "data=kiddata[1]")
+chn = bench_res[4]
+logd = build_logd("Kid", bench_res...)
+# println("Test: 25.0 < mean(chn[:(beta[1])]) == $(mean(chn[:(beta[1])])) < 27.0 ?")
 
-println("Test: 25.0 < mean(chn[:(beta[1])]) == $(mean(chn[:(beta[1])])) < 27.0 ?")
+describe(sim)
+describe(chn)
+
+stan_d = Dict()
+for i = 1:3
+  stan_d["beta[$i]"] = mean(sim[:, ["beta.$i"], :].value[:])
+end
+stan_d["sigma"] = mean(sim[:, ["sigma"], :].value[:])
+
+logd["stan"] = stan_d
+logd["time_stan"] = get_stan_time("kid")
+
+logd["note"] = "With static setting, Stan sometimes gives error: \"Exception: normal_lpdf: Scale parameter is nan, but must be > 0!\""
+
+print_log(logd)
+
+using Requests
+import Requests: get, post, put, delete, options, FileParam
+send_log(logd)

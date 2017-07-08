@@ -13,7 +13,8 @@ CONFIG = Dict(
     "bernoulli",
     #"negative-binomial",
     "school8",
-    "binormal"
+    "binormal",
+    "kid"
   ],
 
   "test-level" => 2   # 1 = model lang, 2 = whole interface
