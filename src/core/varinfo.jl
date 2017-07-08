@@ -250,10 +250,14 @@ getidcs(vi::VarInfo, spl::Sampler) = begin
   else
     spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
     spl.info[:idcs] = filter(i ->
-      (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+      (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
       1:length(vi.gids)
     )
   end
+end
+
+is_inside(vn::VarName, space::Set) = begin
+  vn.sym in space
 end
 
 # Get all values of variables belonging to gid or 0
