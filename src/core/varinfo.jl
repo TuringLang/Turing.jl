@@ -256,8 +256,16 @@ getidcs(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-is_inside(vn::VarName, space::Set) = begin
-  vn.sym in space
+is_inside(vn::VarName, space::Set)::Bool = begin
+  if vn.sym in space
+    true
+  else
+    exprs = filter(el -> isa(el, Expr), space)
+    strs = map(ex -> replace(string(ex), r"\(|\)", ""), exprs)
+    vn_str = string(vn.sym) * vn.indexing
+    valid = filter(str -> contains(vn_str, str), strs)
+    length(valid) > 0
+  end
 end
 
 # Get all values of variables belonging to gid or 0
