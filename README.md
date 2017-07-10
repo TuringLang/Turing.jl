@@ -1,4 +1,4 @@
-# Turing
+# Turing.jl
 
 [![Build Status](https://travis-ci.org/yebai/Turing.jl.svg?branch=master)](https://travis-ci.org/yebai/Turing.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/master?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/master)
@@ -7,16 +7,16 @@
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Documentation Status](https://readthedocs.org/projects/turingjl/badge/?version=latest)](http://turingjl.readthedocs.io/?badge=latest)
 
-**Turing** is a Julia library for (_universal_) probabilistic programming. Current features include:
+**Turing.jl** is a Julia library for (_universal_) probabilistic programming. Current features include:
 
 - Universal probabilistic programming with an intuitive modelling interface
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Compositional MCMC sampling that combines particle MCMC and HMC
 
-## Wiki
+## Turing.jl wiki
 
-Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for tutorials and advanced usages.
+Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)).
 
 ## Contributing
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Truing to add to examples.
@@ -27,7 +27,7 @@ Turing was originally created and is now managed by Hong Ge. Current and past Tu
 You can see the full list of on Github: https://github.com/yebai/Turing.jl/graphs/contributors. Thanks for the important additions, fixes and comments.
 
 
-## Citing Turing ##
+## Citing Turing.jl ##
 
 To cite Turing, please refer to the technical report. Sample BibTeX entry is given below:
 
