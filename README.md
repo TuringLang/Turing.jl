@@ -92,6 +92,9 @@ The arguments for each sampler are
 * HMC: number of samples, leapfrog step size, leapfrog step numbers
 * Gibbs: number of samples, component sampler 1, component sampler 2, ...
 
+## Advanced usage
+
+[[wiki] How to define a customized distribution](https://github.com/yebai/Turing.jl/wiki/How-to-define-a-customized-distribution)
 
 ## Contributing
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Truing to add to examples.
