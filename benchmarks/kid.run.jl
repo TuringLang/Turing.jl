@@ -193,9 +193,9 @@ rc, sim = stan(stanmodel, kiddata, CmdStanDir=CMDSTAN_HOME, summary=false)
 using Turing
 
 @model kid_turing(N, kid_score, mom_hs, mom_iq) = begin
-  sigma ~ NoInfoPos(0)
+  sigma ~ FlatPos(0)
   beta = Vector{Real}(3)
-  beta ~ [NoInfo()]
+  beta ~ [Flat()]
   kid_score ~ MvNormal(beta[1] .+ beta[2] .* mom_hs .+ beta[3] .* mom_iq, sigma .* ones(N));
 end
 

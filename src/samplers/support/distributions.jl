@@ -175,32 +175,32 @@ Distributions.logccdf{T<:Real}(d::Distributions.Truncated, x::T) =
 
 
 # No info
-immutable NoInfo <: ContinuousUnivariateDistribution
+immutable Flat <: ContinuousUnivariateDistribution
 end
 
-Distributions.rand(d::NoInfo) = rand()
-Distributions.logpdf{T<:Real}(d::NoInfo, x::T) = zero(x)
-Distributions.minimum(d::NoInfo) = -Inf
-Distributions.maximum(d::NoInfo) = +Inf
+Distributions.rand(d::Flat) = rand()
+Distributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)
+Distributions.minimum(d::Flat) = -Inf
+Distributions.maximum(d::Flat) = +Inf
 
 # For vec support
-Distributions.rand(d::NoInfo, n::Int) = Vector([rand() for _ = 1:n])
-Distributions.logpdf{T<:Real}(d::NoInfo, x::Vector{T}) = zero(x)
+Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
+Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
 
 
 # Pos
-immutable NoInfoPos{T<:Real} <: ContinuousUnivariateDistribution
+immutable FlatPos{T<:Real} <: ContinuousUnivariateDistribution
     l::T
-    (::Type{NoInfoPos{T}}){T}(l::T) = new{T}(l)
+    (::Type{FlatPos{T}}){T}(l::T) = new{T}(l)
 end
 
-NoInfoPos{T<:Real}(l::T) = NoInfoPos{T}(l)
+FlatPos{T<:Real}(l::T) = FlatPos{T}(l)
 
-Distributions.rand(d::NoInfoPos) = rand() + d.l
-Distributions.logpdf{T<:Real}(d::NoInfoPos, x::T) = if x <= d.l -Inf else zero(x) end
-Distributions.minimum(d::NoInfoPos) = d.l
-Distributions.maximum(d::NoInfoPos) = +Inf
+Distributions.rand(d::FlatPos) = rand() + d.l
+Distributions.logpdf{T<:Real}(d::FlatPos, x::T) = if x <= d.l -Inf else zero(x) end
+Distributions.minimum(d::FlatPos) = d.l
+Distributions.maximum(d::FlatPos) = +Inf
 
 # For vec support
-Distributions.rand(d::NoInfoPos, n::Int) = Vector([rand() for _ = 1:n] .+ d.l)
-Distributions.logpdf{T<:Real}(d::NoInfoPos, x::Vector{T}) = if any(x .<= d.l) -Inf else zero(x) end
+Distributions.rand(d::FlatPos, n::Int) = Vector([rand() for _ = 1:n] .+ d.l)
+Distributions.logpdf{T<:Real}(d::FlatPos, x::Vector{T}) = if any(x .<= d.l) -Inf else zero(x) end
