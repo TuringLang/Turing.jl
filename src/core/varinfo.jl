@@ -250,9 +250,21 @@ getidcs(vi::VarInfo, spl::Sampler) = begin
   else
     spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
     spl.info[:idcs] = filter(i ->
-      (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || vi.vns[i].sym in spl.alg.space),
+      (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
       1:length(vi.gids)
     )
+  end
+end
+
+is_inside(vn::VarName, space::Set)::Bool = begin
+  if vn.sym in space
+    true
+  else
+    exprs = filter(el -> isa(el, Expr), space)
+    strs = map(ex -> replace(string(ex), r"\(|\)", ""), exprs)
+    vn_str = string(vn.sym) * vn.indexing
+    valid = filter(str -> contains(vn_str, str), strs)
+    length(valid) > 0
   end
 end
 
