@@ -75,7 +75,11 @@ getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns
 
 getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
 setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
-setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, vview)
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = begin
+  for v = vview
+    vi.vals[end][v] = val
+  end
+end
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
@@ -256,7 +260,7 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
