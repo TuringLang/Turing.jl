@@ -132,7 +132,7 @@ end
 function cleandual!(vi::VarInfo)
   for vn in keys(vi)
     range = getrange(vi, vn)
-    vi[range] = realpart(vi[range])
+    realpart!(vi[range], vi[range])
   end
   setlogp!(vi, realpart(getlogp(vi)))
   vi.logw = realpart(vi.logw)

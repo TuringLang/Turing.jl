@@ -3,10 +3,15 @@
 #####################################
 
 realpart(r::Real)   = r
-realpart(d::ForwardDiff.Dual)   = d.value
+realpart(d::ForwardDiff.Dual)       = d.value
 realpart(ds::Union{Array,SubArray}) = map(d -> realpart(d), ds)
+realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) = begin
+  for i = 1:length(ds)
+    arr[i] = realpart(ds[i])
+  end
+end
 
-dualpart(d::ForwardDiff.Dual)   = d.partials.values
+dualpart(d::ForwardDiff.Dual)       = d.partials.values
 dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)
 
 Base.promote_rule(D1::Type{Real}, D2::Type{ForwardDiff.Dual}) = D2
