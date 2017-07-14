@@ -284,6 +284,25 @@ optRes *= "Hong: $t_hong\n"
 
 
 
+
+
+optRes *= "realpart(): \n"
+
+using ForwardDiff: Dual
+
+ds = [Dual{10,Float64}(rand()) for i = 1:1000]
+
+t_map = @elapsed for i = 1:1000 map(d -> d.value, ds) end
+t_list = @elapsed for i = 1:1000 Float64[ds[i].value for i = 1:length(ds)] end
+
+optRes *= "Map realpart: $t_map\n"
+optRes *= "List realpart: $t_list\n"
+
+
+
+
+
+
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 using Requests
 import Requests: get, post, put, delete, options, FileParam
