@@ -63,7 +63,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  θ = copy(vi[spl])
+  θ = realpart(vi[spl])
   θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 
