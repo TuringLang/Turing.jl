@@ -259,7 +259,7 @@ getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi,
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
-getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi, spl))
+getvns(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin

@@ -17,7 +17,7 @@ end
 ad_test_3_f = ad_test_3()
 vi = ad_test_3_f()
 vvn = collect(filter(vn -> vn.sym == :v, keys(vi)))[1]
-_v = map(d -> realpart(d), vi[vn])
+_v = map(d -> realpart(d), vi[vvn])
 grad_Turing = gradient(vi, ad_test_3_f)
 
 dist_v = Wishart(7, [1 0.5; 0.5 1])
