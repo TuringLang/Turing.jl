@@ -126,11 +126,10 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for vn in keys(vi)
-    range = getrange(vi, vn)
-    realpart!(vi[range], vi[range])
+  for i = 1:length(vi.vals[end])
+    vi.vals[end][i] = realpart(vi.vals[end][i])
   end
-  setlogp!(vi, realpart(getlogp(vi)))
+  vi.logp[end] = realpart(getlogp(vi))
   vi.logw = realpart(vi.logw)
 end
 

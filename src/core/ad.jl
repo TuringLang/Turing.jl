@@ -64,9 +64,9 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
     dim_count = 1
     for k in vns_all
-      l = length(getrange(vi, k))
-      reals = realpart(getval(vi, k))
       range = getrange(vi, k)
+      l = length(range)
+      reals = realpart(getval(vi, k))
       if k in vn_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")
         for i = 1:l
@@ -77,8 +77,8 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         end
         dprintln(5, "make dual done")
       else                      # for other varilables (no gradient in this round)
-        @parallel for i = range
-          vi[i] = ForwardDiff.Dual{chunk_dim, Float64}(reals[i])
+        for i = 1:l
+          vi[range[i]] = ForwardDiff.Dual{chunk_dim, Float64}(reals[i])
         end
       end
     end
