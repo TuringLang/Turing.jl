@@ -122,7 +122,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+    if spl.alg.gid != 0 invlink!(vi, spl) end
 
     vi
   end
