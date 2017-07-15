@@ -77,7 +77,9 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         end
         dprintln(5, "make dual done")
       else                      # for other varilables (no gradient in this round)
-        vi[range] = map(r -> ForwardDiff.Dual{chunk_dim, Float64}(r), reals)
+        @parallel for i = range
+          vi[i] = ForwardDiff.Dual{chunk_dim, Float64}(reals[i])
+        end
       end
     end
 
