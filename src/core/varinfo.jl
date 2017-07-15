@@ -75,11 +75,7 @@ getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns
 
 getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
 setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
-setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = begin
-  for v = vview
-    vi.vals[end][v] = val
-  end
-end
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[end][[i for arr in vview for i in arr]] = val) : nothing
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
