@@ -15,10 +15,10 @@ end
 
 # Leapfrog step
 # NOTE: leapfrog() doesn't change θ in place!
-leapfrog(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
+leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
-  θ = copy(_θ)
+  θ = realpart(_θ)
   vi[spl] = θ
   grad = gradient2(vi, model, spl)
   verifygrad(grad) || (return θ, p, 0)

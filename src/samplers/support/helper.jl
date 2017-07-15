@@ -4,8 +4,8 @@
 
 realpart(r::Real)   = r
 realpart(d::ForwardDiff.Dual)       = d.value
-realpart(ds::Union{Array,SubArray}) = map(d -> realpart(d), ds)
-realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) = begin
+realpart(ds::Union{Array,SubArray}) :: Array{Float64} = map(d -> realpart(d), ds)
+realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) :: Array{Float64} = begin
   for i = 1:length(ds)
     arr[i] = realpart(ds[i])
   end
