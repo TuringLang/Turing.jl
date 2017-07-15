@@ -93,8 +93,6 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     spl.info[:grad_cache][θ] = grad
   end
 
-  cleandual!(vi)
-
   grad
 end
 

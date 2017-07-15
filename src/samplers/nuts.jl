@@ -123,7 +123,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
 
     dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl) end
+    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi
   end
