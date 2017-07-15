@@ -4,8 +4,8 @@
 
 realpart(r::Real)   = r
 realpart(d::ForwardDiff.Dual)       = d.value
-realpart(ds::Union{Array,SubArray}) :: Array{Float64} = map(d -> realpart(d), ds)
-realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) :: Array{Float64} = begin
+realpart(ds::Union{Array,SubArray}) :: Vector{Float64} = map(d -> realpart(d), ds)  # NOTE: this function is assumed to return a Vector now; before it may also return an 2D Array
+realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) :: Vector{Float64} = begin
   for i = 1:length(ds)
     arr[i] = realpart(ds[i])
   end
@@ -55,7 +55,8 @@ end
 Sample(vi::VarInfo) = begin
   value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
   for vn in keys(vi)
-    value[sym(vn)] = realpart(vi[vn])
+    # TODO: the function below doesn't call realpart(::Array) now because the signature is changed to use the fact that Vector is faster; can potentialy change this
+    value[sym(vn)] = map(d -> realpart(d), vi[vn])
   end
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(getlogp(vi))
