@@ -143,14 +143,15 @@ link{T}(d::SimplexDistribution, x::Vector{T}) = begin
   push!(y, zero(T))
 end
 
-link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = begin
+link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = link!(similar(X), d, X)
+link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   nrow, ncol = size(X)
   K = nrow
   Z = Matrix{T}(nrow - 1, ncol)
   for k = 1:K-1
     Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
   end
-  Y = zeros(T, nrow, ncol)
+
   for k = 1:K-1
     Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
   end
@@ -170,14 +171,15 @@ invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   x
 end
 
-invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = begin
+invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = invlink!(similar(Y), d, Y)
+invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   nrow, ncol = size(Y)
   K = nrow
   Z = Matrix{T}(nrow - 1, ncol)
   for k = 1:K-1
     Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
   end
-  X = zeros(T, nrow, ncol)
+
   for k = 1:K-1
     X[k,:] = (one(T) - sum(X[1:k-1,:], 1)) .* Z[k,:]'
   end
