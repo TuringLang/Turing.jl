@@ -71,7 +71,7 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
         dprintln(5, "making dual...")
         for i = 1:l
           # dps[dim_count] = 1  # set dual part
-          vi[range[i]] = ForwardDiff.Dual(reals[i], prealloc_duals[dim_count])
+          vi[range[i]] = ForwardDiff.Dual{chunk_dim, Float64}(reals[i], prealloc_duals[dim_count])
           # dps[dim_count] = 0  # reset dual part
           dim_count += 1      # count
         end

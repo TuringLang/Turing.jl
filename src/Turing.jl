@@ -31,7 +31,7 @@ using ForwardDiff
 alloc_duals(n) = begin
   d = Dict{Int,ForwardDiff.Partials}()
   for i = 1:n
-    d[i] = ForwardDiff.Partials(ntuple(j-> i == j ? 1 : 0, n))
+    d[i] = ForwardDiff.Partials(ntuple(j-> i == j ? 1.0 : 0.0, n))
   end
   d
 end
