@@ -61,7 +61,7 @@ Sampler(alg::Hamiltonian) = begin
   info[:vars] = nothing
 
   # For caching gradient
-  info[:grad_cache] = Dict{Vector,Vector}()
+  info[:grad_cache] = Dict{UInt64,Vector}()
   Sampler(alg, info)
 end
 

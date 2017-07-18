@@ -13,11 +13,11 @@ end
 gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
 gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
-  θ = realpart(vi[spl])
+  θ_hash = hash(vi[spl])
 
   if spl != nothing && haskey(spl.info, :grad_cache)
-    if haskey(spl.info[:grad_cache], θ)
-      return spl.info[:grad_cache][θ]
+    if haskey(spl.info[:grad_cache], θ_hash)
+      return spl.info[:grad_cache][θ_hash]
     end
   end
 
@@ -76,7 +76,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   end
 
   if spl != nothing && haskey(spl.info, :grad_cache)
-    spl.info[:grad_cache][θ] = grad
+    spl.info[:grad_cache][θ_hash] = grad
   end
 
   grad
