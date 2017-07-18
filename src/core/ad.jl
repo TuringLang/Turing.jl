@@ -25,7 +25,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")
-  vn_chunk = []; vn_chunks = []; chunk_dim = 0;
+  vn_chunk = Set{VarName}(); vn_chunks = []; chunk_dim = 0;
 
   vns_all = Set{VarName}(getvns(vi, spl))
   for vn in vns_all
