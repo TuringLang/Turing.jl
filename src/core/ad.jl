@@ -27,7 +27,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   dprintln(4, "making chunks...")
   vn_chunk = []; vn_chunks = []; chunk_dim = 0;
 
-  vns_all = getvns(vi, spl)
+  vns_all = Set{VarName}(getvns(vi, spl))
   for vn in vns_all
     l = length(getrange(vi, vn))           # dimension for the current variable
     if chunk_dim + l > CHUNKSIZE
