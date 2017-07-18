@@ -1,17 +1,37 @@
 module Turing
 
+##############
+# Dependency #
+########################################################################
+# NOTE: when using anything from external packages,                    #
+#       let's keep the practice of explictly writing Package.something #
+#       to indicate that's not implemented inside Turing.jl            #
+########################################################################
+
+using Distributions
+using ForwardDiff
+using ProgressMeter
+
+import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
+import Distributions: sample
+import ForwardDiff: gradient
+import Mamba: AbstractChains, Chains
+
 ##############################
 # Global variables/constants #
 ##############################
 
 global const NULL = NaN     # constant for "delete" vals
 
-global CHUNKSIZE = 60       # default chunksize used by AD
+global CHUNKSIZE            # default chunksize used by AD
+global SEEDS                # pre-alloced dual parts
 setchunksize(chunk_size::Int) = begin
   println("[Turing]: AD chunk size is set as $chunk_size")
   global CHUNKSIZE = chunk_size
-  global prealloc_duals = alloc_duals(CHUNKSIZE)
+  global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
 end
+
+setchunksize(60)
 
 global PROGRESS = true
 turnprogress(switch::Bool) = begin
@@ -27,33 +47,9 @@ global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
 global const CACHERANGES = 0b01
 
-using ForwardDiff
-alloc_duals(n) = begin
-  d = Dict{Int,ForwardDiff.Partials}()
-  for i = 1:n
-    d[i] = ForwardDiff.Partials(ntuple(j-> i == j ? 1.0 : 0.0, n))
-  end
-  d
-end
-
-global const prealloc_duals = alloc_duals(CHUNKSIZE)
-
-##############
-# Dependency #
-########################################################################
-# NOTE: when using anything from external packages,                    #
-#       let's keep the practice of explictly writing Package.something #
-#       to indicate that's not implemented inside Turing.jl            #
-########################################################################
-
-using Distributions
-
-using ProgressMeter
-
-import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
-import Distributions: sample
-import ForwardDiff: gradient
-import Mamba: AbstractChains, Chains
+#######################
+# Sampler abstraction #
+#######################
 
 abstract InferenceAlgorithm
 abstract Hamiltonian <: InferenceAlgorithm
