@@ -13,7 +13,7 @@ end
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
 Base.hash(vn::VarName) = hash(uid(vn))
 
-isequal(x::VarName, y::VarName) = uid(x) == uid(y)
+isequal(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
 ==(x::VarName, y::VarName)      = isequal(x, y)
 
 Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"

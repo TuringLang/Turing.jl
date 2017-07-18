@@ -47,25 +47,27 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     # 1. Set dual part correspondingly
     dprintln(4, "set dual...")
     dim_count = 1
-    for k in vns_all
-      range = getrange(vi, k)
+    for vn in vns_all
+      range = getrange(vi, vn)
       l = length(range)
-      reals = realpart(getval(vi, k))
-      if k in vn_chunk        # for each variable to compute gradient in this round
-        dprintln(5, "making dual...")
+      vals = getval(vi, vn)
+      if vn in vn_chunk        # for each variable to compute gradient in this round
+
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(reals[i], SEEDS[dim_count])
+          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(vals[i], SEEDS[dim_count])
           dim_count += 1      # count
         end
-        dprintln(5, "make dual done")
+
       else                    # for other varilables (no gradient in this round)
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(reals[i])
+          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(vals[i])
         end
       end
     end
+    dprintln(4, "set dual done")
 
     # 2. Run model and collect gradient
+    dprintln(4, "run model...")
     vi = runmodel(model, vi, spl)
     dprintln(4, "collect gradients from logp...")
     append!(grad, collect(dualpart(-getlogp(vi)))[1:chunk_dim])
