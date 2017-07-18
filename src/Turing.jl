@@ -6,10 +6,11 @@ module Turing
 
 global const NULL = NaN     # constant for "delete" vals
 
-global CHUNKSIZE = 50       # default chunksize used by AD
+global CHUNKSIZE = 60       # default chunksize used by AD
 setchunksize(chunk_size::Int) = begin
   println("[Turing]: AD chunk size is set as $chunk_size")
   global CHUNKSIZE = chunk_size
+  global prealloc_duals = alloc_duals(CHUNKSIZE)
 end
 
 global PROGRESS = true
@@ -26,6 +27,17 @@ global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
 global const CACHERANGES = 0b01
 
+using ForwardDiff
+alloc_duals(n) = begin
+  d = Dict{Int,ForwardDiff.Partials}()
+  for i = 1:n
+    d[i] = ForwardDiff.Partials(ntuple(j-> i == j ? 1 : 0, n))
+  end
+  d
+end
+
+global const prealloc_duals = alloc_duals(CHUNKSIZE)
+
 ##############
 # Dependency #
 ########################################################################
@@ -35,7 +47,7 @@ global const CACHERANGES = 0b01
 ########################################################################
 
 using Distributions
-using ForwardDiff
+
 using ProgressMeter
 
 import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty

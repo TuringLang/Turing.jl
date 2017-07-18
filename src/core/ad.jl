@@ -60,7 +60,7 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   for (vn_chunk, chunk_dim) in vn_chunks
     # 1. Set dual part correspondingly
     dprintln(4, "set dual...")
-    dps = zeros(chunk_dim)
+    # dps = zeros(chunk_dim)
 
     dim_count = 1
     for k in vns_all
@@ -70,9 +70,9 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
       if k in vn_chunk         # for each variable to compute gradient in this round
         dprintln(5, "making dual...")
         for i = 1:l
-          dps[dim_count] = 1  # set dual part
-          vi[range[i]] = ForwardDiff.Dual(reals[i], dps...)
-          dps[dim_count] = 0  # reset dual part
+          # dps[dim_count] = 1  # set dual part
+          vi[range[i]] = ForwardDiff.Dual(reals[i], prealloc_duals[dim_count])
+          # dps[dim_count] = 0  # reset dual part
           dim_count += 1      # count
         end
         dprintln(5, "make dual done")
