@@ -176,8 +176,8 @@ invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   nrow, ncol = size(Y)
   K = nrow
   Z = Matrix{T}(nrow - 1, ncol)
-  for k = 1:K-1
-    Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
+  @simd for k = 1:K-1
+    @inbounds Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
   end
 
   for k = 1:K-1
