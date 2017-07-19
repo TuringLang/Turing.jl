@@ -216,23 +216,23 @@ end
 # Utility functions for VarInfo #
 #################################
 
-expand!(vi::VarInfo) = begin
-  push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
-  push!(vi.trans, deepcopy(vi.trans[end]))
-  push!(vi.logp, zero(Real))
-end
-
-shrink!(vi::VarInfo) = begin
-  pop!(vi.vals)
-  pop!(vi.trans)
-  pop!(vi.logp)
-end
-
-last!(vi::VarInfo) = begin
-  vi.vals = vi.vals[end:end]
-  vi.trans = vi.trans[end:end]
-  vi.logp = vi.logp[end:end]
-end
+# expand!(vi::VarInfo) = begin
+#   push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
+#   push!(vi.trans, deepcopy(vi.trans[end]))
+#   push!(vi.logp, zero(Real))
+# end
+#
+# shrink!(vi::VarInfo) = begin
+#   pop!(vi.vals)
+#   pop!(vi.trans)
+#   pop!(vi.logp)
+# end
+#
+# last!(vi::VarInfo) = begin
+#   vi.vals = vi.vals[end:end]
+#   vi.trans = vi.trans[end:end]
+#   vi.logp = vi.logp[end:end]
+# end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)

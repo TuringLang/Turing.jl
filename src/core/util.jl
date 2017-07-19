@@ -1,7 +1,7 @@
 # ---------   Utility Functions ----------- #
 
-invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
-logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
+@inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
+@inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})

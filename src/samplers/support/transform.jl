@@ -193,8 +193,8 @@ Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) =
   if transform
     K = length(x)
     z = Vector{T}(K-1)
-    for k in 1:K-1
-      z[k] = x[k] / (one(T) - sum(x[1:k-1]))
+    @simd for k in 1:K-1
+      @inbounds z[k] = x[k] / (one(T) - sum(x[1:k-1]))
     end
     lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
   end
@@ -207,8 +207,8 @@ Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) =
     nrow, ncol = size(X)
     K = nrow
     Z = Matrix{T}(nrow - 1, ncol)
-    for k = 1:K-1
-      Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
+    @simd for k = 1:K-1
+      @inbounds Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
     end
     for k = 1:K-1
       lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))'
