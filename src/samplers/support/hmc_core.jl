@@ -15,12 +15,12 @@ end
 
 # Leapfrog step
 # NOTE: leapfrog() doesn't change θ in place!
-leapfrog(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
+leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
-  θ = copy(_θ)
+  θ = realpart(_θ)
   vi[spl] = θ
-  grad = gradient2(vi, model, spl)
+  grad = gradient(vi, model, spl)
   verifygrad(grad) || (return θ, p, 0)
 
   τ_valid = 0
@@ -35,7 +35,7 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector, τ::Int, ϵ::Float64,
     spl.info[:total_lf_num] += 1  # record leapfrog num
 
     vi[spl] = θ
-    grad = gradient2(vi, model, spl)
+    grad = gradient(vi, model, spl)
     verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
 
     p -= ϵ * grad / 2
@@ -63,7 +63,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
 
-  θ = copy(vi[spl])
+  θ = realpart(vi[spl])
   θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
   log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)   # calculate new p(Θ, p)
 

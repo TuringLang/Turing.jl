@@ -133,26 +133,32 @@ end
 
 typealias SimplexDistribution Union{Dirichlet}
 
-link{T}(d::SimplexDistribution, x::Vector{T}) = begin
+link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
+link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
   K = length(x)
   z = Vector{T}(K-1)
   for k in 1:K-1
     z[k] = x[k] / (one(T) - sum(x[1:k-1]))
   end
-  y = [logit(z[k]) - log(one(T) / (K-k)) for k = 1:K-1]
-  push!(y, zero(T))
+
+  @simd for k = 1:K-1
+    @inbounds y[k] = logit(z[k]) - log(one(T) / (K-k))
+  end
+
+  y
 end
 
-link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = begin
+link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = link!(similar(X), d, X)
+link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   nrow, ncol = size(X)
   K = nrow
   Z = Matrix{T}(nrow - 1, ncol)
   for k = 1:K-1
     Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
   end
-  Y = zeros(T, nrow, ncol)
-  for k = 1:K-1
-    Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
+
+  @simd for k = 1:K-1
+    @inbounds Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
   end
 
   Y
@@ -170,14 +176,15 @@ invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
   x
 end
 
-invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = begin
+invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = invlink!(similar(Y), d, Y)
+invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   nrow, ncol = size(Y)
   K = nrow
   Z = Matrix{T}(nrow - 1, ncol)
-  for k = 1:K-1
-    Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
+  @simd for k = 1:K-1
+    @inbounds Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
   end
-  X = zeros(T, nrow, ncol)
+
   for k = 1:K-1
     X[k,:] = (one(T) - sum(X[1:k-1,:], 1)) .* Z[k,:]'
   end
@@ -191,8 +198,8 @@ Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) =
   if transform
     K = length(x)
     z = Vector{T}(K-1)
-    for k in 1:K-1
-      z[k] = x[k] / (one(T) - sum(x[1:k-1]))
+    @simd for k in 1:K-1
+      @inbounds z[k] = x[k] / (one(T) - sum(x[1:k-1]))
     end
     lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
   end
@@ -205,8 +212,8 @@ Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) =
     nrow, ncol = size(X)
     K = nrow
     Z = Matrix{T}(nrow - 1, ncol)
-    for k = 1:K-1
-      Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
+    @simd for k = 1:K-1
+      @inbounds Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
     end
     for k = 1:K-1
       lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))'

@@ -13,7 +13,7 @@ end
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
 Base.hash(vn::VarName) = hash(uid(vn))
 
-isequal(x::VarName, y::VarName) = uid(x) == uid(y)
+isequal(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
 ==(x::VarName, y::VarName)      = isequal(x, y)
 
 Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
@@ -75,7 +75,7 @@ getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns
 
 getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
 setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
-setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, vview)
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[end][[i for arr in vview for i in arr]] = val) : nothing
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
@@ -126,11 +126,10 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for vn in keys(vi)
-    range = getrange(vi, vn)
-    vi[range] = realpart(vi[range])
+  for i = 1:length(vi.vals[end])
+    vi.vals[end][i] = realpart(vi.vals[end][i])
   end
-  setlogp!(vi, realpart(getlogp(vi)))
+  vi.logp[end] = realpart(getlogp(vi))
   vi.logw = realpart(vi.logw)
 end
 
@@ -221,23 +220,23 @@ end
 # Utility functions for VarInfo #
 #################################
 
-expand!(vi::VarInfo) = begin
-  push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
-  push!(vi.trans, deepcopy(vi.trans[end]))
-  push!(vi.logp, zero(Real))
-end
-
-shrink!(vi::VarInfo) = begin
-  pop!(vi.vals)
-  pop!(vi.trans)
-  pop!(vi.logp)
-end
-
-last!(vi::VarInfo) = begin
-  vi.vals = vi.vals[end:end]
-  vi.trans = vi.trans[end:end]
-  vi.logp = vi.logp[end:end]
-end
+# expand!(vi::VarInfo) = begin
+#   push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
+#   push!(vi.trans, deepcopy(vi.trans[end]))
+#   push!(vi.logp, zero(Real))
+# end
+#
+# shrink!(vi::VarInfo) = begin
+#   pop!(vi.vals)
+#   pop!(vi.trans)
+#   pop!(vi.logp)
+# end
+#
+# last!(vi::VarInfo) = begin
+#   vi.vals = vi.vals[end:end]
+#   vi.trans = vi.trans[end:end]
+#   vi.logp = vi.logp[end:end]
+# end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
@@ -260,11 +259,11 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
-getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi, spl))
+getvns(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin

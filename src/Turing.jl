@@ -1,31 +1,5 @@
 module Turing
 
-##############################
-# Global variables/constants #
-##############################
-
-global const NULL = NaN     # constant for "delete" vals
-
-global CHUNKSIZE = 50       # default chunksize used by AD
-setchunksize(chunk_size::Int) = begin
-  println("[Turing]: AD chunk size is set as $chunk_size")
-  global CHUNKSIZE = chunk_size
-end
-
-global PROGRESS = true
-turnprogress(switch::Bool) = begin
-  println("[Turing]: global PROGRESS is set as $switch")
-  global PROGRESS = switch
-end
-
-global VERBOSITY = 1        # verbosity for dprintln & dwarn
-global const FCOMPILER = 0  # verbose printing flag for compiler
-
-# Constans for caching
-global const CACHERESET  = 0b00
-global const CACHEIDCS   = 0b10
-global const CACHERANGES = 0b01
-
 ##############
 # Dependency #
 ########################################################################
@@ -42,6 +16,40 @@ import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, seti
 import Distributions: sample
 import ForwardDiff: gradient
 import Mamba: AbstractChains, Chains
+
+##############################
+# Global variables/constants #
+##############################
+
+global const NULL = NaN     # constant for "delete" vals
+
+global CHUNKSIZE            # default chunksize used by AD
+global SEEDS                # pre-alloced dual parts
+setchunksize(chunk_size::Int) = begin
+  println("[Turing]: AD chunk size is set as $chunk_size")
+  global CHUNKSIZE = chunk_size
+  global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
+end
+
+setchunksize(60)
+
+global PROGRESS = true
+turnprogress(switch::Bool) = begin
+  println("[Turing]: global PROGRESS is set as $switch")
+  global PROGRESS = switch
+end
+
+global VERBOSITY = 1        # verbosity for dprintln & dwarn
+global const FCOMPILER = 0  # verbose printing flag for compiler
+
+# Constans for caching
+global const CACHERESET  = 0b00
+global const CACHEIDCS   = 0b10
+global const CACHERANGES = 0b01
+
+#######################
+# Sampler abstraction #
+#######################
 
 abstract InferenceAlgorithm
 abstract Hamiltonian <: InferenceAlgorithm

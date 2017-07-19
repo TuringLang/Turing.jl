@@ -49,7 +49,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = copy(vi[spl])
+      oldθ = realpart(vi[spl])
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
       vi[spl] = oldθ
 
@@ -82,7 +82,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θ = copy(vi[spl])
+    θ = realpart(vi[spl])
     logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
