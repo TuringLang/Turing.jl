@@ -81,11 +81,10 @@ macro ~(left, right)
       #csym_str = string(gensym())
       if isa(left, Symbol)
         # Symbol
+        csym = Symbol(string(Turing._compiler_[:fname])*"_var"*string(@__LINE__))
+        syms = Symbol[csym, left]
         assume_ex = quote
-          # TODO: move this outside quote
-          csym_str = string(Turing._compiler_[:fname])*"_var"*string(@__LINE__)
-          sym = Symbol($(string(left)))
-          vn = Turing.VarName(vi, Symbol(csym_str), sym, "")
+          vn = Turing.VarName(vi, $syms, "")
           if isa($(right), Vector)
             $(left) = Turing.assume(
               sampler,

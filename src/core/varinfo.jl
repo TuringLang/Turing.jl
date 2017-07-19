@@ -212,6 +212,10 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when implementing the sanity check
   VarName(csym, sym, indexing, 1)
 end
+VarName(vi::VarInfo, syms::Vector{Symbol}, indexing::String) = begin
+  # TODO: update this method when implementing the sanity check
+    VarName(syms[1], syms[2], indexing, 1)
+end
 
 #################################
 # Utility functions for VarInfo #
