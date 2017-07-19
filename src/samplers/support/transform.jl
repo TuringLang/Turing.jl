@@ -133,14 +133,19 @@ end
 
 typealias SimplexDistribution Union{Dirichlet}
 
-link{T}(d::SimplexDistribution, x::Vector{T}) = begin
+link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
+link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
   K = length(x)
   z = Vector{T}(K-1)
   for k in 1:K-1
     z[k] = x[k] / (one(T) - sum(x[1:k-1]))
   end
-  y = [logit(z[k]) - log(one(T) / (K-k)) for k = 1:K-1]
-  push!(y, zero(T))
+
+  @simd for k = 1:K-1
+    @inbounds y[k] = logit(z[k]) - log(one(T) / (K-k))
+  end
+
+  y
 end
 
 link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = link!(similar(X), d, X)
@@ -152,8 +157,8 @@ link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
     Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
   end
 
-  for k = 1:K-1
-    Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
+  @simd for k = 1:K-1
+    @inbounds Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
   end
 
   Y
