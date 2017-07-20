@@ -138,8 +138,8 @@ function Distributions._mixlogpdf!(r::AbstractArray, d::AbstractMixtureModel, x)
     return r
 end
 
-# Temporary patch for trancated distributions. 
-#  Remove when PR #586 is accpted 
+# Temporary patch for trancated distributions.
+#  Remove when PR #586 is accpted
 #  https://github.com/JuliaStats/Distributions.jl/pull/586
 Distributions.Truncated(d::UnivariateDistribution, l::Real, u::Real) = Distributions.Truncated(d, Float64(l), Float64(u))
 
@@ -169,3 +169,38 @@ Distributions.logccdf{T<:Real}(d::Distributions.Truncated, x::T) =
     x <= d.lower ? zero(T) :
     x >= d.upper ? -T(Inf) :
     log(d.ucdf - cdf(d.untruncated, x)) - d.logtp
+
+
+
+
+
+# No info
+immutable Flat <: ContinuousUnivariateDistribution
+end
+
+Distributions.rand(d::Flat) = rand()
+Distributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)
+Distributions.minimum(d::Flat) = -Inf
+Distributions.maximum(d::Flat) = +Inf
+
+# For vec support
+Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
+Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
+
+
+# Pos
+immutable FlatPos{T<:Real} <: ContinuousUnivariateDistribution
+    l::T
+    (::Type{FlatPos{T}}){T}(l::T) = new{T}(l)
+end
+
+FlatPos{T<:Real}(l::T) = FlatPos{T}(l)
+
+Distributions.rand(d::FlatPos) = rand() + d.l
+Distributions.logpdf{T<:Real}(d::FlatPos, x::T) = if x <= d.l -Inf else zero(x) end
+Distributions.minimum(d::FlatPos) = d.l
+Distributions.maximum(d::FlatPos) = +Inf
+
+# For vec support
+Distributions.rand(d::FlatPos, n::Int) = Vector([rand() for _ = 1:n] .+ d.l)
+Distributions.logpdf{T<:Real}(d::FlatPos, x::Vector{T}) = if any(x .<= d.l) -Inf else zero(x) end

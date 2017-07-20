@@ -10,3 +10,5 @@ Pkg.add("HDF5")
 Pkg.add("JLD")
 
 Pkg.add("Requests")
+Pkg.add("Stats")
+Pkg.add("StatsFuns")

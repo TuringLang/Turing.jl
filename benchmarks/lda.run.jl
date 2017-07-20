@@ -14,6 +14,7 @@ include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
 setchunksize(60)
 
 #for alg in ["HMC(2000, 0.25, 10)", "HMCDA(1000, 0.65, 1.5)", "NUTS(2000, 1000, 0.65)"]
+tbenchmark("HMC(20, 0.025, 10)", "ldamodel_vec", "data=ldastandata[1]") # first run for compilation
 
 for (modelc, modeln) in zip(["ldamodel_vec", "ldamodel"], ["LDA-vec", "LDA"])
   bench_res = tbenchmark("HMC(2000, 0.025, 10)", modelc, "data=ldastandata[1]")

@@ -10,28 +10,14 @@ grad = gradient(vi, model, spl)
 end
 ```
 """
-gradient(vi::VarInfo, model::Function) = gradient2(vi, model, nothing)
-gradient(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
+gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
-  vi = deepcopy(_vi)
+  θ_hash = hash(vi[spl])
 
-  f(x::Vector) = begin
-    vi[spl] = x
-    -getlogp(runmodel(model, vi, spl))
-  end
-
-  g = x -> ForwardDiff.gradient(f, x::Vector,
-      ForwardDiff.GradientConfig{min(length(x),CHUNKSIZE)}(x::Vector))
-
-  g(vi[spl])
-end
-
-gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
-
-  θ = realpart(vi[spl])
   if spl != nothing && haskey(spl.info, :grad_cache)
-    if haskey(spl.info[:grad_cache], θ)
-      return spl.info[:grad_cache][θ]
+    if haskey(spl.info[:grad_cache], θ_hash)
+      return spl.info[:grad_cache][θ_hash]
     end
   end
 
@@ -40,56 +26,57 @@ gradient2(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   # Split keys(vi) into chunks,
   dprintln(4, "making chunks...")
-  vn_chunks = []; vn_chunk = []; chunk_dim = 0
+  vn_chunk = Set{VarName}(); vn_chunks = []; chunk_dim = 0;
 
-  vns_all = getvns(vi, spl)
-  for k in vns_all
-    l = length(getrange(vi, k))         # dimension for the current variable
+  vns = getvns(vi, spl); vn_num = length(vns)
+
+  for i = 1:vn_num
+    l = length(getrange(vi, vns[i]))           # dimension for the current variable
     if chunk_dim + l > CHUNKSIZE
-      push!(vn_chunks, # store the previous chunk
+      push!(vn_chunks,        # store the previous chunk
             (vn_chunk, chunk_dim))
-      vn_chunk = []          # initialise a new chunk
+      vn_chunk = []           # initialise a new chunk
       chunk_dim = 0           # reset dimension counter
     end
-    push!(vn_chunk, k)       # put the current variable into the current chunk
+    push!(vn_chunk, vns[i])       # put the current variable into the current chunk
     chunk_dim += l            # update dimension counter
   end
-  push!(vn_chunks,     # push the last chunk
+  push!(vn_chunks,            # push the last chunk
         (vn_chunk, chunk_dim))
 
   # Chunk-wise forward AD
   for (vn_chunk, chunk_dim) in vn_chunks
     # 1. Set dual part correspondingly
     dprintln(4, "set dual...")
-    dps = zeros(chunk_dim)
-
     dim_count = 1
-    for k in vns_all
-      l = length(getrange(vi, k))
-      reals = realpart(getval(vi, k))
-      range = getrange(vi, k)
-      if k in vn_chunk         # for each variable to compute gradient in this round
-        dprintln(5, "making dual...")
+    for i = 1:vn_num
+      range = getrange(vi, vns[i])
+      l = length(range)
+      vals = getval(vi, vns[i])
+      if vns[i] in vn_chunk        # for each variable to compute gradient in this round
         for i = 1:l
-          dps[dim_count] = 1  # set dual part
-          vi[range[i]] = ForwardDiff.Dual(reals[i], dps...)
-          dps[dim_count] = 0  # reset dual part
+          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(realpart(vals[i]), SEEDS[dim_count])
           dim_count += 1      # count
         end
-        dprintln(5, "make dual done")
-      else                      # for other varilables (no gradient in this round)
-        vi[range] = map(r -> Dual{chunk_dim, Float64}(r), reals)
+      else                    # for other varilables (no gradient in this round)
+        for i = 1:l
+          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(realpart(vals[i]))
+        end
       end
     end
+    dprintln(4, "set dual done")
 
-    # 2. Run model and collect gradient
+    # 2. Run model
+    dprintln(4, "run model...")
     vi = runmodel(model, vi, spl)
+
+    # 3. Collect gradient
     dprintln(4, "collect gradients from logp...")
-    append!(grad, collect(dualpart(-getlogp(vi))))
+    append!(grad, collect(dualpart(-getlogp(vi)))[1:chunk_dim])
   end
 
   if spl != nothing && haskey(spl.info, :grad_cache)
-    spl.info[:grad_cache][θ] = grad
+    spl.info[:grad_cache][θ_hash] = grad
   end
 
   grad
@@ -103,4 +90,20 @@ verifygrad(grad::Vector{Float64}) = begin
   else
     true
   end
+end
+
+# Direct call of ForwardDiff.gradient; this is slow
+
+gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+
+  vi = deepcopy(_vi)
+
+  f(x::Vector) = begin
+    vi[spl] = x
+    -getlogp(runmodel(model, vi, spl))
+  end
+
+  g = x -> ForwardDiff.gradient(f, x::Vector, ForwardDiff.GradientConfig{min(length(x),CHUNKSIZE)}(x::Vector))
+
+  g(vi[spl])
 end

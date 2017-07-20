@@ -99,7 +99,7 @@ function Base.consume(pc :: ParticleContainer)
   for i=1:n
     p = pc.vals[i]
     score = consume(p)
-    score = isa(score, Dual) ? realpart(score) : score
+    score = isa(score, ForwardDiff.Dual) ? realpart(score) : score
     if isa(score, Real)
       increase_logweight(pc, i, Float64(score))
     elseif score == Val{:done}

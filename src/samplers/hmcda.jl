@@ -54,7 +54,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = vi[spl]
+      oldθ = realpart(vi[spl])
       ϵ = spl.alg.delta > 0 ?
           find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
           spl.info[:pre_set_ϵ]
@@ -85,12 +85,12 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(2, "recording old values...")
-    old_θ = vi[spl]; old_logp = getlogp(vi)
+    old_θ = realpart(vi[spl]); old_logp = getlogp(vi)
     old_H = find_H(p, model, vi, spl)
 
     τ = max(1, round(Int, λ / ϵ))
     dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    θ, p, τ_valid = leapfrog2(old_θ, p, τ, ϵ, model, vi, spl)
+    θ, p, τ_valid = leapfrog(old_θ, p, τ, ϵ, model, vi, spl)
 
     dprintln(2, "computing new H...")
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
@@ -98,15 +98,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "computing accept rate α...")
     α = min(1, exp(-(H - old_H)))
 
-    if PROGRESS
-      if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
+    if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(
                                        spl.info[:progress],
                                        spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
                                      )
-      end
     end
 
     dprintln(2, "decide wether to accept...")

@@ -49,7 +49,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = vi[spl]
+      oldθ = realpart(vi[spl])
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
       vi[spl] = oldθ
 
@@ -82,7 +82,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     dprintln(3, "sample slice variable u")
     logu = log(rand()) + (-H0)
 
-    θ = vi[spl]
+    θ = realpart(vi[spl])
     logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
@@ -96,7 +96,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
         _, _, θp, rp, θ′, logp′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
-      if ~(isdefined(Main, :IJulia) && Main.IJulia.inited) # Fix for Jupyter notebook.
+      if PROGRESS
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(
@@ -129,7 +129,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
+function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
                     model::Function, spl::Sampler, vi::VarInfo)
     doc"""
       - θ     : model parameter
@@ -142,7 +142,7 @@ function build_tree(θ::Vector, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Fl
     """
     if j == 0
       # Base case - take one leapfrog step in the direction v.
-      θ′, r′, τ_valid = leapfrog2(θ, r, 1, v * ϵ, model, vi, spl)
+      θ′, r′, τ_valid = leapfrog(θ, r, 1, v * ϵ, model, vi, spl)
       # Use old H to save computation
       H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0

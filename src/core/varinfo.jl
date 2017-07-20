@@ -1,7 +1,3 @@
-import Base.string, Base.isequal, Base.==, Base.hash
-import Base.getindex, Base.setindex!, Base.push!
-import Base.rand, Base.show, Base.isnan, Base.isempty
-
 ###########
 # VarName #
 ###########
@@ -15,9 +11,9 @@ end
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
-hash(vn::VarName) = hash(uid(vn))
+Base.hash(vn::VarName) = hash(uid(vn))
 
-isequal(x::VarName, y::VarName) = uid(x) == uid(y)
+isequal(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
 ==(x::VarName, y::VarName)      = isequal(x, y)
 
 Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
@@ -38,7 +34,7 @@ type VarInfo
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Vector{Real}}
-  dists       ::    Vector{Distribution}
+  dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
@@ -55,7 +51,7 @@ type VarInfo
       Vector{VarName}(),
       Vector{UnitRange{Int}}(),
       vals,
-      Vector{Distribution}(),
+      Vector{Distributions.Distribution}(),
       Vector{Int}(),
       trans, logp,
       zero(Real),
@@ -72,14 +68,14 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getranges(vi::VarInfo, vns::Vector{VarName}) = union(map(vn -> getrange(vi, vn), vns)...)
 
-getval(vi::VarInfo, vn::VarName)       = vi.vals[end][getrange(vi, vn)]
+getval(vi::VarInfo, vn::VarName)       = view(vi.vals[end], getrange(vi, vn))
 setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
 
-getval(vi::VarInfo, vns::Vector{VarName}) = vi.vals[end][getranges(vi, vns)]
+getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns))
 
-getval(vi::VarInfo, view::VarView)                      = vi.vals[end][view]
-setval!(vi::VarInfo, val::Any, view::VarView)           = vi.vals[end][view] = val
-setval!(vi::VarInfo, val::Any, view::Vector{UnitRange}) = map(v -> vi.vals[end][v] = val, view)
+getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
+setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[end][[i for arr in vview for i in arr]] = val) : nothing
 
 getall(vi::VarInfo)            = vi.vals[end]
 setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
@@ -130,11 +126,10 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for vn in keys(vi)
-    range = getrange(vi, vn)
-    vi[range] = realpart(vi[range])
+  for i = 1:length(vi.vals[end])
+    vi.vals[end][i] = realpart(vi.vals[end][i])
   end
-  setlogp!(vi, realpart(getlogp(vi)))
+  vi.logp[end] = realpart(getlogp(vi))
   vi.logw = realpart(vi.logw)
 end
 
@@ -146,20 +141,22 @@ syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
-  r = reconstruct(dist, getval(vi, vn))
-  r = istrans(vi, vn) ? invlink(dist, r) : r
+  istrans(vi, vn) ?
+    invlink(dist, reconstruct(dist, getval(vi, vn))) :
+    reconstruct(dist, getval(vi, vn))
 end
 
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
-  rs = reconstruct(dist, getval(vi, vns), length(vns))
-  rs = istrans(vi, vns[1]) ? invlink(dist, rs) : rs
+  istrans(vi, vns[1]) ?
+    invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
+    reconstruct(dist, getval(vi, vns), length(vns))
 end
 
-# NOTE: vi[view] will just return what insdie vi (no transformations applied)
-Base.getindex(vi::VarInfo, view::VarView)            = getval(vi, view)
-Base.setindex!(vi::VarInfo, val::Any, view::VarView) = setval!(vi, val, view)
+# NOTE: vi[vview] will just return what insdie vi (no transformations applied)
+Base.getindex(vi::VarInfo, vview::VarView)            = getval(vi, vview)
+Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 
 Base.getindex(vi::VarInfo, spl::Sampler)            = getval(vi, getranges(vi, spl))
 Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
@@ -191,7 +188,7 @@ Base.show(io::IO, vi::VarInfo) = begin
 end
 
 # Add a new entry to VarInfo
-push!(vi::VarInfo, vn::VarName, r::Any, dist::Distribution, gid::Int) = begin
+push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Int) = begin
 
   @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
@@ -214,28 +211,32 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when implementing the sanity check
   VarName(csym, sym, indexing, 1)
 end
+VarName(vi::VarInfo, syms::Vector{Symbol}, indexing::String) = begin
+  # TODO: update this method when implementing the sanity check
+    VarName(syms[1], syms[2], indexing, 1)
+end
 
 #################################
 # Utility functions for VarInfo #
 #################################
 
-expand!(vi::VarInfo) = begin
-  push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
-  push!(vi.trans, deepcopy(vi.trans[end]))
-  push!(vi.logp, zero(Real))
-end
-
-shrink!(vi::VarInfo) = begin
-  pop!(vi.vals)
-  pop!(vi.trans)
-  pop!(vi.logp)
-end
-
-last!(vi::VarInfo) = begin
-  vi.vals = vi.vals[end:end]
-  vi.trans = vi.trans[end:end]
-  vi.logp = vi.logp[end:end]
-end
+# expand!(vi::VarInfo) = begin
+#   push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
+#   push!(vi.trans, deepcopy(vi.trans[end]))
+#   push!(vi.logp, zero(Real))
+# end
+#
+# shrink!(vi::VarInfo) = begin
+#   pop!(vi.vals)
+#   pop!(vi.trans)
+#   pop!(vi.logp)
+# end
+#
+# last!(vi::VarInfo) = begin
+#   vi.vals = vi.vals[end:end]
+#   vi.trans = vi.trans[end:end]
+#   vi.logp = vi.logp[end:end]
+# end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
@@ -270,11 +271,11 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi[vi.ranges[i]], getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
-getvns(vi::VarInfo, spl::Union{Void, Sampler}) = map(i -> vi.vns[i], getidcs(vi, spl))
+getvns(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin

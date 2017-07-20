@@ -93,7 +93,7 @@ sample(model::Function, alg::Gibbs;
   n = spl.alg.n_iters; i_thin = 1
 
   # Gibbs steps
-  spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0)
+  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0) end
   for i = 1:n
     dprintln(2, "Gibbs stepping...")
 
@@ -101,13 +101,13 @@ sample(model::Function, alg::Gibbs;
     lp = nothing; epsilon = nothing; lf_num = nothing
 
     for local_spl in spl.info[:samplers]
-      if haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
+      # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
       dprintln(2, "$(typeof(local_spl)) stepping...")
 
       if isa(local_spl.alg, GibbsComponent)
         if isa(local_spl.alg, Hamiltonian)  # clean cache
-          local_spl.info[:grad_cache] = Dict{Vector,Vector}()
+          local_spl.info[:grad_cache] = Dict{UInt64,Vector}()
         end
 
         for _ = 1:local_spl.alg.n_iters
@@ -149,8 +149,8 @@ sample(model::Function, alg::Gibbs;
       if lf_num != nothing samples[i].value[:lf_num] = lf_num end
     end
 
-    if ~(isdefined(Main, :IJulia) && Main.IJulia.inited)  # fix for Jupyter notebook.
-      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter+1)
+    if PROGRESS
+      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
     end
   end
 

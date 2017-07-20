@@ -61,7 +61,7 @@ Sampler(alg::Hamiltonian) = begin
   info[:vars] = nothing
 
   # For caching gradient
-  info[:grad_cache] = Dict{Vector,Vector}()
+  info[:grad_cache] = Dict{UInt64,Vector}()
   Sampler(alg, info)
 end
 
@@ -73,7 +73,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
                                )
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
-  global CHUNKSIZE = chunk_size   # set temp chunk size
+  setchunksize(chunk_size)        # set temp chunk size
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
@@ -134,7 +134,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
   println("  pre-cond. diag mat  = $(stds_str).")
 
-  global CHUNKSIZE = default_chunk_size # revert global chunk size
+  setchunksize(default_chunk_size)      # revert global chunk size
 
   if resume_from != nothing   # concat samples
     unshift!(samples, resume_from.value2...)

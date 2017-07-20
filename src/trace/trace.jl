@@ -8,8 +8,7 @@ Notes:
 """
 
 module Traces
-using Distributions
-using Turing: VarName, VarInfo, Sampler, getvns, NULL, getretain
+using Turing: VarInfo, Sampler, getvns, NULL, getretain
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953

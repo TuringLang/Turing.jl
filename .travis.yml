@@ -18,6 +18,7 @@ env:
   - GROUP=LDA
   - GROUP=MOC
   - GROUP=SV
+  - GROUP=Opt
 matrix:
     fast_finish: true
     exclude:
@@ -29,6 +30,8 @@ matrix:
          env: GROUP=MOC
        - os: osx
          env: GROUP=SV
+       - os: osx
+         env: GROUP=Opt
 
     allow_failures:
        - env: GROUP=Test
@@ -36,6 +39,7 @@ matrix:
        - env: GROUP=LDA
        - env: GROUP=MOC
        - env: GROUP=SV
+       - env: GROUP=Opt
 
 notifications:
     email: false
@@ -60,6 +64,9 @@ script:
              elseif ENV["GROUP"] == "SV"
                 include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
                 include(Pkg.dir("Turing")*"/benchmarks/sv.run.jl")
+             elseif ENV["GROUP"] == "Opt"
+                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
+                include(Pkg.dir("Turing")*"/benchmarks/optimization.jl")
              else
                 println("Unknown test command.")
              end'

@@ -1,16 +1,37 @@
 module Turing
 
+##############
+# Dependency #
+########################################################################
+# NOTE: when using anything from external packages,                    #
+#       let's keep the practice of explictly writing Package.something #
+#       to indicate that's not implemented inside Turing.jl            #
+########################################################################
+
+using Distributions
+using ForwardDiff
+using ProgressMeter
+
+import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
+import Distributions: sample
+import ForwardDiff: gradient
+import Mamba: AbstractChains, Chains
+
 ##############################
 # Global variables/constants #
 ##############################
 
 global const NULL = NaN     # constant for "delete" vals
 
-global CHUNKSIZE = 50       # default chunksize used by AD
+global CHUNKSIZE            # default chunksize used by AD
+global SEEDS                # pre-alloced dual parts
 setchunksize(chunk_size::Int) = begin
   println("[Turing]: AD chunk size is set as $chunk_size")
   global CHUNKSIZE = chunk_size
+  global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
 end
+
+setchunksize(60)
 
 global PROGRESS = true
 turnprogress(switch::Bool) = begin
@@ -26,19 +47,11 @@ global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
 global const CACHERANGES = 0b01
 
-##############
-# Dependency #
-##############
-
-using StatsFuns
-using Distributions
-using ForwardDiff
-
-using ForwardDiff: Dual, npartials    # for automatic differentiation
-using UnicodePlots
+#######################
+# Sampler abstraction #
+#######################
 
 abstract InferenceAlgorithm
-
 abstract Hamiltonian <: InferenceAlgorithm
 
 doc"""
@@ -59,22 +72,17 @@ type Sampler{T<:InferenceAlgorithm}
 end
 
 # TODO: make VarInfo into a seperate module?
-include("core/varinfo.jl")  # internal variable container
-include("trace/trace.jl")   # running probabilistic programs as tasks
+include("core/varinfo.jl")  # core internal variable container
+include("trace/trace.jl")   # to run probabilistic programs as tasks
 
 using Turing.Traces
-using ProgressMeter
-
-import Distributions: sample          # to orverload sample()
-import Base: ~, convert, promote_rule
-import Mamba: AbstractChains, Chains
 
 ###########
 # Exports #
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~                            # modelling
+export @model, @~, @VarName                  # modelling
 export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs  # sampling algorithms
 export sample, setchunksize, resume          # inference
 export dprintln, set_verbosity, turnprogress # debugging
@@ -84,7 +92,7 @@ export TArray, tzeros, localcopy, IArray
 
 export @sym_str
 
-export UnivariateGMM2
+export UnivariateGMM2, Flat, FlatPos
 
 ##################
 # Turing helpers #
