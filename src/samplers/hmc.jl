@@ -153,7 +153,7 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
-  acclogp!(vi, logpdf(dist, r, istrans(vi, vn)))
+  acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
   r
 end
 
@@ -166,7 +166,7 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
 
   rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 
-  acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
+  acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
   if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
     @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"

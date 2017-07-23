@@ -61,7 +61,7 @@ invlink{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   end
 end
 
-Distributions.logpdf{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
+logpdf_with_trans{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
@@ -89,7 +89,7 @@ link{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
 invlink{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
-Distributions.logpdf{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf(d, x)
+logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf(d, x)
 
 
 #########
@@ -105,7 +105,7 @@ link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 
 invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp(x)
 
-Distributions.logpdf{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
+logpdf_with_trans{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x) : lp
 end
@@ -122,7 +122,7 @@ link{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = logit(x)
 
 invlink{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = invlogit(x)
 
-Distributions.logpdf{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
+logpdf_with_trans{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
   transform ? lp + log(x .* (one(x) - x)) : lp
 end
@@ -193,7 +193,7 @@ invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   X
 end
 
-Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = begin
+logpdf_with_trans{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform
     K = length(x)
@@ -206,7 +206,7 @@ Distributions.logpdf{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) =
   lp
 end
 
-Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = begin
+logpdf_with_trans{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = begin
   lp = logpdf(d, X)
   if transform
     nrow, ncol = size(X)
@@ -223,7 +223,7 @@ Distributions.logpdf{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) =
 end
 
 # REVIEW: why do we put this piece of code here?
-Distributions.logpdf(d::Categorical, x::Int) = begin
+logpdf_with_trans(d::Categorical, x::Int) = begin
   d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
 
@@ -274,7 +274,7 @@ invlink{T<:Real}(d::PDMatDistribution, Z::Vector{Matrix{T}}) = begin
   Z
 end
 
-Distributions.logpdf{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
+logpdf_with_trans{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
@@ -287,7 +287,7 @@ Distributions.logpdf{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bo
   lp
 end
 
-Distributions.logpdf{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) = begin
+logpdf_with_trans{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) = begin
   lp = logpdf(d, X)
   if transform && all(isfinite(lp))
     n = length(X)
@@ -313,4 +313,4 @@ link(d::Distribution, x::Any) = x
 
 invlink(d::Distribution, x::Any) = x
 
-Distributions.logpdf(d::Distribution, x::Any, transform::Bool) = logpdf(d, x)
+logpdf_with_trans(d::Distribution, x::Any, transform::Bool) = logpdf(d, x)
