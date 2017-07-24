@@ -7,14 +7,18 @@
 
 jl_task_t *jl_clone_task(jl_task_t *t)
 {
+    jl_ptls_t ptls = jl_get_ptls_states();
+    //jl_task_t *newt = (jl_task_t*)jl_gc_alloc(ptls, sizeof(jl_task_t),
+    //                                       jl_task_type);
     jl_task_t *newt = (jl_task_t*)jl_gc_allocobj(sizeof(jl_task_t));
     memset(newt, 0, sizeof(jl_task_t));
     jl_set_typeof(newt, jl_task_type);
     newt->stkbuf = NULL;
     newt->gcstack = NULL;
     JL_GC_PUSH1(&newt);
-    
-    newt->parent = t->parent;
+
+    newt->parent = ptls->current_task;
+    // newt->parent = t->parent;
     // newt->last = t->last;
     newt->current_module = t->current_module;
     newt->state = t->state;
@@ -27,16 +31,16 @@ jl_task_t *jl_clone_task(jl_task_t *t)
     newt->backtrace = jl_nothing;
     newt->eh = NULL;
     newt->gcstack = t->gcstack;
-    
+
     /*
      jl_printf(JL_STDOUT,"t: %p\n", t);
      jl_printf(JL_STDOUT,"t->stkbuf: %p\n", t->stkbuf);
      jl_printf(JL_STDOUT,"t->gcstack: %p\n", t->gcstack);
      jl_printf(JL_STDOUT,"t->bufsz: %zu\n", t->bufsz);
      */
-    
+
     memcpy((void*)newt->ctx, (void*)t->ctx, sizeof(jl_jmp_buf));
-//#ifdef COPY_STACKS 
+//#ifdef COPY_STACKS
     if (t->stkbuf){
         newt->ssize = t->ssize;  // size of saved piece
         // newt->stkbuf = allocb(t->bufsz); // needs to be allocb(t->bufsz)
@@ -56,6 +60,6 @@ jl_task_t *jl_clone_task(jl_task_t *t)
 //#endif
     JL_GC_POP();
     jl_gc_wb_back(newt);
-    
+
     return newt;
 }
