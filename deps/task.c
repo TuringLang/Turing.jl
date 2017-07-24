@@ -10,8 +10,8 @@ jl_task_t *jl_clone_task(jl_task_t *t)
     jl_ptls_t ptls = jl_get_ptls_states();
     //jl_task_t *newt = (jl_task_t*)jl_gc_alloc(ptls, sizeof(jl_task_t),
     //                                       jl_task_type);   // jl_gc_alloc is not exported.
-    //jl_task_t *newt = (jl_task_t*)jl_gc_allocobj(sizeof(jl_task_t)); // implementation a.
-    jl_task_t *newt = (jl_task_t*)jl_new_task(t->start, t->ssize); //  Not efficient as a.
+    jl_task_t *newt = (jl_task_t*)jl_gc_allocobj(sizeof(jl_task_t)); // implementation a.
+    //jl_task_t *newt = (jl_task_t*)jl_new_task(t->start, t->ssize); //  Not efficient as a.
     memset(newt, 0, sizeof(jl_task_t));
     jl_set_typeof(newt, jl_task_type);
     newt->stkbuf = NULL;
@@ -30,7 +30,7 @@ jl_task_t *jl_clone_task(jl_task_t *t)
     newt->donenotify = jl_nothing;
     newt->exception = jl_nothing;
     newt->backtrace = jl_nothing;
-    newt->eh = NULL;
+    newt->eh = t->eh;
     newt->gcstack = t->gcstack;
 
     /*
