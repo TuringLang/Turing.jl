@@ -105,7 +105,7 @@ function Base.consume(pc :: ParticleContainer)
     elseif score == Val{:done}
       num_done += 1
     else
-      "[consume]: error in running particle filter."
+      error("[consume]: error in running particle filter.")
     end
   end
 

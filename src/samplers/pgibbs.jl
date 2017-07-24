@@ -67,7 +67,8 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   while consume(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
-      resample!(particles, spl.alg.resampler, ref_particle)
+      # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
+      resample!(particles, spl.alg.resampler, ref_particle; use_replay=true)
     end
   end
 
