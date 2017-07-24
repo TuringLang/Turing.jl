@@ -108,8 +108,8 @@ Base.display(io::IO, S::TArray) = Base.display(io::IO, task_local_storage(S.ref)
 Base.size(S::TArray) = Base.size(task_local_storage(S.ref)[2])
 Base.ndims(S::TArray) = Base.ndims(task_local_storage(S.ref)[2])
 
-Base.get(t::Task, S) = S
-Base.get(t::Task, S::TArray) = (t.storage[S.ref][2])
+# Base.get(t::Task, S) = S
+# Base.get(t::Task, S::TArray) = (t.storage[S.ref][2])
 Base.get(S::TArray) = (current_task().storage[S.ref][2])
 
 

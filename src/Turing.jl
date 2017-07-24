@@ -23,15 +23,17 @@ import Mamba: AbstractChains, Chains
 
 global const NULL = NaN     # constant for "delete" vals
 
-global CHUNKSIZE            # default chunksize used by AD
+global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
 setchunksize(chunk_size::Int) = begin
-  println("[Turing]: AD chunk size is set as $chunk_size")
-  global CHUNKSIZE = chunk_size
-  global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
+  if ~(CHUNKSIZE == chunk_size)
+    println("[Turing]: AD chunk size is set as $chunk_size")
+    global CHUNKSIZE = chunk_size
+    global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
+  end
 end
 
-setchunksize(60)
+setchunksize(40)
 
 global PROGRESS = true
 turnprogress(switch::Bool) = begin
