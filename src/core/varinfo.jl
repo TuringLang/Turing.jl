@@ -38,7 +38,6 @@ type VarInfo
   gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
-  logw        ::    Real          # NOTE: importance weight when sampling from the prior.
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = begin
@@ -54,7 +53,6 @@ type VarInfo
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
       trans, logp,
-      zero(Real),
       0,
       0
     )
@@ -130,7 +128,6 @@ function cleandual!(vi::VarInfo)
     vi.vals[end][i] = realpart(vi.vals[end][i])
   end
   vi.logp[end] = realpart(getlogp(vi))
-  vi.logw = realpart(vi.logw)
 end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
@@ -179,7 +176,6 @@ Base.show(io::IO, vi::VarInfo) = begin
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
   | Logp      :   $(vi.logp)
-  | Logw      :   $(vi.logw)
   | Index     :   $(vi.index)
   | #produce  :   $(vi.num_produce)
   \\=======================================================================

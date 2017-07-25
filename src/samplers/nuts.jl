@@ -36,7 +36,7 @@ immutable NUTS <: Hamiltonian
   NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) =
     new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   NUTS(n_iters::Int, delta::Float64) = begin
-    n_adapt_default = Int(round(n_iters / 5))
+    n_adapt_default = Int(round(n_iters / 2))
     new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
   end
   NUTS(alg::NUTS, new_gid::Int) = new(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
