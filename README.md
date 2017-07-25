@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.5.svg)](http://pkg.julialang.org/?pkg=Turing)
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-[![Wiki Status](https://img.shields.io/badge/wiki-v0.3.0-green.svg)](https://github.com/yebai/Turing.jl/wiki)
+[![Wiki Status](https://img.shields.io/badge/wiki-v0.3-blue.svg)](https://github.com/yebai/Turing.jl/wiki)
 
 **Turing.jl** is a Julia library for (_universal_) probabilistic programming. Current features include:
 
