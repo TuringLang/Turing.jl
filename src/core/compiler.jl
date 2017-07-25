@@ -207,10 +207,17 @@ macro model(fexpr)
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
   return_ex = fbody.args[end]   # get last statement of defined model
-  if typeof(return_ex) == Symbol ||
-       return_ex.head == :return ||
-       return_ex.head == :tuple
+  if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
+    push!(fbody_inner.args, :(vn = VarName(vi, $return_ex, "", 1)))
+    push!(fbody_inner.args, Expr(:(=), Expr(:ref, :vi, :vn), return_ex))
+  elseif return_ex.head == :return || return_ex.head == :tuple
+    pop!(fbody_inner.args)
+    for v = return_ex.args
+      @assert typeof(v) == Symbol "Returned variable name must be a symbol."
+      push!(fbody_inner.args, :(vn = VarName(vi, $v, "", 1)))
+      push!(fbody_inner.args, Expr(:(=), Expr(:ref, :vi, :vn), v))
+    end
   end
   push!(fbody_inner.args, Expr(:return, :vi))
   dprintln(1, fbody_inner)
