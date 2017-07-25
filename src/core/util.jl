@@ -1,4 +1,6 @@
-# ---------   Utility Functions ----------- #
+########
+# Math #
+########
 
 @inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
 @inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
@@ -42,7 +44,40 @@ align(x,y) = begin
   (x,y)
 end
 
+#######
+# I/O #
+#######
+
 macro sym_str(var)
   var_str = string(var)
   :(Symbol($var_str))
+end
+
+##########
+# Helper #
+##########
+
+auto_tune_chunk_size!(mf::Function, rep_num=10) = begin
+  dim = length(mf().vals[end])
+  if dim > 8
+    n = 1
+    sz_cand = Int[]
+    while dim / n > 8
+      push!(sz_cand, ceil(Int, dim / n))
+      n += 1
+    end
+    filter!(sz -> 8 < sz <= 50, sz_cand)
+    sz_num = length(sz_cand)
+    prof_log = Vector{Float64}(sz_num)
+    for i = 1:sz_num
+      println("[Turing] profiling chunk size = $(sz_cand[i])")
+      setchunksize(sz_cand[i])
+      prof_log[i] = @elapsed for _ = 1:rep_num mf() end
+    end
+    minval, minidx = findmin(prof_log)
+    println("[Turing] final chunk size chosen = $(sz_cand[minidx])")
+    setchunksize(sz_cand[minidx])
+  else
+    setchunksize(8)
+  end
 end

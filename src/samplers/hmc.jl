@@ -119,6 +119,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
       samples[i] = samples[i - 1]
     end
     samples[i].value[:elapsed] = time_elapsed
+    samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
     if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
   end
 

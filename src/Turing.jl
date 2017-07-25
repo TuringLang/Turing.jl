@@ -84,10 +84,11 @@ using Turing.Traces
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, @VarName                  # modelling
-export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs  # sampling algorithms
-export sample, setchunksize, resume          # inference
-export dprintln, set_verbosity, turnprogress # debugging
+export @model, @~, @VarName                   # modelling
+export HMC, HMCDA, NUTS, IS, SMC, PG, Gibbs   # sampling
+export sample, setchunksize, resume           # inference
+export auto_tune_chunk_size!                  # helper
+export dprintln, set_verbosity, turnprogress  # debugging
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
