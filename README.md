@@ -26,6 +26,10 @@ Turing is an open source project so if you feel you have some relevant skills an
 Turing was originally created and is now managed by Hong Ge. Current and past Turing team members include [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx). 
 You can see the full list of on Github: https://github.com/yebai/Turing.jl/graphs/contributors. Thanks for the important additions, fixes and comments.
 
+## Relevant papers
+
+1. Ghahramani, Zoubin. “Probabilistic machine learning and artificial intelligence.” Nature 521, no. 7553 (2015): 452-459. ([pdf](http://www.nature.com/nature/journal/v521/n7553/full/nature14541.html))
+2. Ge, Hong and Ścibior, Adam and Xu, Kai and Ghahramani, Zoubin. “Turing: A fast imperative probabilistic programming language.”
 
 ## Citing Turing.jl ##
 
