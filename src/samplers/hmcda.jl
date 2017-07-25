@@ -34,7 +34,7 @@ immutable HMCDA <: Hamiltonian
 
   HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
   HMCDA(n_iters::Int, delta::Float64, lambda::Float64) = begin
-    n_adapt_default = Int(round(n_iters / 5))
+    n_adapt_default = Int(round(n_iters / 2))
     new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
   end
   HMCDA(alg::HMCDA, new_gid::Int) =
