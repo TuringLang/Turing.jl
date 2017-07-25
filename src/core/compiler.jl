@@ -210,15 +210,20 @@ macro model(fexpr)
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
     vstr = string(return_ex)
-    push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr), "", 1)))
-    push!(fbody_inner.args, Expr(:(=), Expr(:ref, :vi, :vn), return_ex))
+    push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
+    # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $return_ex, vn) :
+    #  push!(vi, vn, $return_ex, Distributions.Uniform(-Inf,+Inf), -1)))
   elseif return_ex.head == :return || return_ex.head == :tuple
+    if return_ex.head == :return && typeof(return_ex.args[1])!=Symbol && return_ex.args[1].head == :tuple
+      return_ex = return_ex.args[1]
+    end
     pop!(fbody_inner.args)
     for v = return_ex.args
-      @assert typeof(v) == Symbol "Returned variable name must be a symbol."
+      @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
       vstr = string(v)
-      push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr), "", 1)))
-      push!(fbody_inner.args, Expr(:(=), Expr(:ref, :vi, :vn), v))
+      push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
+      # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $v, vn) :
+      #  push!(vi, vn, $v, Distributions.Uniform(-Inf,+Inf), -1)))
     end
   end
   push!(fbody_inner.args, Expr(:return, :vi))
