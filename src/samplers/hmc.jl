@@ -63,8 +63,6 @@ Sampler(alg::Hamiltonian) = begin
   # For caching gradient
   info[:grad_cache] = Dict{UInt64,Vector}()
 
-  # For explicit return
-  info[:pred] = Dict{Symbol,Any}()
   Sampler(alg, info)
 end
 
@@ -123,8 +121,6 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
     end
     samples[i].value[:elapsed] = time_elapsed
     samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
-
-    update_pred(samples[i], spl)
 
     if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
   end

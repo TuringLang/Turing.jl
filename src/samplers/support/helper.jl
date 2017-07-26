@@ -57,8 +57,26 @@ end
   for vn in keys(vi)
     value[sym(vn)] = realpart(vi[vn])
   end
+
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(getlogp(vi))
+
+
+
+  if ~isempty(vi.pred)
+    for sym in keys(vi.pred)
+      # if ~haskey(sample.value, sym)
+        value[sym] = vi.pred[sym]
+      # end
+    end
+    # TODO: check why 1. 2. cause errors
+    # TODO: which one is faster?
+    # 1. Using empty!
+    # empty!(vi.pred)
+    # 2. Reassign an enmtpy dict
+    # vi.pred = Dict{Symbol,Any}()
+    # 3. Do nothing?
+  end
 
   Sample(0.0, value)
 end
@@ -76,15 +94,4 @@ end
   end
 
   s
-end
-
-update_pred(sample::Sample, spl::Sampler) = begin
-  if ~isempty(spl.info[:pred])
-    for sym in keys(spl.info[:pred])
-      if ~haskey(sample.value, sym)
-        sample.value[sym] = spl.info[:pred][sym]
-      end
-    end
-  end
-
 end

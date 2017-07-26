@@ -17,7 +17,7 @@ testcases = Dict(
         "compiler.jl"  => ["assume", "observe", "predict", "sample",
                            "beta_binomial", "noparam",
                            #"opt_param_of_dist",
-                           "new_grammar", "newinterface", "noreturn", "forbid_global",],
+                           "new_grammar", "newinterface", "noreturn", "forbid_global", "explicit_ret",],
         "container.jl" => ["copy_particle_container",],
         "varinfo.jl"   => ["replay", "test_varname", "varinfo", "is_inside",],
         "io.jl"        => ["chain_utility", "save_resume_chain",],

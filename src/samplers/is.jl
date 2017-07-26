@@ -32,8 +32,6 @@ end
 
 Sampler(alg::IS) = begin
   info = Dict{Symbol, Any}()
-  # For explicit return
-  info[:pred] = Dict{Symbol,Any}()
   Sampler(alg, info)
 end
 
@@ -45,7 +43,6 @@ sample(model::Function, alg::IS) = begin
   for i = 1:n
     vi = model(vi=VarInfo(), sampler=spl)
     samples[i] = Sample(vi)
-    update_pred(samples[i], spl)
   end
 
   le = logsum(map(x->x[:lp], samples)) - log(n)

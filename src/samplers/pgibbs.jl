@@ -42,8 +42,6 @@ end
 Sampler(alg::PG) = begin
   info = Dict{Symbol, Any}()
   info[:logevidence] = []
-  # For explicit return
-  info[:pred] = Dict{Symbol,Any}()
   Sampler(alg, info)
 end
 
@@ -116,7 +114,6 @@ sample(model::Function, alg::PG;
     time_elapsed = @elapsed vi = step(model, spl, vi)
     push!(samples, Sample(vi))
     samples[i].value[:elapsed] = time_elapsed
-    update_pred(samples[i], spl)
 
     time_total += time_elapsed
 

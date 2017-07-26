@@ -220,7 +220,7 @@ macro model(fexpr)
     pop!(fbody_inner.args)
     for v = return_ex.args
       @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
-      push!(fbody_inner.args, :(if sampler != nothing sampler.info[:pred][Symbol($(string(v)))] = Turing.realpart($v) end))
+      push!(fbody_inner.args, :(if sampler != nothing vi.pred[Symbol($(string(v)))] = Turing.realpart($v) end))
     end
   end
   push!(fbody_inner.args, Expr(:return, :vi))

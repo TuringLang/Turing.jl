@@ -38,8 +38,6 @@ end
 
 Sampler(alg::SMC) = begin
   info = Dict{Symbol, Any}()
-  # For explicit return
-  info[:pred] = Dict{Symbol,Any}()
   Sampler(alg, info)
 end
 
@@ -58,9 +56,6 @@ function sample(model::Function, alg::SMC)
     end
   end
   w, samples = getsample(particles)
-  for s = samples
-    update_pred(s, spl)
-  end
   res = Chain(w, samples)
 
 end
