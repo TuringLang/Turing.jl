@@ -98,9 +98,10 @@ sample(model::Function, alg::Gibbs;
     dprintln(2, "Gibbs stepping...")
 
     time_elapsed = zero(Float64)
-    lp = nothing; epsilon = nothing; lf_num = nothing
+    lp = nothing; epsilon = nothing; lf_num = nothing; last_spl = nothing
 
     for local_spl in spl.info[:samplers]
+      last_spl = local_spl
       # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
       dprintln(2, "$(typeof(local_spl)) stepping...")
@@ -123,6 +124,7 @@ sample(model::Function, alg::Gibbs;
               if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
               if lf_num != nothing samples[i_thin].value[:lf_num] = lf_num end
             end
+            update_pred(samples[i], local_spl)
             i_thin += 1
           end
           time_elapsed += time_elapsed_thin
@@ -147,6 +149,7 @@ sample(model::Function, alg::Gibbs;
       if lp != nothing samples[i].value[:lp] = lp end
       if epsilon != nothing samples[i].value[:epsilon] = epsilon end
       if lf_num != nothing samples[i].value[:lf_num] = lf_num end
+      update_pred(samples[i], last_spl)
     end
 
     if PROGRESS

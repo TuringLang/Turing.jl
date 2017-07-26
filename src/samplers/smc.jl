@@ -38,6 +38,8 @@ end
 
 Sampler(alg::SMC) = begin
   info = Dict{Symbol, Any}()
+  # For explicit return
+  info[:pred] = Dict{Symbol,Any}()
   Sampler(alg, info)
 end
 
@@ -55,6 +57,10 @@ function sample(model::Function, alg::SMC)
       resample!(particles,use_replay=spl.alg.use_replay)
     end
   end
-  res = Chain(getsample(particles)...)
+  w, samples = getsample(particles)
+  for s = samples
+    update_pred(s, spl)
+  end
+  res = Chain(w, samples)
 
 end

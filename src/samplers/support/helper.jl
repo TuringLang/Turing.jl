@@ -6,7 +6,8 @@
 @inline realpart(d::ForwardDiff.Dual) = d.value
 @inline realpart(ds::Union{Vector,SubArray}) = Float64[realpart(d) for d in ds] # NOTE: the function below is assumed to return a Vector now
 @inline realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) = for i = 1:length(ds) arr[i] = realpart(ds[i]) end
-@inline realpart(ds::Matrix) = Float64[realpart(col) for col in ds]
+@inline realpart{T<:Real}(ds::Matrix{T}) = Float64[realpart(col) for col in ds]
+@inline realpart(ds::Matrix{Any}) = [realpart(col) for col in ds]
 @inline realpart(ds::Array)  = map(d -> realpart(d), ds)  # NOTE: this function is not optimized
 
 @inline dualpart(d::ForwardDiff.Dual)       = d.partials.values
@@ -75,4 +76,15 @@ end
   end
 
   s
+end
+
+update_pred(sample::Sample, spl::Sampler) = begin
+  if ~isempty(spl.info[:pred])
+    for sym in keys(spl.info[:pred])
+      if ~haskey(sample.value, sym)
+        sample.value[sym] = spl.info[:pred][sym]
+      end
+    end
+  end
+
 end
