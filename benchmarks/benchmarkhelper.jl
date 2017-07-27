@@ -83,8 +83,16 @@ end
 print_log(logd::Dict, monitor=[]) = print(log2str(logd, monitor))
 
 send_log(logd::Dict, monitor=[]) = begin
-  log_str = log2str(logd, monitor)
-  send_str(log_str, logd["name"])
+  # log_str = log2str(logd, monitor)
+  # send_str(log_str, logd["name"])
+  dir_old = pwd()
+  cd(Pkg.dir("Turing"))
+  commit_str = replace(split(readstring(pipeline(`git show --summary `, `grep "commit"`)), " ")[2], "\n", "")
+  cd(dir_old)
+  time_str = "$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))"
+  logd["created"] = time_str
+  logd["commit"] = commit_str
+  post("https://api.mlab.com/api/1/databases/benchmark/collections/log?apiKey=Hak1H9--KFJz7aAx2rAbNNgub1KEylgN"; json=logd)
 end
 
 send_str(str::String, fname::String) = begin
