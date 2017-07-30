@@ -83,13 +83,8 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     for k in 1:length(old_θ)
       θ[k,:] = old_θ[k] + old_v[k]
       noise = rand(MvNormal(zeros(length(old_θ[k])), sqrt(2 * η * α)*ones(length(old_θ[k]))))
-      v[k,:] = (1. - α) * old_v[k] - η * grad[k] + noise
+      v[k,:] = (1. - α) * old_v[k] - η * grad[k] + noise # NOTE: divide η by batch size
     end
-    # for k in keys(grad)
-    #   vi[k] = Vector{Dual}(old_vi[k] + old_v[k])
-    #   noise = rand(MvNormal(zeros(length(vi[k])), sqrt(2 * η * α)*ones(length(vi[k]))))
-    #   v[k] =  Vector{Dual}((1. - α) * old_v[k] - η * grad[k] + noise) # NOTE: divide η by batch size
-    # end
 
     dprintln(2, "saving new latent variables and velocity...")
     spl.info[:v] = v
