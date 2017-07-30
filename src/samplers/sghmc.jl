@@ -80,10 +80,10 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
 
     dprintln(2, "update latent variables and velocity...")
     # Implements the update equations from (15) of Chen et al. (2014).
-    for k in 1:length(old_θ)
-      θ[k,:] = old_θ[k] + old_v[k]
-      noise = rand(MvNormal(zeros(length(old_θ[k])), sqrt(2 * η * α)*ones(length(old_θ[k]))))
-      v[k,:] = (1. - α) * old_v[k] - η * grad[k] + noise # NOTE: divide η by batch size
+    for k in 1:size(old_θ, 1)
+      θ[k,:] = old_θ[k,:] + old_v[k,:]
+      noise = rand(MvNormal(zeros(length(old_θ[k,:])), sqrt(2 * η * α)*ones(length(old_θ[k,:]))))
+      v[k,:] = (1. - α) * old_v[k,:] - η * grad[k,:] + noise # NOTE: divide η by batch size
     end
 
     dprintln(2, "saving new latent variables and velocity...")
