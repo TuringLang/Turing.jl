@@ -84,6 +84,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   alg_str = isa(alg, HMC)   ? "HMC"   :
             isa(alg, HMCDA) ? "HMCDA" :
             isa(alg, SGHMC) ? "SGHMC" :
+            isa(alg, SGLD)  ? "SGLD"  :
             isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
   # Initialization

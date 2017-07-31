@@ -6,7 +6,7 @@ doc"""
 Usage:
 
 ```julia
-SGLD(1000, 0.25)
+SGLD(1000, 0.5)
 ```
 
 Example:
@@ -16,7 +16,7 @@ Example:
   ...
 end
 
-sample(example, SGLD(1000, 0.25))
+sample(example, SGLD(1000, 0.5))
 ```
 """
 immutable SGLD <: Hamiltonian
