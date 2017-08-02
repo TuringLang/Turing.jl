@@ -1,6 +1,8 @@
 using Turing
 using Base.Test
 
+srand(125)
+
 alg1 = SGHMC(3000, 0.01, 0.5)
 
 @model gdemo(x) = begin

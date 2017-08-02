@@ -1,6 +1,8 @@
 using Turing
 using Base.Test
 
+srand(125)
+
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
