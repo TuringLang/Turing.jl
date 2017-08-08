@@ -120,6 +120,7 @@ derror(v::Int, args...)   = error("\r[Turing.ERROR]: ", mapreduce(string,*,args)
 # Inference code #
 ##################
 
+include("depreciated.jl")
 include("core/util.jl")         # utility functions
 include("core/compiler.jl")     # compiler
 include("core/container.jl")    # particle container

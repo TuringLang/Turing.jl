@@ -207,19 +207,33 @@ macro model(fexpr)
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
   return_ex = fbody.args[end]   # get last statement of defined model
-  if typeof(return_ex) == Symbol ||
-       return_ex.head == :return ||
-       return_ex.head == :tuple
+  if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
+    vstr = string(return_ex)
+    push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
+    # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $return_ex, vn) :
+    #  push!(vi, vn, $return_ex, Distributions.Uniform(-Inf,+Inf), -1)))
+  elseif return_ex.head == :return || return_ex.head == :tuple
+    if return_ex.head == :return && typeof(return_ex.args[1])!=Symbol && return_ex.args[1].head == :tuple
+      return_ex = return_ex.args[1]
+    end
+    pop!(fbody_inner.args)
+    for v = return_ex.args
+      @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
+      vstr = string(v)
+      push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
+      # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $v, vn) :
+      #  push!(vi, vn, $v, Distributions.Uniform(-Inf,+Inf), -1)))
+    end
   end
   push!(fbody_inner.args, Expr(:return, :vi))
   dprintln(1, fbody_inner)
 
-  suffix = gensym()
-  fname_inner = Symbol("$(fname)_model_$suffix")
-  fdefn_inner = Expr(:function, Expr(:call, fname_inner)) # fdefn = :( $fname() )
-  push!(fdefn_inner.args[1].args, fargs_inner...)   # set parameters (x,y;data..)
-  push!(fdefn_inner.args, deepcopy(fbody_inner))    # set function definition
+  fname_inner = Symbol("$(fname)_model")
+  fdefn_inner = Expr(:(=), fname_inner,
+          Expr(:function, Expr(:call, fname_inner))) # fdefn = :( $fname() )
+  push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+  push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
 
   compiler = Dict(:fname => fname,
@@ -251,14 +265,15 @@ macro model(fexpr)
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
       fargs    = Turing._compiler_[:fargs];
       fdefn_inner   = Turing._compiler_[:fdefn_inner];
+      fdefn_inner.args[2].args[1].args[1] = gensym((fdefn_inner.args[2].args[1].args[1]))
       # Copy data dictionary
       for k in keys(data)
-        if fdefn_inner.args[2].args[1].head == :line
+        if fdefn_inner.args[2].args[2].args[1].head == :line
           # Preserve comments, useful for debuggers to
           # correctly locate source code oringin.
-          insert!(fdefn_inner.args[2].args, 2, Expr(:(=), Symbol(k), data[k]))
+          insert!(fdefn_inner.args[2].args[2].args, 2, Expr(:(=), Symbol(k), data[k]))
         else
-          insert!(fdefn_inner.args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
+          insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
       dprintln(1, fdefn_inner)
@@ -310,47 +325,4 @@ getvsym(expr::Expr) = begin
     curr = curr.args[1]
   end
   curr
-end
-
-####################
-# Deprecated codes #
-########################################################
-# TODO: remove related code of varname() in test files #
-########################################################
-
-varname(s::Symbol)  = nothing, s
-varname(expr::Expr) = begin
-  # Initialize an expression block to store the code for creating uid
-  local sym
-  @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
-  indexing_ex = Expr(:block)
-  # Add the initialization statement for uid
-  push!(indexing_ex.args, quote indexing_list = [] end)
-  # Initialize a local container for parsing and add the expr to it
-  to_eval = []; unshift!(to_eval, expr)
-  # Parse the expression and creating the code for creating uid
-  find_head = false
-  while length(to_eval) > 0
-    evaling = shift!(to_eval)   # get the current expression to deal with
-    if isa(evaling, Expr) && evaling.head == :ref && ~find_head
-      # Add all the indexing arguments to the left
-      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
-      # Add first argument depending on its type
-      # If it is an expression, it means it's a nested array calling
-      # Otherwise it's the symbol for the calling
-      if isa(evaling.args[1], Expr)
-        unshift!(to_eval, evaling.args[1])
-      else
-        # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
-        push!(indexing_ex.args, quote sym = Symbol($(string(evaling.args[1]))) end) # store symbol in runtime
-        find_head = true
-        sym = evaling.args[1] # store symbol in compilation time
-      end
-    else
-      # Evaluting the concrete value of the indexing variable
-      push!(indexing_ex.args, quote push!(indexing_list, string($evaling)) end)
-    end
-  end
-  push!(indexing_ex.args, quote indexing = reduce(*, indexing_list) end)
-  indexing_ex, sym
 end
