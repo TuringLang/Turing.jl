@@ -214,9 +214,6 @@ macro model(fexpr)
     # vstr = string(return_ex)
     # push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
     # NOTE: code above is commented out to disable explict return
-
-    # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $return_ex, vn) :
-    # push!(vi, vn, $return_ex, Distributions.Uniform(-Inf,+Inf), -1)))
   elseif return_ex.head == :return || return_ex.head == :tuple
     pop!(fbody_inner.args)
     # NOTE: code below is commented out to disable explict return
