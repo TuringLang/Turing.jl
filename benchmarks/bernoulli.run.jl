@@ -6,6 +6,8 @@ include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/bernoulli-stan.data.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/bernoulli.model.jl")
 
+tbenchmark("HMC(10, 0.25, 5)", "bermodel", "data=berstandata[1]")
+
 bench_res = tbenchmark("HMC(1000, 0.25, 5)", "bermodel", "data=berstandata[1]")
 logd = build_logd("Bernoulli Model", bench_res...)
 

@@ -206,27 +206,32 @@ macro model(fexpr)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
-  return_ex = fbody.args[end]   # get last statement of defined model
+
+  return_ex = fbody.args[end] # get last statement of defined model
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
-    vstr = string(return_ex)
-    push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
-    # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $return_ex, vn) :
-    #  push!(vi, vn, $return_ex, Distributions.Uniform(-Inf,+Inf), -1)))
+    # NOTE: code below is commented out to disable explict return
+    # vstr = string(return_ex)
+    # push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
+    # NOTE: code above is commented out to disable explict return
   elseif return_ex.head == :return || return_ex.head == :tuple
-    if return_ex.head == :return && typeof(return_ex.args[1])!=Symbol && return_ex.args[1].head == :tuple
-      return_ex = return_ex.args[1]
-    end
     pop!(fbody_inner.args)
-    for v = return_ex.args
-      @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
-      vstr = string(v)
-      push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
-      # push!(fbody_inner.args, :(haskey(vi, vn) ? Turing.setval!(vi, $v, vn) :
-      #  push!(vi, vn, $v, Distributions.Uniform(-Inf,+Inf), -1)))
-    end
+    # NOTE: code below is commented out to disable explict return
+    # # Turn statement from return to tuple
+    # if return_ex.head == :return && typeof(return_ex.args[1]) != Symbol && return_ex.args[1].head == :tuple
+    #   return_ex = return_ex.args[1]
+    # end
+    #
+    # # Replace :return or :tuple statement with corresponding operations on vi
+    # for v = return_ex.args
+    #   @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
+    #   push!(fbody_inner.args, :(if sampler != nothing vi.pred[Symbol($(string(v)))] = Turing.realpart($v) end))
+    # end
+    # NOTE: code above is commented out to disable explict return
   end
-  push!(fbody_inner.args, Expr(:return, :vi))
+
+  push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
+
   dprintln(1, fbody_inner)
 
   fname_inner = Symbol("$(fname)_model")

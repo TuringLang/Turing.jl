@@ -101,6 +101,7 @@ sample(model::Function, alg::Gibbs;
     lp = nothing; epsilon = nothing; lf_num = nothing
 
     for local_spl in spl.info[:samplers]
+      last_spl = local_spl
       # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
       dprintln(2, "$(typeof(local_spl)) stepping...")

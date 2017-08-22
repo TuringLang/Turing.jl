@@ -30,7 +30,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 ###########
 
 type VarInfo
-  idcs        ::    Dict{VarName, Int}
+  idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Vector{Real}}
@@ -38,12 +38,14 @@ type VarInfo
   gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
+  pred        ::    Dict{Symbol,Any}
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
     logp = Vector{Real}(); push!(logp, zero(Real))
+    pred = Dict{Symbol,Any}()
 
     new(
       Dict{VarName, Int}(),
@@ -53,6 +55,7 @@ type VarInfo
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
       trans, logp,
+      pred,
       0,
       0
     )

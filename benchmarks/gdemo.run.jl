@@ -6,6 +6,8 @@ include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/benchmarks/gauss.data.jl")
 include(Pkg.dir("Turing")*"/example-models/benchmarks/gauss.model.jl")
 
+tbenchmark("PG(20, 20)", "gaussmodel", "gaussdata")
+
 bench_res = tbenchmark("PG(20, 2000)", "gaussmodel", "gaussdata")
 logd = build_logd("Gaussian Model", bench_res...)
 print_log(logd)

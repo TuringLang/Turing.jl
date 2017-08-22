@@ -6,8 +6,10 @@
 @inline realpart(d::ForwardDiff.Dual) = d.value
 @inline realpart(ds::Union{Vector,SubArray}) = Float64[realpart(d) for d in ds] # NOTE: the function below is assumed to return a Vector now
 @inline realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) = for i = 1:length(ds) arr[i] = realpart(ds[i]) end
-@inline realpart(ds::Matrix) = Float64[realpart(col) for col in ds]
+@inline realpart{T<:Real}(ds::Matrix{T}) = Float64[realpart(col) for col in ds]
+@inline realpart(ds::Matrix{Any}) = [realpart(col) for col in ds]
 @inline realpart(ds::Array)  = map(d -> realpart(d), ds)  # NOTE: this function is not optimized
+@inline realpart(ds::TArray) = realpart(Array(ds))
 
 @inline dualpart(d::ForwardDiff.Dual)       = d.partials.values
 @inline dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)
@@ -56,8 +58,26 @@ end
   for vn in keys(vi)
     value[sym(vn)] = realpart(vi[vn])
   end
+
   # NOTE: do we need to check if lp is 0?
   value[:lp] = realpart(getlogp(vi))
+
+
+
+  if ~isempty(vi.pred)
+    for sym in keys(vi.pred)
+      # if ~haskey(sample.value, sym)
+        value[sym] = vi.pred[sym]
+      # end
+    end
+    # TODO: check why 1. 2. cause errors
+    # TODO: which one is faster?
+    # 1. Using empty!
+    # empty!(vi.pred)
+    # 2. Reassign an enmtpy dict
+    # vi.pred = Dict{Symbol,Any}()
+    # 3. Do nothing?
+  end
 
   Sample(0.0, value)
 end

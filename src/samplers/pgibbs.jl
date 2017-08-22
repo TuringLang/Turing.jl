@@ -114,6 +114,7 @@ sample(model::Function, alg::PG;
     time_elapsed = @elapsed vi = step(model, spl, vi)
     push!(samples, Sample(vi))
     samples[i].value[:elapsed] = time_elapsed
+
     time_total += time_elapsed
 
     if PROGRESS  && spl.alg.gid == 0

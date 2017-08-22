@@ -83,8 +83,16 @@ end
 print_log(logd::Dict, monitor=[]) = print(log2str(logd, monitor))
 
 send_log(logd::Dict, monitor=[]) = begin
-  log_str = log2str(logd, monitor)
-  send_str(log_str, logd["name"])
+  # log_str = log2str(logd, monitor)
+  # send_str(log_str, logd["name"])
+  dir_old = pwd()
+  cd(Pkg.dir("Turing"))
+  commit_str = replace(split(readstring(pipeline(`git show --summary `, `grep "commit"`)), " ")[2], "\n", "")
+  cd(dir_old)
+  time_str = "$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))"
+  logd["created"] = time_str
+  logd["commit"] = commit_str
+  post("https://api.mlab.com/api/1/databases/benchmark/collections/log?apiKey=Hak1H9--KFJz7aAx2rAbNNgub1KEylgN"; json=logd)
 end
 
 send_str(str::String, fname::String) = begin
@@ -94,4 +102,48 @@ send_str(str::String, fname::String) = begin
   cd(dir_old)
   time_str = "$(Dates.format(now(), "dd-u-yyyy-HH-MM-SS"))"
   post("http://80.85.86.210:1110"; files = [FileParam(str, "text","upfile","benchmark-$time_str-$commit_str-$fname.txt")])
+end
+
+
+
+# using Requests
+# import Requests: get, post, put, delete, options, FileParam
+# import JSON
+
+gen_mkd_table_for_commit(commit) = begin
+  # commit = "f4ca7bfc8a63e5a6825ec272e7dffed7be623b31"
+  api_url = "https://api.mlab.com/api/1/databases/benchmark/collections/log?q={%22commit%22:%22$commit%22}&apiKey=Hak1H9--KFJz7aAx2rAbNNgub1KEylgN"
+  res = get(api_url)
+  # print(res)
+
+  json = JSON.parse(readstring(res))
+  # json[1]
+
+  mkd  = "| Model | Turing | Stan | Ratio |\n"
+  mkd *= "| ----- | ------ | ---- | ----- |\n"
+  for log in json
+    modelName = log["name"]
+    tt, ts = log["time"], log["time_stan"]
+    rt = tt / ts
+    tt, ts, rt = round(tt, 2), round(ts, 2), round(rt, 2)
+    mkd *= "|$modelName|$tt|$ts|$rt|\n"
+  end
+
+  mkd
+end
+
+benchmakr_turing(model_list) = begin
+  println("Turing benchmarking started.")
+
+  for model in model_list
+    println("Benchmarking `$model` ... ")
+    job = `julia -e " cd(\"$(pwd())\");include(dirname(\"$(@__FILE__)\")*\"/benchmarkhelper.jl\");
+                         CMDSTAN_HOME = \"$CMDSTAN_HOME\";
+                         using Turing, Distributions, Stan;
+                         include(dirname(\"$(@__FILE__)\")*\"/$(model).run.jl\") "`
+    println(job); run(job)
+    println("`$model` ✓")
+  end
+
+  println("Turing benchmarking completed.")
 end
