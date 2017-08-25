@@ -166,7 +166,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
   end
 end
 
-assume{T<:Union{PG,SMC}}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) =
+assume{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =
   error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 
 observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) =
