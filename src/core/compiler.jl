@@ -168,6 +168,7 @@ macro model(fexpr)
 
 
   dprintln(1, fexpr)
+  fexpr = translate(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
@@ -326,3 +327,15 @@ getvsym(expr::Expr) = begin
   end
   curr
 end
+
+
+translate!(ex::Any) = ex
+translate!(ex::Expr) = begin
+  if (ex.head === :call && ex.args[1] === :(~))
+    ex.head = :macrocall; ex.args[1] = Symbol("@~")
+  else
+    map(translate!, ex.args)
+  end
+  ex
+end
+translate(ex::Expr) = translate!(deepcopy(ex))
