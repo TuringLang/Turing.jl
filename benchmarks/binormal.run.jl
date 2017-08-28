@@ -5,6 +5,8 @@ using Turing
 include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/binormal.model.jl")
 
+tbenchmark("HMC(20, 0.5, 5)", "binormal", "")
+
 bench_res = tbenchmark("HMC(2000, 0.5, 5)", "binormal", "")
 # chn = sample(binormal(), HMC(2000,0.5,5))
 

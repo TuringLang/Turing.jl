@@ -20,7 +20,7 @@ end
 type NotImplementedException <: Exception end
 
 # Numerically stable sum of values represented in log domain.
-function logsum(xs::Vector{Float64})
+logsum{T<:Real}(xs::Vector{T}) = begin
   largest = maximum(xs)
   ys = map(x -> exp(x - largest), xs)
 

@@ -52,9 +52,10 @@ function sample(model::Function, alg::SMC)
   while consume(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
-      resample!(particles,use_replay=spl.alg.use_replay)
+      resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
     end
   end
-  res = Chain(getsample(particles)...)
+  w, samples = getsample(particles)
+  res = Chain(w, samples)
 
 end

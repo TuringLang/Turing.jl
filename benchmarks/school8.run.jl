@@ -10,6 +10,8 @@ delete!(data, "tau")
 
 # chn = sample(school8(data=data), HMC(2000, 0.75, 5))
 
+tbenchmark("HMC(20, 0.75, 5)", "school8", "data=data")
+
 bench_res = tbenchmark("HMC(2000, 0.75, 5)", "school8", "data=data")
 # bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
 logd = build_logd("School 8", bench_res...)

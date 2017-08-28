@@ -200,6 +200,7 @@ using Turing
 end
 
 # chn = sample(kid_turing(data=kiddata[1]), HMC(2000, 0.0025, 10))
+tbenchmark("HMC(20, 0.0025, 10)", "kid_turing", "data=kiddata[1]")
 bench_res = tbenchmark("HMC(2000, 0.0025, 10)", "kid_turing", "data=kiddata[1]")
 chn = bench_res[4]
 logd = build_logd("Kid", bench_res...)
