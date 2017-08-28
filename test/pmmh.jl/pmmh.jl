@@ -16,6 +16,11 @@ x = [1.5 2.0]
 end
 
 check_numerical(
-  sample(pmmhtest(x), PMMH(1500, SMC(30, :s), :m)),
+  sample(pmmhtest(x), PMMH(100, SMC(30, :s), (:m, (m) -> Normal(m, sqrt(1))))),
+  [:s, :m], [49/24, 7/6]
+)
+
+check_numerical(
+  sample(pmmhtest(x), PMMH(100, SMC(30, :s), :m)),
   [:s, :m], [49/24, 7/6]
 )
