@@ -12,7 +12,7 @@
 - Universal probabilistic programming with an intuitive modelling interface
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
-- Compositional MCMC sampling that combines particle MCMC and HMC
+- Gibbs sampling that combines particle MCMC and HMC
 
 ## Documentation
 
