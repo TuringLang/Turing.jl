@@ -32,7 +32,7 @@ To cite Turing, please refer to the technical report. Sample BibTeX entry is giv
 
 ```
 @ARTICLE{Turing2016,
-    author = {Ge, Hong and Xu, Kai and Scibior, Adam and Ghahramani, Zoubin},
+    author = {Ge, Hong and Xu, Kai and Scibior, Adam and Ghahramani, Zoubin and others},
     title = "{The Turing probabilistic programming language.}",
     year = 2016,
     month = jun
