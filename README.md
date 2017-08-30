@@ -7,7 +7,7 @@
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Wiki Status](https://img.shields.io/badge/wiki-v0.3-blue.svg)](https://github.com/yebai/Turing.jl/wiki)
 
-**Turing.jl** is a Julia library for (_universal_) probabilistic programming. Current features include:
+**Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Current features include:
 
 - Universal probabilistic programming with an intuitive modelling interface
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
@@ -19,7 +19,7 @@
 Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)).
 
 ## Contributing
-Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Truing to add to examples.
+Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
 ## Contributors
 
