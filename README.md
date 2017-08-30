@@ -14,9 +14,9 @@
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Compositional MCMC sampling that combines particle MCMC and HMC
 
-## Turing.jl wiki
+## Documentation
 
-Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)).
+Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)).
 
 ## Contributing
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Truing to add to examples.
