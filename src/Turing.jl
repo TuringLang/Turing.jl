@@ -11,7 +11,7 @@ module Turing
 using Distributions
 using ForwardDiff
 using ProgressMeter
-using Stan
+using Stan: Adapt, Hmc
 
 import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
 import Distributions: sample
