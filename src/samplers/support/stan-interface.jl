@@ -20,15 +20,15 @@ sample{T<:Function}(mf::T, num_samples::Int, num_warmup::Int, save_warmup::Bool,
   if adapt.engaged == false
     if isa(alg.engine, Stan.Static)   # hmc
       stepnum = Int(round(alg.engine.int_time / alg.stepsize))
-      sample(mf, HMC(num_samples, alg.stepsize, stepnum))
+      sample(mf, HMC(num_samples, alg.stepsize, stepnum); adapt_conf=adapt)
     elseif isa(alg.engine, Stan.Nuts) # error
       error("[Turing.sample] Stan.Nuts cannot be used with adapt.engaged set as false")
     end
   else
     if isa(alg.engine, Stan.Static)   # hmcda
-      sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time))
+      sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time); adapt_conf=adapt)
     elseif isa(alg.engine, Stan.Nuts) # nuts
-      sample(mf, NUTS(num_samples, num_warmup, adapt.delta))
+      sample(mf, NUTS(num_samples, num_warmup, adapt.delta); adapt_conf=adapt)
     end
   end
 end
