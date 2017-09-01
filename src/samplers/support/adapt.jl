@@ -27,6 +27,12 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:n_adapt] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
+  # Stan.Adapt
+  adapt_conf = spl.info[:adapt_conf]
+  wum[:γ] = adapt_conf.gamma
+  wum[:t_0] = adapt_conf.t0
+  wum[:κ] = adapt_conf.kappa
+
   spl.info[:wum] = wum
 end
 
@@ -39,7 +45,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   dprintln(2, "adapting step size ϵ...")
   m = wum[:m] += 1
   if m <= wum[:n_adapt]
-    γ = 0.05; t_0 = 10; κ = 0.75; δ = wum[:δ]
+    γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
     μ = wum[:μ]; ϵ_bar = wum[:ϵ_bar]; H_bar = wum[:H_bar]
 
     H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - stats)
