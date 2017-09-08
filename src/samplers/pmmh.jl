@@ -187,6 +187,16 @@ sample(model::Function, alg::PMMH;
     c
 end
 
+function rand_truncated(dist, lowerbound, upperbound)
+    notvalid = true
+    x = 0.0
+    while (notvalid)
+        x = rand(dist)
+        notvalid = ((x < lowerbound) | (x > upperbound))
+    end
+    return x
+end
+
 assume(spl::Sampler{PMMH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     if vn.sym in spl.alg.space
       vi.index += 1
@@ -195,16 +205,27 @@ assume(spl::Sampler{PMMH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
         push!(vi, vn, r, dist, spl.alg.gid)
         spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       elseif vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
-        old_value = getval(vi, vn)[1]
-        proposal = spl.alg.proposals[vn.sym](old_value)
-        r = rand(proposal)
-        if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
+        oldval = getval(vi, vn)[1]
+        proposal = spl.alg.proposals[vn.sym](oldval)
+        if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
+          σ = std(proposal)
+          lb = support(dist).lb
+          ub = support(dist).ub
+          stdG = Normal()
+          r = rand_truncated(proposal, lb, ub)
+          # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
+          spl.info[:proposal_prob] += log(cdf(stdG, (ub-oldval)/σ) - cdf(stdG,(lb-oldval)/σ))
+          spl.info[:proposal_prob] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
+      else # Other than Gaussian proposal
+          r = rand(proposal)
+          if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
             spl.info[:violating_support] = true
-            r = old_value
+            r = oldval
+          end
+          spl.info[:proposal_prob] -= logpdf(proposal, r) # accumulate pdf of proposal
+          reverse_proposal = spl.alg.proposals[vn.sym](r)
+          spl.info[:proposal_prob] += logpdf(reverse_proposal, oldval)
         end
-        spl.info[:proposal_prob] -= logpdf(proposal, r) # accumulate pdf of proposal
-        reverse_proposal = spl.alg.proposals[vn.sym](r)
-        spl.info[:proposal_prob] += logpdf(reverse_proposal, old_value)
         spl.info[:new_prior_prob] += logpdf(dist, r) # accumulate pdf of prior
       else # Prior as proposal
         r = rand(dist)
