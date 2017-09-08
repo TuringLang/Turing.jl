@@ -1,7 +1,6 @@
 using Distributions
 using Turing
 using Base.Test
-
 srand(125)
 
 x = [1.5 2.0]
@@ -16,7 +15,7 @@ x = [1.5 2.0]
 end
 
 check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30, :s), (:m, (m) -> Normal(m, sqrt(1))))),
+  sample(pmmhtest(x), PMMH(100, SMC(30, :m), (:s, (s) -> Normal(s, sqrt(1))))),
   [:s, :m], [49/24, 7/6]
 )
 
