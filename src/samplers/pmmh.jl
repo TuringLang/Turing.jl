@@ -60,14 +60,21 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   smc_spl = spl.info[:smc_sampler]
   new_likelihood_estimator = 0.0
   spl.info[:new_prior_prob] = 0.0
-  spl.info[:new_proposal_prob] = 0.0
-  spl.info[:reverse_proposal_prob] = 0.0
+  spl.info[:proposal_prob] = 0.0
+  spl.info[:violating_support] = false
 
   old_θ = copy(vi[spl])
   old_z = copy(vi[smc_spl])
 
   dprintln(2, "Propose new parameters from proposals...")
   vi = model(vi=vi, sampler=spl)
+
+  if spl.info[:violating_support]
+    dprintln(2, "Early rejection, proposal is outside support...")
+    push!(spl.info[:accept_his], false)
+    vi[spl] = old_θ
+    return vi
+  end
 
   dprintln(2, "Propose new state with SMC...")
   Ws_sum_prev = zeros(Float64, smc_spl.alg.n_particles)
@@ -98,8 +105,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   dprintln(2, "computing accept rate α...")
   α = new_likelihood_estimator - spl.info[:old_likelihood_estimator]
   if !isempty(spl.alg.proposals)
-    α += spl.info[:new_prior_prob] - spl.info[:old_prior_prob]
-    α += spl.info[:reverse_proposal_prob] - spl.info[:new_proposal_prob]
+    α += spl.info[:new_prior_prob] - spl.info[:old_prior_prob] + spl.info[:proposal_prob]
   end
 
   dprintln(2, "decide wether to accept...")
@@ -192,9 +198,13 @@ assume(spl::Sampler{PMMH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
         old_value = getval(vi, vn)[1]
         proposal = spl.alg.proposals[vn.sym](old_value)
         r = rand(proposal)
-        spl.info[:new_proposal_prob] += logpdf(proposal, r) # accumulate pdf of proposal
+        if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
+            spl.info[:violating_support] = true
+            r = old_value
+        end
+        spl.info[:proposal_prob] -= logpdf(proposal, r) # accumulate pdf of proposal
         reverse_proposal = spl.alg.proposals[vn.sym](r)
-        spl.info[:reverse_proposal_prob] += logpdf(reverse_proposal, old_value)
+        spl.info[:proposal_prob] += logpdf(reverse_proposal, old_value)
         spl.info[:new_prior_prob] += logpdf(dist, r) # accumulate pdf of prior
       else # Prior as proposal
         r = rand(dist)
