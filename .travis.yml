@@ -1,4 +1,4 @@
-sudo: false
+ sudo: false
 addons:
     apt:
         sources:
@@ -48,9 +48,9 @@ script:
   - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --check-bounds=yes -e 'Pkg.update();
+             Pkg.add("Stan");
              Pkg.clone(pwd(), "Turing");
              Pkg.build("Turing");
-             Pkg.add("Stan");
              if ENV["GROUP"] == "Test"
                 Pkg.test("Turing"; coverage=true)
              elseif ENV["GROUP"] == "Bench"
