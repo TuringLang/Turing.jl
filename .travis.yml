@@ -44,7 +44,7 @@ matrix:
 notifications:
     email: false
 script:
-  - if [ "$(uname)" != "Darwin" ]; then ln -s `which gcc-5` gcc && export PATH=`pwd`:$PATH && echo $PATH; fi
+  - if [ "$(uname)" != "Darwin" ]; then ln -s `which gcc-5` gcc && export PATH=`pwd`:$PATH && echo $PATH; sudo apt-get install hdf5-tools; fi
   - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia --check-bounds=yes -e 'Pkg.update();
