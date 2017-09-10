@@ -1,8 +1,8 @@
 julia 0.5
 
+Stan
 Distributions 0.11.0
 ForwardDiff
 Mamba
-Stan
 
 ProgressMeter
