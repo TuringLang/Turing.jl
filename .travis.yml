@@ -1,4 +1,4 @@
- sudo: false
+group: deprecated-2017Q3
 addons:
     apt:
         sources:
@@ -12,7 +12,6 @@ julia:
 os:
   - linux
   - osx
-group: deprecated-2017Q3
 env:
   - GROUP=Test
   - GROUP=Bench
