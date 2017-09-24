@@ -93,6 +93,7 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 end
 
 update_state(wum::WarmUpManager) = begin
+  # TODO: make use of Stan.Adapt.init_buffer, Stan.Adapt.term_buffer and Stan.Adapt.window
   wum.iter_n += 1   # update iteration number
 
   # Update state
