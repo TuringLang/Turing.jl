@@ -8,6 +8,7 @@ end
 include("support/hmc_core.jl")
 include("support/adapt.jl")
 include("support/init.jl")
+include("support/stan-interface.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
