@@ -1,3 +1,5 @@
+include("../utility.jl")
+
 using Distributions
 using Turing
 using Base.Test
