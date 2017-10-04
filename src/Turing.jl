@@ -53,8 +53,8 @@ global const CACHERANGES = 0b01
 # Sampler abstraction #
 #######################
 
-abstract InferenceAlgorithm
-abstract Hamiltonian <: InferenceAlgorithm
+abstract type InferenceAlgorithm end
+abstract type Hamiltonian <: InferenceAlgorithm end
 
 doc"""
     Sampler{T}
