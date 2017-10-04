@@ -1,3 +1,5 @@
+# Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
+
 type WarmUpManager
   iter_n    ::    Int
   state     ::    Int
@@ -27,6 +29,19 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:n_adapt] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
+  # Stan.Adapt
+  adapt_conf = spl.info[:adapt_conf]
+  wum[:γ] = adapt_conf.gamma
+  wum[:t_0] = adapt_conf.t0
+  wum[:κ] = adapt_conf.kappa
+
+  # Three phases settings
+  wum[:adapt_total] = spl.alg.n_adapt
+  wum[:fast_start] = adapt_conf.init_buffer
+  wum[:fast_end] = wum[:adapt_total] - adapt_conf.term_buffer
+  wum[:slow_window_size] = adapt_conf.window
+  wum[:slow_window_counter] = 0
+
   spl.info[:wum] = wum
 end
 
@@ -39,7 +54,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   dprintln(2, "adapting step size ϵ...")
   m = wum[:m] += 1
   if m <= wum[:n_adapt]
-    γ = 0.05; t_0 = 10; κ = 0.75; δ = wum[:δ]
+    γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
     μ = wum[:μ]; ϵ_bar = wum[:ϵ_bar]; H_bar = wum[:H_bar]
 
     H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - stats)
@@ -78,10 +93,11 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
                           (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
     end
 
-    if t > 100
+    if (t - wum[:fast_start]) % (wum[:slow_window_size] * 2^wum[:slow_window_counter]) == 0
       wum[:stds] = sqrt(wum[:vars])
       # wum[:stds] = wum[:stds] / min(wum[:stds]...)  # old
       wum[:stds] = wum[:stds] / mean([wum[:stds]...])
+      wum[:slow_window_counter] += 1
     end
   end
 end
@@ -91,15 +107,15 @@ update_state(wum::WarmUpManager) = begin
 
   # Update state
   if wum.state == 1
-    if wum.iter_n > 100
+    if wum.iter_n > wum[:fast_start]
       wum.state = 2
     end
   elseif wum.state == 2
-    if wum.iter_n > 900
+    if wum.iter_n > wum[:fast_end]
       wum.state = 3
     end
   elseif wum.state == 3
-    if wum.iter_n > 1000
+    if wum.iter_n > wum[:adapt_total]
       wum.state = 4
     end
   elseif wum.state == 4

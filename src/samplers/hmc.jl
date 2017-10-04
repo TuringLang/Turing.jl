@@ -39,13 +39,15 @@ end
 
 # NOTE: the implementation of HMC is removed,
 #       it now reuses the one of HMCDA
-Sampler(alg::HMC) = begin
-  spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid))
+Sampler(alg::HMC) = Sampler(alg::HMC, Stan.Adapt())
+Sampler(alg::HMC, adapt_conf::Stan.Adapt) = begin
+  spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), adapt_conf)
   spl.info[:pre_set_ϵ] = alg.epsilon
   spl
 end
 
-Sampler(alg::Hamiltonian) = begin
+Sampler(alg::Hamiltonian) =  Sampler(alg::Hamiltonian, Stan.Adapt())
+Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
   info=Dict{Symbol, Any}()
 
   # For sampler infomation
@@ -63,6 +65,11 @@ Sampler(alg::Hamiltonian) = begin
   # For caching gradient
   info[:grad_cache] = Dict{UInt64,Vector}()
 
+  # Adapt configuration
+  if adapt_conf != nothing
+    info[:adapt_conf] = adapt_conf
+  end
+
   Sampler(alg, info)
 end
 
@@ -70,7 +77,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
                                 chunk_size=CHUNKSIZE,     # set temporary chunk size
                                 save_state=false,         # flag for state saving
                                 resume_from=nothing,      # chain to continue
-                                reuse_spl_n=0             # flag for spl re-using
+                                reuse_spl_n=0,            # flag for spl re-using
+                                adapt_conf=Stan.Adapt()   # adapt configuration
                                )
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
@@ -78,7 +86,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
-        Sampler(alg)
+        Sampler(alg, adapt_conf)
 
   @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 

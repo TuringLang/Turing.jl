@@ -8,6 +8,7 @@ end
 include("support/hmc_core.jl")
 include("support/adapt.jl")
 include("support/init.jl")
+include("support/stan-interface.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
@@ -16,6 +17,7 @@ include("hmc.jl")
 include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
+include("pmmh.jl")
 include("gibbs.jl")
 
 ## Fallback functions

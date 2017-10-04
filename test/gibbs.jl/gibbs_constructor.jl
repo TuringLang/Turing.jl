@@ -14,15 +14,17 @@ s1 = Gibbs(N, HMC(10, 0.1, 5, :s, :m))
 s2 = Gibbs(N, PG(10, 10, :s, :m))
 s3 = Gibbs(N, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
 s4 = Gibbs(N, PG(10, 3, :s), HMC(2, 0.4, 8, :m); thin=false)
+s5 = Gibbs(N, CSMC(10, 2, :s), HMC(1, 0.4, 8, :m))
 
 
 c1 = sample(gdemo(), s1)
 c2 = sample(gdemo(), s2)
 c3 = sample(gdemo(), s3)
 c4 = sample(gdemo(), s4)
+c5 = sample(gdemo(), s5)
 
 # Very loose bound, only for testing constructor.
-for c in [c1, c2, c3 ,c4]
+for c in [c1, c2, c3 ,c4, c5]
   check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
 end
 
