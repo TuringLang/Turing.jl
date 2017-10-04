@@ -4,7 +4,7 @@ using Turing, Distributions
 
 # Define helper functions
 function sigmoid(t)
-  return 1 / (1 + e^(-t))
+  return 1 / (1 + exp(-t))
 end
 
 # Define NN flow
@@ -29,7 +29,7 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 # Define model
 
 alpha = 0.16            # regularizatin term
-var = sqrt(1.0 / alpha) # variance of the Gaussian prior
+var = sqrt.(1.0 / alpha) # variance of the Gaussian prior
 
 @model bnn(ts) = begin
   b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])

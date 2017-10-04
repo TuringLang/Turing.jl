@@ -7,13 +7,13 @@ xs = [1.5 2.0]
 
 @model fggibbstest(xs) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  # xx ~ Normal(m, sqrt(s)) # this is illegal
+  m ~ Normal(0,sqrt.(s))
+  # xx ~ Normal(m, sqrt.(s)) # this is illegal
 
   for i = 1:length(xs)
-    xs[i] ~ Normal(m, sqrt(s))
+    xs[i] ~ Normal(m, sqrt.(s))
   # for xx in xs
-    # xx ~ Normal(m, sqrt(s))
+    # xx ~ Normal(m, sqrt.(s))
   end
   s, m
 end

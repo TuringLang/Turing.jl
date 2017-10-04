@@ -143,9 +143,9 @@ Example:
 ```julia
 @model gauss() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  1.5 ~ Normal(m, sqrt.(s))
+  2.0 ~ Normal(m, sqrt.(s))
   return(s, m)
 end
 ```

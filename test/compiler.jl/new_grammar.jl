@@ -7,9 +7,9 @@ priors = 0
 @model gauss(x) = begin
   priors = TArray{Float64}(2)
   priors[1] ~ InverseGamma(2,3)         # s
-  priors[2] ~ Normal(0,sqrt(priors[1])) # m
+  priors[2] ~ Normal(0,sqrt.(priors[1])) # m
   for i in 1:length(x)
-    x[i] ~ Normal(priors[2], sqrt(priors[1]))
+    x[i] ~ Normal(priors[2], sqrt.(priors[1]))
   end
   priors
 end

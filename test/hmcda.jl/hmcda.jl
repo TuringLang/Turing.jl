@@ -9,9 +9,9 @@ alg3 = Gibbs(1500, PG(30, 10, :s), HMCDA(1, 500, 0.65, 0.05, :m))
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
   return s, m
 end
 

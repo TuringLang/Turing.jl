@@ -84,7 +84,7 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
       dprintln(2, "update latent variables...")
       v = zeros(Float64, size(old_θ))
       for k in 1:size(old_θ, 1)
-        noise = rand(MvNormal(zeros(length(old_θ[k,:])), sqrt(ϵ_t)*ones(length(old_θ[k,:]))))
+        noise = rand(MvNormal(zeros(length(old_θ[k,:])), sqrt.(ϵ_t)*ones(length(old_θ[k,:]))))
         θ[k,:] = old_θ[k,:] - 0.5 * ϵ_t * grad[k,:] + noise
       end
     end

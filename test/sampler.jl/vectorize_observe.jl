@@ -37,10 +37,10 @@ using Distributions, Turing
 # Test for vectorize UnivariateDistribution
 @model vdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x ~ [Normal(m, sqrt(s))]
+  m ~ Normal(0,sqrt.(s))
+  x ~ [Normal(m, sqrt.(s))]
   # for i = 1:length(x)
-  #   x[i] ~ Normal(m, sqrt(s))
+  #   x[i] ~ Normal(m, sqrt.(s))
   # end
   return s, m
 end

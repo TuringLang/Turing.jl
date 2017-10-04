@@ -15,17 +15,17 @@ NSamples = 5000
 
 @model gdemo_fw() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  m ~ Normal(0,sqrt.(s))
+  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  m ~ Normal(0,sqrt.(s))
+  x ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
   # Backward Step 2: x ~ x | theta
-  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
 end
 
 fw = HMCDA(NSamples, 0.9, 0.1)
