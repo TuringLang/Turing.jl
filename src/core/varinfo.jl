@@ -297,7 +297,7 @@ end
 #######################################
 
 # Check if a vn is set to NULL
-isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
+isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
 
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)

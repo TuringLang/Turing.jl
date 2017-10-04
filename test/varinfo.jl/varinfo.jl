@@ -70,12 +70,12 @@ vi[getretain(vi, 1, spl2)] = NULL
 
 vals_of_1 = collect(getvals(vi, spl1))
 # println(vals_of_1)
-filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_1)
+filter!(v -> ~any(map(x -> isnan.(x), v)), vals_of_1)
 @test length(vals_of_1) == 3
 
 vals_of_2 = collect(getvals(vi, spl2))
 # println(vals_of_2)
-filter!(v -> ~any(map(x -> isnan(x), v)), vals_of_2)
+filter!(v -> ~any(map(x -> isnan.(x), v)), vals_of_2)
 @test length(vals_of_2) == 1
 
 @model gdemo() = begin

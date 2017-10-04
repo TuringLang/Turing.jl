@@ -48,7 +48,7 @@ Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
 
 a2 = fork(t)
-a2_vals = filter(x -> ~isnan(x), a2.vi.vals[end])
+a2_vals = filter(x -> ~isnan.(x), a2.vi.vals[end])
 Base.@assert length(a2_vals) == 5
 Base.@assert t.vi.vals[end] == a2_vals
 Base.@assert t.vi.index == a2.vi.index

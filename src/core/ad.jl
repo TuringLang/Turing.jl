@@ -83,7 +83,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 end
 
 verifygrad(grad::Vector{Float64}) = begin
-  if any(isnan(grad)) || any(isinf(grad))
+  if any(isnan.(grad)) || any(isinf.(grad))
     dwarn(0, "Numerical error has been found in gradients.")
     dwarn(1, "grad = $(grad)")
     false

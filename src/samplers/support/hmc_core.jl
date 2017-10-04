@@ -56,7 +56,7 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   p_orig = p ./ spl.info[:wum][:stds]
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
-  if isnan(H) H = Inf else H end
+  if isnan.(H) H = Inf else H end
 end
 
 find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
