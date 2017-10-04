@@ -88,7 +88,7 @@ sample(model::Function, alg::Gibbs;
 
   # Init parameters
   varInfo = resume_from == nothing ?
-            model() :
+            Base.invokelatest(model, VarInfo(), nothing) :
             resume_from.info[:vi]
   n = spl.alg.n_iters; i_thin = 1
 

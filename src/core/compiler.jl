@@ -154,7 +154,7 @@ macro model(fexpr)
    # Compiler design: sample(fname_compiletime(x,y), sampler)
    #   fname_compiletime(x=nothing,y=nothing; data=data,compiler=compiler) = begin
    #      ex = quote
-   #          fname_runtime(;vi=VarInfo,sampler=nothing) = begin
+   #          fname_runtime(vi::VarInfo,sampler::Sampler) = begin
    #              x=x,y=y
    #              # pour all variables in data dictionary, e.g.
    #              k = data[:k]
@@ -179,6 +179,7 @@ macro model(fexpr)
   #       ==> f(x,y;)
   #   f(x,y; c=1)
   #       ==> unchanged
+
   if (length(fargs) == 0 ||         # e.g. f()
           isa(fargs[1], Symbol) ||  # e.g. f(x,y)
           fargs[1].head == :kw)     # e.g. f(x,y=1)
@@ -186,7 +187,7 @@ macro model(fexpr)
   end
 
   dprintln(1, fname)
-  dprintln(1, fargs)
+  # dprintln(1, fargs)
   dprintln(1, fbody)
 
   # Remove positional arguments from inner function, e.g.
@@ -194,16 +195,16 @@ macro model(fexpr)
   #      ==> f(; c=1)
   #  f(x,y;)
   #      ==> f(;)
-  fargs_inner = deepcopy(fargs)[1:1]
+  # fargs_inner = deepcopy(fargs)[1:1]
 
   # Add keyword arguments, e.g.
   #  f(; c=1)
   #      ==> f(; c=1, :vi=VarInfo(), :sample=nothing)
   #  f(;)
   #      ==> f(; :vi=VarInfo(), :sample=nothing)
-  push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
-  push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
-  dprintln(1, fargs_inner)
+  # push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
+  # push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
+  # dprintln(1, fargs_inner)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
@@ -238,7 +239,11 @@ macro model(fexpr)
   fname_inner = Symbol("$(fname)_model")
   fdefn_inner = Expr(:(=), fname_inner,
           Expr(:function, Expr(:call, fname_inner))) # fdefn = :( $fname() )
-  push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+  # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+
+  push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
+  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Void,Turing.Sampler}))
+
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
 
@@ -264,7 +269,7 @@ macro model(fexpr)
 
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
-
+  
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(fdefn_outer.args[2].args,  quote
       # Check fargs, data

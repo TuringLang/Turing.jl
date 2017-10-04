@@ -5,7 +5,8 @@ runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   vi.index = 0
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end
-  model(vi=vi, sampler=spl) # run model
+  # model(vi=vi, sampler=spl) # run model
+  Base.invokelatest(model, vi, spl)
 end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin

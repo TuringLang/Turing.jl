@@ -96,5 +96,5 @@ vi = g_demo_f()
 vi = step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 
-vi = g_demo_f(vi=vi, sampler=hmc)
+vi = g_demo_f(vi, hmc)
 @test vi.gids == [1,1,1,2,2]
