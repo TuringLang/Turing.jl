@@ -62,7 +62,7 @@ type VarInfo
   end
 end
 
-typealias VarView Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
+const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 

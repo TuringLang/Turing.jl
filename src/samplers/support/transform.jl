@@ -30,8 +30,7 @@
 # a ≦ x ≦ b #
 #############
 
-typealias TransformDistribution{T<:ContinuousUnivariateDistribution}
-          Union{T, Truncated{T}}
+const TransformDistribution{T<:ContinuousUnivariateDistribution} = Union{T, Truncated{T}}
 
 link{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   a, b = minimum(d), maximum(d)
@@ -81,9 +80,8 @@ end
 # -∞ < x < -∞ #
 ###############
 
-typealias RealDistribution
-          Union{Cauchy, Gumbel, Laplace, Logistic,
-                NoncentralT, Normal, NormalCanon, TDist}
+const RealDistribution = Union{Cauchy, Gumbel, Laplace, Logistic,
+                               NoncentralT, Normal, NormalCanon, TDist}
 
 link{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
@@ -96,10 +94,9 @@ logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform
 # 0 < x #
 #########
 
-typealias PositiveDistribution
-          Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet,
-                Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
-                NoncentralChisq, NoncentralF, Rayleigh, Weibull}
+const PositiveDistribution = Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet,
+                                   Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
+                                   NoncentralChisq, NoncentralF, Rayleigh, Weibull}
 
 link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 
@@ -115,8 +112,7 @@ end
 # 0 < x < 1 #
 #############
 
-typealias UnitDistribution
-          Union{Beta, KSOneSided, NoncentralBeta}
+const UnitDistribution = Union{Beta, KSOneSided, NoncentralBeta}
 
 link{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = logit(x)
 
@@ -131,7 +127,7 @@ end
 # ∑xᵢ = 1 #
 ###########
 
-typealias SimplexDistribution Union{Dirichlet}
+const SimplexDistribution = Union{Dirichlet}
 
 link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
 link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
@@ -231,7 +227,7 @@ end
 # Positive definite #
 #####################
 
-typealias PDMatDistribution Union{InverseWishart, Wishart}
+const PDMatDistribution = Union{InverseWishart, Wishart}
 
 link{T<:Real}(d::PDMatDistribution, x::Array{T,2}) = begin
   z = chol(x)'

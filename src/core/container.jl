@@ -5,7 +5,7 @@ Data structure for particle filters
 - consume(pc::ParticleContainer): return incremental likelihood
 """
 
-typealias Particle Trace
+const Particle = Trace
 
 type ParticleContainer{T<:Particle}
   model :: Function

@@ -18,7 +18,7 @@ immutable Gibbs <: InferenceAlgorithm
   Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
 
-typealias GibbsComponent Union{Hamiltonian,PG}
+const GibbsComponent = Union{Hamiltonian,PG}
 
 function Sampler(alg::Gibbs)
   n_samplers = length(alg.algs)

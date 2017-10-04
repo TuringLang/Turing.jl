@@ -69,8 +69,8 @@ function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res
 end
 
-typealias TraceR Trace{:R} # Task Copy
-typealias TraceC Trace{:C} # Replay
+const TraceR = Trace{:R} # Task Copy
+const TraceC = Trace{:C} # Replay
 
 # step to the next observe statement, return log likelihood
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
