@@ -17,7 +17,7 @@ end
 # Call Turing's AD
 # The result out is the gradient information on R
 ad_test_f = ad_test()
-vi = ad_test_f()
+vi = ad_test_f(Turing.VarInfo(), nothing)
 svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(getval(vi, svn)[1])
