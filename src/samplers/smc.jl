@@ -34,6 +34,7 @@ immutable SMC <: InferenceAlgorithm
   gid                   ::  Int
   SMC(n) = new(n, resampleSystematic, 0.5, false, Set(), 0)
   SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
+  SMC(n::Int, resampler::Function, resampler_threshold::Float64, use_replay::Bool, space::Set, gid::Int) = new(n, resampler, resampler_threshold, use_replay, space, gid)
   function SMC(n_particles::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n_particles, resampleSystematic, 0.5, false, space, 0)
