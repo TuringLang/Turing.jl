@@ -44,7 +44,7 @@ end
 
 function Sampler(alg::IPMCMC)
   samplers = Array{Sampler}(alg.n_nodes)
-  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.resampler_threshold, alg.space, 0)
+  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.resampler_threshold, true, alg.space, 0)
   default_SMC = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, true, alg.space, 0)
 
   for i in 1:alg.n_csmc_nodes
