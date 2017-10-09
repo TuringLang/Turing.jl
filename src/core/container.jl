@@ -16,7 +16,7 @@ type ParticleContainer{T<:Particle}
   # conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Void # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer(m::Function,n::Int) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
+  ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
 (::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)

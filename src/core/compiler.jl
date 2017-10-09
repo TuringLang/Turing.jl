@@ -7,8 +7,8 @@ macro VarName(ex::Union{Expr, Symbol})
   #    return: (:x,[1,2],6,45,3)
   s = string(gensym())
   if isa(ex, Symbol)
-    _ = string(ex)
-    return :(Symbol($_), Symbol($s))
+    ex_str = string(ex)
+    return :(Symbol($ex_str), Symbol($s))
   elseif ex.head == :ref
     _2 = ex
     _1 = ""
@@ -301,7 +301,7 @@ macro model(fexpr)
     if _k != nothing
       _k_str = string(_k)
       dprintln(1, _k_str, " = ", _k)
-      _ = quote
+      data_check_ex = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
                 Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
@@ -311,7 +311,7 @@ macro model(fexpr)
               data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
-      unshift!(fdefn_outer.args[2].args, _)
+      unshift!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
   unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)

@@ -39,7 +39,7 @@ immutable PG <: InferenceAlgorithm
   PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
 
-typealias CSMC PG # Conditional SMC
+const CSMC = PG # type alias of PG as Conditional SMC
 
 Sampler(alg::PG) = begin
   info = Dict{Symbol, Any}()

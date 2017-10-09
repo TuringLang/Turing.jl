@@ -39,7 +39,7 @@ type Trace{T}
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  Union{Void, Sampler}
-  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
+  Trace{T}() where {T} = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
 end
 
 # NOTE: this function is called by `forkr`
@@ -61,7 +61,7 @@ function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res.vi = deepcopy(vi)
   res.vi.index = 0
   res.vi.num_produce = 0
-  res.task = Task( () -> begin _=f(vi, spl); produce(Val{:done}); _; end )
+  res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
