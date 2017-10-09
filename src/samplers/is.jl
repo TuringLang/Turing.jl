@@ -47,7 +47,7 @@ sample(model::Function, alg::IS) = begin
 
   le = logsum(map(x->x[:lp], samples)) - log(n)
 
-  Chain(exp(le), samples)
+  Chain(exp.(le), samples)
 end
 
 assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin

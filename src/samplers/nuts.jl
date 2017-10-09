@@ -147,7 +147,7 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
       H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
-      α′ = exp(min(0, -H′ - (-H0)))
+      α′ = exp.(min(0, -H′ - (-H0)))
 
       θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
     else

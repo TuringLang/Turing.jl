@@ -4,7 +4,7 @@ using Turing, Distributions
 
 # Define helper functions
 function sigmoid(t)
-  return 1 / (1 + exp(-t))
+  return 1 / (1 + exp.(-t))
 end
 
 # Define NN flow

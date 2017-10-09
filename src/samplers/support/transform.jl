@@ -52,9 +52,9 @@ invlink{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   if lowerbounded && upperbounded
     (b - a) .* invlogit(x) + a
   elseif lowerbounded
-    exp(x) + a
+    exp.(x) + a
   elseif upperbounded
-    b - exp(x)
+    b - exp.(x)
   else
     x
   end
@@ -100,7 +100,7 @@ const PositiveDistribution = Union{BetaPrime, Chi, Chisq, Erlang, Exponential, F
 
 link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 
-invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp(x)
+invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp.(x)
 
 logpdf_with_trans{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
@@ -252,7 +252,7 @@ end
 invlink{T<:Real}(d::PDMatDistribution, z::Array{T,2}) = begin
   dim = size(z)
   for m in 1:dim[1]
-    z[m, m] = exp(z[m, m])
+    z[m, m] = exp.(z[m, m])
   end
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)

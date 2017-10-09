@@ -16,8 +16,8 @@ end
 res1 = sample(gdemo([1.5, 2.0]), alg1)
 println("E[s] = $(mean(res1[:s]))")
 println("E[m] = $(mean(res1[:m]))")
-@test_approx_eq_eps mean(res1[:s]) 49/24 0.2
-@test_approx_eq_eps mean(res1[:m]) 7/6 0.2
+@test mean(res1[:s]) ≈ 49/24 atol=0.2
+@test mean(res1[:m]) ≈ 7/6 atol=0.2
 
 res1 = sample(gdemo([1.5, 2.0]), HMC(3000, 0.2, 4))
 println("HMC")

@@ -25,6 +25,6 @@ using ForwardDiff: Dual
   # logtheta_p = map(yᵢ -> [log(theta) + logpdf(Normal(mu[1], 1.0), yᵢ), log(1 - theta) + logpdf(Normal(mu[2], 1.0), yᵢ)], y)
   # map!(logtheta_pᵢ -> logtheta_pᵢ - logsumexp(logtheta_pᵢ), logtheta_p)   # normalization
   # for i = 1:N
-  #   k[i] ~ Categorical(exp(logtheta_p[i]))
+  #   k[i] ~ Categorical(exp.(logtheta_p[i]))
   # end
 end

@@ -62,9 +62,9 @@ function Distributions._mixlogpdf1(d::AbstractMixtureModel, x)
     # using the formula below for numerical stability
     #
     # logpdf(d, x) = log(sum_i pri[i] * pdf(cs[i], x))
-    #              = log(sum_i pri[i] * exp(logpdf(cs[i], x)))
-    #              = log(sum_i exp(logpri[i] + logpdf(cs[i], x)))
-    #              = m + log(sum_i exp(logpri[i] + logpdf(cs[i], x) - m))
+    #              = log(sum_i pri[i] * exp.(logpdf(cs[i], x)))
+    #              = log(sum_i exp.(logpri[i] + logpdf(cs[i], x)))
+    #              = m + log(sum_i exp.(logpri[i] + logpdf(cs[i], x) - m))
     #
     #  m is chosen to be the maximum of logpri[i] + logpdf(cs[i], x)
     #  such that the argument of exp is in a reasonable range
@@ -90,7 +90,7 @@ function Distributions._mixlogpdf1(d::AbstractMixtureModel, x)
     v = 0.0
     @inbounds for i = 1:K
         if p[i] > 0.0
-            v += exp(lp[i] - m)
+            v += exp.(lp[i] - m)
         end
     end
     return m + log(v)
@@ -127,7 +127,7 @@ function Distributions._mixlogpdf!(r::AbstractArray, d::AbstractMixtureModel, x)
         if p[i] > 0.0
             lp_i = view(Lp, :, i)
             for j = 1:n
-                r[j] += exp(lp_i[j] - m[j])
+                r[j] += exp.(lp_i[j] - m[j])
             end
         end
     end

@@ -16,7 +16,7 @@ end
 # The result out is the gradient information on R
 ad_test_3_f = ad_test_3()
 vi = ad_test_3_f()
-vvn = collect(filter(vn -> vn.sym == :v, keys(vi)))[1]
+vvn = collect(Iterators.filter(vn -> vn.sym == :v, keys(vi)))[1]
 _v = map(d -> realpart(d), vi[vvn])
 grad_Turing = gradient(vi, ad_test_3_f)
 
@@ -35,4 +35,4 @@ g = x -> ForwardDiff.gradient(logp3, vec(x));
 grad_FWAD = -g(_v)
 
 # Compare result
-@test_approx_eq_eps grad_Turing grad_FWAD 1e-9
+@test grad_Turing ≈ grad_FWAD atol=1e-9

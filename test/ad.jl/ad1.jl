@@ -18,8 +18,8 @@ end
 # The result out is the gradient information on R
 ad_test_f = ad_test()
 vi = ad_test_f(Turing.VarInfo(), nothing)
-svn = collect(filter(vn -> vn.sym == :s, keys(vi)))[1]
-mvn = collect(filter(vn -> vn.sym == :m, keys(vi)))[1]
+svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
+mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(getval(vi, svn)[1])
 _m = realpart(getval(vi, mvn)[1])
 ∇E = gradient(vi, ad_test_f)
@@ -47,4 +47,4 @@ _x = [_m, _s]
 grad_FWAD = sort(-g(_x))
 
 # Compare result
-@test_approx_eq_eps grad_Turing grad_FWAD 1e-9
+@test grad_Turing ≈ grad_FWAD atol=1e-9

@@ -17,8 +17,8 @@ s_res1weightedMean = sum(res1[:lf_eps] .* res1[:s]) / sum(res1[:lf_eps])
 m_res1weightedMean = sum(res1[:lf_eps] .* res1[:m]) / sum(res1[:lf_eps])
 println("E[s] = $(s_res1weightedMean)")
 println("E[m] = $(m_res1weightedMean)")
-@test_approx_eq_eps s_res1weightedMean 49/24 0.2
-@test_approx_eq_eps m_res1weightedMean 7/6 0.2
+@test s_res1weightedMean ≈ 49/24 atol=0.2
+@test m_res1weightedMean ≈ 7/6 atol=0.2
 
 res2 = sample(gdemo([1.5, 2.0]), HMC(3000, 0.2, 4))
 println("HMC")

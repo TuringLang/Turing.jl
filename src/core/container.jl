@@ -127,7 +127,7 @@ end
 function weights(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   logWs = pc.logWs
-  Ws = exp(logWs-maximum(logWs))
+  Ws = exp.(logWs-maximum(logWs))
   logZ = log(sum(Ws)) + maximum(logWs)
   Ws = Ws ./ sum(Ws)
   return Ws, logZ
@@ -196,5 +196,5 @@ getsample(pc :: ParticleContainer) = begin
   w = pc.logE
   Ws, z = weights(pc)
   s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))
-  return exp(w), s
+  return exp.(w), s
 end

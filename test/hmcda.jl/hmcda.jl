@@ -21,8 +21,8 @@ check_numerical(res1, [:s, :m], [49/24, 7/6])
 
 # res2 = sample(gdemo([1.5, 2.0]), alg2)
 #
-# @test_approx_eq_eps mean(res2[:s]) 49/24 0.2
-# @test_approx_eq_eps mean(res2[:m]) 7/6 0.2
+# @test mean(res2[:s]) ≈ 49/24 atol=0.2
+# @test mean(res2[:m]) ≈ 7/6 atol=0.2
 
 res3 = sample(gdemo([1.5, 2.0]), alg3)
 

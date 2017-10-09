@@ -15,4 +15,4 @@ for _ in 1:5
   push!(vs, mean(chain[:v]))
 end
 
-@test_approx_eq_eps mean(vs) (7 * [1 0.5; 0.5 1]) 0.5
+@test mean(vs) ≈ (7 * [1 0.5; 0.5 1]) atol=0.5

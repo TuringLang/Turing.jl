@@ -64,7 +64,7 @@ qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx
 y = qqm.qy
 slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
-@test_approx_eq_eps slope 1.0 0.1
+@test slope ≈ 1.0 atol=0.1
 
 # NOTE: test for s is not stable
 #       probably due to the transformation
@@ -72,4 +72,4 @@ slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
 # X = qqs.qx
 # y = qqs.qy
 # slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
-# @test_approx_eq_eps slope 1.0 0.1
+# @test slope ≈ 1.0 atol=0.1

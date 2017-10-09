@@ -58,10 +58,10 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
     μ = wum[:μ]; ϵ_bar = wum[:ϵ_bar]; H_bar = wum[:H_bar]
 
     H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - stats)
-    ϵ = exp(μ - sqrt.(m) / γ * H_bar)
+    ϵ = exp.(μ - sqrt.(m) / γ * H_bar)
     dprintln(1, " ϵ = $ϵ, stats = $stats")
 
-    ϵ_bar = exp(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
+    ϵ_bar = exp.(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
     push!(wum[:ϵ], ϵ)
     wum[:ϵ_bar], wum[:H_bar] = ϵ_bar, H_bar
 

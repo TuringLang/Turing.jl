@@ -16,7 +16,7 @@ for t in 2:T
 end
 y = Vector{Float64}(T);
 for t in 1:T
-  y[t] = rand(Normal(0, exp(h[t] / 2)));
+  y[t] = rand(Normal(0, exp.(h[t] / 2)));
 end
 
 

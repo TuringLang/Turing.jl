@@ -96,7 +96,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
     dprintln(2, "computing accept rate α...")
-    α = min(1, exp(-(H - old_H)))
+    α = min(1, exp.(-(H - old_H)))
 
     if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])

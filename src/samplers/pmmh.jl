@@ -89,7 +89,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
     # Compute marginal likehood unbiased estimator
     log_Ws = particles.logWs - Ws_sum_prev # particles.logWs is the running sum over time
     Ws_sum_prev = copy(particles.logWs)
-    relative_Ws = exp(log_Ws-maximum(log_Ws))
+    relative_Ws = exp.(log_Ws-maximum(log_Ws))
     logZs = log(sum(relative_Ws)) + maximum(log_Ws)
 
     new_likelihood_estimator += logZs
