@@ -152,12 +152,10 @@ sample(model::Function, alg::IPMCMC) = begin
 
   # Init samples
   time_total = zero(Float64)
-  samples = Array{Sample}(alg.n_iters, alg.n_csmc_nodes)
+  samples = Array{Sample}(sample_n)
   weight = 1 / sample_n
-  for i = 1:alg.n_iters
-    for j in 1:spl.alg.n_csmc_nodes
-      samples[i,j] = Sample(weight, Dict{Symbol, Any}())
-    end
+  for i = 1:sample_n
+    samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
 
   # Init parameters
@@ -171,7 +169,7 @@ sample(model::Function, alg::IPMCMC) = begin
     time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
 
     for j in 1:spl.alg.n_csmc_nodes
-      samples[i,j].value = Sample(spl.info[:VarInfos][j], spl).value
+      samples[(i-1)*alg.n_csmc_nodes+j].value = Sample(spl.info[:VarInfos][j], spl).value
     end
 
     time_total += time_elapsed
@@ -183,5 +181,5 @@ sample(model::Function, alg::IPMCMC) = begin
   println("[IPMCMC] Finished with")
   println("  Running time    = $time_total;")
 
-  Chain(0, reshape(transpose(samples), sample_n)) # wrap the result by Chain
+  Chain(0, reshape(samples, sample_n)) # wrap the result by Chain
 end
