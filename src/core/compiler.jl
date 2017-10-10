@@ -236,7 +236,8 @@ macro model(fexpr)
 
   dprintln(1, fbody_inner)
 
-  fname_inner = Symbol("$(fname)_model")
+  fname_inner_str = "$(fname)_model"
+  fname_inner = Symbol(fname_inner_str)
   fdefn_inner = Expr(:(=), fname_inner,
           Expr(:function, Expr(:call, fname_inner))) # fdefn = :( $fname() )
   # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
@@ -246,13 +247,20 @@ macro model(fexpr)
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
+  
+  fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
+  fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
+  fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
 
   compiler = Dict(:fname => fname,
                   :fargs => fargs,
                   :fbody => fbody,
                   :dvars => Set{Symbol}(),  # data
                   :pvars => Set{Symbol}(),  # parameter
-                  :fdefn_inner => fdefn_inner)
+                  :fdefn_inner => fdefn_inner,
+                  :fdefn_inner_callback_1 => fdefn_inner_callback_1,
+                  :fdefn_inner_callback_2 => fdefn_inner_callback_2,
+                  :fdefn_inner_callback_3 => fdefn_inner_callback_3)
 
   # Outer function defintion 1: f(x,y) ==> f(x,y;data=Dict())
   fargs_outer = deepcopy(fargs)
@@ -270,13 +278,33 @@ macro model(fexpr)
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
   
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(fdefn_outer.args[2].args,  quote
       # Check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
-      fargs    = Turing._compiler_[:fargs];
-      fdefn_inner   = Turing._compiler_[:fdefn_inner];
-      fdefn_inner.args[2].args[1].args[1] = gensym((fdefn_inner.args[2].args[1].args[1]))
+      fargs = Turing._compiler_[:fargs];
+
+      # Copy the expr of function definition and callbacks
+      fdefn_inner = Turing._compiler_[:fdefn_inner];
+      fdefn_inner_callback_1 = Turing._compiler_[:fdefn_inner_callback_1];
+      fdefn_inner_callback_2 = Turing._compiler_[:fdefn_inner_callback_2];
+      fdefn_inner_callback_3 = Turing._compiler_[:fdefn_inner_callback_3];
+
+      # Add gensym to function name
+      fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
+      
+      # Change the name of inner function definition to the one with gensym()
+      fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_1.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_1.args[2].args[2].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_2.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_2.args[2].args[2].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_3.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_3.args[2].args[2].args[1] = fname_inner_with_gensym
+
       # Copy data dictionary
       for k in keys(data)
         if fdefn_inner.args[2].args[2].args[1].head == :line
