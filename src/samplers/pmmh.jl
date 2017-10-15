@@ -29,7 +29,6 @@ immutable PMMH <: InferenceAlgorithm
         end
     end
 
-    @assert !isempty(new_space) "[PMMH] (If no parameter is specified, use only SMC)"
     new_space = Set(new_space)
     new(n_iters, smc_alg, proposals, new_space, 0)
   end
@@ -41,10 +40,12 @@ function Sampler(alg::PMMH)
 
   # Sanity check for space
   space = union(alg.space, alg.smc_alg.space)
-  @assert issubset(Turing._compiler_[:pvars], space) "[PMMH] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+  if !isempty(alg.space) || !isempty(alg.smc_alg.space)
+    @assert issubset(Turing._compiler_[:pvars], space) "[PMMH] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
-  if Turing._compiler_[:pvars] != space
-  warn("[PMMH] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    if Turing._compiler_[:pvars] != space
+      warn("[PMMH] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    end
   end
 
   Sampler(alg, info)
@@ -63,17 +64,20 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   spl.info[:proposal_prob] = 0.0
   spl.info[:violating_support] = false
 
-  old_θ = copy(vi[spl])
   old_z = copy(vi[smc_spl])
 
   dprintln(2, "Propose new parameters from proposals...")
-  vi = model(vi=vi, sampler=spl)
+  if !isempty(spl.alg.space)
+    old_θ = copy(vi[spl])
 
-  if spl.info[:violating_support]
-    dprintln(2, "Early rejection, proposal is outside support...")
-    push!(spl.info[:accept_his], false)
-    vi[spl] = old_θ
-    return vi
+    vi = model(vi=vi, sampler=spl)
+
+    if spl.info[:violating_support]
+      dprintln(2, "Early rejection, proposal is outside support...")
+      push!(spl.info[:accept_his], false)
+      vi[spl] = old_θ
+      return vi
+    end
   end
 
   dprintln(2, "Propose new state with SMC...")
@@ -120,7 +124,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
     spl.info[:old_prior_prob] = spl.info[:new_prior_prob]
   else                      # rejected
     push!(spl.info[:accept_his], false)
-    vi[spl] = old_θ
+    if !isempty(spl.alg.space) vi[spl] = old_θ end
     vi[smc_spl] = old_z
   end
 
@@ -159,7 +163,7 @@ sample(model::Function, alg::PMMH;
       time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
 
       if spl.info[:accept_his][end]     # accepted => store the new predcits
-        samples[i].value = Sample(vi, spl).value
+        samples[i].value = Sample(vi).value
       else                              # rejected => store the previous predcits
         samples[i] = samples[i - 1]
       end
@@ -198,7 +202,7 @@ function rand_truncated(dist, lowerbound, upperbound)
 end
 
 assume(spl::Sampler{PMMH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
-    if vn.sym in spl.alg.space
+    if isempty(spl.alg.space) || vn.sym in spl.alg.space
       vi.index += 1
       if ~haskey(vi, vn) #NOTE: When would that happens ??
         r = rand(dist)
