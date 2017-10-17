@@ -16,12 +16,20 @@ x = [1.5 2.0]
   s, m
 end
 
+# PMMH with Gaussian proposal
 check_numerical(
   sample(pmmhtest(x), PMMH(100, SMC(30, :m), (:s, (s) -> Normal(s, sqrt(10))))),
   [:s, :m], [49/24, 7/6]
 )
 
+# PMMH with prior as proposal
 check_numerical(
   sample(pmmhtest(x), PMMH(100, SMC(30, :m), :s)),
+  [:s, :m], [49/24, 7/6]
+)
+
+# PIMH
+check_numerical(
+  sample(pmmhtest(x), PMMH(100, SMC(30))),
   [:s, :m], [49/24, 7/6]
 )
