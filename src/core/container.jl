@@ -135,7 +135,7 @@ end
 
 function effectiveSampleSize(pc :: ParticleContainer)
   Ws, _ = weights(pc)
-  ess = sum(Ws) ^ 2 / sum(Ws .^ 2)
+  ess = 1.0 / sum(Ws .^ 2) # sum(Ws) ^ 2 = 1.0, because weights are normalised
 end
 
 increase_logweight(pc :: ParticleContainer, t :: Int, logw :: Float64) =
