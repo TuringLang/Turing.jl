@@ -28,16 +28,14 @@ immutable PG <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   resampler             ::    Function    # function to resample
-  resampler_threshold   ::    Float64     # threshold of ESS for resampling
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
-  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
-  PG(n1::Int, n2::Int, resampler::Function, resampler_threshold::Float64, space::Set, gid::Int) = new(n1, n2, resampler, resampler_threshold, space, gid)
+  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, Set(), 0)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, resampleSystematic, 0.5, space, 0)
+    new(n1, n2, resampleSystematic, space, 0)
   end
-  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
+  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 end
 
 typealias CSMC PG # Conditional SMC
@@ -68,11 +66,8 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   end
 
   while consume(particles) != Val{:done}
-    ess = effectiveSampleSize(particles)
-    if ess <= spl.alg.resampler_threshold * length(particles)
-      # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
-      resample!(particles, spl.alg.resampler, ref_particle; use_replay=false)
-    end
+    # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
+    resample!(particles, spl.alg.resampler, ref_particle; use_replay=false)
   end
 
   ## pick a particle to be retained.
