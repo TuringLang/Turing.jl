@@ -30,17 +30,16 @@ immutable IPMCMC <: InferenceAlgorithm
   n_nodes               ::    Int         # number of nodes running SMC and CSMC
   n_csmc_nodes          ::    Int         # number of nodes CSMC
   resampler             ::    Function    # function to resample
-  resampler_threshold   ::    Float64     # threshold of ESS for resampling
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
-  IPMCMC(n1::Int, n2::Int) = new(n1, n2, 32, 16, resampleSystematic, 0.5, Set(), 0)
-  IPMCMC(n1::Int, n2::Int, n3::Int) = new(n1, n2, n3, Int(ceil(n3/2)), resampleSystematic, 0.5, Set(), 0)
-  IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = new(n1, n2, n3, n4, resampleSystematic, 0.5, Set(), 0)
+  IPMCMC(n1::Int, n2::Int) = new(n1, n2, 32, 16, resampleSystematic, Set(), 0)
+  IPMCMC(n1::Int, n2::Int, n3::Int) = new(n1, n2, n3, Int(ceil(n3/2)), resampleSystematic, Set(), 0)
+  IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = new(n1, n2, n3, n4, resampleSystematic, Set(), 0)
   function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, n3, n4, resampleSystematic, 0.5, space, 0)
+    new(n1, n2, n3, n4, resampleSystematic, space, 0)
   end
-  IPMCMC(alg::IPMCMC, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.n_nodes, alg.n_csmc_nodes, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
+  IPMCMC(alg::IPMCMC, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.n_nodes, alg.n_csmc_nodes, alg.resampler, alg.space, new_gid)
 end
 
 function Sampler(alg::IPMCMC)
