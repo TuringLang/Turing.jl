@@ -18,6 +18,7 @@ include("is.jl")
 include("smc.jl")
 include("pgibbs.jl")
 include("pmmh.jl")
+include("ipmcmc.jl")
 include("gibbs.jl")
 
 ## Fallback functions

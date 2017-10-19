@@ -32,6 +32,7 @@ immutable PG <: InferenceAlgorithm
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
   PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
+  PG(n1::Int, n2::Int, resampler::Function, resampler_threshold::Float64, space::Set, gid::Int) = new(n1, n2, resampler, resampler_threshold, space, gid)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n1, n2, resampleSystematic, 0.5, space, 0)
@@ -76,11 +77,9 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
 
   ## pick a particle to be retained.
   Ws, _ = weights(particles)
-  # println(Ws)
   indx = randcat(Ws)
-  # println(indx)
-  # exit()
   push!(spl.info[:logevidence], particles.logE)
+
   particles[indx].vi
 end
 
