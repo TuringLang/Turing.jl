@@ -70,15 +70,13 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   if !isempty(spl.alg.space)
     old_θ = copy(vi[spl])
 
-    for _ = 1:local_spl.alg.n_iters
-      vi = model(vi=vi, sampler=spl)
+    vi = model(vi=vi, sampler=spl)
 
-      if spl.info[:violating_support]
-        dprintln(2, "Early rejection, proposal is outside support...")
-        push!(spl.info[:accept_his], false)
-        vi[spl] = old_θ
-        return vi
-      end
+    if spl.info[:violating_support]
+      dprintln(2, "Early rejection, proposal is outside support...")
+      push!(spl.info[:accept_his], false)
+      vi[spl] = old_θ
+      return vi
     end
   end
 
