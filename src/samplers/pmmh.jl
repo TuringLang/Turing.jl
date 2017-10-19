@@ -92,10 +92,6 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   dprintln(2, "decide wether to accept...")
   if log(rand()) < α             # accepted
     ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
-    vi = particles[indx].vi
-
     push!(spl.info[:accept_his], true)
     spl.info[:old_likelihood_estimator] = smc_spl.info[:logevidence][end]
     spl.info[:old_prior_prob] = spl.info[:new_prior_prob]
