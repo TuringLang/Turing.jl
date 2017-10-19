@@ -11,11 +11,11 @@ alg = PMMH(100, SMC(20, :v1), (:v2, (x) -> Normal(x, 1)))
 ```
 """
 immutable PMMH <: InferenceAlgorithm
-  n_iters               ::    Int         # number of iterations
-  smc_alg               ::    SMC         # SMC targeting state
-  proposals             ::    Dict{Symbol,Any}        # Proposals for paramters
-  space                 ::    Set         # Parameters random variables
-  gid                   ::    Int         # group ID
+  n_iters               ::    Int               # number of iterations
+  smc_alg               ::    SMC               # SMC targeting state
+  proposals             ::    Dict{Symbol,Any}  # Proposals for paramters
+  space                 ::    Set               # Parameters random variables
+  gid                   ::    Int               # group ID
   function PMMH(n_iters::Int, smc_alg::SMC, space...)
     new_space = Set()
     proposals = Dict{Symbol,Any}()
@@ -59,7 +59,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   end
 
   smc_spl = spl.info[:smc_sampler]
-  new_likelihood_estimator = 0.0
+  smc_spl.info[:logevidence] = []
   spl.info[:new_prior_prob] = 0.0
   spl.info[:proposal_prob] = 0.0
   spl.info[:violating_support] = false
@@ -70,44 +70,23 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   if !isempty(spl.alg.space)
     old_θ = copy(vi[spl])
 
-    vi = model(vi=vi, sampler=spl)
+    for _ = 1:local_spl.alg.n_iters
+      vi = model(vi=vi, sampler=spl)
 
-    if spl.info[:violating_support]
-      dprintln(2, "Early rejection, proposal is outside support...")
-      push!(spl.info[:accept_his], false)
-      vi[spl] = old_θ
-      return vi
+      if spl.info[:violating_support]
+        dprintln(2, "Early rejection, proposal is outside support...")
+        push!(spl.info[:accept_his], false)
+        vi[spl] = old_θ
+        return vi
+      end
     end
   end
 
   dprintln(2, "Propose new state with SMC...")
-  Ws_sum_prev = zeros(Float64, smc_spl.alg.n_particles)
-  particles = ParticleContainer{TraceR}(model)
-
-  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
-
-  vi[getretain(vi, 0, smc_spl)] = NULL
-  push!(particles, smc_spl.alg.n_particles, smc_spl, vi)
-
-  while consume(particles) != Val{:done}
-    # Compute marginal likehood unbiased estimator
-    log_Ws = particles.logWs - Ws_sum_prev # particles.logWs is the running sum over time
-    Ws_sum_prev = copy(particles.logWs)
-    relative_Ws = exp(log_Ws-maximum(log_Ws))
-    logZs = log(sum(relative_Ws)) + maximum(log_Ws)
-
-    new_likelihood_estimator += logZs
-
-    # Resample if needed
-    ess = effectiveSampleSize(particles)
-    if ess <= smc_spl.alg.resampler_threshold * length(particles)
-      resample!(particles,smc_spl.alg.resampler,use_replay=smc_spl.alg.use_replay)
-      Ws_sum_prev = 0.0 # Resampling reset weights to zero
-    end
-  end
+  vi = step(model, smc_spl, vi)
 
   dprintln(2, "computing accept rate α...")
-  α = new_likelihood_estimator - spl.info[:old_likelihood_estimator]
+  α = smc_spl.info[:logevidence][end] - spl.info[:old_likelihood_estimator]
   if !isempty(spl.alg.proposals)
     α += spl.info[:new_prior_prob] - spl.info[:old_prior_prob] + spl.info[:proposal_prob]
   end
@@ -120,7 +99,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
     vi = particles[indx].vi
 
     push!(spl.info[:accept_his], true)
-    spl.info[:old_likelihood_estimator] = new_likelihood_estimator
+    spl.info[:old_likelihood_estimator] = smc_spl.info[:logevidence][end]
     spl.info[:old_prior_prob] = spl.info[:new_prior_prob]
   else                      # rejected
     push!(spl.info[:accept_his], false)
