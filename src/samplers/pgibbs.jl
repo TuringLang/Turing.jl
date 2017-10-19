@@ -67,9 +67,6 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
     push!(particles, ref_particle)
   end
 
-  Ws_sum_prev = zeros(Float64, spl.alg.n_particles)
-  likelihood_estimator = 0.0
-
   while consume(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
