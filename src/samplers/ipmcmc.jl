@@ -46,7 +46,7 @@ function Sampler(alg::IPMCMC)
   # Create SMC and CSMC nodes
   samplers = Array{Sampler}(alg.n_nodes)
   # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
-  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, 1.0, alg.space, 0)
+  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.space, 0)
   default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, false, alg.space, 0)
 
   for i in 1:alg.n_csmc_nodes
