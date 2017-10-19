@@ -31,6 +31,7 @@ immutable PG <: InferenceAlgorithm
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
   PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, Set(), 0)
+  PG(n1::Int, n2::Int, resampler::Function, space::Set, gid::Int) = new(n1, n2, resampler, space, gid)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
     new(n1, n2, resampleSystematic, space, 0)
