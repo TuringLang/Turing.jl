@@ -29,16 +29,15 @@ immutable PG <: InferenceAlgorithm
   n_iters               ::    Int         # number of iterations
   resampler             ::    Function    # function to resample
   resampler_threshold   ::    Float64     # threshold of ESS for resampling
-  compute_likelihood    ::    Bool        # Compute estimate of marginal likelihood
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
-  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, false, Set(), 0)
-  PG(n1::Int, n2::Int, resampler::Function, resampler_threshold::Float64, compute_likelihood::Bool, space::Set, gid::Int) = new(n1, n2, resampler, resampler_threshold, compute_likelihood, space, gid)
+  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, 0.5, Set(), 0)
+  PG(n1::Int, n2::Int, resampler::Function, resampler_threshold::Float64, space::Set, gid::Int) = new(n1, n2, resampler, resampler_threshold, space, gid)
   function PG(n1::Int, n2::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, resampleSystematic, 0.5, false, space, 0)
+    new(n1, n2, resampleSystematic, 0.5, space, 0)
   end
-  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.resampler_threshold, alg.compute_likelihood, alg.space, new_gid)
+  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
 
 typealias CSMC PG # Conditional SMC
@@ -72,20 +71,10 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   likelihood_estimator = 0.0
 
   while consume(particles) != Val{:done}
-    if spl.alg.compute_likelihood
-      # Compute marginal likehood unbiased estimator
-      log_Ws = particles.logWs - Ws_sum_prev # particles.logWs is the running sum over time
-      Ws_sum_prev = copy(particles.logWs)
-      relative_Ws = exp(log_Ws-maximum(log_Ws))
-      logZs = log(sum(relative_Ws)) + maximum(log_Ws)
-      likelihood_estimator += logZs
-    end
-    # Resample if needed
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
       # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
       resample!(particles, spl.alg.resampler, ref_particle; use_replay=false)
-      if spl.alg.compute_likelihood Ws_sum_prev = zeros(Float64, spl.alg.n_particles) end # Resampling reset weights to zero
     end
   end
 
@@ -93,7 +82,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   Ws, _ = weights(particles)
   indx = randcat(Ws)
   push!(spl.info[:logevidence], particles.logE)
-  if spl.alg.compute_likelihood setlogp!(particles[indx].vi, likelihood_estimator) end
+
   particles[indx].vi
 end
 
