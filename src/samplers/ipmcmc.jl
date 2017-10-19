@@ -1,5 +1,5 @@
 doc"""
-    IPMCMC(n_particles::Int, n_iters::Int)
+    IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int)
 
 Particle Gibbs sampler.
 
@@ -34,6 +34,7 @@ immutable IPMCMC <: InferenceAlgorithm
   space                 ::    Set         # sampling space, emtpy means all
   gid                   ::    Int         # group ID
   IPMCMC(n1::Int, n2::Int) = new(n1, n2, 32, 16, resampleSystematic, 0.5, Set(), 0)
+  IPMCMC(n1::Int, n2::Int, n3::Int) = new(n1, n2, n3, Int(ceil(n3/2)), resampleSystematic, 0.5, Set(), 0)
   IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = new(n1, n2, n3, n4, resampleSystematic, 0.5, Set(), 0)
   function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
@@ -43,9 +44,11 @@ immutable IPMCMC <: InferenceAlgorithm
 end
 
 function Sampler(alg::IPMCMC)
+  # Create SMC and CSMC nodes
   samplers = Array{Sampler}(alg.n_nodes)
-  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.resampler_threshold, true, alg.space, 0)
-  default_SMC = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, true, alg.space, 0)
+  # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
+  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, 1.0, alg.space, 0)
+  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, false, alg.space, 0)
 
   for i in 1:alg.n_csmc_nodes
     samplers[i] = Sampler(CSMC(default_CSMC, i))
@@ -60,87 +63,33 @@ function Sampler(alg::IPMCMC)
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
-
-    Ws_sum_prev = zeros(Float64, spl.alg.n_particles)
-    likelihood_estimator = 0.0
-
-    # NOTE: Should use replay ??
-    TraceType = spl.alg.use_replay ? TraceR : TraceC
-    particles = ParticleContainer{TraceType}(model)
-    vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
-    vi[getretain(vi, 0, spl)] = NULL
-    push!(particles, spl.alg.n_particles, spl, vi)
-
-    while consume(particles) != Val{:done}
-      # Compute marginal likehood unbiased estimator
-      log_Ws = particles.logWs - Ws_sum_prev # particles.logWs is the running sum over time
-      Ws_sum_prev = copy(particles.logWs)
-      relative_Ws = exp(log_Ws-maximum(log_Ws))
-      logZs = log(sum(relative_Ws)) + maximum(log_Ws)
-      likelihood_estimator += logZs
-
-      # Resample if needed
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
-        Ws_sum_prev = zeros(Float64, spl.alg.n_particles) # Resampling reset weights to zero
-      end
-    end
-
-    spl.info[:particles] = particles
-    setlogp!(vi, likelihood_estimator)
-
-    vi
-end
-
-step(model::Function, spl::Sampler{IPMCMC}, vi::VarInfo, is_first::Bool) = begin
-  if is_first
-    VarInfos = Array{VarInfo}(spl.alg.n_nodes)
-    for j in 1:spl.alg.n_nodes
-      VarInfos[j] = model()
-    end
-  else
-    VarInfos = spl.info[:VarInfos]
-  end
+step(model::Function, spl::Sampler{IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
+  # Initialise array for marginal likelihood estimators
   log_zs = zeros(spl.alg.n_nodes)
 
-  if spl.alg.gid != 0
-    for j in 1:spl.alg.n_csmc_nodes
-      value = copy(VarInfos[j][spl])
-      VarInfos[j] = deepcopy(vi)
-      VarInfos[j][spl] = value
-    end
-    for j in spl.alg.n_csmc_nodes+1:spl.alg.n_nodes
-      VarInfos[j] = deepcopy(vi)
-    end
-  end
-
-  # SMC & CSMC workers
+  # Run SMC & CSMC nodes
   for j in 1:spl.alg.n_nodes
     VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])
-    log_zs[j] = getlogp(VarInfos[j])
+    log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
   end
 
   # Resampling of CSMC nodes indices
+  conditonal_nodes_indices = collect(1:spl.alg.n_csmc_nodes)
+  unconditonal_nodes_indices = collect(spl.alg.n_csmc_nodes+1:spl.alg.n_nodes)
   for j in 1:spl.alg.n_csmc_nodes
     # Select a new conditional node by simulating cj
-    ksi = vcat(log_zs[spl.alg.n_csmc_nodes+1:spl.alg.n_nodes], log_zs[j])
+    log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
+    ksi = exp(log_ksi-maximum(log_ksi))
+    c_j = wsample(ksi) # sample from Categorical with unormalized weights
 
-    # https://stats.stackexchange.com/questions/64081/how-do-i-sample-from-a-discrete-categorical-distribution-in-log-space
-    gs = -log(-log(rand(length(ksi))))
-    _, selected_index = findmax(gs + ksi)
-    if selected_index < length(ksi)
-      particles = spl.info[:samplers][spl.alg.n_csmc_nodes+selected_index].info[:particles]
-      Ws, _ = weights(particles)
-      indx = randcat(Ws)
-      VarInfos[j] = deepcopy(particles[indx].vi)
+    if c_j < length(log_ksi) # if CSMC node selects another index than itself
+      conditonal_nodes_indices[j] = unconditonal_nodes_indices[c_j]
+      unconditonal_nodes_indices[c_j] = j
     end
   end
+  nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
 
-  spl.info[:VarInfos] = VarInfos
-
-  VarInfos[1]
+  VarInfos[nodes_permutation]
 end
 
 sample(model::Function, alg::IPMCMC) = begin
@@ -159,17 +108,21 @@ sample(model::Function, alg::IPMCMC) = begin
   end
 
   # Init parameters
-  vi = model()
+  VarInfos = Array{VarInfo}(spl.alg.n_nodes)
+  for j in 1:spl.alg.n_nodes
+    VarInfos[j] = VarInfo()
+  end
   n = spl.alg.n_iters
 
   # IPMCMC steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
   for i = 1:n
     dprintln(2, "IPMCMC stepping...")
-    time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
+    time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
 
+    # Save each CSMS retained path as a sample
     for j in 1:spl.alg.n_csmc_nodes
-      samples[(i-1)*alg.n_csmc_nodes+j].value = Sample(spl.info[:VarInfos][j], spl).value
+      samples[(i-1)*alg.n_csmc_nodes+j].value = Sample(VarInfos[j], spl).value
     end
 
     time_total += time_elapsed
@@ -181,5 +134,5 @@ sample(model::Function, alg::IPMCMC) = begin
   println("[IPMCMC] Finished with")
   println("  Running time    = $time_total;")
 
-  Chain(0, reshape(samples, sample_n)) # wrap the result by Chain
+  Chain(0, samples) # wrap the result by Chain
 end
