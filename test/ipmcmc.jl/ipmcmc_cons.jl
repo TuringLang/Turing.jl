@@ -10,8 +10,8 @@ using Base.Test
 end
 
 N = 50
-s1 = Gibbs(N, IPMCMC(10, 1, 3, 1, :s), HMC(1, 0.2, 3, :m))
-s2 = IPMCMC(10, N, 4, 2)
+s1 = IPMCMC(10, N, 4, 2)
+s2 = IPMCMC(10, N, 4)
 
 c1 = sample(gdemo(), s1)
 c2 = sample(gdemo(), s2)

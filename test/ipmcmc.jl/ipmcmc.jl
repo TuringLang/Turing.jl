@@ -14,11 +14,6 @@ x = [1.5 2.0]
 end
 
 check_numerical(
-  sample(pmmhtest(x), Gibbs(100, IPMCMC(30, 1, 3, 1, :s), HMC(1, 0.2, 3, :m))),
-  [:s, :m], [49/24, 7/6]
-)
-
-check_numerical(
   sample(pmmhtest(x), IPMCMC(30, 100, 4, 2)),
   [:s, :m], [49/24, 7/6]
 )

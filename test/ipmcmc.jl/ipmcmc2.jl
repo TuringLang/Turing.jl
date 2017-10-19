@@ -35,17 +35,7 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 
-gibbs = Gibbs(500, IPMCMC(10, 1, 3, 1, :z1, :z2, :z3, :z4), HMC(1, 0.2, 4, :mu1, :mu2))
-chain = sample(MoGtest(D), gibbs)
-
-@test_approx_eq_eps mean(chain[:z1]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:z2]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:z3]) 2.0 0.1
-@test_approx_eq_eps mean(chain[:z4]) 2.0 0.1
-@test_approx_eq_eps mean(chain[:mu1]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:mu2]) 4.0 0.1
-
-gibbs = IPMCMC(15, 100, 10, 5)
+gibbs = IPMCMC(15, 100, 10)
 chain = sample(MoGtest(D), gibbs)
 
 @test_approx_eq_eps mean(chain[:z1]) 1.0 0.1
