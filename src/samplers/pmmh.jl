@@ -11,11 +11,11 @@ alg = PMMH(100, SMC(20, :v1), (:v2, (x) -> Normal(x, 1)))
 ```
 """
 immutable PMMH <: InferenceAlgorithm
-  n_iters               ::    Int         # number of iterations
-  smc_alg               ::    SMC         # SMC targeting state
-  proposals             ::    Dict{Symbol,Any}        # Proposals for paramters
-  space                 ::    Set         # Parameters random variables
-  gid                   ::    Int         # group ID
+  n_iters               ::    Int               # number of iterations
+  smc_alg               ::    SMC               # SMC targeting state
+  proposals             ::    Dict{Symbol,Any}  # Proposals for paramters
+  space                 ::    Set               # Parameters random variables
+  gid                   ::    Int               # group ID
   function PMMH(n_iters::Int, smc_alg::SMC, space...)
     new_space = Set()
     proposals = Dict{Symbol,Any}()
@@ -29,7 +29,6 @@ immutable PMMH <: InferenceAlgorithm
         end
     end
 
-    @assert !isempty(new_space) "[PMMH] (If no parameter is specified, use only SMC)"
     new_space = Set(new_space)
     new(n_iters, smc_alg, proposals, new_space, 0)
   end
@@ -41,10 +40,12 @@ function Sampler(alg::PMMH)
 
   # Sanity check for space
   space = union(alg.space, alg.smc_alg.space)
-  @assert issubset(Turing._compiler_[:pvars], space) "[PMMH] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+  if !isempty(alg.space) || !isempty(alg.smc_alg.space)
+    @assert issubset(Turing._compiler_[:pvars], space) "[PMMH] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
-  if Turing._compiler_[:pvars] != space
-  warn("[PMMH] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    if Turing._compiler_[:pvars] != space
+      warn("[PMMH] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    end
   end
 
   Sampler(alg, info)
@@ -58,52 +59,32 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   end
 
   smc_spl = spl.info[:smc_sampler]
-  new_likelihood_estimator = 0.0
+  smc_spl.info[:logevidence] = []
   spl.info[:new_prior_prob] = 0.0
   spl.info[:proposal_prob] = 0.0
   spl.info[:violating_support] = false
 
-  old_θ = copy(vi[spl])
   old_z = copy(vi[smc_spl])
 
   dprintln(2, "Propose new parameters from proposals...")
-  vi = model(vi=vi, sampler=spl)
+  if !isempty(spl.alg.space)
+    old_θ = copy(vi[spl])
 
-  if spl.info[:violating_support]
-    dprintln(2, "Early rejection, proposal is outside support...")
-    push!(spl.info[:accept_his], false)
-    vi[spl] = old_θ
-    return vi
-  end
+    vi = model(vi=vi, sampler=spl)
 
-  dprintln(2, "Propose new state with SMC...")
-  Ws_sum_prev = zeros(Float64, smc_spl.alg.n_particles)
-  particles = ParticleContainer{TraceR}(model)
-
-  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
-
-  vi[getretain(vi, 0, smc_spl)] = NULL
-  push!(particles, smc_spl.alg.n_particles, smc_spl, vi)
-
-  while consume(particles) != Val{:done}
-    # Compute marginal likehood unbiased estimator
-    log_Ws = particles.logWs - Ws_sum_prev # particles.logWs is the running sum over time
-    Ws_sum_prev = copy(particles.logWs)
-    relative_Ws = exp(log_Ws-maximum(log_Ws))
-    logZs = log(sum(relative_Ws)) + maximum(log_Ws)
-
-    new_likelihood_estimator += logZs
-
-    # Resample if needed
-    ess = effectiveSampleSize(particles)
-    if ess <= smc_spl.alg.resampler_threshold * length(particles)
-      resample!(particles,smc_spl.alg.resampler,use_replay=smc_spl.alg.use_replay)
-      Ws_sum_prev = 0.0 # Resampling reset weights to zero
+    if spl.info[:violating_support]
+      dprintln(2, "Early rejection, proposal is outside support...")
+      push!(spl.info[:accept_his], false)
+      vi[spl] = old_θ
+      return vi
     end
   end
 
+  dprintln(2, "Propose new state with SMC...")
+  vi = step(model, smc_spl, vi)
+
   dprintln(2, "computing accept rate α...")
-  α = new_likelihood_estimator - spl.info[:old_likelihood_estimator]
+  α = smc_spl.info[:logevidence][end] - spl.info[:old_likelihood_estimator]
   if !isempty(spl.alg.proposals)
     α += spl.info[:new_prior_prob] - spl.info[:old_prior_prob] + spl.info[:proposal_prob]
   end
@@ -111,16 +92,12 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   dprintln(2, "decide wether to accept...")
   if log(rand()) < α             # accepted
     ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
-    vi = particles[indx].vi
-
     push!(spl.info[:accept_his], true)
-    spl.info[:old_likelihood_estimator] = new_likelihood_estimator
+    spl.info[:old_likelihood_estimator] = smc_spl.info[:logevidence][end]
     spl.info[:old_prior_prob] = spl.info[:new_prior_prob]
   else                      # rejected
     push!(spl.info[:accept_his], false)
-    vi[spl] = old_θ
+    if !isempty(spl.alg.space) vi[spl] = old_θ end
     vi[smc_spl] = old_z
   end
 
@@ -159,7 +136,7 @@ sample(model::Function, alg::PMMH;
       time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
 
       if spl.info[:accept_his][end]     # accepted => store the new predcits
-        samples[i].value = Sample(vi, spl).value
+        samples[i].value = Sample(vi).value
       else                              # rejected => store the previous predcits
         samples[i] = samples[i - 1]
       end
@@ -198,7 +175,7 @@ function rand_truncated(dist, lowerbound, upperbound)
 end
 
 assume(spl::Sampler{PMMH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
-    if vn.sym in spl.alg.space
+    if isempty(spl.alg.space) || vn.sym in spl.alg.space
       vi.index += 1
       if ~haskey(vi, vn) #NOTE: When would that happens ??
         r = rand(dist)
