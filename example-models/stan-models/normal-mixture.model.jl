@@ -8,7 +8,7 @@ using ForwardDiff: Dual
 
   theta ~ Uniform(0, 1)
 
-  mu = Vector{Dual}(2) # mu is sampled by HMC
+  mu = Vector{Real}(2) # mu is sampled by HMC
   for i = 1:2
     mu[i] ~ Normal(0, 10)
   end
