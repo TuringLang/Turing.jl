@@ -304,7 +304,7 @@ optRes *= "Constructing Dual numbers: \n"
 
 dps = zeros(44); dps[11] = 1;
 
-t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual{Void, Float64, 44}(1.1, dps...) end
+t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual{Void, Float64, 44}(1.1, dps) end
 
 optRes *= "44*2000*5 times: $t_dualnumbers\n"
 
