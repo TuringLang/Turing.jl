@@ -290,7 +290,7 @@ optRes *= "realpart(): \n"
 
 using ForwardDiff: Dual
 
-ds = [Dual{10,Float64}(rand()) for i = 1:1000]
+ds = [Dual{Void,Float64,10}(rand()) for i = 1:1000]
 
 t_map = @elapsed for i = 1:1000 map(d -> d.value, ds) end
 t_list = @elapsed for i = 1:1000 Float64[ds[i].value for i = 1:length(ds)] end
@@ -304,7 +304,7 @@ optRes *= "Constructing Dual numbers: \n"
 
 dps = zeros(44); dps[11] = 1;
 
-t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual(1.1, dps...) end
+t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual{Void, Float64, 44}(1.1, dps...) end
 
 optRes *= "44*2000*5 times: $t_dualnumbers\n"
 
