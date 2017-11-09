@@ -82,8 +82,6 @@ end
     end
 end
 
-produce(v...) = produce(v)
-
 @suppress_err function Base.consume(P::Task, values...)
 
     if istaskdone(P)
