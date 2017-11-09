@@ -39,52 +39,76 @@ function Base.copy(t::Task)
 end
 
 @suppress_err function Base.produce(v)
-  #### un-optimized version
-  #q = current_task().consumers
-  #t = shift!(q.waitq)
-  #empty = isempty(q.waitq)
-  ct = current_task()
-  local empty, t, q
-  while true
-    q = ct.consumers
-    if isa(q,Task)
-      t = q
-      ct.consumers = nothing
-      empty = true
-      break
-    elseif isa(q,Condition) && !isempty(q.waitq)
-      t = shift!(q.waitq)
-      empty = isempty(q.waitq)
-      break
-    end
-    wait()
-  end
 
-  t.state = :runnable
-  if empty
-    if isempty(Base.Workqueue)
-      yieldto(t, v)
-    else
-      Base.schedule_and_wait(t, v)
-    end
-    ct = current_task() # When a task is copied, ct should be updated to new task ID.
+    ct = current_task()
+    local empty, t, q
     while true
-      # wait until there are more consumers
-      q = ct.consumers
-      if isa(q,Task)
-        return q.result
-      elseif isa(q,Condition) && !isempty(q.waitq)
-        return q.waitq[1].result
-      end
-      wait()
+        q = ct.consumers
+        if isa(q,Task)
+            t = q
+            ct.consumers = nothing
+            empty = true
+            break
+        elseif isa(q,Condition) && !isempty(q.waitq)
+            t = shift!(q.waitq)
+            empty = isempty(q.waitq)
+            break
+        end
+        wait()
     end
-  else
-    schedule(t, v)
-    # make sure `t` runs before us. otherwise, the producer might
-    # finish before `t` runs again, causing it to see the producer
-    # as done, causing done(::Task, _) to miss the value `v`.
-    # see issue #7727
-    yield()
-    return q.waitq[1].result
-  end
+
+    t.state == :runnable || throw(AssertionError("producer.consumer.state == :runnable"))
+    if empty
+        Base.schedule_and_wait(t, v)
+        ct = current_task() # When a task is copied, ct should be updated to new task ID.
+        while true
+            # wait until there are more consumers
+            q = ct.consumers
+            if isa(q,Task)
+                return q.result
+            elseif isa(q,Condition) && !isempty(q.waitq)
+                return q.waitq[1].result
+            end
+            wait()
+        end
+    else
+        schedule(t, v)
+        # make sure `t` runs before us. otherwise, the producer might
+        # finish before `t` runs again, causing it to see the producer
+        # as done, causing done(::Task, _) to miss the value `v`.
+        # see issue #7727
+        yield()
+        return q.waitq[1].result
+    end
+end
+
+produce(v...) = produce(v)
+
+@suppress_err function Base.consume(P::Task, values...)
+
+    if istaskdone(P)
+        return wait(P)
+    end
+
+    ct = current_task()
+    ct.result = length(values)==1 ? values[1] : values
+
+    #### un-optimized version
+    #if P.consumers === nothing
+    #    P.consumers = Condition()
+    #end
+    #push!(P.consumers.waitq, ct)
+    # optimized version that avoids the queue for 1 consumer
+    if P.consumers === nothing || (isa(P.consumers,Condition)&&isempty(P.consumers.waitq))
+        P.consumers = ct
+    else
+        if isa(P.consumers, Task)
+            t = P.consumers
+            P.consumers = Condition()
+            push!(P.consumers.waitq, t)
+        end
+        push!(P.consumers.waitq, ct)
+    end
+
+    P.state == :runnable ? Base.schedule_and_wait(P) : wait() # don't attempt to queue it twice
 end
