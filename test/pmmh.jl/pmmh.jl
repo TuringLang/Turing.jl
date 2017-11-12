@@ -17,19 +17,20 @@ x = [1.5 2.0]
 end
 
 # PMMH with Gaussian proposal
+GaussianKernel(var) = (x) -> Normal(x, sqrt.(var))
 check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30, :m), (:s, (s) -> Normal(s, sqrt.(10))))),
+  sample(pmmhtest(x), PMMH(100, SMC(30, :m), MH(1,(:s, GaussianKernel(1))))),
   [:s, :m], [49/24, 7/6]
 )
 
 # PMMH with prior as proposal
 check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30, :m), :s)),
+  sample(pmmhtest(x), PMMH(100, SMC(30, :m), MH(1,:s))),
   [:s, :m], [49/24, 7/6]
 )
 
 # PIMH
 check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30))),
+  sample(pmmhtest(x), PIMH(100, SMC(30))),
   [:s, :m], [49/24, 7/6]
 )

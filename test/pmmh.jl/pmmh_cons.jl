@@ -11,9 +11,9 @@ include("../utility.jl")
 end
 
 N = 500
-s1 = PMMH(N, SMC(10, :s), (:m, (s) -> Normal(s, sqrt(3.0))))
-s2 = PMMH(N, SMC(10, :s), :m)
-s3 = PMMH(N, SMC(10)) # PIMH
+s1 = PMMH(N, SMC(10, :s), MH(1,(:m, (s) -> Normal(s, sqrt(3.0)))))
+s2 = PMMH(N, SMC(10, :s), MH(1,:m))
+s3 = PIMH(N, SMC(10))
 
 c1 = sample(gdemo(), s1)
 c2 = sample(gdemo(), s2)

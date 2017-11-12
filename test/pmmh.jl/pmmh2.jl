@@ -38,8 +38,8 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 
-gibbs = PMMH(500, SMC(10, :z1, :z2, :z3, :z4), :mu1, :mu2)
-chain = sample(MoGtest(D), gibbs)
+pmmh = PMMH(500, SMC(10, :z1, :z2, :z3, :z4), MH(1,:mu1,:mu2))
+chain = sample(MoGtest(D), pmmh)
 
 @test mean(chain[:z1]) ≈ 1.0 atol=0.1
 @test mean(chain[:z2]) ≈ 1.0 atol=0.1
