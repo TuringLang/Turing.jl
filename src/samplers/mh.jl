@@ -50,7 +50,7 @@ immutable MH <: InferenceAlgorithm
 end
 
 Sampler(alg::MH) = begin
-  alg_str = "PMMH"
+  alg_str = "MH"
 
   # Sanity check for space
   if alg.gid == 0 && !isempty(alg.space)
@@ -118,7 +118,7 @@ function sample(model::Function, alg::MH;
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg)
-  alg_str = "PMMH"
+  alg_str = "MH"
 
   # Initialization
   time_total = zero(Float64)
