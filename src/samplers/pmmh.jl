@@ -88,7 +88,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   α += new_prior_prob - spl.info[:old_prior_prob] + proposal_ratio
   end
 
-  dprintln(2, "decide wether to accept...")
+  dprintln(2, "decide whether to accept...")
   if !violating_support && log(rand()) < α # accepted
     push!(spl.info[:accept_his], true)
     spl.info[:old_likelihood_estimate] = new_likelihood_estimate
