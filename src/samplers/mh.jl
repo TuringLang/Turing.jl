@@ -50,22 +50,24 @@ immutable MH <: InferenceAlgorithm
 end
 
 Sampler(alg::MH) = begin
-    info = Dict{Symbol, Any}()
-    info[:accept_his] = []
-    info[:total_eval_num] = 0
-    info[:proposal_ratio] = 0.0
-    info[:prior_prob] = 0.0
-    info[:violating_support] = false
+  alg_str = "PMMH"
 
-    # Sanity check for space
-    if alg.gid == 0 && !isempty(alg.space)
-      @assert issubset(Turing._compiler_[:pvars], alg.space) "[MH] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
-      if Turing._compiler_[:pvars] != alg.space
-        warn("[MH] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Turing._compiler_[:pvars]))")
-      end
+  # Sanity check for space
+  if alg.gid == 0 && !isempty(alg.space)
+    @assert issubset(Turing._compiler_[:pvars], alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+    if Turing._compiler_[:pvars] != alg.space
+      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Turing._compiler_[:pvars]))")
     end
+  end
 
-    Sampler(alg, info)
+  info = Dict{Symbol, Any}()
+  info[:accept_his] = []
+  info[:total_eval_num] = 0
+  info[:proposal_ratio] = 0.0
+  info[:prior_prob] = 0.0
+  info[:violating_support] = false
+
+  Sampler(alg, info)
 end
 
 propose(model::Function, spl::Sampler{MH}, vi::VarInfo) = begin
@@ -116,6 +118,7 @@ function sample(model::Function, alg::MH;
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg)
+  alg_str = "PMMH"
 
   # Initialization
   time_total = zero(Float64)
@@ -137,9 +140,9 @@ function sample(model::Function, alg::MH;
   end
 
   # MH steps
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[MH] Sampling...", 0) end
+  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "MH stepping...")
+    dprintln(2, "$alg_str stepping...")
 
     time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed
@@ -154,7 +157,7 @@ function sample(model::Function, alg::MH;
     if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
   end
 
-  println("[MH] Finished with")
+  println("[$alg_str] Finished with")
   println("  Running time        = $time_total;")
   accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
   println("  Accept rate         = $accept_rate;")

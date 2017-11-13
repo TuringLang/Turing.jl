@@ -26,6 +26,7 @@ end
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
 
 function Sampler(alg::PMMH)
+  alg_str = "PMMH"
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(n_samplers)
 
@@ -36,20 +37,20 @@ function Sampler(alg::PMMH)
     if isa(sub_alg, Union{SMC, MH})
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
     else
-      error("[PMMH] unsupport base sampling algorithm $alg")
+      error("[$alg_str] unsupport base sampling algorithm $alg")
     end
     if typeof(sub_alg) == MH && sub_alg.n_iters != 1
-      warn("[PMMH] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
+      warn("[$alg_str] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
     end
     space = union(space, sub_alg.space)
   end
 
   # Sanity check for space
   if !isempty(space)
-    @assert issubset(Turing._compiler_[:pvars], space) "[PMMH] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+    @assert issubset(Turing._compiler_[:pvars], space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
 
     if Turing._compiler_[:pvars] != space
-      warn("[PMMH] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
     end
   end
 
@@ -108,6 +109,7 @@ sample(model::Function, alg::PMMH;
       ) = begin
 
     spl = Sampler(alg)
+    alg_str = "PMMH"
 
     # Number of samples to store
     sample_n = spl.alg.n_iters
@@ -127,9 +129,9 @@ sample(model::Function, alg::PMMH;
     n = spl.alg.n_iters
 
     # PMMH steps
-    if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PMMH] Sampling...", 0) end
+    if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
     for i = 1:n
-      dprintln(2, "PMMH stepping...")
+      dprintln(2, "$alg_str stepping...")
       time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
 
       if spl.info[:accept_his][end]     # accepted => store the new predcits
@@ -144,7 +146,7 @@ sample(model::Function, alg::PMMH;
       end
     end
 
-    println("[PMMH] Finished with")
+    println("[$alg_str] Finished with")
     println("  Running time    = $time_total;")
     accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
     println("  Accept rate         = $accept_rate;")
