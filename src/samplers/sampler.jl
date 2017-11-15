@@ -57,7 +57,7 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
   if haskey(vi, vns[1])
     rs = vi[vns]
   else
-    rs = rand(dist, n)
+    rs = init(dist, n)
 
     if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
       for i = 1:n
