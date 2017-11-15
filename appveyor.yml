@@ -24,7 +24,7 @@ notifications:
 cache:
 # Cache large downloads to avoid network unreliability
   - "%MINGW_ARCHIVE%"
-  #- C:\Users\appveyor\.julia\v0.5
+  - C:\Users\appveyor\.julia\v0.5
 
 install:
   - ps: "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12"
