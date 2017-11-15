@@ -9,9 +9,11 @@ environment:
     MINGW_DIR: mingw32
     # MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/5.3.0/threads-win32/dwarf/i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z/download
     MINGW_URL: http://mlg.eng.cam.ac.uk/hong/i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z
-    MINGW_ARCHIVE: i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z
-      allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
-      - MINGW_DIR: mingw32
+    MINGW_ARCHIVE: i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z  
+    
+matrix:
+  allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
+  - MINGW_DIR: mingw32
 
 notifications:
   - provider: Email
