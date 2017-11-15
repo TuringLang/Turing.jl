@@ -87,7 +87,7 @@ link{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
 invlink{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
-logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf(d, x)
+logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf.(d, x)
 
 
 #########
@@ -103,7 +103,7 @@ link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp.(x)
 
 logpdf_with_trans{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
-  lp = logpdf(d, x)
+  lp = logpdf.(d, x)
   transform ? lp + log.(x) : lp
 end
 
