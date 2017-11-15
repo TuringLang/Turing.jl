@@ -104,7 +104,7 @@ invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp.(x)
 
 logpdf_with_trans{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
   lp = logpdf(d, x)
-  transform ? lp + log(x) : lp
+  transform ? lp + log.(x) : lp
 end
 
 
@@ -212,7 +212,7 @@ logpdf_with_trans{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = be
       @inbounds Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
     end
     for k = 1:K-1
-      lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))'
+      lp += log.(Z[k,:]) + log.(one(T) - Z[k,:]) + log.(one(T) - sum(X[1:k-1,:], 1))'
     end
   end
   lp
