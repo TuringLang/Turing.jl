@@ -15,9 +15,9 @@ Example:
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
   return s, m
 end
 
@@ -39,7 +39,7 @@ immutable PG <: InferenceAlgorithm
   PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 end
 
-typealias CSMC PG # Conditional SMC
+const CSMC = PG # type alias of PG as Conditional SMC
 
 Sampler(alg::PG) = begin
   info = Dict{Symbol, Any}()
@@ -122,13 +122,13 @@ sample(model::Function, alg::PG;
   println("[PG] Finished with")
   println("  Running time    = $time_total;")
 
-  loge = exp(mean(spl.info[:logevidence]))
+  loge = exp.(mean(spl.info[:logevidence]))
   if resume_from != nothing   # concat samples
     unshift!(samples, resume_from.value2...)
     pre_loge = resume_from.weight
     # Calculate new log-evidence
     pre_n = length(resume_from.value2)
-    loge = exp((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
+    loge = exp.((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
   end
   c = Chain(loge, samples)       # wrap the result by Chain
 

@@ -2,7 +2,7 @@
 # Math #
 ########
 
-@inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp(-x))
+@inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp.(-x))
 @inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
 
 # More stable, faster version of rand(Categorical)
@@ -22,7 +22,7 @@ type NotImplementedException <: Exception end
 # Numerically stable sum of values represented in log domain.
 logsum{T<:Real}(xs::Vector{T}) = begin
   largest = maximum(xs)
-  ys = map(x -> exp(x - largest), xs)
+  ys = map(x -> exp.(x - largest), xs)
 
   log(sum(ys)) + largest
 end

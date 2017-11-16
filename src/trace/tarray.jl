@@ -25,7 +25,7 @@ Array(ta)                   # convert to 4-element Array{Int64,1}: [1, 2, 3, 4]
 """
 immutable TArray{T,N} <: DenseArray{T,N}
   ref :: Symbol  # object_id
-  TArray() = new(gensym())
+  TArray{T,N}() where {T,N} = new(gensym())
 end
 
 (::Type{TArray{T,1}}){T}(d::Integer)    = TArray(T,  d)

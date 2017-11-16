@@ -15,17 +15,17 @@ NSamples = 5000
 
 @model gdemo_fw() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  m ~ Normal(0,sqrt.(s))
+  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  m ~ Normal(0,sqrt.(s))
+  x ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
   # Backward Step 2: x ~ x | theta
-  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
+  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
 end
 
 fw = HMCDA(NSamples, 0.9, 0.1)
@@ -64,7 +64,7 @@ qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx
 y = qqm.qy
 slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
-@test_approx_eq_eps slope 1.0 0.1
+@test slope ≈ 1.0 atol=0.1
 
 # NOTE: test for s is not stable
 #       probably due to the transformation
@@ -72,4 +72,4 @@ slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
 # X = qqs.qx
 # y = qqs.qy
 # slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
-# @test_approx_eq_eps slope 1.0 0.1
+# @test slope ≈ 1.0 atol=0.1

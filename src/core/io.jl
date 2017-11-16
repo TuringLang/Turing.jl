@@ -17,14 +17,14 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
   if cached_syms == nothing
     # Get all keys associated with the given symbol
-    syms = collect(filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+    syms = collect(Iterators.filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
   else
-    syms = filter(k -> search(string(k), string(v)) != 0:-1, cached_syms)
+    syms = collect((Iterators.filter(k -> search(string(k), string(v)) != 0:-1, cached_syms)))
   end
   # Map to the corresponding indices part
   idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
   # Get the indexing component
-  idx_comp = map(idx -> filter(str -> str != "", split(string(idx), [']','['])), idx_str)
+  idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
   # Deal with v is really a symbol, e.g. :x
   if length(idx_comp) == 0

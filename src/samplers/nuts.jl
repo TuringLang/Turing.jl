@@ -15,9 +15,9 @@ Example:
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
   return s, m
 end
 
@@ -147,7 +147,7 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
       H′ = τ_valid == 0 ? Inf : find_H(r′, model, vi, spl)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
-      α′ = exp(min(0, -H′ - (-H0)))
+      α′ = exp.(min(0, -H′ - (-H0)))
 
       θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
     else

@@ -62,7 +62,7 @@ type VarInfo
   end
 end
 
-typealias VarView Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
+const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 
 getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 
@@ -297,7 +297,7 @@ end
 #######################################
 
 # Check if a vn is set to NULL
-isnan(vi::VarInfo, vn::VarName) = any(isnan(getval(vi, vn)))
+isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
 
 # Sanity check for VarInfo.index
 checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)

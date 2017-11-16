@@ -4,12 +4,12 @@ using Turing, Distributions
 
 # Define helper functions
 function sigmoid(t)
-  return 1 / (1 + e^(-t))
+  return 1 / (1 + exp.(-t))
 end
 
 # Define NN flow
 function nn(x, b1, w11, w12, w13, bo, wo)
-  h = tanh([w11' * x + b1[1]; w12' * x + b1[2]; w13' * x + b1[3]])
+  h = tanh.([w11' * x + b1[1]; w12' * x + b1[2]; w13' * x + b1[3]])
   return sigmoid((wo' * h)[1] + bo)
 end
 
@@ -29,7 +29,7 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 # Define model
 
 alpha = 0.16            # regularizatin term
-var = sqrt(1.0 / alpha) # variance of the Gaussian prior
+var = sqrt.(1.0 / alpha) # variance of the Gaussian prior
 
 @model bnn(ts) = begin
   b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])

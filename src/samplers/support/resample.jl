@@ -20,7 +20,7 @@ function resampleResidual( w::Vector{Float64}, num_particles::Int )
   M = length( w )
 
   # "Repetition counts" (plus the random part, later on):
-  Ns = floor(length(w) .* w)
+  Ns = floor.(length(w) .* w)
 
   # The "remainder" or "residual" count:
   R = Int(sum( Ns ))
@@ -29,7 +29,7 @@ function resampleResidual( w::Vector{Float64}, num_particles::Int )
   M_rdn = num_particles-R;
 
   # The modified weights:
-  Ws = (M .* w - floor(M .* w))/M_rdn;
+  Ws = (M .* w - floor.(M .* w))/M_rdn;
 
   # Draw the deterministic part:
   indx1 = Array{Int}(R)

@@ -41,9 +41,9 @@ end
 gibbs = PMMH(500, SMC(10, :z1, :z2, :z3, :z4), :mu1, :mu2)
 chain = sample(MoGtest(D), gibbs)
 
-@test_approx_eq_eps mean(chain[:z1]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:z2]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:z3]) 2.0 0.1
-@test_approx_eq_eps mean(chain[:z4]) 2.0 0.1
-@test_approx_eq_eps mean(chain[:mu1]) 1.0 0.1
-@test_approx_eq_eps mean(chain[:mu2]) 4.0 0.1
+@test mean(chain[:z1]) ≈ 1.0 atol=0.1
+@test mean(chain[:z2]) ≈ 1.0 atol=0.1
+@test mean(chain[:z3]) ≈ 2.0 atol=0.1
+@test mean(chain[:z4]) ≈ 2.0 atol=0.1
+@test mean(chain[:mu1]) ≈ 1.0 atol=0.1
+@test mean(chain[:mu2]) ≈ 4.0 atol=0.1

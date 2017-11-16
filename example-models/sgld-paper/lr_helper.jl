@@ -8,7 +8,7 @@ readlrdata() = begin
   open("a9a2000.data") do f
     while !eof(f)
       raw_line = readline(f)
-      data_str = filter(str -> length(str) > 0, split(raw_line, r"[ ]+")[1:end-1])
+      data_str = Iterators.filter(str -> length(str) > 0, split(raw_line, r"[ ]+")[1:end-1])
       data = map(str -> parse(str), data_str)
       x_tmp = zeros(Int32, d)
       x_tmp[data[2:end]] = 1

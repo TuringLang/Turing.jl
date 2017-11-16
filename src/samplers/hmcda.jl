@@ -15,9 +15,9 @@ Example:
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
   return s, m
 end
 
@@ -96,7 +96,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
 
     dprintln(2, "computing accept rate α...")
-    α = min(1, exp(-(H - old_H)))
+    α = min(1, exp.(-(H - old_H)))
 
     if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])

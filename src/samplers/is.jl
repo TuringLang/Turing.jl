@@ -17,9 +17,9 @@ Example:
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
   return s, m
 end
 
@@ -41,13 +41,13 @@ sample(model::Function, alg::IS) = begin
 
   n = spl.alg.n_particles
   for i = 1:n
-    vi = model(vi=VarInfo(), sampler=spl)
+    vi = model(VarInfo(), spl)
     samples[i] = Sample(vi)
   end
 
   le = logsum(map(x->x[:lp], samples)) - log(n)
 
-  Chain(exp(le), samples)
+  Chain(exp.(le), samples)
 end
 
 assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
