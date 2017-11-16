@@ -5,7 +5,7 @@ Data structure for particle filters
 - consume(pc::ParticleContainer): return incremental likelihood
 """
 
-typealias Particle Trace
+const Particle = Trace
 
 type ParticleContainer{T<:Particle}
   model :: Function
@@ -16,7 +16,7 @@ type ParticleContainer{T<:Particle}
   # conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Void # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer(m::Function,n::Int) = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
+  ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
 (::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)
@@ -127,7 +127,7 @@ end
 function weights(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   logWs = pc.logWs
-  Ws = exp(logWs-maximum(logWs))
+  Ws = exp.(logWs-maximum(logWs))
   logZ = log(sum(Ws)) + maximum(logWs)
   Ws = Ws ./ sum(Ws)
   return Ws, logZ
@@ -196,5 +196,5 @@ getsample(pc :: ParticleContainer) = begin
   w = pc.logE
   Ws, z = weights(pc)
   s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))
-  return exp(w), s
+  return exp.(w), s
 end

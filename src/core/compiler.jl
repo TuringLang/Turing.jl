@@ -7,8 +7,8 @@ macro VarName(ex::Union{Expr, Symbol})
   #    return: (:x,[1,2],6,45,3)
   s = string(gensym())
   if isa(ex, Symbol)
-    _ = string(ex)
-    return :(Symbol($_), Symbol($s))
+    ex_str = string(ex)
+    return :(Symbol($ex_str), Symbol($s))
   elseif ex.head == :ref
     _2 = ex
     _1 = ""
@@ -143,9 +143,9 @@ Example:
 ```julia
 @model gauss() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  1.5 ~ Normal(m, sqrt(s))
-  2.0 ~ Normal(m, sqrt(s))
+  m ~ Normal(0,sqrt.(s))
+  1.5 ~ Normal(m, sqrt.(s))
+  2.0 ~ Normal(m, sqrt.(s))
   return(s, m)
 end
 ```
@@ -154,7 +154,7 @@ macro model(fexpr)
    # Compiler design: sample(fname_compiletime(x,y), sampler)
    #   fname_compiletime(x=nothing,y=nothing; data=data,compiler=compiler) = begin
    #      ex = quote
-   #          fname_runtime(;vi=VarInfo,sampler=nothing) = begin
+   #          fname_runtime(vi::VarInfo,sampler::Sampler) = begin
    #              x=x,y=y
    #              # pour all variables in data dictionary, e.g.
    #              k = data[:k]
@@ -168,6 +168,7 @@ macro model(fexpr)
 
 
   dprintln(1, fexpr)
+  fexpr = translate(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
@@ -178,6 +179,7 @@ macro model(fexpr)
   #       ==> f(x,y;)
   #   f(x,y; c=1)
   #       ==> unchanged
+
   if (length(fargs) == 0 ||         # e.g. f()
           isa(fargs[1], Symbol) ||  # e.g. f(x,y)
           fargs[1].head == :kw)     # e.g. f(x,y=1)
@@ -185,7 +187,7 @@ macro model(fexpr)
   end
 
   dprintln(1, fname)
-  dprintln(1, fargs)
+  # dprintln(1, fargs)
   dprintln(1, fbody)
 
   # Remove positional arguments from inner function, e.g.
@@ -193,16 +195,16 @@ macro model(fexpr)
   #      ==> f(; c=1)
   #  f(x,y;)
   #      ==> f(;)
-  fargs_inner = deepcopy(fargs)[1:1]
+  # fargs_inner = deepcopy(fargs)[1:1]
 
   # Add keyword arguments, e.g.
   #  f(; c=1)
   #      ==> f(; c=1, :vi=VarInfo(), :sample=nothing)
   #  f(;)
   #      ==> f(; :vi=VarInfo(), :sample=nothing)
-  push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
-  push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
-  dprintln(1, fargs_inner)
+  # push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
+  # push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
+  # dprintln(1, fargs_inner)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
@@ -234,19 +236,31 @@ macro model(fexpr)
 
   dprintln(1, fbody_inner)
 
-  fname_inner = Symbol("$(fname)_model")
+  fname_inner_str = "$(fname)_model"
+  fname_inner = Symbol(fname_inner_str)
   fdefn_inner = Expr(:(=), fname_inner,
           Expr(:function, Expr(:call, fname_inner))) # fdefn = :( $fname() )
-  push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+  # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+
+  push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
+  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Void,Turing.Sampler}))
+
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
+  
+  fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
+  fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
+  fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
 
   compiler = Dict(:fname => fname,
                   :fargs => fargs,
                   :fbody => fbody,
                   :dvars => Set{Symbol}(),  # data
                   :pvars => Set{Symbol}(),  # parameter
-                  :fdefn_inner => fdefn_inner)
+                  :fdefn_inner => fdefn_inner,
+                  :fdefn_inner_callback_1 => fdefn_inner_callback_1,
+                  :fdefn_inner_callback_2 => fdefn_inner_callback_2,
+                  :fdefn_inner_callback_3 => fdefn_inner_callback_3)
 
   # Outer function defintion 1: f(x,y) ==> f(x,y;data=Dict())
   fargs_outer = deepcopy(fargs)
@@ -263,14 +277,34 @@ macro model(fexpr)
 
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
-
+  
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
+  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
   unshift!(fdefn_outer.args[2].args,  quote
       # Check fargs, data
       eval(Turing, :(_compiler_ = deepcopy($compiler)))
-      fargs    = Turing._compiler_[:fargs];
-      fdefn_inner   = Turing._compiler_[:fdefn_inner];
-      fdefn_inner.args[2].args[1].args[1] = gensym((fdefn_inner.args[2].args[1].args[1]))
+      fargs = Turing._compiler_[:fargs];
+
+      # Copy the expr of function definition and callbacks
+      fdefn_inner = Turing._compiler_[:fdefn_inner];
+      fdefn_inner_callback_1 = Turing._compiler_[:fdefn_inner_callback_1];
+      fdefn_inner_callback_2 = Turing._compiler_[:fdefn_inner_callback_2];
+      fdefn_inner_callback_3 = Turing._compiler_[:fdefn_inner_callback_3];
+
+      # Add gensym to function name
+      fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
+      
+      # Change the name of inner function definition to the one with gensym()
+      fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_1.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_1.args[2].args[2].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_2.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_2.args[2].args[2].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_3.args[1].args[1] = fname_inner_with_gensym
+      fdefn_inner_callback_3.args[2].args[2].args[1] = fname_inner_with_gensym
+
       # Copy data dictionary
       for k in keys(data)
         if fdefn_inner.args[2].args[2].args[1].head == :line
@@ -295,7 +329,7 @@ macro model(fexpr)
     if _k != nothing
       _k_str = string(_k)
       dprintln(1, _k_str, " = ", _k)
-      _ = quote
+      data_check_ex = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
                 Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
@@ -305,7 +339,7 @@ macro model(fexpr)
               data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
-      unshift!(fdefn_outer.args[2].args, _)
+      unshift!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
   unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)
@@ -331,3 +365,15 @@ getvsym(expr::Expr) = begin
   end
   curr
 end
+
+
+translate!(ex::Any) = ex
+translate!(ex::Expr) = begin
+  if (ex.head === :call && ex.args[1] === :(~))
+    ex.head = :macrocall; ex.args[1] = Symbol("@~")
+  else
+    map(translate!, ex.args)
+  end
+  ex
+end
+translate(ex::Expr) = translate!(deepcopy(ex))

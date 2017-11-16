@@ -5,7 +5,8 @@ runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   vi.index = 0
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end
-  model(vi=vi, sampler=spl) # run model
+  # model(vi=vi, sampler=spl) # run model
+  Base.invokelatest(model, vi, spl)
 end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
@@ -55,13 +56,13 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   p_orig = p ./ spl.info[:wum][:stds]
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
-  if isnan(H) H = Inf else H end
+  if isnan.(H) H = Inf else H end
 end
 
 find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   println("[Turing] looking for good initial eps...")
   ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
-  log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp(-H(Θ, r))
+  log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp.(-H(Θ, r))
 
   θ = realpart(vi[spl])
   θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
@@ -70,7 +71,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   # Heuristically find optimal ϵ
   iter_num = 1
   a = 2.0 * (log_p_r_Θ′ - log_p_r_Θ > log(0.5) ? 1 : 0) - 1
-  while (exp(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a) && iter_num <= 12
+  while (exp.(log_p_r_Θ′ - log_p_r_Θ))^a > 2.0^(-a) && iter_num <= 12
     ϵ = 2.0^a * ϵ
     θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
     log_p_r_Θ′ = τ == 0 ? -Inf : -find_H(p_prime, model, vi, spl)

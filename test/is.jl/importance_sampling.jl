@@ -8,7 +8,7 @@ using Base.Test
 
 function logsum(xs :: Vector{Float64})
   largest = maximum(xs)
-  ys = map(x -> exp(x - largest), xs)
+  ys = map(x -> exp.(x - largest), xs)
   result = log(sum(ys)) + largest
   return result
 end

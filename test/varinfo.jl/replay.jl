@@ -10,11 +10,11 @@ xs = rand(Normal(0.5, 1), 100)
 @model priorsinarray(xs) = begin
   priors = Vector{Real}(2)
   priors[1] ~ InverseGamma(2, 3)
-  priors[2] ~ Normal(0, sqrt(priors[1]))
+  priors[2] ~ Normal(0, sqrt.(priors[1]))
   for i = 1:length(xs)
-    xs[i] ~ Normal(priors[2], sqrt(priors[1]))
+    xs[i] ~ Normal(priors[2], sqrt.(priors[1]))
   # for x in xs
-    # x ~ Normal(priors[2], sqrt(priors[1]))
+    # x ~ Normal(priors[2], sqrt.(priors[1]))
   end
   priors
 end

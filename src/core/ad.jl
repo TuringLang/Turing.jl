@@ -55,12 +55,12 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
       vals = getval(vi, vns[i])
       if vns[i] in vn_chunk        # for each variable to compute gradient in this round
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(realpart(vals[i]), SEEDS[dim_count])
+          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])
           dim_count += 1      # count
         end
       else                    # for other varilables (no gradient in this round)
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{CHUNKSIZE, Float64}(realpart(vals[i]))
+          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]))
         end
       end
     end
@@ -83,7 +83,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 end
 
 verifygrad(grad::Vector{Float64}) = begin
-  if any(isnan(grad)) || any(isinf(grad))
+  if any(isnan.(grad)) || any(isinf.(grad))
     dwarn(0, "Numerical error has been found in gradients.")
     dwarn(1, "grad = $(grad)")
     false

@@ -57,7 +57,7 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
   if haskey(vi, vns[1])
     rs = vi[vns]
   else
-    rs = rand(dist, n)
+    rs = init(dist, n)
 
     if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
       for i = 1:n
@@ -83,7 +83,7 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
     end
   end
 
-  acclogp!(vi, sum(logpdf(dist, rs, istrans(vi, vns[1]))))
+  acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
   var
 end
@@ -95,5 +95,9 @@ observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) =
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
-  acclogp!(vi, sum(logpdf(dist, value)))
+  if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
+    acclogp!(vi, sum(logpdf.(dist, value)))
+  else
+    acclogp!(vi, sum(logpdf(dist, value)))
+  end
 end

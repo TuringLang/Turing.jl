@@ -30,8 +30,7 @@
 # a ≦ x ≦ b #
 #############
 
-typealias TransformDistribution{T<:ContinuousUnivariateDistribution}
-          Union{T, Truncated{T}}
+const TransformDistribution{T<:ContinuousUnivariateDistribution} = Union{T, Truncated{T}}
 
 link{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   a, b = minimum(d), maximum(d)
@@ -53,9 +52,9 @@ invlink{T<:Real}(d::TransformDistribution, x::Union{T,Vector{T}}) = begin
   if lowerbounded && upperbounded
     (b - a) .* invlogit(x) + a
   elseif lowerbounded
-    exp(x) + a
+    exp.(x) + a
   elseif upperbounded
-    b - exp(x)
+    b - exp.(x)
   else
     x
   end
@@ -81,33 +80,31 @@ end
 # -∞ < x < -∞ #
 ###############
 
-typealias RealDistribution
-          Union{Cauchy, Gumbel, Laplace, Logistic,
-                NoncentralT, Normal, NormalCanon, TDist}
+const RealDistribution = Union{Cauchy, Gumbel, Laplace, Logistic,
+                               NoncentralT, Normal, NormalCanon, TDist}
 
 link{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
 invlink{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}) = x
 
-logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf(d, x)
+logpdf_with_trans{T<:Real}(d::RealDistribution, x::Union{T,Vector{T}}, transform::Bool) = logpdf.(d, x)
 
 
 #########
 # 0 < x #
 #########
 
-typealias PositiveDistribution
-          Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet,
-                Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
-                NoncentralChisq, NoncentralF, Rayleigh, Weibull}
+const PositiveDistribution = Union{BetaPrime, Chi, Chisq, Erlang, Exponential, FDist, Frechet,
+                                   Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
+                                   NoncentralChisq, NoncentralF, Rayleigh, Weibull}
 
 link{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = log(x)
 
-invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp(x)
+invlink{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}) = exp.(x)
 
 logpdf_with_trans{T<:Real}(d::PositiveDistribution, x::Union{T,Vector{T}}, transform::Bool) = begin
-  lp = logpdf(d, x)
-  transform ? lp + log(x) : lp
+  lp = logpdf.(d, x)
+  transform ? lp + log.(x) : lp
 end
 
 
@@ -115,8 +112,7 @@ end
 # 0 < x < 1 #
 #############
 
-typealias UnitDistribution
-          Union{Beta, KSOneSided, NoncentralBeta}
+const UnitDistribution = Union{Beta, KSOneSided, NoncentralBeta}
 
 link{T<:Real}(d::UnitDistribution, x::Union{T,Vector{T}}) = logit(x)
 
@@ -131,7 +127,7 @@ end
 # ∑xᵢ = 1 #
 ###########
 
-typealias SimplexDistribution Union{Dirichlet}
+const SimplexDistribution = Union{Dirichlet}
 
 link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
 link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
@@ -216,7 +212,7 @@ logpdf_with_trans{T}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = be
       @inbounds Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
     end
     for k = 1:K-1
-      lp += log(Z[k,:]) + log(one(T) - Z[k,:]) + log(one(T) - sum(X[1:k-1,:], 1))'
+      lp += log.(Z[k,:]) + log.(one(T) - Z[k,:]) + log.(one(T) - sum(X[1:k-1,:], 1))'
     end
   end
   lp
@@ -231,7 +227,7 @@ end
 # Positive definite #
 #####################
 
-typealias PDMatDistribution Union{InverseWishart, Wishart}
+const PDMatDistribution = Union{InverseWishart, Wishart}
 
 link{T<:Real}(d::PDMatDistribution, x::Array{T,2}) = begin
   z = chol(x)'
@@ -256,7 +252,7 @@ end
 invlink{T<:Real}(d::PDMatDistribution, z::Array{T,2}) = begin
   dim = size(z)
   for m in 1:dim[1]
-    z[m, m] = exp(z[m, m])
+    z[m, m] = exp.(z[m, m])
   end
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
