@@ -1,4 +1,4 @@
-# Release 0.3.1
+# Release 0.4.0-alpha
 - Fix compatibility with Julia 0.6 [#341, #330, #293]
 - Support of Stan interface [#343, #326]
 - Fix Binomial distribution for gradients. [#311]
