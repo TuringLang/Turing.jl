@@ -95,7 +95,7 @@ settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)]
 getlogp(vi::VarInfo) = vi.logp[end]
 setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
 acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
-resetlogp!(vi::VarInfo, logp::Real) = setlogp!(vi, zero(Real))
+resetlogp!(vi::VarInfo) = setlogp!(vi, zero(Real))
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
