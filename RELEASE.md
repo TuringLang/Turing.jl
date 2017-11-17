@@ -2,10 +2,11 @@
 - Fix compatibility with Julia 0.6 [#341, #330, #293]
 - Support of Stan interface [#343, #326]
 - Fix Binomial distribution for gradients. [#311]
-- Stochastic gradient Hamiltonian Monte Carlo [#201]
+- Stochastic gradient Hamiltonian Monte Carlo [#201]; Stochastic gradient Langevin dynamics [#27]
+- More particle MCMC family samplers: PIMH & PMMH [#364]
 - Disable adaptive resampling for CSMC [#357]
 - Fix resampler for SMC [#338]
-- Initial implementation of Interactive PMCMC [#334]
+- Interactive particle MCMC [#334]
 - Add type alias CSMC for PG [#333]
 - Fix progress meter [#317]
 
