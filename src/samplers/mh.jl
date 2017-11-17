@@ -83,6 +83,9 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     vi
 
   else
+    if spl.alg.gid != 0 # Recompute joint in logp
+      runmodel(model, vi, nothing)
+    end
     old_θ = copy(vi[spl])
     old_logp = getlogp(vi)
 
