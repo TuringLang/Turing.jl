@@ -3,7 +3,7 @@
 - Support of Stan interface [#343, #326]
 - Fix Binomial distribution for gradients. [#311]
 - Stochastic gradient Hamiltonian Monte Carlo [#201]; Stochastic gradient Langevin dynamics [#27]
-- More particle MCMC family samplers: PIMH & PMMH [#364]
+- More particle MCMC family samplers: PIMH & PMMH [#364, #369]
 - Disable adaptive resampling for CSMC [#357]
 - Fix resampler for SMC [#338]
 - Interactive particle MCMC [#334]
