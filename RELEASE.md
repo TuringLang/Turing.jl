@@ -36,4 +36,5 @@
 # Release 0.0.1-0.0.4
 The initial releases of Turing. 
 - Particle MCMC, SMC, IS
-- Implemented copying for Julia Task. 
+- Implemented [copying for Julia Task](https://github.com/JuliaLang/julia/pull/15078)
+- Implemented copy-on-write data structure `TArray` for Tasks
