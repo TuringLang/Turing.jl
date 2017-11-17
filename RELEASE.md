@@ -1,6 +1,15 @@
+# Release 0.3.1
+- Fix compatibility with Julia 0.6 [#341, #330, #293]
+- Support of Stan interface [#343, #326]
+- Fix Binomial distribution for gradients. [#311]
+- Stochastic gradient Hamiltonian Monte Carlo [#201]
+- Disable adaptive resampling for CSMC [#357]
+- Fix resampler for SMC [#338]
+- Initial implementation of Interactive PMCMC [#334]
+- Add type alias CSMC for PG [#333]
+- Fix progress meter [#317]
 
 # Release 0.3
-
 -  NUTS implementation #188
 -  HMC: Transforms of ϵ for each variable #67 (replace with introducing mass matrix)
 -  Finish: Sampler (internal) interface design #107
@@ -15,7 +24,7 @@
 - Gibbs sampler ([#73])
 - HMC for constrained variables ([#66]; no support for varying dimensions)
 - Added support for `Mamba.Chain` ([#90]): describe, plot etc.
-- New interface degign ([#55]), ([#104])
+- New interface design ([#55]), ([#104])
 - Bugfixes and general improvements (e.g. `VarInfo` [#96]) 
 
 # Release 0.1.0
