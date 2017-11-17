@@ -2,6 +2,9 @@ using Distributions
 using Turing
 using Base.Test
 
+include("../utility.jl")
+srand(100)
+
 D = [1.0 1.0 4.0 4.0]
 
 @model MoGtest(D) = begin
@@ -34,16 +37,12 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 
-gibbs = Gibbs(500, PG(10, 1, :z1, :z2, :z3, :z4), HMC(1, 0.15, 3, :mu1, :mu2))
+gibbs = Gibbs(500, PG(10, 1, :z1, :z2, :z3, :z4), HMC(3, 0.15, 3, :mu1, :mu2))
 chain = sample(MoGtest(D), gibbs)
 
-# chain = sample(MoGtest, SMC(5000))
-
-# Turing.TURING[:modelex]
-
-mean(chain[:z1])
-mean(chain[:z2])
-mean(chain[:z3])
-mean(chain[:z4])
-mean(chain[:mu1])
-mean(chain[:mu2])
+@test mean(chain[:z1]) ≈ 1.0 atol=0.1
+@test mean(chain[:z2]) ≈ 1.0 atol=0.1
+@test mean(chain[:z3]) ≈ 2.0 atol=0.1
+@test mean(chain[:z4]) ≈ 2.0 atol=0.1
+@test mean(chain[:mu1]) ≈ 1.0 atol=0.1
+@test mean(chain[:mu2]) ≈ 4.0 atol=0.1
