@@ -58,6 +58,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
                  fork2(TraceR(model, spl, vi))
 
   vi[getretain(vi, 0, spl)] = NULL
+  resetlogp!(vi)
 
   if ref_particle == nothing
     push!(particles, spl.alg.n_particles, spl, vi)
