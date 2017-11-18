@@ -135,8 +135,8 @@ function sample(model::Function, alg::MH;
   end
 
   vi = resume_from == nothing ?
-       model() :
-       deepcopy(resume_from.info[:vi])
+            Base.invokelatest(model, VarInfo(), nothing) :
+            resume_from.info[:vi]
 
   if spl.alg.gid == 0
     runmodel(model, vi, spl)
