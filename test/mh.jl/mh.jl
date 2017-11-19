@@ -1,9 +1,8 @@
-include("../utility.jl")
-
 using Distributions
 using Turing
 using Base.Test
 srand(125)
+
 x = [1.5 2.0]
 
 @model mhtest(x) = begin
@@ -15,23 +14,21 @@ x = [1.5 2.0]
   s, m
 end
 
-model = mhtest(x)
-
 # MH with prior as proposal
-res = sample(model, MH(100))
-check_numerical(res,
-[:s, :m], [49/24, 7/6]
-)
+alg = MH(2000)
+chain = sample(mhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
 
 # MH with Gaussian proposal
-GaussianKernel(var) = (x) -> Normal(x, sqrt(var))
-check_numerical(
-  sample(model, MH(500, (:s, GaussianKernel(1.0)), (:m, GaussianKernel(1.0)))),
-  [:s, :m], [49/24, 7/6]
-)
+GKernel(var) = (x) -> Normal(x, sqrt.(var))
+alg = MH(5000, (:s, GKernel(5)), (:m, GKernel(1.0)))
+chain = sample(mhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.2
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
 
 # MH within Gibbs
-check_numerical(
-  sample(model, Gibbs(100, MH(5, :m), MH(5, :s))),
-  [:s, :m], [49/24, 7/6]
-)
+alg = Gibbs(100, MH(5, :m), MH(5, :s))
+chain = sample(mhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
