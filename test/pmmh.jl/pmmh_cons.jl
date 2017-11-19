@@ -1,6 +1,7 @@
 using Turing, Distributions
 using Base.Test
-include("../utility.jl")
+
+srand(125)
 
 @model gdemo() = begin
   s ~ InverseGamma(2,3)
@@ -11,7 +12,7 @@ include("../utility.jl")
 end
 
 N = 500
-s1 = PMMH(N, SMC(10, :s), MH(1,(:m, (s) -> Normal(s, sqrt(3.0)))))
+s1 = PMMH(N, SMC(10, :s), MH(1,(:m, (s) -> Normal(s, sqrt.(1)))))
 s2 = PMMH(N, SMC(10, :s), MH(1,:m))
 s3 = PIMH(N, SMC(10))
 
@@ -21,5 +22,6 @@ c3 = sample(gdemo(), s3)
 
 # Very loose bound, only for testing constructor.
 for c in [c1, c2, c3]
-  check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
+  @test mean(c[:s]) ≈ 49/24 atol=1.0
+  @test mean(c[:m]) ≈ 7/6 atol=1.0
 end
