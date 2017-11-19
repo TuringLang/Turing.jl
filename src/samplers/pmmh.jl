@@ -72,7 +72,7 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
 
   dprintln(2, "Propose new parameters from proposals...")
   for local_spl in spl.info[:samplers][1:end-1]
-    dprintln(2, "$(typeof(local_spl)) proposing...")
+    dprintln(2, "$(typeof(local_spl)) proposing $(local_spl.alg.space)...")
     propose(model, local_spl, vi)
     if local_spl.info[:violating_support] violating_support=true; break end
     new_prior_prob += local_spl.info[:prior_prob]
