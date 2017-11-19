@@ -1,5 +1,5 @@
 doc"""
-    HMC(n_iters::Int)
+    MH(n_iters::Int)
 
 Metropolis-Hasting sampler.
 
@@ -109,14 +109,10 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
 end
 
 function sample(model::Function, alg::MH;
-                chunk_size=CHUNKSIZE,     # set temporary chunk size
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
                 reuse_spl_n=0,            # flag for spl re-using
                 )
-
-  default_chunk_size = CHUNKSIZE  # record global chunk size
-  setchunksize(chunk_size)        # set temp chunk size
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
@@ -164,8 +160,6 @@ function sample(model::Function, alg::MH;
   println("  Running time        = $time_total;")
   accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
   println("  Accept rate         = $accept_rate;")
-
-  setchunksize(default_chunk_size)      # revert global chunk size
 
   if resume_from != nothing   # concat samples
     unshift!(samples, resume_from.value2...)
