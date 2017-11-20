@@ -101,6 +101,8 @@ function Base.consume(pc :: ParticleContainer)
     score = consume(p)
     score = isa(score, ForwardDiff.Dual) ? realpart(score) : score
     if isa(score, Real)
+      score += isa(getlogp(p.vi), ForwardDiff.Dual) ? realpart(getlogp(p.vi)) : getlogp(p.vi)
+      resetlogp!(p.vi)
       increase_logweight(pc, i, Float64(score))
     elseif score == Val{:done}
       num_done += 1

@@ -2,6 +2,8 @@ using Distributions
 using Turing
 using Base.Test
 
+srand(125)
+
 x = [1.5 2.0]
 
 @model gibbstest(x) = begin
@@ -13,12 +15,12 @@ x = [1.5 2.0]
   s, m
 end
 
-check_numerical(
-  sample(gibbstest(x), Gibbs(1500, PG(30, 3, :s), HMC(1, 0.2, 4, :m))),
-  [:s, :m], [49/24, 7/6]
-)
+alg = Gibbs(1000, CSMC(30, 3, :s), HMC(3, 0.2, 4, :m))
+chain = sample(gibbstest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
 
-check_numerical(
-  sample(gibbstest(x), PG(30, 2500)),
-  [:s, :m], [49/24, 7/6]
-)
+alg = CSMC(30, 2500)
+chain = sample(gibbstest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1

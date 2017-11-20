@@ -58,6 +58,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
                  fork2(TraceR(model, spl, vi))
 
   vi[getretain(vi, 0, spl)] = NULL
+  resetlogp!(vi)
 
   if ref_particle == nothing
     push!(particles, spl.alg.n_particles, spl, vi)
@@ -158,8 +159,15 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       updategid!(vi, vn, spl)
       vi[vn]
     end
-  else
-    vi[vn]
+  else # vn belongs to other sampler <=> conditionning on vn
+    if haskey(vi, vn)
+      r = vi[vn]
+    else
+      r = rand(dist)
+      push!(vi, vn, r, dist, -1)
+    end
+    acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+    r
   end
 end
 
