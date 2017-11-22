@@ -78,7 +78,7 @@ step(model::Function, spl::Sampler{IPMCMC}, VarInfos::Array{VarInfo}, is_first::
   for j in 1:spl.alg.n_csmc_nodes
     # Select a new conditional node by simulating cj
     log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
-    ksi = exp(log_ksi-maximum(log_ksi))
+    ksi = exp.(log_ksi-maximum(log_ksi))
     c_j = wsample(ksi) # sample from Categorical with unormalized weights
 
     if c_j < length(log_ksi) # if CSMC node selects another index than itself

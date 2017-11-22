@@ -3,7 +3,7 @@ using Base.Test
 
 srand(125)
 
-alg1 = SGHMC(3000, 0.01, 0.5)
+alg = SGHMC(10000, 0.02, 0.5)
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
@@ -13,13 +13,6 @@ alg1 = SGHMC(3000, 0.01, 0.5)
   return s, m
 end
 
-res1 = sample(gdemo([1.5, 2.0]), alg1)
-println("E[s] = $(mean(res1[:s]))")
-println("E[m] = $(mean(res1[:m]))")
-@test mean(res1[:s]) ≈ 49/24 atol=0.2
-@test mean(res1[:m]) ≈ 7/6 atol=0.2
-
-res1 = sample(gdemo([1.5, 2.0]), HMC(3000, 0.2, 4))
-println("HMC")
-println("E[s] = $(mean(res1[:s]))")
-println("E[m] = $(mean(res1[:m]))")
+chain = sample(gdemo([1.5, 2.0]), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1

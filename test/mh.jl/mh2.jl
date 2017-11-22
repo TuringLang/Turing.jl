@@ -36,7 +36,7 @@ D = [1.0 1.0 4.0 4.0]
   z1, z2, z3, z4, mu1, mu2
 end
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
-gibbs = Gibbs(500, CSMC(10, 1, :z1, :z2, :z3, :z4), MH(10, (:mu1,GKernel(1)), (:mu2,GKernel(1))))
+gibbs = Gibbs(500, CSMC(10, 1, :z1, :z2, :z3, :z4), MH(5, (:mu1,GKernel(1)), (:mu2,GKernel(1))))
 chain = sample(MoGtest(D), gibbs)
 
 @test mean(chain[:z1]) ≈ 1.0 atol=0.1

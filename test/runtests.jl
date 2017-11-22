@@ -38,9 +38,12 @@ testcases = Dict(
                       ],
         "hmc.jl"   => ["multivariate_support", "matrix_support",
                        "constrained_bounded", "constrained_simplex",],
+        "sghmc.jl" => ["sghmc_cons", "sghmc_cons",],
+        "sgld.jl"  => ["sgld_cons", "sgld_cons",],
         "is.jl"    => ["importance_sampling",],
-        "mh.jl"    => ["mh_cons","mh","mh2",],
-        "pmmh.jl"  => ["pmmh_cons","pmmh","pmmh2",],
+        "mh.jl"    => ["mh_cons", "mh", "mh2",],
+        "pmmh.jl"  => ["pmmh_cons", "pmmh", "pmmh2",],
+        "ipmcmc.jl"=> ["ipmcmc_cons", "ipmcmc", "ipmcmc2",],
 #       pgibbs.jl
 #       sampler.jl
 #       smc.jl
