@@ -120,7 +120,7 @@ function sample(model::Function, alg::MH;
   alg_str = "MH"
 
   # Initialization
-  time_total = zero(Float64)
+  time_total = 0.0
   n = reuse_spl_n > 0 ?
       reuse_spl_n :
       alg.n_iters
