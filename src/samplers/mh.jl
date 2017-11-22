@@ -175,15 +175,10 @@ end
 assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
       vi.index += 1
-      old_val = getval(vi, vn)[1]
+      if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
+      old_val = vi[vn]
 
-      if ~haskey(vi, vn)
-        r = rand(dist)
-        push!(vi, vn, r, dist, spl.alg.gid)
-        spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
-        spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
-
-      elseif vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
+      if vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
         proposal = spl.alg.proposals[vn.sym](old_val)
 
         if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
