@@ -172,16 +172,6 @@ function sample(model::Function, alg::MH;
   c
 end
 
-function rand_truncated(dist, lowerbound, upperbound)
-    notvalid = true
-    x = 0.0
-    while (notvalid)
-        x = rand(dist)
-        notvalid = ((x < lowerbound) | (x > upperbound))
-    end
-    return x
-end
-
 assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
       vi.index += 1
@@ -201,7 +191,7 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
           lb = support(dist).lb
           ub = support(dist).ub
           stdG = Normal()
-          r = rand_truncated(proposal, lb, ub)
+          r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
           # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
           spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
           spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
