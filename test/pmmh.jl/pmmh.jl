@@ -1,8 +1,7 @@
-include("../utility.jl")
-
 using Distributions
 using Turing
 using Base.Test
+
 srand(125)
 
 x = [1.5 2.0]
@@ -17,19 +16,20 @@ x = [1.5 2.0]
 end
 
 # PMMH with Gaussian proposal
-check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30, :m), (:s, (s) -> Normal(s, sqrt.(10))))),
-  [:s, :m], [49/24, 7/6]
-)
+GKernel(var) = (x) -> Normal(x, sqrt.(var))
+alg = PMMH(1000, SMC(20, :m), MH(1,(:s, GKernel(1))))
+chain = sample(pmmhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.2
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
 
 # PMMH with prior as proposal
-check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30, :m), :s)),
-  [:s, :m], [49/24, 7/6]
-)
+alg = PMMH(1000, SMC(20, :m), MH(1,:s))
+chain = sample(pmmhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.1
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
 
 # PIMH
-check_numerical(
-  sample(pmmhtest(x), PMMH(100, SMC(30))),
-  [:s, :m], [49/24, 7/6]
-)
+alg = PIMH(1000, SMC(20))
+chain = sample(pmmhtest(x), alg)
+@test mean(chain[:s]) ≈ 49/24 atol=0.15
+@test mean(chain[:m]) ≈ 7/6 atol=0.1
