@@ -1,6 +1,8 @@
 using Turing, Distributions
 using Base.Test
 
+srand(125)
+
 @model gdemo() = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
@@ -18,5 +20,6 @@ c2 = sample(gdemo(), s2)
 
 # Very loose bound, only for testing constructor.
 for c in [c1, c2]
-  check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
+  @test mean(c[:s]) ≈ 49/24 atol=1.0
+  @test mean(c[:m]) ≈ 7/6 atol=1.0
 end

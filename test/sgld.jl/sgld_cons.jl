@@ -1,18 +1,18 @@
 using Turing
 using Turing: Sampler
+using Base.Test
 
 alg = SGLD(1000, 0.25)
-println(alg)
 sampler = Sampler(alg)
+@test isa(alg, SGLD)
+@test isa(sampler, Sampler{Turing.SGLD})
 
 alg = SGLD(200, 0.25, :m)
-println(alg)
 sampler = Sampler(alg)
+@test isa(alg, SGLD)
+@test isa(sampler, Sampler{Turing.SGLD})
 
 alg = SGLD(1000, 0.25, :s)
-println(alg)
 sampler = Sampler(alg)
-
-println(typeof(alg))
-println(isa(alg, SGLD))
-println(isa(sampler, Sampler{Turing.Hamiltonian}))
+@test isa(alg, SGLD)
+@test isa(sampler, Sampler{Turing.SGLD})
