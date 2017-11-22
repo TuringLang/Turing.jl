@@ -39,6 +39,8 @@ testcases = Dict(
         "hmc.jl"   => ["multivariate_support", "matrix_support",
                        "constrained_bounded", "constrained_simplex",],
         "is.jl"    => ["importance_sampling",],
+        "mh.jl"    => ["mh_cons","mh","mh2",],
+        "pmmh.jl"  => ["pmmh_cons","pmmh","pmmh2",],
 #       pgibbs.jl
 #       sampler.jl
 #       smc.jl

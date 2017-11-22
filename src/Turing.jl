@@ -87,7 +87,9 @@ using Turing.Traces
 
 # Turing essentials - modelling macros and inference algorithms
 export @model, @~, @VarName                   # modelling
-export HMC, SGLD, SGHMC, HMCDA, NUTS, IS, SMC, CSMC, PG, PMMH, IPMCMC, Gibbs # sampling
+export MH, Gibbs                              # classic sampling
+export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
+export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
 export auto_tune_chunk_size!                  # helper
 export dprintln, set_verbosity, turnprogress  # debugging
