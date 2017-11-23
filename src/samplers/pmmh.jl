@@ -32,7 +32,7 @@ function Sampler(alg::PMMH)
 
   space = Set{Symbol}()
 
-  for i in 1:n_samplers[]
+  for i in 1:n_samplers
     sub_alg = alg.algs[i]
     if isa(sub_alg, Union{SMC, MH})
       samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
