@@ -42,7 +42,8 @@ testcases = Dict(
         "sgld.jl"  => ["sgld_cons", "sgld_cons",],
         "is.jl"    => ["importance_sampling",],
         "mh.jl"    => ["mh_cons", "mh", "mh2",],
-        "pmmh.jl"  => ["pmmh_cons", "pmmh", "pmmh2",],
+        # "pmmh.jl"  => ["pmmh_cons", "pmmh", "pmmh2",],
+        "pmmh.jl"  => ["pmmh_cons", "pmmh2",],
         "ipmcmc.jl"=> ["ipmcmc_cons", "ipmcmc", "ipmcmc2",],
 #       pgibbs.jl
 #       sampler.jl
