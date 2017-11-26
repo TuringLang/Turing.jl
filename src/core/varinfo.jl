@@ -41,6 +41,7 @@ type VarInfo
   pred        ::    Dict{Symbol,Any}
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
+  indices     ::    Dict{Int,Vector{VarName}}     # indices of current randomness
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
@@ -57,7 +58,8 @@ type VarInfo
       trans, logp,
       pred,
       0,
-      0
+      0,
+      Dict{Int,Vector{VarName}}()
     )
   end
 end
@@ -206,6 +208,16 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   vi
 end
 
+addindex!(vi::VarInfo, vn::VarName) = begin
+  if haskey(vi.indices, vi.num_produce)
+    push!(vi.indices[vi.num_produce], vn)
+  else
+    vi.indices[vi.num_produce] = [vn]
+  end
+
+  vi
+end
+
 # This method is use to generate a new VarName with the right count
 VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
   # TODO: update this method when implementing the sanity check
@@ -288,9 +300,30 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
+# getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+#   gidcs = getidcs(vi, spl)
+#   UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...]
+# end
+
 getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
-  gidcs = getidcs(vi, spl)
-  UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...]
+    println("n_retain: ", n_retain)
+    println("vi.num_produce: ", vi.num_produce)
+    println("vi.indices: ", vi.indices)
+  if n_retain == 0
+    gidcs = getidcs(vi, spl)
+    res = UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
+  elseif haskey(vi.indices, vi.num_produce)
+    vns = Array{VarName}()
+    for
+      vns = vcat(vns, )
+    end
+    vns = [vi.indices[idx] for idx in 1:vi.num_produce-1]
+    res = UnitRange[vi.ranges[vi.idcs[vn]] for vn in vns]
+  else
+    res = UnitRange[]
+  end
+  println("res: ", res)
+  res
 end
 
 #######################################
