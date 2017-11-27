@@ -165,6 +165,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     else
       r = rand(dist)
       push!(vi, vn, r, dist, -1)
+      addorder!(vi, vn, vi.num_produce)
     end
     acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     r
