@@ -52,7 +52,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl,
 step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles = ParticleContainer{TraceR}(model)
 
-  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
+  vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
   ref_particle = isempty(vi) ?
                  nothing :
                  fork2(TraceR(model, spl, vi))
@@ -143,7 +143,6 @@ end
 assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin
   vi = current_trace().vi
   if isempty(spl.alg.space) || vn.sym in spl.alg.space
-    vi.index += 1
     if ~haskey(vi, vn)
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
@@ -157,7 +156,6 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       setorder!(vi, vn, vi.num_produce)
       r
     else
-      checkindex(vn, vi, spl)
       updategid!(vi, vn, spl)
       vi[vn]
     end
