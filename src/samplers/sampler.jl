@@ -41,6 +41,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   else
     r = init(dist)
     push!(vi, vn, r, dist, 0)
+    addindex!(vi, vn, vi.num_produce+1)
   end
   # NOTE: The importance weight is not correctly computed here because
   #       r is genereated from some uniform distribution which is different from the prior
@@ -89,8 +90,10 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
   var
 end
 
-observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =
+observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
+  vi.num_produce += 1
   acclogp!(vi, logpdf(dist, value))
+end
 
 observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
