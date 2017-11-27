@@ -104,7 +104,6 @@ end
 
 
 Base.show(io::IO, S::TArray) = Base.show(io::IO, task_local_storage(S.ref)[2])
-Base.display(io::IO, S::TArray) = Base.display(io::IO, task_local_storage(S.ref)[2])
 Base.size(S::TArray) = Base.size(task_local_storage(S.ref)[2])
 Base.ndims(S::TArray) = Base.ndims(task_local_storage(S.ref)[2])
 
