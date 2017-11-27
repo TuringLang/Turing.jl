@@ -208,11 +208,11 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   vi
 end
 
-addindex!(vi::VarInfo, vn::VarName) = begin
-  if haskey(vi.indices, vi.num_produce)
-    push!(vi.indices[vi.num_produce], vn)
+addindex!(vi::VarInfo, vn::VarName, index::Int) = begin
+  if haskey(vi.indices, index)
+    push!(vi.indices[index], vn)
   else
-    vi.indices[vi.num_produce] = [vn]
+    vi.indices[index] = [vn]
   end
 
   vi

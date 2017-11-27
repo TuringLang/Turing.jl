@@ -147,7 +147,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     if ~haskey(vi, vn)
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
-      addindex!(vi, vn)
+      addindex!(vi, vn, vi.num_produce)
       spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       r
     elseif isnan(vi, vn)
