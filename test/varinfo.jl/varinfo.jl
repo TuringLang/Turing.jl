@@ -63,8 +63,8 @@ vn_u = VarName(gensym(), :u, "", 1)
 randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
-
-vi[getretain(vi, 1, spl2)] = NULL
+vi.num_produce = 1
+vi[getretain(vi, spl2)] = NULL
 
 # println(vi)
 
