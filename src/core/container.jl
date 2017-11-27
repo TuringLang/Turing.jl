@@ -166,10 +166,11 @@ function resample!( pc :: ParticleContainer,
   num_children = zeros(Int,n1)
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
-    p = particles[i] == ref ? ffork(particles[i]) : particles[i]
+    is_ref = particles[i] == ref
+    p = is_ref ? ffork(particles[i], is_ref) : particles[i]
     num_children[i] > 0 && push!(pc, p)
     for k=1:num_children[i]-1
-      newp = ffork(p)
+      newp = ffork(p, is_ref)
       push!(pc, newp)
     end
   end

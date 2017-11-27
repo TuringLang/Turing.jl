@@ -76,15 +76,17 @@ const TraceC = Trace{:C} # Replay
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 
 # Task copying version of fork for both TraceR and TraceC.
-function forkc(trace :: Trace)
+function forkc(trace :: Trace, is_ref :: Bool = false)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   newtrace.spl = trace.spl
 
-  n_rand = min(trace.vi.index, length(getvns(trace.vi, trace.spl)))
   newtrace.vi = deepcopy(trace.vi)
+  if is_ref
+    n_rand = min(trace.vi.index, length(getvns(trace.vi, trace.spl)))
+    newtrace.vi[getretain(newtrace.vi, n_rand, newtrace.spl)] = NULL
+  end
 
-  newtrace.vi[getretain(newtrace.vi, n_rand, trace.spl)] = NULL
   newtrace.task.storage[:turing_trace] = newtrace
   newtrace
 end
