@@ -41,8 +41,7 @@ type VarInfo
   pred        ::    Dict{Symbol,Any}
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
-  indices     ::    Dict{Int,Vector{VarName}}     # indices of current randomness
-  orders      ::    Vector{Int}     #
+  orders      ::    Vector{Int}   #
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
@@ -60,7 +59,6 @@ type VarInfo
       pred,
       0,
       0,
-      Dict{Int,Vector{VarName}}(),
       Vector{Int}()
     )
   end
