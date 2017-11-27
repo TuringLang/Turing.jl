@@ -306,23 +306,23 @@ end
 # end
 
 getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
-    println("n_retain: ", n_retain)
-    println("vi.num_produce: ", vi.num_produce)
-    println("vi.indices: ", vi.indices)
-  if n_retain == 0
-    gidcs = getidcs(vi, spl)
+  gidcs = getidcs(vi, spl)
+  if vi.num_produce == 0
     res = UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
-  elseif haskey(vi.indices, vi.num_produce)
-    vns = Array{VarName}()
-    for
-      vns = vcat(vns, )
+  elseif vi.num_produce < maximum(keys(vi.indices))
+    vns = Vector{VarName}()
+    for idx in vi.num_produce+1:maximum(keys(vi.indices))
+      for vn in vi.indices[idx]
+        if vi.idcs[vn] in gidcs
+          push!(vns, vn)
+        end
+      end
     end
-    vns = [vi.indices[idx] for idx in 1:vi.num_produce-1]
     res = UnitRange[vi.ranges[vi.idcs[vn]] for vn in vns]
   else
     res = UnitRange[]
   end
-  println("res: ", res)
+
   res
 end
 
