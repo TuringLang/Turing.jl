@@ -42,6 +42,7 @@ type VarInfo
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   indices     ::    Dict{Int,Vector{VarName}}     # indices of current randomness
+  orders      ::    Vector{Int}     #
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
@@ -59,7 +60,8 @@ type VarInfo
       pred,
       0,
       0,
-      Dict{Int,Vector{VarName}}()
+      Dict{Int,Vector{VarName}}(),
+      Vector{Int}()
     )
   end
 end
@@ -208,13 +210,15 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   vi
 end
 
-addindex!(vi::VarInfo, vn::VarName, index::Int) = begin
-  if haskey(vi.indices, index)
-    push!(vi.indices[index], vn)
-  else
-    vi.indices[index] = [vn]
-  end
+addindex!(vi::VarInfo, vn::VarName, num_produce::Int) = begin
+  push!(vi.orders, num_produce)
+  vi
+end
 
+setindex!(vi::VarInfo, vn::VarName, index::Int) = begin
+  if vi.orders[vi.idcs[vn]] != index
+    vi.orders[vi.idcs[vn]] = index
+  end
   vi
 end
 
@@ -309,16 +313,14 @@ getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
   if vi.num_produce == 0
     res = UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
-  elseif vi.num_produce < maximum(keys(vi.indices))
-    vns = Vector{VarName}()
-    for idx in vi.num_produce+1:maximum(keys(vi.indices))
-      for vn in vi.indices[idx]
-        if vi.idcs[vn] in gidcs
-          push!(vns, vn)
-        end
+  elseif vi.num_produce < length(vi.orders)
+    retained = Vector{Int}()
+    for idx in 1:length(vi.orders)
+      if idx in gidcs && vi.orders[idx] > vi.num_produce
+        push!(retained, idx)
       end
     end
-    res = UnitRange[vi.ranges[vi.idcs[vn]] for vn in vns]
+    res = UnitRange[map(i -> vi.ranges[i], retained)...]
   else
     res = UnitRange[]
   end
