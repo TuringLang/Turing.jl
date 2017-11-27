@@ -39,7 +39,6 @@ type VarInfo
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
   pred        ::    Dict{Symbol,Any}
-  index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
   VarInfo() = begin
@@ -57,7 +56,6 @@ type VarInfo
       Vector{Int}(),
       trans, logp,
       pred,
-      0,
       0,
       Vector{Int}()
     )
@@ -183,7 +181,6 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Trans?    :   $(vi.trans)
   | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
-  | Index     :   $(vi.index)
   | #produce  :   $(vi.num_produce)
   \\=======================================================================
   """
@@ -319,13 +316,6 @@ end
 
 # Check if a vn is set to NULL
 isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
-
-# Sanity check for VarInfo.index
-checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
-checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
-  vn_index = getvns(vi, spl)[vi.index]
-  @assert vn_index == vn " sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
-end
 
 updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space

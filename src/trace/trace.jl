@@ -59,7 +59,6 @@ function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res.spl = spl
   # Task(()->f());
   res.vi = deepcopy(vi)
-  res.vi.index = 0
   res.vi.num_produce = 0
   res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
   if isa(res.task.storage, Void)
@@ -98,7 +97,6 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   newtrace.spl = trace.spl
 
   newtrace.vi = deepcopy(trace.vi)
-  newtrace.vi.index = 0
   newtrace.vi.num_produce = 0
 
   # Step 1: Call consume t times to replay randomness

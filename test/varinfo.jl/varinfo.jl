@@ -3,7 +3,6 @@ using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain
 using Turing: VarInfo, VarName
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
-  vi.index = count ? vi.index + 1 : vi.index
   if ~haskey(vi, vn)
     r = rand(dist)
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
