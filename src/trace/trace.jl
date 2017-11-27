@@ -83,8 +83,7 @@ function forkc(trace :: Trace, is_ref :: Bool = false)
 
   newtrace.vi = deepcopy(trace.vi)
   if is_ref
-    n_rand = min(trace.vi.index, length(getvns(trace.vi, trace.spl)))
-    newtrace.vi[getretain(newtrace.vi, n_rand, newtrace.spl)] = NULL
+    newtrace.vi[getretain(newtrace.vi, newtrace.spl)] = NULL
   end
 
   newtrace.task.storage[:turing_trace] = newtrace
@@ -108,7 +107,7 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
   # Step 2: Remove remaining randomness if keep==false
   if !keep
     index = newtrace.vi.index
-    newtrace.vi[getretain(newtrace.vi, index, trace.spl)] = NULL
+    newtrace.vi[getretain(newtrace.vi, trace.spl)] = NULL
   end
 
   newtrace

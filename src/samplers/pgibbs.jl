@@ -57,7 +57,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
                  nothing :
                  fork2(TraceR(model, spl, vi))
 
-  vi[getretain(vi, 0, spl)] = NULL
+  vi[getretain(vi, spl)] = NULL
   resetlogp!(vi)
 
   if ref_particle == nothing
@@ -147,14 +147,14 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     if ~haskey(vi, vn)
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
-      addindex!(vi, vn, vi.num_produce)
+      addorder!(vi, vn, vi.num_produce)
       spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       r
     elseif isnan(vi, vn)
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
       setgid!(vi, spl.alg.gid, vn)
-      setindex!(vi, vn, vi.num_produce)
+      setorder!(vi, vn, vi.num_produce)
       r
     else
       checkindex(vn, vi, spl)
