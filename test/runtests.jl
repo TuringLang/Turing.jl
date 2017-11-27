@@ -44,8 +44,7 @@ testcases = Dict(
         "mh.jl"    => ["mh_cons", "mh", "mh2",],
         # "pmmh.jl"  => ["pmmh_cons", "pmmh", "pmmh2",],
         "pmmh.jl"  => ["pmmh_cons", "pmmh2",],
-        # "ipmcmc.jl"=> ["ipmcmc_cons", "ipmcmc", "ipmcmc2",],
-        "ipmcmc.jl"=> ["ipmcmc_cons",],
+        "ipmcmc.jl"=> ["ipmcmc_cons", "ipmcmc", "ipmcmc2",],
 #       pgibbs.jl
 #       sampler.jl
 #       smc.jl
