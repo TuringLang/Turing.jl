@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: Trace, TraceR, TraceC, current_trace, fork, fork2, VarName, Sampler
+import Turing: Trace, TraceR, TraceC, current_trace, fork, VarName, Sampler
 
 global n = 0
 
@@ -35,20 +35,3 @@ consume(a); consume(a)
 
 Base.@assert consume(t) == 2
 Base.@assert consume(a) == 4
-
-
-# Test replaying version of trace
-t = TraceR(f2)
-
-consume(t); consume(t)
-a = fork(t);
-consume(a); consume(a)
-
-Base.@assert consume(t) == 2
-Base.@assert consume(a) == 4
-
-a2 = fork(t)
-a2_vals = collect(Iterators.filter(x -> ~isnan.(x), a2.vi.vals[end]))
-Base.@assert length(a2_vals) == 5
-Base.@assert t.vi.vals[end] == a2_vals
-Base.@assert t.vi.index == a2.vi.index

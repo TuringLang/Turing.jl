@@ -4,7 +4,6 @@ Notes:
  - `randc` never stores randomness. [REMOVED]
  - `randr` will store and replay randomness regardless trace type (N.B. Particle Gibbs uses `randr`).
  - `fork1` will perform replaying immediately and fix the particle weight to 1.
- - `fork2` will perform lazy replaying and accumulate likelihoods like a normal particle.
 """
 
 module Traces
@@ -32,7 +31,7 @@ end
 include("taskcopy.jl")
 include("tarray.jl")
 
-export Trace, TraceR, TraceC, current_trace, fork, fork2, randr, TArray, tzeros,
+export Trace, TraceR, TraceC, current_trace, fork, randr, TArray, tzeros,
        localcopy, @suppress_err
 
 type Trace{T}
@@ -89,36 +88,25 @@ function forkc(trace :: Trace, is_ref :: Bool = false)
   newtrace
 end
 
-# fork s and replay until observation t; drop randomness between y_t:T if keep == false
-#  N.B.: PG requires keeping all randomness even we only replay up to observation y_t
-function forkr(trace :: TraceR, t :: Int, keep :: Bool)
-  # Step 0: create new task and copy randomness
+# PG requires for the reference particle keeping all randomness
+function forkr(trace :: TraceR)
+  # Create new task and copy randomness
   newtrace = TraceR(trace.task.code)
   newtrace.spl = trace.spl
 
   newtrace.vi = deepcopy(trace.vi)
   newtrace.vi.num_produce = 0
 
-  # Step 1: Call consume t times to replay randomness
-  map(i -> consume(newtrace), 1:t)
-
-  # Step 2: Remove remaining randomness if keep==false
-  if !keep
-    newtrace.vi[getretain(newtrace.vi, trace.spl)] = NULL
-  end
-
   newtrace
 end
 
-# Default fork implementation, replay immediately.
-fork(s :: TraceR) = forkr(s, s.vi.num_produce, false)
+# Default fork implementation.
+fork(s :: TraceR) = forkr(s)
 fork(s :: TraceC) = forkc(s)
 
-# Lazily replay on demand, note that:
+# Note that:
 #  - lazy replay is only possible for TraceR
-#  - lazy replay accumulates likelihoods
 #  - lazy replay is useful for implementing PG (i.e. ref particle)
-fork2(s :: TraceR) = forkr(s, 0, true)
 
 current_trace() = current_task().storage[:turing_trace]
 
