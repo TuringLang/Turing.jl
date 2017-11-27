@@ -52,10 +52,10 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl,
 step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   particles = ParticleContainer{TraceR}(model)
 
-  vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
+  vi.num_produce = 0;  # We need this line cause fork deepcopy `vi`.
   ref_particle = isempty(vi) ?
                  nothing :
-                 fork2(TraceR(model, spl, vi))
+                 fork(TraceR(model, spl, vi))
 
   vi[getretain(vi, spl)] = NULL
   resetlogp!(vi)
@@ -69,7 +69,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
 
   while consume(particles) != Val{:done}
     # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
-    resample!(particles, spl.alg.resampler, ref_particle; use_replay=false)
+    resample!(particles, spl.alg.resampler, ref_particle)
   end
 
   ## pick a particle to be retained.

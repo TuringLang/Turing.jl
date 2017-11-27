@@ -29,17 +29,15 @@ immutable SMC <: InferenceAlgorithm
   n_particles           ::  Int
   resampler             ::  Function
   resampler_threshold   ::  Float64
-  use_replay            ::  Bool
   space                 ::  Set
   gid                   ::  Int
-  SMC(n) = new(n, resampleSystematic, 0.5, false, Set(), 0)
-  SMC(n, b::Bool) = new(n, resampleSystematic, 0.5, b, Set(), 0)
-  SMC(n::Int, resampler::Function, resampler_threshold::Float64, use_replay::Bool, space::Set, gid::Int) = new(n, resampler, resampler_threshold, use_replay, space, gid)
+  SMC(n) = new(n, resampleSystematic, 0.5, Set(), 0)
+  SMC(n::Int, resampler::Function, resampler_threshold::Float64, space::Set, gid::Int) = new(n, resampler, resampler_threshold, space, gid)
   function SMC(n_particles::Int, space...)
     space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_particles, resampleSystematic, 0.5, false, space, 0)
+    new(n_particles, resampleSystematic, 0.5, space, 0)
   end
-  SMC(alg::SMC, new_gid::Int) = new(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.use_replay, alg.space, new_gid)
+  SMC(alg::SMC, new_gid::Int) = new(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
 
 Sampler(alg::SMC) = begin
@@ -49,9 +47,8 @@ Sampler(alg::SMC) = begin
 end
 
 step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
-    TraceType = spl.alg.use_replay ? TraceR : TraceC
-    particles = ParticleContainer{TraceType}(model)
-    vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
+    particles = ParticleContainer{TraceC}(model)
+    vi.num_produce = 0;  # We need this line cause fork deepcopy `vi`.
     vi[getretain(vi, spl)] = NULL
     resetlogp!(vi)
 
@@ -60,7 +57,7 @@ step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
       if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
+        resample!(particles,spl.alg.resampler)
       end
     end
 
@@ -76,14 +73,13 @@ end
 function sample(model::Function, alg::SMC)
   spl = Sampler(alg);
 
-  TraceType = spl.alg.use_replay ? TraceR : TraceC
-  particles = ParticleContainer{TraceType}(model)
+  particles = ParticleContainer{TraceC}(model)
   push!(particles, spl.alg.n_particles, spl, VarInfo())
 
   while consume(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
-      resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
+      resample!(particles,spl.alg.resampler)
     end
   end
   w, samples = getsample(particles)
