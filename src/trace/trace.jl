@@ -106,7 +106,6 @@ function forkr(trace :: TraceR, t :: Int, keep :: Bool)
 
   # Step 2: Remove remaining randomness if keep==false
   if !keep
-    index = newtrace.vi.index
     newtrace.vi[getretain(newtrace.vi, trace.spl)] = NULL
   end
 
