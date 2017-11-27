@@ -154,6 +154,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
       setgid!(vi, spl.alg.gid, vn)
+      setindex!(vi, vn, vi.num_produce)
       r
     else
       checkindex(vn, vi, spl)
