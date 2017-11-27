@@ -181,6 +181,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
+  | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
   | Index     :   $(vi.index)
   | #produce  :   $(vi.num_produce)
@@ -208,12 +209,12 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   vi
 end
 
-addindex!(vi::VarInfo, vn::VarName, num_produce::Int) = begin
+addorder!(vi::VarInfo, vn::VarName, num_produce::Int) = begin
   push!(vi.orders, num_produce)
   vi
 end
 
-setindex!(vi::VarInfo, vn::VarName, index::Int) = begin
+setorder!(vi::VarInfo, vn::VarName, index::Int) = begin
   if vi.orders[vi.idcs[vn]] != index
     vi.orders[vi.idcs[vn]] = index
   end
@@ -302,28 +303,14 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-# getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
-#   gidcs = getidcs(vi, spl)
-#   UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...]
-# end
-
-getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+getretain(vi::VarInfo, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
-  if vi.num_produce == 0
-    res = UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
-  elseif vi.num_produce < length(vi.orders)
-    retained = Vector{Int}()
-    for idx in 1:length(vi.orders)
-      if idx in gidcs && vi.orders[idx] > vi.num_produce
-        push!(retained, idx)
-      end
-    end
-    res = UnitRange[map(i -> vi.ranges[i], retained)...]
+  if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
+    UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
   else
-    res = UnitRange[]
+    retained = [idx for idx in 1:length(vi.orders) if idx in gidcs && vi.orders[idx] > vi.num_produce]
+    UnitRange[map(i -> vi.ranges[i], retained)...]
   end
-
-  res
 end
 
 #######################################
