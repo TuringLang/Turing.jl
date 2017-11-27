@@ -3,6 +3,8 @@ using Base.Test
 
 include("../utility.jl")
 
+srand(125)
+
 alg1 = HMCDA(3000, 1000, 0.65, 0.15)
 alg2 = PG(20, 500)
 alg3 = Gibbs(500, PG(30, 10, :s), HMCDA(1, 500, 0.65, 0.05, :m))
