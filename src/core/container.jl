@@ -77,7 +77,7 @@ function Base.copy(pc :: ParticleContainer)
   particles = collect(pc)
   newpc     = similar(pc)
   for p in particles
-    newp = forkc(p)
+    newp = fork(p)
     push!(newpc, newp)
   end
   newpc.logE        = pc.logE
@@ -164,10 +164,10 @@ function resample!( pc :: ParticleContainer,
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
     is_ref = particles[i] == ref
-    p = is_ref ? Traces.forkc(particles[i], is_ref) : particles[i]
+    p = is_ref ? Traces.fork(particles[i], is_ref) : particles[i]
     num_children[i] > 0 && push!(pc, p)
     for k=1:num_children[i]-1
-      newp = Traces.forkc(p, is_ref)
+      newp = Traces.fork(p, is_ref)
       push!(pc, newp)
     end
   end

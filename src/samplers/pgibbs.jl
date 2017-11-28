@@ -50,12 +50,12 @@ end
 step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
 
 step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
-  particles = ParticleContainer{TraceR}(model)
+  particles = ParticleContainer{Trace}(model)
 
-  vi.num_produce = 0;  # We need this line cause fork deepcopy `vi`.
+  vi.num_produce = 0;  # Reset num_produce before new sweep\.
   ref_particle = isempty(vi) ?
                  nothing :
-                 fork(TraceR(model, spl, vi))
+                 forkr(Trace(model, spl, vi))
 
   vi[getretain(vi, spl)] = NULL
   resetlogp!(vi)
@@ -68,7 +68,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   end
 
   while consume(particles) != Val{:done}
-    # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
+    # TODO: fork somehow cause ProgressMeter to broke - need to figure out why
     resample!(particles, spl.alg.resampler, ref_particle)
   end
 
