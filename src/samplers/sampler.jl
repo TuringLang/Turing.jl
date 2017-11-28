@@ -41,7 +41,6 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   else
     r = init(dist)
     push!(vi, vn, r, dist, 0)
-    addorder!(vi, vn, vi.num_produce+1)
   end
   # NOTE: The importance weight is not correctly computed here because
   #       r is genereated from some uniform distribution which is different from the prior
@@ -64,14 +63,12 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
     if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
       for i = 1:n
         push!(vi, vns[i], rs[i], dist, 0)
-        addorder!(vi, vns[i], vi.num_produce+1)
       end
       @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
       var = rs
     elseif isa(dist, MultivariateDistribution)
       for i = 1:n
         push!(vi, vns[i], rs[:,i], dist, 0)
-        addorder!(vi, vns[i], vi.num_produce+1)
       end
       if isa(var, Vector)
         @assert length(var) == size(rs)[2] "[assume] variable and random number dimension unmatched"
