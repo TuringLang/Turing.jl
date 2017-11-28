@@ -47,8 +47,8 @@ Sampler(alg::SMC) = begin
 end
 
 step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
-    particles = ParticleContainer{TraceC}(model)
-    vi.num_produce = 0;  # We need this line cause fork deepcopy `vi`.
+    particles = ParticleContainer{Trace}(model)
+    vi.num_produce = 0;  # Reset num_produce before new sweep\.
     vi[getretain(vi, spl)] = NULL
     resetlogp!(vi)
 
@@ -73,7 +73,7 @@ end
 function sample(model::Function, alg::SMC)
   spl = Sampler(alg);
 
-  particles = ParticleContainer{TraceC}(model)
+  particles = ParticleContainer{Trace}(model)
   push!(particles, spl.alg.n_particles, spl, VarInfo())
 
   while consume(particles) != Val{:done}

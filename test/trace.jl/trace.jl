@@ -1,9 +1,9 @@
-# Test TraceC and TraceR
+# Test Trace
 
 using Turing
 using Distributions
 
-import Turing: Trace, TraceR, TraceC, current_trace, fork, VarName, Sampler
+import Turing: Trace, Trace, current_trace, fork, VarName, Sampler
 
 global n = 0
 
@@ -27,7 +27,7 @@ function f2()
 end
 
 # Test task copy version of trace
-t = TraceC(f2)
+t = Trace(f2)
 
 consume(t); consume(t)
 a = fork(t);

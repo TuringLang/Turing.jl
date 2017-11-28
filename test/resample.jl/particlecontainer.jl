@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, TraceC, TraceR, Trace, current_trace, VarName, Sampler
+import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler
 
 global n = 0
 
@@ -26,11 +26,11 @@ function f()
   end
 end
 
-pc = ParticleContainer{TraceC}(f)
+pc = ParticleContainer{Trace}(f)
 
-push!(pc, TraceC(pc.model))
-push!(pc, TraceC(pc.model))
-push!(pc, TraceC(pc.model))
+push!(pc, Trace(pc.model))
+push!(pc, Trace(pc.model))
+push!(pc, Trace(pc.model))
 
 Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
 Base.@assert weights(pc)[2] ≈ log(3)

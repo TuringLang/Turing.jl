@@ -1,11 +1,3 @@
-"""
-Notes:
- - `rand` will store randomness only when trace type matches TraceR.
- - `randc` never stores randomness. [REMOVED]
- - `randr` will store and replay randomness regardless trace type (N.B. Particle Gibbs uses `randr`).
- - `fork1` will perform replaying immediately and fix the particle weight to 1.
-"""
-
 module Traces
 using Turing: VarInfo, Sampler, getvns, NULL, getretain
 
@@ -31,19 +23,19 @@ end
 include("taskcopy.jl")
 include("tarray.jl")
 
-export Trace, TraceR, TraceC, current_trace, fork, randr, TArray, tzeros,
+export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
        localcopy, @suppress_err
 
-type Trace{T}
+type Trace
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  Union{Void, Sampler}
-  Trace{T}() where {T} = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
+  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
 end
 
 # NOTE: this function is called by `forkr`
-function (::Type{Trace{T}}){T}(f::Function)
-  res = Trace{T}();
+function (::Type{Trace})(f::Function)
+  res = Trace();
   # Task(()->f());
   res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Void)
@@ -53,8 +45,8 @@ function (::Type{Trace{T}}){T}(f::Function)
   res
 end
 
-function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
-  res = Trace{T}();
+function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
+  res = Trace();
   res.spl = spl
   # Task(()->f());
   res.vi = deepcopy(vi)
@@ -67,14 +59,11 @@ function (::Type{Trace{T}}){T}(f::Function, spl::Sampler, vi :: VarInfo)
   res
 end
 
-const TraceR = Trace{:R} # Task Copy
-const TraceC = Trace{:C} # Replay
-
 # step to the next observe statement, return log likelihood
 Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
 
-# Task copying version of fork for both TraceR and TraceC.
-function forkc(trace :: Trace, is_ref :: Bool = false)
+# Task copying version of fork for Trace.
+function fork(trace :: Trace, is_ref :: Bool = false)
   newtrace = typeof(trace)()
   newtrace.task = Base.copy(trace.task)
   newtrace.spl = trace.spl
@@ -88,10 +77,10 @@ function forkc(trace :: Trace, is_ref :: Bool = false)
   newtrace
 end
 
-# PG requires for the reference particle keeping all randomness
-function forkr(trace :: TraceR)
-  # Create new task and copy randomness
-  newtrace = TraceR(trace.task.code)
+# PG requires keeping all randomness for the reference particle
+# Create new task and copy randomness
+function forkr(trace :: Trace)
+  newtrace = Trace(trace.task.code)
   newtrace.spl = trace.spl
 
   newtrace.vi = deepcopy(trace.vi)
@@ -99,14 +88,6 @@ function forkr(trace :: TraceR)
 
   newtrace
 end
-
-# Default fork implementation.
-fork(s :: TraceR) = forkr(s)
-fork(s :: TraceC) = forkc(s)
-
-# Note that:
-#  - lazy replay is only possible for TraceR
-#  - lazy replay is useful for implementing PG (i.e. ref particle)
 
 current_trace() = current_task().storage[:turing_trace]
 
