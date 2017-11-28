@@ -202,12 +202,8 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.trans[end], false)
+  push!(vi.orders, vi.num_produce)
 
-  vi
-end
-
-addorder!(vi::VarInfo, vn::VarName, num_produce::Int) = begin
-  push!(vi.orders, num_produce)
   vi
 end
 
