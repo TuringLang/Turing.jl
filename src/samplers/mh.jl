@@ -174,7 +174,6 @@ end
 
 assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
-      vi.index += 1
       if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
       old_val = vi[vn]
 

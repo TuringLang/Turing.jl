@@ -37,21 +37,7 @@ function Base.push!(pc :: ParticleContainer, p :: Particle)
 end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
-# NOTE: Function to remove.
-# function Base.push!(pc :: ParticleContainer, n :: Int)
-#   vals = Array{eltype(pc.vals), 1}(n)
-#   logWs = Array{eltype(pc.logWs), 1}(n)
-#   for i=1:n
-#     vals[i]  = eltype(pc.vals)(pc.model)
-#     logWs[i] = 0
-#   end
-#   append!(pc.vals, vals)
-#   append!(pc.logWs, logWs)
-#   pc.num_particles += n
-#   pc
-# end
-
-function Base.push!(pc :: ParticleContainer, n :: Int, spl, varInfo)
+function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
   vals = Array{eltype(pc.vals), 1}(n)
   logWs = Array{eltype(pc.logWs), 1}(n)
   for i=1:n
@@ -77,7 +63,7 @@ function Base.copy(pc :: ParticleContainer)
   particles = collect(pc)
   newpc     = similar(pc)
   for p in particles
-    newp = forkc(p)
+    newp = fork(p)
     push!(newpc, newp)
   end
   newpc.logE        = pc.logE
@@ -149,12 +135,9 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 
 function resample!( pc :: ParticleContainer,
                    randcat :: Function = Turing.resampleSystematic,
-                   ref :: Union{Particle, Void} = nothing;
-                   use_replay = false)
+                   ref :: Union{Particle, Void} = nothing)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
-
-  ffork = use_replay ?  Traces.fork :  Traces.forkc
 
   # resample
   Ws, _ = weights(pc)
@@ -166,10 +149,11 @@ function resample!( pc :: ParticleContainer,
   num_children = zeros(Int,n1)
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
-    p = particles[i] == ref ? ffork(particles[i]) : particles[i]
+    is_ref = particles[i] == ref
+    p = is_ref ? Traces.fork(particles[i], is_ref) : particles[i]
     num_children[i] > 0 && push!(pc, p)
     for k=1:num_children[i]-1
-      newp = ffork(p)
+      newp = Traces.fork(p, is_ref)
       push!(pc, newp)
     end
   end

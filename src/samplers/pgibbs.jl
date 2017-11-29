@@ -50,14 +50,14 @@ end
 step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
 
 step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
-  particles = ParticleContainer{TraceR}(model)
+  particles = ParticleContainer{Trace}(model)
 
-  vi.index = 0; vi.num_produce = 0;  # We need this line cause fork2 deepcopy `vi`.
+  vi.num_produce = 0;  # Reset num_produce before new sweep\.
   ref_particle = isempty(vi) ?
                  nothing :
-                 fork2(TraceR(model, spl, vi))
+                 forkr(Trace(model, spl, vi))
 
-  vi[getretain(vi, 0, spl)] = NULL
+  vi[getretain(vi, spl)] = NULL
   resetlogp!(vi)
 
   if ref_particle == nothing
@@ -68,8 +68,8 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   end
 
   while consume(particles) != Val{:done}
-    # TODO: forkc somehow cause ProgressMeter to broke - need to figure out why
-    resample!(particles, spl.alg.resampler, ref_particle; use_replay=false)
+    # TODO: fork somehow cause ProgressMeter to broke - need to figure out why
+    resample!(particles, spl.alg.resampler, ref_particle)
   end
 
   ## pick a particle to be retained.
@@ -143,7 +143,6 @@ end
 assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin
   vi = current_trace().vi
   if isempty(spl.alg.space) || vn.sym in spl.alg.space
-    vi.index += 1
     if ~haskey(vi, vn)
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
@@ -153,9 +152,9 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
       setgid!(vi, spl.alg.gid, vn)
+      setorder!(vi, vn, vi.num_produce)
       r
     else
-      checkindex(vn, vi, spl)
       updategid!(vi, vn, spl)
       vi[vn]
     end

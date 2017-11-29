@@ -1,7 +1,7 @@
-using Turing: ParticleContainer, TraceC, copy
+using Turing: ParticleContainer, Trace, copy
 using Base.Test
 
-pc = ParticleContainer{TraceC}(x -> x * x)
+pc = ParticleContainer{Trace}(x -> x * x)
 newpc = copy(pc)
 
 @test newpc.logE        == pc.logE
