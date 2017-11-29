@@ -39,8 +39,8 @@ type VarInfo
   trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
   pred        ::    Dict{Symbol,Any}
-  index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
+  orders      ::    Vector{Int}   # observe statements number associated with random variables
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
@@ -57,7 +57,7 @@ type VarInfo
       trans, logp,
       pred,
       0,
-      0
+      Vector{Int}()
     )
   end
 end
@@ -179,8 +179,8 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
+  | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
-  | Index     :   $(vi.index)
   | #produce  :   $(vi.num_produce)
   \\=======================================================================
   """
@@ -202,7 +202,15 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.trans[end], false)
+  push!(vi.orders, vi.num_produce)
 
+  vi
+end
+
+setorder!(vi::VarInfo, vn::VarName, index::Int) = begin
+  if vi.orders[vi.idcs[vn]] != index
+    vi.orders[vi.idcs[vn]] = index
+  end
   vi
 end
 
@@ -288,9 +296,14 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-getretain(vi::VarInfo, n_retain::Int, spl::Union{Void, Sampler}) = begin
+getretain(vi::VarInfo, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
-  UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:(n_retain + 1))...]
+  if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
+    UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
+  else
+    retained = [idx for idx in 1:length(vi.orders) if idx in gidcs && vi.orders[idx] > vi.num_produce]
+    UnitRange[map(i -> vi.ranges[i], retained)...]
+  end
 end
 
 #######################################
@@ -299,13 +312,6 @@ end
 
 # Check if a vn is set to NULL
 isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
-
-# Sanity check for VarInfo.index
-checkindex(vn::VarName, vi::VarInfo) = checkindex(vn, vi, nothing)
-checkindex(vn::VarName, vi::VarInfo, spl::Union{Void, Sampler}) = begin
-  vn_index = getvns(vi, spl)[vi.index]
-  @assert vn_index == vn " sanity check for VarInfo.index failed: vn_index=$vn_index, vi.index=$(vi.index), vn_now=$(vn)"
-end
 
 updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space

@@ -2,7 +2,6 @@ global Δ_max = 1000
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
-  vi.index = 0
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end
   # model(vi=vi, sampler=spl) # run model
