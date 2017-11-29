@@ -2,6 +2,7 @@ using Turing, Base.Test
 using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL, CACHERESET
 using Turing: VarInfo, VarName
 
+# Mock assume method for CSMC cf src/samplers/pgibbs.jl
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
   if ~haskey(vi, vn)
     r = rand(dist)
@@ -19,7 +20,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
   end
 end
 
-csym = gensym()
+csym = gensym() # unique per model
 vn_z1 = VarName(csym, :z, "[1]", 1)
 vn_z2 = VarName(csym, :z, "[2]", 1)
 vn_z3 = VarName(csym, :z, "[3]", 1)
