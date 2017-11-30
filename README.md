@@ -12,11 +12,11 @@
 - Universal probabilistic programming with an intuitive modelling interface
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
-- Gibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms.
+- Gibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms
 
 ## Documentation
 
-Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
+Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
 
 - [Introduction](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/Introduction.ipynb)
 - [Gaussian Mixture Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/GMM.ipynb)
