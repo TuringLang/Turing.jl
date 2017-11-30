@@ -25,12 +25,11 @@ Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for docum
 - [Topic Models: LDA and MoC](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/TopicModels.ipynb)
 
 ## Contributing
-Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. See the [Contribute wiki page](https://github.com/yebai/Turing.jl/wiki/Contribute) for details on the process. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
-
-## Contributors
 
 Turing was originally created and is now managed by Hong Ge. Current and past Turing team members include [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx), [Emile Mathieu](http://emilemathieu.fr). 
-You can see the full list of on Github: https://github.com/yebai/Turing.jl/graphs/contributors. Thanks for the important additions, fixes and comments.
+You can see the full list of on Github: https://github.com/yebai/Turing.jl/graphs/contributors. 
+
+Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. See the [Contribute wiki page](https://github.com/yebai/Turing.jl/wiki/Contribute) for details on the process. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
 ## Citing Turing.jl ##
 
