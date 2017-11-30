@@ -37,14 +37,16 @@ type VarInfo
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
   trans       ::    Vector{Vector{Bool}}
-  logp        ::    Vector{Real}
+  logprior    ::    Vector{Real}
+  loglike     ::    Vector{Real}
   pred        ::    Dict{Symbol,Any}
   index       ::    Int           # index of current randomness
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   VarInfo() = begin
     vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
-    logp = Vector{Real}(); push!(logp, zero(Real))
+    logprior = Vector{Real}(); push!(logprior, zero(Real))
+    loglike = Vector{Real}(); push!(loglike, zero(Real))
     pred = Dict{Symbol,Any}()
 
     new(
@@ -54,7 +56,9 @@ type VarInfo
       vals,
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
-      trans, logp,
+      trans,
+      logprior,
+      loglike,
       pred,
       0,
       0
@@ -92,10 +96,21 @@ setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 istrans(vi::VarInfo, vn::VarName) = vi.trans[end][getidx(vi, vn)]
 settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)] = trans
 
-getlogp(vi::VarInfo) = vi.logp[end]
-setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
-acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
-resetlogp!(vi::VarInfo) = setlogp!(vi, zero(Real))
+getlogprior(vi::VarInfo) = vi.logprior[end]
+setlogprior!(vi::VarInfo, logp::Real) = vi.logprior[end] = logp
+acclogprior!(vi::VarInfo, logp::Real) = vi.logprior[end] += logp
+resetlogprior!(vi::VarInfo) = setlogprior!(vi, zero(Real))
+
+getloglike(vi::VarInfo) = vi.loglike[end]
+setloglike!(vi::VarInfo, logp::Real) = vi.loglike[end] = logp
+accloglike!(vi::VarInfo, logp::Real) = vi.loglike[end] += logp
+resetloglike!(vi::VarInfo) = setloglike!(vi, zero(Real))
+
+getlogp(vi::VarInfo) = getlogprior(vi) + getloglike(vi)
+getbothlogp(vi::VarInfo) = (getlogprior(vi), getloglike(vi))
+setbothlogp!(vi::VarInfo, bothlogp::Tuple{Real,Real}) = (setlogprior!(vi, bothlogp[1]); setloglike!(vi, bothlogp[2]))
+acclogp!(vi::VarInfo, logp::Real) = accloglike!(vi.loglike, logp) # fallback
+resetlogp!(vi::VarInfo) = (resetlogprior!(vi);resetloglike!(vi))
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
 
@@ -131,7 +146,8 @@ function cleandual!(vi::VarInfo)
   for i = 1:length(vi.vals[end])
     vi.vals[end][i] = realpart(vi.vals[end][i])
   end
-  vi.logp[end] = realpart(getlogp(vi))
+  vi.logprior[end] = realpart(getlogprior(vi))
+  vi.loglike[end] = realpart(getloglike(vi))
 end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
@@ -179,7 +195,8 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
-  | Logp      :   $(vi.logp)
+  | logprior  :   $(vi.logprior)
+  | loglike   :   $(vi.loglike)
   | Index     :   $(vi.index)
   | #produce  :   $(vi.num_produce)
   \\=======================================================================
