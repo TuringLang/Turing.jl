@@ -91,11 +91,8 @@ end
 
 observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
   vi.num_produce += 1
-  acclogp!(vi, logpdf(dist, value))
-end
-observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) =
-vi.num_produce += 1
   accloglike!(vi, logpdf(dist, value))
+end
 
 observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
