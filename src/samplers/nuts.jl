@@ -83,7 +83,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     logu = log(rand()) + (-H0)
 
     θ = realpart(vi[spl])
-    logp = getlogp(vi)
+    logp = getbothlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
     local α, n_α
@@ -117,7 +117,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     push!(spl.info[:accept_his], true)
     vi[spl] = θ
-    setlogp!(vi, logp)
+    setbothlogp!(vi, logp)
 
     # Adapt step-size and pre-cond
     adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
@@ -149,7 +149,7 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp.(min(0, -H′ - (-H0)))
 
-      θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
+      θ′, r′, θ′, r′, θ′, getbothlogp(vi), n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
       θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
