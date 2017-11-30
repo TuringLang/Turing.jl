@@ -14,8 +14,13 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
   randn(length(getranges(vi, spl))) .* spl.info[:wum][:stds]
 end
 
-get_indep_rvs(arr::Vector{Float64}, vi::VarInfo, spl::Sampler) = begin
-  find(dualpart(getloglike(vi))[getidcs(vi, spl)] .== 0.0)
+get_indep_rvs(vi::VarInfo, spl::Sampler) = begin
+  loglike = getloglike(vi)
+  if typeof(loglike) == ForwardDiff.Dual
+    find(dualpart()[getidcs(vi, spl)] .== 0.0)
+  else
+    []
+  end
 end
 
 # Leapfrog step
