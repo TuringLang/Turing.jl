@@ -16,7 +16,13 @@
 
 ## Documentation
 
-Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)).
+Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [Get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [Advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
+
+- [Introduction](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/Introduction.ipynb)
+- [Gaussian Mixture Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/GMM.ipynb)
+- [Bayesian Hidden Markov Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/BayesHmm.ipynb)
+- [Factorical Hidden Markov Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/FHMM.ipynb)
+- [Topic Models: LDA and MoC](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/notebooks/TopicModels.ipynb)
 
 ## Contributing
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. See the [Contribute wiki page](https://github.com/yebai/Turing.jl/wiki/Contribute) for details on the process. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
