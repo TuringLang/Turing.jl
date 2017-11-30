@@ -14,9 +14,8 @@ sample_momentum(vi::VarInfo, spl::Sampler) = begin
   randn(length(getranges(vi, spl))) .* spl.info[:wum][:stds]
 end
 
-clean_indep_rvs!(arr::Vector{Float64}, vi::VarInfo, spl::Sampler) = begin
-  indep_rvs = find(dualpart(getloglike(vi))[getidcs(vi, spl)] .== 0.0)
-  arr[indep_rvs] = 0
+get_indep_rvs(arr::Vector{Float64}, vi::VarInfo, spl::Sampler) = begin
+  find(dualpart(getloglike(vi))[getidcs(vi, spl)] .== 0.0)
 end
 
 # Leapfrog step
@@ -28,9 +27,8 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
   vi[spl] = θ
   grad = gradient(vi, model, spl)
   verifygrad(grad) || (return θ, p, 0)
-  clean_indep_rvs!(p, vi, spl)
-  clean_indep_rvs!(grad, vi, spl)
-
+  indep_rvs = get_indep_rvs(vi, spl)
+  θ_indep_rvs = copy(θ[indep_rvs])
   τ_valid = 0
   for t in 1:τ
     # NOTE: we dont need copy here becase arr += another_arr
@@ -45,12 +43,13 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     vi[spl] = θ
     grad = gradient(vi, model, spl)
     verifygrad(grad) || (vi[spl] = θ_old; setbothlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
-    clean_indep_rvs!(grad, vi, spl)
 
     p -= ϵ * grad / 2
 
     τ_valid += 1
   end
+
+  θ[indep_rvs] = θ_indep_rvs
 
   θ, p, τ_valid
 end
