@@ -16,7 +16,7 @@ end
 get_indep_rvs(vi::VarInfo, spl::Sampler) = begin
   loglike = getloglike(vi)
   if typeof(loglike) == ForwardDiff.Dual
-    find(dualpart()[getidcs(vi, spl)] .== 0.0)
+    find(dualpart(loglike)[getidcs(vi, spl)] .== 0.0)
   else
     []
   end
