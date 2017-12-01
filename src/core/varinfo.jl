@@ -195,17 +195,9 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
   | Trans?    :   $(vi.trans)
-<<<<<<< HEAD
-<<<<<<< HEAD
   | Orders    :   $(vi.orders)
-  | Logp      :   $(vi.logp)
-=======
-=======
->>>>>>> 3818d4bdc59f6554b0392963c0bcaf4ff07cb65c
   | logprior  :   $(vi.logprior)
   | loglike   :   $(vi.loglike)
-  | Index     :   $(vi.index)
->>>>>>> split logp into logprior and loglike
   | #produce  :   $(vi.num_produce)
   \\=======================================================================
   """
