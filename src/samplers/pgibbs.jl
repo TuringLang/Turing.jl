@@ -163,7 +163,8 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       r = vi[vn]
     else
       r = rand(dist)
-      push!(vi, vn, r, dist, -1)
+      push!(vi, vn, r, dist, 0)
+      spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
     end
     acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     r
