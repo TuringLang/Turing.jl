@@ -69,12 +69,6 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     ϵ_t = spl.alg.step_size / t^γ # NOTE: Choose γ=.55 in paper
     push!(spl.info[:wum][:ϵ], ϵ_t)
 
-    dprintln(3, "X-> R...")
-    if spl.alg.gid != 0
-      link!(vi, spl)
-      runmodel(model, vi, spl)
-    end
-
     dprintln(2, "recording old variables...")
     old_θ = realpart(vi[spl])
     θ = deepcopy(old_θ)
@@ -92,9 +86,6 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     dprintln(2, "always accept...")
     push!(spl.info[:accept_his], true)
     vi[spl] = θ
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi
   end

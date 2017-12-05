@@ -62,21 +62,11 @@ sample(model::Function, alg::Gibbs;
 
   @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
-  # Initialize samples
-  sub_sample_n = []
-  for sub_alg in alg.algs
-    if isa(sub_alg, GibbsComponent)
-      push!(sub_sample_n, sub_alg.n_iters)
-    else
-      error("[Gibbs] unsupport base sampling algorithm $alg")
-    end
-  end
-
   # Compute the number of samples to store
   n = reuse_spl_n > 0 ?
       reuse_spl_n :
       alg.n_iters
-  sample_n = n * (alg.thin ? 1 : sum(sub_sample_n))
+  sample_n = n * (alg.thin ? 1 : length(spl.info[:samplers]))
 
   # Init samples
   time_total = zero(Float64)
@@ -111,9 +101,8 @@ sample(model::Function, alg::Gibbs;
           local_spl.info[:grad_cache] = Dict{UInt64,Vector}()
         end
 
-        for _ = 1:local_spl.alg.n_iters
           dprintln(2, "recording old θ...")
-          time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
+          time_elapsed_thin = @elapsed varInfo = steps(model, local_spl, varInfo, i==1, local_spl.alg.n_iters)
 
           if ~spl.alg.thin
             samples[i_thin].value = Sample(varInfo).value
@@ -127,7 +116,6 @@ sample(model::Function, alg::Gibbs;
             i_thin += 1
           end
           time_elapsed += time_elapsed_thin
-        end
 
         if isa(local_spl.alg, Hamiltonian)
           lp = realpart(getlogp(varInfo))

@@ -70,6 +70,10 @@ Sampler(alg::MH) = begin
   Sampler(alg, info)
 end
 
+function prepare(model::Function, spl::Sampler{MH}, vi::VarInfo)
+  runmodel(model, vi, nothing)
+end
+
 propose(model::Function, spl::Sampler{MH}, vi::VarInfo) = begin
   spl.info[:proposal_ratio] = 0.0
   spl.info[:prior_prob] = 0.0
@@ -83,9 +87,6 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     vi
 
   else
-    if spl.alg.gid != 0 # Recompute joint in logp
-      runmodel(model, vi, nothing)
-    end
     old_θ = copy(vi[spl])
     old_logp = getlogp(vi)
 

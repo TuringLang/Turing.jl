@@ -104,3 +104,20 @@ observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) =
     acclogp!(vi, sum(logpdf(dist, value)))
   end
 end
+
+## Default prepare / unprepare
+steps(model::Function, spl::Sampler, vi::VarInfo, is_first::Bool, nb_steps::Int) = begin
+  if is_first vi = step(model, spl, vi, is_first); nb_steps -= 1 end
+  if nb_steps > 0
+    vi = prepare(model, spl, vi)
+    while nb_steps > 0
+      vi = step(model, spl, vi, false)
+      nb_steps -= 1
+    end
+    vi = unprepare(model, spl, vi)
+  end
+  vi
+end
+
+prepare(model::Function, spl::Sampler, vi::VarInfo) = vi
+unprepare(model::Function, spl::Sampler, vi::VarInfo) = vi

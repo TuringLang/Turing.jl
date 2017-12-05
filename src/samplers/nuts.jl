@@ -67,12 +67,6 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
-    dprintln(3, "X -> R...")
-    if spl.alg.gid != 0
-      link!(vi, spl)
-      runmodel(model, vi, spl)
-    end
-
     dprintln(2, "sampling momentum...")
     p = sample_momentum(vi, spl)
 
@@ -121,9 +115,6 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     # Adapt step-size and pre-cond
     adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
-
-    dprintln(3, "R -> X...")
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi
   end

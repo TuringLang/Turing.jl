@@ -73,6 +73,20 @@ Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
   Sampler(alg, info)
 end
 
+function prepare{T<:Hamiltonian}(model::Function, spl::Sampler{T}, vi::VarInfo)
+  dprintln(3, "X-> R...")
+  link!(vi, spl)
+  runmodel(model, vi, spl)
+  vi
+end
+
+function unprepare{T<:Hamiltonian}(model::Function, spl::Sampler{T}, vi::VarInfo)
+  dprintln(3, "R -> X...")
+  invlink!(vi, spl)
+  cleandual!(vi)
+  vi
+end
+
 function sample{T<:Hamiltonian}(model::Function, alg::T;
                                 chunk_size=CHUNKSIZE,     # set temporary chunk size
                                 save_state=false,         # flag for state saving
@@ -111,10 +125,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
        Base.invokelatest(model, VarInfo(), nothing) :
        deepcopy(resume_from.info[:vi])
 
-  if spl.alg.gid == 0
-    link!(vi, spl)
-    runmodel(model, vi, spl)
-  end
+  vi = prepare(model, spl, vi)
 
   # HMC steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
