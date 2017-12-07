@@ -84,7 +84,6 @@ function sample(model::Function, alg::SMC)
       resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
     end
   end
-  resample!(particles,spl.alg.resampler,use_replay=spl.alg.use_replay)
   w, samples = getsample(particles)
   res = Chain(w, samples)
 
