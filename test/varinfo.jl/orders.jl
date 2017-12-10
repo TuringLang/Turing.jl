@@ -9,7 +9,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
     spl.info[:cache_updated] = CACHERESET
     r
-  elseif isnan(vi, vn)
+  elseif isdel(vi, vn)
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)
     Turing.setorder!(vi, vn, vi.num_produce)

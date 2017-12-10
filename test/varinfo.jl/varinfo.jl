@@ -7,7 +7,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::
     r = rand(dist)
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
     r
-  elseif isnan(vi, vn)
+  elseif isdel(vi, vn)
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)
     r

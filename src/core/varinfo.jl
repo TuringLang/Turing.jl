@@ -311,7 +311,8 @@ end
 #######################################
 
 # Check if a vn is set to NULL
-isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
+isdel(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
+
 
 updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
