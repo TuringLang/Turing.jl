@@ -41,11 +41,15 @@ type VarInfo
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
+  flags       ::    Dict{String,Vector{Bool}}
+
   VarInfo() = begin
-    vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
+    vals  = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
     trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
-    logp = Vector{Real}(); push!(logp, zero(Real))
-    pred = Dict{Symbol,Any}()
+    logp  = Vector{Real}(); push!(logp, zero(Real))
+    pred  = Dict{Symbol,Any}()
+    flags = Dict{String,Vector{Bool}}()
+    flags["del"] = Vector{Bool}()
 
     new(
       Dict{VarName, Int}(),
@@ -57,7 +61,8 @@ type VarInfo
       trans, logp,
       pred,
       0,
-      Vector{Int}()
+      Vector{Int}(),
+      flags
     )
   end
 end
@@ -203,6 +208,7 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   push!(vi.gids, gid)
   push!(vi.trans[end], false)
   push!(vi.orders, vi.num_produce)
+  push!(vi.flags["del"], [false for _ = 1:n]...)
 
   vi
 end
@@ -310,9 +316,17 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
-# Check if a vn is set to NULL
-isdel(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
-
+# TODO: turn below to marco generated functions
+# Check if a vn is set to del
+isdel(vi::VarInfo, vn::VarName) = any(vi.flags["del"][getrange(vi, vn)])
+set_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = true
+unset_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = false
+set_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
+  vview = getretain(vi, spl)
+  if length(vview) > 0
+    vi.flags["del"][[i for arr in vview for i in arr]] = true
+  end
+end
 
 updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space

@@ -56,8 +56,8 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   ref_particle = isempty(vi) ?
                  nothing :
                  forkr(Trace(model, spl, vi))
-
-  vi[getretain(vi, spl)] = NULL
+  
+  set_vns_del_by_spl!(vi, spl)
   resetlogp!(vi)
 
   if ref_particle == nothing
@@ -149,6 +149,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       r
     elseif isdel(vi, vn)
+      unset_vn_del!(vi, vn)
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)
       setgid!(vi, spl.alg.gid, vn)

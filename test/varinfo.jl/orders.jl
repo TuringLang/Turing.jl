@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL, CACHERESET
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_vns_del_by_spl!, CACHERESET, isdel, unset_vn_del!
 using Turing: VarInfo, VarName
 
 # Mock assume method for CSMC cf src/samplers/pgibbs.jl
@@ -10,6 +10,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
     spl.info[:cache_updated] = CACHERESET
     r
   elseif isdel(vi, vn)
+    unset_vn_del!(vi, vn)
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)
     Turing.setorder!(vi, vn, vi.num_produce)
@@ -57,7 +58,7 @@ randr(vi, vn_z3, dists[1], spl1)
 vi.num_produce = 0
 @test getretain(vi, spl1) == UnitRange[6:6,5:5,4:4,2:2,1:1]
 @test getretain(vi, spl2) == UnitRange[3:3]
-vi[getretain(vi, spl1)] = NULL
+set_vns_del_by_spl!(vi, spl1)
 
 vi.num_produce += 1
 randr(vi, vn_z1, dists[1], spl1)
@@ -89,7 +90,7 @@ randr(vi_ref, vn_a2, dists[2], spl1)
 # Change order of samples: z1,a1,z2,z3 (no a2 anymore)
 vi = deepcopy(vi_ref)
 vi.num_produce = 0
-vi[getretain(vi, spl1)] = NULL
+set_vns_del_by_spl!(vi, spl1)
 vi.num_produce += 1
 randr(vi, vn_z1, dists[1], spl1)
 randr(vi, vn_a1, dists[2], spl1)

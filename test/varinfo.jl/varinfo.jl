@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_vns_del_by_spl!, isdel, unset_vn_del!
 using Turing: VarInfo, VarName
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
@@ -8,6 +8,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
     r
   elseif isdel(vi, vn)
+    unset_vn_del!(vi, vn)
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)
     r
@@ -63,7 +64,7 @@ randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 vi.num_produce = 1
-vi[getretain(vi, spl2)] = NULL
+set_vns_del_by_spl!(vi, spl2)
 
 # println(vi)
 

@@ -23,8 +23,6 @@ import Stan: Adapt, Hmc
 # Global variables/constants #
 ##############################
 
-global const NULL = NaN     # constant for "delete" vals
-
 global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
 setchunksize(chunk_size::Int) = begin
