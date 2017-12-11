@@ -318,11 +318,10 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
-# TODO: turn below to marco generated functions
-# Check if a vn is set to del
-isdel(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)]
-set_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)] = true
-unset_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)] = false
+check_flag(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)]
+set_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = true
+unset_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = false
+
 set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
   gidcs = getidcs(vi, spl)
   if vi.num_produce == 0
