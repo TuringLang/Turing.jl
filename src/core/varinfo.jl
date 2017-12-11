@@ -321,7 +321,7 @@ end
 isdel(vi::VarInfo, vn::VarName) = any(vi.flags["del"][getrange(vi, vn)])
 set_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = true
 unset_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = false
-set_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
+set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
   vview = getretain(vi, spl)
   if length(vview) > 0
     vi.flags["del"][[i for arr in vview for i in arr]] = true

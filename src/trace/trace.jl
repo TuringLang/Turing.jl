@@ -1,5 +1,5 @@
 module Traces
-using Turing: VarInfo, Sampler, getvns, set_vns_del_by_spl!
+using Turing: VarInfo, Sampler, getvns, set_retained_vns_del_by_spl!
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
@@ -70,7 +70,7 @@ function fork(trace :: Trace, is_ref :: Bool = false)
 
   newtrace.vi = deepcopy(trace.vi)
   if is_ref
-    set_vns_del_by_spl!(newtrace.vi, newtrace.spl)
+    set_retained_vns_del_by_spl!(newtrace.vi, newtrace.spl)
   end
 
   newtrace.task.storage[:turing_trace] = newtrace

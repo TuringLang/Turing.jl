@@ -57,7 +57,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
                  nothing :
                  forkr(Trace(model, spl, vi))
   
-  set_vns_del_by_spl!(vi, spl)
+  set_retained_vns_del_by_spl!(vi, spl)
   resetlogp!(vi)
 
   if ref_particle == nothing
