@@ -208,7 +208,7 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   push!(vi.gids, gid)
   push!(vi.trans[end], false)
   push!(vi.orders, vi.num_produce)
-  push!(vi.flags["del"], [false for _ = 1:n]...)
+  push!(vi.flags["del"], false)
 
   vi
 end
@@ -318,13 +318,20 @@ end
 
 # TODO: turn below to marco generated functions
 # Check if a vn is set to del
-isdel(vi::VarInfo, vn::VarName) = any(vi.flags["del"][getrange(vi, vn)])
-set_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = true
-unset_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getrange(vi, vn)] = false
+isdel(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)]
+set_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)] = true
+unset_vn_del!(vi::VarInfo, vn::VarName) = vi.flags["del"][getidx(vi, vn)] = false
 set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
-  vview = getretain(vi, spl)
-  if length(vview) > 0
-    vi.flags["del"][[i for arr in vview for i in arr]] = true
+  gidcs = getidcs(vi, spl)
+  if vi.num_produce == 0
+    for i = length(gidcs):-1:1
+      vi.flags["del"][gidcs[i]] = true
+    end
+  else
+    retained = [idx for idx in 1:length(vi.orders) if idx in gidcs && vi.orders[idx] > vi.num_produce]
+    for i = retained
+      vi.flags["del"][i] = true
+    end
   end
 end
 
