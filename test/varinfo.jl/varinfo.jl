@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_retained_vns_del_by_spl!, isdel, unset_vn_del!
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, set_retained_vns_del_by_spl!, isdel, unset_vn_del!
 using Turing: VarInfo, VarName
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin

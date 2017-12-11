@@ -302,6 +302,8 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
+# NOTE: this function below is not used anywhere but test files.
+#       we can safely remove it if we want.
 getretain(vi::VarInfo, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
   if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
