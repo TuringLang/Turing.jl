@@ -302,7 +302,8 @@ optRes *= "List realpart: $t_list\n"
 
 optRes *= "Constructing Dual numbers: \n"
 
-dps = zeros(44); dps[11] = 1;
+SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{44,Float64})
+dps = SEEDS[11]
 
 t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual{Void, Float64, 44}(1.1, dps) end
 
