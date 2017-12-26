@@ -148,7 +148,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       push!(vi, vn, r, dist, spl.alg.gid)
       spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
       r
-    elseif check_flag(vi, vn, "del")
+    elseif is_flagged(vi, vn, "del")
       unset_flag!(vi, vn, "del")
       r = rand(dist)
       setval!(vi, vectorize(dist, r), vn)

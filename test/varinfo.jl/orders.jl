@@ -1,5 +1,5 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_retained_vns_del_by_spl!, CACHERESET, check_flag, unset_flag!
+using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_retained_vns_del_by_spl!, CACHERESET, is_flagged, unset_flag!
 using Turing: VarInfo, VarName
 
 # Mock assume method for CSMC cf src/samplers/pgibbs.jl
@@ -9,7 +9,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
     spl.info[:cache_updated] = CACHERESET
     r
-  elseif check_flag(vi, vn, "del")
+  elseif is_flagged(vi, vn, "del")
     unset_flag!(vi, vn, "del")
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)

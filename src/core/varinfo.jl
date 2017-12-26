@@ -318,7 +318,7 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
-check_flag(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)]
+is_flagged(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)]
 set_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = true
 unset_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = false
 
