@@ -44,7 +44,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   end
   # NOTE: The importance weight is not correctly computed here because
   #       r is genereated from some uniform distribution which is different from the prior
-  acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+  acclogprior!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
   r
 end
 
@@ -84,14 +84,14 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
     end
   end
 
-  acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
+  acclogprior!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
   var
 end
 
 observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
   vi.num_produce += 1
-  acclogp!(vi, logpdf(dist, value))
+  accloglike!(vi, logpdf(dist, value))
 end
 
 observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
@@ -99,8 +99,8 @@ observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) =
   dist = dists[1]
   @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
   if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
-    acclogp!(vi, sum(logpdf.(dist, value)))
+    accloglike!(vi, sum(logpdf.(dist, value)))
   else
-    acclogp!(vi, sum(logpdf(dist, value)))
+    accloglike!(vi, sum(logpdf(dist, value)))
   end
 end

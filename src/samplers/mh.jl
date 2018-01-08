@@ -87,13 +87,13 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
       runmodel(model, vi, nothing)
     end
     old_θ = copy(vi[spl])
-    old_logp = getlogp(vi)
+    old_logp = getbothlogp(vi)
 
     dprintln(2, "Propose new parameters from proposals...")
     propose(model, spl, vi)
 
     dprintln(2, "computing accept rate α...")
-    α = getlogp(vi) - old_logp + spl.info[:proposal_ratio]
+    α = getlogp(vi) - old_logp[1] - old_logp[2] + spl.info[:proposal_ratio]
 
     dprintln(2, "decide wether to accept...")
     if log(rand()) < α && !spl.info[:violating_support]  # accepted
@@ -101,7 +101,7 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     else                      # rejected
       push!(spl.info[:accept_his], false)
       vi[spl] = old_θ         # reset Θ
-      setlogp!(vi, old_logp)  # reset logp
+      setbothlogp!(vi, old_logp)  # reset logp
     end
 
     vi
@@ -213,7 +213,7 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
       r = vi[vn]
     end
 
-    acclogp!(vi, logpdf(dist, r)) # accumulate pdf of prior
+    acclogprior!(vi, logpdf(dist, r)) # accumulate pdf of prior
     r
 end
 

@@ -2,7 +2,7 @@ global Δ_max = 1000
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
-  setlogp!(vi, zero(Real))
+  resetlogp!(vi)
   if spl != nothing spl.info[:total_eval_num] += 1 end
   # model(vi=vi, sampler=spl) # run model
   Base.invokelatest(model, vi, spl)
@@ -11,6 +11,15 @@ end
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
   randn(length(getranges(vi, spl))) .* spl.info[:wum][:stds]
+end
+
+get_indep_rvs(vi::VarInfo, spl::Sampler) = begin
+  loglike = getloglike(vi)
+  if typeof(loglike) == ForwardDiff.Dual
+    find(dualpart(loglike)[getidcs(vi, spl)] .== 0.0)
+  else
+    []
+  end
 end
 
 # Leapfrog step
@@ -22,12 +31,13 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
   vi[spl] = θ
   grad = gradient(vi, model, spl)
   verifygrad(grad) || (return θ, p, 0)
-
+  indep_rvs = get_indep_rvs(vi, spl)
+  θ_indep_rvs = copy(θ[indep_rvs])
   τ_valid = 0
   for t in 1:τ
     # NOTE: we dont need copy here becase arr += another_arr
     #       doesn't change arr in-place
-    p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
+    p_old = p; θ_old = copy(θ); old_logp = getbothlogp(vi)
 
     p -= ϵ * grad / 2
     θ += ϵ * p  # full step for state
@@ -36,12 +46,14 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
 
     vi[spl] = θ
     grad = gradient(vi, model, spl)
-    verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
+    verifygrad(grad) || (vi[spl] = θ_old; setbothlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
 
     p -= ϵ * grad / 2
 
     τ_valid += 1
   end
+
+  θ[indep_rvs] = θ_indep_rvs
 
   θ, p, τ_valid
 end

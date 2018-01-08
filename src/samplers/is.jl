@@ -57,4 +57,4 @@ assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
 end
 
 observe(spl::Sampler{IS}, dist::Distribution, value::Any, vi::VarInfo) =
-  acclogp!(vi, logpdf(dist, value))
+  accloglike!(vi, logpdf(dist, value))

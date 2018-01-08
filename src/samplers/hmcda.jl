@@ -85,7 +85,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     p = sample_momentum(vi, spl)
 
     dprintln(2, "recording old values...")
-    old_θ = realpart(vi[spl]); old_logp = getlogp(vi)
+    old_θ = realpart(vi[spl]); old_logp = getbothlogp(vi)
     old_H = find_H(p, model, vi, spl)
 
     τ = max(1, round(Int, λ / ϵ))
@@ -113,7 +113,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     else                      # rejected
       push!(spl.info[:accept_his], false)
       vi[spl] = old_θ         # reset Θ
-      setlogp!(vi, old_logp)  # reset logp
+      setbothlogp!(vi, old_logp)  # reset logp
     end
 
 
