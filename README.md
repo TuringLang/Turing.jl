@@ -4,6 +4,7 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/fvgi21998e1tfx0d/branch/master?svg=true)](https://ci.appveyor.com/project/yebai/turing-jl/branch/master)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.5.svg)](http://pkg.julialang.org/?pkg=Turing)
+[![Turing](http://pkg.julialang.org/badges/Turing_0.6.svg)](http://pkg.julialang.org/detail/Turing)
 [![Gitter](https://badges.gitter.im/gitterHQ/gitter.svg)](https://gitter.im/Turing-jl/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![Wiki Status](https://img.shields.io/badge/wiki-v0.3-blue.svg)](https://github.com/yebai/Turing.jl/wiki)
 
@@ -13,6 +14,10 @@
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Gibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms
+
+## News
+
+Turing.jl is 0.6 compatible now!
 
 ## Documentation
 
