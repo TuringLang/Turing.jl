@@ -33,18 +33,18 @@ type VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
-  vals        ::    Vector{Vector{Real}}
+  vals        ::    Vector{Real}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
-  logp        ::    Vector{Real}
+  logp        ::    Real
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
   flags       ::    Dict{String,Vector{Bool}}
 
   VarInfo() = begin
-    vals  = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
-    logp  = Vector{Real}(); push!(logp, zero(Real))
+    vals  = Vector{Real}()
+    logp  = zero(Real)
     pred  = Dict{Symbol,Any}()
     flags = Dict{String,Vector{Bool}}()
     flags["del"] = Vector{Bool}()
@@ -73,17 +73,17 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getranges(vi::VarInfo, vns::Vector{VarName}) = union(map(vn -> getrange(vi, vn), vns)...)
 
-getval(vi::VarInfo, vn::VarName)       = view(vi.vals[end], getrange(vi, vn))
-setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
+getval(vi::VarInfo, vn::VarName)       = view(vi.vals, getrange(vi, vn))
+setval!(vi::VarInfo, val, vn::VarName) = vi.vals[getrange(vi, vn)] = val
 
-getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns))
+getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals, getranges(vi, vns))
 
-getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
-setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
-setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[end][[i for arr in vview for i in arr]] = val) : nothing
+getval(vi::VarInfo, vview::VarView)                      = view(vi.vals, vview)
+setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[vview] = val
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[[i for arr in vview for i in arr]] = val) : nothing
 
-getall(vi::VarInfo)            = vi.vals[end]
-setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
+getall(vi::VarInfo)            = vi.vals
+setall!(vi::VarInfo, val::Any) = vi.vals = val
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
@@ -96,9 +96,9 @@ setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
 settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "trans"): unset_flag!(vi, vn, "trans")
 
-getlogp(vi::VarInfo) = vi.logp[end]
-setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
-acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
+getlogp(vi::VarInfo) = vi.logp
+setlogp!(vi::VarInfo, logp::Real) = vi.logp = logp
+acclogp!(vi::VarInfo, logp::Real) = vi.logp += logp
 resetlogp!(vi::VarInfo) = setlogp!(vi, zero(Real))
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
@@ -132,10 +132,10 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for i = 1:length(vi.vals[end])
-    vi.vals[end][i] = realpart(vi.vals[end][i])
+  for i = 1:length(vi.vals)
+    vi.vals[i] = realpart(vi.vals[i])
   end
-  vi.logp[end] = realpart(getlogp(vi))
+  vi.logp = realpart(getlogp(vi))
 end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
@@ -200,9 +200,9 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
 
   vi.idcs[vn] = length(vi.idcs) + 1
   push!(vi.vns, vn)
-  l = length(vi.vals[end]); n = length(val)
+  l = length(vi.vals); n = length(val)
   push!(vi.ranges, l+1:l+n)
-  append!(vi.vals[end], val)
+  append!(vi.vals, val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.orders, vi.num_produce)
@@ -284,7 +284,7 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
