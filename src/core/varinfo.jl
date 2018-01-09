@@ -36,7 +36,6 @@ type VarInfo
   vals        ::    Vector{Vector{Real}}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
-  trans       ::    Vector{Vector{Bool}}
   logp        ::    Vector{Real}
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -45,11 +44,11 @@ type VarInfo
 
   VarInfo() = begin
     vals  = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
-    trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
     logp  = Vector{Real}(); push!(logp, zero(Real))
     pred  = Dict{Symbol,Any}()
     flags = Dict{String,Vector{Bool}}()
     flags["del"] = Vector{Bool}()
+    flags["trans"] = Vector{Bool}()
 
     new(
       Dict{VarName, Int}(),
@@ -58,7 +57,7 @@ type VarInfo
       vals,
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
-      trans, logp,
+      logp,
       pred,
       0,
       Vector{Int}(),
@@ -94,8 +93,8 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
-istrans(vi::VarInfo, vn::VarName) = vi.trans[end][getidx(vi, vn)]
-settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)] = trans
+istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "trans"): unset_flag!(vi, vn, "trans")
 
 getlogp(vi::VarInfo) = vi.logp[end]
 setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
@@ -206,9 +205,9 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   append!(vi.vals[end], val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
-  push!(vi.trans[end], false)
   push!(vi.orders, vi.num_produce)
   push!(vi.flags["del"], false)
+  push!(vi.flags["trans"], false)
 
   vi
 end
