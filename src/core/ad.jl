@@ -52,7 +52,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     for i = 1:vn_num
       range = getrange(vi, vns[i])
       l = length(range)
-      vals = vi[vns[i]]
+      vals = getval(vi, vns[i])
       if vns[i] in vn_chunk        # for each variable to compute gradient in this round
         for i = 1:l
           vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])

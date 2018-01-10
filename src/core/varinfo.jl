@@ -7,8 +7,8 @@ using Distributions
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 import Turing: link!, invlink!, link, invlink
 
-export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, 
-       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!
+export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, copybyindex, 
+       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval
 export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 
 ###########
