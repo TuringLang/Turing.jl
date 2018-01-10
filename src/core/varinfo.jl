@@ -1,3 +1,16 @@
+module VarReplay
+
+using Turing: CACHERESET, CACHEIDCS, CACHERANGES
+using Turing: Sampler, realpart, dualpart, vectorize, reconstruct
+using Distributions
+
+import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
+import Turing: link!, invlink!, link, invlink
+
+export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, 
+       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!
+export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
+
 ###########
 # VarName #
 ###########
@@ -150,6 +163,8 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
     invlink(dist, reconstruct(dist, getval(vi, vn))) :
     reconstruct(dist, getval(vi, vn))
 end
+
+Base.setindex!(vi::VarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)
 
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
@@ -339,4 +354,8 @@ updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
     setgid!(vi, spl.alg.gid, vn)
   end
+end
+
+
+
 end

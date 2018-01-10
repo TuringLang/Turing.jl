@@ -1,5 +1,5 @@
-using Turing: is_flagged, set_flag!, unset_flag!
-using Turing: VarInfo, VarName
+using Turing.VarReplay
+using Turing.VarReplay: set_flag!, unset_flag!
 using Distributions
 using Base.Test
 

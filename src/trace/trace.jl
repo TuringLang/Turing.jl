@@ -1,5 +1,6 @@
 module Traces
-using Turing: VarInfo, Sampler, getvns, set_retained_vns_del_by_spl!
+using Turing: Sampler
+using Turing.VarReplay
 
 # Trick for supressing some warning messages.
 #   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953

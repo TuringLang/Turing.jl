@@ -151,7 +151,7 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
     elseif is_flagged(vi, vn, "del")
       unset_flag!(vi, vn, "del")
       r = rand(dist)
-      setval!(vi, vectorize(dist, r), vn)
+      vi[vn] = vectorize(dist, r)
       setgid!(vi, spl.alg.gid, vn)
       setorder!(vi, vn, vi.num_produce)
       r

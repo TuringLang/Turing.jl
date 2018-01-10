@@ -1,6 +1,7 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
-using Turing: VarInfo, VarName
+using Turing: reconstruct, invlink, step
+using Turing.VarReplay
+using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
   if ~haskey(vi, vn)

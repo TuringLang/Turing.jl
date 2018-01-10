@@ -1,6 +1,8 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, set_retained_vns_del_by_spl!, CACHERESET, is_flagged, unset_flag!
-using Turing: VarInfo, VarName
+using Turing: reconstruct, invlink, step, CACHERESET
+using Turing.VarReplay
+using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!, getretain
+
 
 # Mock assume method for CSMC cf src/samplers/pgibbs.jl
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
@@ -12,7 +14,7 @@ randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
   elseif is_flagged(vi, vn, "del")
     unset_flag!(vi, vn, "del")
     r = rand(dist)
-    Turing.setval!(vi, Turing.vectorize(dist, r), vn)
+    vi[vn] = Turing.vectorize(dist, r)
     Turing.setorder!(vi, vn, vi.num_produce)
     r
   else
