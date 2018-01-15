@@ -3,7 +3,7 @@ randrealuni() = Real(e * rand())  # may Euler's number give us good luck
 randrealuni(args) = map(x -> Real(x), e * rand(args...))
 
 # Only use customized initialization for transformable distributions
-init(dist::TransformDistribution) = inittrans(dist)
+init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}) = inittrans(dist)
 
 # Callbacks for un-transformable distributions
 init(dist::Distribution) = rand(dist)
