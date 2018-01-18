@@ -207,7 +207,7 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
       end
 
       spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
-      setval!(vi, vectorize(dist, r), vn)
+      vi[vn] = vectorize(dist, r)
       setgid!(vi, spl.alg.gid, vn)
     else
       r = vi[vn]

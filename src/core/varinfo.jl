@@ -1,3 +1,16 @@
+module VarReplay
+
+using Turing: CACHERESET, CACHEIDCS, CACHERANGES
+using Turing: Sampler, realpart, dualpart, vectorize, reconstruct
+using Distributions
+
+import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
+import Turing: link!, invlink!, link, invlink
+
+export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, copybyindex, 
+       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval
+export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
+
 ###########
 # VarName #
 ###########
@@ -33,19 +46,22 @@ type VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
-  vals        ::    Vector{Vector{Real}}
+  vals        ::    Vector{Real}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
-  trans       ::    Vector{Vector{Bool}}
-  logp        ::    Vector{Real}
+  logp        ::    Real
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
+  flags       ::    Dict{String,Vector{Bool}}
+
   VarInfo() = begin
-    vals = Vector{Vector{Real}}(); push!(vals, Vector{Real}())
-    trans = Vector{Vector{Real}}(); push!(trans, Vector{Real}())
-    logp = Vector{Real}(); push!(logp, zero(Real))
-    pred = Dict{Symbol,Any}()
+    vals  = Vector{Real}()
+    logp  = zero(Real)
+    pred  = Dict{Symbol,Any}()
+    flags = Dict{String,Vector{Bool}}()
+    flags["del"] = Vector{Bool}()
+    flags["trans"] = Vector{Bool}()
 
     new(
       Dict{VarName, Int}(),
@@ -54,10 +70,11 @@ type VarInfo
       vals,
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
-      trans, logp,
+      logp,
       pred,
       0,
-      Vector{Int}()
+      Vector{Int}(),
+      flags
     )
   end
 end
@@ -69,17 +86,17 @@ getidx(vi::VarInfo, vn::VarName) = vi.idcs[vn]
 getrange(vi::VarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
 getranges(vi::VarInfo, vns::Vector{VarName}) = union(map(vn -> getrange(vi, vn), vns)...)
 
-getval(vi::VarInfo, vn::VarName)       = view(vi.vals[end], getrange(vi, vn))
-setval!(vi::VarInfo, val, vn::VarName) = vi.vals[end][getrange(vi, vn)] = val
+getval(vi::VarInfo, vn::VarName)       = view(vi.vals, getrange(vi, vn))
+setval!(vi::VarInfo, val, vn::VarName) = vi.vals[getrange(vi, vn)] = val
 
-getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals[end], getranges(vi, vns))
+getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals, getranges(vi, vns))
 
-getval(vi::VarInfo, vview::VarView)                      = view(vi.vals[end], vview)
-setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[end][vview] = val
-setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[end][[i for arr in vview for i in arr]] = val) : nothing
+getval(vi::VarInfo, vview::VarView)                      = view(vi.vals, vview)
+setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[vview] = val
+setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[[i for arr in vview for i in arr]] = val) : nothing
 
-getall(vi::VarInfo)            = vi.vals[end]
-setall!(vi::VarInfo, val::Any) = vi.vals[end] = val
+getall(vi::VarInfo)            = vi.vals
+setall!(vi::VarInfo, val::Any) = vi.vals = val
 
 getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 
@@ -89,12 +106,12 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
-istrans(vi::VarInfo, vn::VarName) = vi.trans[end][getidx(vi, vn)]
-settrans!(vi::VarInfo, trans::Bool, vn::VarName) = vi.trans[end][getidx(vi, vn)] = trans
+istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "trans"): unset_flag!(vi, vn, "trans")
 
-getlogp(vi::VarInfo) = vi.logp[end]
-setlogp!(vi::VarInfo, logp::Real) = vi.logp[end] = logp
-acclogp!(vi::VarInfo, logp::Real) = vi.logp[end] += logp
+getlogp(vi::VarInfo) = vi.logp
+setlogp!(vi::VarInfo, logp::Real) = vi.logp = logp
+acclogp!(vi::VarInfo, logp::Real) = vi.logp += logp
 resetlogp!(vi::VarInfo) = setlogp!(vi, zero(Real))
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
@@ -128,10 +145,10 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
 end
 
 function cleandual!(vi::VarInfo)
-  for i = 1:length(vi.vals[end])
-    vi.vals[end][i] = realpart(vi.vals[end][i])
+  for i = 1:length(vi.vals)
+    vi.vals[i] = realpart(vi.vals[i])
   end
-  vi.logp[end] = realpart(getlogp(vi))
+  vi.logp = realpart(getlogp(vi))
 end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
@@ -146,6 +163,8 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
     invlink(dist, reconstruct(dist, getval(vi, vn))) :
     reconstruct(dist, getval(vi, vn))
 end
+
+Base.setindex!(vi::VarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)
 
 Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
@@ -196,13 +215,14 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
 
   vi.idcs[vn] = length(vi.idcs) + 1
   push!(vi.vns, vn)
-  l = length(vi.vals[end]); n = length(val)
+  l = length(vi.vals); n = length(val)
   push!(vi.ranges, l+1:l+n)
-  append!(vi.vals[end], val)
+  append!(vi.vals, val)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
-  push!(vi.trans[end], false)
   push!(vi.orders, vi.num_produce)
+  push!(vi.flags["del"], false)
+  push!(vi.flags["trans"], false)
 
   vi
 end
@@ -279,7 +299,7 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals[end], getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
@@ -296,6 +316,8 @@ getranges(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
+# NOTE: this function below is not used anywhere but test files.
+#       we can safely remove it if we want.
 getretain(vi::VarInfo, spl::Union{Void, Sampler}) = begin
   gidcs = getidcs(vi, spl)
   if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
@@ -310,11 +332,30 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
-# Check if a vn is set to NULL
-isnan(vi::VarInfo, vn::VarName) = any(isnan.(getval(vi, vn)))
+is_flagged(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)]
+set_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = true
+unset_flag!(vi::VarInfo, vn::VarName, flag::String) = vi.flags[flag][getidx(vi, vn)] = false
+
+set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler) = begin
+  gidcs = getidcs(vi, spl)
+  if vi.num_produce == 0
+    for i = length(gidcs):-1:1
+      vi.flags["del"][gidcs[i]] = true
+    end
+  else
+    retained = [idx for idx in 1:length(vi.orders) if idx in gidcs && vi.orders[idx] > vi.num_produce]
+    for i = retained
+      vi.flags["del"][i] = true
+    end
+  end
+end
 
 updategid!(vi::VarInfo, vn::VarName, spl::Sampler) = begin
   if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
     setgid!(vi, spl.alg.gid, vn)
   end
+end
+
+
+
 end

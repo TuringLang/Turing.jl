@@ -3,7 +3,6 @@ include("support/helper.jl")
 include("support/resample.jl")
 @suppress_err begin
   include("support/distributions.jl")
-  include("support/transform.jl")
 end
 include("support/hmc_core.jl")
 include("support/adapt.jl")

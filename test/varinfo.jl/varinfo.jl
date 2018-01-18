@@ -1,13 +1,15 @@
 using Turing, Base.Test
-using Turing: uid, cuid, reconstruct, invlink, getvals, step, getidcs, getretain, NULL
-using Turing: VarInfo, VarName
+using Turing: reconstruct, invlink, step
+using Turing.VarReplay
+using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
   if ~haskey(vi, vn)
     r = rand(dist)
     Turing.push!(vi, vn, r, dist, spl.alg.gid)
     r
-  elseif isnan(vi, vn)
+  elseif is_flagged(vi, vn, "del")
+    unset_flag!(vi, vn, "del")
     r = rand(dist)
     Turing.setval!(vi, Turing.vectorize(dist, r), vn)
     r
@@ -63,7 +65,7 @@ randr(vi, vn_u, dists[1], spl2, true)
 
 # println(vi)
 vi.num_produce = 1
-vi[getretain(vi, spl2)] = NULL
+set_retained_vns_del_by_spl!(vi, spl2)
 
 # println(vi)
 

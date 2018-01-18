@@ -49,7 +49,7 @@ end
 step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
     particles = ParticleContainer{Trace}(model)
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    vi[getretain(vi, spl)] = NULL
+    set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
 
     push!(particles, spl.alg.n_particles, spl, vi)
