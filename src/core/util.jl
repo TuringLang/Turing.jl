@@ -58,7 +58,7 @@ end
 ##########
 
 auto_tune_chunk_size!(mf::Function, rep_num=10) = begin
-  dim = length(mf().vals[end])
+  dim = length(mf().vals)
   if dim > 8
     n = 1
     sz_cand = Int[]
