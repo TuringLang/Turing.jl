@@ -43,7 +43,7 @@
   #   z[n] ~ Categorical(theta[doc[n]])
   # end
 
-  phi_dot_theta = [log([dot(map(p -> p[i], phi), theta[m]) for i = 1:V]) for m=1:M]
+  phi_dot_theta = [log.([dot(map(p -> p[i], phi), theta[m]) for i = 1:V]) for m=1:M]
   #for n = 1:N
   #  # phi_dot_theta = [dot(map(p -> p[i], phi), theta[doc[n]]) for i = 1:V]
   #  # w[n] ~ Categorical(phi_dot_theta)
@@ -62,7 +62,7 @@ end
   phi = Matrix{Real}(V, K)
   phi ~ [Dirichlet(beta)]
 
-  phi_dot_theta = log(phi * theta)
+  phi_dot_theta = log.(phi * theta)
   #for n = 1:N
   #  Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
   #end
