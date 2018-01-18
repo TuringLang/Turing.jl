@@ -13,7 +13,7 @@ using ForwardDiff
 using ProgressMeter
 using Stan
 
-import Base: ~, convert, promote_rule, string, isequal, ==, hash, getindex, setindex!, push!, rand, show, isnan, isempty
+import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
 import Mamba: AbstractChains, Chains
@@ -22,8 +22,6 @@ import Stan: Adapt, Hmc
 ##############################
 # Global variables/constants #
 ##############################
-
-global const NULL = NaN     # constant for "delete" vals
 
 global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
@@ -75,11 +73,13 @@ type Sampler{T<:InferenceAlgorithm}
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
-# TODO: make VarInfo into a seperate module?
+include("helper.jl")
+include("transform.jl")
 include("core/varinfo.jl")  # core internal variable container
 include("trace/trace.jl")   # to run probabilistic programs as tasks
 
 using Turing.Traces
+using Turing.VarReplay
 
 ###########
 # Exports #
