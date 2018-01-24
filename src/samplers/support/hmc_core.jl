@@ -29,8 +29,8 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     #       doesn't change arr in-place
     p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
 
-    p -= ϵ * grad / 2
-    θ += ϵ * p  # full step for state
+    p -= ϵ .* grad / 2
+    θ += ϵ .* p  # full step for state
     spl.info[:lf_num] += 1
     spl.info[:total_lf_num] += 1  # record leapfrog num
 

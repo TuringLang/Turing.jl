@@ -197,7 +197,6 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Range     :   $(vi.ranges)
   | Vals      :   $(vi.vals)
   | GIDs      :   $(vi.gids)
-  | Trans?    :   $(vi.trans)
   | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
   | #produce  :   $(vi.num_produce)

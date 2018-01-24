@@ -310,7 +310,7 @@ t_dualnumbers = @elapsed for _ = 1:(44*2000*5) ForwardDiff.Dual{Void, Float64, 4
 optRes *= "44*2000*5 times: $t_dualnumbers\n"
 
 
-include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
-using Requests
-import Requests: get, post, put, delete, options, FileParam
-send_str(optRes, "optimization")
+# include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
+# using Requests
+# import Requests: get, post, put, delete, options, FileParam
+# send_str(optRes, "optimization")
