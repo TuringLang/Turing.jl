@@ -5,18 +5,18 @@ title: "SRCF"
 
 <div class="topbox" style="overflow: auto;">
 <div class="logo" style="margin-bottom: 10px;">
-  <h1><a href="//www.turing.ml/">Turing</a></h1>
+  <h1><a href="//www.turing.ml/">turing</a></h1>
   <h2><a href="//www.turing.ml/">the Turing language for probabilistic programming</a></h2>
 </div><div class="menu">
+<br/><br/><br/>
   <p style="margin-bottom: 0px;">For prospective users:&nbsp;
     <a href="https://github.com/yebai/Turing.jl/">Github</a> |
-    <a href="https://github.com/yebai/Turing.jl/example-models//">Examples</a>
-    <a href="https://github.com/yebai/Turing.jl/wiki">Wiki</a><br/>
-  For developers:&nbsp;
-  <a href="https://github.com/yebai/Turing.jl/wiki/Contribute">Contribute</a><br/>
+    <a href="https://github.com/yebai/Turing.jl/example-models//">Examples</a> |
+    <a href="https://github.com/yebai/Turing.jl/wiki">Wiki</a> |
+   <a href="https://github.com/yebai/Turing.jl/wiki/Contribute">Contribute</a><br/>
   About the team:&nbsp;
-  <a href="//mlg.eng.cam.ac.uk"> CBL lab &#64; Cambridge</a> |
-    <a href="//csml.stats.ox.ac.uk/learning/">ML group &#64; Oxford</a> |
+    <a href="//mlg.eng.cam.ac.uk"> CBL lab &#64; Cambridge</a> |
+    <a href="//csml.stats.ox.ac.uk/learning/">ML group &#64; Oxford</a> 
   </p>
 </div></div><div class="main">
 
