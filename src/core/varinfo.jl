@@ -46,10 +46,10 @@ type VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
-  vals        ::    Vector{Real}
+  vals        ::    Vector{Any}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
-  logp        ::    Real
+  logp        ::    Any
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
@@ -111,7 +111,7 @@ settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "tra
 
 getlogp(vi::VarInfo) = vi.logp
 setlogp!(vi::VarInfo, logp::Real) = vi.logp = logp
-acclogp!(vi::VarInfo, logp::Real) = vi.logp += logp
+acclogp!(vi::VarInfo, logp::Any) = vi.logp += logp
 resetlogp!(vi::VarInfo) = setlogp!(vi, zero(Real))
 
 isempty(vi::VarInfo) = isempty(vi.idcs)
