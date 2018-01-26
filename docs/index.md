@@ -1,43 +1,22 @@
 ---
-layout: srcf
-title: "SRCF"
+layout: turing
+title: "The Turing language for probabilistic machine learning"
 ---
 
-<div class="topbox" style="overflow: auto;">
-<div class="logo" style="margin-bottom: 10px;">
-  <h1><a href="//www.turing.ml/">turing</a></h1>
-  <h2><a href="//www.turing.ml/">the Turing language for probabilistic programming</a></h2>
-</div><div class="menu">
-  <p style="margin-bottom: 0px;">
-    <a href="https://github.com/yebai/Turing.jl/edit/master/docs/index.md"> Edit on Github </a>
-    <br/><br/>
-    For prospective users:&nbsp;
-    <a href="https://github.com/yebai/Turing.jl/">Github</a> |
-    <a href="https://github.com/yebai/Turing.jl/example-models//">examples</a> |
-    <a href="https://github.com/yebai/Turing.jl/wiki">wiki</a> |
-   <a href="https://github.com/yebai/Turing.jl/wiki/Contribute">contribute</a><br/>
-  </p>
-</div></div><div class="main">
+# The Turing language
 
+**Turing** is a universal probabilistic programming language with an intuitive modelling interface for probabilistic machine learning.
 
-<h1>Turing</h1>
+# What you get...
 
-<p>The <b>Turing</b> language is a universal probabilistic programming with an intuitive modelling interface for Bayesian inference.
-</p>
+Turing provides **Hamiltonian Monte Carlo** (HMC) and **particle MCMC** sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:
 
+- **Universal** probabilistic programming with an intuitive modelling interface
+- **Hamiltonian Monte Carlo** (HMC) sampling for differentiable posterior distributions
+- **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flows
+- **Gibbs** sampling that combines particle MCMC,  HMC and many other MCMC algorithms
 
-<h1 id="wyg">What you get...</h1>
-
-Turing provides Hamiltonian Monte Carlo (HMC) and particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows. Current features include:
-
-</div>
-
-- Universal probabilistic programming with an intuitive modelling interface
-- Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions
-- Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
-- Gibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms
-
-## Documentation
+# Resources
 
 Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for documentation, tutorials (e.g. [get started](https://github.com/yebai/Turing.jl/wiki/Get-started)) and other topics (e.g. [advanced usages](https://github.com/yebai/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
 
