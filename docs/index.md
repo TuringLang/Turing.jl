@@ -3,9 +3,7 @@ layout: turing
 title: "The Turing language for probabilistic machine learning"
 ---
 
-# The Turing language
-
-**Turing** is a universal probabilistic programming language with an intuitive modelling interface for probabilistic machine learning.
+**Turing** is a universal probabilistic programming language focusing an intuitive modelling interface, composable probabilistic inference and computational scability.
 
 # What you get...
 
@@ -42,3 +40,12 @@ To cite Turing, please refer to the following paper. Sample BibTeX entry is give
 }
 {% endraw %}
 ```
+
+# Other probablistic/deep learning languages
+
+- [Stan](http://mc-stan.org/)
+- [Infer.NET](https://www.microsoft.com/en-us/research/project/infernet/)
+- [PyTorch](http://pytorch.org/) | [Pyro](https://github.com/uber/pyro)
+- [TensorFlow](https://www.tensorflow.org/) | [Edward](http://edwardlib.org/)
+- [DyNet](https://github.com/clab/dynet)
+
