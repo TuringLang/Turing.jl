@@ -25,3 +25,18 @@ Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for docum
 - [Bayesian Hidden Markov Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/BayesHmm.ipynb)
 - [Factorical Hidden Markov Model](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/FHMM.ipynb)
 - [Topic Models: LDA and MoC](https://nbviewer.jupyter.org/github/yebai/Turing.jl/blob/master/example-models/notebooks/TopicModels.ipynb)
+
+# Citing Turing
+
+To cite Turing, please refer to the following paper. Sample BibTeX entry is given below:
+
+```
+@InProceedings{turing17,
+  title = 	 {{T}uring: a language for composable probabilistic inference},
+  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
+  booktitle = 	 {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},
+  year = 	 {2018},
+  series = 	 {Proceedings of Machine Learning Research},
+  publisher = 	 {PMLR},
+}
+```
