@@ -31,6 +31,7 @@ Please visit [Turing.jl wiki](https://github.com/yebai/Turing.jl/wiki) for docum
 To cite Turing, please refer to the following paper. Sample BibTeX entry is given below:
 
 ```
+{% raw %}
 @InProceedings{turing17,
   title = 	 {{T}uring: a language for composable probabilistic inference},
   author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
@@ -39,4 +40,5 @@ To cite Turing, please refer to the following paper. Sample BibTeX entry is give
   series = 	 {Proceedings of Machine Learning Research},
   publisher = 	 {PMLR},
 }
+{% endraw %}
 ```
