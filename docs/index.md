@@ -45,7 +45,7 @@ To cite Turing, please refer to the following paper. Sample BibTeX entry is give
 
 - [Stan](http://mc-stan.org/)
 - [Infer.NET](https://www.microsoft.com/en-us/research/project/infernet/)
-- [PyTorch](http://pytorch.org/) | [Pyro](https://github.com/uber/pyro)
-- [TensorFlow](https://www.tensorflow.org/) | [Edward](http://edwardlib.org/)
+- [PyTorch](http://pytorch.org/) / [Pyro](https://github.com/uber/pyro)
+- [TensorFlow](https://www.tensorflow.org/) / [Edward](http://edwardlib.org/)
 - [DyNet](https://github.com/clab/dynet)
 
