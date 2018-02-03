@@ -3,7 +3,7 @@ layout: turing
 title: "The Turing language for probabilistic machine learning"
 ---
 
-**Turing** is a machine learning language focusing on intuitive modelling interface, composable probabilistic inference and computational scalability.
+**Turing** is a *universal* probabilistic programming language with a focus on intuitive modelling interface, composable probabilistic inference and computational scalability.
 
 # What you get...
 
