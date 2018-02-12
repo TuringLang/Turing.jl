@@ -1,0 +1,147 @@
+body {
+	margin:0px;
+	font-family:sans-serif;
+}
+
+div.topbox {
+	margin-top:20px;
+	border-top:#d5d5d5 solid 1px;
+	border-bottom:#d5d5d5 solid 1px;
+	background:#e5e5e5;
+	padding-left:20px;
+	padding-right:20px;
+	color:#747474;
+}
+
+div.logo {
+	float:left;
+}
+
+.logo h1 {
+	margin:20px 20px 0px 20px;
+	font-size:4em;
+	color:#cc0000;
+}
+
+.logo h1 a {
+	color:#cc0000;
+	text-decoration:none;
+}
+
+.logo h2 {
+	margin:0px;
+	font-size:1.1em;
+	color:#0099ff;
+}
+
+.logo h2 a {
+	color:#0099ff;
+	text-decoration:none;
+}
+
+a .logo {
+	text-decoration:none;
+}
+
+div.menu {
+	text-align:right;
+}
+
+.menu a {
+	color:#747474;
+}
+
+div.main {
+	margin:20px 50px 20px 50px;
+	color:#404040;
+}
+
+.main h1 {
+	font-size:1.4em;
+	color:#0099ff;
+}
+
+.main a {
+	color:#747474;
+}
+
+a {
+	white-space:nowrap;
+}
+
+ol li {
+	margin-bottom:0.5em;
+}
+
+ul li {
+	margin-bottom:0px;
+}
+
+table.donors th, table.donors td {
+	padding-right:12pt;
+}
+
+div.white {
+	background-color:#f5f5f5;
+}
+
+div.grey {
+	background-color:#cccccc;
+}
+
+div.thumbnail {
+	float:left;
+	width:400px;
+	margin:5px;
+	border:#d5d5d5 solid 1px;
+	padding:10px;
+	white-space:nowrap;
+	overflow:hidden;
+	/*text-overflow:ellipsis; this is invalid css*/
+}
+
+div.quick_button_outer{
+	padding: 1em;
+	float: left;
+	margin: auto;
+}
+
+div.quick_button {
+	width: 128px;
+	height: 64px;
+	margin: 0;
+	padding: 0;
+	background-image: url('/images/button.png');
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+}
+
+div.quick_button_outer a {
+	color: black;
+	text-decoration: none;
+}
+
+div.quick_button_outer a:visited {
+	color: black;
+	text-decoration: none;
+}
+
+div.quick_button_outer a:hover {
+	color: black;
+	text-decoration: underline;
+}
+
+div.button_bar {
+	width: 100%;
+	float: left;
+	color: black;
+	margin: auto;
+}
+
+/* *** Error pages *** */
+#errorpage p, #errorpage address {margin-left: 3em;}
+#errorpage span {font-size: smaller;}
+#errorpage h2 {font-size: 1.1em; padding-top: 1.5em;}
+#errorpage .logo {float: right; text-align: right; padding-right: 50px;}
+#errorpage .logo h2 {padding-top: 0;}
