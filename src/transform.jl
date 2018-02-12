@@ -154,7 +154,7 @@ link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   end
 
   @simd for k = 1:K-1
-    @inbounds Y[k,:] = logit(Z[k,:]) - log(one(T) / (K-k))
+    @inbounds Y[k,:] = logit(Z[k,:]) - log.(one(T) / (K-k))
   end
 
   Y
