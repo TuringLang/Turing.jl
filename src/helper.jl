@@ -10,6 +10,7 @@
 @inline realpart(ds::Matrix{Any}) = [realpart(col) for col in ds]
 @inline realpart(ds::Array)  = map(d -> realpart(d), ds)  # NOTE: this function is not optimized
 # @inline realpart(ds::TArray) = realpart(Array(ds))    # TODO: is it disabled temporary
+@inline realpart(ta::ReverseDiff.TrackedArray) = ta.value[1]
 
 @inline dualpart(d::ForwardDiff.Dual)       = d.partials.values
 @inline dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)

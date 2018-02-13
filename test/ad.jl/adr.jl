@@ -8,9 +8,9 @@ using Base.Test
 # Define model
 @model ad_test() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
-  1.5 ~ Normal(m, sqrt.(s))
-  2.0 ~ Normal(m, sqrt.(s))
+  m ~ Normal(0,sqrt(s[1]))
+  1.5 ~ Normal(m[1], sqrt(s[1]))
+  2.0  ~ Normal(m[1], sqrt(s[1]))
   return s, m
 end
 # Turing.TURING[:modelex]
@@ -49,6 +49,6 @@ _x = [_m, _s]
 grad_FWAD = sort(-g(_x))
 
 # Compare result
-# println(grad_Turing)
-# println(grad_FWAD)
+println(grad_Turing)
+println(grad_FWAD)
 @test grad_Turing ≈ grad_FWAD atol=1e-9
