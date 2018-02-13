@@ -19,9 +19,12 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
           model::Function, vi::VarInfo, spl::Sampler) = begin
 
   θ = realpart(_θ)
-  vi[spl] = θ
-  grad = gradient(vi, model, spl)
-  # grad = gradient_t(θ, vi, model, spl)
+  if ADBACKEND == :forward_diff
+    vi[spl] = θ
+    grad = gradient(vi, model, spl)
+  elseif ADBACKEND == :reverse_diff
+    grad = gradient_r(θ, vi, model, spl)
+  end
   verifygrad(grad) || (return θ, p, 0)
 
   τ_valid = 0
@@ -35,9 +38,12 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     spl.info[:lf_num] += 1
     spl.info[:total_lf_num] += 1  # record leapfrog num
 
-    vi[spl] = θ
-    grad = gradient(vi, model, spl)
-    # grad = gradient_t(θ, vi, model, spl)
+    if ADBACKEND == :forward_diff
+      vi[spl] = θ
+      grad = gradient(vi, model, spl)
+    elseif ADBACKEND == :reverse_diff
+      grad = gradient_r(θ, vi, model, spl)
+    end
     verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
 
     p -= ϵ * grad / 2

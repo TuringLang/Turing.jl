@@ -107,21 +107,22 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   g(vi[spl])
 end
-gradient_t(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_t(vi, model, nothing)
-gradient_t(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(vi, model, nothing)
+gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     inputs = (theta)
 
-    if model in RD_CACHE
+    if spl == nothing || length(spl.info[:reverse_diff_cache]) == 0
         f_tape2 = GradientTape(x -> (vi[spl] = x; runmodel(model, vi, spl).logp), inputs)
         compiled_f_tape2 = compile(f_tape2)
         results = (similar(theta))
 
-        RD_CACHE[model] = Dict()
-        RD_CACHE[model][:ctape] = compiled_f_tape2
-        RD_CACHE[model][:res] = results
+        if spl != nothing
+          spl.info[:reverse_diff_cache][:ctape] = compiled_f_tape2
+          spl.info[:reverse_diff_cache][:res] = results
+        end
     else
-        compiled_f_tape2 = RD_CACHE[model][:ctape]
-        results = RD_CACHE[model][:res]
+        compiled_f_tape2 = spl.info[:reverse_diff_cache][:ctape]
+        results = spl.info[:reverse_diff_cache][:res]
     end
 
     grad = gradient!(results, compiled_f_tape2, inputs)

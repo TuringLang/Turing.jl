@@ -6,6 +6,8 @@ include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/MoC-stan.data.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/MoC.model.jl")
 
+setadbackend(:reverse_diff)
+
 tbenchmark("HMC(20, 0.01, 5)", "nbmodel", "data=nbstandata[1]")
 
 bench_res = tbenchmark("HMC(2000, 0.01, 5)", "nbmodel", "data=nbstandata[1]")

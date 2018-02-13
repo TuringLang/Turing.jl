@@ -13,7 +13,6 @@ using ForwardDiff
 using ProgressMeter
 using Stan
 using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
-global RD_CACHE = Dict()
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
@@ -25,6 +24,11 @@ import Stan: Adapt, Hmc
 ##############################
 # Global variables/constants #
 ##############################
+
+global ADBACKEND = :forward_diff
+setadbackend(backend_sym) = begin
+  global ADBACKEND = backend_sym
+end
 
 global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
@@ -94,7 +98,7 @@ export MH, Gibbs                              # classic sampling
 export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
 export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
-export auto_tune_chunk_size!                  # helper
+export auto_tune_chunk_size!, setadbackend    # helper
 export dprintln, set_verbosity, turnprogress  # debugging
 
 # Turing-safe data structures and associated functions

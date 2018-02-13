@@ -65,6 +65,7 @@ Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
 
   # For caching gradient
   info[:grad_cache] = Dict{UInt64,Vector}()
+  info[:reverse_diff_cache] = Dict()
 
   # Adapt configuration
   if adapt_conf != nothing
