@@ -3,7 +3,9 @@
 ########
 
 @inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp.(-x))
-@inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log(x ./ (one(T) - x))
+@inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log.(x ./ (one(T) - x))
+@inline invlogit(x::TrackedArray) = 1.0 ./ (1.0 + exp.(-x))
+@inline logit(x::TrackedArray) = log.(x ./ (1.0 - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})

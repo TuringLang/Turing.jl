@@ -61,6 +61,7 @@ Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
   info[:θ_num] = 0
   info[:stds] = nothing
   info[:vars] = nothing
+  info[:ad] = Dict()
 
   # For caching gradient
   info[:grad_cache] = Dict{UInt64,Vector}()

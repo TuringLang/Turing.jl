@@ -12,10 +12,13 @@ using Distributions
 using ForwardDiff
 using ProgressMeter
 using Stan
+using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
+global RD_CACHE = Dict()
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
+import ReverseDiff: gradient
 import Mamba: AbstractChains, Chains
 import Stan: Adapt, Hmc
 
