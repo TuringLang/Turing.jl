@@ -10,6 +10,7 @@ module Turing
 
 using Distributions
 using ForwardDiff
+import ReverseDiff
 using ProgressMeter
 using Stan
 using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
