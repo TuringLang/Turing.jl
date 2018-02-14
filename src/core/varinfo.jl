@@ -200,6 +200,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
   | #produce  :   $(vi.num_produce)
+  | flags     :   $(vi.flags)
   \\=======================================================================
   """
   print(io, vi_str)

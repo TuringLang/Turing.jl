@@ -33,7 +33,7 @@
 
 include("../utility.jl")
 using Distributions, Turing
-
+srand(128)
 # Test for vectorize UnivariateDistribution
 @model vdemo(x) = begin
   s ~ InverseGamma(2,3)
@@ -45,7 +45,7 @@ using Distributions, Turing
   return s, m
 end
 
-alg = NUTS(2500, 500, 0.65)
+alg = HMC(250, 0.01, 5)
 x = randn(1000)
 res = sample(vdemo(x), alg)
 
@@ -59,7 +59,7 @@ D = 2
   x ~ [MvNormal(μ, ones(D))]
 end
 
-alg = NUTS(2500, 500, 0.65)
+alg = HMC(250, 0.01, 5)
 res = sample(vdemo2(randn(D,1000)), alg)
 
 # TODO: Test for vectorize MatrixDistribution

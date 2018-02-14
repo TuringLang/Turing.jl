@@ -28,6 +28,7 @@ import Stan: Adapt, Hmc
 
 global ADBACKEND = :forward_diff
 setadbackend(backend_sym) = begin
+  @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   global ADBACKEND = backend_sym
 end
 

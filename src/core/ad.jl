@@ -107,20 +107,22 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   g(vi[spl])
 end
-gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
-    inputs = (map(x -> [x], theta)...)
+gradient_r(theta::Vector, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
+gradient_r(theta::Vector, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+    inputs = (theta)
 
     if spl == nothing || length(spl.info[:reverse_diff_cache]) == 0
-        f_r(ipts...) = begin
-            for i = 1:length(ipts) 
-                vi.vals[i] = ipts[i] 
-            end
-            -runmodel(model, vi, spl).logp[1]
+        f_r(ipts) = begin
+          vi_spl = vi[spl]
+          for i = 1:length(ipts) 
+              vi_spl[i] = ipts[i] 
+          end
+          vi.logp = 0
+          -runmodel(model, vi, spl).logp
         end
         gtape = GradientTape(f_r, inputs)
         ctape = compile(gtape)
-        res = map(x -> similar(x), inputs)
+        res = (similar(theta))
 
         if spl != nothing
           spl.info[:reverse_diff_cache][:ctape] = ctape
@@ -135,8 +137,8 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
 
     # grad = ReverseDiff.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), inputs)
 
-    vi[spl] = realpart(vi[spl])
+    # vi[spl] = realpart(vi[spl])
     vi.logp = 0
     
-    [map(x -> x[1], grad)...]
+    grad
 end
