@@ -44,3 +44,7 @@ Dict(
   "beta" => [0.2, 0.2, 0.2, 0.2, 0.2]
 )
 ]
+
+# TPATH = Pkg.dir("Turing")
+# using HDF5, JLD
+# const ldastandata = load(TPATH*"/example-models/stan-models/ldastandata.jld")["data"]

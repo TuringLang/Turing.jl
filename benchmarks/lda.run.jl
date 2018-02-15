@@ -10,7 +10,7 @@ include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.data.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/lda.model.jl")
 
 include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
-
+println("Stan time: ", lda_time)
 setchunksize(60)
 setadbackend(:reverse_diff)
 
