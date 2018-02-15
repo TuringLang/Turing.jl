@@ -3,7 +3,7 @@ using Distributions
 # V <- 5; # words: river, stream, bank, money, loan
 # K <- 2; # topics: RIVER, BANK
 # M <- 25;  # docs
-V = 35
+V = 20
 K = 2
 M = 25
 
@@ -21,7 +21,7 @@ phi = rand(Dirichlet(beta), K)
 theta = rand(Dirichlet(alpha), M)
 
 # avg_doc_length <- 10;
-avg_doc_length = 20
+avg_doc_length = 100
 
 # doc_length <- rpois(M,avg_doc_length);
 doc_length = rand(Poisson(avg_doc_length), M)

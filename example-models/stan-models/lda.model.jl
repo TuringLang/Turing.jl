@@ -26,14 +26,25 @@
 #     increment_log_prob(log_sum_exp(gamma));  // likelihood
 #   }
 # }
+V = ldastandata[1]["V"]
+K = ldastandata[1]["K"]
+M = ldastandata[1]["M"]
+theta = Vector{Vector{Real}}(M)
+for m = 1:M
+  theta[m] = Vector{Real}(K)
+end
+phi = Vector{Vector{Real}}(K)
+for k = 1:K
+  phi[k] = Vector{Real}(V)
+end
 
 @model ldamodel(K, V, M, N, w, doc, beta, alpha) = begin
-  theta = Vector{Vector{Real}}(M)
+  # theta = Vector{Vector{Real}}(M)
   for m = 1:M
     theta[m] ~ Dirichlet(alpha)
   end
 
-  phi = Vector{Vector{Real}}(K)
+  # phi = Vector{Vector{Real}}(K)
   for k = 1:K
     phi[k] ~ Dirichlet(beta)
   end
@@ -55,17 +66,17 @@
 end
 
 
-@model ldamodel_vec(K, V, M, N, w, doc, beta, alpha) = begin
-  theta = Matrix{Real}(K, M)
-  theta ~ [Dirichlet(alpha)]
+# @model ldamodel_vec(K, V, M, N, w, doc, beta, alpha) = begin
+#   theta = Matrix{Real}(K, M)
+#   theta ~ [Dirichlet(alpha)]
 
-  phi = Matrix{Real}(V, K)
-  phi ~ [Dirichlet(beta)]
+#   phi = Matrix{Real}(V, K)
+#   phi ~ [Dirichlet(beta)]
 
-  phi_dot_theta = log.(phi * theta)
-  #for n = 1:N
-  #  Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
-  #end
-  lp = mapreduce(n->phi_dot_theta[w[n], doc[n]], +, 1:N)
-  Turing.acclogp!(vi, lp)
-end
+#   phi_dot_theta = log.(phi * theta)
+#   #for n = 1:N
+#   #  Turing.acclogp!(vi, phi_dot_theta[w[n], doc[n]])
+#   #end
+#   lp = mapreduce(n->phi_dot_theta[w[n], doc[n]], +, 1:N)
+#   Turing.acclogp!(vi, lp)
+# end

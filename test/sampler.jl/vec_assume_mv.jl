@@ -4,7 +4,7 @@ using Distributions, Turing, Base.Test
 N = 10
 beta = [0.5, 0.5]
 setchunksize(N*length(beta))
-alg = HMC(1000, 0.2, 4)
+alg = HMC(3000, 0.2, 4)
 
 # Test for vectorize UnivariateDistribution
 @model vdemo() = begin
@@ -12,14 +12,14 @@ alg = HMC(1000, 0.2, 4)
   phi ~ [Dirichlet(beta)]
 end
 
-t_vec = @elapsed res_vec = sample(vdemo(), alg)
+ch_vec, t_vec, m_vec, gctime, memallocs = @timed res_vec = sample(vdemo(), alg)
 
 @model vdemo() = begin
   phi = Matrix(2,N)
   phi ~ [Dirichlet(beta)]
 end
 
-t_vec_mat = @elapsed res_vec_mat = sample(vdemo(), alg)
+ch_vec_mat, t_vec_mat, m_vec_mat, gctime, memallocs = @timed res_vec_mat = sample(vdemo(), alg)
 
 @model vdemo() = begin
   phi = Vector{Vector{Real}}(N)
@@ -28,9 +28,14 @@ t_vec_mat = @elapsed res_vec_mat = sample(vdemo(), alg)
   end
 end
 
-t_loop = @elapsed res = sample(vdemo(), alg)
+ch_loop, t_loop, m_loop, gctime, memallocs = @timed res = sample(vdemo(), alg)
 
 println("Time for")
-println("  Loop : $t_loop")
-println("  Vec  : $t_vec")
-println("  Vec2 : $t_vec_mat")
+println("  Loop : $(sum(ch_loop[:elapsed]))")
+println("  Vec  : $(sum(ch_vec[:elapsed]))")
+println("  Vec2 : $(sum(ch_vec_mat[:elapsed]))")
+
+println("Mem for")
+println("  Loop : $m_loop")
+println("  Vec  : $m_vec")
+println("  Vec2 : $m_vec_mat")

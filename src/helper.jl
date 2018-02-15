@@ -33,9 +33,13 @@
 # support for some types related to matrices (like PDMat).
 @inline reconstruct(d::Distribution, val::Union{Vector,SubArray}) = reconstruct(d, val, typeof(val[1]))
 # NOTE: the implementation below was: `T(val[1])`; it is changed to `val[1]` due to the need of ReverseDiff.jl, no side effect found yet
-@inline reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type) = val[1]   
+@inline reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type) = val[1]
 @inline reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = Array{T, 1}(val)
 @inline reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type) = Array{T, 2}(reshape(val, size(d)...))
+
+@inline reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}) = reconstruct!(r, d, val, typeof(val[1]))
+@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = (r[eachindex(r)] = val; r)
+
 
 @inline reconstruct(d::Distribution, val::Union{Vector,SubArray}, n::Int) = reconstruct(d, val, typeof(val[1]), n)
 @inline reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type, n::Int) = Array{T, 1}(val)
@@ -49,3 +53,6 @@
   end
   orig
 end
+
+@inline reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}, n::Int) = reconstruct!(r, d, val, typeof(val[1]), n)
+@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type, n::Int) = (r[eachindex(r)] = val; r)

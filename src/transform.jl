@@ -160,10 +160,11 @@ link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   Y
 end
 
-invlink{T}(d::SimplexDistribution, y::Vector{T}) = begin
+invlink{T}(d::SimplexDistribution, y::Vector{T}) = invlink!(Vector{T}(length(y)), d, y)
+invlink!{T}(x, d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
   z = [invlogit(y[k] + log(one(T) / (K - k))) for k = 1:K-1]
-  x = Vector{T}(K)
+  
   for k in 1:K-1
     x[k] = (one(T) - sum(x[1:k-1])) * z[k]
   end

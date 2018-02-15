@@ -1,14 +1,14 @@
 module VarReplay
 
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
-using Turing: Sampler, realpart, dualpart, vectorize, reconstruct
+using Turing: Sampler, realpart, dualpart, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
 
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 import Turing: link!, invlink!, link, invlink
 
 export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, copybyindex, 
-       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval
+       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval, getuval
 export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 
 ###########
@@ -47,6 +47,7 @@ type VarInfo
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Real}
+  uvals       ::    Vector{Any}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
   logp        ::    Real
@@ -57,6 +58,7 @@ type VarInfo
 
   VarInfo() = begin
     vals  = Vector{Real}()
+    uvals = Vector{Any}()
     logp  = zero(Real)
     pred  = Dict{Symbol,Any}()
     flags = Dict{String,Vector{Bool}}()
@@ -68,6 +70,7 @@ type VarInfo
       Vector{VarName}(),
       Vector{UnitRange{Int}}(),
       vals,
+      uvals,
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
       logp,
@@ -94,6 +97,9 @@ getval(vi::VarInfo, vns::Vector{VarName}) = view(vi.vals, getranges(vi, vns))
 getval(vi::VarInfo, vview::VarView)                      = view(vi.vals, vview)
 setval!(vi::VarInfo, val::Any, vview::VarView)           = vi.vals[vview] = val
 setval!(vi::VarInfo, val::Any, vview::Vector{UnitRange}) = length(vview) > 0 ? (vi.vals[[i for arr in vview for i in arr]] = val) : nothing
+
+getuval(vi::VarInfo, vn::VarName) = vi.uvals[getidx(vi, vn)]
+setuval(vi::VarInfo, uval, vn::VarName) = vi.uvals[getidx(vi, vn)] = uval
 
 getall(vi::VarInfo)            = vi.vals
 setall!(vi::VarInfo, val::Any) = vi.vals = val
@@ -159,9 +165,17 @@ syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
-  istrans(vi, vn) ?
-    invlink(dist, reconstruct(dist, getval(vi, vn))) :
-    reconstruct(dist, getval(vi, vn))
+  if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
+    r = getuval(vi, vn)
+    reconstruct!(r, dist, getval(vi, vn))
+    istrans(vi, vn) ?
+      invlink!(r, dist, r) :
+      r
+  else
+    istrans(vi, vn) ?
+      invlink(dist, reconstruct(dist, getval(vi, vn))) :
+      reconstruct(dist, getval(vi, vn))
+  end
 end
 
 Base.setindex!(vi::VarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)
@@ -170,8 +184,8 @@ Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
   istrans(vi, vns[1]) ?
-    invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
-    reconstruct(dist, getval(vi, vns), length(vns))
+  invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
+  reconstruct(dist, getval(vi, vns), length(vns))
 end
 
 # NOTE: vi[vview] will just return what insdie vi (no transformations applied)
@@ -196,6 +210,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Varnames  :   $(string(vi.vns))
   | Range     :   $(vi.ranges)
   | Vals      :   $(vi.vals)
+  | UVals     :   $(vi.uvals)
   | GIDs      :   $(vi.gids)
   | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
@@ -218,6 +233,13 @@ push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::I
   l = length(vi.vals); n = length(val)
   push!(vi.ranges, l+1:l+n)
   append!(vi.vals, val)
+  if isa(dist, SimplexDistribution)
+    r_real = similar(r, Real)
+    r_real[eachindex(r_real)] = r
+  else
+    r_real = nothing
+  end
+  push!(vi.uvals, r_real)
   push!(vi.dists, dist)
   push!(vi.gids, gid)
   push!(vi.orders, vi.num_produce)

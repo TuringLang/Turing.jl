@@ -1,7 +1,8 @@
 # Get running time of Stan
 get_stan_time(stan_model_name::String) = begin
   s = readlines(pwd()*"/tmp/$(stan_model_name)_samples_1.csv")
-  m = match(r"(?<time>[0-9].[0-9]*)", s[end-1])
+  println(s[end-1])
+  m = match(r"(?<time>[0-9]+.[0-9]*)", s[end-1])
   float(m[:time])
 end
 
@@ -58,6 +59,7 @@ log2str(logd::Dict, monitor=[]) = begin
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
           str *= ("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
+          println(m, logd["stan"][v])
           diff = abs(m - logd["stan"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2
