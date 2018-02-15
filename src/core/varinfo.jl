@@ -46,10 +46,10 @@ type VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
-  vals        ::    Vector{Any}
+  vals        ::    Vector{Real}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
-  logp        ::    Any
+  logp        ::    Real
   pred        ::    Dict{Symbol,Any}
   num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
   orders      ::    Vector{Int}   # observe statements number associated with random variables
