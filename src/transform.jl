@@ -133,20 +133,29 @@ link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
 link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
   K = length(x)
 
-  key = (:cache_vec, T, K - 1)
-  if key in keys(TRANS_CACHE)
-    z = TRANS_CACHE[key]
-  else
-    z = Vector{T}(K - 1)
-    TRANS_CACHE[key] = z
-  end
+  # key = (:cache_vec, T, K - 1)
+  # if key in keys(TRANS_CACHE)
+  #   z = TRANS_CACHE[key]
+  # else
+  #   z = Vector{T}(K - 1)
+  #   TRANS_CACHE[key] = z
+  # end
 
-  for k in 1:K-1
-    z[k] = x[k] / (one(T) - sum(x[1:k-1]))
-  end
+  # for k in 1:K-1
+  #   z[k] = x[k] / (one(T) - sum(x[1:k-1]))
+  # end
 
-  @simd for k = 1:K-1
-    @inbounds y[k] = logit(z[k]) - log(one(T) / (K-k))
+  # @simd for k = 1:K-1
+  #   @inbounds y[k] = logit(z[k]) - log(one(T) / (K-k))
+  # end
+
+  sum_tmp = zero(T)
+  z = x[1]
+  y[1] = logit(z) - log(one(T) / (K-1))
+  @simd for k in 2:K-1
+    @inbounds sum_tmp += x[k-1]
+    @inbounds z = x[k] / (one(T) - sum_tmp)
+    @inbounds y[k] = logit(z) - log(one(T) / (K-k))
   end
 
   y
@@ -179,24 +188,28 @@ end
 invlink{T}(d::SimplexDistribution, y::Vector{T}) = invlink!(similar(y), d, y)
 invlink!{T}(x, d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
+  
+  # @simd for k = 1:K-1
+  #   @inbounds z[k] = invlogit(y[k] + log(one(T) / (K - k)))
+  # end
+  
+  # for k in 1:K-1
+  #   x[k] = (one(T) - sum(x[1:k-1])) * z[k]
+  # end
+  # x[K] = one(T) - sum(x[1:K-1])
 
-  key = (:cache_vec, T, K - 1)
-  if key in keys(TRANS_CACHE)
-    z = TRANS_CACHE[key]
-  else
-    z = Vector{T}(K - 1)
-    TRANS_CACHE[key] = z
+  z = invlogit(y[1] + log(one(T) / (K - 1)))
+  x[1] = z
+  sum_tmp = zero(T)
+  @simd for k = 2:K-1
+    @inbounds z = invlogit(y[k] + log(one(T) / (K - k)))
+    @inbounds sum_tmp += x[k-1]
+    @inbounds x[k] = (one(T) - sum_tmp) * z
   end
-  
-  @simd for k = 1:K-1
-    @inbounds z[k] = invlogit(y[k] + log(one(T) / (K - k)))
-  end
-  
-  for k in 1:K-1
-    x[k] = (one(T) - sum(x[1:k-1])) * z[k]
-  end
-  x[K] = one(T) - sum(x[1:K-1])
-  @assert sum(x) == 1 "[Turing] invlink of simplex distribution invalid"
+  sum_tmp += x[K-1]
+  x[K] = one(T) - sum_tmp
+
+  # @assert sum(x) == 1 "[Turing.invlink!] simplex distribution invalid; x = $x"
   x
 end
 
@@ -222,6 +235,15 @@ invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   end
   X[K,:] = one(T) - sum(X[1:K-1,:], 1)
 
+  # X[1,:] = Z[1,:]'
+  # sum_tmp = 0
+  # for k = 2:K-1
+  #   sum_tmp += X[k-1,:]
+  #   X[k,:] = (one(T) - sum_tmp') .* Z[k,:]
+  # end
+  # sum_tmp += X[K-1,:]
+  # X[K,:] = one(T) - sum_tmp'
+
   X
 end
 
@@ -229,11 +251,20 @@ logpdf_with_trans{T}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = be
   lp = logpdf(d, x)
   if transform
     K = length(x)
-    z = Vector{T}(K-1)
-    @simd for k in 1:K-1
-      @inbounds z[k] = x[k] / (one(T) - sum(x[1:k-1]))
+    
+    # @simd for k in 1:K-1
+    #   @inbounds z[k] = x[k] / (one(T) - sum(x[1:k-1]))
+    # end
+    # lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
+
+    sum_tmp = zero(T)
+    z = x[1]
+    lp += log(z) + log(one(T) - z)
+    @simd for k in 2:K-1
+      @inbounds sum_tmp += x[k-1]
+      @inbounds z = x[k] / (one(T) - sum_tmp)
+      @inbounds lp += log(z) + log(one(T) - z) + log(one(T) - sum_tmp)
     end
-    lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
   end
   lp
 end

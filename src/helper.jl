@@ -38,7 +38,7 @@
 @inline reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type) = Array{T, 2}(reshape(val, size(d)...))
 
 @inline reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}) = reconstruct!(r, d, val, typeof(val[1]))
-@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = (r[eachindex(r)] = val; r)
+@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = (r[:] = val; r)
 
 
 @inline reconstruct(d::Distribution, val::Union{Vector,SubArray}, n::Int) = reconstruct(d, val, typeof(val[1]), n)
@@ -55,4 +55,4 @@
 end
 
 @inline reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}, n::Int) = reconstruct!(r, d, val, typeof(val[1]), n)
-@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type, n::Int) = (r[eachindex(r)] = val; r)
+@inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type, n::Int) = (r[:] = val; r)

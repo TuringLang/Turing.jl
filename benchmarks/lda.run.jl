@@ -14,15 +14,15 @@ println("Stan time: ", lda_time)
 setchunksize(60)
 setadbackend(:reverse_diff)
 
-tbenchmark("HMC(2, 0.025, 10)", "ldamodel", "data=ldastandata[1]")
+# tbenchmark("HMC(2, 0.025, 10)", "ldamodel", "data=ldastandata[1]")
 
 turnprogress(false)
 
 for (modelc, modeln) in zip([
-  "ldamodel_vec", 
+  # "ldamodel_vec", 
   "ldamodel"
   ], [
-    "LDA-vec", 
+    # "LDA-vec", 
     "LDA"
     ])
   tbenchmark("HMC(2, 0.025, 10)", modelc, "data=ldastandata[1]")
