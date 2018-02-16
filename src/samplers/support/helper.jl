@@ -6,8 +6,8 @@
 @inline Sample(vi::VarInfo) = begin
   value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
   for vn in keys(vi)
-    r = getuval(vi, vn)
-    value[sym(vn)] = realpart(r == nothing? vi[vn] : r)
+    value[sym(vn)] = realpart(vi[vn])
+    # value[sym(vn)] = realpart(vi[vn])
   end
 
   # NOTE: do we need to check if lp is 0?

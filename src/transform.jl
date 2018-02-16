@@ -132,7 +132,15 @@ const SimplexDistribution = Union{Dirichlet}
 link{T}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
 link!{T}(y, d::SimplexDistribution, x::Vector{T}) = begin
   K = length(x)
-  z = Vector{T}(K-1)
+
+  key = (:cache_vec, T, K - 1)
+  if key in keys(TRANS_CACHE)
+    z = TRANS_CACHE[key]
+  else
+    z = Vector{T}(K - 1)
+    TRANS_CACHE[key] = z
+  end
+
   for k in 1:K-1
     z[k] = x[k] / (one(T) - sum(x[1:k-1]))
   end
@@ -148,7 +156,15 @@ link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = link!(similar(X), d, X)
 link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   nrow, ncol = size(X)
   K = nrow
-  Z = Matrix{T}(nrow - 1, ncol)
+
+  key = (:cache_mat, T, nrow - 1, ncol)
+  if key in keys(TRANS_CACHE)
+    Z = TRANS_CACHE[key]
+  else
+    Z = Matrix{T}(nrow - 1, ncol)
+    TRANS_CACHE[key] = Z
+  end
+
   for k = 1:K-1
     Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
   end
@@ -160,10 +176,21 @@ link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   Y
 end
 
-invlink{T}(d::SimplexDistribution, y::Vector{T}) = invlink!(Vector{T}(length(y)), d, y)
+invlink{T}(d::SimplexDistribution, y::Vector{T}) = invlink!(similar(y), d, y)
 invlink!{T}(x, d::SimplexDistribution, y::Vector{T}) = begin
   K = length(y)
-  z = [invlogit(y[k] + log(one(T) / (K - k))) for k = 1:K-1]
+
+  key = (:cache_vec, T, K - 1)
+  if key in keys(TRANS_CACHE)
+    z = TRANS_CACHE[key]
+  else
+    z = Vector{T}(K - 1)
+    TRANS_CACHE[key] = z
+  end
+  
+  @simd for k = 1:K-1
+    @inbounds z[k] = invlogit(y[k] + log(one(T) / (K - k)))
+  end
   
   for k in 1:K-1
     x[k] = (one(T) - sum(x[1:k-1])) * z[k]
@@ -177,7 +204,15 @@ invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = invlink!(similar(Y), d,
 invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   nrow, ncol = size(Y)
   K = nrow
-  Z = Matrix{T}(nrow - 1, ncol)
+
+  key = (:cache_mat, T, nrow - 1, ncol)
+  if key in keys(TRANS_CACHE)
+    Z = TRANS_CACHE[key]
+  else
+    Z = Matrix{T}(nrow - 1, ncol)
+    TRANS_CACHE[key] = Z
+  end
+
   @simd for k = 1:K-1
     @inbounds Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
   end
