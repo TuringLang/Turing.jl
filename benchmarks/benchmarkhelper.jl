@@ -8,7 +8,7 @@ end
 
 # Run benchmark
 tbenchmark(alg::String, model::String, data::String) = begin
-  chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
+  chain, time, mem, _, _  = eval(parse("model_f = $model($data); @timed sample(model_f, $alg)"))
   alg, sum(chain[:elapsed]), mem, chain, deepcopy(chain)
 end
 
