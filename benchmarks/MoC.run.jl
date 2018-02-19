@@ -10,7 +10,7 @@ setadbackend(:reverse_diff)
 
 tbenchmark("HMC(20, 0.01, 5)", "nbmodel", "data=nbstandata[1]")
 
-bench_res = tbenchmark("HMC(2000, 0.01, 5)", "nbmodel", "data=nbstandata[1]")
+bench_res = tbenchmark("HMC(5000, 0.01, 5)", "nbmodel", "data=nbstandata[1]")
 # bench_res = tbenchmark("HMCDA(1000, 0.65, 0.3)", "nbmodel", "data=nbstandata[1]")
 # bench_res = tbenchmark("NUTS(2000, 0.65)", "nbmodel", "data=nbstandata[1]")
 bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]

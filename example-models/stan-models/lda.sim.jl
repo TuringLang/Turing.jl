@@ -3,25 +3,27 @@ using Distributions
 # V <- 5; # words: river, stream, bank, money, loan
 # K <- 2; # topics: RIVER, BANK
 # M <- 25;  # docs
-V = 20
-K = 2
-M = 25
+V = 200
+K = 5
+M = 10
 
 # alpha <- rep(1/K,K);
 # beta <- rep(1/V,V);
-alpha = collect(repeated(1/K, K));
-beta = collect(repeated(1/V, V));
+alpha = collect(ones(K) / K);
+beta = collect(ones(V) / V);
 
 # phi <- array(NA,c(2,5));
 # phi[1,] = c(0.330, 0.330, 0.330, 0.005, 0.005);
 # phi[2,] = c(0.005, 0.005, 0.330, 0.330, 0.330);
 phi = rand(Dirichlet(beta), K)
+println(phi)
 
 # theta <- rdirichlet(M,alpha);
 theta = rand(Dirichlet(alpha), M)
+println(theta)
 
 # avg_doc_length <- 10;
-avg_doc_length = 100
+avg_doc_length = 1000
 
 # doc_length <- rpois(M,avg_doc_length);
 doc_length = rand(Poisson(avg_doc_length), M)
@@ -68,7 +70,7 @@ const ldastandata = [
   )
 ]
 
-println(ldastandata)
+# println(ldastandata)
 
 using HDF5, JLD
 
