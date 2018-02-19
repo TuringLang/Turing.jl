@@ -44,7 +44,21 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     elseif ADBACKEND == :reverse_diff
       grad = gradient_r(θ, vi, model, spl)
     end
-    verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
+    # verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
+    if ~verifygrad(grad)
+      if ADBACKEND == :forward_diff
+        vi[spl] = θ_old         
+      elseif ADBACKEND == :reverse_diff 
+        vi_spl = vi[spl]
+        for i = 1:length(θ_old)
+          vi_spl[i].value = θ_old[i]
+        end
+      end
+      setlogp!(vi, old_logp)
+      θ = θ_old
+      p = p_old
+      break
+    end
 
     p -= ϵ * grad / 2
 

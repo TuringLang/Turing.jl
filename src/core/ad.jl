@@ -117,7 +117,7 @@ gradient_r(theta::Vector, vi::Turing.VarInfo, model::Function, spl::Union{Void, 
           for i = 1:length(ipts) 
               vi_spl[i] = ipts[i] 
           end
-          vi.logp = 0
+          # vi.logp = 0
           -runmodel(model, vi, spl).logp
         end
         gtape = GradientTape(f_r, inputs)
@@ -138,7 +138,7 @@ gradient_r(theta::Vector, vi::Turing.VarInfo, model::Function, spl::Union{Void, 
     # grad = ReverseDiff.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), inputs)
 
     # vi[spl] = realpart(vi[spl])
-    vi.logp = 0
+    # vi.logp = 0
     
     grad
 end

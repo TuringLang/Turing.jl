@@ -57,7 +57,8 @@
   #   z[n] ~ Categorical(theta[doc[n]])
   # end
 
-  phi_dot_theta = [log.([dot(map(p -> p[v], phi), theta[m]) for v = 1:V]) for m = 1:M]
+  # phi_dot_theta = [log.([dot(map(p -> p[v], phi), theta[m]) for v = 1:V]) for m = 1:M]
+
   # @simd for m=1:M
   #   @inbounds phi_dot_theta[m] = log.([dot(map(p -> p[v], phi), theta[m]) for v = 1:V])
   # end
@@ -67,13 +68,18 @@
   #  # w[n] ~ Categorical(phi_dot_theta)
   #  Turing.acclogp!(vi, phi_dot_theta[doc[n]][w[n]])
   #end
-  # lp = mapreduce(n->phi_dot_theta[doc[n]][w[n]], +, 1:N)
-  lp = phi_dot_theta[doc[1]][w[1]]
-  @simd for n = 2:N
-    @inbounds lp += phi_dot_theta[doc[n]][w[n]]
-  end
-  Turing.acclogp!(vi, lp)
 
+  # lp = mapreduce(n->phi_dot_theta[doc[n]][w[n]], +, 1:N)
+
+  # lp = phi_dot_theta[doc[1]][w[1]]
+  # @simd for n = 2:N
+  #   @inbounds lp += phi_dot_theta[doc[n]][w[n]]
+  # end
+
+  phi_dot_theta = log.(hcat(phi...) * hcat(theta...))
+  _lp += mapreduce(n->phi_dot_theta[w[n], doc[n]], +, 1:N)
+
+  # Turing.acclogp!(vi, lp)
 end
 
 
