@@ -49,3 +49,10 @@ Dict(
 # using HDF5, JLD
 # # const ldastandata = load(TPATH*"/example-models/stan-models/ldastandata.jld")["data"]
 # const ldastandata = load(TPATH*"/example-models/stan-models/ldastandataV20K2M25L100.data")["data"]
+
+
+# using PyCall
+# @pyimport pickle
+# f = open("/afs/inf.ed.ac.uk/user/s16/s1672897/fun/20news-sub.pickle", "r")
+# data = pickle.loads(pybytes(read(f)))
+# const ldastandata = [data]
