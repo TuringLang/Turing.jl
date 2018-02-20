@@ -51,7 +51,11 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
       elseif ADBACKEND == :reverse_diff 
         vi_spl = vi[spl]
         for i = 1:length(θ_old)
-          vi_spl[i].value = θ_old[i]
+          if isa(vi_spl[i], ReverseDiff.TrackedReal)
+            vi_spl[i].value = θ_old[i]
+          else
+            vi_spl[i] = θ_old[i]
+          end
         end
       end
       setlogp!(vi, old_logp)

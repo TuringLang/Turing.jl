@@ -124,7 +124,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
         
         vi_spl = vi[spl]
         for i = 1:length(old_θ)
-          vi_spl[i].value = old_θ[i]
+          if isa(vi_spl[i], ReverseDiff.TrackedReal)
+            vi_spl[i].value = old_θ[i]
+          else
+            vi_spl[i] = old_θ[i]
+          end
         end
 
       end
