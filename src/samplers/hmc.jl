@@ -158,6 +158,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   if save_state               # save state
     # Convert vi back to X if vi is required to be saved
     if spl.alg.gid == 0 invlink!(vi, spl) end
+    spl.info[:grad_cache] = Dict{UInt64,Vector}()
+    spl.info[:reverse_diff_cache] = Dict()
     save!(c, spl, model, vi)
   end
 

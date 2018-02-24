@@ -48,3 +48,5 @@ chain = sample(MoGtest(D), gibbs)
 @test mean(chain[:z4]) ≈ 2.0 atol=0.1
 @test mean(chain[:mu1]) ≈ 1.0 atol=0.1
 @test mean(chain[:mu2]) ≈ 4.0 atol=0.1
+
+setadsafe(false)
