@@ -13,6 +13,7 @@ include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
 println("Stan time: ", lda_time)
 # setchunksize(60)
 setadbackend(:reverse_diff)
+setadsafe(false)
 
 # tbenchmark("HMC(2, 0.025, 10)", "ldamodel", "data=ldastandata[1]")
 

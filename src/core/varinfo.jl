@@ -162,25 +162,25 @@ syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
-  if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
-    if vn in keys(vi.rs)
-      r = vi.rs[vn]
-      reconstruct!(r, dist, getval(vi, vn))
-    else
-      r = reconstruct(dist, getval(vi, vn))
-      r_real = similar(r, Real)
-      r_real[:] = r
-      vi.rs[vn] = r_real
-      r = r_real
-    end
-    istrans(vi, vn) ?
-      invlink!(r, dist, r) :
-      r
-  else
+  # if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
+  #   if vn in keys(vi.rs)
+  #     r = vi.rs[vn]
+  #     reconstruct!(r, dist, getval(vi, vn))
+  #   else
+  #     r = reconstruct(dist, getval(vi, vn))
+  #     r_real = similar(r, Real)
+  #     r_real[:] = r
+  #     vi.rs[vn] = r_real
+  #     r = r_real
+  #   end
+  #   istrans(vi, vn) ?
+  #     invlink!(r, dist, r) :
+  #     r
+  # else
     istrans(vi, vn) ?
       invlink(dist, reconstruct(dist, getval(vi, vn))) :
       reconstruct(dist, getval(vi, vn))
-  end
+  # end
 end
 
 Base.setindex!(vi::VarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)

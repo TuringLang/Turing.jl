@@ -110,8 +110,8 @@ end
 gradient_r(theta::Vector, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
 gradient_r(theta::Vector, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     inputs = (theta)
-
-    if spl == nothing || length(spl.info[:reverse_diff_cache]) == 0
+    
+    if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
           vi_spl = vi[spl]
           for i = 1:length(ipts) 

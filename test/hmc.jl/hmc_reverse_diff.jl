@@ -14,7 +14,7 @@ setadbackend(:reverse_diff)
   return s, m
 end
 
-alg = HMC(30000, 0.02, 10)
+alg = HMC(3000, 0.15, 10)
 
 res = sample(gdemo([1.5, 2.0]), alg)
 

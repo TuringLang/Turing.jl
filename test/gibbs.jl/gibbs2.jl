@@ -2,6 +2,8 @@ using Distributions
 using Turing
 using Base.Test
 
+setadsafe(true)
+
 include("../utility.jl")
 srand(100)
 
