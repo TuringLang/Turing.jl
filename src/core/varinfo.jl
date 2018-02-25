@@ -1,5 +1,7 @@
 module VarReplay
 
+
+
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
 using Turing: Sampler, realpart, dualpart, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
@@ -47,7 +49,7 @@ type VarInfo
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
   vals        ::    Vector{Real}
-  rs          ::    Dict{Union{VarName,Vector{VarName}},Any}
+  rvs         ::    Dict{Union{VarName,Vector{VarName}},Any}
   dists       ::    Vector{Distributions.Distribution}
   gids        ::    Vector{Int}
   logp        ::    Real
@@ -58,7 +60,7 @@ type VarInfo
 
   VarInfo() = begin
     vals  = Vector{Real}()
-    rs    = Dict{Union{VarName,Vector{VarName}},Any}()
+    rvs   = Dict{Union{VarName,Vector{VarName}},Any}()
     logp  = zero(Real)
     pred  = Dict{Symbol,Any}()
     flags = Dict{String,Vector{Bool}}()
@@ -70,7 +72,7 @@ type VarInfo
       Vector{VarName}(),
       Vector{UnitRange{Int}}(),
       vals,
-      rs,
+      rvs,
       Vector{Distributions.Distribution}(),
       Vector{Int}(),
       logp,
@@ -163,14 +165,14 @@ Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
   # if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
-  #   if vn in keys(vi.rs)
-  #     r = vi.rs[vn]
+  #   if vn in keys(vi.rvs)
+  #     r = vi.rvs[vn]
   #     reconstruct!(r, dist, getval(vi, vn))
   #   else
   #     r = reconstruct(dist, getval(vi, vn))
   #     r_real = similar(r, Real)
   #     r_real[:] = r
-  #     vi.rs[vn] = r_real
+  #     vi.rvs[vn] = r_real
   #     r = r_real
   #   end
   #   istrans(vi, vn) ?
@@ -189,14 +191,14 @@ Base.getindex(vi::VarInfo, vns::Vector{VarName}) = begin
   @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vns[1])
   # if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
-  #   if vns in keys(vi.rs)
-  #     r = vi.rs[vns]
+  #   if vns in keys(vi.rvs)
+  #     r = vi.rvs[vns]
   #     reconstruct!(r, dist, getval(vi, vn))
   #   else
   #     r = reconstruct(dist, getval(vi, vns), length(vns))
   #     r_real = similar(r, Real)
   #     r_real[:] = r
-  #     vi.rs[vns] = r_real
+  #     vi.rvs[vns] = r_real
   #     r = r_real
   #   end
   #   istrans(vi, vns[1]) ?
@@ -231,7 +233,7 @@ Base.show(io::IO, vi::VarInfo) = begin
   | Varnames  :   $(string(vi.vns))
   | Range     :   $(vi.ranges)
   | Vals      :   $(vi.vals)
-  | Rs        :   $(vi.rs)
+  | RVs       :   $(vi.rvs)
   | GIDs      :   $(vi.gids)
   | Orders    :   $(vi.orders)
   | Logp      :   $(vi.logp)
