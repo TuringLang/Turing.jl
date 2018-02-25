@@ -65,6 +65,8 @@ script:
              elseif ENV["GROUP"] == "SV"
                 include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
                 include(Pkg.dir("Turing")*"/benchmarks/sv.run.jl")
+             elseif ENV["GROUP"] == "NB"
+                include(Pkg.dir("Turing")*"/example-models/aistats2018/naive-bayes.run.jl")
              elseif ENV["GROUP"] == "Opt"
                 include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
                 include(Pkg.dir("Turing")*"/benchmarks/optimization.jl")
