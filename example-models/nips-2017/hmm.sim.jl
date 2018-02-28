@@ -41,7 +41,7 @@ using Distributions
 # CONSTANTS
 K = 3;
 V = 10;
-T = 0;
+T = 10;
 T_unsup = 200;
 alpha = collect(repeated(1,K));
 beta = collect(repeated(0.1,V));
