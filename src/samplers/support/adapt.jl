@@ -152,7 +152,7 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
     wum.adapt_n += 1
 
     if is_update
-      update_da_μ(wum, wum[:ϵ][end])
+      update_da_μ(wum, mean(wum[:ϵ][end-20:end]))
       reset_da(wum)
     end
 
