@@ -7,7 +7,7 @@ sigma = 0.25;
 beta = 0.6;
 mu = 2 * log(beta);
 
-T = 100;
+T = 10000;
 
 h = Vector{Float64}(T);
 h[1] = rand(Normal(mu, sigma / sqrt(1 - phi * phi)));
@@ -38,4 +38,4 @@ const sv_exact = Dict(
 using HDF5, JLD
 
 save(Pkg.dir("Turing")*"/example-models/nips-2017/sv-data.jld", "data", sv_data)
-save(Pkg.dir("Turing")*"/example-models/nips-2017/sv-exact.jld", "exact", sv_exact)
+# save(Pkg.dir("Turing")*"/example-models/nips-2017/sv-exact.jld", "exact", sv_exact)

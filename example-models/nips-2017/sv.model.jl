@@ -1,5 +1,4 @@
-@model sv_model(y) = begin
-  T = length(y)
+@model sv_model(T, y) = begin
   ϕ ~ Uniform(-1, 1)
   σ ~ Truncated(Cauchy(0,5), 0, +Inf)
   μ ~ Cauchy(0, 10)

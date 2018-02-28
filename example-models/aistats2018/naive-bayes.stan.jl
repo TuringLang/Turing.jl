@@ -1,3 +1,4 @@
+include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 using Stan, HDF5, JLD
 
 const nbstanmodel = "
@@ -27,3 +28,6 @@ const nbmnistdata = load(Pkg.dir("Turing")*"/example-models/aistats2018/nbstanda
 nbstan = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.25),Stan.diag_e(),0.05,0.0), save_warmup=true,adapt=Stan.Adapt(engaged=false)), num_samples=500, num_warmup=0, thin=1, name="Naive_Bayes", model=nbstanmodel, nchains=1);
 
 rc, nb_stan_sim = stan(nbstan, nbmnistdata, CmdStanDir=CMDSTAN_HOME, summary=false);
+
+sv_time = get_stan_time("Naive_Bayes")
+println("Time used:", sv_time)
