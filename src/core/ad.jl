@@ -107,17 +107,15 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
 
   g(vi[spl])
 end
-gradient_r(theta::Vector, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+
+gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
+gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     inputs = (theta)
     
     if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
           vi_spl = vi[spl]
-          for i = 1:length(ipts) 
-              vi_spl[i] = ipts[i] 
-          end
-          # vi.logp = 0
+          vi_spl[:] = ipts[:]
           -runmodel(model, vi, spl).logp
         end
         gtape = GradientTape(f_r, inputs)
