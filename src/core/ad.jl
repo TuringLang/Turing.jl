@@ -114,8 +114,7 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
     
     if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
-          vi_spl = vi[spl]
-          vi_spl[:] = ipts[:]
+          vi[spl][:] = ipts[:]
           -runmodel(model, vi, spl).logp
         end
         gtape = GradientTape(f_r, inputs)
