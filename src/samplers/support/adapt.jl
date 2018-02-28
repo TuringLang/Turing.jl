@@ -1,8 +1,7 @@
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
 type WarmUpManager
-  iter_n    ::    Int
-  state     ::    Int
+  adapt_n   ::    Int
   params    ::    Dict
 end
 
@@ -11,22 +10,16 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
 init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
-  wum = WarmUpManager(1, 1, Dict())
+  wum = WarmUpManager(1, Dict())
 
   # Pre-cond
-  wum[:θ_num] = 0
-  wum[:θ_mean] = nothing
-  D = length(vi[spl])
-  wum[:stds] = ones(D)
-  wum[:vars] = ones(D)
+  reset_var_estimator(wum)
+  wum[:stds] = 1.0
 
-  # DA
-  wum[:ϵ] = nothing
-  wum[:μ] = nothing
-  wum[:ϵ_bar] = 1.0
-  wum[:H_bar] = 0.0
-  wum[:m] = 0
-  wum[:n_adapt] = spl.alg.n_adapt
+  # Dual averaging
+  wum[:ϵ] = []
+  reset_da(wum)
+  wum[:n_warmup] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
   # Stan.Adapt
@@ -36,105 +29,133 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:κ] = adapt_conf.kappa
 
   # Three phases settings
-  wum[:adapt_total] = spl.alg.n_adapt
-  wum[:fast_start] = adapt_conf.init_buffer
-  wum[:fast_end] = wum[:adapt_total] - adapt_conf.term_buffer
-  wum[:slow_window_size] = adapt_conf.window
-  wum[:slow_window_counter] = 0
+  # wum[:n_adapt] = spl.alg.n_adapt
+  wum[:init_buffer] = adapt_conf.init_buffer
+  wum[:term_buffer] = adapt_conf.term_buffer
+  wum[:window_size] = adapt_conf.window
+  wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
   spl.info[:wum] = wum
 end
 
-update_da_params(wum::WarmUpManager, ϵ::Float64) = begin
-  wum[:ϵ] = [ϵ]
+reset_var_estimator(wum::WarmUpManager) = begin
+  wum[:est_n]  = 0
+  wum[:θ_mean] = 0.0  # zeros(D)
+  wum[:M2]     = 0.0  # zeros(D)
+end
+
+reset_da(wum::WarmUpManager) = begin
+  wum[:m] = 0
+  wum[:x_bar] = 0.0
+  wum[:H_bar] = 0.0
+end
+
+update_da_μ(wum::WarmUpManager, ϵ::Float64) = begin
   wum[:μ] = log(10 * ϵ)
 end
 
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
 adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
+
   dprintln(2, "adapting step size ϵ...")
-  m = wum[:m] += 1
-  if m <= wum[:n_adapt]
-    γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
-    μ = wum[:μ]; ϵ_bar = wum[:ϵ_bar]; H_bar = wum[:H_bar]
+  wum[:m] = wum[:m] + 1
+  m = wum[:m]
 
-    H_bar = (1 - 1 / (m + t_0)) * H_bar + 1 / (m + t_0) * (δ - stats)
-    ϵ = exp.(μ - sqrt.(m) / γ * H_bar)
-    dprintln(1, " ϵ = $ϵ, stats = $stats")
+  stats = stats > 1 ? 1 : stats
 
-    ϵ_bar = exp.(m^(-κ) * log(ϵ) + (1 - m^(-κ)) * log(ϵ_bar))
-    push!(wum[:ϵ], ϵ)
-    wum[:ϵ_bar], wum[:H_bar] = ϵ_bar, H_bar
+  γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
+  μ = wum[:μ]; x_bar = wum[:x_bar]; H_bar = wum[:H_bar]
 
-    if m == wum[:n_adapt]
-      dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
-    end
+  H_η = 1.0 / (m + t_0)
+  H_bar = (1.0 - H_η) * H_bar + H_η * (δ - stats)
+
+  x = μ - H_bar * sqrt(m) / γ
+  x_η = m^(-κ)
+  x_bar = (1.0 - x_η) * x_bar + x_η * x
+
+  ϵ = exp(x)
+  
+  push!(wum[:ϵ], ϵ)
+  wum[:x_bar], wum[:H_bar] = x_bar, H_bar
+
+  if m == wum[:n_warmup]
+    dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
   end
+
 end
 
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
+in_adaptation(wum::WarmUpManager) = (wum.adapt_n >= wum[:init_buffer]) && 
+                                    (wum.adapt_n < wum[:n_warmup] - wum[:term_buffer]) && 
+                                    (wum.adapt_n != wum[:n_warmup])
+
+is_window_end(wum::WarmUpManager) = (wum.adapt_n == wum[:next_window]) && (wum.adapt_n != wum[:n_warmup])
+
+compute_next_window(wum::WarmUpManager) = begin
+
+  if ~(wum[:next_window] == wum[:n_warmup] - wum[:term_buffer] - 1)
+
+  wum[:window_size] *= 2
+  wum[:next_window] = wum.adapt_n + wum[:window_size]
+
+    if ~(wum[:next_window] == wum[:n_warmup] - wum[:term_buffer] - 1)
+
+      next_window_boundary = wum[:next_window] + 2 * wum[:window_size]
+
+      if (next_window_boundary >= wum[:n_warmup] - wum[:term_buffer])
+        wum[:next_window] = wum[:n_warmup] - wum[:term_buffer] - 1
+      end
+
+    end
+
+  end
+
+end
+
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/nuts/adapt_diag_e_nuts.hpp
 update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
-  wum[:θ_num] += 1                                      # θ_new = x_t
-  t = wum[:θ_num]                                       # t
+  if in_adaptation(wum)
 
-  if t == 1
-    wum[:θ_mean] = θ_new
-  else
-    θ_mean_old = copy(wum[:θ_mean])                       # x_bar_t-1
-    wum[:θ_mean] = (t - 1) / t * wum[:θ_mean] + θ_new / t # x_bar_t
-    θ_mean_new = wum[:θ_mean]                             # x_bar_t
+    wum[:est_n] = wum[:est_n] + 1
 
-    if t == 2
-      first_two = [θ_mean_old'; θ_new'] # θ_mean_old here only contains the first θ
-      wum[:vars] = diag(cov(first_two))
-    else#if t <= 1000
-      D = length(θ_new)
-      # D = 2.4^2
-      wum[:vars] = (t - 1) / t * wum[:vars] .+ 1e3 * eps(Float64) +
-                          (2.4^2 / D) / t * (t * θ_mean_old .* θ_mean_old - (t + 1) * θ_mean_new .* θ_mean_new + θ_new .* θ_new)
-    end
+    delta = θ_new - wum[:θ_mean]
+    wum[:θ_mean] = wum[:θ_mean] + delta / wum[:est_n]
+    wum[:M2] = wum[:M2] + delta .* (θ_new - wum[:θ_mean])
 
-    if (t - wum[:fast_start]) % (wum[:slow_window_size] * 2^wum[:slow_window_counter]) == 0
-      wum[:stds] = sqrt.(wum[:vars])
-      # wum[:stds] = wum[:stds] / min(wum[:stds]...)  # old
-      wum[:stds] = wum[:stds] / mean([wum[:stds]...])
-      wum[:slow_window_counter] += 1
-    end
   end
-end
 
-update_state(wum::WarmUpManager) = begin
-  wum.iter_n += 1   # update iteration number
+  if is_window_end(wum)
 
-  # Update state
-  if wum.state == 1
-    if wum.iter_n > wum[:fast_start]
-      wum.state = 2
-    end
-  elseif wum.state == 2
-    if wum.iter_n > wum[:fast_end]
-      wum.state = 3
-    end
-  elseif wum.state == 3
-    if wum.iter_n > wum[:adapt_total]
-      wum.state = 4
-    end
-  elseif wum.state == 4
-    # no more change
-  else
-    error("[Turing.WarmUpManager] unknown state $(wum.state)")
+    compute_next_window(wum)
+
+    # var = wum[:M2] / (wum[:est_n] - 1.0)
+    # var = (wum[:est_n] / (wum[:est_n] + 5.0)) * var + 1e-3 * (5.0 / (wum[:est_n] + 5.0))
+
+    # wum[:stds] = sqrt.(var)
+
+    reset_var_estimator(wum)
+
+    return true
+
   end
+
+  return false
+
 end
 
 adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
-  update_state(wum)
 
-  # Use Dual Averaging to adapt ϵ
-  if wum.state in [1, 2, 3]
+  if wum.adapt_n <= wum[:n_warmup]
     adapt_step_size(wum, stats)
+    is_update = update_pre_cond(wum, θ_new)
+    wum.adapt_n += 1
+
+    if is_update
+      update_da_μ(wum, wum[:ϵ][end])
+      reset_da(wum)
+    end
+
   end
 
-  # Update pre-conditioning matrix
-  if wum.state == 2
-    update_pre_cond(wum, θ_new)
-  end
 end

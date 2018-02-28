@@ -38,7 +38,7 @@ end
 
 
 # Only use customized initialization for transformable distributions
-init(dist::TransformDistribution, n::Int) = inittrans(dist, n)
+init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}, n::Int) = inittrans(dist, n)
 
 # Callbacks for un-transformable distributions
 init(dist::Distribution, n::Int) = rand(dist, n)

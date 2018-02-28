@@ -1,7 +1,7 @@
 using Turing
 using Base.Test
 
-setadbackend(:reverse_diff)
+setadbackend(:forward_diff)
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2, 3)

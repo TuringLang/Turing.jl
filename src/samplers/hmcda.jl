@@ -54,15 +54,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = realpart(vi[spl])
+      θ = realpart(vi[spl])
       ϵ = spl.alg.delta > 0 ?
           find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
           spl.info[:pre_set_ϵ]
-      vi[spl] = oldθ
+      vi[spl] = θ
 
       if spl.alg.gid != 0 invlink!(vi, spl) end # R -> X
 
-      update_da_params(spl.info[:wum], ϵ)
+      push!(spl.info[:wum][:ϵ], ϵ)
+      update_da_μ(spl.info[:wum], ϵ)
     end
 
     push!(spl.info[:accept_his], true)

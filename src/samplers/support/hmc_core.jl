@@ -10,7 +10,7 @@ end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
-  randn(length(getranges(vi, spl))) .* spl.info[:wum][:stds]
+  randn(length(getranges(vi, spl))) ./ spl.info[:wum][:stds]
 end
 
 # Leapfrog step
@@ -34,7 +34,7 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
 
     p -= ϵ .* grad / 2
-    θ += ϵ .* p  # full step for state
+    θ += ϵ .* p .* (spl.info[:wum][:stds].^2) # full step for state
     spl.info[:lf_num] += 1
     spl.info[:total_lf_num] += 1  # record leapfrog num
 
@@ -78,15 +78,16 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #       This can be a result of link/invlink (where expand! is used)
   if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
 
-  p_orig = p ./ spl.info[:wum][:stds]
+  p_orig = p .* (spl.info[:wum][:stds].^2)
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
   if isnan.(H) H = Inf else H end
 end
 
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   println("[Turing] looking for good initial eps...")
-  ϵ, p = 1.0, sample_momentum(vi, spl)    # set initial epsilon and momentums
+  ϵ, p = 0.1, sample_momentum(vi, spl)    # set initial epsilon and momentums
   log_p_r_Θ = -find_H(p, model, vi, spl)  # calculate p(Θ, r) = exp.(-H(Θ, r))
 
   θ = realpart(vi[spl])
