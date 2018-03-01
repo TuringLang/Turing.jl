@@ -39,10 +39,10 @@
 using Distributions
 
 # CONSTANTS
-K = 3;
-V = 10;
-T = 10;
-T_unsup = 200;
+K = 5;
+V = 50;
+T = 100;
+T_unsup = 900;
 alpha = collect(repeated(1,K));
 beta = collect(repeated(0.1,V));
 

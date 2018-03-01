@@ -164,7 +164,7 @@ syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 Base.getindex(vi::VarInfo, vn::VarName) = begin
   @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
   dist = getdist(vi, vn)
-  # if isa(dist, SimplexDistribution) # Reduce memory allocation for distributions with simplex constraints
+  # if isa(dist, SimplexDistribution) || isa(dist, MvNormal) # Reduce memory allocation for distributions with simplex constraints
   #   if vn in keys(vi.rvs)
   #     r = vi.rvs[vn]
   #     reconstruct!(r, dist, getval(vi, vn))

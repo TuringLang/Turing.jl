@@ -7,7 +7,7 @@ sigma = 0.25;
 beta = 0.6;
 mu = 2 * log(beta);
 
-T = 10000;
+T = 100000;
 
 h = Vector{Float64}(T);
 h[1] = rand(Normal(mu, sigma / sqrt(1 - phi * phi)));

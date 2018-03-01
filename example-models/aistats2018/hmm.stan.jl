@@ -47,7 +47,7 @@ model {
 
 const hmm_semisup_data = load(Pkg.dir("Turing")*"/example-models/nips-2017/hmm_semisup_data.jld")["data"]
 
-hmmstan = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(1.25),Stan.diag_e(),0.25,0.0), save_warmup=true,adapt=Stan.Adapt(engaged=false)), num_samples=1000, num_warmup=0, thin=1, name="Hidden_Markov", model=hmmstanmodel, nchains=1);
+hmmstan = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.025),Stan.diag_e(),0.005,0.0), save_warmup=true,adapt=Stan.Adapt(engaged=false)), num_samples=1000, num_warmup=0, thin=1, name="Hidden_Markov", model=hmmstanmodel, nchains=1);
 
 rc, hmm_stan_sim = stan(hmmstan, hmm_semisup_data, CmdStanDir=CMDSTAN_HOME, summary=false);
 

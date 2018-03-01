@@ -3,7 +3,7 @@ using Distributions
 # V <- 5; # words: river, stream, bank, money, loan
 # K <- 2; # topics: RIVER, BANK
 # M <- 25;  # docs
-V = 200
+V = 100
 K = 5
 M = 10
 

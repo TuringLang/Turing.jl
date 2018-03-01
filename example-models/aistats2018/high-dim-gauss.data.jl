@@ -1,3 +1,3 @@
 using HDF5, JLD
 
-const hdgdata = [Dict("D"=>1000)]
+const hdgdata = [Dict("D"=>100000)]

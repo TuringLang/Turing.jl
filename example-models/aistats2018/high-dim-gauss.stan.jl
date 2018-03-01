@@ -14,9 +14,9 @@ for (d in 1:D)
 }
 "
 
-const hdgdata = [Dict("D"=>1000)]
+include(Pkg.dir("Turing")*"/example-models/aistats2018/high-dim-gauss.data.jl")
 
-hdgstan = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.25),Stan.diag_e(),0.05,0.0), save_warmup=true,adapt=Stan.Adapt(engaged=false)), num_samples=500, num_warmup=0, thin=1, name="High_Dim_Gauss", model=hdgstanmodel, nchains=1);
+hdgstan = Stanmodel(Sample(algorithm=Stan.Hmc(Stan.Static(0.25),Stan.diag_e(),0.05,0.0), save_warmup=true,adapt=Stan.Adapt(engaged=false)), num_samples=1000, num_warmup=0, thin=1, name="High_Dim_Gauss", model=hdgstanmodel, nchains=1);
 
 rc, hdg_stan_sim = stan(hdgstan, hdgdata, CmdStanDir=CMDSTAN_HOME, summary=false);
 
