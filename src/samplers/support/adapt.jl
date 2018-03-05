@@ -1,8 +1,37 @@
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
+mutable struct VarEstimator{T<:Real}
+  n :: Int
+  μ :: Vector{T}
+  M :: Vector{T}
+end
+
+reset!(ve::VarEstimator) = begin
+  ve.n = 0
+  ve.μ = zeros(ve.μ)
+  ve.M = zeros(ve.M)
+end
+
+add_sample!{T<:Real}(ve::VarEstimator{T}, s::Vector{T}) = begin
+  ve.n += 1
+  δ = s - ve.μ
+  ve.μ += δ / ve.n
+  ve.M += δ .* (s - ve.μ)
+end
+
+get_var(ve::VarEstimator) = begin
+  @assert ve.n >= 2
+  var = ve.M / (ve.n - 1)
+  var = (ve.n / (ve.n + 5.0)) * var + 1e-3 * (5.0 / (ve.n + 5.0))
+  return var
+end
+
+
+
 type WarmUpManager
   adapt_n   ::    Int
   params    ::    Dict
+  ve        ::    VarEstimator
 end
 
 getindex(wum::WarmUpManager, param) = wum.params[param]
@@ -10,10 +39,13 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
 init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
-  wum = WarmUpManager(1, Dict())
+  D = length(vi[spl])
+  ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+
+  wum = WarmUpManager(1, Dict(), ve)
 
   # Pre-cond
-  reset_var_estimator(wum)
+  
   wum[:stds] = 1.0
 
   # Dual averaging
@@ -36,12 +68,6 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
   spl.info[:wum] = wum
-end
-
-reset_var_estimator(wum::WarmUpManager) = begin
-  wum[:est_n]  = 0
-  wum[:θ_mean] = 0.0  # zeros(D)
-  wum[:M2]     = 0.0  # zeros(D)
 end
 
 reset_da(wum::WarmUpManager) = begin
@@ -117,11 +143,13 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
   if in_adaptation(wum)
 
-    wum[:est_n] = wum[:est_n] + 1
+    # wum[:est_n] = wum[:est_n] + 1
 
-    delta = θ_new - wum[:θ_mean]
-    wum[:θ_mean] = wum[:θ_mean] + delta / wum[:est_n]
-    wum[:M2] = wum[:M2] + delta .* (θ_new - wum[:θ_mean])
+    # delta = θ_new - wum[:θ_mean]
+    # wum[:θ_mean] = wum[:θ_mean] + delta / wum[:est_n]
+    # wum[:M2] = wum[:M2] + delta .* (θ_new - wum[:θ_mean])
+
+    add_sample!(wum.ve, θ_new)
 
   end
 
@@ -132,9 +160,13 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
     # var = wum[:M2] / (wum[:est_n] - 1.0)
     # var = (wum[:est_n] / (wum[:est_n] + 5.0)) * var + 1e-3 * (5.0 / (wum[:est_n] + 5.0))
 
-    # wum[:stds] = sqrt.(var)
+    var = get_var(wum.ve)
 
-    reset_var_estimator(wum)
+    wum[:stds] = sqrt.(var)
+
+    # reset_var_estimator(wum)
+
+    reset!(wum.ve)
 
     return true
 

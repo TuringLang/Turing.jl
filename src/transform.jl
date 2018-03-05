@@ -372,10 +372,10 @@ end
 # Callbacks #
 #############
 
-link!{T0<:Real,T<:Union{T0,Vector{T0},Matrix{T0},Vector{Matrix{T0}}}}(x1::T, d::Distribution, x2::T) = x1
-link{T0<:Real,T<:Union{T0,Vector{T0},Matrix{T0},Vector{Matrix{T0}}}}(d::Distribution, x::T) = x
+link!(x1, d::Distribution, x2) = x1
+link(d::Distribution, x) = x
 
-invlink!{T0<:Real,T<:Union{T0,Vector{T0},Matrix{T0},Vector{Matrix{T0}}}}(x1::T, d::Distribution, x2::T) = x1
-invlink{T0<:Real,T<:Union{T0,Vector{T0},Matrix{T0},Vector{Matrix{T0}}}}(d::Distribution, x::T) = x
+invlink!(x1, d::Distribution, x2) = x1
+invlink(d::Distribution, x) = x
 
-logpdf_with_trans{T0<:Real,T<:Union{T0,Vector{T0},Matrix{T0},Vector{Matrix{T0}}}}(d::Distribution, x::T, transform::Bool) = logpdf(d, x)
+logpdf_with_trans(d::Distribution, x, transform::Bool) = logpdf(d, x)
