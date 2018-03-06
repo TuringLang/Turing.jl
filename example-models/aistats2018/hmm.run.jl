@@ -28,6 +28,8 @@ const hmm_semisup_data = load(TPATH*"/example-models/nips-2017/hmm_semisup_data.
 #   #end
 # end
 
+# setadbackend(:forward_diff)
+# setchunksize(70)
 turnprogress(false)
 
 collapsed = true

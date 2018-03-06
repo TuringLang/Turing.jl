@@ -11,9 +11,11 @@ include(Pkg.dir("Turing")*"/example-models/stan-models/lda.model.jl")
 
 # include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
 
-# setchunksize(60)
+# setchunksize(100)
 setadbackend(:reverse_diff)
-setadsafe(false)
+# setadbackend(:forward_diff)
+
+# setadsafe(false)
 
 # tbenchmark("HMC(2, 0.025, 10)", "ldamodel", "data=ldastandata[1]")
 

@@ -9,7 +9,8 @@ include(TPATH*"/example-models/nips-2017/sv.model.jl")
 using HDF5, JLD
 sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
-# setchunksize(550)
+# setadbackend(:forward_diff)
+# setchunksize(1000)
 # chain_nuts = sample(model_f, NUTS(sample_n, 0.65))
 # describe(chain_nuts)
 
