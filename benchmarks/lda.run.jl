@@ -9,7 +9,7 @@ include(Pkg.dir("Turing")*"/benchmarks/benchmarkhelper.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/lda-stan.data.jl")
 include(Pkg.dir("Turing")*"/example-models/stan-models/lda.model.jl")
 
-# include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
+include(Pkg.dir("Turing")*"/benchmarks/"*"lda-stan.run.jl")
 
 # setchunksize(100)
 setadbackend(:reverse_diff)
