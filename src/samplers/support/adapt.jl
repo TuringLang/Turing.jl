@@ -1,5 +1,6 @@
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
+# Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
 mutable struct VarEstimator{T<:Real}
   n :: Int
   μ :: Vector{T}
@@ -66,6 +67,8 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:term_buffer] = adapt_conf.term_buffer
   wum[:window_size] = adapt_conf.window
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
+
+  println(wum.params)
 
   spl.info[:wum] = wum
 end
@@ -179,7 +182,7 @@ end
 
 adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
 
-  if wum.adapt_n <= wum[:n_warmup]
+  if wum.adapt_n < wum[:n_warmup]
     adapt_step_size(wum, stats)
     is_update = update_pre_cond(wum, θ_new)
     wum.adapt_n += 1
@@ -189,6 +192,12 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
       update_da_μ(wum, mean(wum[:ϵ][end]))
       reset_da(wum)
     end
+
+  elseif wum.adapt_n == wum[:n_warmup]
+
+    ϵ = exp(wum[:x_bar])
+  
+    push!(wum[:ϵ], ϵ)
 
   end
 

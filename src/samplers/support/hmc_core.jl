@@ -82,7 +82,9 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   p_orig = p .* spl.info[:wum][:stds]
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
-  if isnan.(H) H = Inf else H end
+  if isnan(H) H = Inf else H end
+
+  H
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
