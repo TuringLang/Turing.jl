@@ -160,6 +160,7 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
     # var = wum[:M2] / (wum[:est_n] - 1.0)
     # var = (wum[:est_n] / (wum[:est_n] + 5.0)) * var + 1e-3 * (5.0 / (wum[:est_n] + 5.0))
 
+    # https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/var_adaptation.hpp
     var = get_var(wum.ve)
 
     wum[:stds] = sqrt.(var)
@@ -184,7 +185,8 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
     wum.adapt_n += 1
 
     if is_update
-      update_da_μ(wum, mean(wum[:ϵ][end-20:end]))
+      # update_da_μ(wum, mean(wum[:ϵ][end-20:end]))
+      update_da_μ(wum, mean(wum[:ϵ][end]))
       reset_da(wum)
     end
 

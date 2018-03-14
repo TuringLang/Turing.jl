@@ -1,3 +1,4 @@
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
 global Δ_max = 1000
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
@@ -78,7 +79,7 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #       This can be a result of link/invlink (where expand! is used)
   if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
 
-  p_orig = p .* (spl.info[:wum][:stds].^2)
+  p_orig = p .* spl.info[:wum][:stds]
 
   H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
   if isnan.(H) H = Inf else H end
