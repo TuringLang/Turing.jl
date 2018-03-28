@@ -31,7 +31,7 @@ To cite Turing, please refer to the following paper. Sample BibTeX entry is give
 ```
 {% raw %}
 @InProceedings{turing17,
-  title = 	 {{T}uring: a language for composable probabilistic inference},
+  title = 	 {{T}uring: a language for flexible probabilistic inference},
   author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
   booktitle = 	 {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},
   year = 	 {2018},
