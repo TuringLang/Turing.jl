@@ -240,8 +240,12 @@ VarName(vi::VarInfo, csym::Symbol, sym::Symbol, indexing::String) = begin
 end
 VarName(vi::VarInfo, syms::Vector{Symbol}, indexing::String) = begin
   # TODO: update this method when implementing the sanity check
-    VarName(syms[1], syms[2], indexing, 1)
+  VarName(syms[1], syms[2], indexing, 1)
 end
+
+# Automatically generate the csym field if it's not provided.
+VarName(vi::VarInfo, sym::Symbol, indexing::String) = VarName(gensym(), sym, indexing)
+
 
 #################################
 # Utility functions for VarInfo #
