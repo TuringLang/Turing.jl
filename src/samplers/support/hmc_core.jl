@@ -35,7 +35,7 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
 
     p -= ϵ .* grad / 2
-    θ += ϵ .* p .* (spl.info[:wum][:stds].^2) # full step for state
+    θ += ϵ .* p  # full step for state
     spl.info[:lf_num] += 1
     spl.info[:total_lf_num] += 1  # record leapfrog num
 
@@ -48,8 +48,8 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     # verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
     if ~verifygrad(grad)
       if ADBACKEND == :forward_diff
-        vi[spl] = θ_old         
-      elseif ADBACKEND == :reverse_diff 
+        vi[spl] = θ_old
+      elseif ADBACKEND == :reverse_diff
         vi_spl = vi[spl]
         for i = 1:length(θ_old)
           if isa(vi_spl[i], ReverseDiff.TrackedReal)
@@ -98,10 +98,10 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   θ = realpart(vi[spl])
   θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
   h = τ == 0 ? Inf : find_H(p_prime, model, vi, spl)
-  
+
   delta_H = H0 - h
   direction = delta_H > log(0.8) ? 1 : -1
-  
+
   iter_num = 1
 
   # Heuristically find optimal ϵ
