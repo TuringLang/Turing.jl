@@ -75,11 +75,12 @@ end
 
 init_da(wum::WarmUpManager) = begin
   wum[:m] = 0
-  wum[:x_bar] = 0.0
+  # wum[:x_bar] = 0.0
   wum[:H_bar] = 0.0
 end
 
 update_da_μ(wum::WarmUpManager, ϵ::Float64) = begin
+  wum[:x_bar] = ϵ  # See NUTS paper sec 3.2.1
   wum[:μ] = log(10 * ϵ)
 end
 
@@ -87,6 +88,7 @@ end
 adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
 
   dprintln(2, "adapting step size ϵ...")
+  dprintln(2, "current α = $(stats)")
   wum[:m] = wum[:m] + 1
   m = wum[:m]
 
@@ -103,12 +105,13 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   x_bar = (1.0 - x_η) * x_bar + x_η * x
 
   ϵ = exp(x)
+  dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
 
   push!(wum[:ϵ], ϵ)
   wum[:x_bar], wum[:H_bar] = x_bar, H_bar
 
   if m == wum[:n_warmup]
-    dprintln(0, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+    dprintln(2, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
   end
 
 end
