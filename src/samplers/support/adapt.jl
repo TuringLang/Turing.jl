@@ -51,7 +51,7 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
 
   # Dual averaging
   wum[:ϵ] = [] # why we are using a vector for ϵ
-  init_da(wum)
+  restart_da(wum)
   wum[:n_warmup] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
@@ -73,14 +73,14 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   spl.info[:wum] = wum
 end
 
-init_da(wum::WarmUpManager) = begin
+restart_da(wum::WarmUpManager) = begin
   wum[:m] = 0
-  # wum[:x_bar] = 0.0
+  wum[:x_bar] = 0.0
   wum[:H_bar] = 0.0
 end
 
 update_da_μ(wum::WarmUpManager, ϵ::Float64) = begin
-  wum[:x_bar] = ϵ  # See NUTS paper sec 3.2.1
+  # wum[:x_bar] = ϵ  # See NUTS paper sec 3.2.1
   wum[:μ] = log(10 * ϵ)
 end
 
@@ -193,10 +193,10 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = fa
 
     if adapt_ϵ
         adapt_step_size(wum, stats)
-        # if is_window_end(wum)
-          # update_da_μ(wum, mean(wum[:ϵ][end]))
-          # init_da(wum)
-        # end
+         if is_window_end(wum)
+           update_da_μ(wum, wum[:ϵ][end])
+           restart_da(wum)
+         end
     end
 
     if adapt_M
