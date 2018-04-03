@@ -107,8 +107,12 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   ϵ = exp(x)
   dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
 
-  push!(wum[:ϵ], ϵ)
-  wum[:x_bar], wum[:H_bar] = x_bar, H_bar
+  if isnan(ϵ) || isinf(ϵ) || ϵ <= 0
+      dwarn(0, "incorrect ϵ = $ϵ is dropped; previous valid value ϵ = $(wum[:ϵ][end]) is used instead.")
+  else
+      push!(wum[:ϵ], ϵ)
+      wum[:x_bar], wum[:H_bar] = x_bar, H_bar
+  end
 
   if m == wum[:n_warmup]
     dprintln(2, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
