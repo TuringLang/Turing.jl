@@ -149,7 +149,7 @@ compute_next_window(wum::WarmUpManager) = begin
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/nuts/adapt_diag_e_nuts.hpp
-update_pre_cond(wum::WarmUpManager, θ_new) = begin
+update_pre_cond!(wum::WarmUpManager, θ_new) = begin
 
   if in_adaptation(wum)
 
@@ -187,7 +187,7 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
 end
 
-adapt(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = false) = begin
+adapt!(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = false) = begin
 
   if wum.adapt_n < wum[:n_warmup]
 
@@ -200,7 +200,7 @@ adapt(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = fa
     end
 
     if adapt_M
-        update_pre_cond(wum, θ_new)  # window is updated implicitly.
+        update_pre_cond!(wum, θ_new)  # window is updated implicitly.
     else
         is_window_end(wum) && compute_next_window(wum) # update window explicitly.
     end

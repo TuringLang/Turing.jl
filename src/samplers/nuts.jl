@@ -122,7 +122,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     # Adapt step-size and pre-cond
     if τ_valid > 0
-        adapt(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
+        adapt!(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
     end
 
     dprintln(3, "R -> X...")
