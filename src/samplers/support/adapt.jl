@@ -46,12 +46,12 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum = WarmUpManager(1, Dict(), ve)
 
   # Pre-cond
-  
-  wum[:stds] = 1.0
+
+  wum[:stds] = ones(D)
 
   # Dual averaging
-  wum[:ϵ] = []
-  reset_da(wum)
+  wum[:ϵ] = [] # why we are using a vector for ϵ
+  init_da(wum)
   wum[:n_warmup] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
@@ -73,7 +73,7 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   spl.info[:wum] = wum
 end
 
-reset_da(wum::WarmUpManager) = begin
+init_da(wum::WarmUpManager) = begin
   wum[:m] = 0
   wum[:x_bar] = 0.0
   wum[:H_bar] = 0.0
@@ -103,7 +103,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   x_bar = (1.0 - x_η) * x_bar + x_η * x
 
   ϵ = exp(x)
-  
+
   push!(wum[:ϵ], ϵ)
   wum[:x_bar], wum[:H_bar] = x_bar, H_bar
 
@@ -114,8 +114,8 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
-in_adaptation(wum::WarmUpManager) = (wum.adapt_n >= wum[:init_buffer]) && 
-                                    (wum.adapt_n < wum[:n_warmup] - wum[:term_buffer]) && 
+in_adaptation(wum::WarmUpManager) = (wum.adapt_n >= wum[:init_buffer]) &&
+                                    (wum.adapt_n < wum[:n_warmup] - wum[:term_buffer]) &&
                                     (wum.adapt_n != wum[:n_warmup])
 
 is_window_end(wum::WarmUpManager) = (wum.adapt_n == wum[:next_window]) && (wum.adapt_n != wum[:n_warmup])
@@ -180,24 +180,32 @@ update_pre_cond(wum::WarmUpManager, θ_new) = begin
 
 end
 
-adapt(wum::WarmUpManager, stats::Float64, θ_new) = begin
+adapt(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = false) = begin
 
   if wum.adapt_n < wum[:n_warmup]
-    adapt_step_size(wum, stats)
-    is_update = update_pre_cond(wum, θ_new)
-    wum.adapt_n += 1
 
-    if is_update
-      # update_da_μ(wum, mean(wum[:ϵ][end-20:end]))
-      update_da_μ(wum, mean(wum[:ϵ][end]))
-      reset_da(wum)
+    if adapt_ϵ
+        adapt_step_size(wum, stats)
+        # if is_window_end(wum)
+          # update_da_μ(wum, mean(wum[:ϵ][end]))
+          # init_da(wum)
+        # end
     end
+
+    if adapt_M
+        update_pre_cond(wum, θ_new)  # window is updated implicitly.
+    else
+        is_window_end(wum) && compute_next_window(wum) # update window explicitly.
+    end
+
+    wum.adapt_n += 1
 
   elseif wum.adapt_n == wum[:n_warmup]
 
-    ϵ = exp(wum[:x_bar])
-  
-    push!(wum[:ϵ], ϵ)
+    if adapt_ϵ
+      ϵ = exp(wum[:x_bar])
+      push!(wum[:ϵ], ϵ)
+    end
 
   end
 

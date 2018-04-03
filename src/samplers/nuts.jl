@@ -121,7 +121,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     setlogp!(vi, logp)
 
     # Adapt step-size and pre-cond
-    adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
+    adapt(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = false)
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end

@@ -118,11 +118,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       # NOTE: ForwardDiff and ReverseDiff need different implementation
       #       due to immutable Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
-    
-        vi[spl] = old_θ         
 
-      elseif ADBACKEND == :reverse_diff 
-        
+        vi[spl] = old_θ
+
+      elseif ADBACKEND == :reverse_diff
+
         vi_spl = vi[spl]
         for i = 1:length(old_θ)
           if isa(vi_spl[i], ReverseDiff.TrackedReal)
@@ -133,13 +133,13 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
         end
 
       end
-      
+
       setlogp!(vi, old_logp)  # reset logp
     end
 
 
     if spl.alg.delta > 0      # only do adaption for HMCDA
-      adapt(spl.info[:wum], α, realpart(vi[spl]))
+      adapt(spl.info[:wum], α, realpart(vi[spl]), adapt_ϵ = true)
     end
 
     dprintln(3, "R -> X...")
