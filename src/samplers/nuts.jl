@@ -87,7 +87,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
-    local α, n_α
+    local α, n_α, τ_valid
     while s == 1 && j <= 5
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
@@ -122,7 +122,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     # Adapt step-size and pre-cond
     if τ_valid > 0
-        adapt(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = false)
+        adapt(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
     end
 
     dprintln(3, "R -> X...")
