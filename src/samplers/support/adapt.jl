@@ -107,7 +107,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   ϵ = exp(x)
   dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
 
-  if isnan(ϵ) || isinf(ϵ) || ϵ <= 0
+  if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
       dwarn(0, "incorrect ϵ = $ϵ is dropped; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
   else
       push!(wum[:ϵ], ϵ)
