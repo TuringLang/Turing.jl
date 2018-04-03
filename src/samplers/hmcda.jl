@@ -138,7 +138,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
 
-    if spl.alg.delta > 0      # only do adaption for HMCDA
+    if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
       adapt(spl.info[:wum], α, realpart(vi[spl]), adapt_ϵ = true)
     end
 
