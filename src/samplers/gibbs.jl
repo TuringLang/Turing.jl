@@ -109,6 +109,7 @@ sample(model::Function, alg::Gibbs;
       if isa(local_spl.alg, GibbsComponent)
         if isa(local_spl.alg, Hamiltonian)  # clean cache
           local_spl.info[:grad_cache] = Dict{UInt64,Vector}()
+          local_spl.info[:reverse_diff_cache] = Dict()
         end
 
         for _ = 1:local_spl.alg.n_iters

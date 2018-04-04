@@ -40,7 +40,7 @@ macro ~(left, right)
     # Call observe
     esc(
       quote
-        Turing.observe(
+        _lp += Turing.observe(
           sampler,
           $(right),   # Distribution
           $(left),    # Data point
@@ -60,7 +60,7 @@ macro ~(left, right)
       esc(
         quote
           # Call observe
-          Turing.observe(
+          _lp += Turing.observe(
             sampler,
             $(right),   # Distribution
             $(left),    # Data point
@@ -86,20 +86,22 @@ macro ~(left, right)
         assume_ex = quote
           vn = Turing.VarName(vi, $syms, "")
           if isa($(right), Vector)
-            $(left) = Turing.assume(
+            $(left), __lp = Turing.assume(
               sampler,
               $(right),   # dist
               vn,         # VarName
               $(left),
               vi          # VarInfo
             )
+            _lp += __lp
           else
-            $(left) = Turing.assume(
+            $(left), __lp = Turing.assume(
               sampler,
               $(right),   # dist
               vn,         # VarName
               vi          # VarInfo
             )
+            _lp += __lp
           end
         end
       else
@@ -108,12 +110,13 @@ macro ~(left, right)
           csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
           indexing = reduce(*, "", map(idx -> string(idx), idcs))
           vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-          $left = Turing.assume(
+          $(left), __lp = Turing.assume(
             sampler,
             $right,   # dist
             vn,       # VarName
             vi        # VarInfo
           )
+          _lp += __lp
         end
       end
       esc(assume_ex)
@@ -208,7 +211,7 @@ macro model(fexpr)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
-
+  
   return_ex = fbody.args[end] # get last statement of defined model
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
@@ -232,6 +235,8 @@ macro model(fexpr)
     # NOTE: code above is commented out to disable explict return
   end
 
+  unshift!(fbody_inner.args, :(_lp = zero(Real)))
+  push!(fbody_inner.args, :(vi.logp = _lp))
   push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
 
   dprintln(1, fbody_inner)

@@ -213,8 +213,8 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
       r = vi[vn]
     end
 
-    acclogp!(vi, logpdf(dist, r)) # accumulate pdf of prior
-    r
+    # acclogp!(vi, logpdf(dist, r)) # accumulate pdf of prior
+    r, logpdf(dist, r)
 end
 
 assume{D<:Distribution}(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =

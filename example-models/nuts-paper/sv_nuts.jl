@@ -21,7 +21,9 @@ y = readsvdata()
 end
 
 N = length(y)
-chain = sample(sv_nuts(y, N, NaN), NUTS(1000, 0.65))
+
+chain = sample(sv_nuts(y, N, NaN), HMC(1000, 0.05, 5))
+# chain = sample(sv_nuts(y, N, NaN), NUTS(1000, 0.65))
 # chain = sample(sv_nuts(y, N, NaN), Gibbs(100, HMC(2, 0.002, 2, :τ, :ν), PG(50, 2, :s)))
 
 describe(chain)

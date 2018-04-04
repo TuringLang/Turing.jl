@@ -1,13 +1,14 @@
 # Get running time of Stan
 get_stan_time(stan_model_name::String) = begin
   s = readlines(pwd()*"/tmp/$(stan_model_name)_samples_1.csv")
-  m = match(r"(?<time>[0-9].[0-9]*)", s[end-1])
+  println(s[end-1])
+  m = match(r"(?<time>[0-9]+.[0-9]*)", s[end-1])
   float(m[:time])
 end
 
 # Run benchmark
 tbenchmark(alg::String, model::String, data::String) = begin
-  chain, time, mem, _, _  = eval(parse("@timed sample($model($data), $alg)"))
+  chain, time, mem, _, _  = eval(parse("model_f = $model($data); @timed sample(model_f, $alg)"))
   alg, sum(chain[:elapsed]), mem, chain, deepcopy(chain)
 end
 
@@ -18,7 +19,7 @@ build_logd(name::String, engine::String, time, mem, tchain, _) = begin
     "engine" => engine,
     "time" => time,
     "mem" => mem,
-    "turing" => Dict(v => mean(tchain[Symbol(v)]) for v in keys(tchain))
+    "turing" => Dict(v => mean(tchain[Symbol(v)][1001:end]) for v in keys(tchain))
   )
 end
 
@@ -58,6 +59,7 @@ log2str(logd::Dict, monitor=[]) = begin
         end
         if haskey(logd, "stan") && haskey(logd["stan"], v)
           str *= ("|   -> Stan     = $(round(logd["stan"][v], 3)), ")
+          println(m, logd["stan"][v])
           diff = abs(m - logd["stan"][v])
           diff_output = "diff = $(round(diff, 3))"
           if sum(diff) > 0.2

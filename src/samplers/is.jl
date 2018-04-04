@@ -53,8 +53,10 @@ end
 assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r = rand(dist)
   push!(vi, vn, r, dist, 0)
-  r
+  r, zero(Real)
 end
 
-observe(spl::Sampler{IS}, dist::Distribution, value::Any, vi::VarInfo) =
-  acclogp!(vi, logpdf(dist, value))
+observe(spl::Sampler{IS}, dist::Distribution, value::Any, vi::VarInfo) = begin
+  # acclogp!(vi, logpdf(dist, value))
+  logpdf(dist, value)
+end

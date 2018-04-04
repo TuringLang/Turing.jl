@@ -61,9 +61,11 @@ Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
   info[:θ_num] = 0
   info[:stds] = nothing
   info[:vars] = nothing
+  info[:ad] = Dict()
 
   # For caching gradient
   info[:grad_cache] = Dict{UInt64,Vector}()
+  info[:reverse_diff_cache] = Dict()
 
   # Adapt configuration
   if adapt_conf != nothing
@@ -156,6 +158,8 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   if save_state               # save state
     # Convert vi back to X if vi is required to be saved
     if spl.alg.gid == 0 invlink!(vi, spl) end
+    spl.info[:grad_cache] = Dict{UInt64,Vector}()
+    spl.info[:reverse_diff_cache] = Dict()
     save!(c, spl, model, vi)
   end
 
@@ -166,8 +170,9 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
-  acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-  r
+  # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+  # r
+  r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
 assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) = begin
@@ -179,7 +184,7 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
 
   rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 
-  acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
+  # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
   if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
     @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
@@ -198,7 +203,7 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
     end
   end
 
-  var
+  var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
 observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
