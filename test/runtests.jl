@@ -13,7 +13,7 @@ testcases = Dict(
 # Turing.jl/
 #   src/
 #     core/
-        "ad.jl"        => ["ad1", "ad2", "ad3", "pass_dual_to_dists",],
+        "ad.jl"        => ["ad1", "ad2", "ad3", "adr", "pass_dual_to_dists",],
         "compiler.jl"  => ["assume", "observe", "predict", "sample",
                            "beta_binomial", "noparam",
                           #  "opt_param_of_dist",
@@ -28,6 +28,7 @@ testcases = Dict(
 #     samplers/
 #       support/
           "resample.jl" => ["resample", "particlecontainer",],
+          "adapt.jl" => ["var_estimator",],
         "sampler.jl" => ["vectorize_observe", "vec_assume", "vec_assume_mv",],
         "gibbs.jl" => ["gibbs", "gibbs2", "gibbs_constructor",],
         "nuts.jl"  => ["nuts_cons", "nuts",
@@ -36,7 +37,7 @@ testcases = Dict(
         "hmcda.jl" => ["hmcda_cons", "hmcda",
                       #  "hmcda_geweke",
                       ],
-        "hmc.jl"   => ["multivariate_support", "matrix_support",
+        "hmc.jl"   => ["multivariate_support", "matrix_support", "hmc_reverse_diff",
                        "constrained_bounded", "constrained_simplex",],
         "sghmc.jl" => ["sghmc_cons", "sghmc_cons",],
         "sgld.jl"  => ["sgld_cons", "sgld_cons",],

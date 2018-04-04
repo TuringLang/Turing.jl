@@ -49,13 +49,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      oldθ = realpart(vi[spl])
+      θ = realpart(vi[spl])
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      vi[spl] = oldθ
+      vi[spl] = θ
 
       if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-      update_da_params(spl.info[:wum], ϵ)
+      push!(spl.info[:wum][:ϵ], ϵ)
+      update_da_μ(spl.info[:wum], ϵ)
     end
 
     push!(spl.info[:accept_his], true)
@@ -86,14 +87,14 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     logp = getlogp(vi)
     θm, θp, rm, rp, j, n, s = θ, θ, p, p, 0, 1, 1
 
-    local α, n_α
+    local α, n_α, τ_valid
     while s == 1 && j <= 5
       v_j = rand([-1, 1]) # Note: this variable actually does not depend on j;
                           #       it is set as `v_j` just to be consistent to the paper
       if v_j == -1
-        θm, rm, _, _, θ′, logp′, n′, s′, α, n_α = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
+        θm, rm, _, _, θ′, logp′, n′, s′, α, n_α, τ_valid = build_tree(θm, rm, logu, v_j, j, ϵ, H0, model, spl, vi)
       else
-        _, _, θp, rp, θ′, logp′, n′, s′, α, n_α = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
+        _, _, θp, rp, θ′, logp′, n′, s′, α, n_α, τ_valid = build_tree(θp, rp, logu, v_j, j, ϵ, H0, model, spl, vi)
       end
 
       if PROGRESS
@@ -120,7 +121,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     setlogp!(vi, logp)
 
     # Adapt step-size and pre-cond
-    adapt(spl.info[:wum], α / n_α, realpart(vi[spl]))
+    if τ_valid > 0
+        adapt!(spl.info[:wum], α / n_α, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
+    end
 
     dprintln(3, "R -> X...")
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
@@ -149,16 +152,16 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp.(min(0, -H′ - (-H0)))
 
-      θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1
+      θ′, r′, θ′, r′, θ′, getlogp(vi), n′, s′, α′, 1, τ_valid
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α, τ_valid = build_tree(θ, r, logu, v, j - 1, ϵ, H0, model, spl, vi)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
+          θm, rm, _, _, θ′′, logp′′, n′′, s′′, α′′, n′′_α, τ_valid = build_tree(θm, rm, logu, v, j - 1, ϵ, H0, model, spl, vi)
         else
-          _, _, θp, rp, θ′′, logp′′, n′′, s′′, α′′, n′′_α = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
+          _, _, θp, rp, θ′′, logp′′, n′′, s′′, α′′, n′′_α, τ_valid = build_tree(θp, rp, logu, v, j - 1, ϵ, H0, model, spl, vi)
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
@@ -170,6 +173,6 @@ function build_tree(θ::Union{Vector,SubArray}, r::Vector, logu::Float64, v::Int
         n′ = n′ + n′′
       end
 
-      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α
+      θm, rm, θp, rp, θ′, logp′, n′, s′, α′, n′_α, τ_valid
     end
   end

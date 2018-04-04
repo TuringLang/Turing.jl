@@ -10,18 +10,33 @@ module Turing
 
 using Distributions
 using ForwardDiff
+import ReverseDiff
 using ProgressMeter
 using Stan
+using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
+import ReverseDiff: gradient
 import Mamba: AbstractChains, Chains
 import Stan: Adapt, Hmc
 
 ##############################
 # Global variables/constants #
 ##############################
+
+global ADBACKEND = :reverse_diff
+setadbackend(backend_sym) = begin
+  @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
+  global ADBACKEND = backend_sym
+end
+
+global ADSAFE = false
+setadsafe(switch::Bool) = begin
+  println("[Turing]: global ADSAFE is set as $switch")
+  global ADSAFE = switch
+end
 
 global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
@@ -48,6 +63,8 @@ global const FCOMPILER = 0  # verbose printing flag for compiler
 global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
 global const CACHERANGES = 0b01
+
+global TRANS_CACHE = Dict{Tuple,Any}()
 
 #######################
 # Sampler abstraction #
@@ -91,7 +108,7 @@ export MH, Gibbs                              # classic sampling
 export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
 export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
-export auto_tune_chunk_size!                  # helper
+export auto_tune_chunk_size!, setadbackend, setadsafe # helper
 export dprintln, set_verbosity, turnprogress  # debugging
 
 # Turing-safe data structures and associated functions

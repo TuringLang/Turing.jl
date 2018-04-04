@@ -38,7 +38,8 @@ function Base.copy(t::Task)
   newt
 end
 
-@suppress_err function Base.produce(v)
+# @suppress_err function Base.produce(v)
+function Base.produce(v)
 
     ct = current_task()
     local empty, t, q
@@ -82,7 +83,8 @@ end
     end
 end
 
-@suppress_err function Base.consume(P::Task, values...)
+# @suppress_err function Base.consume(P::Task, values...)
+function Base.consume(P::Task, values...)
 
     if istaskdone(P)
         return wait(P)

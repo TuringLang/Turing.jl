@@ -147,17 +147,15 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       r = rand(dist)
       push!(vi, vn, r, dist, spl.alg.gid)
       spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
-      r
     elseif is_flagged(vi, vn, "del")
       unset_flag!(vi, vn, "del")
       r = rand(dist)
       vi[vn] = vectorize(dist, r)
       setgid!(vi, spl.alg.gid, vn)
       setorder!(vi, vn, vi.num_produce)
-      r
     else
       updategid!(vi, vn, spl)
-      vi[vn]
+      r = vi[vn]
     end
   else # vn belongs to other sampler <=> conditionning on vn
     if haskey(vi, vn)
@@ -167,15 +165,17 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
       push!(vi, vn, r, dist, -1)
     end
     acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    r
   end
+  r, zero(Real)
 end
 
 assume{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =
   error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 
-observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) =
+observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
   produce(logpdf(dist, value))
+  zero(Real)
+end
 
 observe{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
   error("[Turing] PG and SMC doesn't support vectorizing observe statement")

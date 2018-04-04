@@ -1,6 +1,6 @@
 # Uniform rand with range e
 randrealuni() = Real(e * rand())  # may Euler's number give us good luck
-randrealuni(args...) = map(x -> Real(x), e * rand(args...))
+randrealuni(args...) = map(x -> Real(x), 2 * rand(args...))
 
 # Only use customized initialization for transformable distributions
 init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}) = inittrans(dist)
@@ -38,7 +38,7 @@ end
 
 
 # Only use customized initialization for transformable distributions
-init(dist::TransformDistribution, n::Int) = inittrans(dist, n)
+init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}, n::Int) = inittrans(dist, n)
 
 # Callbacks for un-transformable distributions
 init(dist::Distribution, n::Int) = rand(dist, n)
