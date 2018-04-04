@@ -31,7 +31,7 @@ end
 
 type WarmUpManager
   adapt_n   ::    Int
-  params    ::    Dict
+  params    ::    Dict{Symbol, Any}
   ve        ::    VarEstimator
 end
 
@@ -68,7 +68,7 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:window_size] = adapt_conf.window
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
-  println(wum.params)
+  dprintln(2, wum.params)
 
   spl.info[:wum] = wum
 end
@@ -97,12 +97,12 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
   μ = wum[:μ]; x_bar = wum[:x_bar]; H_bar = wum[:H_bar]
 
-  H_η = 1.0 / (m + t_0)
-  H_bar = (1.0 - H_η) * H_bar + H_η * (δ - stats)
+  η_H = 1.0 / (m + t_0)
+  H_bar = (1.0 - η_H) * H_bar + η_H * (δ - stats)
 
   x = μ - H_bar * sqrt(m) / γ
-  x_η = m^(-κ)
-  x_bar = (1.0 - x_η) * x_bar + x_η * x
+  η_x = m^(-κ)
+  x_bar = (1.0 - η_x) * x_bar + η_x * x
 
   ϵ = exp(x)
   dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
