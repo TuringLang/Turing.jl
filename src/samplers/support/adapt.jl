@@ -85,14 +85,14 @@ update_da_μ(wum::WarmUpManager, ϵ::Float64) = begin
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
-adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
+adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
 
   dprintln(2, "adapting step size ϵ...")
   dprintln(2, "current α = $(stats)")
   wum[:m] = wum[:m] + 1
   m = wum[:m]
 
-  stats = stats > 1 ? 1 : stats
+  stats = stats > 1 ? 1 : stats # stats = δ - H_t, where δ is target accept prob
 
   γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
   μ = wum[:μ]; x_bar = wum[:x_bar]; H_bar = wum[:H_bar]
@@ -100,7 +100,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   η_H = 1.0 / (m + t_0)
   H_bar = (1.0 - η_H) * H_bar + η_H * (δ - stats)
 
-  x = μ - H_bar * sqrt(m) / γ
+  x = μ - H_bar * sqrt(m) / γ            # x ≡ logϵ
   η_x = m^(-κ)
   x_bar = (1.0 - η_x) * x_bar + η_x * x
 
@@ -108,7 +108,7 @@ adapt_step_size(wum::WarmUpManager, stats::Float64) = begin
   dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
 
   if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
-      dwarn(0, "incorrect ϵ = $ϵ is dropped; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
+      dwarn(0, "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
   else
       push!(wum[:ϵ], ϵ)
       wum[:x_bar], wum[:H_bar] = x_bar, H_bar
@@ -192,17 +192,19 @@ adapt!(wum::WarmUpManager, stats::Float64, θ_new; adapt_ϵ = false, adapt_M = f
   if wum.adapt_n < wum[:n_warmup]
 
     if adapt_ϵ
-        adapt_step_size(wum, stats)
+        adapt_step_size!(wum, stats)
          if is_window_end(wum)
-           update_da_μ(wum, wum[:ϵ][end])
+           ϵ = exp(wum[:x_bar])
+           push!(wum[:ϵ], ϵ)
+           update_da_μ(wum, ϵ)
            restart_da(wum)
          end
     end
 
     if adapt_M
         update_pre_cond!(wum, θ_new)  # window is updated implicitly.
-    else
-        is_window_end(wum) && compute_next_window(wum) # update window explicitly.
+    else   # update window explicitly.
+        is_window_end(wum) && compute_next_window(wum)
     end
 
     wum.adapt_n += 1
