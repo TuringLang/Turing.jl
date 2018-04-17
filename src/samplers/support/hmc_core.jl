@@ -28,28 +28,12 @@ end
 
 # Leapfrog step
 # NOTE: leapfrog() doesn't change θ in place!
-leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
-          model::Function, vi::VarInfo, spl::Sampler) = begin
+leapfrog(_θ::T, p::Vector{Float64}, τ::Int, ϵ::Float64,
+          model::Function, vi::VarInfo, spl::Sampler) where {T<:Union{Vector,SubArray}} = begin
 
   θ = realpart(_θ)
-  if ADBACKEND == :forward_diff
-    vi[spl] = θ
-    grad = gradient(vi, model, spl)
-  elseif ADBACKEND == :reverse_diff
-    grad = gradient_r(θ, vi, model, spl)
-  end
-  verifygrad(grad) || (return θ, p, 0)
 
-  τ_valid = 0
-  for t in 1:τ
-    # NOTE: we dont need copy here becase arr += another_arr
-    #       doesn't change arr in-place
-    p_old = p; θ_old = copy(θ); old_logp = getlogp(vi)
-
-    p -= ϵ .* grad / 2
-    θ += ϵ .* p  # full step for state
-    spl.info[:lf_num] += 1
-    spl.info[:total_lf_num] += 1  # record leapfrog num
+  lp_grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
     if ADBACKEND == :forward_diff
       vi[spl] = θ
@@ -57,24 +41,61 @@ leapfrog(_θ::Union{Vector,SubArray}, p::Vector{Float64}, τ::Int, ϵ::Float64,
     elseif ADBACKEND == :reverse_diff
       grad = gradient_r(θ, vi, model, spl)
     end
-    # verifygrad(grad) || (vi[spl] = θ_old; setlogp!(vi, old_logp); θ = θ_old; p = p_old; break)
-    if ~verifygrad(grad)
-      if ADBACKEND == :forward_diff
-        vi[spl] = θ_old
-      elseif ADBACKEND == :reverse_diff
-        vi_spl = vi[spl]
-        for i = 1:length(θ_old)
-          if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = θ_old[i]
-          else
-            vi_spl[i] = θ_old[i]
-          end
+
+    return getlogp(vi), grad
+
+  end
+
+  rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
+
+    if ADBACKEND == :forward_diff
+      vi[spl] = θ_old
+    elseif ADBACKEND == :reverse_diff
+      vi_spl = vi[spl]
+      for i = 1:length(θ_old)
+        if isa(vi_spl[i], ReverseDiff.TrackedReal)
+          vi_spl[i].value = θ_old[i]
+        else
+          vi_spl[i] = θ_old[i]
         end
       end
-      setlogp!(vi, old_logp)
-      θ = θ_old
-      p = p_old
-      break
+    end
+    setlogp!(vi, old_logp)
+
+  end
+
+  log_func() = begin
+
+    spl.info[:lf_num] += 1
+    spl.info[:total_lf_num] += 1  # record leapfrog num
+
+  end
+
+  return _leapfrog(θ, p, τ, ϵ, lp_grad_func; rev_func=rev_func, log_func=log_func)
+
+end
+
+function _leapfrog(θ::T, p::Vector{Float64}, τ::Int, ϵ::Float64, lp_grad_func::Function;
+                   rev_func=nothing, log_func=nothing) where {T<:Union{Vector,SubArray}}
+
+  old_logp, grad = lp_grad_func(θ)
+  verifygrad(grad) || (return θ, p, 0)
+
+  τ_valid = 0
+  for t in 1:τ
+    # NOTE: we dont need copy here becase arr += another_arr
+    #       doesn't change arr in-place
+    p_old = p; θ_old = copy(θ)
+
+    p -= ϵ .* grad / 2
+    θ += ϵ .* p  # full step for state
+
+    if log_func != nothing log_func() end
+
+    old_logp, grad = lp_grad_func(θ)
+    if ~verifygrad(grad)
+      if rev_func != nothing rev_func(θ_old, old_logp) end
+      θ = θ_old; p = p_old; break
     end
 
     p -= ϵ * grad / 2
@@ -111,11 +132,11 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
 
 end
 
-function _find_H(theta, p::Vector, logpdf_func_float::Function, stds::Vector)
+function _find_H(theta::T, p::Vector, logpdf_func_float::Function, stds::Vector) where {T<:Union{Vector,SubArray}}
 
     p_orig = p .* stds
 
-    H = dot(p_orig, p_orig) / 2 + (-logpdf_func_float(theta))
+    H = 0.5 * dot(p_orig, p_orig) + (-logpdf_func_float(theta))
 
     H = isnan(H) ? Inf : H
 
