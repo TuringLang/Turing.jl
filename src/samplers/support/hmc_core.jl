@@ -11,7 +11,19 @@ end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
   dprintln(2, "sampling momentum...")
-  randn(length(getranges(vi, spl))) ./ spl.info[:wum][:stds]
+  # randn(length(getranges(vi, spl))) ./ spl.info[:wum][:stds]
+
+  d = length(getranges(vi, spl))
+  stds = spl.info[:wum][:stds]
+
+  return _sample_momentum(d, stds)
+
+end
+
+function _sample_momentum(d::Int, stds::Vector)
+
+  return randn(d) ./ stds
+
 end
 
 # Leapfrog step
