@@ -75,16 +75,40 @@ end
 
 # Compute Hamiltonian
 find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
-  # NOTE: getlogp(vi) = 0 means the current vals[end] hasn't been used at all.
-  #       This can be a result of link/invlink (where expand! is used)
-  if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
 
-  p_orig = p .* spl.info[:wum][:stds]
+  # Old code
+  # # NOTE: getlogp(vi) = 0 means the current vals[end] hasn't been used at all.
+  # #       This can be a result of link/invlink (where expand! is used)
+  # if getlogp(vi) == 0 vi = runmodel(model, vi, spl) end
+  #
+  # p_orig = p .* spl.info[:wum][:stds]
+  #
+  # H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
+  # if isnan(H) H = Inf else H end
+  #
+  # H
 
-  H = dot(p_orig, p_orig) / 2 + realpart(-getlogp(vi))
-  if isnan(H) H = Inf else H end
+  logpdf_func_float(theta) = begin
 
-  H
+      vi[spl][:] = theta[:]
+      realpart(runmodel(model, vi, spl).logp)
+
+  end
+
+  return _find_H(vi[spl], p, logpdf_func_float, spl.info[:wum][:stds])
+
+end
+
+function _find_H(theta, p::Vector, logpdf_func_float::Function, stds::Vector)
+
+    p_orig = p .* stds
+
+    H = dot(p_orig, p_orig) / 2 + (-logpdf_func_float(theta))
+
+    H = isnan(H) ? Inf : H
+
+    return H
+
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
