@@ -7,3 +7,6 @@ tmp/
 
 *.jld
 .ipynb_checkpoints
+
+deps/usr
+deps/deps.jl

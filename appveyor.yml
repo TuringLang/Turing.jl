@@ -1,36 +1,26 @@
 environment:
   matrix:
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.6/julia-0.6.0-win64.exe"
-    MINGW_DIR: mingw64
-    # MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/5.3.0/threads-win32/seh/x86_64-5.3.0-release-win32-seh-rt_v4-rev0.7z/download
-    MINGW_URL: http://mlg.eng.cam.ac.uk/hong/x86_64-5.3.0-release-win32-seh-rt_v4-rev0.7z
-    MINGW_ARCHIVE: x86_64-5.3.0-release-win32-seh-rt_v4-rev0.7z
+    OS: w64
   - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6.0-win32.exe"
-    MINGW_DIR: mingw32
-    # MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/5.3.0/threads-win32/dwarf/i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z/download
-    MINGW_URL: http://mlg.eng.cam.ac.uk/hong/i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z
-    MINGW_ARCHIVE: i686-5.3.0-release-win32-dwarf-rt_v4-rev0.7z  
+    OS: W32
     
 matrix:
   allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
-  - MINGW_DIR: mingw32
+  - OS: w32
 
 notifications:
   - provider: Email
     on_build_success: false
     on_build_failure: false
-    on_build_status_changed: true
+    on_build_status_changed: false
 
 cache:
 # Cache large downloads to avoid network unreliability
-  - "%MINGW_ARCHIVE%"
-  - C:\Users\appveyor\.julia\v0.5
+  # - C:\Users\appveyor\.julia\v0.6
 
 install:
   - ps: "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12"
-# Download and install MinGW
-  - if not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
-  - 7z x -y "%MINGW_ARCHIVE%" > nul
 # Download most recent Julia Windows binary
   - ps: (new-object net.webclient).DownloadFile(
         $env:JULIA_URL,
@@ -39,9 +29,6 @@ install:
   - C:\projects\julia-binary.exe /S /D=C:\projects\julia
 
 build_script:
-  - set Path=%CD%\%MINGW_DIR%\bin;%Path%
-  - g++ --version
-  - mingw32-make --version
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
