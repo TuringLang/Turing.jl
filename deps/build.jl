@@ -1,7 +1,3 @@
-# Delete building file if exists
-if isfile("./deps.jl") rm("./deps.jl") end
-if ispath("./usr") rm("./usr"; recursive=true) end
-
 using BinaryProvider # requires BinaryProvider 0.3.0 or later
 
 # Parse some basic command-line arguments
