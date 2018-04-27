@@ -2,15 +2,11 @@ using Distributions, DiffBase
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
 using Turing: _hmc_step
 
-# @model gdemo(x) = begin
-
-#     s ~ InverseGamma(2,3)
+# @model simple_gauss() = begin
+#     s = 1
 #     m ~ Normal(0,sqrt(s))
-#     x[1] ~ Normal(m, sqrt(s))
-#     x[2] ~ Normal(m, sqrt(s))
-    
-#     return s, m
-
+#     2.0 ~ Normal(m, sqrt(s))
+#     2.5 ~ Normal(m, sqrt(s))
 # end
 
 θ_dim = 1
