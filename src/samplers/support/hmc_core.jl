@@ -134,13 +134,21 @@ end
 
 function _find_H(theta::T, p::Vector, logpdf_func_float::Function, stds::Vector) where {T<:Union{Vector,SubArray}}
 
-    p_orig = p .* stds
+  lp = logpdf_func_float(theta)
 
-    H = 0.5 * dot(p_orig, p_orig) + (-logpdf_func_float(theta))
+  return _find_H(theta, p, lp, stds)
 
-    H = isnan(H) ? Inf : H
+end
 
-    return H
+function _find_H(theta::T, p::Vector, lp::Real, stds::Vector) where {T<:Union{Vector,SubArray}}
+
+  p_orig = p .* stds
+
+  H = 0.5 * dot(p_orig, p_orig) + (-lp)
+
+  H = isnan(H) ? Inf : H
+
+  return H
 
 end
 
