@@ -134,15 +134,62 @@ end
 
 function _find_H(theta::T, p::Vector, logpdf_func_float::Function, stds::Vector) where {T<:Union{Vector,SubArray}}
 
-    p_orig = p .* stds
+  lp = logpdf_func_float(theta)
 
-    H = 0.5 * dot(p_orig, p_orig) + (-logpdf_func_float(theta))
-
-    H = isnan(H) ? Inf : H
-
-    return H
+  return _find_H(theta, p, lp, stds)
 
 end
+
+function _find_H(theta::T, p::Vector, lp::Real, stds::Vector) where {T<:Union{Vector,SubArray}}
+
+  p_orig = p .* stds
+
+  H = 0.5 * dot(p_orig, p_orig) + (-lp)
+
+  H = isnan(H) ? Inf : H
+
+  return H
+
+end
+
+function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
+                   dprint=dprintln,rev_func=nothing, log_func=nothing)
+
+  θ_dim = length(θ)
+
+  dprint(2, "sampling momentums...")
+  p = _sample_momentum(θ_dim, stds)
+
+  dprint(2, "recording old values...")
+  H = _find_H(θ, p, lj, stds)
+
+  τ = max(1, round(Int, λ / ϵ))
+  dprint(2, "leapfrog for $τ steps with step size $ϵ")
+  θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
+
+  dprint(2, "computing new H...")
+  lj_new = lj_func(θ_new)
+  H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, stds)
+
+  dprint(2, "computing accept rate α...")
+  α = min(1, exp(-(H_new - H)))
+
+  dprint(2, "decide wether to accept...")
+  is_accept = false
+  if rand() < α             # accepted
+    θ = θ_new
+    lj = lj_new
+    is_accept = true
+  end
+
+  return θ, lj, is_accept, τ_valid, α
+
+end
+
+_hmc_step(θ, lj, lj_func, grad_func, τ::Int, ϵ::Float64, stds; dprint=dprintln) =
+_hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds; dprint=dprint)
+
+# TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin

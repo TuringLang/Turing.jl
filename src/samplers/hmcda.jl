@@ -82,22 +82,55 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       runmodel(model, vi, spl)
     end
 
-    dprintln(2, "sampling momentum...")
-    p = sample_momentum(vi, spl)
+    lj_func(theta) = begin
 
-    dprintln(2, "recording old values...")
-    old_θ = realpart(vi[spl]); old_logp = getlogp(vi)
-    old_H = find_H(p, model, vi, spl)
+        vi[spl][:] = theta[:]
+        realpart(runmodel(model, vi, spl).logp)
 
-    τ = max(1, round(Int, λ / ϵ))
-    dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    θ, p, τ_valid = leapfrog(old_θ, p, τ, ϵ, model, vi, spl)
+    end
 
-    dprintln(2, "computing new H...")
-    H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
+    grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
-    dprintln(2, "computing accept rate α...")
-    α = min(1, exp(-(H - old_H)))
+      if ADBACKEND == :forward_diff
+        vi[spl] = θ
+        grad = gradient(vi, model, spl)
+      elseif ADBACKEND == :reverse_diff
+        grad = gradient_r(θ, vi, model, spl)
+      end
+  
+      return getlogp(vi), grad
+  
+    end
+
+    rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
+
+      if ADBACKEND == :forward_diff
+        vi[spl] = θ_old
+      elseif ADBACKEND == :reverse_diff
+        vi_spl = vi[spl]
+        for i = 1:length(θ_old)
+          if isa(vi_spl[i], ReverseDiff.TrackedReal)
+            vi_spl[i].value = θ_old[i]
+          else
+            vi_spl[i] = θ_old[i]
+          end
+        end
+      end
+      setlogp!(vi, old_logp)
+  
+    end
+  
+    log_func() = begin
+  
+      spl.info[:lf_num] += 1
+      spl.info[:total_lf_num] += 1  # record leapfrog num
+  
+    end
+
+    θ = realpart(vi[spl]); lj = vi.logp
+    stds = spl.info[:wum][:stds]
+
+    θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
@@ -109,7 +142,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α             # accepted
+    if is_accept              # accepted
       push!(spl.info[:accept_his], true)
     else                      # rejected
       push!(spl.info[:accept_his], false)
@@ -119,27 +152,28 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       #       due to immutable Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
 
-        vi[spl] = old_θ
+        vi[spl] = θ
 
       elseif ADBACKEND == :reverse_diff
 
         vi_spl = vi[spl]
-        for i = 1:length(old_θ)
+        for i = 1:length(θ)
           if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = old_θ[i]
+            vi_spl[i].value = θ[i]
           else
-            vi_spl[i] = old_θ[i]
+            vi_spl[i] = θ[i]
           end
         end
 
       end
 
-      setlogp!(vi, old_logp)  # reset logp
+      setlogp!(vi, lj)  # reset logp
     end
 
-
+    # QUES: why do we need the 2nd condition here (Kai)
     if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
-      adapt!(spl.info[:wum], α, realpart(vi[spl]), adapt_ϵ = true)
+      # TODO: figure out why realpart() is needed for α in HMCDA
+      adapt!(spl.info[:wum], realpart(α), realpart(vi[spl]), adapt_ϵ = true)
     end
 
     dprintln(3, "R -> X...")
