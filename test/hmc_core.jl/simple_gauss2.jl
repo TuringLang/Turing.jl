@@ -30,7 +30,7 @@ function _build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float6
       H′ = τ_valid == 0 ? Inf : _find_H(θ′, r′, lj_func, stds)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
-      α′ = exp.(min(0, -H′ - (-H0)))
+      α′ = exp(min(0, -H′ - (-H0)))
 
       return θ′, r′, θ′, r′, θ′, n′, s′, α′, 1
     else
@@ -61,7 +61,7 @@ function _nuts_step(θ, ϵ, lj_func, stds)
   d = length(θ)
   r0 = randn(d)
   H0 = _find_H(θ, r0, lj_func, stds)
-  logu = log(rand()) + H0
+  logu = log(rand()) + -H0
 
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
   da_stat = nothing
@@ -76,7 +76,7 @@ function _nuts_step(θ, ϵ, lj_func, stds)
 
     else
 
-        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
+        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
 
     end
 
@@ -168,8 +168,7 @@ stds = ones(θ_dim)
 θ = randn(θ_dim)
 lj = lj_func(θ)
 
-chn = Dict(:θ=>[], :logϵ=>[])
-accept_num = 1
+chn = Dict(:θ=>Vector{Vector{Float64}}(), :logϵ=>Vector{Float64}())
 
 function dummy_print(args...)
   nothing
@@ -189,5 +188,6 @@ for iter = 1:totla_num
 end
 
 @show mean(chn[:θ])
+samples_first_dim = map(x -> x[1], chn[:θ])
+@show std(samples_first_dim)
 @show mean(exp.(chn[:logϵ]))
-@show accept_num / totla_num
