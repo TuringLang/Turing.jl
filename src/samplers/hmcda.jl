@@ -127,18 +127,19 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   
     end
 
-    θ = realpart(vi[spl]); lj = vi.logp
+    θ = realpart(vi[spl])
+    lj = vi.logp
     stds = spl.info[:wum][:stds]
 
-    θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; rev_func=rev_func, log_func=log_func)
+    θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
+                                             rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(
                                        spl.info[:progress],
-                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
-                                     )
+                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)])
     end
 
     dprintln(2, "decide wether to accept...")
