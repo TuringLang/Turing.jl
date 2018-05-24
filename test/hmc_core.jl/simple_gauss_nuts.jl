@@ -1,5 +1,6 @@
-using Distributions, DiffBase
-using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
+include("unit_test_helper.jl")
+include("simple_gauss.jl")
+
 using Turing: _find_H, _leapfrog
 
 """
@@ -121,39 +122,14 @@ function _adapt_ϵ(logϵ, Hbar, logϵbar, da_stat, m, M_adapt, δ, μ;
 
 end
 
-θ_dim = 1
-function lj_func(θ)
-  _lj = zero(Real)
-  
-  s = 1
+# Turing
 
-  m = θ[1]
-  _lj += logpdf(Normal(0, sqrt(s)), m)
+mf = simple_gauss()
+chn = sample(mf, HMC(2000, 0.05, 5))
 
-  _lj += logpdf(Normal(m, sqrt(s)), 2.0)
-  _lj += logpdf(Normal(m, sqrt(s)), 2.5)
+println("mean of m: $(mean(chn[:m][1000:end]))")
 
-  return _lj
-end
-
-neg_lj_func(θ) = -lj_func(θ)
-const f_tape = GradientTape(neg_lj_func, randn(θ_dim))
-const compiled_f_tape = compile(f_tape)
-
-function grad_func(θ)
-    
-  inputs = θ
-  results = similar(θ)
-  all_results = DiffResults.GradientResult(results)
-
-  gradient!(all_results, compiled_f_tape, inputs)
-
-  neg_lj = all_results.value
-  grad, = all_results.derivs
-
-  return -neg_lj, grad
-
-end
+# Plain Julia
 
 M_adapt = 1000
 ϵ0 = 0.05

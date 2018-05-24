@@ -1,14 +1,6 @@
-using Distributions, DiffBase
-using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Turing: _hmc_step
+include("unit_test_helper.jl")
 
-
-
-
-
-
-
-
+# Turing
 
 using Turing
 
@@ -19,19 +11,10 @@ using Turing
     2.5 ~ Normal(m, sqrt(s))
 end
 
-mf = simple_gauss()
-chn = sample(mf, HMC(2000, 0.05, 5))
+# Plain Julia
 
-println("mean of m: $(mean(chn[:m][1000:end]))")
-
-
-
-
-
-
-
-
-
+using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
+using Distributions, DiffBase
 
 θ_dim = 1
 function lj_func(θ)
@@ -67,24 +50,6 @@ function grad_func(θ)
 
 end
 
-stds = ones(θ_dim)
-θ = randn(θ_dim)
-lj = lj_func(θ)
+# Unit test for gradient
 
-chn = []
-accept_num = 1
-
-function dummy_print(args...)
-  nothing
-end
-
-totla_num = 5000
-for iter = 1:totla_num
-  push!(chn, θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, stds; dprint=dummy_print)
-  accept_num += is_accept
-  # if (iter % 50 == 0) println(θ) end
-end
-
-@show mean(chn), lj
-@show accept_num / totla_num
+test_grad(simple_gauss, grad_func)
