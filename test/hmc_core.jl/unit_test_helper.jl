@@ -1,8 +1,11 @@
 using Base.Test
 
-function test_grad(turing_model, grad_f)
+function test_grad(turing_model, grad_f; trans=Dict())
     model_f = turing_model()
     vi = Base.invokelatest(model_f)
+    for i in trans
+        vi.flags["trans"][i] = true
+    end
     d = length(vi.vals)
     @testset "Gradient using random inputs" begin
         for _ = 1:10000

@@ -6,7 +6,7 @@ include("simple_gauss.jl")
 # Turing
 
 mf = simple_gauss()
-chn = sample(mf, HMC(2000, 0.05, 5))
+chn = sample(mf, HMC(10000, 0.05, 10))
 
 println("mean of m: $(mean(chn[:m][1000:end]))")
 
@@ -23,11 +23,11 @@ function dummy_print(args...)
   nothing
 end
 
-totla_num = 5000
+totla_num = 10000
 for iter = 1:totla_num
 
   push!(chn[:θ], θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, stds; dprint=dummy_print)
+  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 10, 0.05, stds; dprint=dummy_print)
   accept_num += is_accept
 
 end
