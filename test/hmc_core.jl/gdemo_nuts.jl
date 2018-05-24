@@ -1,14 +1,14 @@
 include("unit_test_helper.jl")
-include("simple_gauss.jl")
+include("gdemo.jl")
 
 include("nuts.jl")
 
 # Turing
 
-mf = simple_gauss()
-chn = sample(mf, HMC(2000, 0.05, 5))
+# mf = gdemo()
+# chn = sample(mf, HMC(5000, 0.05, 5))
 
-println("mean of m: $(mean(chn[:m][1000:end]))")
+# println("mean of m: $(mean(chn[:m][1000:end]))")
 
 # Plain Julia
 
@@ -44,7 +44,10 @@ for iter = 1:totla_num
   # if (iter % 50 == 0) println(θ) end
 end
 
-@show mean(chn[:θ])
-samples_first_dim = map(x -> x[1], chn[:θ])
-@show std(samples_first_dim)
+samples_s = exp.(map(x -> x[1], chn[:θ]))
+samples_m = map(x -> x[2], chn[:θ])
+@show mean(samples_s[1000:end])
+@show mean(samples_m[1000:end])
+@show std(samples_s[1000:end])
+@show std(samples_m[1000:end])
 @show mean(exp.(chn[:logϵ]))
