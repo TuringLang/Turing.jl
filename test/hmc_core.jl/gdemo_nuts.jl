@@ -36,7 +36,7 @@ println("Start to run NUTS")
 totla_num = 5000
 for iter = 1:totla_num
   
-  θ, da_stat = _nuts_step(θ, exp(logϵ), lj_func, stds)
+  θ, da_stat = _nuts_step(θ, exp(logϵ), lj_func, grad_func, stds)
   logϵ, Hbar, logϵbar = _adapt_ϵ(logϵ, Hbar, logϵbar, da_stat, iter, M_adapt, δ, μ)
 
   push!(chn[:θ], θ)

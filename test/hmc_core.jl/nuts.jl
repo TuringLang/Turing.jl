@@ -54,7 +54,7 @@ function _build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float6
     end
   end
 
-function _nuts_step(θ, ϵ, lj_func, stds)
+function _nuts_step(θ, ϵ, lj_func, grad_func, stds)
 
   d = length(θ)
   r0 = randn(d)
@@ -62,7 +62,7 @@ function _nuts_step(θ, ϵ, lj_func, stds)
   logu = log(rand()) + -H0
 
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
-  da_stat = nothing
+  local da_stat
 
   while s == 1
 
