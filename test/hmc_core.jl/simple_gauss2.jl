@@ -8,7 +8,7 @@ using Turing: _find_H, _leapfrog
 
 Recursively build balanced tree.
 
-Ref: http://www.stat.columbia.edu/~gelman/research/published/nuts.pdf
+Ref: Algorithm 6 on http://www.stat.columbia.edu/~gelman/research/published/nuts.pdf
 """
 function _build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
                     lj_func::Function, grad_func::Function, stds::Vector; Δ_max=1000) where {T<:Union{Vector,SubArray}}
