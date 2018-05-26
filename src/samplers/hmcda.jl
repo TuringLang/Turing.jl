@@ -131,7 +131,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
-    θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
+    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
                                              rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
@@ -145,6 +145,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     dprintln(2, "decide wether to accept...")
     if is_accept              # accepted
       push!(spl.info[:accept_his], true)
+
+      vi[spl][:] = θ_new[:]
+      setlogp!(vi, lj_func(θ_new))
     else                      # rejected
       push!(spl.info[:accept_his], false)
 
