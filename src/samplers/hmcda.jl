@@ -175,7 +175,9 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     end
 
     # QUES: why do we need the 2nd condition here (Kai)
-    if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
+    if spl.alg.delta > 0
+    # TODO: figure out whether or not the condition below is needed
+    # if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
       # TODO: figure out why realpart() is needed for α in HMCDA
       adapt!(spl.info[:wum], realpart(α), realpart(vi[spl]), adapt_ϵ = true)
     end
