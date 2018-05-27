@@ -3,7 +3,7 @@ using Base.Test
 
 include("../utility.jl")
 
-srand(125)
+srand(123)
 
 alg1 = HMCDA(3000, 1000, 0.65, 0.15)
 alg2 = PG(20, 500)
