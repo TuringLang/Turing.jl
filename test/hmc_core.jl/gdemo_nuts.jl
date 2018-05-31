@@ -1,7 +1,7 @@
+using Turing: _nuts_step, _adapt_ϵ
+
 include("unit_test_helper.jl")
 include("gdemo.jl")
-
-include("nuts_impl.jl")
 
 # Turing
 
