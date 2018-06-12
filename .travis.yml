@@ -14,33 +14,11 @@ os:
   - osx
 env:
   - GROUP=Test
-  - GROUP=Bench
-  - GROUP=LDA
-  - GROUP=MOC
-  - GROUP=SV
-  - GROUP=Opt
 matrix:
     fast_finish: true
-    exclude:
-       - os: osx
-         env: GROUP=Bench
-       - os: osx
-         env: GROUP=LDA
-       - os: osx
-         env: GROUP=MOC
-       - os: osx
-         env: GROUP=SV
-       - os: osx
-         env: GROUP=Opt
-
     allow_failures:
        - env: GROUP=Test
          os: osx
-       - env: GROUP=Bench
-       - env: GROUP=LDA
-       - env: GROUP=MOC
-       - env: GROUP=SV
-       - env: GROUP=Opt
 
 notifications:
     email: false
@@ -53,30 +31,13 @@ script:
              Pkg.build("Turing");
              if ENV["GROUP"] == "Test"
                 Pkg.test("Turing"; coverage=true)
-             elseif ENV["GROUP"] == "Bench"
-                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
-                include(Pkg.dir("Turing")*"/benchmarks/benchmark.jl")
-             elseif ENV["GROUP"] == "LDA"
-                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
-                include(Pkg.dir("Turing")*"/benchmarks/lda.run.jl")
-             elseif ENV["GROUP"] == "MOC"
-                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
-                include(Pkg.dir("Turing")*"/benchmarks/MoC.run.jl")
-             elseif ENV["GROUP"] == "SV"
-                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
-                include(Pkg.dir("Turing")*"/benchmarks/sv.run.jl")
-             elseif ENV["GROUP"] == "NB"
-                include(Pkg.dir("Turing")*"/example-models/aistats2018/naive-bayes.run.jl")
-             elseif ENV["GROUP"] == "Opt"
-                include(Pkg.dir("Turing")*"/benchmarks/install_deps.jl");
-                include(Pkg.dir("Turing")*"/benchmarks/optimization.jl")
              else
                 println("Unknown test command.")
              end'
 after_success:
-  - julia -e 'if ENV["GROUP"] != "Bench"
+  - julia -e 'if ENV["GROUP"] == "Test"
                 cd(Pkg.dir("Turing")); Pkg.add("Coverage");
                 using Coverage; Coveralls.submit(process_folder())
-                end'
+              end'
 notifications:
     email: false
