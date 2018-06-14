@@ -18,7 +18,7 @@ Turing provides **Hamiltonian Monte Carlo** (HMC) and **particle MCMC** sampling
 
 Please visit [Turing.jl wiki](https://github.com/TuringLang/Turing.jl/wiki) for documentation, tutorials (e.g. [get started](https://github.com/TuringLang/Turing.jl/wiki/Get-started)) and other topics (e.g. [advanced usages](https://github.com/TuringLang/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
 
-- [Introduction](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examplesl/blob/master/notebooks/Introduction.ipynb)
+- [Introduction](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/Introduction.ipynb)
 - [Gaussian Mixture Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/GMM.ipynb)
 - [Bayesian Hidden Markov Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/BayesHmm.ipynb)
 - [Factorical Hidden Markov Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/FHMM.ipynb)
