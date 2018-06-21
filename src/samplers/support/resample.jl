@@ -83,7 +83,7 @@ function resampleSystematic( w::Vector{Float64}, num_particles::Int )
   N = num_particles
   Q = cumsum(w)
 
-  T = collect(linspace(0,1-1/N,N)) + rand()/N
+  T = collect(linspace(0,maximum(Q)-1/N,N)) + rand()/N
   push!(T, 1)
 
   i=1
