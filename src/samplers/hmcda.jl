@@ -149,7 +149,24 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   end
 end
 
+doc"""
+  mh_accept(H, H_new)
 
+Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance ratio in log space.
+
+"""
+function mh_accept(H, H_new)
+
+  logα = min(0, -(H_new - H))
+
+  u = rand()
+  logu = log(u)
+
+  is_accept = (logu + H_new < min(H_new, H))
+
+  return is_accept, logα
+
+end
 
 function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
   dprint=dprintln,rev_func=nothing, log_func=nothing)
@@ -170,18 +187,15 @@ function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
   lj_new = lj_func(θ_new)
   H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, stds)
 
-  dprint(2, "computing accept rate α...")
-  α = min(1, exp(-(H_new - H)))
+  dprint(2, "deciding wether to accept and computing accept rate α...")
+  is_accept, logα = mh_accept(H, H_new)
 
-  dprint(2, "decide wether to accept...")
-  is_accept = false
-  if rand() < α             # accepted
+  if is_accept
     θ = θ_new
     lj = lj_new
-    is_accept = true
   end
 
-  return θ, lj, is_accept, τ_valid, α
+  return θ, lj, is_accept, τ_valid, exp(logα)
 
 end
 
