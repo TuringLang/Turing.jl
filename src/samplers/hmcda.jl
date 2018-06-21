@@ -176,9 +176,9 @@ function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
   dprint(2, "decide wether to accept...")
   is_accept = false
   if rand() < α             # accepted
-  θ = θ_new
-  lj = lj_new
-  is_accept = true
+    θ = θ_new
+    lj = lj_new
+    is_accept = true
   end
 
   return θ, lj, is_accept, τ_valid, α
