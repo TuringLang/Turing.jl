@@ -38,7 +38,8 @@ macro gen_local_lj_func(func_name, vi, spl, model)
     $func_name(theta) = begin
 
       $vi[$spl][:] = theta[:]
-      runmodel($model, $vi, $spl).logp
+      
+      return runmodel($model, $vi, $spl).logp
 
     end
 
