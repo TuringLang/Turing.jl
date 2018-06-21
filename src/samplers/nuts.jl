@@ -74,50 +74,10 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       runmodel(model, vi, spl)
     end
 
-    lj_func(theta) = begin
-
-        vi[spl][:] = theta[:]
-        realpart(runmodel(model, vi, spl).logp)
-
-    end
-
-    grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
-
-      if ADBACKEND == :forward_diff
-        vi[spl] = θ
-        grad = gradient(vi, model, spl)
-      elseif ADBACKEND == :reverse_diff
-        grad = gradient_r(θ, vi, model, spl)
-      end
-  
-      return getlogp(vi), grad
-  
-    end
-
-    rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
-
-      if ADBACKEND == :forward_diff
-        vi[spl] = θ_old
-      elseif ADBACKEND == :reverse_diff
-        vi_spl = vi[spl]
-        for i = 1:length(θ_old)
-          if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = θ_old[i]
-          else
-            vi_spl[i] = θ_old[i]
-          end
-        end
-      end
-      setlogp!(vi, old_logp)
-  
-    end
-  
-    log_func() = begin
-  
-      spl.info[:lf_num] += 1
-      spl.info[:total_lf_num] += 1  # record leapfrog num
-  
-    end
+    @gen_local_grad_func grad_func vi spl model
+    @gen_local_lj_func lj_func vi spl model
+    @gen_local_rev_func rev_func vi spl
+    @gen_local_log_func log_func spl
 
     θ = realpart(vi[spl])
     lj = vi.logp

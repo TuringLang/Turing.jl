@@ -1,5 +1,101 @@
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
-global Δ_max = 1000
+
+doc"""
+  gen_local_grad_func(func_name, vi, spl, model)
+
+Generate piece of code for a function `func_name(x)` which returns log-joint probabilty and gradient at `x`, using local variables `vi`, `spl` and `model` in the scope where the macro is called.
+"""
+macro gen_local_grad_func(func_name, vi, spl, model)
+
+  return esc(quote
+
+    $func_name(θ::T) where {T<:Union{Vector,SubArray}} = begin
+
+      if ADBACKEND == :forward_diff
+        $vi[spl] = θ
+        grad = gradient($vi, $model, $spl)
+      elseif ADBACKEND == :reverse_diff
+        grad = gradient_r(θ, $vi, $model, $spl)
+      end
+  
+      return getlogp($vi), grad
+  
+    end
+
+  end)
+
+end
+
+doc"""
+  gen_local_lj_func(func_name, vi, spl, model)
+
+Generate piece of code for a function `func_name(x)` which returns log-joint probabilty at `x`, using local variables `vi`, `spl` and `model` in the scope where the macro is called.
+"""
+macro gen_local_lj_func(func_name, vi, spl, model)
+
+  return esc(quote
+
+    $func_name(theta) = begin
+
+      $vi[$spl][:] = theta[:]
+      runmodel($model, $vi, $spl).logp
+
+    end
+
+  end)
+
+end
+
+doc"""
+  gen_local_rev_func(func_name, vi, spl)
+
+It generates a piece of code for a function `func_name(x_old, lp_old)` which reset the values in `vi` for `spl` as `x_old` and the log-joint probabilty as `lp_old`, using local variables `vi` and `spl` in the scope where the macro is called.
+"""
+macro gen_local_rev_func(func_name, vi, spl)
+
+  return esc(quote
+
+    $func_name(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
+
+      if ADBACKEND == :forward_diff
+        $vi[$spl] = θ_old
+      elseif ADBACKEND == :reverse_diff
+        vi_spl = $vi[spl]
+        for i = 1:length(θ_old)
+          if isa(vi_spl[i], ReverseDiff.TrackedReal)
+            vi_spl[i].value = θ_old[i]
+          else
+            vi_spl[i] = θ_old[i]
+          end
+        end
+      end
+      setlogp!($vi, old_logp)
+  
+    end
+
+  end)
+
+end
+
+doc"""
+  gen_local_log_func(func_name, spl)
+
+Generate a piece of code for a function `func_name()` which performs logging for number of leapfrog steps used, using the local variable `spl` in the scope where the macro is called.
+"""
+macro gen_local_log_func(func_name, spl)
+
+  return esc(quote
+
+    $func_name() = begin
+
+      spl.info[:lf_num] += 1
+      spl.info[:total_lf_num] += 1  # record leapfrog num
+  
+    end
+
+  end)
+
+end
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
   dprintln(4, "run model...")
@@ -33,43 +129,9 @@ leapfrog(_θ::T, p::Vector{Float64}, τ::Int, ϵ::Float64,
 
   θ = realpart(_θ)
 
-  lp_grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
-
-    if ADBACKEND == :forward_diff
-      vi[spl] = θ
-      grad = gradient(vi, model, spl)
-    elseif ADBACKEND == :reverse_diff
-      grad = gradient_r(θ, vi, model, spl)
-    end
-
-    return getlogp(vi), grad
-
-  end
-
-  rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
-
-    if ADBACKEND == :forward_diff
-      vi[spl] = θ_old
-    elseif ADBACKEND == :reverse_diff
-      vi_spl = vi[spl]
-      for i = 1:length(θ_old)
-        if isa(vi_spl[i], ReverseDiff.TrackedReal)
-          vi_spl[i].value = θ_old[i]
-        else
-          vi_spl[i] = θ_old[i]
-        end
-      end
-    end
-    setlogp!(vi, old_logp)
-
-  end
-
-  log_func() = begin
-
-    spl.info[:lf_num] += 1
-    spl.info[:total_lf_num] += 1  # record leapfrog num
-
-  end
+  @gen_local_grad_func lp_grad_func vi spl model
+  @gen_local_rev_func rev_func vi spl
+  @gen_local_log_func log_func spl
 
   return _leapfrog(θ, p, τ, ϵ, lp_grad_func; rev_func=rev_func, log_func=log_func)
 
@@ -121,12 +183,7 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #
   # H
 
-  logpdf_func_float(theta) = begin
-
-      vi[spl][:] = theta[:]
-      realpart(runmodel(model, vi, spl).logp)
-
-  end
+  @gen_local_lj_func logpdf_func_float vi spl model
 
   return _find_H(vi[spl], p, logpdf_func_float, spl.info[:wum][:stds])
 
