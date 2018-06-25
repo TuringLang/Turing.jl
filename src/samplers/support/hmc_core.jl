@@ -38,7 +38,7 @@ macro gen_local_lj_func(func_name, vi, spl, model)
     $func_name(theta) = begin
 
       $vi[$spl][:] = theta[:]
-      
+
       return runmodel($model, $vi, $spl).logp
 
     end
@@ -259,4 +259,26 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   end
   println("\r[$T] found initial ϵ: ", ϵ)
   ϵ
+end
+
+doc"""
+  mh_accept(H, H_new)
+
+Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance ratio in log space.
+
+"""
+function mh_accept(H, H_new; log_proposal_ratio=nothing)
+
+  logα = min(0, -(H_new - H))
+
+  u = rand()
+  logu = log(u)
+
+  if log_proposal_ratio == nothing
+    is_accept = (logu + H_new < min(H_new, H))
+  else
+    is_accept = (logu + H_new < H + log_proposal_ratio)
+  end
+  return is_accept, logα
+
 end
