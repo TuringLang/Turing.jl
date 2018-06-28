@@ -1,100 +1,92 @@
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
 
 doc"""
-  gen_local_grad_func(func_name, vi, spl, model)
+  gen_grad_func(vi, spl, model)
 
-Generate piece of code for a function `func_name(x)` which returns log-joint probabilty and gradient at `x`, using local variables `vi`, `spl` and `model` in the scope where the macro is called.
+Generate a function that takes `θ` and returns log-joint probabilty and gradient at `θ`, using Turing-related variables `vi`, `spl` and `model`.
 """
-macro gen_local_grad_func(func_name, vi, spl, model)
+function gen_grad_func(vi, spl, model)
 
-  return esc(quote
+  grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
-    $func_name(θ::T) where {T<:Union{Vector,SubArray}} = begin
-
-      if ADBACKEND == :forward_diff
-        $vi[spl] = θ
-        grad = gradient($vi, $model, $spl)
-      elseif ADBACKEND == :reverse_diff
-        grad = gradient_r(θ, $vi, $model, $spl)
-      end
-  
-      return getlogp($vi), grad
-  
+    if ADBACKEND == :forward_diff
+      vi[spl] = θ
+      grad = gradient(vi, model, spl)
+    elseif ADBACKEND == :reverse_diff
+      grad = gradient_r(θ, vi, model, spl)
     end
 
-  end)
+    return getlogp(vi), grad
+
+  end
+
+  return grad_func
 
 end
 
 doc"""
-  gen_local_lj_func(func_name, vi, spl, model)
+  gen_lj_func(vi, spl, model)
 
-Generate piece of code for a function `func_name(x)` which returns log-joint probabilty at `x`, using local variables `vi`, `spl` and `model` in the scope where the macro is called.
+Generate a function that takes `θ` and returns log-joint probabilty at `θ`, using Turing-related variables `vi`, `spl` and `model`.
 """
-macro gen_local_lj_func(func_name, vi, spl, model)
+function gen_lj_func(vi, spl, model)
 
-  return esc(quote
+  lj_func(θ) = begin
 
-    $func_name(theta) = begin
+    vi[spl][:] = θ[:]
 
-      $vi[$spl][:] = theta[:]
+    return runmodel(model, vi, spl).logp
 
-      return runmodel($model, $vi, $spl).logp
+  end
 
-    end
-
-  end)
+  return lj_func
 
 end
 
 doc"""
-  gen_local_rev_func(func_name, vi, spl)
+  gen_rev_func(vi, spl)
 
-It generates a piece of code for a function `func_name(x_old, lp_old)` which reset the values in `vi` for `spl` as `x_old` and the log-joint probabilty as `lp_old`, using local variables `vi` and `spl` in the scope where the macro is called.
+Generate a function that takes `x_old` and `lp_old` and resets the values in `vi` for `spl` as `x_old` and the log-joint probabilty as `lp_old`, using local variables `vi` and `spl` in the scope where `gen_rev_func` is called.
 """
-macro gen_local_rev_func(func_name, vi, spl)
+function gen_rev_func(vi, spl)
 
-  return esc(quote
+  rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
 
-    $func_name(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
-
-      if ADBACKEND == :forward_diff
-        $vi[$spl] = θ_old
-      elseif ADBACKEND == :reverse_diff
-        vi_spl = $vi[spl]
-        for i = 1:length(θ_old)
-          if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = θ_old[i]
-          else
-            vi_spl[i] = θ_old[i]
-          end
+    if ADBACKEND == :forward_diff
+      vi[spl] = θ_old
+    elseif ADBACKEND == :reverse_diff
+      vi_spl = vi[spl]
+      for i = 1:length(θ_old)
+        if isa(vi_spl[i], ReverseDiff.TrackedReal)
+          vi_spl[i].value = θ_old[i]
+        else
+          vi_spl[i] = θ_old[i]
         end
       end
-      setlogp!($vi, old_logp)
-  
     end
+    setlogp!(vi, old_logp)
 
-  end)
+  end
+
+  return rev_func
 
 end
 
 doc"""
-  gen_local_log_func(func_name, spl)
+  gen_log_func(spl)
 
-Generate a piece of code for a function `func_name()` which performs logging for number of leapfrog steps used, using the local variable `spl` in the scope where the macro is called.
+Generate a function that takes no argument and performs logging for number of leapfrog steps used, using the local variable `spl` in the scope where `gen_log_func` is called.
 """
-macro gen_local_log_func(func_name, spl)
+function gen_log_func(spl)
 
-  return esc(quote
+  log_func() = begin
 
-    $func_name() = begin
+    spl.info[:lf_num] += 1
+    spl.info[:total_lf_num] += 1  # record leapfrog num
 
-      spl.info[:lf_num] += 1
-      spl.info[:total_lf_num] += 1  # record leapfrog num
-  
-    end
+  end
 
-  end)
+  return log_func
 
 end
 
@@ -130,9 +122,9 @@ leapfrog(_θ::T, p::Vector{Float64}, τ::Int, ϵ::Float64,
 
   θ = realpart(_θ)
 
-  @gen_local_grad_func lp_grad_func vi spl model
-  @gen_local_rev_func rev_func vi spl
-  @gen_local_log_func log_func spl
+  lp_grad_func = gen_grad_func(vi, spl, model)
+  rev_func = gen_rev_func(vi, spl)
+  log_func = gen_log_func(spl)
 
   return _leapfrog(θ, p, τ, ϵ, lp_grad_func; rev_func=rev_func, log_func=log_func)
 
@@ -184,7 +176,7 @@ find_H(p::Vector, model::Function, vi::VarInfo, spl::Sampler) = begin
   #
   # H
 
-  @gen_local_lj_func logpdf_func_float vi spl model
+  logpdf_func_float = gen_lj_func(vi, spl, model)
 
   return _find_H(vi[spl], p, logpdf_func_float, spl.info[:wum][:stds])
 

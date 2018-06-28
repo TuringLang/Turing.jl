@@ -82,10 +82,10 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       runmodel(model, vi, spl)
     end
 
-    @gen_local_grad_func grad_func vi spl model
-    @gen_local_lj_func lj_func vi spl model
-    @gen_local_rev_func rev_func vi spl
-    @gen_local_log_func log_func spl
+    grad_func = gen_grad_func(vi, spl, model)
+    lj_func = gen_lj_func(vi, spl, model)
+    rev_func = gen_rev_func(vi, spl)
+    log_func = gen_log_func(spl)
 
     θ = realpart(vi[spl])
     lj = vi.logp
