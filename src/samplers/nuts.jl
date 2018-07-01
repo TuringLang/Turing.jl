@@ -6,7 +6,7 @@ No-U-Turn Sampler (NUTS) sampler.
 Usage:
 
 ```julia
-NUTS(1000, 200, 0.65)
+NUTS(1000, 200, 0.6j_max)
 ```
 
 Example:
@@ -21,7 +21,7 @@ Example:
   return s, m
 end
 
-sample(gdemo([1.5, 2]), NUTS(1000, 200, 0.65))
+sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
 immutable NUTS <: Hamiltonian
@@ -111,27 +111,32 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-"""
-    build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
-               lj_func::Function, grad_func::Function, stds::Vector) where {T<:Union{Vector,SubArray}}
+doc"""
+  function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
+                       H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector; 
+                       Δ_max::AbstractFloat=1000) where {T<:Union{Vector,SubArray}}
 
 Recursively build balanced tree.
 
 Ref: Algorithm 6 on http://www.stat.columbia.edu/~gelman/research/published/nuts.pdf
+
+Arguments:
+
+- `θ`         : model parameter
+- `r`         : momentum variable
+- `logu`      : slice variable (in log scale)
+- `v`         : direction ∈ {-1, 1}
+- `j`         : depth of tree
+- `ϵ`         : leapfrog step size
+- `H0`        : initial H
+- `lj_func`   : function for log-joint
+- `grad_func` : function for the gradient of log-joint
+- `stds`      : pre-conditioning matrix
+- `Δ_max`     : threshold for exploeration error tolerance
 """
-function _build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float64, H0::Float64,
-                    lj_func::Function, grad_func::Function, stds::Vector; Δ_max=1000) where {T<:Union{Vector,SubArray}}
-    doc"""
-      - θ           : model parameter
-      - r           : momentum variable
-      - logu        : slice variable (in log scale)
-      - v           : direction ∈ {-1, 1}
-      - j           : depth of tree
-      - ϵ           : leapfrog step size
-      - H0          : initial H
-      - lj_func     : function for log-joint
-      - grad_func   : function for the gradient of log-joint
-    """
+function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
+                     H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector; 
+                     Δ_max::AbstractFloat=1000.0) where {T<:Union{AbstractVector,SubArray}}
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, τ_valid = _leapfrog(θ, r, 1, v * ϵ, grad_func)
@@ -165,7 +170,26 @@ function _build_tree(θ::T, r::Vector, logu::Float64, v::Int, j::Int, ϵ::Float6
     end
   end
 
-function _nuts_step(θ, ϵ, lj_func, grad_func, stds)
+
+doc"""
+  function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+                      j_max::Int=j_max) where {T<:Union{AbstractVector,SubArray}}
+
+Perform one NUTS step.
+
+Ref: Algorithm 6 on http://www.stat.columbia.edu/~gelman/research/published/nuts.pdf
+
+Arguments:
+
+- `θ`         : model parameter
+- `ϵ`         : leapfrog step size
+- `lj_func`   : function for log-joint
+- `grad_func` : function for the gradient of log-joint
+- `stds`      : pre-conditioning matrix
+- `j_max`     : maximum expanding of doubling tree
+"""
+function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+                    j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
   d = length(θ)
   r0 = randn(d)
@@ -175,28 +199,19 @@ function _nuts_step(θ, ϵ, lj_func, grad_func, stds)
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
   local da_stat
 
-  while s == 1 && j <= 5
+  while s == 1 && j <= j_max
 
     v = rand([-1, 1])
-
     if v == -1
-
         θm, rm, _, _, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
-
     else
-
         _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
-
     end
 
     if s′ == 1
-
         if rand() < min(1, n′ / n)
-
             θ_new = θ′
-
         end
-
     end
 
     n = n + n′
