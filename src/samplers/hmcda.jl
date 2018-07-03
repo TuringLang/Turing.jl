@@ -82,35 +82,32 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       runmodel(model, vi, spl)
     end
 
-    dprintln(2, "sampling momentum...")
-    p = sample_momentum(vi, spl)
+    grad_func = gen_grad_func(vi, spl, model)
+    lj_func = gen_lj_func(vi, spl, model)
+    rev_func = gen_rev_func(vi, spl)
+    log_func = gen_log_func(spl)
 
-    dprintln(2, "recording old values...")
-    old_θ = realpart(vi[spl]); old_logp = getlogp(vi)
-    old_H = find_H(p, model, vi, spl)
+    θ = realpart(vi[spl])
+    lj = vi.logp
+    stds = spl.info[:wum][:stds]
 
-    τ = max(1, round(Int, λ / ϵ))
-    dprintln(2, "leapfrog for $τ steps with step size $ϵ")
-    θ, p, τ_valid = leapfrog(old_θ, p, τ, ϵ, model, vi, spl)
-
-    dprintln(2, "computing new H...")
-    H = τ_valid == 0 ? Inf : find_H(p, model, vi, spl)
-
-    dprintln(2, "computing accept rate α...")
-    α = min(1, exp(-(H - old_H)))
+    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
+                                             rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(
                                        spl.info[:progress],
-                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)]
-                                     )
+                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)])
     end
 
     dprintln(2, "decide wether to accept...")
-    if rand() < α             # accepted
+    if is_accept              # accepted
       push!(spl.info[:accept_his], true)
+
+      vi[spl][:] = θ_new[:]
+      setlogp!(vi, lj_func(θ_new))
     else                      # rejected
       push!(spl.info[:accept_his], false)
 
@@ -119,27 +116,30 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       #       due to immutable Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
 
-        vi[spl] = old_θ
+        vi[spl] = θ
 
       elseif ADBACKEND == :reverse_diff
 
         vi_spl = vi[spl]
-        for i = 1:length(old_θ)
+        for i = 1:length(θ)
           if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = old_θ[i]
+            vi_spl[i].value = θ[i]
           else
-            vi_spl[i] = old_θ[i]
+            vi_spl[i] = θ[i]
           end
         end
 
       end
 
-      setlogp!(vi, old_logp)  # reset logp
+      setlogp!(vi, lj)  # reset logp
     end
 
-
-    if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
-      adapt!(spl.info[:wum], α, realpart(vi[spl]), adapt_ϵ = true)
+    # QUES: why do we need the 2nd condition here (Kai)
+    if spl.alg.delta > 0
+    # TODO: figure out whether or not the condition below is needed
+    # if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
+      # TODO: figure out why realpart() is needed for α in HMCDA
+      adapt!(spl.info[:wum], realpart(α), realpart(vi[spl]), adapt_ϵ = true)
     end
 
     dprintln(3, "R -> X...")
@@ -148,3 +148,37 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     vi
   end
 end
+
+function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
+  dprint=dprintln,rev_func=nothing, log_func=nothing)
+
+  θ_dim = length(θ)
+
+  dprint(2, "sampling momentums...")
+  p = _sample_momentum(θ_dim, stds)
+
+  dprint(2, "recording old values...")
+  H = _find_H(θ, p, lj, stds)
+
+  τ = max(1, round(Int, λ / ϵ))
+  dprint(2, "leapfrog for $τ steps with step size $ϵ")
+  θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
+
+  dprint(2, "computing new H...")
+  lj_new = lj_func(θ_new)
+  H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, stds)
+
+  dprint(2, "deciding wether to accept and computing accept rate α...")
+  is_accept, logα = mh_accept(H, H_new)
+
+  if is_accept
+    θ = θ_new
+    lj = lj_new
+  end
+
+  return θ, lj, is_accept, τ_valid, exp(logα)
+
+end
+
+_hmc_step(θ, lj, lj_func, grad_func, τ::Int, ϵ::Float64, stds; dprint=dprintln) =
+_hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds; dprint=dprint)
