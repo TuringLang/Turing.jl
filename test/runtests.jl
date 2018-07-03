@@ -37,6 +37,7 @@ testcases = Dict(
         "hmcda.jl" => ["hmcda_cons", "hmcda",
                       #  "hmcda_geweke",
                       ],
+        "hmc_core.jl"   => ["run_all",],
         "hmc.jl"   => ["multivariate_support", "matrix_support", "hmc_reverse_diff",
                        "constrained_bounded", "constrained_simplex",],
         "sghmc.jl" => ["sghmc_cons", "sghmc_cons",],

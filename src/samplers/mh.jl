@@ -93,10 +93,10 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     propose(model, spl, vi)
 
     dprintln(2, "computing accept rate α...")
-    α = getlogp(vi) - old_logp + spl.info[:proposal_ratio]
+    is_accept, logα = mh_accept(-old_logp, -getlogp(vi); log_proposal_ratio=spl.info[:proposal_ratio])
 
     dprintln(2, "decide wether to accept...")
-    if log(rand()) < α && !spl.info[:violating_support]  # accepted
+    if is_accept && !spl.info[:violating_support]  # accepted
       push!(spl.info[:accept_his], true)
     else                      # rejected
       push!(spl.info[:accept_his], false)
