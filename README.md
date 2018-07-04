@@ -41,11 +41,12 @@ Turing is an open source project so if you feel you have some relevant skills an
 To cite Turing, please refer to the technical report. Sample BibTeX entry is given below:
 
 ```
-@ARTICLE{Turing2016,
-    author = {Ge, Hong and Xu, Kai and Scibior, Adam and Ghahramani, Zoubin and others},
-    title = "{The Turing language for probabilistic programming.}",
-    year = 2016,
-    month = jun
+@inproceedings{turing18,
+  title={{T}uring: a language for flexible probabilistic inference},
+  author={Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
+  booktitle={International Conference on Artificial Intelligence and Statistics},
+  pages={1682--1690},
+  year={2018}
 }
 ```
 
