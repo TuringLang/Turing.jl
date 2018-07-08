@@ -15,9 +15,9 @@ end
 
 add_sample!{T<:Real}(ve::VarEstimator{T}, s::Vector{T}) = begin
   ve.n += 1
-  δ = s - ve.μ
-  ve.μ += δ / ve.n
-  ve.M += δ .* (s - ve.μ)
+  δ = s .- ve.μ
+  ve.μ .+= δ / ve.n
+  ve.M .+= δ .* (s .- ve.μ)
 end
 
 get_var(ve::VarEstimator) = begin
