@@ -37,11 +37,8 @@ immutable HMC <: Hamiltonian
   HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
 
-# Below sketched a trick to remove the dependency of Stan by Requires.jl
-# 1. define call back functions with STAN_DEFAULT_ADAPT_CONF=nothing
-# 2. define default values for DEFAULT_ADAPT_CONF_TYPE and STAN_DEFAULT_ADAPT_CONF
-# 3. update them if Stan is available
-# 4. define corresponding functions using these two constants
+# Below is a trick to remove the dependency of Stan by Requires.jl
+# Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Void
 STAN_DEFAULT_ADAPT_CONF = nothing
 @require Stan begin
