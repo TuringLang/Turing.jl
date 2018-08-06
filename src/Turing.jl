@@ -8,11 +8,13 @@ module Turing
 #       to indicate that's not implemented inside Turing.jl            #
 ########################################################################
 
+using Requires
 using Distributions
 using ForwardDiff
 import ReverseDiff
 using ProgressMeter
-using Stan
+
+@require Stan using Stan
 using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
@@ -20,7 +22,7 @@ import Distributions: sample
 import ForwardDiff: gradient
 import ReverseDiff: gradient
 import Mamba: AbstractChains, Chains
-import Stan: Adapt, Hmc
+@require Stan import Stan: Adapt, Hmc
 
 ##############################
 # Global variables/constants #

@@ -55,17 +55,31 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   wum[:n_warmup] = spl.alg.n_adapt
   wum[:δ] = spl.alg.delta
 
-  # Stan.Adapt
-  adapt_conf = spl.info[:adapt_conf]
-  wum[:γ] = adapt_conf.gamma
-  wum[:t_0] = adapt_conf.t0
-  wum[:κ] = adapt_conf.kappa
-
-  # Three phases settings
-  # wum[:n_adapt] = spl.alg.n_adapt
-  wum[:init_buffer] = adapt_conf.init_buffer
-  wum[:term_buffer] = adapt_conf.term_buffer
-  wum[:window_size] = adapt_conf.window
+  # Initialize by Stan if Stan is installed
+  is_init_by_stan = false
+  @require Stan begin
+    is_init_by_stan = true
+    # Stan.Adapt
+    adapt_conf = spl.info[:adapt_conf]
+    # Hyper parameters for dual averaging
+    wum[:γ] = adapt_conf.gamma
+    wum[:t_0] = adapt_conf.t0
+    wum[:κ] = adapt_conf.kappa
+    # Three phases settings
+    wum[:init_buffer] = adapt_conf.init_buffer
+    wum[:term_buffer] = adapt_conf.term_buffer
+    wum[:window_size] = adapt_conf.window
+  end
+  # If wum is not initialised by Stan (when Stan is not avaible),
+  # initialise wum by common default values.
+  if ~is_init_by_stan
+    wum[:γ] = 0.05
+    wum[:t_0] = 10.0
+    wum[:κ] = 0.75
+    wum[:init_buffer] = 75
+    wum[:term_buffer] = 50
+    wum[:window_size] = 25
+  end
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
   dprintln(2, wum.params)
