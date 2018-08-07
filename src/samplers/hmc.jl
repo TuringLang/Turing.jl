@@ -37,17 +37,26 @@ immutable HMC <: Hamiltonian
   HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
 
+# Below is a trick to remove the dependency of Stan by Requires.jl
+# Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
+DEFAULT_ADAPT_CONF_TYPE = Void
+STAN_DEFAULT_ADAPT_CONF = nothing
+@require Stan begin
+  DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE,Stan.Adapt}
+  STAN_DEFAULT_ADAPT_CONF = Stan.Adapt()
+end
+
 # NOTE: the implementation of HMC is removed,
 #       it now reuses the one of HMCDA
-Sampler(alg::HMC) = Sampler(alg::HMC, Stan.Adapt())
-Sampler(alg::HMC, adapt_conf::Stan.Adapt) = begin
+Sampler(alg::HMC) = Sampler(alg::HMC, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
+Sampler(alg::HMC, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), adapt_conf)
   spl.info[:pre_set_ϵ] = alg.epsilon
   spl
 end
 
-Sampler(alg::Hamiltonian) =  Sampler(alg::Hamiltonian, Stan.Adapt())
-Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
+Sampler(alg::Hamiltonian) =  Sampler(alg::Hamiltonian, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
+Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   info=Dict{Symbol, Any}()
 
   # For sampler infomation
@@ -76,11 +85,11 @@ Sampler(alg::Hamiltonian, adapt_conf::Stan.Adapt) = begin
 end
 
 function sample{T<:Hamiltonian}(model::Function, alg::T;
-                                chunk_size=CHUNKSIZE,     # set temporary chunk size
-                                save_state=false,         # flag for state saving
-                                resume_from=nothing,      # chain to continue
-                                reuse_spl_n=0,            # flag for spl re-using
-                                adapt_conf=Stan.Adapt()   # adapt configuration
+                                chunk_size=CHUNKSIZE,               # set temporary chunk size
+                                save_state=false,                   # flag for state saving
+                                resume_from=nothing,                # chain to continue
+                                reuse_spl_n=0,                      # flag for spl re-using
+                                adapt_conf=STAN_DEFAULT_ADAPT_CONF  # adapt configuration
                                )
 
   default_chunk_size = CHUNKSIZE  # record global chunk size

@@ -14,12 +14,12 @@ end
 # Plain Julia
 
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Distributions, DiffBase
+using Distributions
 
 θ_dim = 1
 function lj_func(θ)
   _lj = zero(Real)
-  
+
   s = 1
 
   m = θ[1]
@@ -36,7 +36,7 @@ const f_tape = GradientTape(neg_lj_func, randn(θ_dim))
 const compiled_f_tape = compile(f_tape)
 
 function grad_func(θ)
-    
+
   inputs = θ
   results = similar(θ)
   all_results = DiffResults.GradientResult(results)
