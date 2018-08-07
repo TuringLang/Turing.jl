@@ -15,13 +15,13 @@ using Turing
 # Plain Julia
 
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Distributions, DiffBase
+using Distributions
 using Turing: invlink, logpdf
 
 θ_dim = 2
 function lj_func(θ)
   _lj = zero(Real)
-  
+
   d_s = InverseGamma(2, 3)
   s = invlink(d_s, θ[1])
   _lj += logpdf(d_s, s, true)
@@ -39,7 +39,7 @@ const f_tape = GradientTape(neg_lj_func, randn(θ_dim))
 const compiled_f_tape = compile(f_tape)
 
 function grad_func(θ)
-    
+
   inputs = θ
   results = similar(θ)
   all_results = DiffResults.GradientResult(results)
