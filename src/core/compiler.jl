@@ -1,3 +1,5 @@
+using Base.Meta: parse
+
 #################
 # Overload of ~ #
 #################
@@ -235,7 +237,7 @@ macro model(fexpr)
     # NOTE: code above is commented out to disable explict return
   end
 
-  unshift!(fbody_inner.args, :(_lp = zero(Real)))
+  pushfirst!(fbody_inner.args, :(_lp = zero(Real)))
   push!(fbody_inner.args, :(vi.logp = _lp))
   push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
 
@@ -283,13 +285,13 @@ macro model(fexpr)
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
 
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
-  unshift!(fdefn_outer.args[2].args,  quote
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
+  pushfirst!(fdefn_outer.args[2].args,  quote
       # Check fargs, data
-      eval(Turing, :(_compiler_ = deepcopy($compiler)))
+      Turing.eval(:(_compiler_ = deepcopy($compiler)))
       fargs = Turing._compiler_[:fargs];
 
       # Copy the expr of function definition and callbacks
@@ -320,7 +322,7 @@ macro model(fexpr)
           insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
-      dprintln(1, fdefn_inner)
+      # dprintln(1, fdefn_inner)
   end )
 
   for k in fargs
@@ -344,10 +346,10 @@ macro model(fexpr)
               data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
-      unshift!(fdefn_outer.args[2].args, data_check_ex)
+      pushfirst!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
-  unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)
+  pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
   dprintln(1, esc(fdefn_outer))
   esc(fdefn_outer)

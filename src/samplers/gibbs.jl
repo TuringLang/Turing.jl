@@ -160,7 +160,7 @@ sample(model::Function, alg::Gibbs;
   println("  Running time    = $time_total;")
 
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
   end
   c = Chain(0, samples)       # wrap the result by Chain
 
