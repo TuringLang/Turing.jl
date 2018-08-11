@@ -215,8 +215,8 @@ assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) wh
   var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
+observe(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) where A<:Hamiltonian=
   observe(nothing, d, value, vi)
 
-observe{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+observe(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} =
   observe(nothing, ds, value, vi)
