@@ -1,12 +1,11 @@
+const Particle = Trace
+
 """
 Data structure for particle filters
 - effectiveSampleSize(pc :: ParticleContainer)
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-
-const Particle = Trace
-
 struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
