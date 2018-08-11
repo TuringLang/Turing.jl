@@ -125,7 +125,7 @@ sample(model::Function, alg::PG;
 
   loge = exp.(mean(spl.info[:logevidence]))
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
     pre_loge = resume_from.weight
     # Calculate new log-evidence
     pre_n = length(resume_from.value2)

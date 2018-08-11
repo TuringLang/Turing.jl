@@ -43,7 +43,7 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # Fill sample
   for i = 1:length(syms)
     # Get indexing
-    idx = eval(parse(idx_comp[i][1]))
+    idx = Main.eval(parse(idx_comp[i][1]))
     # Determine if nesting
     nested_dim = length(idx_comp[1]) # how many nested layers?
     if nested_dim == 1
