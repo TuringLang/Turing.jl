@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), PG(100, 100))
 ```
 """
-immutable PG <: InferenceAlgorithm
+struct PG <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   resampler             ::    Function    # function to resample

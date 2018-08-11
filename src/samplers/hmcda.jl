@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
 ```
 """
-immutable HMCDA <: Hamiltonian
+struct HMCDA <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
@@ -113,7 +113,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       # Reset Θ
       # NOTE: ForwardDiff and ReverseDiff need different implementation
-      #       due to immutable Dual vs mutable TrackedReal
+      #       due to struct Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
 
         vi[spl] = θ
