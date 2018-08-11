@@ -7,23 +7,23 @@ Data structure for particle filters
 
 const Particle = Trace
 
-type ParticleContainer{T<:Particle}
+struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
   vals  :: Array{T,1}
   logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
-  # conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
-  conditional :: Void # storing parameters, helpful for implementing rejuvenation steps
+  # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
+  conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
   ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
-(::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)
+ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar{T}(pc :: ParticleContainer{T}) = ParticleContainer{T}(pc.model, 0)
+Base.similar(pc :: ParticleContainer{T}) where T = ParticleContainer{T}(pc.model, 0)
 # pc[i] returns the i'th particle
 Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
@@ -135,13 +135,13 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 
 function resample!( pc :: ParticleContainer,
                    randcat :: Function = Turing.resampleSystematic,
-                   ref :: Union{Particle, Void} = nothing)
+                   ref :: Union{Particle, Nothing} = nothing)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
 
   # resample
   Ws, _ = weights(pc)
-  n2    = isa(ref, Void) ? n1 : n1-1
+  n2    = isa(ref, Nothing) ? n1 : n1-1
   indx  = randcat(Ws, n2)
 
   # fork particles

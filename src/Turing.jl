@@ -13,6 +13,7 @@ using Distributions
 using ForwardDiff
 
 using ProgressMeter
+using Markdown
 
 @require Stan using Stan
 @require ReverseDiff using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray

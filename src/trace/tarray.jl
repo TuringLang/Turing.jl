@@ -2,8 +2,6 @@
 # TArray #
 ##########
 
-using Markdown
-
 doc"""
     TArray{T}(dims, ...)
 
