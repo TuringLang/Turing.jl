@@ -16,7 +16,7 @@ export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 ###########
 # VarName #
 ###########
-immutable VarName
+struct VarName
   csym      ::    Symbol        # symbol generated in compilation time
   sym       ::    Symbol        # variable symbol
   indexing  ::    String        # indexing
@@ -44,7 +44,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 # VarInfo #
 ###########
 
-type VarInfo
+struct VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
@@ -112,7 +112,7 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
-settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "trans"): unset_flag!(vi, vn, "trans")
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
 
 getlogp(vi::VarInfo) = vi.logp
 setlogp!(vi::VarInfo, logp::Real) = vi.logp = logp
@@ -218,8 +218,8 @@ Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 Base.getindex(vi::VarInfo, spl::Sampler)            = getval(vi, getranges(vi, spl))
 Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
-Base.getindex(vi::VarInfo, spl::Void)            = getall(vi)
-Base.setindex!(vi::VarInfo, val::Any, spl::Void) = setall!(vi, val)
+Base.getindex(vi::VarInfo, spl::Nothing)            = getall(vi)
+Base.setindex!(vi::VarInfo, val::Any, spl::Nothing) = setall!(vi, val)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
@@ -306,7 +306,7 @@ end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
-getidcs(vi::VarInfo, spl::Void) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
+getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
 getidcs(vi::VarInfo, spl::Sampler) = begin
   # NOTE: 0b00 is the sanity flag for
   #         |\____ getidcs   (mask = 0b10)
@@ -337,11 +337,11 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vals, getidcs(vi, spl))
+getvals(vi::VarInfo, spl::Union{Nothing, Sampler}) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
-getvns(vi::VarInfo, spl::Union{Void, Sampler}) = view(vi.vns, getidcs(vi, spl))
+getvns(vi::VarInfo, spl::Union{Nothing, Sampler}) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getranges(vi::VarInfo, spl::Sampler) = begin
@@ -356,7 +356,7 @@ end
 
 # NOTE: this function below is not used anywhere but test files.
 #       we can safely remove it if we want.
-getretain(vi::VarInfo, spl::Union{Void, Sampler}) = begin
+getretain(vi::VarInfo, spl::Union{Nothing, Sampler}) = begin
   gidcs = getidcs(vi, spl)
   if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
     UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
