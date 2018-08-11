@@ -175,7 +175,7 @@ function sample(model::Function, alg::T;
   c
 end
 
-assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
@@ -184,7 +184,7 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) = begin
+assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   n = size(var)[end]
