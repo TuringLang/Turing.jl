@@ -27,7 +27,7 @@ include("tarray.jl")
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
        localcopy, @suppress_err
 
-type Trace
+struct Trace
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  Union{Void, Sampler}

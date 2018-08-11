@@ -1,4 +1,6 @@
-include(Pkg.dir("Turing")*"/deps/deps.jl")
+import Pkg.dir
+
+include(dir("Turing")*"/deps/deps.jl")
 check_deps()
 libpath = dirname(libtask)
 
