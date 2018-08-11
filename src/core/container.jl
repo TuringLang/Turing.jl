@@ -74,7 +74,7 @@ function Base.copy(pc :: ParticleContainer)
 end
 
 # run particle filter for one step, return incremental likelihood
-function Base.consume(pc :: ParticleContainer)
+function Base.take!(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   # normalisation factor: 1/N
   _, z1      = weights(pc)
@@ -84,7 +84,7 @@ function Base.consume(pc :: ParticleContainer)
   num_done = 0
   for i=1:n
     p = pc.vals[i]
-    score = consume(p)
+    score = take!(p)
     score = isa(score, ForwardDiff.Dual) ? realpart(score) : score
     if isa(score, Real)
       score += isa(getlogp(p.vi), ForwardDiff.Dual) ? realpart(getlogp(p.vi)) : getlogp(p.vi)

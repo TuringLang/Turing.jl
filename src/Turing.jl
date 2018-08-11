@@ -11,24 +11,27 @@ module Turing
 using Requires
 using Distributions
 using ForwardDiff
-import ReverseDiff
+
 using ProgressMeter
 
 @require Stan using Stan
-using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
+@require ReverseDiff using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
-import ReverseDiff: gradient
-import Mamba: AbstractChains, Chains
+@require ReverseDiff import ReverseDiff: gradient
+# import Mamba: AbstractChains, Chains
+abstract type AbstractChains end
+type Chains <: AbstractChains
+end
 @require Stan import Stan: Adapt, Hmc
 
 ##############################
 # Global variables/constants #
 ##############################
 
-global ADBACKEND = :reverse_diff
+global ADBACKEND = :forward_diff
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   global ADBACKEND = backend_sym

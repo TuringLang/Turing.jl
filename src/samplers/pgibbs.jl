@@ -56,7 +56,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   ref_particle = isempty(vi) ?
                  nothing :
                  forkr(Trace(model, spl, vi))
-  
+
   set_retained_vns_del_by_spl!(vi, spl)
   resetlogp!(vi)
 
@@ -67,7 +67,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
     push!(particles, ref_particle)
   end
 
-  while consume(particles) != Val{:done}
+  while take!(particles) != Val{:done}
     # TODO: fork somehow cause ProgressMeter to broke - need to figure out why
     resample!(particles, spl.alg.resampler, ref_particle)
   end

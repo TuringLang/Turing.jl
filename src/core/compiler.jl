@@ -211,7 +211,7 @@ macro model(fexpr)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
-  
+
   return_ex = fbody.args[end] # get last statement of defined model
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
@@ -252,7 +252,7 @@ macro model(fexpr)
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
-  
+
   fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
   fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
   fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
@@ -282,7 +282,7 @@ macro model(fexpr)
 
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
-  
+
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
   unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
@@ -300,7 +300,7 @@ macro model(fexpr)
 
       # Add gensym to function name
       fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
-      
+
       # Change the name of inner function definition to the one with gensym()
       fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
       fdefn_inner_callback_1.args[1].args[1] = fname_inner_with_gensym

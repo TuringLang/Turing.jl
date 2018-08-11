@@ -4,8 +4,8 @@
 
 @inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp.(-x))
 @inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log.(x ./ (one(T) - x))
-@inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
-@inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
+@require ReverseDiff @inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
+@require ReverseDiff @inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})
