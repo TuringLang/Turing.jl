@@ -38,7 +38,7 @@ end
 function (::Type{Trace})(f::Function)
   res = Trace();
   # Task(()->f());
-  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
+  res.task = Task( () -> begin res=f(); put!(Val{:done}); res; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
@@ -52,7 +52,7 @@ function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
   # Task(()->f());
   res.vi = deepcopy(vi)
   res.vi.num_produce = 0
-  res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
+  res.task = Task( () -> begin vi_new=f(vi, spl); put!(Val{:done}); vi_new; end )
   if isa(res.task.storage, Void)
     res.task.storage = ObjectIdDict()
   end
@@ -61,7 +61,7 @@ function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
 end
 
 # step to the next observe statement, return log likelihood
-Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
+Base.take!(t::Trace) = (t.vi.num_produce += 1; Base.take!(t.task))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)

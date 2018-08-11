@@ -108,10 +108,12 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   g(vi[spl])
 end
 
+@require ReverseDiff begin
+
 gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
 gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
     inputs = (theta)
-    
+
     if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
           vi[spl][:] = ipts[:]
@@ -136,6 +138,8 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
 
     # vi[spl] = realpart(vi[spl])
     # vi.logp = 0
-    
+
     grad
+end
+
 end

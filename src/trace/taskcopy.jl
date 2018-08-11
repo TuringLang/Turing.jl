@@ -40,7 +40,7 @@ function Base.copy(t::Task)
 end
 
 # @suppress_err function Base.produce(v)
-function Base.produce(v)
+function Base.put!(v)
 
     ct = current_task()
     local empty, t, q
@@ -85,7 +85,7 @@ function Base.produce(v)
 end
 
 # @suppress_err function Base.consume(P::Task, values...)
-function Base.consume(P::Task, values...)
+function Base.take!(P::Task, values...)
 
     if istaskdone(P)
         return wait(P)
