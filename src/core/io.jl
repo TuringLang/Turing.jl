@@ -88,7 +88,7 @@ struct Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
-  range   ::  Range{Int}
+  range   ::  AbstractRange{Int} # TODO: Perhaps change to UnitRange?
   names   ::  Vector{AbstractString}
   chains  ::  Vector{Int}
   info    ::  Dict{Symbol,Any}

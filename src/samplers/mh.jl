@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
 ```
 """
-immutable MH <: InferenceAlgorithm
+struct MH <: InferenceAlgorithm
   n_iters   ::  Int       # number of iterations
   proposals ::  Dict{Symbol,Any}  # Proposals for paramters
   space     ::  Set       # sampling space, emtpy means all

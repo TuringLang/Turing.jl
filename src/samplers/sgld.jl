@@ -19,7 +19,7 @@ end
 sample(example, SGLD(1000, 0.5))
 ```
 """
-immutable SGLD <: Hamiltonian
+struct SGLD <: Hamiltonian
   n_iters   ::  Int       # number of samples
   step_size ::  Float64   # constant scale factor of learning rate
   space     ::  Set       # sampling space, emtpy means all
