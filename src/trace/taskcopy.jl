@@ -12,7 +12,7 @@ end
 # Utility function for self-copying mechanism
 n_copies() = n_copies(current_task())
 n_copies(t::Task) = begin
-  isa(t.storage, Void) && (t.storage = ObjectIdDict())
+  isa(t.storage, Nothing) && (t.storage = ObjectIdDict())
   if haskey(t.storage, :n_copies)
     t.storage[:n_copies]
   else
@@ -101,7 +101,7 @@ function Base.take!(P::Task, values...)
     #    P.consumers = Condition()
     #end
     #push!(P.consumers.waitq, ct)
-    # optimized version that avoids the queue for 1 consumer
+    # optimized version that aNothings the queue for 1 consumer
     if P.consumers === nothing || (isa(P.consumers,Condition)&&isempty(P.consumers.waitq))
         P.consumers = ct
     else

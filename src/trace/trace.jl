@@ -1,4 +1,5 @@
 module Traces
+using Markdown
 using Turing: Sampler
 using Turing.VarReplay
 
@@ -30,7 +31,7 @@ export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
 struct Trace
   task  ::  Task
   vi    ::  VarInfo
-  spl   ::  Union{Void, Sampler}
+  spl   ::  Union{Nothing, Sampler}
   Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
 end
 
@@ -39,7 +40,7 @@ function (::Type{Trace})(f::Function)
   res = Trace();
   # Task(()->f());
   res.task = Task( () -> begin res=f(); put!(Val{:done}); res; end )
-  if isa(res.task.storage, Void)
+  if isa(res.task.storage, Nothing)
     res.task.storage = ObjectIdDict()
   end
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
@@ -53,7 +54,7 @@ function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
   res.vi = deepcopy(vi)
   res.vi.num_produce = 0
   res.task = Task( () -> begin vi_new=f(vi, spl); put!(Val{:done}); vi_new; end )
-  if isa(res.task.storage, Void)
+  if isa(res.task.storage, Nothing)
     res.task.storage = ObjectIdDict()
   end
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage

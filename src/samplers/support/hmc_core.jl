@@ -90,7 +90,7 @@ function gen_log_func(spl)
 
 end
 
-runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
+runmodel(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) = begin
   dprintln(4, "run model...")
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end

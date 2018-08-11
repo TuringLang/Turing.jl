@@ -6,7 +6,7 @@
 # Sample #
 ##########
 
-type Sample
+struct Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
@@ -84,7 +84,7 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-type Chain <: AbstractChains
+struct Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
@@ -146,7 +146,7 @@ flatten(names, value :: Array{Float64}, k :: String, v) = begin
           name = replace(name, "(", "[");
           name = replace(name, ",)", "]");
           name = replace(name, ")", "]");
-          isa(v[i], Void) && println(v, i, v[i])
+          isa(v[i], Nothing) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)

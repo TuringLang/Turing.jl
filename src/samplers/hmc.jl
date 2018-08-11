@@ -39,7 +39,7 @@ end
 
 # Below is a trick to remove the dependency of Stan by Requires.jl
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
-DEFAULT_ADAPT_CONF_TYPE = Void
+DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 @require Stan begin
   DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE,Stan.Adapt}

@@ -248,7 +248,7 @@ macro model(fexpr)
   # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
 
   push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
-  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Void,Turing.Sampler}))
+  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Nothing,Turing.Sampler}))
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
