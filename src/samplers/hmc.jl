@@ -84,13 +84,13 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   Sampler(alg, info)
 end
 
-function sample{T<:Hamiltonian}(model::Function, alg::T;
+function sample(model::Function, alg::T;
                                 chunk_size=CHUNKSIZE,               # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF  # adapt configuration
-                               )
+                               ) where T<:Hamiltonian
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
   setchunksize(chunk_size)        # set temp chunk size
