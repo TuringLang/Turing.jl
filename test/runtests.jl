@@ -85,13 +85,13 @@ for (target, list) in testcases
       if t in testcases_v04
         if VERSION < v"0.5"
           println("[runtests.jl] \"$target/$t.jl\" is running")
-          include(target*"/"t*".jl");
+          include(target*"/"*t*".jl");
           # readstring(`julia $t.jl`)
           println("[runtests.jl] \"$target/$t.jl\" is successful")
         end
       else
         println("[runtests.jl] \"$target/$t.jl\" is running")
-        include(target*"/"t*".jl");
+        include(target*"/"*t*".jl");
         # readstring(`julia $t.jl`)
         println("[runtests.jl] \"$target/$t.jl\" is successful")
       end
