@@ -1,6 +1,6 @@
 using Turing
 using Turing: Sampler
-using Base.Test
+using Test
 
 alg = SGLD(1000, 0.25)
 sampler = Sampler(alg)

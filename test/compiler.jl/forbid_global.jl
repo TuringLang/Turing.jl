@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
 
 xs = [1.5 2.0]
 # xx = 1
@@ -26,7 +26,7 @@ chain = sample(fggibbstest(xs), gibbs);
 #
 # using Distributions
 # using Turing
-# using Base.Test
+# using Test
 #
 # @model ttt(a) = begin
 #   a ~ Normal(0, 1)

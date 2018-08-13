@@ -1,7 +1,7 @@
 using Turing.VarReplay
 using Turing.VarReplay: set_flag!, unset_flag!
 using Distributions
-using Base.Test
+using Test
 
 
 vi = VarInfo()

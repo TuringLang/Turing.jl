@@ -1,5 +1,5 @@
 using Turing: TArray, get, tzeros
-using Base.Test
+using Test
 
 ta1 = TArray{Int}(4);
 push!(ta1, 1);

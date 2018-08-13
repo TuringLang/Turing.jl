@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
 
 @model hmcmatrixsup() = begin
   v ~ Wishart(7, [1 0.5; 0.5 1])

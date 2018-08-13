@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 using ForwardDiff: Dual
-using Base.Test
+using Test
 
 float1 = 1.1
 float2 = 2.3

@@ -1,5 +1,5 @@
 using Turing
-using Base.Test
+using Test
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2, 3)

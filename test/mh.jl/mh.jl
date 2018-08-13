@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
 srand(125)
 
 x = [1.5 2.0]

@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 
 function test_grad(turing_model, grad_f; trans=Dict())
     model_f = turing_model()

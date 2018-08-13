@@ -1,5 +1,5 @@
 include("../utility.jl")
-using Base.Test
+using Test
 
 # srand(115)
 

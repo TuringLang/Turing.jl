@@ -1,6 +1,6 @@
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model testassume begin
   x ~ Bernoulli(1; :static = true)
