@@ -2,7 +2,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model test_assume() = begin
   x ~ Bernoulli(1)

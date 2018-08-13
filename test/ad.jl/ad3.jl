@@ -3,7 +3,7 @@ using Turing
 using Turing: gradient, invlink, link, realpart
 using ForwardDiff
 using ForwardDiff: Dual
-using Base.Test
+using Test
 
 
 # Define model

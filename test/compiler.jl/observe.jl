@@ -2,7 +2,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model test() = begin
   z ~ Normal(0,1)

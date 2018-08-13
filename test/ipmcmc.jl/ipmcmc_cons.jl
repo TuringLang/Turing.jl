@@ -1,5 +1,5 @@
 using Turing, Distributions
-using Base.Test
+using Test
 
 srand(125)
 

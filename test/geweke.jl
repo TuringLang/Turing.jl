@@ -58,7 +58,7 @@ s2 = vcat(s_bk...);
 qqplot(s[:m], s2[:m])
 qqplot(s[:s], s2[:s])
 
-using Base.Test
+using Test
 
 qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx

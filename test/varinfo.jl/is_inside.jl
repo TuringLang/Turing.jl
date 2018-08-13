@@ -2,7 +2,7 @@ using Turing: reconstruct, invlink, step, varname
 using Turing.VarReplay
 using Turing.VarReplay: is_inside
 
-using Base.Test
+using Test
 
 genvn(sym::Symbol) = VarName(gensym(), sym, "", 1)
 genvn(expr::Expr) = begin

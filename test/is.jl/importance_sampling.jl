@@ -4,7 +4,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 function logsum(xs :: Vector{Float64})
   largest = maximum(xs)

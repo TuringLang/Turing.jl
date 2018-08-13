@@ -1,6 +1,6 @@
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model test_ex_rt() = begin
   x ~ Normal(10, 1)

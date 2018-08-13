@@ -2,7 +2,7 @@ using Distributions
 using ForwardDiff: Dual
 using Turing
 using Turing: varname
-using Base.Test
+using Test
 
 # Symbol
 v_sym = string(:x)
