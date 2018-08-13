@@ -30,7 +30,7 @@ end
 doc"""
     var_name ~ Distribution()
 
-Tilda notation `~` is to specifiy *a variable follows a distributions*.
+Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
 
 If `var_name` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if `var_name` is defined, this variable will be treated as data.
 """
