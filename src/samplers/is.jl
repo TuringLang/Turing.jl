@@ -37,7 +37,7 @@ end
 
 sample(model::Function, alg::IS) = begin
   spl = Sampler(alg);
-  samples = Array{Sample}(alg.n_particles)
+  samples = Array{Sample}(undef, alg.n_particles)
 
   n = spl.alg.n_particles
   for i = 1:n
