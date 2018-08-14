@@ -112,7 +112,7 @@ function sample(model::Function, alg::T;
   n = reuse_spl_n > 0 ?
       reuse_spl_n :
       alg.n_iters
-  samples = Array{Sample}(n)
+  samples = Array{Sample}(undef, n)
   weight = 1 / n
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
