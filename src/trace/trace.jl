@@ -28,7 +28,7 @@ include("tarray.jl")
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
        localcopy, @suppress_err
 
-struct Trace
+mutable struct Trace
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  Union{Nothing, Sampler}
@@ -55,7 +55,7 @@ function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
   res.vi.num_produce = 0
   res.task = Task( () -> begin vi_new=f(vi, spl); put!(Val{:done}); vi_new; end )
   if isa(res.task.storage, Nothing)
-    res.task.storage = ObjectIdDict()
+    res.task.storage = IdDict() # what is the parametrization of the IdDict?
   end
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
