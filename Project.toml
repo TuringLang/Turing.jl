@@ -1,3 +1,6 @@
+name = "Turing"
+uuid = "9f6ead28-9fab-11e8-161e-3dc80b9515cb"
+
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
