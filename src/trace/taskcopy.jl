@@ -97,20 +97,20 @@ function Base.take!(P::Task, values...)
     ct.result = length(values)==1 ? values[1] : values
 
     #### un-optimized version
-    #if P.consumers === nothing
-    #    P.consumers = Condition()
+    #if P.donenotify === nothing
+    #    P.donenotify = Condition()
     #end
-    #push!(P.consumers.waitq, ct)
+    #push!(P.donenotify.waitq, ct)
     # optimized version that aNothings the queue for 1 consumer
-    if P.consumers === nothing || (isa(P.consumers,Condition)&&isempty(P.consumers.waitq))
-        P.consumers = ct
+    if P.donenotify === nothing || (isa(P.donenotify,Condition)&&isempty(P.donenotify.waitq))
+        P.donenotify = ct
     else
-        if isa(P.consumers, Task)
-            t = P.consumers
-            P.consumers = Condition()
-            push!(P.consumers.waitq, t)
+        if isa(P.donenotify, Task)
+            t = P.donenotify
+            P.donenotify = Condition()
+            push!(P.donenotify.waitq, t)
         end
-        push!(P.consumers.waitq, ct)
+        push!(P.donenotify.waitq, ct)
     end
 
     P.state == :runnable ? Base.schedule_and_wait(P) : wait() # don't attempt to queue it twice
