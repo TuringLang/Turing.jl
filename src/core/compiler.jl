@@ -379,6 +379,8 @@ translate!(ex::Any) = ex
 translate!(ex::Expr) = begin
   if (ex.head === :call && ex.args[1] === :(~))
     ex.head = :macrocall; ex.args[1] = Symbol("@~")
+    insert!(ex.args, 2, LineNumberNode(-1)) # NOTE: a `LineNumberNode` object is required
+                                            #       at the second args for macro call in 0.7
   else
     map(translate!, ex.args)
   end
