@@ -20,6 +20,7 @@ n_copies(t::Task) = begin
   end
 end
 
+
 function Base.copy(t::Task)
   t.state != :runnable && t.state != :done &&
     error("Only runnable or finished tasks can be copied.")
@@ -28,6 +29,7 @@ function Base.copy(t::Task)
     n = n_copies(t)
     t.storage[:n_copies]  = 1 + n
     newt.storage = copy(t.storage)
+    newt.storage[:__chn__] = Channel(0) # new channel for copied task
   else
     newt.storage = nothing
   end
@@ -35,83 +37,18 @@ function Base.copy(t::Task)
   newt.state = t.state
   newt.result = t.result
   newt.parent = t.parent
-  if :last in fieldnames(t)
+  if :last in fieldnames(typeof(t))
     newt.last = nothing
   end
   newt
 end
 
-# @suppress_err function Base.produce(v)
-function Base.put!(v)
-
-    ct = current_task()
-    local empty, t, q
-    while true
-        q = ct.consumers
-        if isa(q,Task)
-            t = q
-            ct.consumers = nothing
-            empty = true
-            break
-        elseif isa(q,Condition) && !isempty(q.waitq)
-            t = shift!(q.waitq)
-            empty = isempty(q.waitq)
-            break
-        end
-        wait()
+consume(t) = begin
+    if t.storage == nothing
+        t.storage = IdDict()
+        t.storage[:__chn__] = Channel(0)
+        schedule(t)
     end
-
-    t.state == :runnable || throw(AssertionError("producer.consumer.state == :runnable"))
-    if empty
-        Base.schedule_and_wait(t, v)
-        ct = current_task() # When a task is copied, ct should be updated to new task ID.
-        while true
-            # wait until there are more consumers
-            q = ct.consumers
-            if isa(q,Task)
-                return q.result
-            elseif isa(q,Condition) && !isempty(q.waitq)
-                return q.waitq[1].result
-            end
-            wait()
-        end
-    else
-        schedule(t, v)
-        # make sure `t` runs before us. otherwise, the producer might
-        # finish before `t` runs again, causing it to see the producer
-        # as done, causing done(::Task, _) to miss the value `v`.
-        # see issue #7727
-        yield()
-        return q.waitq[1].result
-    end
+    take!(t.storage[:__chn__])
 end
-
-# @suppress_err function Base.consume(P::Task, values...)
-function Base.take!(P::Task, values...)
-
-    if istaskdone(P)
-        return wait(P)
-    end
-
-    ct = current_task()
-    ct.result = length(values)==1 ? values[1] : values
-
-    #### un-optimized version
-    #if P.donenotify === nothing
-    #    P.donenotify = Condition()
-    #end
-    #push!(P.donenotify.waitq, ct)
-    # optimized version that aNothings the queue for 1 consumer
-    if P.donenotify === nothing || (isa(P.donenotify,Condition)&&isempty(P.donenotify.waitq))
-        P.donenotify = ct
-    else
-        if isa(P.donenotify, Task)
-            t = P.donenotify
-            P.donenotify = Condition()
-            push!(P.donenotify.waitq, t)
-        end
-        push!(P.donenotify.waitq, ct)
-    end
-
-    P.state == :runnable ? Base.schedule_and_wait(P) : wait() # don't attempt to queue it twice
-end
+produce(x) = put!(current_task().storage[:__chn__], x);
