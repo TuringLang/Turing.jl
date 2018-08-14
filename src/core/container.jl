@@ -9,8 +9,8 @@ Data structure for particle filters
 mutable struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
-  vals  :: Array{T,1}
-  logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
+  vals  :: Array{Particle}
+  logWs :: Array{Float64}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
   # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
@@ -37,8 +37,8 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-  vals = Array{Union{eltype(pc.vals),Missing}, 1}(missing,n)
-  logWs = Array{Union{eltype(pc.logWs), Missing}, 1}(missing,n)
+  vals = Array{eltype(pc.vals), 1}(undef,n)
+  logWs = Array{eltype(pc.logWs), 1}(undef,n)
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
   end
