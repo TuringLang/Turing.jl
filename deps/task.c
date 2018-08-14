@@ -25,7 +25,7 @@ jl_task_t *jl_clone_task(jl_task_t *t)
     newt->state = t->state;
     newt->start = t->start;
     newt->tls = jl_nothing;
-    newt->consumers = jl_nothing;
+    newt->donenotify = jl_nothing;
     newt->result = jl_nothing;
     newt->donenotify = jl_nothing;
     newt->exception = jl_nothing;
