@@ -29,7 +29,7 @@ macro VarName(ex::Union{Expr, Symbol})
   end
 end
 
-doc"""
+"""
     var_name ~ Distribution()
 
 Tilda notation `~` is to specifiy *a variable follows a distributions*.
@@ -130,7 +130,7 @@ end
 # Main Compiler #
 #################
 
-doc"""
+"""
     @model(name, fbody)
 
 Wrapper for models.

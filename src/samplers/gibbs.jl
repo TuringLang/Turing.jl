@@ -1,4 +1,4 @@
-doc"""
+"""
     Gibbs(n_iters, alg_1, alg_2)
 
 Compositional MCMC interface.

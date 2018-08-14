@@ -1,4 +1,4 @@
-doc"""
+"""
     gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler})
 
 Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint probibilioty. This function uses chunk-wise forward AD with a chunk of size $(CHUNKSIZE) as default.

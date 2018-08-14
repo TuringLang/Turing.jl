@@ -1,4 +1,4 @@
-doc"""
+"""
     SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)
 
 Stochastic Gradient Hamiltonian Monte Carlo sampler.

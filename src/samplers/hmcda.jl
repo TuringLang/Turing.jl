@@ -1,4 +1,4 @@
-doc"""
+"""
     HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)
 
 Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.
@@ -91,7 +91,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
-    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
+    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds;
                                              rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
