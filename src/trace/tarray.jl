@@ -2,7 +2,7 @@
 # TArray #
 ##########
 
-doc"""
+"""
     TArray{T}(dims, ...)
 
 Implementation of data structures that automatically perform copy-on-write after task copying.
@@ -117,7 +117,7 @@ Base.get(S::TArray) = (current_task().storage[S.ref][2])
 # tzeros #
 ##########
 
-doc"""
+"""
      tzeros(dims, ...)
 
 Construct a distributed array of zeros.

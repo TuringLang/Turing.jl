@@ -1,4 +1,4 @@
-doc"""
+"""
     PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})
 
 Particle independant Metropolis–Hastings and

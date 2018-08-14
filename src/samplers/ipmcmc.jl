@@ -1,4 +1,4 @@
-doc"""
+"""
     IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int)
 
 Particle Gibbs sampler.

@@ -1,4 +1,4 @@
-doc"""
+"""
     IS(n_particles::Int)
 
 Importance sampling algorithm object.

@@ -1,4 +1,4 @@
-doc"""
+"""
     MH(n_iters::Int)
 
 Metropolis-Hasting sampler.

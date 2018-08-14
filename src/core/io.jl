@@ -60,7 +60,7 @@ end
 # Chain #
 #########
 
-doc"""
+"""
     Chain(weight::Float64, value::Array{Sample})
 
 A wrapper of output trajactory of samplers.

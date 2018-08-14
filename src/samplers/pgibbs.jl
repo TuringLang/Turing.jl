@@ -1,4 +1,4 @@
-doc"""
+"""
     PG(n_particles::Int, n_iters::Int)
 
 Particle Gibbs sampler.

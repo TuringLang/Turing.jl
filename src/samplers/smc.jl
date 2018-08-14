@@ -1,5 +1,4 @@
-
-doc"""
+"""
     SMC(n_particles::Int)
 
 Sequential Monte Carlo sampler.

@@ -1,4 +1,4 @@
-doc"""
+"""
     HMC(n_iters::Int, epsilon::Float64, tau::Int)
 
 Hamiltonian Monte Carlo sampler.

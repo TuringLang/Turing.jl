@@ -1,4 +1,4 @@
-doc"""
+"""
     SGLD(n_iters::Int, step_size::Float64)
 
  Stochastic Gradient Langevin Dynamics sampler.
