@@ -37,13 +37,8 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-<<<<<<< HEAD
   vals = Array{Union{eltype(pc.vals),Missing}, 1}(missing,n)
   logWs = Array{Union{eltype(pc.logWs), Missing}, 1}(missing,n)
-=======
-  vals = Array{eltype(pc.vals), 1}(undef, n)
-  logWs = zeros(eltype(pc.logWs), n)
->>>>>>> 224ade78cbfa3ea7994d71125110a49b1a2ef6cb
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
   end
