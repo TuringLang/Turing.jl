@@ -177,8 +177,9 @@ macro model(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
-  fbody = fexpr.args[2].args[end]    # NOTE: nested args is used here because the orignal model expr is in a block
-
+  fbody = fexpr.args[2]              # NOTE: nested args is used here because the orignal model expr is in a block
+                                     # NOTE: the code above was `fbody = fexpr.args[2].args[end]`, but since Julia 0.7
+                                     #       block doesn't need this nested trick to be fetched
   # Prepare for keyword arguments, e.g.
   #   f(x,y)
   #       ==> f(x,y;)
@@ -289,7 +290,7 @@ macro model(fexpr)
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
-  pushfirst!(fdefn_outer.args[2].args,  quote
+  pushfirst!(fdefn_outer.args[2].args, quote
       # Check fargs, data
       Turing.eval(:(_compiler_ = deepcopy($compiler)))
       fargs = Turing._compiler_[:fargs];
