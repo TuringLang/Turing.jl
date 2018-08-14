@@ -74,7 +74,11 @@ macro ~(left, right)
     else
       if ~(vsym in Turing._compiler_[:pvars])
         msg = " Assume - `" * vsym_str * "` is a parameter"
+<<<<<<< HEAD
         isdefined(Main, Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
+=======
+        (@isdefined vsym_str) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
+>>>>>>> 224ade78cbfa3ea7994d71125110a49b1a2ef6cb
         dprintln(FCOMPILER, msg)
         push!(Turing._compiler_[:pvars], vsym)
       end
