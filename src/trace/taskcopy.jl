@@ -12,7 +12,7 @@ end
 # Utility function for self-copying mechanism
 n_copies() = n_copies(current_task())
 n_copies(t::Task) = begin
-  isa(t.storage, Nothing) && (t.storage = ObjectIdDict())
+  isa(t.storage, Nothing) && (t.storage = IdDict())
   if haskey(t.storage, :n_copies)
     t.storage[:n_copies]
   else

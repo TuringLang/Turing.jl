@@ -24,7 +24,7 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-struct NUTS <: Hamiltonian
+mutable struct NUTS <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate

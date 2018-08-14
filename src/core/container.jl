@@ -6,7 +6,7 @@ Data structure for particle filters
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-struct ParticleContainer{T<:Particle}
+mutable struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
   vals  :: Array{T,1}
@@ -37,8 +37,8 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-  vals = Array{eltype(pc.vals), 1}(n)
-  logWs = Array{eltype(pc.logWs), 1}(n)
+  vals = Array{Union{eltype(pc.vals),Missing}, 1}(missing,n)
+  logWs = Array{Union{eltype(pc.logWs), Missing}, 1}(missing,n)
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
     logWs[i] = 0
@@ -114,7 +114,7 @@ end
 function weights(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   logWs = pc.logWs
-  Ws = exp.(logWs-maximum(logWs))
+  Ws = exp.(logWs .- maximum(logWs))
   logZ = log(sum(Ws)) + maximum(logWs)
   Ws = Ws ./ sum(Ws)
   return Ws, logZ
