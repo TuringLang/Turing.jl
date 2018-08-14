@@ -32,7 +32,7 @@ isequal(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
 ==(x::VarName, y::VarName)      = isequal(x, y)
 
 Base.string(vn::VarName) = "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
-Base.string(vns::Vector{VarName}) = replace(string(map(vn -> string(vn), vns)), "String", "")
+Base.string(vns::Vector{VarName}) = replace(string(map(vn -> string(vn), vns)), "String" => "")
 
 sym(vn::VarName) = Symbol("$(vn.sym)$(vn.indexing)")  # simplified symbol
 
