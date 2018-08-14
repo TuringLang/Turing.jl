@@ -44,7 +44,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 # VarInfo #
 ###########
 
-struct VarInfo
+mutable struct VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
