@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-struct HMC <: Hamiltonian
+mutable struct HMC <: Hamiltonian
   n_iters   ::  Int       # number of samples
   epsilon   ::  Float64   # leapfrog step size
   tau       ::  Int       # leapfrog step number

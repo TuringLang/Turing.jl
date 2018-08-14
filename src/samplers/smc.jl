@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), SMC(1000))
 ```
 """
-struct SMC <: InferenceAlgorithm
+mutable struct SMC <: InferenceAlgorithm
   n_particles           ::  Int
   resampler             ::  Function
   resampler_threshold   ::  Float64

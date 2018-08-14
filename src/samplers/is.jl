@@ -26,7 +26,7 @@ end
 sample(gdemo([1.5, 2]), IS(1000))
 ```
 """
-struct IS <: InferenceAlgorithm
+mutable struct IS <: InferenceAlgorithm
   n_particles ::  Int
 end
 

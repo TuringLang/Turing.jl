@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), IPMCMC(100, 100, 4, 2))
 ```
 """
-struct IPMCMC <: InferenceAlgorithm
+mutable struct IPMCMC <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   n_nodes               ::    Int         # number of nodes running SMC and CSMC
