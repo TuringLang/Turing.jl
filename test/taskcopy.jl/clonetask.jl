@@ -1,10 +1,11 @@
 # Test task copying
 
-using Turing
+using  Turing
+import Turing.Traces: produce,consume
 
 # Test case 1: stack allocated objects are deep copied.
 function f_ct()
-  t = 0;
+  t::Int64 = 0;
   while true
     produce(t)
     t = 1 + t
@@ -15,6 +16,10 @@ t = Task(f_ct)
 
 consume(t); consume(t)
 a = copy(t);
+
+
+schedule(a)
+
 consume(a); consume(a)
 
 # Test case 2: heap allocated objects are shallowly copied.

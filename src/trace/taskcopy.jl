@@ -29,7 +29,9 @@ function Base.copy(t::Task)
     n = n_copies(t)
     t.storage[:n_copies]  = 1 + n
     newt.storage = copy(t.storage)
-    newt.storage[:__chn__] = Channel(0) # new channel for copied task
+    #c = Channel(0) # new channel for copied task
+    #newt.storage[:__chn__] = c
+    #push!(c.putters, newt)
   else
     newt.storage = nothing
   end
@@ -47,8 +49,17 @@ consume(t) = begin
     if t.storage == nothing
         t.storage = IdDict()
         t.storage[:__chn__] = Channel(0)
-        schedule(t)
+        # schedule(t)
     end
     take!(t.storage[:__chn__])
 end
-produce(x) = put!(current_task().storage[:__chn__], x);
+produce(x) = begin
+    ct  = current_task()
+    if ct.storage == nothing
+        ct.storage = IdDict()
+        ct.storage[:__chn__] = Channel(0)
+    end
+    println(ct)
+    chn = ct.storage[:__chn__]
+    put!(chn, x);
+end
