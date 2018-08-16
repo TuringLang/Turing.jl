@@ -6,7 +6,7 @@
 # Sample #
 ##########
 
-struct Sample
+mutable struct Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
