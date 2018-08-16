@@ -48,16 +48,6 @@ Mamba.draw(p, fmt=:pdf, filename="gdemo-plot.pdf")
 
 Turing.jl is 0.6 compatible now!
 
-## Documentation
-
-Please visit [Turing.jl wiki](https://github.com/TuringLang/Turing.jl/wiki) for documentation, tutorials (e.g. [get started](https://github.com/TuringLang/Turing.jl/wiki/Get-started)) and other topics (e.g. [advanced usages](https://github.com/TuringLang/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
-
-- [Introduction](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/Introduction.ipynb)
-- [Gaussian Mixture Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/GMM.ipynb)
-- [Bayesian Hidden Markov Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/BayesHmm.ipynb)
-- [Factorical Hidden Markov Model](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/FHMM.ipynb)
-- [Topic Models: LDA and MoC](https://nbviewer.jupyter.org/github/TuringLang/Turing-Examples/blob/master/notebooks/TopicModels.ipynb)
-
 ## Contributing
 
 Turing was originally created and is now managed by Hong Ge. Current and past Turing team members include [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx), [Emile Mathieu](http://emilemathieu.fr). 
