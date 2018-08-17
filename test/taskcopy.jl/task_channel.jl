@@ -1,5 +1,14 @@
 using Turing
 using Test
+using Pkg
+
+include(Pkg.dir("Turing")*"/deps/deps.jl")
+check_deps()
+libpath = dirname(libtask)
+
+if !(libpath in Base.DL_LOAD_PATH)
+  push!(Base.DL_LOAD_PATH, libpath)
+end
 
 function produce(v)
   tsk = current_task()
@@ -73,10 +82,13 @@ function test()
   @test pointer_from_objref(t) != pointer_from_objref(t2)
   @info "successfully copied $t to $(t2)"
 
-  @test consume(t)[2] == string(t)
+	# not sure why the task is not started...
+  println(istaskstarted(t2))
+  
+	@test consume(t)[2] == string(t)
   @test consume(t2)[2] == string(t2)
 
-  println(istaskstarted(t2))
-
 end
+
+test()
 
