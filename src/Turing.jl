@@ -22,10 +22,7 @@ import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
 @require ReverseDiff import ReverseDiff: gradient
-# import Mamba: AbstractChains, Chains
-abstract type AbstractChains end
-struct Chains <: AbstractChains
-end
+import Chain: AbstractChains, Chains
 @require Stan import Stan: Adapt, Hmc
 
 ##############################
