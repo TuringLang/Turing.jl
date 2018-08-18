@@ -1,10 +1,10 @@
 environment:
   matrix:
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.6/julia-0.6.2-win64.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/1.0/julia-1.0.0-win64.exe"
     OS: w64
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6.2-win32.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/1.0/julia-1.0.0-win32.exe"
     OS: W32
-    
+
 matrix:
   allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
   - OS: w32
