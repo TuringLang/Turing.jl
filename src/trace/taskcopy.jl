@@ -20,9 +20,6 @@ function Base.copy(t::Task)
     n = n_copies(t)
     t.storage[:n_copies]  = 1 + n
     newt.storage = copy(t.storage)
-    #c = Channel(0) # new channel for copied task
-    #newt.storage[:__chn__] = c
-    #push!(c.putters, newt)
   else
     newt.storage = nothing
   end
