@@ -5,7 +5,7 @@ import Turing.Traces: produce,consume
 
 # Test case 1: stack allocated objects are deep copied.
 function f_ct()
-  t::Int64 = 0;
+  t = 0;
   while true
     produce(t)
     t = 1 + t
