@@ -93,6 +93,7 @@ mutable struct Sampler{T<:InferenceAlgorithm}
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
+include("../deps/deps.jl"); check_deps();
 include("helper.jl")
 include("transform.jl")
 include("core/varinfo.jl")  # core internal variable container
@@ -139,6 +140,7 @@ dwarn(v::Int, args...)    = v < Turing.VERBOSITY ?
                             print_with_color(:red, "\r[Turing.WARNING]: ", mapreduce(string,*,args), "\n $(stacktrace()[2])\n") :
                             nothing
 derror(v::Int, args...)   = error("\r[Turing.ERROR]: ", mapreduce(string,*,args))
+
 
 ##################
 # Inference code #

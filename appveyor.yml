@@ -1,10 +1,10 @@
 environment:
   matrix:
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/0.6/julia-0.6.2-win64.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/1.0/julia-1.0.0-win64.exe"
     OS: w64
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6.2-win32.exe"
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/1.0/julia-1.0.0-win32.exe"
     OS: W32
-    
+
 matrix:
   allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
   - OS: w32
@@ -31,10 +31,10 @@ install:
 build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
-  - C:\projects\julia\bin\julia -e "versioninfo();
+  - C:\projects\julia\bin\julia -e "versioninfo(); using Pkg;
       Pkg.update(); rm(Pkg.dir(\"Turing\"), force=true, recursive=true);
       Pkg.clone(pwd(), \"Turing\");
       Pkg.build(\"Turing\")"
 
 test_script:
-  - C:\projects\julia\bin\julia --check-bounds=yes -e "Pkg.test(\"Turing\"; coverage=true)"
+  - C:\projects\julia\bin\julia --check-bounds=yes -e "using Pkg; Pkg.test(\"Turing\"; coverage=true)"
