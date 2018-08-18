@@ -13,7 +13,7 @@ reset!(ve::VarEstimator) = begin
   ve.M = zeros(ve.M)
 end
 
-add_sample!{T<:Real}(ve::VarEstimator{T}, s::Vector{T}) = begin
+add_sample!(ve::VarEstimator{T}, s::Vector{T}) where T<:Real = begin
   ve.n += 1
   δ = s .- ve.μ
   ve.μ .+= δ ./ ve.n
@@ -29,7 +29,7 @@ end
 
 
 
-type WarmUpManager
+struct WarmUpManager
   adapt_n   ::    Int
   params    ::    Dict{Symbol, Any}
   ve        ::    VarEstimator
@@ -39,7 +39,7 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
-init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
+init_warm_up_params(vi::VarInfo, spl::Sampler{T}) where T<:Hamiltonian = begin
   D = length(vi[spl])
   ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
 

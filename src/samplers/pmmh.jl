@@ -1,4 +1,4 @@
-doc"""
+"""
     PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})
 
 Particle independant Metropolis–Hastings and
@@ -11,7 +11,7 @@ alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
 alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
 ```
 """
-immutable PMMH <: InferenceAlgorithm
+mutable struct PMMH <: InferenceAlgorithm
   n_iters               ::    Int               # number of iterations
   algs                  ::    Tuple             # Proposals for state & parameters
   space                 ::    Set               # sampling space, emtpy means all
@@ -151,7 +151,7 @@ sample(model::Function, alg::PMMH;
     println("  Accept rate         = $accept_rate;")
 
     if resume_from != nothing   # concat samples
-      unshift!(samples, resume_from.value2...)
+      pushfirst!(samples, resume_from.value2...)
     end
     c = Chain(0, samples)       # wrap the result by Chain
 

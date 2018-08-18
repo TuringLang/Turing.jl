@@ -6,7 +6,7 @@
 # Sample #
 ##########
 
-type Sample
+struct Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
@@ -43,7 +43,7 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # Fill sample
   for i = 1:length(syms)
     # Get indexing
-    idx = eval(parse(idx_comp[i][1]))
+    idx = Main.eval(parse(idx_comp[i][1]))
     # Determine if nesting
     nested_dim = length(idx_comp[1]) # how many nested layers?
     if nested_dim == 1
@@ -60,7 +60,7 @@ end
 # Chain #
 #########
 
-doc"""
+"""
     Chain(weight::Float64, value::Array{Sample})
 
 A wrapper of output trajactory of samplers.
@@ -84,11 +84,11 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-type Chain <: AbstractChains
+mutable struct Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
-  range   ::  Range{Int}
+  range   ::  AbstractRange{Int} # TODO: Perhaps change to UnitRange?
   names   ::  Vector{AbstractString}
   chains  ::  Vector{Int}
   info    ::  Dict{Symbol,Any}
@@ -146,7 +146,7 @@ flatten(names, value :: Array{Float64}, k :: String, v) = begin
           name = replace(name, "(", "[");
           name = replace(name, ",)", "]");
           name = replace(name, ")", "]");
-          isa(v[i], Void) && println(v, i, v[i])
+          isa(v[i], Nothing) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)

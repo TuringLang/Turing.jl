@@ -11,24 +11,28 @@ module Turing
 using Requires
 using Distributions
 using ForwardDiff
-import ReverseDiff
+
 using ProgressMeter
+using Markdown
 
 @require Stan using Stan
-using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
+@require ReverseDiff using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
-import ReverseDiff: gradient
-import Mamba: AbstractChains, Chains
+@require ReverseDiff import ReverseDiff: gradient
+# import Mamba: AbstractChains, Chains
+abstract type AbstractChains end
+struct Chains <: AbstractChains
+end
 @require Stan import Stan: Adapt, Hmc
 
 ##############################
 # Global variables/constants #
 ##############################
 
-global ADBACKEND = :reverse_diff
+global ADBACKEND = :forward_diff
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   global ADBACKEND = backend_sym
@@ -75,7 +79,7 @@ global TRANS_CACHE = Dict{Tuple,Any}()
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 
-doc"""
+"""
     Sampler{T}
 
 Generic interface for implementing inference algorithms.
@@ -87,11 +91,12 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-type Sampler{T<:InferenceAlgorithm}
+mutable struct Sampler{T<:InferenceAlgorithm}
   alg   ::  T
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
+include("../deps/deps.jl"); check_deps();
 include("helper.jl")
 include("transform.jl")
 include("core/varinfo.jl")  # core internal variable container
@@ -126,7 +131,7 @@ export UnivariateGMM2, Flat, FlatPos
 
 set_verbosity(v::Int) = global VERBOSITY = v
 
-doc"""
+"""
     dprintln(v, args...)
 
 Debugging print function. The first argument controls the verbosity of message.
@@ -138,6 +143,7 @@ dwarn(v::Int, args...)    = v < Turing.VERBOSITY ?
                             print_with_color(:red, "\r[Turing.WARNING]: ", mapreduce(string,*,args), "\n $(stacktrace()[2])\n") :
                             nothing
 derror(v::Int, args...)   = error("\r[Turing.ERROR]: ", mapreduce(string,*,args))
+
 
 ##################
 # Inference code #

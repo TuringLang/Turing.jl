@@ -1,5 +1,5 @@
-doc"""
-    gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler})
+"""
+    gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler})
 
 Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint probibilioty. This function uses chunk-wise forward AD with a chunk of size $(CHUNKSIZE) as default.
 
@@ -11,7 +11,7 @@ end
 ```
 """
 gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
-gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   θ_hash = hash(vi[spl])
 
@@ -55,12 +55,12 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
       vals = getval(vi, vns[i])
       if vns[i] in vn_chunk        # for each variable to compute gradient in this round
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])
+          vi[range[i]] = ForwardDiff.Dual{Nothing, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])
           dim_count += 1      # count
         end
       else                    # for other varilables (no gradient in this round)
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]))
+          vi[range[i]] = ForwardDiff.Dual{Nothing, Float64, CHUNKSIZE}(realpart(vals[i]))
         end
       end
     end
@@ -94,7 +94,7 @@ end
 
 # Direct call of ForwardDiff.gradient; this is slow
 
-gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   vi = deepcopy(_vi)
 
@@ -108,10 +108,12 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   g(vi[spl])
 end
 
+@require ReverseDiff begin
+
 gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
     inputs = (theta)
-    
+
     if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
           vi[spl][:] = ipts[:]
@@ -136,6 +138,8 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
 
     # vi[spl] = realpart(vi[spl])
     # vi.logp = 0
-    
+
     grad
+end
+
 end

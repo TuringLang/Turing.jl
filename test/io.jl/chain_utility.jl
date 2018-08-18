@@ -1,6 +1,6 @@
 using Distributions, Turing
 using Turing: Chain, Sample
-using Base.Test
+using Test
 
 c = Chain()
 #@test string(c) == "Empty Chain, weight 0.0"

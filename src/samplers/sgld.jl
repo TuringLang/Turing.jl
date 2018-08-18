@@ -1,4 +1,4 @@
-doc"""
+"""
     SGLD(n_iters::Int, step_size::Float64)
 
  Stochastic Gradient Langevin Dynamics sampler.
@@ -19,7 +19,7 @@ end
 sample(example, SGLD(1000, 0.5))
 ```
 """
-immutable SGLD <: Hamiltonian
+mutable struct SGLD <: Hamiltonian
   n_iters   ::  Int       # number of samples
   step_size ::  Float64   # constant scale factor of learning rate
   space     ::  Set       # sampling space, emtpy means all

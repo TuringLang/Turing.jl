@@ -13,21 +13,21 @@ varname(expr::Expr) = begin
   # Add the initialization statement for uid
   push!(indexing_ex.args, quote indexing_list = [] end)
   # Initialize a local container for parsing and add the expr to it
-  to_eval = []; unshift!(to_eval, expr)
+  to_eval = []; pushfirst!(to_eval, expr)
   # Parse the expression and creating the code for creating uid
   find_head = false
   while length(to_eval) > 0
     evaling = shift!(to_eval)   # get the current expression to deal with
     if isa(evaling, Expr) && evaling.head == :ref && ~find_head
       # Add all the indexing arguments to the left
-      unshift!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
+      pushfirst!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")
       # Add first argument depending on its type
       # If it is an expression, it means it's a nested array calling
       # Otherwise it's the symbol for the calling
       if isa(evaling.args[1], Expr)
-        unshift!(to_eval, evaling.args[1])
+        pushfirst!(to_eval, evaling.args[1])
       else
-        # push!(indexing_ex.args, quote unshift!(indexing_list, $(string(evaling.args[1]))) end)
+        # push!(indexing_ex.args, quote pushfirst!(indexing_list, $(string(evaling.args[1]))) end)
         push!(indexing_ex.args, quote sym = Symbol($(string(evaling.args[1]))) end) # store symbol in runtime
         find_head = true
         sym = evaling.args[1] # store symbol in compilation time

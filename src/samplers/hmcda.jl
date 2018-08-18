@@ -1,4 +1,4 @@
-doc"""
+"""
     HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)
 
 Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.
@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
 ```
 """
-immutable HMCDA <: Hamiltonian
+mutable struct HMCDA <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
@@ -91,7 +91,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
-    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds; 
+    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds;
                                              rev_func=rev_func, log_func=log_func)
 
     if PROGRESS && spl.alg.gid == 0
@@ -113,7 +113,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       # Reset Θ
       # NOTE: ForwardDiff and ReverseDiff need different implementation
-      #       due to immutable Dual vs mutable TrackedReal
+      #       due to struct Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
 
         vi[spl] = θ

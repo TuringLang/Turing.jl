@@ -1,5 +1,5 @@
 include("../utility.jl")
-using Distributions, Turing, Base.Test
+using Distributions, Turing, Test
 
 N = 10
 beta = [0.5, 0.5]

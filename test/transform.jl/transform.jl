@@ -1,5 +1,5 @@
 using Turing: link, invlink, logpdf_with_trans
-using Base.Test
+using Test
 using Distributions
 
 dists = [Arcsine(2, 4), Beta(2,2), Dirichlet(2, 3), Wishart(7, [1 0.5; 0.5 1])]

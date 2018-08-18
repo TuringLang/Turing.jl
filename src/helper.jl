@@ -6,11 +6,11 @@
 @inline realpart(d::ForwardDiff.Dual) = d.value
 @inline realpart(ds::Union{Vector,SubArray}) = Float64[realpart(d) for d in ds] # NOTE: the function below is assumed to return a Vector now
 @inline realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray}) = for i = 1:length(ds) arr[i] = realpart(ds[i]) end
-@inline realpart{T<:Real}(ds::Matrix{T}) = Float64[realpart(col) for col in ds]
+@inline realpart(ds::Matrix{T}) where {T <: Real} = Float64[realpart(col) for col in ds]
 @inline realpart(ds::Matrix{Any}) = [realpart(col) for col in ds]
 @inline realpart(ds::Array)  = map(d -> realpart(d), ds)  # NOTE: this function is not optimized
 # @inline realpart(ds::TArray) = realpart(Array(ds))    # TODO: is it disabled temporary
-@inline realpart(ta::ReverseDiff.TrackedReal) = ta.value
+@require ReverseDiff @inline realpart(ta::ReverseDiff.TrackedReal) = ta.value
 
 @inline dualpart(d::ForwardDiff.Dual)       = d.partials.values
 @inline dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)
@@ -21,9 +21,9 @@
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-@inline vectorize{T<:Real}(d::UnivariateDistribution,   r::T)         = Vector{Real}([r])
-@inline vectorize{T<:Real}(d::MultivariateDistribution, r::Vector{T}) = Vector{Real}(r)
-@inline vectorize{T<:Real}(d::MatrixDistribution,       r::Matrix{T}) = Vector{Real}(vec(r))
+@inline vectorize(d::UnivariateDistribution,   r::T) where {T <: Real} = Vector{Real}([r])
+@inline vectorize(d::MultivariateDistribution, r::Vector{T}) where {T <: Real} = Vector{Real}(r)
+@inline vectorize(d::MatrixDistribution,       r::Matrix{T}) where {T <: Real} = Vector{Real}(vec(r))
 
 # NOTE:
 # We cannot use reconstruct{T} because val is always Vector{Real} then T will be Real.

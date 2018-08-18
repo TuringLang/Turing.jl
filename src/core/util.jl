@@ -2,10 +2,10 @@
 # Math #
 ########
 
-@inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp.(-x))
-@inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log.(x ./ (one(T) - x))
-@inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
-@inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
+@inline invlogit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = one(T) ./ (one(T) + exp.(-x))
+@inline logit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = log.(x ./ (one(T) - x))
+@require ReverseDiff @inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
+@require ReverseDiff @inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})
@@ -19,10 +19,10 @@ function randcat(p::Vector{Float64})
   s
 end
 
-type NotImplementedException <: Exception end
+struct NotImplementedException <: Exception end
 
 # Numerically stable sum of values represented in log domain.
-logsum{T<:Real}(xs::Vector{T}) = begin
+logsum(xs::Vector{T}) where T<:Real = begin
   largest = maximum(xs)
   ys = map(x -> exp.(x - largest), xs)
 

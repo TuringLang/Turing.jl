@@ -2,7 +2,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model testnoparam() = begin
   x ~ Bernoulli(1)

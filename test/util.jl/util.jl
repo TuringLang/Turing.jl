@@ -1,6 +1,6 @@
 using Turing: @VarName, invlogit, logit, randcat, kl, align
 using Distributions: Normal
-using Base.Test
+using Test
 
 
 i = 1

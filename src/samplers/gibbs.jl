@@ -1,4 +1,4 @@
-doc"""
+"""
     Gibbs(n_iters, alg_1, alg_2)
 
 Compositional MCMC interface.
@@ -9,7 +9,7 @@ Usage:
 alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
 ```
 """
-immutable Gibbs <: InferenceAlgorithm
+mutable struct Gibbs <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
   algs      ::  Tuple   # component sampling algorithms
   thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
@@ -160,7 +160,7 @@ sample(model::Function, alg::Gibbs;
   println("  Running time    = $time_total;")
 
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
   end
   c = Chain(0, samples)       # wrap the result by Chain
 

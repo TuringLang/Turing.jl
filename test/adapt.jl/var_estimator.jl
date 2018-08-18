@@ -1,5 +1,5 @@
 using Turing: VarEstimator, add_sample!, get_var
-using Base.Test
+using Test
 
 D = 10
 ve = VarEstimator{Float64}(0, zeros(D), zeros(D))

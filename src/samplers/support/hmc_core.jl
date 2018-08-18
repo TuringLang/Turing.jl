@@ -1,6 +1,6 @@
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
 
-doc"""
+"""
   gen_grad_func(vi, spl, model)
 
 Generate a function that takes `θ` and returns log-joint probabilty and gradient at `θ`, using Turing-related variables `vi`, `spl` and `model`.
@@ -24,7 +24,7 @@ function gen_grad_func(vi, spl, model)
 
 end
 
-doc"""
+"""
   gen_lj_func(vi, spl, model)
 
 Generate a function that takes `θ` and returns log-joint probabilty at `θ`, using Turing-related variables `vi`, `spl` and `model`.
@@ -43,7 +43,7 @@ function gen_lj_func(vi, spl, model)
 
 end
 
-doc"""
+"""
   gen_rev_func(vi, spl)
 
 Generate a function that takes `x_old` and `lp_old` and resets the values in `vi` for `spl` as `x_old` and the log-joint probabilty as `lp_old`, using local variables `vi` and `spl` in the scope where `gen_rev_func` is called.
@@ -72,7 +72,7 @@ function gen_rev_func(vi, spl)
 
 end
 
-doc"""
+"""
   gen_log_func(spl)
 
 Generate a function that takes no argument and performs logging for number of leapfrog steps used, using the local variable `spl` in the scope where `gen_log_func` is called.
@@ -90,7 +90,7 @@ function gen_log_func(spl)
 
 end
 
-runmodel(model::Function, vi::VarInfo, spl::Union{Void,Sampler}) = begin
+runmodel(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) = begin
   dprintln(4, "run model...")
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end
@@ -205,7 +205,7 @@ end
 # TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
+find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where T = begin
   println("[Turing] looking for good initial eps...")
   ϵ = 0.1
 
@@ -253,7 +253,7 @@ find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
   ϵ
 end
 
-doc"""
+"""
   mh_accept(H, H_new)
 
 Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance ratio in log space.

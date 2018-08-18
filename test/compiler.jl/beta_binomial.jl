@@ -3,7 +3,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 prior = Beta(2,2)
 obs = [0,1,0,1,1,1,1,1,1,1]

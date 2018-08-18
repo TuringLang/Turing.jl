@@ -1,5 +1,4 @@
-
-doc"""
+"""
     SMC(n_particles::Int)
 
 Sequential Monte Carlo sampler.
@@ -25,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), SMC(1000))
 ```
 """
-immutable SMC <: InferenceAlgorithm
+mutable struct SMC <: InferenceAlgorithm
   n_particles           ::  Int
   resampler             ::  Function
   resampler_threshold   ::  Float64
@@ -54,7 +53,7 @@ step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
 
     push!(particles, spl.alg.n_particles, spl, vi)
 
-    while consume(particles) != Val{:done}
+    while take!(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
       if ess <= spl.alg.resampler_threshold * length(particles)
         resample!(particles,spl.alg.resampler)
@@ -76,7 +75,7 @@ function sample(model::Function, alg::SMC)
   particles = ParticleContainer{Trace}(model)
   push!(particles, spl.alg.n_particles, spl, VarInfo())
 
-  while consume(particles) != Val{:done}
+  while take!(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
       resample!(particles,spl.alg.resampler)

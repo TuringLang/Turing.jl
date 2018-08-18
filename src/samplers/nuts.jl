@@ -1,4 +1,4 @@
-doc"""
+"""
     NUTS(n_iters::Int, n_adapt::Int, delta::Float64)
 
 No-U-Turn Sampler (NUTS) sampler.
@@ -24,7 +24,7 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-immutable NUTS <: Hamiltonian
+mutable struct NUTS <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
@@ -82,8 +82,8 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     θ = realpart(vi[spl])
     lj = vi.logp
     stds = spl.info[:wum][:stds]
-    
-    
+
+
     θ_new, da_stat = _nuts_step(θ, ϵ, lj_func, grad_func, stds)
 
     if PROGRESS && spl.alg.gid == 0
@@ -111,9 +111,9 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
   end
 end
 
-doc"""
+"""
   function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                       H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector; 
+                       H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
                        Δ_max::AbstractFloat=1000) where {T<:Union{Vector,SubArray}}
 
 Recursively build balanced tree.
@@ -135,7 +135,7 @@ Arguments:
 - `Δ_max`     : threshold for exploeration error tolerance
 """
 function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                     H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector; 
+                     H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
                      Δ_max::AbstractFloat=1000.0) where {T<:Union{AbstractVector,SubArray}}
     if j == 0
       # Base case - take one leapfrog step in the direction v.
@@ -171,7 +171,7 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
   end
 
 
-doc"""
+"""
   function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
                       j_max::Int=j_max) where {T<:Union{AbstractVector,SubArray}}
 

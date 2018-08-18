@@ -1,3 +1,5 @@
+using Base.Meta: parse
+
 #################
 # Overload of ~ #
 #################
@@ -27,7 +29,7 @@ macro VarName(ex::Union{Expr, Symbol})
   end
 end
 
-doc"""
+"""
     var_name ~ Distribution()
 
 Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
@@ -72,7 +74,7 @@ macro ~(left, right)
     else
       if ~(vsym in Turing._compiler_[:pvars])
         msg = " Assume - `" * vsym_str * "` is a parameter"
-        isdefined(Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
+        isdefined(Main, Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
         dprintln(FCOMPILER, msg)
         push!(Turing._compiler_[:pvars], vsym)
       end
@@ -128,7 +130,7 @@ end
 # Main Compiler #
 #################
 
-doc"""
+"""
     @model(name, fbody)
 
 Wrapper for models.
@@ -175,8 +177,9 @@ macro model(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
-  fbody = fexpr.args[2].args[end]    # NOTE: nested args is used here because the orignal model expr is in a block
-
+  fbody = fexpr.args[2]              # NOTE: nested args is used here because the orignal model expr is in a block
+                                     # NOTE: the code above was `fbody = fexpr.args[2].args[end]`, but since Julia 0.7
+                                     #       block doesn't need this nested trick to be fetched
   # Prepare for keyword arguments, e.g.
   #   f(x,y)
   #       ==> f(x,y;)
@@ -211,7 +214,7 @@ macro model(fexpr)
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
-  
+
   return_ex = fbody.args[end] # get last statement of defined model
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
@@ -235,7 +238,7 @@ macro model(fexpr)
     # NOTE: code above is commented out to disable explict return
   end
 
-  unshift!(fbody_inner.args, :(_lp = zero(Real)))
+  pushfirst!(fbody_inner.args, :(_lp = zero(Real)))
   push!(fbody_inner.args, :(vi.logp = _lp))
   push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
 
@@ -248,11 +251,11 @@ macro model(fexpr)
   # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
 
   push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
-  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Void,Turing.Sampler}))
+  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Nothing,Turing.Sampler}))
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
   dprintln(1, fdefn_inner)
-  
+
   fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
   fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
   fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
@@ -282,14 +285,14 @@ macro model(fexpr)
 
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
-  
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
-  unshift!(fdefn_outer.args[2].args,  quote
+
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
+  pushfirst!(fdefn_outer.args[2].args, quote
       # Check fargs, data
-      eval(Turing, :(_compiler_ = deepcopy($compiler)))
+      Turing.eval(:(_compiler_ = deepcopy($compiler)))
       fargs = Turing._compiler_[:fargs];
 
       # Copy the expr of function definition and callbacks
@@ -300,7 +303,7 @@ macro model(fexpr)
 
       # Add gensym to function name
       fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
-      
+
       # Change the name of inner function definition to the one with gensym()
       fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
       fdefn_inner_callback_1.args[1].args[1] = fname_inner_with_gensym
@@ -320,7 +323,7 @@ macro model(fexpr)
           insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
-      dprintln(1, fdefn_inner)
+      # dprintln(1, fdefn_inner)
   end )
 
   for k in fargs
@@ -344,10 +347,10 @@ macro model(fexpr)
               data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
             end
           end
-      unshift!(fdefn_outer.args[2].args, data_check_ex)
+      pushfirst!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
-  unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)
+  pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
   dprintln(1, esc(fdefn_outer))
   esc(fdefn_outer)
@@ -376,6 +379,8 @@ translate!(ex::Any) = ex
 translate!(ex::Expr) = begin
   if (ex.head === :call && ex.args[1] === :(~))
     ex.head = :macrocall; ex.args[1] = Symbol("@~")
+    insert!(ex.args, 2, LineNumberNode(-1)) # NOTE: a `LineNumberNode` object is required
+                                            #       at the second args for macro call in 0.7
   else
     map(translate!, ex.args)
   end

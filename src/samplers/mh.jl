@@ -1,4 +1,4 @@
-doc"""
+"""
     MH(n_iters::Int)
 
 Metropolis-Hasting sampler.
@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
 ```
 """
-immutable MH <: InferenceAlgorithm
+mutable struct MH <: InferenceAlgorithm
   n_iters   ::  Int       # number of iterations
   proposals ::  Dict{Symbol,Any}  # Proposals for paramters
   space     ::  Set       # sampling space, emtpy means all
@@ -162,7 +162,7 @@ function sample(model::Function, alg::MH;
   println("  Accept rate         = $accept_rate;")
 
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
   end
   c = Chain(0, samples)       # wrap the result by Chain
   if save_state               # save state
@@ -217,11 +217,11 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r, logpdf(dist, r)
 end
 
-assume{D<:Distribution}(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =
+assume(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where D<:Distribution =
   error("[Turing] MH doesn't support vectorizing assume statement")
 
 observe(spl::Sampler{MH}, d::Distribution, value::Any, vi::VarInfo) =
   observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 
-observe{D<:Distribution}(spl::Sampler{MH}, ds::Vector{D}, value::Any, vi::VarInfo) =
+observe(spl::Sampler{MH}, ds::Vector{D}, value::Any, vi::VarInfo)  where D<:Distribution =
   observe(nothing, ds, value, vi) # accumulate pdf of likelihood

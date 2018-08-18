@@ -1,29 +1,28 @@
+const Particle = Trace
+
 """
 Data structure for particle filters
 - effectiveSampleSize(pc :: ParticleContainer)
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-
-const Particle = Trace
-
-type ParticleContainer{T<:Particle}
+mutable struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
-  vals  :: Array{T,1}
-  logWs :: Array{Float64,1}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
+  vals  :: Array{Particle}
+  logWs :: Array{Float64}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
-  # conditional :: Union{Void,Conditional} # storing parameters, helpful for implementing rejuvenation steps
-  conditional :: Void # storing parameters, helpful for implementing rejuvenation steps
+  # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
+  conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
   ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
-(::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)
+ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar{T}(pc :: ParticleContainer{T}) = ParticleContainer{T}(pc.model, 0)
+Base.similar(pc :: ParticleContainer{T}) where T = ParticleContainer{T}(pc.model, 0)
 # pc[i] returns the i'th particle
 Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
@@ -38,11 +37,10 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-  vals = Array{eltype(pc.vals), 1}(n)
-  logWs = Array{eltype(pc.logWs), 1}(n)
+  vals = Array{eltype(pc.vals), 1}(undef,n)
+  logWs = Array{eltype(pc.logWs), 1}(undef,n)
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
-    logWs[i] = 0
   end
   append!(pc.vals, vals)
   append!(pc.logWs, logWs)
@@ -74,7 +72,7 @@ function Base.copy(pc :: ParticleContainer)
 end
 
 # run particle filter for one step, return incremental likelihood
-function Base.consume(pc :: ParticleContainer)
+function Base.take!(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   # normalisation factor: 1/N
   _, z1      = weights(pc)
@@ -84,7 +82,7 @@ function Base.consume(pc :: ParticleContainer)
   num_done = 0
   for i=1:n
     p = pc.vals[i]
-    score = consume(p)
+    score = take!(p)
     score = isa(score, ForwardDiff.Dual) ? realpart(score) : score
     if isa(score, Real)
       score += isa(getlogp(p.vi), ForwardDiff.Dual) ? realpart(getlogp(p.vi)) : getlogp(p.vi)
@@ -115,7 +113,7 @@ end
 function weights(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   logWs = pc.logWs
-  Ws = exp.(logWs-maximum(logWs))
+  Ws = exp.(logWs .- maximum(logWs))
   logZ = log(sum(Ws)) + maximum(logWs)
   Ws = Ws ./ sum(Ws)
   return Ws, logZ
@@ -135,13 +133,13 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 
 function resample!( pc :: ParticleContainer,
                    randcat :: Function = Turing.resampleSystematic,
-                   ref :: Union{Particle, Void} = nothing)
+                   ref :: Union{Particle, Nothing} = nothing)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
 
   # resample
   Ws, _ = weights(pc)
-  n2    = isa(ref, Void) ? n1 : n1-1
+  n2    = isa(ref, Nothing) ? n1 : n1-1
   indx  = randcat(Ws, n2)
 
   # fork particles

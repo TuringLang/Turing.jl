@@ -1,4 +1,4 @@
-doc"""
+"""
     SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)
 
 Stochastic Gradient Hamiltonian Monte Carlo sampler.
@@ -19,7 +19,7 @@ end
 sample(example, SGHMC(1000, 0.01, 0.1))
 ```
 """
-immutable SGHMC <: Hamiltonian
+mutable struct SGHMC <: Hamiltonian
   n_iters        ::  Int       # number of samples
   learning_rate  ::  Float64   # learning rate
   momentum_decay ::  Float64   # momentum decay
