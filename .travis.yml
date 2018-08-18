@@ -8,7 +8,7 @@ addons:
            - g++-5
 language: julia
 julia:
-  - 0.6
+  - 1.0
 os:
   - linux
   - osx
