@@ -96,7 +96,7 @@ mutable struct Sampler{T<:InferenceAlgorithm}
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
-include("../deps/deps.jl")
+include("../deps/deps.jl"); check_deps();
 include("helper.jl")
 include("transform.jl")
 include("core/varinfo.jl")  # core internal variable container
