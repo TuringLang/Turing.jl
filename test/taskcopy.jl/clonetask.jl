@@ -16,10 +16,6 @@ t = Task(f_ct)
 
 consume(t); consume(t)
 a = copy(t);
-
-
-schedule(a)
-
 consume(a); consume(a)
 
 # Test case 2: heap allocated objects are shallowly copied.
