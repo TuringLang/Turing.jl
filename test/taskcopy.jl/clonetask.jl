@@ -1,6 +1,7 @@
 # Test task copying
 
-using Turing
+using  Turing
+import Turing.Traces: produce,consume
 
 # Test case 1: stack allocated objects are deep copied.
 function f_ct()
