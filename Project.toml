@@ -3,6 +3,7 @@ uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+Chain = "f16c3ae6-c6c9-5812-9a78-4354fc90c2e5"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
