@@ -53,7 +53,7 @@ step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
 
     push!(particles, spl.alg.n_particles, spl, vi)
 
-    while take!(particles) != Val{:done}
+    while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
       if ess <= spl.alg.resampler_threshold * length(particles)
         resample!(particles,spl.alg.resampler)
@@ -75,7 +75,7 @@ function sample(model::Function, alg::SMC)
   particles = ParticleContainer{Trace}(model)
   push!(particles, spl.alg.n_particles, spl, VarInfo())
 
-  while take!(particles) != Val{:done}
+  while consume(particles) != Val{:done}
     ess = effectiveSampleSize(particles)
     if ess <= spl.alg.resampler_threshold * length(particles)
       resample!(particles,spl.alg.resampler)

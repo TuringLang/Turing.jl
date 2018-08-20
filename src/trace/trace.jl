@@ -3,30 +3,11 @@ using Markdown
 using Turing: Sampler
 using Turing.VarReplay
 
-# Trick for supressing some warning messages.
-#   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
-macro suppress_err(block)
-    quote
-        if ccall(:jl_generating_output, Cint, ()) == 0
-            ORIGINAL_STDERR = STDERR
-            err_rd, err_wr = redirect_stderr()
-
-            value = $(esc(block))
-
-            REDIRECTED_STDERR = STDERR
-            # need to keep the return value live
-            err_stream = redirect_stderr(ORIGINAL_STDERR)
-
-            return value
-        end
-    end
-end
-
 include("taskcopy.jl")
 include("tarray.jl")
 
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
-       localcopy, @suppress_err
+       localcopy, consume
 
 mutable struct Trace
   task  ::  Task
@@ -62,7 +43,7 @@ function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
 end
 
 # step to the next observe statement, return log likelihood
-Base.take!(t::Trace) = (t.vi.num_produce += 1; Base.take!(t.task))
+consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)

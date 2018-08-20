@@ -67,7 +67,7 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
     push!(particles, ref_particle)
   end
 
-  while take!(particles) != Val{:done}
+  while consume(particles) != Val{:done}
     # TODO: fork somehow cause ProgressMeter to broke - need to figure out why
     resample!(particles, spl.alg.resampler, ref_particle)
   end
