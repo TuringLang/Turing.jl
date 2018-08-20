@@ -15,15 +15,19 @@ using ForwardDiff
 using ProgressMeter
 using Markdown
 
-@require Stan using Stan
-@require ReverseDiff using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
+  using Stan
+  import Stan: Adapt, Hmc
+end
+@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
+  using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
+  import ReverseDiff: gradient
+end
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
-@require ReverseDiff import ReverseDiff: gradient
 import Chain: AbstractChains, Chains
-@require Stan import Stan: Adapt, Hmc
 
 ##############################
 # Global variables/constants #

@@ -1,5 +1,5 @@
 name = "Turing"
-uuid = "9f6ead28-9fab-11e8-161e-3dc80b9515cb"
+uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"

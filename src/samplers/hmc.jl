@@ -41,7 +41,7 @@ end
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
-@require Stan begin
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
   DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE,Stan.Adapt}
   STAN_DEFAULT_ADAPT_CONF = Stan.Adapt()
 end
