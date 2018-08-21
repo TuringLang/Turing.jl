@@ -87,7 +87,7 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-type Sampler{T<:InferenceAlgorithm}
+mutable struct Sampler{T<:InferenceAlgorithm}
   alg   ::  T
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end

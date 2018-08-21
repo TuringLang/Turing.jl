@@ -1,30 +1,30 @@
 # No info
-immutable Flat <: ContinuousUnivariateDistribution
+struct Flat <: ContinuousUnivariateDistribution
 end
 
 Distributions.rand(d::Flat) = rand()
-Distributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)
+Distributions.logpdf(d::Flat, x::T) where {T<:Real} = zero(x)
 Distributions.minimum(d::Flat) = -Inf
 Distributions.maximum(d::Flat) = +Inf
 
 # For vec support
 Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
-Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
+Distributions.logpdf(d::Flat, x::Vector{T}) where {T<:Real} = zero(x)
 
 
 # Pos
-immutable FlatPos{T<:Real} <: ContinuousUnivariateDistribution
+struct FlatPos{T<:Real} <: ContinuousUnivariateDistribution
     l::T
-    (::Type{FlatPos{T}}){T}(l::T) = new{T}(l)
+    FlatPos{T}(l::T) where {T} = new{T}(l)
 end
 
-FlatPos{T<:Real}(l::T) = FlatPos{T}(l)
+FlatPos(l::T) where {T<:Real} = FlatPos{T}(l)
 
 Distributions.rand(d::FlatPos) = rand() + d.l
-Distributions.logpdf{T<:Real}(d::FlatPos, x::T) = if x <= d.l -Inf else zero(x) end
+Distributions.logpdf(d::FlatPos, x::T) where {T<:Real} = if x <= d.l -Inf else zero(x) end
 Distributions.minimum(d::FlatPos) = d.l
 Distributions.maximum(d::FlatPos) = +Inf
 
 # For vec support
 Distributions.rand(d::FlatPos, n::Int) = Vector([rand() for _ = 1:n] .+ d.l)
-Distributions.logpdf{T<:Real}(d::FlatPos, x::Vector{T}) = if any(x .<= d.l) -Inf else zero(x) end
+Distributions.logpdf(d::FlatPos, x::Vector{T}) where {T<:Real} = if any(x .<= d.l) -Inf else zero(x) end

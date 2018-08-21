@@ -32,7 +32,7 @@
 
 const TransformDistribution{T<:ContinuousUnivariateDistribution} = Union{T, Truncated{T}}
 
-link{T0<:Real,T<:Union{T0,Vector{T0}}}(d::TransformDistribution, x::T) = begin
+link(d::TransformDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
@@ -46,7 +46,7 @@ link{T0<:Real,T<:Union{T0,Vector{T0}}}(d::TransformDistribution, x::T) = begin
   end
 end
 
-invlink{T0<:Real,T<:Union{T0,Vector{T0}}}(d::TransformDistribution, x::T) = begin
+invlink(d::TransformDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
@@ -60,7 +60,7 @@ invlink{T0<:Real,T<:Union{T0,Vector{T0}}}(d::TransformDistribution, x::T) = begi
   end
 end
 
-logpdf_with_trans{T0<:Real,T<:Union{T0,Vector{T0}}}(d::TransformDistribution, x::T, transform::Bool) = begin
+logpdf_with_trans(d::TransformDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
@@ -83,11 +83,11 @@ end
 const RealDistribution = Union{Cauchy, Gumbel, Laplace, Logistic,
                                NoncentralT, Normal, NormalCanon, TDist}
 
-link{T0<:Real,T<:Union{T0,Vector{T0}}}(d::RealDistribution, x::T) = x
+link(d::RealDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = x
 
-invlink{T0<:Real,T<:Union{T0,Vector{T0}}}(d::RealDistribution, x::T) = x
+invlink(d::RealDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = x
 
-logpdf_with_trans{T0<:Real,T<:Union{T0,Vector{T0}}}(d::RealDistribution, x::T, transform::Bool) = logpdf.(d, x)
+logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = logpdf.(d, x)
 
 
 #########
@@ -98,11 +98,11 @@ const PositiveDistribution = Union{BetaPrime, Chi, Chisq, Erlang, Exponential, F
                                    Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
                                    NoncentralChisq, NoncentralF, Rayleigh, Weibull}
 
-link{T0<:Real,T<:Union{T0,Vector{T0}}}(d::PositiveDistribution, x::T) = log(x)
+link(d::PositiveDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = log(x)
 
-invlink{T0<:Real,T<:Union{T0,Vector{T0}}}(d::PositiveDistribution, x::T) = exp.(x)
+invlink(d::PositiveDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = exp.(x)
 
-logpdf_with_trans{T0<:Real,T<:Union{T0,Vector{T0}}}(d::PositiveDistribution, x::T, transform::Bool) = begin
+logpdf_with_trans(d::PositiveDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
   lp = logpdf.(d, x)
   transform ? lp + log.(x) : lp
 end
@@ -114,11 +114,11 @@ end
 
 const UnitDistribution = Union{Beta, KSOneSided, NoncentralBeta}
 
-link{T0<:Real,T<:Union{T0,Vector{T0}}}(d::UnitDistribution, x::T) = logit(x)
+link(d::UnitDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = logit(x)
 
-invlink{T0<:Real,T<:Union{T0,Vector{T0}}}(d::UnitDistribution, x::T) = invlogit(x)
+invlink(d::UnitDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = invlogit(x)
 
-logpdf_with_trans{T0<:Real,T<:Union{T0,Vector{T0}}}(d::UnitDistribution, x::T, transform::Bool) = begin
+logpdf_with_trans(d::UnitDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
   lp = logpdf(d, x)
   transform ? lp + log(x .* (one(x) - x)) : lp
 end
@@ -129,8 +129,8 @@ end
 
 const SimplexDistribution = Union{Dirichlet}
 
-link{T<:Real}(d::SimplexDistribution, x::Vector{T}) = link!(similar(x), d, x)
-link!{T<:Real}(y, d::SimplexDistribution, x::Vector{T}) = begin
+link(d::SimplexDistribution, x::Vector{T}) where {T<:Real} = link!(similar(x), d, x)
+link!(y, d::SimplexDistribution, x::Vector{T}) where {T<:Real} = begin
   K = length(x)
 
   # key = (:cache_vec, T, K - 1)
@@ -161,8 +161,8 @@ link!{T<:Real}(y, d::SimplexDistribution, x::Vector{T}) = begin
   y
 end
 
-link{T<:Real}(d::SimplexDistribution, X::Matrix{T}) = link!(similar(X), d, X)
-link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
+link(d::SimplexDistribution, X::Matrix{T}) where {T<:Real} = link!(similar(X), d, X)
+link!(Y, d::SimplexDistribution, X::Matrix{T}) where {T<:Real} = begin
   nrow, ncol = size(X)
   K = nrow
 
@@ -185,8 +185,8 @@ link!{T<:Real}(Y, d::SimplexDistribution, X::Matrix{T}) = begin
   Y
 end
 
-invlink{T<:Real}(d::SimplexDistribution, y::Vector{T}) = invlink!(similar(y), d, y)
-invlink!{T<:Real}(x, d::SimplexDistribution, y::Vector{T}) = begin
+invlink(d::SimplexDistribution, y::Vector{T}) where {T<:Real} = invlink!(similar(y), d, y)
+invlink!(x, d::SimplexDistribution, y::Vector{T}) where {T<:Real} = begin
   K = length(y)
   
   # @simd for k = 1:K-1
@@ -213,8 +213,8 @@ invlink!{T<:Real}(x, d::SimplexDistribution, y::Vector{T}) = begin
   x
 end
 
-invlink{T<:Real}(d::SimplexDistribution, Y::Matrix{T}) = invlink!(similar(Y), d, Y)
-invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
+invlink(d::SimplexDistribution, Y::Matrix{T}) where {T<:Real} = invlink!(similar(Y), d, Y)
+invlink!(X, d::SimplexDistribution, Y::Matrix{T}) where {T<:Real} = begin
   nrow, ncol = size(Y)
   K = nrow
 
@@ -247,7 +247,7 @@ invlink!{T<:Real}(X, d::SimplexDistribution, Y::Matrix{T}) = begin
   X
 end
 
-logpdf_with_trans{T<:Real}(d::SimplexDistribution, x::Vector{T}, transform::Bool) = begin
+logpdf_with_trans(d::SimplexDistribution, x::Vector{T}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, x)
   if transform
     K = length(x)
@@ -269,7 +269,7 @@ logpdf_with_trans{T<:Real}(d::SimplexDistribution, x::Vector{T}, transform::Bool
   lp
 end
 
-logpdf_with_trans{T<:Real}(d::SimplexDistribution, X::Matrix{T}, transform::Bool) = begin
+logpdf_with_trans(d::SimplexDistribution, X::Matrix{T}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, X)
   if transform
     nrow, ncol = size(X)
@@ -296,7 +296,7 @@ end
 
 const PDMatDistribution = Union{InverseWishart, Wishart}
 
-link{T<:Real}(d::PDMatDistribution, x::Array{T,2}) = begin
+link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
   z = chol(x)'
   dim = size(z)
   for m in 1:dim[1]
@@ -308,7 +308,7 @@ link{T<:Real}(d::PDMatDistribution, x::Array{T,2}) = begin
   Array{T,2}(z)
 end
 
-link{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}) = begin
+link(d::PDMatDistribution, X::Vector{Matrix{T}}) where {T<:Real} = begin
   n = length(X)
   for i = 1:n
     X[i] = link(d, X[i])
@@ -316,7 +316,7 @@ link{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}) = begin
   X
 end
 
-invlink{T<:Real}(d::PDMatDistribution, z::Array{T,2}) = begin
+invlink(d::PDMatDistribution, z::Array{T,2}) where {T<:Real} = begin
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp.(z[m, m])
@@ -327,7 +327,7 @@ invlink{T<:Real}(d::PDMatDistribution, z::Array{T,2}) = begin
   Array{T,2}(z * z')
 end
 
-invlink{T<:Real}(d::PDMatDistribution, Z::Vector{Matrix{T}}) = begin
+invlink(d::PDMatDistribution, Z::Vector{Matrix{T}}) where {T<:Real} = begin
   n = length(Z)
 
   for i = 1:n
@@ -337,7 +337,7 @@ invlink{T<:Real}(d::PDMatDistribution, Z::Vector{Matrix{T}}) = begin
   Z
 end
 
-logpdf_with_trans{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bool) = begin
+logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = chol(x)
@@ -350,7 +350,7 @@ logpdf_with_trans{T<:Real}(d::PDMatDistribution, x::Array{T,2}, transform::Bool)
   lp
 end
 
-logpdf_with_trans{T<:Real}(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) = begin
+logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, X)
   if transform && all(isfinite(lp))
     n = length(X)

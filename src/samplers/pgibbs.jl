@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), PG(100, 100))
 ```
 """
-immutable PG <: InferenceAlgorithm
+struct PG <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   resampler             ::    Function    # function to resample
@@ -140,7 +140,7 @@ sample(model::Function, alg::PG;
   c
 end
 
-assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) = begin
+assume(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) where {T<:Union{PG,SMC}} = begin
   vi = current_trace().vi
   if isempty(spl.alg.space) || vn.sym in spl.alg.space
     if ~haskey(vi, vn)
@@ -169,13 +169,13 @@ assume{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, vn::VarName, _::Va
   r, zero(Real)
 end
 
-assume{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =
+assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where {A<:Union{PG,SMC},D<:Distribution} =
   error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 
-observe{T<:Union{PG,SMC}}(spl::Sampler{T}, dist::Distribution, value, vi) = begin
+observe(spl::Sampler{T}, dist::Distribution, value, vi) where {T<:Union{PG,SMC}} = begin
   produce(logpdf(dist, value))
   zero(Real)
 end
 
-observe{A<:Union{PG,SMC},D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+observe(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) where {A<:Union{PG,SMC},D<:Distribution} =
   error("[Turing] PG and SMC doesn't support vectorizing observe statement")
