@@ -205,7 +205,7 @@ end
 # TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-find_good_eps{T}(model::Function, vi::VarInfo, spl::Sampler{T}) = begin
+find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where {T} = begin
   println("[Turing] looking for good initial eps...")
   ϵ = 0.1
 

@@ -27,7 +27,7 @@ include("tarray.jl")
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
        localcopy, @suppress_err
 
-type Trace
+mutable struct Trace
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  Union{Void, Sampler}
@@ -35,7 +35,7 @@ type Trace
 end
 
 # NOTE: this function is called by `forkr`
-function (::Type{Trace})(f::Function)
+function Trace(f::Function)
   res = Trace();
   # Task(()->f());
   res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
@@ -46,7 +46,7 @@ function (::Type{Trace})(f::Function)
   res
 end
 
-function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
+function Trace(f::Function, spl::Sampler, vi :: VarInfo)
   res = Trace();
   res.spl = spl
   # Task(()->f());
