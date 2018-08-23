@@ -6,7 +6,7 @@
 # Sample #
 ##########
 
-type Sample
+mutable struct Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
@@ -84,7 +84,7 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-type Chain <: AbstractChains
+mutable struct Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}

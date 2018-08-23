@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-immutable HMC <: Hamiltonian
+struct HMC <: Hamiltonian
   n_iters   ::  Int       # number of samples
   epsilon   ::  Float64   # leapfrog step size
   tau       ::  Int       # leapfrog step number
@@ -84,13 +84,13 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   Sampler(alg, info)
 end
 
-function sample{T<:Hamiltonian}(model::Function, alg::T;
-                                chunk_size=CHUNKSIZE,               # set temporary chunk size
-                                save_state=false,                   # flag for state saving
-                                resume_from=nothing,                # chain to continue
-                                reuse_spl_n=0,                      # flag for spl re-using
-                                adapt_conf=STAN_DEFAULT_ADAPT_CONF  # adapt configuration
-                               )
+function sample(model::Function, alg::T;
+                chunk_size=CHUNKSIZE,               # set temporary chunk size
+                save_state=false,                   # flag for state saving
+                resume_from=nothing,                # chain to continue
+                reuse_spl_n=0,                      # flag for spl re-using
+                adapt_conf=STAN_DEFAULT_ADAPT_CONF  # adapt configuration
+               ) where T<:Hamiltonian
 
   default_chunk_size = CHUNKSIZE  # record global chunk size
   setchunksize(chunk_size)        # set temp chunk size
@@ -175,7 +175,7 @@ function sample{T<:Hamiltonian}(model::Function, alg::T;
   c
 end
 
-assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where {T<:Hamiltonian} = begin
   dprintln(2, "assuming...")
   updategid!(vi, vn, spl)
   r = vi[vn]
@@ -184,7 +184,7 @@ assume{T<:Hamiltonian}(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::Var
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) = begin
+assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   n = size(var)[end]
@@ -215,8 +215,8 @@ assume{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, dists::Vector{D}, vn::Va
   var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe{A<:Hamiltonian}(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) =
+observe(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) where {A<:Hamiltonian} =
   observe(nothing, d, value, vi)
 
-observe{A<:Hamiltonian,D<:Distribution}(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) =
+observe(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} =
   observe(nothing, ds, value, vi)

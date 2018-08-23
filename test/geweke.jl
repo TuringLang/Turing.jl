@@ -47,6 +47,7 @@ while i <= N
     s_bk[i] = sample(gdemo_bk(x), bk);
     x = [s_bk[i][:y][end]...];
     i += 1
+  catch
   end
 end
 set_verbosity(1)

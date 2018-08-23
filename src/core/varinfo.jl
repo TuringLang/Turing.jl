@@ -16,7 +16,7 @@ export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 ###########
 # VarName #
 ###########
-immutable VarName
+struct VarName
   csym      ::    Symbol        # symbol generated in compilation time
   sym       ::    Symbol        # variable symbol
   indexing  ::    String        # indexing
@@ -44,7 +44,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 # VarInfo #
 ###########
 
-type VarInfo
+mutable struct VarInfo
   idcs        ::    Dict{VarName,Int}
   vns         ::    Vector{VarName}
   ranges      ::    Vector{UnitRange{Int}}
@@ -112,7 +112,7 @@ getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
-settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans? set_flag!(vi, vn, "trans"): unset_flag!(vi, vn, "trans")
+settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
 
 getlogp(vi::VarInfo) = vi.logp
 setlogp!(vi::VarInfo, logp::Real) = vi.logp = logp

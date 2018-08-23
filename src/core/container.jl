@@ -7,7 +7,7 @@ Data structure for particle filters
 
 const Particle = Trace
 
-type ParticleContainer{T<:Particle}
+mutable struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
   vals  :: Array{T,1}
@@ -19,11 +19,11 @@ type ParticleContainer{T<:Particle}
   ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
 end
 
-(::Type{ParticleContainer{T}}){T}(m) = ParticleContainer{T}(m, 0)
+ParticleContainer{T}(m) where {T} = ParticleContainer{T}(m, 0)
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar{T}(pc :: ParticleContainer{T}) = ParticleContainer{T}(pc.model, 0)
+Base.similar(pc :: ParticleContainer{T}) where {T} = ParticleContainer{T}(pc.model, 0)
 # pc[i] returns the i'th particle
 Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 

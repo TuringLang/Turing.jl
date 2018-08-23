@@ -47,7 +47,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) = begin
+assume(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) where {T<:Distribution} = begin
   @assert length(dists) == 1 "[assume] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   n = size(var)[end]
@@ -94,7 +94,7 @@ observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
   logpdf(dist, value)
 end
 
-observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
+observe(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) where {T<:Distribution} = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
