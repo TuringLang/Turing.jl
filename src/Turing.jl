@@ -12,6 +12,7 @@ using Requires
 using Distributions
 using ForwardDiff
 
+using LinearAlgebra
 using ProgressMeter
 using Markdown
 
@@ -27,7 +28,7 @@ end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
-import Chain: AbstractChains, Chains
+import MCMCChain: AbstractChains, Chains
 
 ##############################
 # Global variables/constants #
