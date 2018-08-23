@@ -37,7 +37,7 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
     sample = Vector(length(unique(map(c -> c[1], idx_comp))))
   else
     d = max(map(c -> eval(parse(c[1])), idx_comp)...)
-    sample = Array{Any, length(d)}(d)
+    sample = Array{Any, length(d)}(undef, d)
   end
 
   # Fill sample
@@ -94,7 +94,7 @@ mutable struct Chain <: AbstractChains
   info    ::  Dict{Symbol,Any}
 end
 
-Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(0,0,0), 0:0,
+Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(undef, 0,0,0), 0:0,
                 Vector{AbstractString}(), Vector{Int}(), Dict{Symbol,Any}())
 
 Chain(w::Real, s::Array{Sample}) = begin
@@ -107,8 +107,8 @@ end
 
 flatten!(chn::Chain) = begin
   ## Flatten samples into Mamba's chain type.
-  local names = Array{Array{AbstractString}}(0)
-  local vals  = Array{Array}(0)
+  local names = Vector{Array{AbstractString}}()
+  local vals  = Vector{Array}()
   for s in chn.value2
     v, n = flatten(s)
     push!(vals, v)
@@ -126,9 +126,12 @@ flatten!(chn::Chain) = begin
   chn
 end
 
+# ind2sub is deprecated in Julia 1.0
+ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
+
 flatten(s::Sample) = begin
-  vals  = Array{Float64}(0)
-  names = Array{AbstractString}(0)
+  vals  = Vector{Float64}()
+  names = Vector{AbstractString}()
   for (k, v) in s.value
     flatten(names, vals, string(k), v)
   end
