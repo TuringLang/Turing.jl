@@ -32,7 +32,7 @@ function resampleResidual( w::Vector{Float64}, num_particles::Int )
   Ws = (M .* w - floor.(M .* w))/M_rdn;
 
   # Draw the deterministic part:
-  indx1 = Array{Int}(R)
+  indx1 = Array{Int}(undef, R)
   i=1
   for j=1:M
     for k=1:Ns[j]
@@ -55,7 +55,7 @@ function resampleStratified( w::Vector{Float64}, num_particles::Int )
   N = num_particles
   Q = cumsum(w)
 
-  T = Array{Float64}(N+1)
+  T = Array{Float64}(undef, N+1)
   for i=1:N,
     T[i] = rand()/N + (i-1)/N
   end
@@ -64,7 +64,7 @@ function resampleStratified( w::Vector{Float64}, num_particles::Int )
   i=1
   j=1
 
-  indx = Array{Int}(N)
+  indx = Array{Int}(undef, N)
   while i<=N
     if T[i]<Q[j]
       indx[i]=j
@@ -89,7 +89,7 @@ function resampleSystematic( w::Vector{Float64}, num_particles::Int )
   i=1
   j=1
 
-  indx = Array{Int}(N)
+  indx = Array{Int}(undef, N)
   while i<=N
     if (T[i]<Q[j])
       indx[i]=j

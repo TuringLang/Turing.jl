@@ -22,7 +22,7 @@ const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs)
   n_samplers = length(alg.algs)
-  samplers = Array{Sampler}(n_samplers)
+  samplers = Array{Sampler}(undef, n_samplers)
 
   space = Set{Symbol}()
 
@@ -80,7 +80,7 @@ sample(model::Function, alg::Gibbs;
 
   # Init samples
   time_total = zero(Float64)
-  samples = Array{Sample}(sample_n)
+  samples = Array{Sample}(undef, sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
