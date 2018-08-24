@@ -65,13 +65,13 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 
-    dprintln(3, "X-> R...")
+    @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
     end
 
-    dprintln(2, "recording old variables...")
+    @debug "recording old variables..."
     old_θ = realpart(vi[spl]);
     θ = deepcopy(old_θ)
     grad = gradient(vi, model, spl)
@@ -79,7 +79,7 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     v = deepcopy(old_v)
 
     if verifygrad(grad)
-      dprintln(2, "update latent variables and velocity...")
+      @debug "update latent variables and velocity..."
       # Implements the update equations from (15) of Chen et al. (2014).
       for k in 1:size(old_θ, 1)
         θ[k,:] = old_θ[k,:] + old_v[k,:]
@@ -88,14 +88,14 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
       end
     end
 
-    dprintln(2, "saving new latent variables and velocity...")
+    @debug "saving new latent variables and velocity..."
     spl.info[:v] = v
     vi[spl] = θ
 
-    dprintln(2, "always accept...")
+    @debug "always accept..."
     push!(spl.info[:accept_his], true)
 
-    dprintln(3, "R -> X...")
+    @debug "R -> X..."
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi

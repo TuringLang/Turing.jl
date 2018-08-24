@@ -150,7 +150,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 end
 
 function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
-  dprint=dprintln,rev_func=nothing, log_func=nothing)
+                   rev_func=nothing, log_func=nothing)
 
   θ_dim = length(θ)
 
@@ -180,5 +180,5 @@ function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
 
 end
 
-_hmc_step(θ, lj, lj_func, grad_func, τ::Int, ϵ::Float64, stds; dprint=dprintln) =
-_hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds; dprint=dprint)
+_hmc_step(θ, lj, lj_func, grad_func, τ::Int, ϵ::Float64, stds) =
+_hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds)

@@ -19,15 +19,12 @@ lj = lj_func(θ)
 chn = Dict(:θ=>Vector{Vector{Float64}}(), :logϵ=>Vector{Float64}())
 accept_num = 1
 
-function dummy_print(args...)
-  nothing
-end
 
 totla_num = 10000
 for iter = 1:totla_num
 
   push!(chn[:θ], θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 10, 0.05, stds; dprint=dummy_print)
+  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 10, 0.05, stds)
   accept_num += is_accept
 
 end
