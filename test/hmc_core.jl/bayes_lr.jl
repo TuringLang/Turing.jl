@@ -93,14 +93,11 @@ lj = lj_func(θ)
 chn = []
 accept_num = 1
 
-function dummy_print(args...)
-  nothing
-end
 
 total_num = 2000
 for iter = 1:total_num
   push!(chn, θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 3, 0.005, stds; dprint=dummy_print)
+  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 3, 0.005, stds)
   accept_num += is_accept
 #   if (iter % 50 == 0) println(θ) end
 end
