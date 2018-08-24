@@ -5,6 +5,7 @@
 using Turing
 using Distributions
 using Test
+using Random
 
 function logsum(xs :: Vector{Float64})
   largest = maximum(xs)
@@ -53,9 +54,9 @@ seed = 0
 
 _f = normal();
 for i=1:100
-  srand(seed)
+  Random.seed!(seed)
   exact = reference(n)
-  srand(seed)
+  Random.seed!(seed)
   tested = sample(_f, alg)
   for i = 1:n
     @test exact[:samples][i][:a] == tested[:samples][i][:a]

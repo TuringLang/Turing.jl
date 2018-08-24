@@ -1,7 +1,8 @@
 using Distributions
 using Turing
 using Test
-srand(125)
+using Random
+Random.seed!(125)
 
 x = [1.5 2.0]
 

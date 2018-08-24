@@ -1,8 +1,6 @@
 include("../utility.jl")
 using Test
 
-# srand(115)
-
 using Distributions, Turing
 using Mamba: describe
 
