@@ -1,9 +1,10 @@
 using Turing
 using Test
+using Random
 
 include("../utility.jl")
 
-srand(123)
+Random.seed!(123)
 
 alg1 = HMCDA(3000, 1000, 0.65, 0.15)
 alg2 = PG(20, 500)

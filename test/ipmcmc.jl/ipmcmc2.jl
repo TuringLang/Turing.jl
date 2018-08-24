@@ -1,7 +1,8 @@
 using Turing
 using Test
+using Random
 
-srand(125)
+Random.seed!(125)
 
 D = [1.0 1.0 4.0 4.0]
 

@@ -33,7 +33,8 @@
 
 include("../utility.jl")
 using Distributions, Turing
-srand(129)
+using Random
+Random.seed!(129)
 # Test for vectorize UnivariateDistribution
 @model vdemo(x) = begin
   s ~ InverseGamma(2,3)
