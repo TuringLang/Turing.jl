@@ -87,7 +87,7 @@ link(d::RealDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = x
 
 invlink(d::RealDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = x
 
-logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = logpdf.(d, x)
+logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = logpdf.(Ref(d), x)
 
 
 #########

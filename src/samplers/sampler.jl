@@ -99,8 +99,8 @@ observe(spl::Nothing, dists::Vector{T}, value::Any, vi::VarInfo) where T<:Distri
   dist = dists[1]
   @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
   if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
-    # acclogp!(vi, sum(logpdf.(dist, value)))
-    sum(logpdf.(dist, value))
+    # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
+    sum(logpdf.(Ref(dist), value))
   else
     # acclogp!(vi, sum(logpdf(dist, value)))
     sum(logpdf(dist, value))
