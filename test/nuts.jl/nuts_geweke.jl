@@ -41,7 +41,7 @@ s = sample(gdemo_fw(), fw);
 N = div(NSamples, bk_sample_n)
 
 x = [s[:y][1]...]
-s_bk = Array{Turing.Chain}(N)
+s_bk = Array{Turing.Chain}(undef, N)
 
 set_verbosity(0)
 i = 1

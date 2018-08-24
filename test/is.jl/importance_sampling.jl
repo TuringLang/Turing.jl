@@ -16,7 +16,7 @@ end
 
 function reference(n :: Int)
   logweights = zeros(Float64, n)
-  samples = Array{Dict{Symbol,Any}}(n)
+  samples = Array{Dict{Symbol,Any}}(undef, n)
   for i = 1:n
     samples[i] = reference()
     logweights[i] = samples[i][:logweight]
