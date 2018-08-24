@@ -27,7 +27,7 @@ using Turing
 end
 
 N = 100
-xs = collect(linspace(-10, 10, N))
+xs = collect(range(-10, stop = 10, length = N))
 s = 1
 β = rand(Normal(0, 1))
 ys = xs * β + rand(Normal(0, sqrt(s)), N)
