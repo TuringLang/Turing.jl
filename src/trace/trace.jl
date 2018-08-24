@@ -7,7 +7,7 @@ include("taskcopy.jl")
 include("tarray.jl")
 
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
-       localcopy, consume
+       localcopy, consume, produce
 
 mutable struct Trace
   task  ::  Task
