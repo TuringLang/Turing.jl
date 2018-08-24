@@ -20,7 +20,7 @@ end
 function Trace(f::Function)
   res = Trace();
   # Task(()->f());
-  res.task = Task( () -> begin res=f(); put!(Val{:done}); res; end )
+  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Nothing)
     res.task.storage = IdDict()
   end
@@ -34,7 +34,7 @@ function Trace(f::Function, spl::Sampler, vi :: VarInfo)
   # Task(()->f());
   res.vi = deepcopy(vi)
   res.vi.num_produce = 0
-  res.task = Task( () -> begin vi_new=f(vi, spl); put!(Val{:done}); vi_new; end )
+  res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
   if isa(res.task.storage, Nothing)
     res.task.storage = IdDict()
   end
