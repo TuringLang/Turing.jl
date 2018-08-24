@@ -7,7 +7,7 @@
 #
 # @model nbmodel(K, V, M, N, z, w, doc, alpha, beta) = begin
 #   theta ~ Dirichlet(alpha)
-#   phi = Array{Any}(K)
+#   phi = Array{Any}(undef, K)
 #   for k = 1:K
 #     phi[k] ~ Dirichlet(beta)
 #   end

@@ -15,7 +15,7 @@ mutable struct ParticleContainer{T<:Particle}
   # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Array{Particle,1}(),Array{Float64,1}(),0.0,nothing,0)
+  ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Vector{Particle}(),Vector{Float64}(),0.0,nothing,0)
 end
 
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
@@ -51,8 +51,8 @@ end
 # clears the container but keep params, logweight etc.
 function Base.empty!(pc :: ParticleContainer)
   pc.num_particles = 0
-  pc.vals  = Array{Particle,1}()
-  pc.logWs = Array{Float64,1}()
+  pc.vals  = Vector{Particle}()
+  pc.logWs = Vector{Float64}()
   pc
 end
 

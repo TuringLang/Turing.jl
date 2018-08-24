@@ -305,7 +305,7 @@ link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
   end
-  Array{T,2}(z)
+  Array{T,2}(undef, z)
 end
 
 link(d::PDMatDistribution, X::Vector{Matrix{T}}) where {T<:Real} = begin
@@ -324,7 +324,7 @@ invlink(d::PDMatDistribution, z::Array{T,2}) where {T<:Real} = begin
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
   end
-  Array{T,2}(z * z')
+  Array{T,2}(undef, z * z')
 end
 
 invlink(d::PDMatDistribution, Z::Vector{Matrix{T}}) where {T<:Real} = begin
