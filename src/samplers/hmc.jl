@@ -130,7 +130,7 @@ function sample(model::Function, alg::T;
   # HMC steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "$alg_str stepping...")
+    @debug "$alg_str stepping..."
 
     time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed
@@ -176,7 +176,7 @@ function sample(model::Function, alg::T;
 end
 
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin
-  dprintln(2, "assuming...")
+  @debug "assuming..."
   updategid!(vi, vn, spl)
   r = vi[vn]
   # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))

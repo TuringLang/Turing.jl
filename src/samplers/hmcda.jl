@@ -72,11 +72,11 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
   else
     # Set parameters
     λ = spl.alg.lambda
-    ϵ = spl.info[:wum][:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
+    ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
-    dprintln(3, "X-> R...")
+    @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
@@ -102,7 +102,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
                                        spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)])
     end
 
-    dprintln(2, "decide wether to accept...")
+    @debug "decide wether to accept..."
     if is_accept              # accepted
       push!(spl.info[:accept_his], true)
 
@@ -142,7 +142,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       adapt!(spl.info[:wum], realpart(α), realpart(vi[spl]), adapt_ϵ = true)
     end
 
-    dprintln(3, "R -> X...")
+    @debug "R -> X..."
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi
@@ -154,21 +154,21 @@ function _hmc_step(θ, lj, lj_func, grad_func, ϵ::Float64, λ::Float64, stds;
 
   θ_dim = length(θ)
 
-  dprint(2, "sampling momentums...")
+  @debug "sampling momentums..."
   p = _sample_momentum(θ_dim, stds)
 
-  dprint(2, "recording old values...")
+  @debug "recording old values..."
   H = _find_H(θ, p, lj, stds)
 
   τ = max(1, round(Int, λ / ϵ))
-  dprint(2, "leapfrog for $τ steps with step size $ϵ")
+  @debug "leapfrog for $τ steps with step size $ϵ"
   θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
 
-  dprint(2, "computing new H...")
+  @debug "computing new H..."
   lj_new = lj_func(θ_new)
   H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, stds)
 
-  dprint(2, "deciding wether to accept and computing accept rate α...")
+  @debug "deciding wether to accept and computing accept rate α..."
   is_accept, logα = mh_accept(H, H_new)
 
   if is_accept
