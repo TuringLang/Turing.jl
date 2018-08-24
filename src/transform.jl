@@ -103,7 +103,7 @@ link(d::PositiveDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = l
 invlink(d::PositiveDistribution, x::T) where {T0<:Real,T<:Union{T0,Vector{T0}}} = exp.(x)
 
 logpdf_with_trans(d::PositiveDistribution, x::T, transform::Bool) where {T0<:Real,T<:Union{T0,Vector{T0}}} = begin
-  lp = logpdf.(d, x)
+  lp = logpdf.(Ref(d), x)
   transform ? lp + log.(x) : lp
 end
 
