@@ -25,7 +25,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
   grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
-  dprintln(4, "making chunks...")
+  @debug "making chunks..."
   vn_chunk = Set{VarName}(); vn_chunks = []; chunk_dim = 0;
 
   vns = getvns(vi, spl); vn_num = length(vns)
@@ -47,7 +47,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
   # Chunk-wise forward AD
   for (vn_chunk, chunk_dim) in vn_chunks
     # 1. Set dual part correspondingly
-    dprintln(4, "set dual...")
+    @debug "set dual..."
     dim_count = 1
     for i = 1:vn_num
       range = getrange(vi, vns[i])
@@ -64,14 +64,14 @@ gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
         end
       end
     end
-    dprintln(4, "set dual done")
+    @debug "set dual done"
 
     # 2. Run model
-    dprintln(4, "run model...")
+    @debug "run model..."
     vi = runmodel(model, vi, spl)
 
     # 3. Collect gradient
-    dprintln(4, "collect gradients from logp...")
+    @debug "collect gradients from logp..."
     append!(grad, collect(dualpart(-getlogp(vi)))[1:chunk_dim])
   end
 

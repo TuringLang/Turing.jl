@@ -2,6 +2,7 @@
 *.dll
 *.so
 *.orig
+*.swp
 tmp/
 .vscode/
 

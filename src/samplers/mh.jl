@@ -89,13 +89,13 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     old_θ = copy(vi[spl])
     old_logp = getlogp(vi)
 
-    dprintln(2, "Propose new parameters from proposals...")
+    @debug "Propose new parameters from proposals..."
     propose(model, spl, vi)
 
-    dprintln(2, "computing accept rate α...")
+    @debug "computing accept rate α..."
     is_accept, logα = mh_accept(-old_logp, -getlogp(vi); log_proposal_ratio=spl.info[:proposal_ratio])
 
-    dprintln(2, "decide wether to accept...")
+    @debug "decide wether to accept..."
     if is_accept && !spl.info[:violating_support]  # accepted
       push!(spl.info[:accept_his], true)
     else                      # rejected
@@ -141,7 +141,7 @@ function sample(model::Function, alg::MH;
   # MH steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "$alg_str stepping...")
+    @debug "$alg_str stepping..."
 
     time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed

@@ -82,7 +82,7 @@ init_warm_up_params(vi::VarInfo, spl::Sampler{T}) where T<:Hamiltonian = begin
   end
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
-  dprintln(2, wum.params)
+  @debug wum.params
 
   spl.info[:wum] = wum
 end
@@ -101,8 +101,8 @@ end
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
 adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
 
-  dprintln(2, "adapting step size ϵ...")
-  dprintln(2, "current α = $(stats)")
+  @debug "adapting step size ϵ..."
+  @debug "current α = $(stats)"
   wum[:m] = wum[:m] + 1
   m = wum[:m]
 
@@ -119,7 +119,7 @@ adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
   x_bar = (1.0 - η_x) * x_bar + η_x * x
 
   ϵ = exp(x)
-  dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
+  @debug "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])"
 
   if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
       dwarn(0, "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
@@ -129,7 +129,7 @@ adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
   end
 
   if m == wum[:n_warmup]
-    dprintln(2, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+    @debug " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption."
   end
 
 end

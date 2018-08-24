@@ -64,11 +64,11 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     vi
   else
     # Set parameters
-    ϵ = spl.info[:wum][:ϵ][end]; dprintln(2, "current ϵ: $ϵ")
+    ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
 
     spl.info[:lf_num] = 0   # reset current lf num counter
 
-    dprintln(3, "X-> R...")
+    @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
@@ -104,7 +104,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
       adapt!(spl.info[:wum], da_stat, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
     # end
 
-    dprintln(3, "R -> X...")
+    @debug "R -> X..."
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi

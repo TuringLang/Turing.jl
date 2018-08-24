@@ -91,7 +91,7 @@ function gen_log_func(spl)
 end
 
 runmodel(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) = begin
-  dprintln(4, "run model...")
+  @debug "run model..."
   setlogp!(vi, zero(Real))
   if spl != nothing spl.info[:total_eval_num] += 1 end
   # model(vi=vi, sampler=spl) # run model
@@ -99,7 +99,7 @@ runmodel(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) = begin
 end
 
 sample_momentum(vi::VarInfo, spl::Sampler) = begin
-  dprintln(2, "sampling momentum...")
+  @debug "sampling momentum..."
   # randn(length(getranges(vi, spl))) ./ spl.info[:wum][:stds]
 
   d = length(getranges(vi, spl))
@@ -229,7 +229,7 @@ find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where T = begin
 
     θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
     h = τ == 0 ? Inf : find_H(p_prime, model, vi, spl)
-    dprintln(1, "direction = $direction, h = $h")
+    @debug "direction = $direction, h = $h"
 
     delta_H = H0 - h
 

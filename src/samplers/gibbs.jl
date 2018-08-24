@@ -95,7 +95,7 @@ sample(model::Function, alg::Gibbs;
   # Gibbs steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "Gibbs stepping...")
+    @debug "Gibbs stepping..."
 
     time_elapsed = zero(Float64)
     lp = nothing; epsilon = nothing; lf_num = nothing
@@ -104,7 +104,7 @@ sample(model::Function, alg::Gibbs;
       last_spl = local_spl
       # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
-      dprintln(2, "$(typeof(local_spl)) stepping...")
+      @debug "$(typeof(local_spl)) stepping..."
 
       if isa(local_spl.alg, GibbsComponent)
         if isa(local_spl.alg, Hamiltonian)  # clean cache
@@ -113,7 +113,7 @@ sample(model::Function, alg::Gibbs;
         end
 
         for _ = 1:local_spl.alg.n_iters
-          dprintln(2, "recording old θ...")
+          @debug "recording old θ..."
           time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
 
           if ~spl.alg.thin

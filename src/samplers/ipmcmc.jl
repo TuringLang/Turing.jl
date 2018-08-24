@@ -117,7 +117,7 @@ sample(model::Function, alg::IPMCMC) = begin
   # IPMCMC steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "IPMCMC stepping...")
+    @debug "IPMCMC stepping..."
     time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
 
     # Save each CSMS retained path as a sample
