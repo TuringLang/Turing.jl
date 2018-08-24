@@ -61,10 +61,10 @@ testcases = Dict(
 )
 
 # NOTE: put test cases which only want to be check in version 0.4.x here
-testcases_v04 = [
-  "beta_binomial",
-  "tarray"
-]
+#testcases_v04 = [
+#  "beta_binomial",
+#  "tarray"
+#]
 
 # NOTE: put test cases which want to be excluded here
 testcases_excluded = [
@@ -82,19 +82,10 @@ println("[runtests.jl] testing starts")
 for (target, list) in testcases
   for t in list
     if ~ (t in testcases_excluded)
-      if t in testcases_v04
-        if VERSION < v"0.5"
-          println("[runtests.jl] \"$target/$t.jl\" is running")
-          include(target*"/"*t*".jl");
-          # readstring(`julia $t.jl`)
-          println("[runtests.jl] \"$target/$t.jl\" is successful")
-        end
-      else
-        println("[runtests.jl] \"$target/$t.jl\" is running")
-        include(target*"/"*t*".jl");
-        # readstring(`julia $t.jl`)
-        println("[runtests.jl] \"$target/$t.jl\" is successful")
-      end
+      println("[runtests.jl] \"$target/$t.jl\" is running")
+      include(target*"/"*t*".jl");
+      # readstring(`julia $t.jl`)
+      println("[runtests.jl] \"$target/$t.jl\" is successful")
     end
   end
 end
