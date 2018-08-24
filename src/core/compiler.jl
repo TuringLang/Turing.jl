@@ -56,7 +56,7 @@ macro ~(left, right)
     # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
       if ~(vsym in Turing._compiler_[:dvars])
-        dprintln(FCOMPILER, " Observe - `" * vsym_str * "` is an observation")
+        @info " Observe - `" * vsym_str * "` is an observation"
         push!(Turing._compiler_[:dvars], vsym)
       end
       esc(
@@ -75,7 +75,7 @@ macro ~(left, right)
       if ~(vsym in Turing._compiler_[:pvars])
         msg = " Assume - `" * vsym_str * "` is a parameter"
         isdefined(Main, Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
-        dprintln(FCOMPILER, msg)
+        @info msg
         push!(Turing._compiler_[:pvars], vsym)
       end
       # The if statement is to deterimnet how to pass the prior.
@@ -172,7 +172,7 @@ macro model(fexpr)
    #   end
 
 
-  dprintln(1, fexpr)
+  @debug fexpr
   fexpr = translate(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
@@ -192,9 +192,9 @@ macro model(fexpr)
     insert!(fargs, 1, Expr(:parameters))
   end
 
-  dprintln(1, fname)
-  # dprintln(1, fargs)
-  dprintln(1, fbody)
+  @debug fname
+  # @debug fargs
+  @debug fbody
 
   # Remove positional arguments from inner function, e.g.
   #  f((x,y; c=1)
@@ -210,7 +210,7 @@ macro model(fexpr)
   #      ==> f(; :vi=VarInfo(), :sample=nothing)
   # push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
   # push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
-  # dprintln(1, fargs_inner)
+  # @debug fargs_inner
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
@@ -242,7 +242,7 @@ macro model(fexpr)
   push!(fbody_inner.args, :(vi.logp = _lp))
   push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
 
-  dprintln(1, fbody_inner)
+  @debug fbody_inner
 
   fname_inner_str = "$(fname)_model"
   fname_inner = Symbol(fname_inner_str)
@@ -254,7 +254,7 @@ macro model(fexpr)
   push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Nothing,Turing.Sampler}))
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
-  dprintln(1, fdefn_inner)
+  @debug fdefn_inner
 
   fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
   fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
@@ -323,7 +323,7 @@ macro model(fexpr)
           insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
-      # dprintln(1, fdefn_inner)
+      # @debug fdefn_inner
   end )
 
   for k in fargs
@@ -336,7 +336,7 @@ macro model(fexpr)
     end
     if _k != nothing
       _k_str = string(_k)
-      dprintln(1, _k_str, " = ", _k)
+      @debug _k_str, " = ", _k
       data_check_ex = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
@@ -352,7 +352,7 @@ macro model(fexpr)
   end
   pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
-  dprintln(1, esc(fdefn_outer))
+  @debug esc(fdefn_outer)
   esc(fdefn_outer)
 end
 

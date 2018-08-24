@@ -42,14 +42,15 @@ N = div(NSamples, 50)
 x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(undef, N)
 
-set_verbosity(0)
-i = 1
-while i <= N
-  s_bk[i] = sample(gdemo_bk(x), bk);
-  x = [s_bk[i][:y][end]...];
-  i += 1
+simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
+with_logger(simple_logger) do 
+  i = 1
+  while i <= N
+    s_bk[i] = sample(gdemo_bk(x), bk);
+    x = [s_bk[i][:y][end]...];
+    i += 1
+  end
 end
-set_verbosity(1)
 
 s2 = vcat(s_bk...);
 # describe(s2)
