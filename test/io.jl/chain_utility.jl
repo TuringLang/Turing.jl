@@ -23,7 +23,7 @@ samples = c2[:samples]
 @model mamba_chain_test() = begin
   m ~ Uniform(-1, 1)
   x ~ Wishart(7, [1 0.5; 0.5 1])
-  y = Array{Array}(2,2)
+  y = Array{Array}(undef, 2,2)
   for i in eachindex(y)
     y[i] ~ Wishart(7, [1 0.5; 0.5 1])
   end
@@ -95,7 +95,7 @@ d5[Symbol("x[2,1,2]")] = 6
 d5[Symbol("x[2,2,1]")] = 7
 d5[Symbol("x[2,2,2]")] = 8
 sp5 = Sample(1, d5)
-x5 = Array{Any, 3}((2,2,2))
+x5 = Array{Any, 3}(undef, 2,2,2)
 x5[1,1,1] = 1
 x5[1,1,2] = 2
 x5[1,2,1] = 3

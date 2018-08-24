@@ -26,7 +26,7 @@ v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
 
 
 @model mat_name_test() = begin
-  p = Array{Any}((2, 2))
+  p = Array{Any}(undef, 2, 2)
   for i in 1:2, j in 1:2
     p[i,j] ~ Normal(0, 1)
   end
@@ -42,9 +42,9 @@ v_arrarr = eval(varname(:(x[i][j]))[1])
 @test v_arrarr == "[1][2]"
 
 @model marr_name_test() = begin
-  p = Array{Array{Any}}(2)
-  p[1] = Array{Any}(2)
-  p[2] = Array{Any}(2)
+  p = Array{Array{Any}}(undef, 2)
+  p[1] = Array{Any}(undef, 2)
+  p[2] = Array{Any}(undef, 2)
   for i in 1:2, j in 1:2
     p[i][j] ~ Normal(0, 1)
   end
