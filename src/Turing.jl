@@ -64,9 +64,6 @@ turnprogress(switch::Bool) = begin
   global PROGRESS = switch
 end
 
-global VERBOSITY = 1        # verbosity for dprintln & dwarn
-global const FCOMPILER = 0  # verbose printing flag for compiler
-
 # Constans for caching
 global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
@@ -118,7 +115,7 @@ export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
 export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
 export auto_tune_chunk_size!, setadbackend, setadsafe # helper
-export dprintln, set_verbosity, turnprogress  # debugging
+export turnprogress  # debugging
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
@@ -126,26 +123,6 @@ export TArray, tzeros, localcopy, IArray
 export @sym_str
 
 export UnivariateGMM2, Flat, FlatPos
-
-##################
-# Turing helpers #
-##################
-
-set_verbosity(v::Int) = global VERBOSITY = v
-
-"""
-    dprintln(v, args...)
-
-Debugging print function. The first argument controls the verbosity of message.
-"""
-dprintln(v::Int, args...) = v < Turing.VERBOSITY ?
-                            println("\r[Turing]: ", args..., "\n $(stacktrace()[2])") :
-                            nothing
-dwarn(v::Int, args...)    = v < Turing.VERBOSITY ?
-                            print_with_color(:red, "\r[Turing.WARNING]: ", mapreduce(string,*,args), "\n $(stacktrace()[2])\n") :
-                            nothing
-derror(v::Int, args...)   = error("\r[Turing.ERROR]: ", mapreduce(string,*,args))
-
 
 ##################
 # Inference code #
