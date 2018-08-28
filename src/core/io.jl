@@ -22,7 +22,9 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
     syms = collect((Iterators.filter(k -> findfirst(string(k), string(v)) != nothing, cached_syms)))
   end
   # Map to the corresponding indices part
-  idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
+  println(syms)
+  idx_str = map(sym -> replace(string(sym), string(v) => ""), syms)
+  println(idx_str)
   # Get the indexing component
   idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
