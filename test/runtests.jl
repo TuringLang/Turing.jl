@@ -20,7 +20,9 @@ testcases = Dict(
                           #  "explicit_ret",
                            "new_grammar", "newinterface", "noreturn", "forbid_global",],
         "container.jl" => ["copy_particle_container",],
-        "varinfo.jl"   => ["replay", "test_varname", "varinfo", "orders", "is_inside", "flags",],
+        "varinfo.jl"   => [
+                           "replay", 
+                           "test_varname", "varinfo", "orders", "is_inside", "flags",],
         "io.jl"        => ["chain_utility", "save_resume_chain",],
         "util.jl"      => ["util",],
 #     distributions/
@@ -73,10 +75,13 @@ testcases_excluded = [
 ]
 
 COMPILER_RELATED = ["compiler.jl"]
+CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl", "io.jl", "util.jl", "transform.jl"]
 
 function filter_tests(target, filter_rule)
   if filter_rule == :exclude_compiler 
     return ~(target in COMPILER_RELATED)
+  elseif filter_rule == :only_core
+    return (target in CORE_TESTS)
   end
   @warn "Unkown filter_rule=$filter_rule"
   return true
@@ -90,7 +95,7 @@ include("utility.jl")
 println("[runtests.jl] utility.jl loaded")
 println("[runtests.jl] testing starts")
 for (target, list) in testcases
-  if filter_tests(target, :exclude_compiler)
+  if filter_tests(target, :exclude_compiler) && filter_tests(target, :only_core)
     for t in list
       if ~ (t in testcases_excluded)
         println("[runtests.jl] \"$target/$t.jl\" is running")

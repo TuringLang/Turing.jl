@@ -297,7 +297,7 @@ end
 const PDMatDistribution = Union{InverseWishart, Wishart}
 
 link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
-  z = chol(x)'
+  z = cholesky(x).U'
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = log(z[m, m])
@@ -305,7 +305,7 @@ link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
   end
-  Array{T,2}(undef, z)
+  Array{T,2}(undef, size(z))
 end
 
 link(d::PDMatDistribution, X::Vector{Matrix{T}}) where {T<:Real} = begin
@@ -340,7 +340,7 @@ end
 logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
-    U = chol(x)
+    U = cholesky(x).U
     n = dim(d)
     for i in 1:n
       lp += (n - i + T(2)) * log(U[i, i])
@@ -356,7 +356,7 @@ logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) w
     n = length(X)
     U = Vector{Matrix{T}}(n)
     for i = 1:n
-      U[i] = chol(X[i])'
+      U[i] = cholesky(X[i]).U'
     end
     D = dim(d)
 

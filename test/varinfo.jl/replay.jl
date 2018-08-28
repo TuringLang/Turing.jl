@@ -8,7 +8,7 @@ xs = rand(Normal(0.5, 1), 100)
 
 # Define model
 @model priorsinarray(xs) = begin
-  priors = Vector{Real}(2)
+  priors = Vector{Real}(undef, 2)
   priors[1] ~ InverseGamma(2, 3)
   priors[2] ~ Normal(0, sqrt.(priors[1]))
   for i = 1:length(xs)
