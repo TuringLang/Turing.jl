@@ -328,7 +328,7 @@ is_inside(vn::VarName, space::Set)::Bool = begin
     true
   else
     exprs = filter(el -> isa(el, Expr), space)
-    strs = map(ex -> replace(string(ex), r"\(|\)", ""), exprs)
+    strs = Set((replace(string(ex), r"\(|\)", "") for ex in exprs))
     vn_str = string(vn.sym) * vn.indexing
     valid = filter(str -> contains(vn_str, str), strs)
     length(valid) > 0
