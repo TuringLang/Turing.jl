@@ -27,7 +27,7 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
   # Deal with v is really a symbol, e.g. :x
-  if length(idx_comp) == 0
+  if length(idx_str) == 1 && idx_str[1] == ""
     return Base.getindex(s.value, v)
   end
 
