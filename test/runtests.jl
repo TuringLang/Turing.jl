@@ -72,6 +72,16 @@ testcases_excluded = [
   "predict"
 ]
 
+COMPILER_RELATED = ["compiler.jl"]
+
+function filter_tests(target, filter_rule)
+  if filter_rule == :exclude_compiler 
+    return ~(target in COMPILER_RELATED)
+  end
+  @warn "Unkown filter_rule=$filter_rule"
+  return true
+end
+
 # Run tests
 path = dirname(@__FILE__)
 cd(path)
@@ -80,12 +90,14 @@ include("utility.jl")
 println("[runtests.jl] utility.jl loaded")
 println("[runtests.jl] testing starts")
 for (target, list) in testcases
-  for t in list
-    if ~ (t in testcases_excluded)
-      println("[runtests.jl] \"$target/$t.jl\" is running")
-      include(target*"/"*t*".jl");
-      # readstring(`julia $t.jl`)
-      println("[runtests.jl] \"$target/$t.jl\" is successful")
+  if filter_tests(target, :exclude_compiler)
+    for t in list
+      if ~ (t in testcases_excluded)
+        println("[runtests.jl] \"$target/$t.jl\" is running")
+        include(target*"/"*t*".jl");
+        # readstring(`julia $t.jl`)
+        println("[runtests.jl] \"$target/$t.jl\" is successful")
+      end
     end
   end
 end
