@@ -28,13 +28,15 @@ end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
+import Flux: gradient
+using Flux: Tracker
 import MCMCChain: AbstractChains, Chains
 
 ##############################
 # Global variables/constants #
 ##############################
 
-global ADBACKEND = :forward_diff
+global ADBACKEND = :reverse_diff
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   global ADBACKEND = backend_sym

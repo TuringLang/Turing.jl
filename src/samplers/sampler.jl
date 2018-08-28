@@ -44,6 +44,7 @@ assume(spl::Nothing, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   # NOTE: The importance weight is not correctly computed here because
   #       r is genereated from some uniform distribution which is different from the prior
   # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
@@ -90,6 +91,9 @@ end
 
 observe(spl::Nothing, dist::Distribution, value::Any, vi::VarInfo) = begin
   vi.num_produce += 1
+  @debug "dist = $dist"
+  @debug "value = $value"
+
   # acclogp!(vi, logpdf(dist, value))
   logpdf(dist, value)
 end

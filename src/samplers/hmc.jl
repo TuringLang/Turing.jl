@@ -181,6 +181,9 @@ assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:H
   r = vi[vn]
   # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
   # r
+  @debug "dist = $dist"
+  @debug "vn = $vn"
+  @debug "r = $r" "typeof(r)=$(typeof(r))"
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
