@@ -48,7 +48,7 @@ end
 @inline reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type, n::Int) = Array{T, 2}(reshape(val, size(d)[1], n))
 
 @inline reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type, n::Int) = begin
-  orig = Vector{Matrix{T}}(n)
+  orig = Vector{Matrix{T}}(undef, n)
   tmp = Array{T, 3}(reshape(val, size(d)[1], size(d)[2], n))
   for i = 1:n
     orig[i] = tmp[:,:,i]

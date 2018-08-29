@@ -23,7 +23,7 @@ end
 get_var(ve::VarEstimator) = begin
   @assert ve.n >= 2
   var = ve.M / (ve.n - 1)
-  var = (ve.n / (ve.n + 5.0)) * var + 1e-3 * (5.0 / (ve.n + 5.0))
+  var = (ve.n / (ve.n + 5.0)) * var .+ 1e-3 * (5.0 / (ve.n + 5.0))
   return var
 end
 

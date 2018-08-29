@@ -363,9 +363,9 @@ end
 
 logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) where {T<:Real} = begin
   lp = logpdf(d, X)
-  if transform && all(isfinite(lp))
+  if transform && all(isfinite.(lp))
     n = length(X)
-    U = Vector{Matrix{T}}(n)
+    U = Vector{Matrix{T}}(undef, n)
     for i = 1:n
       U[i] = cholesky(X[i]).U'
     end
@@ -374,7 +374,7 @@ logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) w
     for j = 1:n, i in 1:D
       lp[j] += (D - i + T(2)) * log(U[j][i,i])
     end
-    lp += D * log(T(2))
+    lp .+= D * log(T(2))
   end
   lp
 end
