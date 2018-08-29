@@ -17,26 +17,27 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
   if cached_syms == nothing
     # Get all keys associated with the given symbol
-    syms = collect(Iterators.filter(k -> findfirst(string(k), string(v)*"[") != nothing, keys(s.value)))
+    syms = collect(Iterators.filter(k -> occursin(string(k), string(v)*"[") != nothing, keys(s.value)))
   else
-    syms = collect((Iterators.filter(k -> findfirst(string(k), string(v)) != nothing, cached_syms)))
+    syms = collect((Iterators.filter(k -> occursin(string(k), string(v)) != nothing, cached_syms)))
   end
+
   # Map to the corresponding indices part
-  @debug "syms=$syms"
   idx_str = map(sym -> replace(string(sym), string(v) => ""), syms)
-  @debug "idx_str=$idx_str"
   # Get the indexing component
   idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
   # Deal with v is really a symbol, e.g. :x
-  if length(idx_str) == 1 && idx_str[1] == ""
+  # NOTE: The if condition was extended by the left-hand of the or operator.
+  if (length(idx_str) == 1 && idx_str[1] == "") || isempty(idx_comp)
+    @assert haskey(s.value, v)
     return Base.getindex(s.value, v)
   end
 
   # Construct container for the frist nesting layer
   dim = length(split(idx_comp[1][1], ','))
   if dim == 1
-    sample = Vector(length(unique(map(c -> c[1], idx_comp))))
+    sample = Vector(undef, length(unique(map(c -> c[1], idx_comp))))
   else
     d = max(map(c -> eval(parse(c[1])), idx_comp)...)
     sample = Array{Any, length(d)}(undef, d)
@@ -45,6 +46,7 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # Fill sample
   for i = 1:length(syms)
     # Get indexing
+    #@info(idx_comp[i])
     idx = Main.eval(parse(idx_comp[i][1]))
     # Determine if nesting
     nested_dim = length(idx_comp[1]) # how many nested layers?
