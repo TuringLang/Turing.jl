@@ -1,6 +1,7 @@
 using Turing
 using Test
 using Random
+using Distributions
 
 include("../utility.jl")
 
