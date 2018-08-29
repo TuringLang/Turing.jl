@@ -4,7 +4,7 @@
 
 using Turing; turnprogress(false)
 
-println("[runtests.jl] runtests.jl loaded")
+@info("[runtests.jl] runtests.jl loaded")
 
 # NOTE: please keep this test list structured when adding new test cases
 # so that we can tell which test case is for which .jl file
@@ -14,15 +14,15 @@ testcases = Dict(
 #   src/
 #     core/
         "ad.jl"        => ["ad1", "ad2", "ad3", "adr", "pass_dual_to_dists",],
-        "compiler.jl"  => ["assume", "observe", "predict", "sample",
-                           "beta_binomial", "noparam",
+        "compiler.jl"  => ["assume", 
+         #                  "observe", 
+         #                  "predict", "sample",
+         #                  "beta_binomial", "noparam",
                           #  "opt_param_of_dist",
                           #  "explicit_ret",
                            "new_grammar", "newinterface", "noreturn", "forbid_global",],
         "container.jl" => ["copy_particle_container",],
-        "varinfo.jl"   => [
-                           "replay", 
-                           "test_varname", "varinfo", "orders", "is_inside", "flags",],
+        "varinfo.jl"   => ["replay", "test_varname", "varinfo", "orders", "is_inside", "flags",],
         "io.jl"        => ["chain_utility", "save_resume_chain",],
         "util.jl"      => ["util",],
 #     distributions/
@@ -90,20 +90,20 @@ end
 # Run tests
 path = dirname(@__FILE__)
 cd(path)
-println("[runtests.jl] CDed test path")
+@info("[runtests.jl] CDed test path")
 include("utility.jl")
-println("[runtests.jl] utility.jl loaded")
-println("[runtests.jl] testing starts")
+@info("[runtests.jl] utility.jl loaded")
+@info("[runtests.jl] testing starts")
 for (target, list) in testcases
-  if filter_tests(target, :exclude_compiler) && filter_tests(target, :only_core)
+  if filter_tests(target, :only_core)
     for t in list
       if ~ (t in testcases_excluded)
-        println("[runtests.jl] \"$target/$t.jl\" is running")
+        @info("[runtests.jl] \"$target/$t.jl\" is running")
         include(target*"/"*t*".jl");
         # readstring(`julia $t.jl`)
-        println("[runtests.jl] \"$target/$t.jl\" is successful")
+        @info("[runtests.jl] \"$target/$t.jl\" is successful")
       end
     end
   end
 end
-println("[runtests.jl] all tests pass")
+@info("[runtests.jl] all tests pass")
