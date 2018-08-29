@@ -87,8 +87,8 @@ link(d::RealDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = x
 
 invlink(d::RealDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = x
 
-logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where T<:Union{T0,Vector{T0}} where T0<:Real = logpdf.(Ref(d), x)
-
+logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where T<:Real = logpdf(d, x)
+logpdf_with_trans(d::RealDistribution, x::Vector{T}, transform::Bool) where T<:Real = logpdf.(Ref(d), x)
 
 #########
 # 0 < x #
@@ -102,7 +102,13 @@ link(d::PositiveDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real
 
 invlink(d::PositiveDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = exp.(x)
 
-logpdf_with_trans(d::PositiveDistribution, x::T, transform::Bool) where T<:Union{T0,Vector{T0}} where T0<:Real = begin
+
+logpdf_with_trans(d::PositiveDistribution, x::T, transform::Bool) where T<:Real = begin
+  lp = logpdf(d, x)
+  transform ? lp + log.(x) : lp
+end
+
+logpdf_with_trans(d::PositiveDistribution, x::Vector{T}, transform::Bool) where T<:Real = begin
   lp = logpdf.(Ref(d), x)
   transform ? lp + log.(x) : lp
 end
@@ -118,8 +124,13 @@ link(d::UnitDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = l
 
 invlink(d::UnitDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = invlogit(x)
 
-logpdf_with_trans(d::UnitDistribution, x::T, transform::Bool) where T<:Union{T0,Vector{T0}} where T0<:Real = begin
+logpdf_with_trans(d::UnitDistribution, x::T, transform::Bool) where T<:Real = begin
   lp = logpdf(d, x)
+  transform ? lp + log(x .* (one(x) - x)) : lp
+end
+
+logpdf_with_trans(d::UnitDistribution, x::Vector{T}, transform::Bool) where T<:Real = begin
+  lp = logpdf.(Ref{d}, x)
   transform ? lp + log(x .* (one(x) - x)) : lp
 end
 
