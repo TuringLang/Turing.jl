@@ -29,7 +29,7 @@ end
 
 
 
-struct WarmUpManager
+mutable struct WarmUpManager
   adapt_n   ::    Int
   params    ::    Dict{Symbol, Any}
   ve        ::    VarEstimator
