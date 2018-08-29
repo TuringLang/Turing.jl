@@ -37,7 +37,7 @@ TArray{T,N}(dim::NTuple{N,Int}) where {T,N} = TArray(T, dim)
 function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
   n = n_copies()
-  d = Array{T}(undef, dim)
+  d = Array{T}(dim)
   task_local_storage(res.ref, (n,d))
   res
 end

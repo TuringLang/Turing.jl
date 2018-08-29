@@ -148,9 +148,9 @@ flatten(names, value :: Array{Float64}, k :: String, v) = begin
       for i = eachindex(v)
         if isa(v[i], Number)
           name = k * string(ind2sub(size(v), i))
-          name = replace(name, "(", "[");
-          name = replace(name, ",)", "]");
-          name = replace(name, ")", "]");
+          name = replace(name, "(" => "[");
+          name = replace(name, ",)" => "]");
+          name = replace(name, ")" => "]");
           isa(v[i], Nothing) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
@@ -181,7 +181,7 @@ function Base.getindex(c::Chain, v::Symbol)
 end
 
 Base.getindex(c::Chain, expr::Expr) = begin
-  str = replace(string(expr), r"\(|\)", "")
+  str = replace(string(expr), r"\(|\)" => "")
   @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
   c[Symbol(str)]
 end

@@ -110,7 +110,7 @@ macro ~(left, right)
         assume_ex = quote
           sym, idcs, csym = @VarName $left
           csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-          indexing = reduce(*, "", map(idx -> string(idx), idcs))
+          indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
           vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
           $(left), __lp = Turing.assume(
             sampler,
@@ -362,7 +362,9 @@ end
 # Helper function #
 ###################
 
-insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+function insdelim(c, deli=",")
+  reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+end
 
 getvsym(s::Symbol) = s
 getvsym(expr::Expr) = begin
