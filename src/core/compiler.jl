@@ -344,7 +344,7 @@ macro model(fexpr)
               end
             else
               data[keytype(data)($_k_str)] = $_k
-              data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
+              data[keytype(data)($_k_str)] == nothing && @error("Data `"*$_k_str*"` is not provided.")
             end
           end
       pushfirst!(fdefn_outer.args[2].args, data_check_ex)
