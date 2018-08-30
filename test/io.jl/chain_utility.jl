@@ -2,6 +2,7 @@ using Distributions, Turing
 using Turing: Chain, Sample
 using Test
 using MCMCChain
+using MCMCChain: describe
 
 c = Chain()
 #@test string(c) == "Empty Chain, weight 0.0"
