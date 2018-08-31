@@ -1,0 +1,3 @@
+# tests to skip
+opt_param_of_dist.jl
+explicit_ret.jl
