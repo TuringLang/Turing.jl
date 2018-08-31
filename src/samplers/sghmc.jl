@@ -43,9 +43,13 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-      wum = WarmUpManager(1, 1, Dict())
+      #wum = WarmUpManager(1, 1, Dict())
+      
+      D = length(vi[spl])
+      ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+      wum = WarmUpManager(1, Dict(), ve)
       wum[:ϵ] = [spl.alg.learning_rate]
-      wum[:stds] = ones(length(vi[spl]))
+      wum[:stds] = ones(D)
       spl.info[:wum] = wum
 
       oldθ = realpart(vi[spl])
