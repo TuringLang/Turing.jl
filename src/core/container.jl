@@ -9,13 +9,13 @@ Data structure for particle filters
 mutable struct ParticleContainer{T<:Particle}
   model :: Function
   num_particles :: Int
-  vals  :: Array{Particle}
+  vals  :: Array{T}
   logWs :: Array{Float64}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
   logE  :: Float64           # Log model evidence
   # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer{T}(m::Function,n::Int) where {T} = new(m,n,Vector{Particle}(),Vector{Float64}(),0.0,nothing,0)
+  ParticleContainer{T}(m::Function,n::Int) where T = new(m,n,Vector{Particle}(),Vector{Float64}(),0.0,nothing,0)
 end
 
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
@@ -37,8 +37,8 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-  vals = Array{eltype(pc.vals), 1}(undef,n)
-  logWs = Array{eltype(pc.logWs), 1}(undef,n)
+  vals  = Vector{eltype(pc.vals)}(undef,n)
+  logWs = zeros(eltype(pc.logWs), n)
   for i=1:n
     vals[i]  = eltype(pc.vals)(pc.model, spl, varInfo)
   end
