@@ -1,7 +1,8 @@
 using Turing
-using Base.Test
+using Test
+using Random
 
-srand(125)
+Random.seed!(125)
 
 alg = SGHMC(10000, 0.02, 0.5)
 

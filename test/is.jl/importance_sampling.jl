@@ -4,7 +4,8 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
+using Random
 
 function logsum(xs :: Vector{Float64})
   largest = maximum(xs)
@@ -15,7 +16,7 @@ end
 
 function reference(n :: Int)
   logweights = zeros(Float64, n)
-  samples = Array{Dict{Symbol,Any}}(n)
+  samples = Array{Dict{Symbol,Any}}(undef, n)
   for i = 1:n
     samples[i] = reference()
     logweights[i] = samples[i][:logweight]
@@ -53,9 +54,9 @@ seed = 0
 
 _f = normal();
 for i=1:100
-  srand(seed)
+  Random.seed!(seed)
   exact = reference(n)
-  srand(seed)
+  Random.seed!(seed)
   tested = sample(_f, alg)
   for i = 1:n
     @test exact[:samples][i][:a] == tested[:samples][i][:a]

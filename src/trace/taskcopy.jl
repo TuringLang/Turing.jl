@@ -1,16 +1,9 @@
-include(Pkg.dir("Turing")*"/deps/deps.jl")
-check_deps()
-libpath = dirname(libtask)
-
-if !(libpath in Base.DL_LOAD_PATH)
-  push!(Base.DL_LOAD_PATH, libpath)
-end
-# println(libpath)
+using Turing: libtask
 
 # Utility function for self-copying mechanism
 n_copies() = n_copies(current_task())
 n_copies(t::Task) = begin
-  isa(t.storage, Void) && (t.storage = ObjectIdDict())
+  isa(t.storage, Nothing) && (t.storage = IdDict())
   if haskey(t.storage, :n_copies)
     t.storage[:n_copies]
   else
@@ -18,10 +11,11 @@ n_copies(t::Task) = begin
   end
 end
 
+
 function Base.copy(t::Task)
   t.state != :runnable && t.state != :done &&
     error("Only runnable or finished tasks can be copied.")
-  newt = ccall((:jl_clone_task, "libtask"), Any, (Any,), t)::Task
+  newt = ccall((:jl_clone_task, libtask), Any, (Any,), t)::Task
   if t.storage != nothing
     n = n_copies(t)
     t.storage[:n_copies]  = 1 + n
@@ -29,26 +23,31 @@ function Base.copy(t::Task)
   else
     newt.storage = nothing
   end
+  # copy fields not accessible in task.c
   newt.code = t.code
   newt.state = t.state
   newt.result = t.result
   newt.parent = t.parent
-  if :last in fieldnames(t)
+  if :last in fieldnames(typeof(t))
     newt.last = nothing
   end
   newt
 end
 
-# @suppress_err function Base.produce(v)
-function Base.produce(v)
-
+produce(v) = begin
     ct = current_task()
+
+    if ct.storage == nothing
+        ct.storage = IdDict()
+    end
+
+    haskey(ct.storage, :consumers) || (ct.storage[:consumers] = nothing)
     local empty, t, q
     while true
-        q = ct.consumers
+        q = ct.storage[:consumers]
         if isa(q,Task)
             t = q
-            ct.consumers = nothing
+            ct.storage[:consumers] = nothing
             empty = true
             break
         elseif isa(q,Condition) && !isempty(q.waitq)
@@ -65,7 +64,7 @@ function Base.produce(v)
         ct = current_task() # When a task is copied, ct should be updated to new task ID.
         while true
             # wait until there are more consumers
-            q = ct.consumers
+            q = ct.storage[:consumers]
             if isa(q,Task)
                 return q.result
             elseif isa(q,Condition) && !isempty(q.waitq)
@@ -84,11 +83,15 @@ function Base.produce(v)
     end
 end
 
-# @suppress_err function Base.consume(P::Task, values...)
-function Base.consume(P::Task, values...)
+consume(p::Task, values...) = begin
 
-    if istaskdone(P)
-        return wait(P)
+    if p.storage == nothing
+        p.storage = IdDict()
+    end
+    haskey(p.storage, :consumers) || (p.storage[:consumers] = nothing)
+
+    if istaskdone(p)
+        return wait(p)
     end
 
     ct = current_task()
@@ -100,16 +103,17 @@ function Base.consume(P::Task, values...)
     #end
     #push!(P.consumers.waitq, ct)
     # optimized version that avoids the queue for 1 consumer
-    if P.consumers === nothing || (isa(P.consumers,Condition)&&isempty(P.consumers.waitq))
-        P.consumers = ct
+    consumers = p.storage[:consumers]
+    if consumers === nothing || (isa(consumers,Condition)&&isempty(consumers.waitq))
+        p.storage[:consumers] = ct
     else
-        if isa(P.consumers, Task)
-            t = P.consumers
-            P.consumers = Condition()
-            push!(P.consumers.waitq, t)
+        if isa(consumers, Task)
+            t = consumers
+            p.storage[:consumers] = Condition()
+            push!(p.storage[:consumers].waitq, t)
         end
-        push!(P.consumers.waitq, ct)
+        push!(p.storage[:consumers].waitq, ct)
     end
 
-    P.state == :runnable ? Base.schedule_and_wait(P) : wait() # don't attempt to queue it twice
+    p.state == :runnable ? Base.schedule_and_wait(p) : wait() # don't attempt to queue it twice
 end

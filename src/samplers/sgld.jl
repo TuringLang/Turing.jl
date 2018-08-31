@@ -1,4 +1,4 @@
-doc"""
+"""
     SGLD(n_iters::Int, step_size::Float64)
 
  Stochastic Gradient Langevin Dynamics sampler.
@@ -19,7 +19,7 @@ end
 sample(example, SGLD(1000, 0.5))
 ```
 """
-immutable SGLD <: Hamiltonian
+mutable struct SGLD <: Hamiltonian
   n_iters   ::  Int       # number of samples
   step_size ::  Float64   # constant scale factor of learning rate
   space     ::  Set       # sampling space, emtpy means all
@@ -42,9 +42,11 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-      wum = WarmUpManager(1, 1, Dict())
+      D = length(vi[spl])
+      ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+      wum = WarmUpManager(1, Dict(), ve)
       wum[:ϵ] = [spl.alg.step_size]
-      wum[:stds] = ones(length(vi[spl]))
+      wum[:stds] = ones(D)
       spl.info[:wum] = wum
 
       oldθ = realpart(vi[spl])
@@ -64,24 +66,24 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     t = deepcopy(spl.info[:t]) + 1
     spl.info[:t] = deepcopy(t)
 
-    dprintln(2, "compute current step size...")
+    @debug "compute current step size..."
     γ = .35
     ϵ_t = spl.alg.step_size / t^γ # NOTE: Choose γ=.55 in paper
     push!(spl.info[:wum][:ϵ], ϵ_t)
 
-    dprintln(3, "X-> R...")
+    @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
     end
 
-    dprintln(2, "recording old variables...")
+    @debug "recording old variables..."
     old_θ = realpart(vi[spl])
     θ = deepcopy(old_θ)
     grad = gradient(vi, model, spl)
 
     if verifygrad(grad)
-      dprintln(2, "update latent variables...")
+      @debug "update latent variables..."
       v = zeros(Float64, size(old_θ))
       for k in 1:size(old_θ, 1)
         noise = rand(MvNormal(zeros(length(old_θ[k,:])), sqrt.(ϵ_t)*ones(length(old_θ[k,:]))))
@@ -89,11 +91,11 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
       end
     end
 
-    dprintln(2, "always accept...")
+    @debug "always accept..."
     push!(spl.info[:accept_his], true)
     vi[spl] = θ
 
-    dprintln(3, "R -> X...")
+    @debug "R -> X..."
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi

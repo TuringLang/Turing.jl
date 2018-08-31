@@ -2,7 +2,7 @@
 # TArray #
 ##########
 
-doc"""
+"""
     TArray{T}(dims, ...)
 
 Implementation of data structures that automatically perform copy-on-write after task copying.
@@ -23,20 +23,21 @@ for i in 1:4 ta[i] = i end  # assign
 Array(ta)                   # convert to 4-element Array{Int64,1}: [1, 2, 3, 4]
 ```
 """
-immutable TArray{T,N} <: DenseArray{T,N}
+struct TArray{T,N} <: DenseArray{T,N}
   ref :: Symbol  # object_id
   TArray{T,N}() where {T,N} = new(gensym())
 end
 
-(::Type{TArray{T,1}}){T}(d::Integer)    = TArray(T,  d)
-(::Type{TArray{T}}){T}(d::Integer...) = TArray(T, convert(Tuple{Vararg{Int}}, d))
-(::Type{TArray{T,N}}){T,N}(d::Integer...) = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
-(::Type{TArray{T,N}}){T,N}(dim::NTuple{N,Int}) = TArray(T, dim)
+TArray{T}() where T = TArray(T,  d)
+TArray{T,1}(d::Integer) where T = TArray(T,  d)
+TArray{T}(d::Integer...) where T = TArray(T, convert(Tuple{Vararg{Int}}, d))
+TArray{T,N}(d::Integer...) where {T,N} = length(d)==N ? TArray(T, convert(Tuple{Vararg{Int}}, d)) : error("malformed dims")
+TArray{T,N}(dim::NTuple{N,Int}) where {T,N} = TArray(T, dim)
 
 function TArray(T::Type, dim)
   res = TArray{T,length(dim)}();
   n = n_copies()
-  d = Array{T}(dim)
+  d = Array{T}(undef, dim)
   task_local_storage(res.ref, (n,d))
   res
 end
@@ -116,7 +117,7 @@ Base.get(S::TArray) = (current_task().storage[S.ref][2])
 # tzeros #
 ##########
 
-doc"""
+"""
      tzeros(dims, ...)
 
 Construct a distributed array of zeros.
@@ -141,6 +142,6 @@ function tzeros(T::Type, dim)
   res
 end
 
-tzeros{T}(::Type{T}, d1::Integer, drest::Integer...) = tzeros(T, convert(Dims, tuple(d1, drest...)))
+tzeros(::Type{T}, d1::Integer, drest::Integer...) where T = tzeros(T, convert(Dims, tuple(d1, drest...)))
 tzeros(d1::Integer, drest::Integer...) = tzeros(Float64, convert(Dims, tuple(d1, drest...)))
 tzeros(d::Dims) = tzeros(Float64, d)

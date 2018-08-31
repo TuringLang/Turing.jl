@@ -1,6 +1,6 @@
 using Turing
 using Turing: Sampler
-using Base.Test
+using Test
 
 alg = SGHMC(1000, 0.01, 0.1)
 sampler = Sampler(alg)

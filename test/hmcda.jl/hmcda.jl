@@ -1,7 +1,8 @@
 using Turing
-using Base.Test
+using Test
+using Random
 
-srand(128)
+Random.seed!(128)
 
 alg1 = HMCDA(3000, 1000, 0.65, 0.015)
 # alg2 = Gibbs(3000, HMCDA(1, 200, 0.65, 0.35, :m), HMC(1, 0.25, 3, :s))

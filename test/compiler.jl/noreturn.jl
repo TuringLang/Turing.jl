@@ -1,7 +1,7 @@
 include("../utility.jl")
 using Distributions
 using Turing
-using Base.Test
+using Test
 
 xnoreturn = [1.5 2.0]
 

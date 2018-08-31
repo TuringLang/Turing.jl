@@ -1,7 +1,8 @@
 using Turing, Distributions
-using Base.Test
+using Test
+using Random
 
-srand(125)
+Random.seed!(125)
 
 @model gdemo() = begin
   s ~ InverseGamma(2,3)

@@ -1,67 +1,49 @@
 module Traces
+using Markdown
 using Turing: Sampler
 using Turing.VarReplay
-
-# Trick for supressing some warning messages.
-#   URL: https://github.com/KristofferC/OhMyREPL.jl/issues/14#issuecomment-242886953
-macro suppress_err(block)
-    quote
-        if ccall(:jl_generating_output, Cint, ()) == 0
-            ORIGINAL_STDERR = STDERR
-            err_rd, err_wr = redirect_stderr()
-
-            value = $(esc(block))
-
-            REDIRECTED_STDERR = STDERR
-            # need to keep the return value live
-            err_stream = redirect_stderr(ORIGINAL_STDERR)
-
-            return value
-        end
-    end
-end
 
 include("taskcopy.jl")
 include("tarray.jl")
 
 export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
-       localcopy, @suppress_err
+       localcopy, consume, produce
 
-type Trace
+mutable struct Trace
   task  ::  Task
   vi    ::  VarInfo
-  spl   ::  Union{Void, Sampler}
+  spl   ::  Union{Nothing, Sampler}
   Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
 end
 
 # NOTE: this function is called by `forkr`
-function (::Type{Trace})(f::Function)
+function Trace(f::Function)
   res = Trace();
   # Task(()->f());
   res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
-  if isa(res.task.storage, Void)
-    res.task.storage = ObjectIdDict()
+  if isa(res.task.storage, Nothing)
+    res.task.storage = IdDict()
   end
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
 end
 
-function (::Type{Trace})(f::Function, spl::Sampler, vi :: VarInfo)
+function Trace(f::Function, spl::Sampler, vi :: VarInfo)
   res = Trace();
   res.spl = spl
   # Task(()->f());
   res.vi = deepcopy(vi)
   res.vi.num_produce = 0
   res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
-  if isa(res.task.storage, Void)
-    res.task.storage = ObjectIdDict()
+  if isa(res.task.storage, Nothing)
+    res.task.storage = IdDict()
   end
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
 end
 
 # step to the next observe statement, return log likelihood
-Base.consume(t::Trace) = (t.vi.num_produce += 1; Base.consume(t.task))
+consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)

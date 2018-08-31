@@ -19,26 +19,20 @@ jl_task_t *jl_clone_task(jl_task_t *t)
     JL_GC_PUSH1(&newt);
 
     newt->parent = ptls->current_task;
-    // newt->parent = t->parent;
-    // newt->last = t->last;
     newt->current_module = t->current_module;
     newt->state = t->state;
     newt->start = t->start;
     newt->tls = jl_nothing;
-    newt->consumers = jl_nothing;
+    newt->logstate = ptls->current_task->logstate;    // TODO: need testing.
     newt->result = jl_nothing;
     newt->donenotify = jl_nothing;
     newt->exception = jl_nothing;
     newt->backtrace = jl_nothing;
     newt->eh = t->eh;
     newt->gcstack = t->gcstack;
+    newt->tid = t->tid; // TODO: need testing
+    newt->started = t->started;  // TODO: need testing
 
-    /*
-     jl_printf(JL_STDOUT,"t: %p\n", t);
-     jl_printf(JL_STDOUT,"t->stkbuf: %p\n", t->stkbuf);
-     jl_printf(JL_STDOUT,"t->gcstack: %p\n", t->gcstack);
-     jl_printf(JL_STDOUT,"t->bufsz: %zu\n", t->bufsz);
-     */
 
     memcpy((void*)newt->ctx, (void*)t->ctx, sizeof(jl_jmp_buf));
 //#ifdef COPY_STACKS

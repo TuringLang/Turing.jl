@@ -1,5 +1,5 @@
-doc"""
-    gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler})
+"""
+    gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler})
 
 Function to generate the gradient dictionary, with each prior map to its derivative of the logjoint probibilioty. This function uses chunk-wise forward AD with a chunk of size $(CHUNKSIZE) as default.
 
@@ -11,7 +11,7 @@ end
 ```
 """
 gradient(vi::VarInfo, model::Function) = gradient(vi, model, nothing)
-gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   θ_hash = hash(vi[spl])
 
@@ -25,7 +25,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   grad = Vector{Float64}()
 
   # Split keys(vi) into chunks,
-  dprintln(4, "making chunks...")
+  @debug "making chunks..."
   vn_chunk = Set{VarName}(); vn_chunks = []; chunk_dim = 0;
 
   vns = getvns(vi, spl); vn_num = length(vns)
@@ -47,7 +47,7 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   # Chunk-wise forward AD
   for (vn_chunk, chunk_dim) in vn_chunks
     # 1. Set dual part correspondingly
-    dprintln(4, "set dual...")
+    @debug "set dual..."
     dim_count = 1
     for i = 1:vn_num
       range = getrange(vi, vns[i])
@@ -55,23 +55,23 @@ gradient(vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
       vals = getval(vi, vns[i])
       if vns[i] in vn_chunk        # for each variable to compute gradient in this round
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])
+          vi[range[i]] = ForwardDiff.Dual{Nothing, Float64, CHUNKSIZE}(realpart(vals[i]), SEEDS[dim_count])
           dim_count += 1      # count
         end
       else                    # for other varilables (no gradient in this round)
         for i = 1:l
-          vi[range[i]] = ForwardDiff.Dual{Void, Float64, CHUNKSIZE}(realpart(vals[i]))
+          vi[range[i]] = ForwardDiff.Dual{Nothing, Float64, CHUNKSIZE}(realpart(vals[i]))
         end
       end
     end
-    dprintln(4, "set dual done")
+    @debug "set dual done"
 
     # 2. Run model
-    dprintln(4, "run model...")
+    @debug "run model..."
     vi = runmodel(model, vi, spl)
 
     # 3. Collect gradient
-    dprintln(4, "collect gradients from logp...")
+    @debug "collect gradients from logp..."
     append!(grad, collect(dualpart(-getlogp(vi)))[1:chunk_dim])
   end
 
@@ -84,8 +84,8 @@ end
 
 verifygrad(grad::Vector{Float64}) = begin
   if any(isnan.(grad)) || any(isinf.(grad))
-    dwarn(0, "Numerical error has been found in gradients.")
-    dwarn(1, "grad = $(grad)")
+    @warn("Numerical error has been found in gradients.")
+    @warn("grad = $(grad)")
     false
   else
     true
@@ -94,7 +94,7 @@ end
 
 # Direct call of ForwardDiff.gradient; this is slow
 
-gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   vi = deepcopy(_vi)
 
@@ -108,10 +108,12 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
   g(vi[spl])
 end
 
+@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
+
 gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Void, Sampler}) = begin
+gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
     inputs = (theta)
-    
+
     if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
         f_r(ipts) = begin
           vi[spl][:] = ipts[:]
@@ -136,6 +138,8 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
 
     # vi[spl] = realpart(vi[spl])
     # vi.logp = 0
-    
+
     grad
+end
+
 end

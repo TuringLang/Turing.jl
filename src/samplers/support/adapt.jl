@@ -9,11 +9,11 @@ end
 
 reset!(ve::VarEstimator) = begin
   ve.n = 0
-  ve.μ = zeros(ve.μ)
-  ve.M = zeros(ve.M)
+  ve.μ = zeros(size(ve.μ))
+  ve.M = zeros(size(ve.M))
 end
 
-add_sample!{T<:Real}(ve::VarEstimator{T}, s::Vector{T}) = begin
+add_sample!(ve::VarEstimator{T}, s::Vector{T}) where T<:Real = begin
   ve.n += 1
   δ = s .- ve.μ
   ve.μ .+= δ ./ ve.n
@@ -23,13 +23,13 @@ end
 get_var(ve::VarEstimator) = begin
   @assert ve.n >= 2
   var = ve.M / (ve.n - 1)
-  var = (ve.n / (ve.n + 5.0)) * var + 1e-3 * (5.0 / (ve.n + 5.0))
+  var = (ve.n / (ve.n + 5.0)) * var .+ 1e-3 * (5.0 / (ve.n + 5.0))
   return var
 end
 
 
 
-type WarmUpManager
+mutable struct WarmUpManager
   adapt_n   ::    Int
   params    ::    Dict{Symbol, Any}
   ve        ::    VarEstimator
@@ -39,7 +39,7 @@ getindex(wum::WarmUpManager, param) = wum.params[param]
 
 setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
 
-init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
+init_warm_up_params(vi::VarInfo, spl::Sampler{T}) where T<:Hamiltonian = begin
   D = length(vi[spl])
   ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
 
@@ -82,7 +82,7 @@ init_warm_up_params{T<:Hamiltonian}(vi::VarInfo, spl::Sampler{T}) = begin
   end
   wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
 
-  dprintln(2, wum.params)
+  @debug wum.params
 
   spl.info[:wum] = wum
 end
@@ -101,8 +101,8 @@ end
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
 adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
 
-  dprintln(2, "adapting step size ϵ...")
-  dprintln(2, "current α = $(stats)")
+  @debug "adapting step size ϵ..."
+  @debug "current α = $(stats)"
   wum[:m] = wum[:m] + 1
   m = wum[:m]
 
@@ -119,7 +119,7 @@ adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
   x_bar = (1.0 - η_x) * x_bar + η_x * x
 
   ϵ = exp(x)
-  dprintln(2, "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])")
+  @debug "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])"
 
   if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
       dwarn(0, "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
@@ -129,7 +129,7 @@ adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
   end
 
   if m == wum[:n_warmup]
-    dprintln(2, " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption.")
+    @debug " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption."
   end
 
 end

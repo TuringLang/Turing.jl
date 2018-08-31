@@ -1,4 +1,4 @@
-doc"""
+"""
     SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)
 
 Stochastic Gradient Hamiltonian Monte Carlo sampler.
@@ -19,7 +19,7 @@ end
 sample(example, SGHMC(1000, 0.01, 0.1))
 ```
 """
-immutable SGHMC <: Hamiltonian
+mutable struct SGHMC <: Hamiltonian
   n_iters        ::  Int       # number of samples
   learning_rate  ::  Float64   # learning rate
   momentum_decay ::  Float64   # momentum decay
@@ -43,9 +43,13 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
 
-      wum = WarmUpManager(1, 1, Dict())
+      #wum = WarmUpManager(1, 1, Dict())
+      
+      D = length(vi[spl])
+      ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+      wum = WarmUpManager(1, Dict(), ve)
       wum[:ϵ] = [spl.alg.learning_rate]
-      wum[:stds] = ones(length(vi[spl]))
+      wum[:stds] = ones(D)
       spl.info[:wum] = wum
 
       oldθ = realpart(vi[spl])
@@ -65,13 +69,13 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 
-    dprintln(3, "X-> R...")
+    @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
       runmodel(model, vi, spl)
     end
 
-    dprintln(2, "recording old variables...")
+    @debug "recording old variables..."
     old_θ = realpart(vi[spl]);
     θ = deepcopy(old_θ)
     grad = gradient(vi, model, spl)
@@ -79,7 +83,7 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     v = deepcopy(old_v)
 
     if verifygrad(grad)
-      dprintln(2, "update latent variables and velocity...")
+      @debug "update latent variables and velocity..."
       # Implements the update equations from (15) of Chen et al. (2014).
       for k in 1:size(old_θ, 1)
         θ[k,:] = old_θ[k,:] + old_v[k,:]
@@ -88,14 +92,14 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
       end
     end
 
-    dprintln(2, "saving new latent variables and velocity...")
+    @debug "saving new latent variables and velocity..."
     spl.info[:v] = v
     vi[spl] = θ
 
-    dprintln(2, "always accept...")
+    @debug "always accept..."
     push!(spl.info[:accept_his], true)
 
-    dprintln(3, "R -> X...")
+    @debug "R -> X..."
     if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
 
     vi

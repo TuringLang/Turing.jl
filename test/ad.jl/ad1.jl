@@ -3,12 +3,12 @@ using Turing
 using Turing: gradient, invlink, link, getval, realpart
 using ForwardDiff
 using ForwardDiff: Dual
-using Base.Test
+using Test
 
 # Define model
 @model ad_test() = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt.(s))
   1.5 ~ Normal(m, sqrt.(s))
   2.0 ~ Normal(m, sqrt.(s))
   return s, m
@@ -27,7 +27,7 @@ _m = realpart(getval(vi, mvn)[1])
 # println(∇E)
 grad_Turing = sort(∇E)
 
-dist_s = InverseGamma(2,3)
+dist_s = InverseGamma(2, 3)
 
 # Hand-written logp
 function logp(x::Vector)
@@ -35,9 +35,9 @@ function logp(x::Vector)
   # s = invlink(dist_s, s)
   m = x[1]
   lik_dist = Normal(m, sqrt.(s))
-  lp = logpdf(dist_s, s, false) + logpdf(Normal(0,sqrt.(s)), m, false)
+  lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt.(s)), m, false)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
-  lp
+  return lp
 end
 
 # Call ForwardDiff's AD

@@ -1,4 +1,4 @@
-doc"""
+"""
     Gibbs(n_iters, alg_1, alg_2)
 
 Compositional MCMC interface.
@@ -9,7 +9,7 @@ Usage:
 alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
 ```
 """
-immutable Gibbs <: InferenceAlgorithm
+mutable struct Gibbs <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
   algs      ::  Tuple   # component sampling algorithms
   thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
@@ -22,7 +22,7 @@ const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs)
   n_samplers = length(alg.algs)
-  samplers = Array{Sampler}(n_samplers)
+  samplers = Array{Sampler}(undef, n_samplers)
 
   space = Set{Symbol}()
 
@@ -80,7 +80,7 @@ sample(model::Function, alg::Gibbs;
 
   # Init samples
   time_total = zero(Float64)
-  samples = Array{Sample}(sample_n)
+  samples = Array{Sample}(undef, sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
@@ -95,7 +95,7 @@ sample(model::Function, alg::Gibbs;
   # Gibbs steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "Gibbs stepping...")
+    @debug "Gibbs stepping..."
 
     time_elapsed = zero(Float64)
     lp = nothing; epsilon = nothing; lf_num = nothing
@@ -104,7 +104,7 @@ sample(model::Function, alg::Gibbs;
       last_spl = local_spl
       # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
 
-      dprintln(2, "$(typeof(local_spl)) stepping...")
+      @debug "$(typeof(local_spl)) stepping..."
 
       if isa(local_spl.alg, GibbsComponent)
         if isa(local_spl.alg, Hamiltonian)  # clean cache
@@ -113,7 +113,7 @@ sample(model::Function, alg::Gibbs;
         end
 
         for _ = 1:local_spl.alg.n_iters
-          dprintln(2, "recording old θ...")
+          @debug "recording old θ..."
           time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
 
           if ~spl.alg.thin
@@ -160,7 +160,7 @@ sample(model::Function, alg::Gibbs;
   println("  Running time    = $time_total;")
 
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
   end
   c = Chain(0, samples)       # wrap the result by Chain
 

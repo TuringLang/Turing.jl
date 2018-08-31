@@ -3,14 +3,14 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 prior = Beta(2,2)
 obs = [0,1,0,1,1,1,1,1,1,1]
 exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
 meanp = exact.α / (exact.α + exact.β)
 
-@model testbb(obs) begin
+@model testbb(obs) = begin
   p ~ Beta(2,2)
   x ~ Bernoulli(p)
   for i = 1:length(obs)

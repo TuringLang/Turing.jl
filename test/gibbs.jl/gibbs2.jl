@@ -1,11 +1,12 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
+using Random
 
 setadsafe(true)
 
 include("../utility.jl")
-srand(100)
+Random.seed!(100)
 
 D = [1.0 1.0 4.0 4.0]
 
