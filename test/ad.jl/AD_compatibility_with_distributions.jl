@@ -9,13 +9,7 @@ dists = [Normal(0, 1)]
 
 for dist in dists
 
-    f(x) = begin
-      lp = 0.0
-      for i = 1:length(x)
-        lp += logpdf(dist, x[i])
-      end
-      lp
-    end
+    f(x::Vector) = sum(logpdf.(Ref(dist), x))
 
     ForwardDiff.gradient(f, x_real)
 
@@ -29,7 +23,7 @@ dists = [Gamma(2, 3)]
 
 for dist in dists
 
-    f(x) = sum(logpdf.(dist, x))
+    f(x::Vector) = sum(logpdf.(Ref(dist), x))
 
     g = x -> ForwardDiff.gradient(f, x)
 
