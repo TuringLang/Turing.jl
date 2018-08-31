@@ -2,7 +2,7 @@
 # Math #
 ########
 
-@inline invlogit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = one(T) ./ (one(T) + exp.(-x))
+@inline invlogit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = one(T) ./ (one(T) .+ exp.(-x))
 @inline logit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = log.(x ./ (one(T) - x))
 @init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
   @inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
