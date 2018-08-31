@@ -1,5 +1,5 @@
 # Uniform rand with range e
-randrealuni() = Real(e * rand())  # may Euler's number give us good luck
+randrealuni() = Real(MathConstants.e * rand())  # may Euler's number give us good luck
 randrealuni(args...) = map(x -> Real(x), 2 * rand(args...))
 
 # Only use customized initialization for transformable distributions

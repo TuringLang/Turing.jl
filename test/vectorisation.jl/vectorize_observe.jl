@@ -7,7 +7,7 @@
 #
 # @model nbmodel(K, V, M, N, z, w, doc, alpha, beta) = begin
 #   theta ~ Dirichlet(alpha)
-#   phi = Array{Any}(K)
+#   phi = Array{Any}(undef, K)
 #   for k = 1:K
 #     phi[k] ~ Dirichlet(beta)
 #   end
@@ -33,7 +33,8 @@
 
 include("../utility.jl")
 using Distributions, Turing
-srand(129)
+using Random
+Random.seed!(129)
 # Test for vectorize UnivariateDistribution
 @model vdemo(x) = begin
   s ~ InverseGamma(2,3)

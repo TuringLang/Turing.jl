@@ -2,10 +2,12 @@
 # Math #
 ########
 
-@inline invlogit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = one(T) ./ (one(T) + exp.(-x))
-@inline logit{T<:Real}(x::Union{T,Vector{T},Matrix{T}}) = log.(x ./ (one(T) - x))
-@inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
-@inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
+@inline invlogit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = one(T) ./ (one(T) .+ exp.(-x))
+@inline logit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = log.(x ./ (one(T) - x))
+@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
+  @inline invlogit(x::TrackedArray) = one(Real) ./ (one(Real) + exp.(-x))
+  @inline logit(x::TrackedArray) = log.(x ./ (one(Real) - x))
+end
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})
@@ -19,10 +21,10 @@ function randcat(p::Vector{Float64})
   s
 end
 
-type NotImplementedException <: Exception end
+struct NotImplementedException <: Exception end
 
 # Numerically stable sum of values represented in log domain.
-logsum{T<:Real}(xs::Vector{T}) = begin
+logsum(xs::Vector{T}) where T<:Real = begin
   largest = maximum(xs)
   ys = map(x -> exp.(x - largest), xs)
 
@@ -32,15 +34,17 @@ end
 # KL-divergence
 kl(p::Normal, q::Normal) = (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
 
+align_internal!(x,n) = begin
+  m = length(x)
+  resize!(x, n)
+  x[m+1:end] .= zero(eltype(x))
+end
+
 align(x,y) = begin
   if length(x) < length(y)
-    z = zeros(y)
-    z[1:length(x)] = x
-    x = z
+    align_internal!(x, length(y))
   elseif length(x) > length(y)
-    z = zeros(x)
-    z[1:length(y)] = y
-    y = z
+    align_internal!(y, length(x))
   end
 
   (x,y)

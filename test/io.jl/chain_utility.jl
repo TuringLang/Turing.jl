@@ -1,6 +1,8 @@
 using Distributions, Turing
 using Turing: Chain, Sample
-using Base.Test
+using Test
+using MCMCChain
+using MCMCChain: describe
 
 c = Chain()
 #@test string(c) == "Empty Chain, weight 0.0"
@@ -18,12 +20,12 @@ samples = c2[:samples]
 #@test mean(c2, :m, x -> x) == [1.0, 2.0, 3.0]
 
 
-#  Tests for Mamba Chain
+# Tests for MCMC Chain
 
 @model mamba_chain_test() = begin
   m ~ Uniform(-1, 1)
   x ~ Wishart(7, [1 0.5; 0.5 1])
-  y = Array{Array}(2,2)
+  y = Array{Array}(undef, 2,2)
   for i in eachindex(y)
     y[i] ~ Wishart(7, [1 0.5; 0.5 1])
   end
@@ -95,7 +97,7 @@ d5[Symbol("x[2,1,2]")] = 6
 d5[Symbol("x[2,2,1]")] = 7
 d5[Symbol("x[2,2,2]")] = 8
 sp5 = Sample(1, d5)
-x5 = Array{Any, 3}((2,2,2))
+x5 = Array{Any, 3}(undef, 2,2,2)
 x5[1,1,1] = 1
 x5[1,1,2] = 2
 x5[1,2,1] = 3

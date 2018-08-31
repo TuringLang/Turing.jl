@@ -1,4 +1,4 @@
-doc"""
+"""
     IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int)
 
 Particle Gibbs sampler.
@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), IPMCMC(100, 100, 4, 2))
 ```
 """
-immutable IPMCMC <: InferenceAlgorithm
+mutable struct IPMCMC <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   n_nodes               ::    Int         # number of nodes running SMC and CSMC
@@ -44,7 +44,7 @@ end
 
 function Sampler(alg::IPMCMC)
   # Create SMC and CSMC nodes
-  samplers = Array{Sampler}(alg.n_nodes)
+  samplers = Array{Sampler}(undef, alg.n_nodes)
   # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
   default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.space, 0)
   default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, false, alg.space, 0)
@@ -101,14 +101,14 @@ sample(model::Function, alg::IPMCMC) = begin
 
   # Init samples
   time_total = zero(Float64)
-  samples = Array{Sample}(sample_n)
+  samples = Array{Sample}(undef, sample_n)
   weight = 1 / sample_n
   for i = 1:sample_n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
 
   # Init parameters
-  VarInfos = Array{VarInfo}(spl.alg.n_nodes)
+  VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
     VarInfos[j] = VarInfo()
   end
@@ -117,7 +117,7 @@ sample(model::Function, alg::IPMCMC) = begin
   # IPMCMC steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "IPMCMC stepping...")
+    @debug "IPMCMC stepping..."
     time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
 
     # Save each CSMS retained path as a sample

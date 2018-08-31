@@ -6,7 +6,7 @@
 # Sample #
 ##########
 
-type Sample
+mutable struct Sample
   weight :: Float64     # particle weight
   value :: Dict{Symbol,Any}
 end
@@ -17,33 +17,35 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
   if cached_syms == nothing
     # Get all keys associated with the given symbol
-    syms = collect(Iterators.filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+    syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), keys(s.value)))
   else
-    syms = collect((Iterators.filter(k -> search(string(k), string(v)) != 0:-1, cached_syms)))
+    syms = collect((Iterators.filter(k -> occursin(string(v), string(k)), cached_syms)))
   end
+
   # Map to the corresponding indices part
-  idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
+  idx_str = map(sym -> replace(string(sym), string(v) => ""), syms)
   # Get the indexing component
   idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
   # Deal with v is really a symbol, e.g. :x
-  if length(idx_comp) == 0
+  if isempty(idx_comp)
+    @assert haskey(s.value, v)
     return Base.getindex(s.value, v)
   end
 
   # Construct container for the frist nesting layer
   dim = length(split(idx_comp[1][1], ','))
   if dim == 1
-    sample = Vector(length(unique(map(c -> c[1], idx_comp))))
+    sample = Vector(undef, length(unique(map(c -> c[1], idx_comp))))
   else
     d = max(map(c -> eval(parse(c[1])), idx_comp)...)
-    sample = Array{Any, length(d)}(d)
+    sample = Array{Any, length(d)}(undef, d)
   end
 
   # Fill sample
   for i = 1:length(syms)
     # Get indexing
-    idx = eval(parse(idx_comp[i][1]))
+    idx = Main.eval(parse(idx_comp[i][1]))
     # Determine if nesting
     nested_dim = length(idx_comp[1]) # how many nested layers?
     if nested_dim == 1
@@ -60,7 +62,7 @@ end
 # Chain #
 #########
 
-doc"""
+"""
     Chain(weight::Float64, value::Array{Sample})
 
 A wrapper of output trajactory of samplers.
@@ -84,17 +86,17 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-type Chain <: AbstractChains
+mutable struct Chain <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
-  range   ::  Range{Int}
+  range   ::  AbstractRange{Int} # TODO: Perhaps change to UnitRange?
   names   ::  Vector{AbstractString}
   chains  ::  Vector{Int}
   info    ::  Dict{Symbol,Any}
 end
 
-Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(0,0,0), 0:0,
+Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(undef, 0,0,0), 0:0,
                 Vector{AbstractString}(), Vector{Int}(), Dict{Symbol,Any}())
 
 Chain(w::Real, s::Array{Sample}) = begin
@@ -107,8 +109,8 @@ end
 
 flatten!(chn::Chain) = begin
   ## Flatten samples into Mamba's chain type.
-  local names = Array{Array{AbstractString}}(0)
-  local vals  = Array{Array}(0)
+  local names = Vector{Array{AbstractString}}()
+  local vals  = Vector{Array}()
   for s in chn.value2
     v, n = flatten(s)
     push!(vals, v)
@@ -126,9 +128,12 @@ flatten!(chn::Chain) = begin
   chn
 end
 
+# ind2sub is deprecated in Julia 1.0
+ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
+
 flatten(s::Sample) = begin
-  vals  = Array{Float64}(0)
-  names = Array{AbstractString}(0)
+  vals  = Vector{Float64}()
+  names = Vector{AbstractString}()
   for (k, v) in s.value
     flatten(names, vals, string(k), v)
   end
@@ -143,10 +148,10 @@ flatten(names, value :: Array{Float64}, k :: String, v) = begin
       for i = eachindex(v)
         if isa(v[i], Number)
           name = k * string(ind2sub(size(v), i))
-          name = replace(name, "(", "[");
-          name = replace(name, ",)", "]");
-          name = replace(name, ")", "]");
-          isa(v[i], Void) && println(v, i, v[i])
+          name = replace(name, "(" => "[");
+          name = replace(name, ",)" => "]");
+          name = replace(name, ")" => "]");
+          isa(v[i], Nothing) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
         elseif isa(v[i], Array)
@@ -176,7 +181,7 @@ function Base.getindex(c::Chain, v::Symbol)
 end
 
 Base.getindex(c::Chain, expr::Expr) = begin
-  str = replace(string(expr), r"\(|\)", "")
+  str = replace(string(expr), r"\(|\)" => "")
   @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
   c[Symbol(str)]
 end

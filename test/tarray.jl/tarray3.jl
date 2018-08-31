@@ -1,5 +1,6 @@
-using Turing: TArray, get, tzeros
-using Base.Test
+using Turing
+import Turing: consume, produce, TArray, get, tzeros
+using Test
 
 ta1 = TArray{Int}(4);
 push!(ta1, 1);

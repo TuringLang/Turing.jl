@@ -7,7 +7,7 @@ include("support/resample.jl")
 include("support/hmc_core.jl")
 include("support/adapt.jl")
 include("support/init.jl")
-@require Stan include("support/stan-interface.jl")
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" include("support/stan-interface.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
@@ -34,7 +34,7 @@ observe(spl::Sampler, weight::Float64) =
   error("[observe]: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
-assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Nothing, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   if haskey(vi, vn)
     r = vi[vn]
   else
@@ -47,7 +47,7 @@ assume(spl::Void, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) = begin
+assume(spl::Nothing, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) where T<:Distribution = begin
   @assert length(dists) == 1 "[assume] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   n = size(var)[end]
@@ -88,19 +88,19 @@ assume{T<:Distribution}(spl::Void, dists::Vector{T}, vn::VarName, var::Any, vi::
   var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe(spl::Void, dist::Distribution, value::Any, vi::VarInfo) = begin
+observe(spl::Nothing, dist::Distribution, value::Any, vi::VarInfo) = begin
   vi.num_produce += 1
   # acclogp!(vi, logpdf(dist, value))
   logpdf(dist, value)
 end
 
-observe{T<:Distribution}(spl::Void, dists::Vector{T}, value::Any, vi::VarInfo) = begin
+observe(spl::Nothing, dists::Vector{T}, value::Any, vi::VarInfo) where T<:Distribution = begin
   @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
   dist = dists[1]
   @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "[observe] vectorizing matrix distribution is not supported"
   if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
-    # acclogp!(vi, sum(logpdf.(dist, value)))
-    sum(logpdf.(dist, value))
+    # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
+    sum(logpdf.(Ref(dist), value))
   else
     # acclogp!(vi, sum(logpdf(dist, value)))
     sum(logpdf(dist, value))

@@ -1,5 +1,5 @@
 using Turing, Distributions
-using Base.Test
+using Test
 
 @model gdemo() = begin
   s ~ InverseGamma(2,3)

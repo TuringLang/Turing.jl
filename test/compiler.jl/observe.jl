@@ -2,7 +2,7 @@
 
 using Turing
 using Distributions
-using Base.Test
+using Test
 
 @model test() = begin
   z ~ Normal(0,1)
@@ -12,8 +12,14 @@ using Base.Test
   x
 end
 
+is  = IS(10000)
 smc = SMC(10000)
-pg = PG(100,10)
+pg  = PG(100,10)
+
+res = sample(test(), is)
+
+@test reduce(&, res[:x]) == 1  #c heck that x is always 1
+@test res[:logevidence] ≈ 2 * log(0.5)
 
 res = sample(test(), smc)
 

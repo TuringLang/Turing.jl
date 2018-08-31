@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
 
 # Define model
 @model ad_test2(xs) = begin

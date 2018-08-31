@@ -1,3 +1,5 @@
+using Base.Meta: parse
+
 #################
 # Overload of ~ #
 #################
@@ -27,7 +29,7 @@ macro VarName(ex::Union{Expr, Symbol})
   end
 end
 
-doc"""
+"""
     var_name ~ Distribution()
 
 Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
@@ -54,7 +56,7 @@ macro ~(left, right)
     # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
       if ~(vsym in Turing._compiler_[:dvars])
-        dprintln(FCOMPILER, " Observe - `" * vsym_str * "` is an observation")
+        @info " Observe - `" * vsym_str * "` is an observation"
         push!(Turing._compiler_[:dvars], vsym)
       end
       esc(
@@ -72,8 +74,8 @@ macro ~(left, right)
     else
       if ~(vsym in Turing._compiler_[:pvars])
         msg = " Assume - `" * vsym_str * "` is a parameter"
-        isdefined(Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
-        dprintln(FCOMPILER, msg)
+        isdefined(Main, Symbol(vsym_str)) && (msg  *= " (ignoring `$(vsym_str)` found in global scope)")
+        @info msg
         push!(Turing._compiler_[:pvars], vsym)
       end
       # The if statement is to deterimnet how to pass the prior.
@@ -108,7 +110,7 @@ macro ~(left, right)
         assume_ex = quote
           sym, idcs, csym = @VarName $left
           csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-          indexing = reduce(*, "", map(idx -> string(idx), idcs))
+          indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
           vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
           $(left), __lp = Turing.assume(
             sampler,
@@ -128,7 +130,7 @@ end
 # Main Compiler #
 #################
 
-doc"""
+"""
     @model(name, fbody)
 
 Wrapper for models.
@@ -170,13 +172,14 @@ macro model(fexpr)
    #   end
 
 
-  dprintln(1, fexpr)
+  @debug fexpr
   fexpr = translate(fexpr)
 
   fname = fexpr.args[1].args[1]      # Get model name f
   fargs = fexpr.args[1].args[2:end]  # Get model parameters (x,y;z=..)
-  fbody = fexpr.args[2].args[end]    # NOTE: nested args is used here because the orignal model expr is in a block
-
+  fbody = fexpr.args[2]              # NOTE: nested args is used here because the orignal model expr is in a block
+                                     # NOTE: the code above was `fbody = fexpr.args[2].args[end]`, but since Julia 0.7
+                                     #       block doesn't need this nested trick to be fetched
   # Prepare for keyword arguments, e.g.
   #   f(x,y)
   #       ==> f(x,y;)
@@ -189,9 +192,9 @@ macro model(fexpr)
     insert!(fargs, 1, Expr(:parameters))
   end
 
-  dprintln(1, fname)
-  # dprintln(1, fargs)
-  dprintln(1, fbody)
+  @debug fname
+  # @debug fargs
+  @debug fbody
 
   # Remove positional arguments from inner function, e.g.
   #  f((x,y; c=1)
@@ -207,11 +210,11 @@ macro model(fexpr)
   #      ==> f(; :vi=VarInfo(), :sample=nothing)
   # push!(fargs_inner[1].args, Expr(:kw, :vi, :(Turing.VarInfo())))
   # push!(fargs_inner[1].args, Expr(:kw, :sampler, :(nothing)))
-  # dprintln(1, fargs_inner)
+  # @debug fargs_inner
 
   # Modify fbody, so that we always return VarInfo
   fbody_inner = deepcopy(fbody)
-  
+
   return_ex = fbody.args[end] # get last statement of defined model
   if typeof(return_ex) == Symbol
     pop!(fbody_inner.args)
@@ -235,11 +238,11 @@ macro model(fexpr)
     # NOTE: code above is commented out to disable explict return
   end
 
-  unshift!(fbody_inner.args, :(_lp = zero(Real)))
+  pushfirst!(fbody_inner.args, :(_lp = zero(Real)))
   push!(fbody_inner.args, :(vi.logp = _lp))
   push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
 
-  dprintln(1, fbody_inner)
+  @debug fbody_inner
 
   fname_inner_str = "$(fname)_model"
   fname_inner = Symbol(fname_inner_str)
@@ -248,11 +251,11 @@ macro model(fexpr)
   # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
 
   push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
-  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Void,Turing.Sampler}))
+  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Nothing,Turing.Sampler}))
 
   push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
-  dprintln(1, fdefn_inner)
-  
+  @debug fdefn_inner
+
   fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
   fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
   fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
@@ -282,14 +285,14 @@ macro model(fexpr)
 
   fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
                         Expr(:block, Expr(:return, fname_inner)))
-  
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
-  unshift!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
-  unshift!(fdefn_outer.args[2].args,  quote
+
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
+  pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
+  pushfirst!(fdefn_outer.args[2].args, quote
       # Check fargs, data
-      eval(Turing, :(_compiler_ = deepcopy($compiler)))
+      Turing.eval(:(_compiler_ = deepcopy($compiler)))
       fargs = Turing._compiler_[:fargs];
 
       # Copy the expr of function definition and callbacks
@@ -300,7 +303,7 @@ macro model(fexpr)
 
       # Add gensym to function name
       fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
-      
+
       # Change the name of inner function definition to the one with gensym()
       fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
       fdefn_inner_callback_1.args[1].args[1] = fname_inner_with_gensym
@@ -320,7 +323,7 @@ macro model(fexpr)
           insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
         end
       end
-      dprintln(1, fdefn_inner)
+      # @debug fdefn_inner
   end )
 
   for k in fargs
@@ -333,7 +336,7 @@ macro model(fexpr)
     end
     if _k != nothing
       _k_str = string(_k)
-      dprintln(1, _k_str, " = ", _k)
+      @debug _k_str, " = ", _k
       data_check_ex = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
@@ -341,15 +344,15 @@ macro model(fexpr)
               end
             else
               data[keytype(data)($_k_str)] = $_k
-              data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
+              data[keytype(data)($_k_str)] == nothing && @error("Data `"*$_k_str*"` is not provided.")
             end
           end
-      unshift!(fdefn_outer.args[2].args, data_check_ex)
+      pushfirst!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
-  unshift!(fdefn_outer.args[2].args, quote data = copy(data) end)
+  pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
-  dprintln(1, esc(fdefn_outer))
+  @debug esc(fdefn_outer)
   esc(fdefn_outer)
 end
 
@@ -359,7 +362,9 @@ end
 # Helper function #
 ###################
 
-insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+function insdelim(c, deli=",")
+  reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+end
 
 getvsym(s::Symbol) = s
 getvsym(expr::Expr) = begin
@@ -376,6 +381,8 @@ translate!(ex::Any) = ex
 translate!(ex::Expr) = begin
   if (ex.head === :call && ex.args[1] === :(~))
     ex.head = :macrocall; ex.args[1] = Symbol("@~")
+    insert!(ex.args, 2, LineNumberNode(-1)) # NOTE: a `LineNumberNode` object is required
+                                            #       at the second args for macro call in 0.7
   else
     map(translate!, ex.args)
   end

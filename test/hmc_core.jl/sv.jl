@@ -84,14 +84,11 @@ println("mean of m: $(mean(chn[:μ][1000:end]))")
 # chn = []
 # accept_num = 1
 
-# function dummy_print(args...)
-#   nothing
-# end
 
 # totla_num = 5000
 # for iter = 1:totla_num
 #   push!(chn, θ)
-#   θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, stds; dprint=dummy_print)
+#   θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, stds)
 #   accept_num += is_accept
 #   # if (iter % 50 == 0) println(θ) end
 # end

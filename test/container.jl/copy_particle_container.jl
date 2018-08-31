@@ -1,5 +1,5 @@
 using Turing: ParticleContainer, Trace, copy
-using Base.Test
+using Test
 
 pc = ParticleContainer{Trace}(x -> x * x)
 newpc = copy(pc)

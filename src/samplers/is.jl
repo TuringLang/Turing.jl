@@ -1,4 +1,4 @@
-doc"""
+"""
     IS(n_particles::Int)
 
 Importance sampling algorithm object.
@@ -26,7 +26,7 @@ end
 sample(gdemo([1.5, 2]), IS(1000))
 ```
 """
-immutable IS <: InferenceAlgorithm
+mutable struct IS <: InferenceAlgorithm
   n_particles ::  Int
 end
 
@@ -37,7 +37,7 @@ end
 
 sample(model::Function, alg::IS) = begin
   spl = Sampler(alg);
-  samples = Array{Sample}(alg.n_particles)
+  samples = Array{Sample}(undef, alg.n_particles)
 
   n = spl.alg.n_particles
   for i = 1:n

@@ -1,4 +1,4 @@
-doc"""
+"""
     MH(n_iters::Int)
 
 Metropolis-Hasting sampler.
@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
 ```
 """
-immutable MH <: InferenceAlgorithm
+mutable struct MH <: InferenceAlgorithm
   n_iters   ::  Int       # number of iterations
   proposals ::  Dict{Symbol,Any}  # Proposals for paramters
   space     ::  Set       # sampling space, emtpy means all
@@ -89,13 +89,13 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     old_θ = copy(vi[spl])
     old_logp = getlogp(vi)
 
-    dprintln(2, "Propose new parameters from proposals...")
+    @debug "Propose new parameters from proposals..."
     propose(model, spl, vi)
 
-    dprintln(2, "computing accept rate α...")
+    @debug "computing accept rate α..."
     is_accept, logα = mh_accept(-old_logp, -getlogp(vi); log_proposal_ratio=spl.info[:proposal_ratio])
 
-    dprintln(2, "decide wether to accept...")
+    @debug "decide wether to accept..."
     if is_accept && !spl.info[:violating_support]  # accepted
       push!(spl.info[:accept_his], true)
     else                      # rejected
@@ -124,7 +124,7 @@ function sample(model::Function, alg::MH;
   n = reuse_spl_n > 0 ?
       reuse_spl_n :
       alg.n_iters
-  samples = Array{Sample}(n)
+  samples = Array{Sample}(undef, n)
   weight = 1 / n
   for i = 1:n
     samples[i] = Sample(weight, Dict{Symbol, Any}())
@@ -141,7 +141,7 @@ function sample(model::Function, alg::MH;
   # MH steps
   if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
   for i = 1:n
-    dprintln(2, "$alg_str stepping...")
+    @debug "$alg_str stepping..."
 
     time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
     time_total += time_elapsed
@@ -162,7 +162,7 @@ function sample(model::Function, alg::MH;
   println("  Accept rate         = $accept_rate;")
 
   if resume_from != nothing   # concat samples
-    unshift!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.value2...)
   end
   c = Chain(0, samples)       # wrap the result by Chain
   if save_state               # save state
@@ -217,11 +217,11 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r, logpdf(dist, r)
 end
 
-assume{D<:Distribution}(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) =
+assume(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where D<:Distribution =
   error("[Turing] MH doesn't support vectorizing assume statement")
 
 observe(spl::Sampler{MH}, d::Distribution, value::Any, vi::VarInfo) =
   observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 
-observe{D<:Distribution}(spl::Sampler{MH}, ds::Vector{D}, value::Any, vi::VarInfo) =
+observe(spl::Sampler{MH}, ds::Vector{D}, value::Any, vi::VarInfo)  where D<:Distribution =
   observe(nothing, ds, value, vi) # accumulate pdf of likelihood

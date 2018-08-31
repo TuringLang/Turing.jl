@@ -1,14 +1,7 @@
 group: deprecated-2017Q3
-addons:
-    apt:
-        sources:
-           - ubuntu-toolchain-r-test
-        packages:
-           - gcc-5
-           - g++-5
 language: julia
 julia:
-  - 0.6
+  - 1.0
 os:
   - linux
   - osx
@@ -23,10 +16,8 @@ matrix:
 notifications:
     email: false
 script:
-  - if [ "$(uname)" != "Darwin" ]; then ln -s `which gcc-5` gcc && export PATH=`pwd`:$PATH && echo $PATH; sudo apt-get install hdf5-tools; fi
-  - gcc -v
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --check-bounds=yes -e 'Pkg.update();
+  - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
              Pkg.clone(pwd(), "Turing");
              Pkg.build("Turing");
              if ENV["GROUP"] == "Test"
@@ -36,7 +27,7 @@ script:
              end'
 after_success:
   - julia -e 'if ENV["GROUP"] == "Test"
-                cd(Pkg.dir("Turing")); Pkg.add("Coverage");
+                using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
                 using Coverage; Coveralls.submit(process_folder())
               end'
 notifications:

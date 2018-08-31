@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Base.Test
+using Test
 
 obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 

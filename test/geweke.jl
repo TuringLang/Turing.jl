@@ -38,18 +38,20 @@ s = sample(gdemo_fw(), fw);
 N = div(NSamples, 50)
 
 x = [s[:y][1]...]
-s_bk = Array{Turing.Chain}(N)
+s_bk = Array{Turing.Chain}(undef, N)
 
-set_verbosity(0)
-i = 1
-while i <= N
-  try
-    s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][:y][end]...];
-    i += 1
+simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
+with_logger(simple_logger) do 
+  i = 1
+  while i <= N
+    try
+      s_bk[i] = sample(gdemo_bk(x), bk);
+      x = [s_bk[i][:y][end]...];
+      i += 1
+    catch
+    end
   end
-end
-set_verbosity(1)
+do
 
 s2 = vcat(s_bk...);
 # describe(s2)
@@ -58,7 +60,7 @@ s2 = vcat(s_bk...);
 qqplot(s[:m], s2[:m])
 qqplot(s[:s], s2[:s])
 
-using Base.Test
+using Test
 
 qqm = qqbuild(s[:m], s2[:m])
 X = qqm.qx
