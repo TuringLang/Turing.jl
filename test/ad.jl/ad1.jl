@@ -35,8 +35,7 @@ function logp(x::Vector)
   # s = invlink(dist_s, s)
   m = x[1]
   lik_dist = Normal(m, sqrt.(s))
-  lp = Turing.logpdf_with_trans(dist_s, s, false) 
-     + Turing.logpdf_with_trans(Normal(0,sqrt.(s)), m, false)
+  lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt.(s)), m, false)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
   return lp
 end
