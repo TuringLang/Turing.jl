@@ -27,7 +27,9 @@ testcases_excluded = [
 ]
 
 # test groups
-CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl", "io.jl", "util.jl"]
+CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
+    # "io.jl", 
+    "util.jl"]
 DISTR_TESTS = ["transform.jl"]
 SAMPLER_TESTS = ["resmaple.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
                  "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
@@ -39,7 +41,7 @@ ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
 
 # test groups that should be executed
 TEST_GROUPS = ALL
-TEST_GROUPS = ["compiler.jl"]
+# TEST_GROUPS = ["compiler.jl"]
 
 # Run tests
 path = dirname(@__FILE__)
