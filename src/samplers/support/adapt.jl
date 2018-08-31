@@ -9,8 +9,8 @@ end
 
 reset!(ve::VarEstimator) = begin
   ve.n = 0
-  ve.μ = zeros(ve.μ)
-  ve.M = zeros(ve.M)
+  ve.μ = zeros(size(ve.μ))
+  ve.M = zeros(size(ve.M))
 end
 
 add_sample!(ve::VarEstimator{T}, s::Vector{T}) where T<:Real = begin

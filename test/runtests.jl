@@ -39,7 +39,7 @@ ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
 
 # test groups that should be executed
 TEST_GROUPS = ALL
-TEST_GROUPS = ["gibbs.jl"]
+TEST_GROUPS = ["nuts.jl"]
 
 # Run tests
 path = dirname(@__FILE__)
