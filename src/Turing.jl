@@ -128,7 +128,6 @@ export UnivariateGMM2, Flat, FlatPos
 # Inference code #
 ##################
 
-include("depreciated.jl")
 include("core/util.jl")         # utility functions
 include("core/compiler.jl")     # compiler
 include("core/container.jl")    # particle container
