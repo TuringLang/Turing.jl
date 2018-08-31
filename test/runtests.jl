@@ -33,8 +33,8 @@ CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
 DISTR_TESTS = ["transform.jl"]
 SAMPLER_TESTS = ["resample.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
                  "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
-                 "mh.jl", "pmmh.jl", "ipmcmc.jl",
-                # "pmmh.jl", "pgibbs.jl", "smc.jl"
+                 "mh.jl",
+                # "pmmh.jl", "ipmcmc.jl", "pgibbs.jl", "smc.jl"
                 ]
 TRACE_TESTS = ["tarray.jl", "taskcopy.jl", "trace.jl"]
 ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
