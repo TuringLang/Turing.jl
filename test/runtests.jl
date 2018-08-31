@@ -29,7 +29,7 @@ testcases_excluded = [
 # test groups
 CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl", "io.jl", "util.jl"]
 DISTR_TESTS = ["transform.jl"]
-SAMPLER_TESTS = ["resmaple.jl", "adapt.jl", "sampler.jl", "gibbs.jl", "nuts.jl", 
+SAMPLER_TESTS = ["resmaple.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
                  "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
                  "mh.jl", "pmmh.jl", "ipmcmc.jl",
                 # "pmmh.jl", "pgibbs.jl", "smc.jl"
@@ -43,9 +43,7 @@ TEST_GROUPS = ["nuts.jl"]
 
 # Run tests
 path = dirname(@__FILE__)
-cd(path)
-@info("[runtests.jl] CDed test path")
-include("utility.jl")
+cd(path); include("utility.jl")
 @info("[runtests.jl] utility.jl loaded")
 @info("[runtests.jl] testing starts")
 for test_group in TEST_GROUPS
