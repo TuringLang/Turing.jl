@@ -31,8 +31,8 @@ install:
 build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
-  - C:\projects\julia\bin\julia -e "versioninfo(); using Pkg;
-      Pkg.update(); rm(Pkg.dir(\"Turing\"), force=true, recursive=true);
+  - C:\projects\julia\bin\julia -e "using Pkg, InteractiveUtils; versioninfo(); 
+      Pkg.update(); 
       Pkg.clone(pwd(), \"Turing\");
       Pkg.build(\"Turing\")"
 
