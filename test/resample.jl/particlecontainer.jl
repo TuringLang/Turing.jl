@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler
+import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler, consume, produce
 
 global n = 0
 

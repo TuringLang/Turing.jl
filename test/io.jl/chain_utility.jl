@@ -1,6 +1,8 @@
 using Distributions, Turing
 using Turing: Chain, Sample
 using Test
+using MCMCChain
+using MCMCChain: describe
 
 c = Chain()
 #@test string(c) == "Empty Chain, weight 0.0"
@@ -18,7 +20,7 @@ samples = c2[:samples]
 #@test mean(c2, :m, x -> x) == [1.0, 2.0, 3.0]
 
 
-#  Tests for Mamba Chain
+# Tests for MCMC Chain
 
 @model mamba_chain_test() = begin
   m ~ Uniform(-1, 1)

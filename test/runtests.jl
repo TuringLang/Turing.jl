@@ -1,92 +1,60 @@
 ##########################################
 # Master file for running all test cases #
 ##########################################
-
 using Turing; turnprogress(false)
+using Test
 
-println("[runtests.jl] runtests.jl loaded")
+# utility function
+function getteststoskip(filepath)
+  if isfile(filepath)
+    lines = readlines(filepath)
+    lines = filter(line -> endswith(line, ".jl"), lines)
+    lines = filter(line -> !startswith(line, "#"), lines)
+    lines = filter(line -> length(split(line)) == 1, lines)
+    lines = map(line -> strip(line), lines)
+    return Set{String}(lines)
+  else
+    return Set{String}()
+  end
+end
 
-# NOTE: please keep this test list structured when adding new test cases
-# so that we can tell which test case is for which .jl file
+@info("[runtests.jl] runtests.jl loaded")
 
-testcases = Dict(
-# Turing.jl/
-#   src/
-#     core/
-        "ad.jl"        => ["ad1", "ad2", "ad3", "adr", "pass_dual_to_dists",],
-        "compiler.jl"  => ["assume", "observe", "predict", "sample",
-                           "beta_binomial", "noparam",
-                          #  "opt_param_of_dist",
-                          #  "explicit_ret",
-                           "new_grammar", "newinterface", "noreturn", "forbid_global",],
-        "container.jl" => ["copy_particle_container",],
-        "varinfo.jl"   => ["replay", "test_varname", "varinfo", "orders", "is_inside", "flags",],
-        "io.jl"        => ["chain_utility", "save_resume_chain",],
-        "util.jl"      => ["util",],
-#     distributions/
-        "transform.jl" => ["transform",],
-#     samplers/
-#       support/
-          "resample.jl" => ["resample", "particlecontainer",],
-          "adapt.jl" => ["var_estimator",],
-        "sampler.jl" => ["vectorize_observe", "vec_assume", "vec_assume_mv",],
-        "gibbs.jl" => ["gibbs", "gibbs2", "gibbs_constructor",],
-        "nuts.jl"  => ["nuts_cons", "nuts",
-                      #  "nuts_geweke",
-                      ],
-        "hmcda.jl" => ["hmcda_cons", "hmcda",
-                      #  "hmcda_geweke",
-                      ],
-        "hmc_core.jl"   => ["run_all",],
-        "hmc.jl"   => ["multivariate_support", "matrix_support", "hmc_reverse_diff",
-                       "constrained_bounded", "constrained_simplex",],
-        "sghmc.jl" => ["sghmc_cons", "sghmc_cons",],
-        "sgld.jl"  => ["sgld_cons", "sgld_cons",],
-        "is.jl"    => ["importance_sampling",],
-        "mh.jl"    => ["mh_cons", "mh", "mh2",],
-        # "pmmh.jl"  => ["pmmh_cons", "pmmh", "pmmh2",],
-        "pmmh.jl"  => ["pmmh_cons", "pmmh2",],
-        "ipmcmc.jl"=> ["ipmcmc_cons", "ipmcmc", "ipmcmc2",],
-#       pgibbs.jl
-#       sampler.jl
-#       smc.jl
-#     trace/
-        "tarray.jl"   => ["tarray", "tarray2", "tarray3",],
-        "taskcopy.jl" => ["clonetask",],
-        "trace.jl"    => ["trace",],
-#   Turing.jl
-      # "normal_loc",
-      # "normal_mixture",
-      # "naive_bayes"
-)
-
-# NOTE: put test cases which only want to be check in version 0.4.x here
-#testcases_v04 = [
-#  "beta_binomial",
-#  "tarray"
-#]
-
-# NOTE: put test cases which want to be excluded here
+# THIS SHOULDE BE PORTED ??
 testcases_excluded = [
   "tarray2",
   "predict"
 ]
 
+# test groups
+CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl", "io.jl", "util.jl"]
+DISTR_TESTS = ["transform.jl"]
+SAMPLER_TESTS = ["resmaple.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
+                 "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
+                 "mh.jl", "pmmh.jl", "ipmcmc.jl",
+                # "pmmh.jl", "pgibbs.jl", "smc.jl"
+                ]
+TRACE_TESTS = ["tarray.jl", "taskcopy.jl", "trace.jl"]
+ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
+
+# test groups that should be executed
+TEST_GROUPS = ALL
+TEST_GROUPS = ["compiler.jl"]
+
 # Run tests
 path = dirname(@__FILE__)
-cd(path)
-println("[runtests.jl] CDed test path")
-include("utility.jl")
-println("[runtests.jl] utility.jl loaded")
-println("[runtests.jl] testing starts")
-for (target, list) in testcases
-  for t in list
-    if ~ (t in testcases_excluded)
-      println("[runtests.jl] \"$target/$t.jl\" is running")
-      include(target*"/"*t*".jl");
-      # readstring(`julia $t.jl`)
-      println("[runtests.jl] \"$target/$t.jl\" is successful")
+cd(path); include("utility.jl")
+@info("[runtests.jl] utility.jl loaded")
+@info("[runtests.jl] testing starts")
+for test_group in TEST_GROUPS
+  teststoskip = getteststoskip(joinpath(test_group, "skip_tests"))
+  @testset "$(test_group)" begin
+    for test in filter(f -> endswith(f, ".jl") && !(f ∈ teststoskip), readdir(test_group))
+      @testset "$(test)" begin
+        include(joinpath(test_group, test))
+      end
     end
   end
 end
-println("[runtests.jl] all tests pass")
+
+@info("[runtests.jl] all tests finished")

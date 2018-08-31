@@ -6,11 +6,11 @@ check_numerical(chain, symbols::Vector{Symbol}, exact_vals::Vector;
     print("  $sym = $E ≈ $val (eps = $eps) ?")
     cmp = abs.(sum(mean(chain[sym]) - val)) <= eps
     if cmp
-      print_with_color(:green, "./\n")
-      print_with_color(:green, "    $sym = $E, diff = $(abs.(E - val))\n")
+      printstyled("./\n", color = :green)
+      printstyled("    $sym = $E, diff = $(abs.(E - val))\n", color = :green)
     else
-      print_with_color(:red, " X\n")
-      print_with_color(:red, "    $sym = $E, diff = $(abs.(E - val))\n")
+      printstyled(" X\n", color = :red)
+      printstyled("    $sym = $E, diff = $(abs.(E - val))\n", color = :red)
     end
   end
 end

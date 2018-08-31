@@ -7,7 +7,7 @@ setchunksize(N)
 alg = HMC(1000, 0.2, 4)
 
 @model vdemo() = begin
-  x = Vector{Real}(N)
+  x = Vector{Real}(undef, N)
   for i = 1:N
     x[i] ~ Normal(0, sqrt.(4))
   end
@@ -18,7 +18,7 @@ t_loop = @elapsed res = sample(vdemo(), alg)
 
 # Test for vectorize UnivariateDistribution
 @model vdemo() = begin
-  x = Vector{Real}(N)
+  x = Vector{Real}(undef, N)
   x ~ [Normal(0, 2)]
 end
 
@@ -39,7 +39,7 @@ println("  Mv   : $t_mv")
 
 # Transformed test
 @model vdemo() = begin
-  x = Vector{Real}(N)
+  x = Vector{Real}(undef, N)
   x ~ [InverseGamma(2, 3)]
 end
 

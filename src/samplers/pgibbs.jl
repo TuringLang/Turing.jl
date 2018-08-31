@@ -68,7 +68,6 @@ step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
   end
 
   while consume(particles) != Val{:done}
-    # TODO: fork somehow cause ProgressMeter to broke - need to figure out why
     resample!(particles, spl.alg.resampler, ref_particle)
   end
 
@@ -120,8 +119,8 @@ sample(model::Function, alg::PG;
     end
   end
 
-  println("[PG] Finished with")
-  println("  Running time    = $time_total;")
+  @info("[PG] Finished with")
+  @info("  Running time    = $time_total;")
 
   loge = exp.(mean(spl.info[:logevidence]))
   if resume_from != nothing   # concat samples
