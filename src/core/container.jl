@@ -139,6 +139,10 @@ function resample!( pc :: ParticleContainer,
 
   # resample
   Ws, _ = weights(pc)
+
+  # check that weights are not NaN
+  @assert !any(isnan.(Ws))
+
   n2    = isa(ref, Nothing) ? n1 : n1-1
   indx  = randcat(Ws, n2)
 
