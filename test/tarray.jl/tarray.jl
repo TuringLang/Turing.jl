@@ -1,6 +1,7 @@
 # Test TArry
 
 using Turing
+import Turing: consume, produce
 
 function f_cta()
   t = TArray(Int, 1);

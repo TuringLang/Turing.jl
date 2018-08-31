@@ -17,7 +17,7 @@ varname(expr::Expr) = begin
   # Parse the expression and creating the code for creating uid
   find_head = false
   while length(to_eval) > 0
-    evaling = shift!(to_eval)   # get the current expression to deal with
+    evaling = popfirst!(to_eval)   # get the current expression to deal with
     if isa(evaling, Expr) && evaling.head == :ref && ~find_head
       # Add all the indexing arguments to the left
       pushfirst!(to_eval, "[", insdelim(evaling.args[2:end])..., "]")

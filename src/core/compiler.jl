@@ -110,7 +110,7 @@ macro ~(left, right)
         assume_ex = quote
           sym, idcs, csym = @VarName $left
           csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
-          indexing = reduce(*, "", map(idx -> string(idx), idcs))
+          indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
           vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
           $(left), __lp = Turing.assume(
             sampler,
@@ -344,7 +344,7 @@ macro model(fexpr)
               end
             else
               data[keytype(data)($_k_str)] = $_k
-              data[keytype(data)($_k_str)] == nothing && Turing.derror(0, "Data `"*$_k_str*"` is not provided.")
+              data[keytype(data)($_k_str)] == nothing && @error("Data `"*$_k_str*"` is not provided.")
             end
           end
       pushfirst!(fdefn_outer.args[2].args, data_check_ex)
@@ -362,7 +362,9 @@ end
 # Helper function #
 ###################
 
-insdelim(c, deli=",") = reduce((e, res) -> append!(e, [res, ","]), [], c)[1:end-1]
+function insdelim(c, deli=",")
+  reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+end
 
 getvsym(s::Symbol) = s
 getvsym(expr::Expr) = begin

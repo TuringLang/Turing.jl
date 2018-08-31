@@ -9,8 +9,8 @@ end
 
 reset!(ve::VarEstimator) = begin
   ve.n = 0
-  ve.μ = zeros(ve.μ)
-  ve.M = zeros(ve.M)
+  ve.μ = zeros(size(ve.μ))
+  ve.M = zeros(size(ve.M))
 end
 
 add_sample!(ve::VarEstimator{T}, s::Vector{T}) where T<:Real = begin
@@ -23,13 +23,13 @@ end
 get_var(ve::VarEstimator) = begin
   @assert ve.n >= 2
   var = ve.M / (ve.n - 1)
-  var = (ve.n / (ve.n + 5.0)) * var + 1e-3 * (5.0 / (ve.n + 5.0))
+  var = (ve.n / (ve.n + 5.0)) * var .+ 1e-3 * (5.0 / (ve.n + 5.0))
   return var
 end
 
 
 
-struct WarmUpManager
+mutable struct WarmUpManager
   adapt_n   ::    Int
   params    ::    Dict{Symbol, Any}
   ve        ::    VarEstimator

@@ -44,7 +44,7 @@ end
 
 global ADSAFE = false
 setadsafe(switch::Bool) = begin
-  println("[Turing]: global ADSAFE is set as $switch")
+  @info("[Turing]: global ADSAFE is set as $switch")
   global ADSAFE = switch
 end
 
@@ -52,7 +52,7 @@ global CHUNKSIZE = 0        # default chunksize used by AD
 global SEEDS                # pre-alloced dual parts
 setchunksize(chunk_size::Int) = begin
   if ~(CHUNKSIZE == chunk_size)
-    println("[Turing]: AD chunk size is set as $chunk_size")
+    @info("[Turing]: AD chunk size is set as $chunk_size")
     global CHUNKSIZE = chunk_size
     global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
   end
@@ -62,7 +62,7 @@ setchunksize(40)
 
 global PROGRESS = true
 turnprogress(switch::Bool) = begin
-  println("[Turing]: global PROGRESS is set as $switch")
+  @info("[Turing]: global PROGRESS is set as $switch")
   global PROGRESS = switch
 end
 

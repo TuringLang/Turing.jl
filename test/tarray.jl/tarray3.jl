@@ -1,4 +1,5 @@
-using Turing: TArray, get, tzeros
+using Turing
+import Turing: consume, produce, TArray, get, tzeros
 using Test
 
 ta1 = TArray{Int}(4);

@@ -17,24 +17,26 @@ getjuliatype(s::Sample, v::Symbol, cached_syms=nothing) = begin
   # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
   if cached_syms == nothing
     # Get all keys associated with the given symbol
-    syms = collect(Iterators.filter(k -> search(string(k), string(v)*"[") != 0:-1, keys(s.value)))
+    syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), keys(s.value)))
   else
-    syms = collect((Iterators.filter(k -> search(string(k), string(v)) != 0:-1, cached_syms)))
+    syms = collect((Iterators.filter(k -> occursin(string(v), string(k)), cached_syms)))
   end
+
   # Map to the corresponding indices part
-  idx_str = map(sym -> replace(string(sym), string(v), ""), syms)
+  idx_str = map(sym -> replace(string(sym), string(v) => ""), syms)
   # Get the indexing component
   idx_comp = map(idx -> collect(Iterators.filter(str -> str != "", split(string(idx), [']','[']))), idx_str)
 
   # Deal with v is really a symbol, e.g. :x
-  if length(idx_comp) == 0
+  if isempty(idx_comp)
+    @assert haskey(s.value, v)
     return Base.getindex(s.value, v)
   end
 
   # Construct container for the frist nesting layer
   dim = length(split(idx_comp[1][1], ','))
   if dim == 1
-    sample = Vector(length(unique(map(c -> c[1], idx_comp))))
+    sample = Vector(undef, length(unique(map(c -> c[1], idx_comp))))
   else
     d = max(map(c -> eval(parse(c[1])), idx_comp)...)
     sample = Array{Any, length(d)}(undef, d)
@@ -146,9 +148,9 @@ flatten(names, value :: Array{Float64}, k :: String, v) = begin
       for i = eachindex(v)
         if isa(v[i], Number)
           name = k * string(ind2sub(size(v), i))
-          name = replace(name, "(", "[");
-          name = replace(name, ",)", "]");
-          name = replace(name, ")", "]");
+          name = replace(name, "(" => "[");
+          name = replace(name, ",)" => "]");
+          name = replace(name, ")" => "]");
           isa(v[i], Nothing) && println(v, i, v[i])
           push!(value, Float64(v[i]))
           push!(names, name)
@@ -179,7 +181,7 @@ function Base.getindex(c::Chain, v::Symbol)
 end
 
 Base.getindex(c::Chain, expr::Expr) = begin
-  str = replace(string(expr), r"\(|\)", "")
+  str = replace(string(expr), r"\(|\)" => "")
   @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
   c[Symbol(str)]
 end
