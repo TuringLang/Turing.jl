@@ -79,6 +79,8 @@ gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
     spl.info[:grad_cache][θ_hash] = grad
   end
 
+  vi.logp = realpart(vi.logp)
+
   grad
 end
 
@@ -94,7 +96,7 @@ end
 
 # Direct call of ForwardDiff.gradient; this is slow
 
-gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
+gradient_slow(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   vi = deepcopy(_vi)
 
@@ -116,6 +118,11 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
     end
 
     grad = Tracker.gradient(f_r, theta)
+    vi.logp = vi.logp.data
+    vi_spl = vi[spl]
+    for i = 1:length(theta)
+      vi_spl[i] = vi_spl[i].data
+    end
 
     first(grad).data
 end
