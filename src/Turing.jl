@@ -20,15 +20,9 @@ using Markdown
   using Stan
   import Stan: Adapt, Hmc
 end
-@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-  using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
-  import ReverseDiff: gradient
-end
-
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
-import Flux: gradient
 using Flux: Tracker
 import MCMCChain: AbstractChains, Chains
 
