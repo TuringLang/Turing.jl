@@ -16,6 +16,8 @@
 @inline dualpart(ds::Union{Array,SubArray}) = map(d -> dualpart(d), ds)
 
 # Base.promote_rule(D1::Type{Real}, D2::Type{ForwardDiff.Dual}) = D2
+import Base: <=
+<=(a::Tracker.TrackedReal, b::Tracker.TrackedReal) = a.data <= b.data
 
 #####################################################
 # Helper functions for vectorize/reconstruct values #

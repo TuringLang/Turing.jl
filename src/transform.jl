@@ -354,9 +354,9 @@ logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T
     U = cholesky(x).U
     n = dim(d)
     for i in 1:n
-      lp += (n - i + T(2)) * log(U[i, i])
+      lp += (n - i + 2.0) * log(U[i, i])
     end
-    lp += n * log(T(2))
+    lp += n * log(2.0)
   end
   lp
 end
@@ -372,9 +372,9 @@ logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) w
     D = dim(d)
 
     for j = 1:n, i in 1:D
-      lp[j] += (D - i + T(2)) * log(U[j][i,i])
+      lp[j] += (D - i + 2.0) * log(U[j][i,i])
     end
-    lp .+= D * log(T(2))
+    lp .+= D * log(2.0)
   end
   lp
 end
