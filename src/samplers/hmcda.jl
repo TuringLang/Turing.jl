@@ -112,8 +112,6 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       push!(spl.info[:accept_his], false)
 
       # Reset Θ
-      # NOTE: ForwardDiff and ReverseDiff need different implementation
-      #       due to struct Dual vs mutable TrackedReal
       if ADBACKEND == :forward_diff
 
         vi[spl] = θ
@@ -122,11 +120,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
         vi_spl = vi[spl]
         for i = 1:length(θ)
-          if isa(vi_spl[i], ReverseDiff.TrackedReal)
-            vi_spl[i].value = θ[i]
-          else
-            vi_spl[i] = θ[i]
-          end
+          vi_spl[i] = θ[i]
         end
 
       end

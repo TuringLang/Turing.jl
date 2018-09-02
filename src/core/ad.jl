@@ -108,8 +108,6 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
   g(vi[spl])
 end
 
-#  @init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-
 gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
 gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
     f_r(ipts) = begin
@@ -119,12 +117,6 @@ gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Uni
 
     grad = Tracker.gradient(f_r, theta)
 
-    # grad = ReverseDiff.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), inputs)
-
-    # vi[spl] = realpart(vi[spl])
-    # vi.logp = 0
-
-    map(x -> isa(x, Tracker.TrackedReal) ? x.data : x, grad)
+    first(grad).data
 end
 
-#  end
