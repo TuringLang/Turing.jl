@@ -81,10 +81,10 @@ slope = (1 / (transpose(X) * X)[1] * transpose(X) * y)[1]
 print("  slopeₛ = $slope ≈ 1 (ϵ = 0.1)")
 ans1 = abs(slope - 1.0) <= 0.1
 if ans1
-  print_with_color(:green, " ✓\n")
+  printstyled(" ✓\n", color=:green)
 else
-  print_with_color(:red, " X\n")
-  print_with_color(:red, "    slope = $slope, diff = $(slope - 1.0)\n")
+  printstyled(" X\n", color=:red)
+  printstyled("    slope = $slope, diff = $(slope - 1.0)\n", color=:red)
 end
 
 # qqs = qqbuild(s[:s], s2[:s])

@@ -51,7 +51,7 @@ produce(v) = begin
             empty = true
             break
         elseif isa(q,Condition) && !isempty(q.waitq)
-            t = shift!(q.waitq)
+            t = popfirst!(q.waitq)
             empty = isempty(q.waitq)
             break
         end
