@@ -16,10 +16,10 @@ using LinearAlgebra
 using ProgressMeter
 using Markdown
 
-@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
+#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
   using Stan
   import Stan: Adapt, Hmc
-end
+#  end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient

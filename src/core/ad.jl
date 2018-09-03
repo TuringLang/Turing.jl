@@ -110,20 +110,19 @@ gradient_slow(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = beg
   g(vi[spl])
 end
 
-gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
-    f_r(ipts) = begin
-      vi[spl] = ipts
-      -runmodel(model, vi, spl).logp
-    end
-
-    grad = Tracker.gradient(f_r, theta)
-    vi.logp = vi.logp.data
-    vi_spl = vi[spl]
-    for i = 1:length(theta)
-      vi_spl[i] = vi_spl[i].data
-    end
-
-    first(grad).data
+gradient_r(theta::AbstractVector{<:Real}, vi::VarInfo, model::Function) = 
+  gradient_r(theta, vi, model, nothing)
+gradient_r(theta::AbstractVector{<:Real}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
+  # Use Flux.Tracker to get gradient
+  grad = Tracker.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), theta)
+  # Clean tracked numbers 
+  # Numbers do not need to be tracked between two gradient calls
+  vi.logp = vi.logp.data
+  vi_spl = vi[spl]
+  for i = 1:length(theta)
+    vi_spl[i] = vi_spl[i].data
+  end
+  # Return non-tracked graident value
+  return first(grad).data
 end
 
