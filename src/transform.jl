@@ -206,38 +206,30 @@ const PDMatDistribution = Union{InverseWishart, Wishart}
 
 function link(d::PDMatDistribution, X::AbstractMatrix{T}) where {T<:Real}
   Y = cholesky(X).L
-  dim = size(Y)
-  for m in 1:dim[1]
+  for m in 1:size(Y, 1)
     Y[m, m] = log(Y[m, m])
   end
-  for m in 1:dim[1], n in m+1:dim[2]
-    Y[m, n] = zero(T)
-  end
-  Matrix{T}(Y)
+  return Y
 end
 
-###### FIX THIS. IT'S BROKEN!
-function invlink(d::PDMatDistribution, Z::AbstractMatrix{<:Real}) where {T<:Real}
-  dim = size(z)
-  for m in 1:dim[1]
-    z[m, m] = exp.(z[m, m])
+function invlink(d::PDMatDistribution, Y::LowerTriangular{T}) where {T<:Real}
+  X, dim = copy(Y), size(Y)
+  for m in 1:size(X, 1)
+    X[m, m] = exp(X[m, m])
   end
-  for m in 1:dim[1], n in m+1:dim[2]
-    z[m, n] = zero(T)
-  end
-  Matrix{T}(z * z')
+  return X * X'
 end
 
-function logpdf_with_trans(d::PDMatDistribution, x::AbstractMatrix{<:Real}, transform::Bool)
-  lp = logpdf(d, x)
+function logpdf_with_trans(d::PDMatDistribution, X::AbstractMatrix{<:Real}, transform::Bool)
+  lp = logpdf(d, X)
   if transform && isfinite(lp)
-    U = cholesky(x).U
+    U = cholesky(X).U
     for i in 1:dim(d)
       lp += (dim(d) - i + 2.0) * log(U[i, i])
     end
     lp += dim(d) * log(2.0)
   end
-  lp
+  return lp
 end
 
 
