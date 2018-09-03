@@ -26,17 +26,20 @@
   > SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =#
 
+const AV{T} = AbstractVector{T}
+const AM{T} = AbstractMatrix{T}
+
 #############
 # a ≦ x ≦ b #
 #############
 
 const TransformDistribution{T<:ContinuousUnivariateDistribution} = Union{T, Truncated{T}}
 
-link(d::TransformDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = begin
+function link(d::TransformDistribution, x::Real)
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    logit((x - a) ./ (b - a))
+    logit((x - a) / (b - a))
   elseif lowerbounded
     log(x - a)
   elseif upperbounded
@@ -46,27 +49,27 @@ link(d::TransformDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Rea
   end
 end
 
-invlink(d::TransformDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = begin
+function invlink(d::TransformDistribution, x::Real)
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    (b - a) .* invlogit(x) + a
+    (b - a) * invlogit(x) + a
   elseif lowerbounded
-    exp.(x) + a
+    exp(x) + a
   elseif upperbounded
-    b - exp.(x)
+    b - exp(x)
   else
     x
   end
 end
 
-logpdf_with_trans(d::TransformDistribution, x::T, transform::Bool) where T<:Union{T0,Vector{T0}} where T0<:Real = begin
+function logpdf_with_trans(d::TransformDistribution, x::Real, transform::Bool)
   lp = logpdf(d, x)
   if transform
     a, b = minimum(d), maximum(d)
     lowerbounded, upperbounded = isfinite(a), isfinite(b)
     if lowerbounded && upperbounded
-      lp += log((x - a) .* (b - x) ./ (b - a))
+      lp += log((x - a) * (b - x) / (b - a))
     elseif lowerbounded
       lp += log(x - a)
     elseif upperbounded
@@ -76,6 +79,7 @@ logpdf_with_trans(d::TransformDistribution, x::T, transform::Bool) where T<:Unio
   lp
 end
 
+
 ###############
 # -∞ < x < -∞ #
 ###############
@@ -83,12 +87,12 @@ end
 const RealDistribution = Union{Cauchy, Gumbel, Laplace, Logistic,
                                NoncentralT, Normal, NormalCanon, TDist}
 
-link(d::RealDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = x
+@inline link(d::RealDistribution, x::Real) = x
 
-invlink(d::RealDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = x
+@inline invlink(d::RealDistribution, x::Real) = x
 
-logpdf_with_trans(d::RealDistribution, x::T, transform::Bool) where T<:Real = logpdf(d, x)
-logpdf_with_trans(d::RealDistribution, x::Vector{T}, transform::Bool) where T<:Real = logpdf.(Ref(d), x)
+@inline logpdf_with_trans(d::RealDistribution, x::Real, transform::Bool) = logpdf(d, x)
+
 
 #########
 # 0 < x #
@@ -98,19 +102,12 @@ const PositiveDistribution = Union{BetaPrime, Chi, Chisq, Erlang, Exponential, F
                                    Gamma, InverseGamma, InverseGaussian, Kolmogorov, LogNormal,
                                    NoncentralChisq, NoncentralF, Rayleigh, Weibull}
 
-link(d::PositiveDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = log(x)
+@inline link(d::PositiveDistribution, x::Real) = log(x)
 
-invlink(d::PositiveDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = exp.(x)
+@inline invlink(d::PositiveDistribution, x::Real) = exp(x)
 
-
-logpdf_with_trans(d::PositiveDistribution, x::T, transform::Bool) where T<:Real = begin
-  lp = logpdf(d, x)
-  transform ? lp + log.(x) : lp
-end
-
-logpdf_with_trans(d::PositiveDistribution, x::Vector{T}, transform::Bool) where T<:Real = begin
-  lp = logpdf.(Ref(d), x)
-  transform ? lp + log.(x) : lp
+@inline function logpdf_with_trans(d::PositiveDistribution, x::Real, transform::Bool)
+  return logpdf(d, x) + transform * log(x)
 end
 
 
@@ -120,19 +117,14 @@ end
 
 const UnitDistribution = Union{Beta, KSOneSided, NoncentralBeta}
 
-link(d::UnitDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = logit(x)
+@inline link(d::UnitDistribution, x::Real) = logit(x)
 
-invlink(d::UnitDistribution, x::T) where T<:Union{T0,Vector{T0}} where T0<:Real = invlogit(x)
+@inline invlink(d::UnitDistribution, x::Real) = invlogit(x)
 
-logpdf_with_trans(d::UnitDistribution, x::T, transform::Bool) where T<:Real = begin
-  lp = logpdf(d, x)
-  transform ? lp + log(x .* (one(x) - x)) : lp
+@inline function logpdf_with_trans(d::UnitDistribution, x::Real, transform::Bool)
+  return logpdf(d, x) + transform * log(x * (one(x) - x))
 end
 
-logpdf_with_trans(d::UnitDistribution, x::Vector{T}, transform::Bool) where T<:Real = begin
-  lp = logpdf.(Ref{d}, x)
-  transform ? lp + log(x .* (one(x) - x)) : lp
-end
 
 ###########
 # ∑xᵢ = 1 #
@@ -140,25 +132,9 @@ end
 
 const SimplexDistribution = Union{Dirichlet}
 
-link(d::SimplexDistribution, x::Vector{T}) where {T<:Real} = link!(similar(x), d, x)
-link!(y, d::SimplexDistribution, x::Vector{T}) where {T<:Real} = begin
+link(d::SimplexDistribution, x::AV{<:Real}) = link!(similar(x), d, x)
+function link!(y::AV{<:Real}, d::SimplexDistribution, x::AV{T}) where {T<:Real}
   K = length(x)
-
-  # key = (:cache_vec, T, K - 1)
-  # if key in keys(TRANS_CACHE)
-  #   z = TRANS_CACHE[key]
-  # else
-  #   z = Vector{T}(K - 1)
-  #   TRANS_CACHE[key] = z
-  # end
-
-  # for k in 1:K-1
-  #   z[k] = x[k] / (one(T) - sum(x[1:k-1]))
-  # end
-
-  # @simd for k = 1:K-1
-  #   @inbounds y[k] = logit(z[k]) - log(one(T) / (K-k))
-  # end
 
   sum_tmp = zero(T)
   z = x[1]
@@ -172,42 +148,9 @@ link!(y, d::SimplexDistribution, x::Vector{T}) where {T<:Real} = begin
   y
 end
 
-link(d::SimplexDistribution, X::Matrix{T}) where {T<:Real} = link!(similar(X), d, X)
-link!(Y, d::SimplexDistribution, X::Matrix{T}) where {T<:Real} = begin
-  nrow, ncol = size(X)
-  K = nrow
-
-  key = (:cache_mat, T, nrow - 1, ncol)
-  if key in keys(TRANS_CACHE)
-    Z = TRANS_CACHE[key]
-  else
-    Z = Matrix{T}(nrow - 1, ncol)
-    TRANS_CACHE[key] = Z
-  end
-
-  for k = 1:K-1
-    Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
-  end
-
-  @simd for k = 1:K-1
-    @inbounds Y[k,:] = logit(Z[k,:]) - log.(one(T) / (K-k))
-  end
-
-  Y
-end
-
-invlink(d::SimplexDistribution, y::Vector{T}) where {T<:Real} = invlink!(similar(y), d, y)
-invlink!(x, d::SimplexDistribution, y::Vector{T}) where {T<:Real} = begin
+invlink(d::SimplexDistribution, y::AV{<:Real})= invlink!(similar(y), d, y)
+function invlink!(x::AV{<:Real}, d::SimplexDistribution, y::AV{T}) where {T<:Real}
   K = length(y)
-  
-  # @simd for k = 1:K-1
-  #   @inbounds z[k] = invlogit(y[k] + log(one(T) / (K - k)))
-  # end
-  
-  # for k in 1:K-1
-  #   x[k] = (one(T) - sum(x[1:k-1])) * z[k]
-  # end
-  # x[K] = one(T) - sum(x[1:K-1])
 
   z = invlogit(y[1] + log(one(T) / (K - 1)))
   x[1] = z
@@ -220,86 +163,31 @@ invlink!(x, d::SimplexDistribution, y::Vector{T}) where {T<:Real} = begin
   sum_tmp += x[K-1]
   x[K] = one(T) - sum_tmp
 
-  # @assert sum(x) == 1 "[Turing.invlink!] simplex distribution invalid; x = $x"
   x
 end
 
-invlink(d::SimplexDistribution, Y::Matrix{T}) where {T<:Real} = invlink!(similar(Y), d, Y)
-invlink!(X, d::SimplexDistribution, Y::Matrix{T}) where {T<:Real} = begin
-  nrow, ncol = size(Y)
-  K = nrow
-
-  key = (:cache_mat, T, nrow - 1, ncol)
-  if key in keys(TRANS_CACHE)
-    Z = TRANS_CACHE[key]
-  else
-    Z = Matrix{T}(nrow - 1, ncol)
-    TRANS_CACHE[key] = Z
-  end
-
-  @simd for k = 1:K-1
-    @inbounds Z[k,:] = invlogit(Y[k,:] + log(one(T) / (K - k)))
-  end
-
-  for k = 1:K-1
-    X[k,:] = (one(T) - sum(X[1:k-1,:], 1)) .* Z[k,:]'
-  end
-  X[K,:] = one(T) - sum(X[1:K-1,:], 1)
-
-  # X[1,:] = Z[1,:]'
-  # sum_tmp = 0
-  # for k = 2:K-1
-  #   sum_tmp += X[k-1,:]
-  #   X[k,:] = (one(T) - sum_tmp') .* Z[k,:]
-  # end
-  # sum_tmp += X[K-1,:]
-  # X[K,:] = one(T) - sum_tmp'
-
-  X
-end
-
-logpdf_with_trans(d::SimplexDistribution, x::Vector{T}, transform::Bool) where {T<:Real} = begin
+function logpdf_with_trans(d::SimplexDistribution, x::AV{<:Real}, transform::Bool)
   lp = logpdf(d, x)
   if transform
     K = length(x)
-    
-    # @simd for k in 1:K-1
-    #   @inbounds z[k] = x[k] / (one(T) - sum(x[1:k-1]))
-    # end
-    # lp += sum([log(z[k]) + log(one(T) - z[k]) + log(one(T) - sum(x[1:k-1])) for k in 1:K-1])
 
-    sum_tmp = zero(T)
+    sum_tmp = zero(eltype(x))
     z = x[1]
-    lp += log(z) + log(one(T) - z)
+    lp += log(z) + log(one(eltype(x)) - z)
     @simd for k in 2:K-1
       @inbounds sum_tmp += x[k-1]
-      @inbounds z = x[k] / (one(T) - sum_tmp)
-      @inbounds lp += log(z) + log(one(T) - z) + log(one(T) - sum_tmp)
-    end
-  end
-  lp
-end
-
-logpdf_with_trans(d::SimplexDistribution, X::Matrix{T}, transform::Bool) where {T<:Real} = begin
-  lp = logpdf(d, X)
-  if transform
-    nrow, ncol = size(X)
-    K = nrow
-    Z = Matrix{T}(nrow - 1, ncol)
-    @simd for k = 1:K-1
-      @inbounds Z[k,:] = X[k,:] ./ (one(T) - sum(X[1:k-1,:],1))'
-    end
-    for k = 1:K-1
-      lp += log.(Z[k,:]) + log.(one(T) - Z[k,:]) + log.(one(T) - sum(X[1:k-1,:], 1))'
+      @inbounds z = x[k] / (one(eltype(x)) - sum_tmp)
+      @inbounds lp += log(z) + log(one(eltype(x)) - z) + log(one(eltype(x)) - sum_tmp)
     end
   end
   lp
 end
 
 # REVIEW: why do we put this piece of code here?
-logpdf_with_trans(d::Categorical, x::Int) = begin
+function logpdf_with_trans(d::Categorical, x::Int)
   d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
+
 
 #####################
 # Positive definite #
@@ -307,7 +195,7 @@ end
 
 const PDMatDistribution = Union{InverseWishart, Wishart}
 
-link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
+function link(d::PDMatDistribution, x::AM{T}) where {T<:Real}
   z = cholesky(x).U'
   dim = size(z)
   for m in 1:dim[1]
@@ -316,18 +204,10 @@ link(d::PDMatDistribution, x::Array{T,2}) where {T<:Real} = begin
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
   end
-  Array{T,2}(z)
+  Matrix{T}(z)
 end
 
-link(d::PDMatDistribution, X::Vector{Matrix{T}}) where {T<:Real} = begin
-  n = length(X)
-  for i = 1:n
-    X[i] = link(d, X[i])
-  end
-  X
-end
-
-invlink(d::PDMatDistribution, z::Array{T,2}) where {T<:Real} = begin
+function invlink(d::PDMatDistribution, z::AM{T}) where {T<:Real}
   dim = size(z)
   for m in 1:dim[1]
     z[m, m] = exp.(z[m, m])
@@ -335,58 +215,134 @@ invlink(d::PDMatDistribution, z::Array{T,2}) where {T<:Real} = begin
   for m in 1:dim[1], n in m+1:dim[2]
     z[m, n] = zero(T)
   end
-  Array{T,2}(z * z')
+  Matrix{T}(z * z')
 end
 
-invlink(d::PDMatDistribution, Z::Vector{Matrix{T}}) where {T<:Real} = begin
-  n = length(Z)
-
-  for i = 1:n
-    Z[i] = invlink(d, Z[i])
-  end
-
-  Z
-end
-
-logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T<:Real} = begin
+function logpdf_with_trans(d::PDMatDistribution, x::AM{<:Real}, transform::Bool)
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = cholesky(x).U
-    n = dim(d)
-    for i in 1:n
-      lp += (n - i + 2.0) * log(U[i, i])
+    for i in 1:dim(d)
+      lp += (dim(d) - i + 2.0) * log(U[i, i])
     end
-    lp += n * log(2.0)
+    lp += dim(d) * log(2.0)
   end
   lp
 end
 
-logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) where {T<:Real} = begin
-  lp = logpdf(d, X)
-  if transform && all(isfinite.(lp))
-    n = length(X)
-    U = Vector{Matrix{T}}(undef, n)
-    for i = 1:n
-      U[i] = cholesky(X[i]).U'
-    end
-    D = dim(d)
 
-    for j = 1:n, i in 1:D
-      lp[j] += (D - i + 2.0) * log(U[j][i,i])
-    end
-    lp .+= D * log(2.0)
-  end
-  lp
+############################################
+# Defaults (assume identity link function) #
+############################################
+
+# UnivariateDistributions
+using Distributions: UnivariateDistribution
+
+link(d::UnivariateDistribution, x::Real) = x
+link(d::UnivariateDistribution, x::AV{<:Real}) = link.(Ref(d), x)
+
+invlink(d::UnivariateDistribution, x::Real) = x
+invlink(d::UnivariateDistribution, x::AV{<:Real}) = invlink.(Ref(d), x)
+
+logpdf_with_trans(d::UnivariateDistribution, x::Real, ::Bool) = logpdf(d, x)
+function logpdf_with_trans(d::UnivariateDistribution, x::AV{<:Real}, transform::Bool)
+  return logpdf_with_trans.(Ref(d), x, transform)
 end
 
-#############
-# Callbacks #
-#############
 
-link!(x1, d::Distribution, x2) = x1
-link(d::Distribution, x) = x
+# MultivariateDistributions
+using Distributions: MultivariateDistribution
 
-invlink!(x1, d::Distribution, x2) = x1
-invlink(d::Distribution, x) = x
+link(d::MultivariateDistribution, x::AV{<:Real}) = link!(similar(x), d, x)
+link!(y::AV{<:Real}, d::MultivariateDistribution, x::AV{<:Real}) = copyto!(y, x)
+link(d::MultivariateDistribution, X::AM{<:Real}) = link(similar(X), d, X)
+function invlink!(Y::AM{<:Real}, d::MultivariateDistribution, X::AM{<:Real})
+  return [link!(view(Y, :, n), d, view(X, :, n)) for n in 1:size(X, 2)]
+end
 
-logpdf_with_trans(d::Distribution, x, transform::Bool) = logpdf(d, x)
+invlink(d::MultivariateDistribution, y::AV{<:Real}) = invlink!(similar(y), d, y)
+invlink!(x::AV{<:Real}, d::MultivariateDistribution, y::AV{<:Real}) = copyto!(x, y)
+invlink(d::MultivariateDistribution, Y::AM{<:Real}) = invlink!(similar(Y), d, Y)
+function invlink!(X::AM{<:Real}, d::MultivariateDistribution, Y::AM{<:Real})
+  return [invlink!(view(X, :, n), d, view(Y, :, n)) for n in 1:size(Y, 2)]
+end
+
+logpdf_with_trans(d::MultivariateDistribution, x::AV{<:Real}, ::Bool) = logpdf(d, x)
+function logpdf_with_trans(d::MultivariateDistribution, X::AM{<:Real}, transform::Bool)
+  return [logpdf_with_trans(d, view(X, :, n), transform) for n in 1:size(X, 2)]
+end
+
+
+# MatrixDistributions
+using Distributions: MatrixDistribution
+
+link(d::MatrixDistribution, X::AM{<:Real}) = X
+link(d::MatrixDistribution, X::AV{AM{<:Real}}) = link.(Ref(d), X)
+
+invlink(d::MatrixDistribution, Y::AM{<:Real}) = Y
+invlink(d::MatrixDistribution, Y::AV{<:AM{<:Real}}) = invlink.(Ref(d), Y)
+
+logpdf_with_trans(d::MatrixDistribution, X::AM{<:Real}, ::Bool) = logpdf(d, X)
+function logpdf_with_trans(d::MatrixDistribution, X::AV{<:AM{<:Real}}, transform::Bool)
+  return logpdf_with_trans.(Ref(d), X, Ref(transform))
+end
+
+
+# link(d::SimplexDistribution, X::AbstractMatrix{<:Real}) = link!(similar(X), d, X)
+# function link!(Y, d::SimplexDistribution, X::AbstractMatrix{T}) where {T<:Real}
+#   nrow, ncol = size(X)
+#   K = nrow
+
+#   key = (:cache_mat, T, nrow - 1, ncol)
+#   if key in keys(TRANS_CACHE)
+#     Z = TRANS_CACHE[key]
+#   else
+#     Z = Matrix{T}(undef, nrow - 1, ncol)
+#     TRANS_CACHE[key] = Z
+#   end
+
+#   for k in 1:K-1
+#     Z[k, :] = X[k, :] ./ (one(T) .- sum(X[1:k-1, :], dims=1))'
+#   end
+
+#   @simd for k in 1:K-1
+#     @inbounds Y[k, :] = logit.(Z[k, :]) .- log.(one(T) ./ (K - k))
+#   end
+
+#   Y
+# end
+
+# invlink(d::SimplexDistribution, Y::AbstractMatrix{<:Real}) = invlink!(similar(Y), d, Y)
+# function invlink!(X, d::SimplexDistribution, Y::AbstractMatrix{T}) where {T<:Real}
+#   nrow, ncol = size(Y)
+#   K = nrow
+
+#   key = (:cache_mat, T, nrow - 1, ncol)
+#   if key in keys(TRANS_CACHE)
+#     Z = TRANS_CACHE[key]
+#   else
+#     Z = Matrix{T}(nrow - 1, ncol)
+#     TRANS_CACHE[key] = Z
+#   end
+
+#   for k in 1:K-1
+#     tmp = Y[k, :]
+#     @inbounds Z[k, :] = invlogit.(tmp .+ log.(one(T) / (K - k)))
+#   end
+
+#   for k in 1:K-1
+#     X[k, :] = (one(T) .- sum(X[1:k-1, :], dims=1)) .* Z[k, :]'
+#   end
+#   X[K, :] = one(T) .- sum(X[1:K-1, :], dims=1)
+
+#   # X[1,:] = Z[1,:]'
+#   # sum_tmp = 0
+#   # for k = 2:K-1
+#   #   sum_tmp += X[k-1,:]
+#   #   X[k,:] = (one(T) - sum_tmp') .* Z[k,:]
+#   # end
+#   # sum_tmp += X[K-1,:]
+#   # X[K,:] = one(T) - sum_tmp'
+
+#   X
+# end

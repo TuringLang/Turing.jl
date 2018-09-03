@@ -1,16 +1,100 @@
+using Turing, Distributions, Test
 using Turing: link, invlink, logpdf_with_trans
-using Test
-using Distributions
 
-dists = [Arcsine(2, 4), Beta(2,2), Dirichlet(2, 3), Wishart(7, [1 0.5; 0.5 1])]
-
-for dist in dists
-  x = rand(dist)    # sample
-  y = link(dist, x) # X -> R
-  # Test if R -> X is equal to the original value
-  @test invlink(dist, y) ≈ x atol=1e-9
+# Standard tests for all distributions involving a single-sample.
+function single_sample_tests(dist)
+  x = rand(dist)
+  @test invlink(dist, link(dist, x)) ≈ x atol=1e-9
+  logpdf_with_trans(dist, x, true)
+  logpdf_with_trans(dist, x, false)
 end
 
+# Standard tests for all distributions involving multiple samples. xs should be whatever
+# the appropriate repeated version of x is for the distribution in question. ie. for
+# univariate distributions, just a vector of identical values. For vector-valued
+# distributions, a matrix whose columns are identical.
+function multi_sample_tests(dist, x, xs, N)
+  @test invlink(dist, link(dist, x)) ≈ x atol=1e-9
+  @test logpdf_with_trans(dist, xs, true) == fill(logpdf_with_trans(dist, x, true), N)
+  @test logpdf_with_trans(dist, xs, false) == fill(logpdf_with_trans(dist, x, false), N)
+end
+
+# Tests with scalar-valued distributions.
+uni_dists = [
+  Arcsine(2, 4),
+  Beta(2,2),
+  BetaPrime(),
+  Biweight(),
+  Cauchy(),
+  Chi(3),
+  Chisq(2),
+  Cosine(),
+  Epanechnikov(),
+  Erlang(),
+  Exponential(),
+  FDist(1, 1),
+  Frechet(),
+  Gamma(),
+  InverseGamma(),
+  InverseGaussian(),
+  Kolmogorov(),
+  Laplace(),
+  Levy(),
+  Logistic(),
+  LogNormal(1.0, 2.5),
+  Normal(0.1, 2.5),
+  Pareto(),
+  Rayleigh(1.0),
+  TDist(2),
+  TruncatedNormal(0, 1, -Inf, 2),
+]
+for dist in uni_dists
+
+  single_sample_tests(dist)
+
+  # specialised multi-sample tests.
+  N = 10
+  x = rand(dist)
+  xs = fill(x, N)
+  multi_sample_tests(dist, x, xs, N)
+end
+
+# Tests with vector-valued distributions.
+vector_dists = [
+  Dirichlet(2, 3),
+  MvNormal(randn(10), exp.(randn(10))),
+  MvLogNormal(MvNormal(randn(10), exp.(randn(10)))),
+]
+for dist in vector_dists
+
+  single_sample_tests(dist)
+
+  # Multi-sample tests. Columns are observations due to Distributions.jl conventions.
+  N = 10
+  x = rand(dist)
+  xs = repeat(x, 1, N)
+  multi_sample_tests(dist, x, xs, N)
+end
+
+# Tests with matrix-valued distributions.
+matrix_dists = [
+  Wishart(7, [1 0.5; 0.5 1]),
+  InverseWishart(2, [1 0.5; 0.5 1])
+]
+for dist in matrix_dists
+
+  single_sample_tests(dist)
+
+  # Multi-sample tests comprising vectors of matrices.
+  N = 10
+  x = rand(dist)
+  xs = [x for _ in 1:N]
+  multi_sample_tests(dist, x, xs, N)
+end
+
+
+
+################################## Miscelaneous old tests ##################################
 
 # julia> logpdf_with_trans(Dirichlet([1., 1., 1.]), exp.([-1000., -1000., -1000.]), true)
 # NaN

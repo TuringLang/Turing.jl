@@ -10,7 +10,7 @@ using Test
 end
 
 GaussianKernel(var) = (x) -> Normal(x, sqrt(var))
-N = 500
+N = 1000
 s1 = MH(N, (:s, GaussianKernel(3.0)), (:m, GaussianKernel(3.0)))
 s2 = MH(N, :s, :m)
 s3 = MH(N)
