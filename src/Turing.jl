@@ -65,8 +65,6 @@ global const CACHERESET  = 0b00
 global const CACHEIDCS   = 0b10
 global const CACHERANGES = 0b01
 
-global TRANS_CACHE = Dict{Tuple,Any}()
-
 #######################
 # Sampler abstraction #
 #######################
