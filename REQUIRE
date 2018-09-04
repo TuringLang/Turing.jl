@@ -6,6 +6,7 @@ Distributions 0.11.0
 ForwardDiff
 MCMCChain 0.1.0
 Flux
+Stan
 
 ProgressMeter
 
