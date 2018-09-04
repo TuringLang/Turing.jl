@@ -17,9 +17,9 @@ end
 # univariate distributions, just a vector of identical values. For vector-valued
 # distributions, a matrix whose columns are identical.
 function multi_sample_tests(dist, x, xs, N)
-  y = link(dist, copy(x))
-  @test invlink(dist, link(dist, copy(x))) ≈ x atol=1e-9
-  @test link(dist, invlink(dist, copy(y))) ≈ y atol=1e-9
+  ys = link(dist, copy(xs))
+  @test invlink(dist, link(dist, copy(xs))) ≈ xs atol=1e-9
+  @test link(dist, invlink(dist, copy(ys))) ≈ ys atol=1e-9
   @test logpdf_with_trans(dist, xs, true) == fill(logpdf_with_trans(dist, x, true), N)
   @test logpdf_with_trans(dist, xs, false) == fill(logpdf_with_trans(dist, x, false), N)
 end
