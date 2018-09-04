@@ -2,8 +2,8 @@
 # Math #
 ########
 
-@inline invlogit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = one(T) ./ (one(T) .+ exp.(-x))
-@inline logit(x::Union{T,Vector{T},Matrix{T}}) where T<:Real = log.(x ./ (one(T) - x))
+@inline invlogit(x::T) where T<:Real = one(T) / (one(T) + exp(-x))
+@inline logit(x::T) where T<:Real = log(x / (one(T) - x))
 
 # More stable, faster version of rand(Categorical)
 function randcat(p::Vector{Float64})

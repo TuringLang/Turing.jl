@@ -1,72 +1,33 @@
 # Uniform rand with range e
 randrealuni() = Real(MathConstants.e * rand())  # may Euler's number give us good luck
-randrealuni(args...) = map(x -> Real(x), 2 * rand(args...))
+randrealuni(args...) = map(Real, 2 * rand(args...))
 
-# Only use customized initialization for transformable distributions
-init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}) = inittrans(dist)
+const Transformable = Union{TransformDistribution, SimplexDistribution, PDMatDistribution}
 
-# Callbacks for un-transformable distributions
+
+#################################
+# Single-sample initialisations #
+#################################
+
+init(dist::Transformable) = inittrans(dist)
 init(dist::Distribution) = rand(dist)
 
-inittrans(dist::UnivariateDistribution) = begin
-  r = randrealuni()
-
-  r = invlink(dist, r)
-
-  r
-end
-
-inittrans(dist::MultivariateDistribution) = begin
-  D = size(dist)[1]
-
-  r = randrealuni(D)
-
-  r = invlink(dist, r)
-
-  r
-end
-
-inittrans(dist::MatrixDistribution) = begin
-  D = size(dist)
-
-  r = randrealuni(D...)
-
-  r = invlink(dist, r)
-
-  r
-end
+inittrans(dist::UnivariateDistribution) = invlink(dist, randrealuni())
+inittrans(dist::MultivariateDistribution) = invlink(dist, randrealuni(size(dist)[1]))
+inittrans(dist::MatrixDistribution) = invlink(dist, randrealuni(size(dist)...))
 
 
-# Only use customized initialization for transformable distributions
-init(dist::Union{TransformDistribution,SimplexDistribution,PDMatDistribution}, n::Int) = inittrans(dist, n)
+################################
+# Multi-sample initialisations #
+################################
 
-# Callbacks for un-transformable distributions
+init(dist::Transformable, n::Int) = inittrans(dist, n)
 init(dist::Distribution, n::Int) = rand(dist, n)
 
-inittrans(dist::UnivariateDistribution, n::Int) = begin
-  rs = randrealuni(n)
-
-  rs = invlink(dist, rs)
-
-  rs
+inittrans(dist::UnivariateDistribution, n::Int) = invlink(dist, randrealuni(n))
+function inittrans(dist::MultivariateDistribution, n::Int)
+  return invlink(dist, randrealuni(size(dist)[1], n))
 end
-
-inittrans(dist::MultivariateDistribution, n::Int) = begin
-  D = size(dist)[1]
-
-  rs = randrealuni(D, n)
-
-  rs = invlink(dist, rs)
-
-  rs
-end
-
-inittrans(dist::MatrixDistribution, n::Int) = begin
-  D = size(dist)
-
-  rs = [randrealuni(D...) for _ = 1:n]
-
-  rs = invlink(dist, rs)
-
-  rs
+function inittrans(dist::MatrixDistribution, n::Int)
+  return invlink(dist, [randrealuni(size(dist)...) for _ in 1:n])
 end
