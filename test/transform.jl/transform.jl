@@ -10,6 +10,8 @@ function single_sample_tests(dist)
   @test link(dist, invlink(dist, copy(y))) ≈ y atol=1e-9
   logpdf_with_trans(dist, x, true)
   logpdf_with_trans(dist, x, false)
+
+  @test typeof(x) == typeof(y)
 end
 
 # Standard tests for all distributions involving multiple samples. xs should be whatever
@@ -22,6 +24,8 @@ function multi_sample_tests(dist, x, xs, N)
   @test link(dist, invlink(dist, copy(ys))) ≈ ys atol=1e-9
   @test logpdf_with_trans(dist, xs, true) == fill(logpdf_with_trans(dist, x, true), N)
   @test logpdf_with_trans(dist, xs, false) == fill(logpdf_with_trans(dist, x, false), N)
+
+  @test typeof(xs) == typeof(ys)
 end
 
 # Tests with scalar-valued distributions.
