@@ -23,9 +23,9 @@ import Base: <=
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-@inline vectorize(d::UnivariateDistribution,   r::T) where {T <: Real} = Vector{Real}([r])
-@inline vectorize(d::MultivariateDistribution, r::Vector{T}) where {T <: Real} = Vector{Real}(r)
-@inline vectorize(d::MatrixDistribution,       r::Matrix{T}) where {T <: Real} = Vector{Real}(vec(r))
+vectorize(d::UnivariateDistribution, r::Real) = Vector{Real}([r])
+vectorize(d::MultivariateDistribution, r::AbstractVector{<:Real}) = Vector{Real}(r)
+vectorize(d::MatrixDistribution, r::AbstractMatrix{<:Real}) = Vector{Real}(vec(r))
 
 # NOTE:
 # We cannot use reconstruct{T} because val is always Vector{Real} then T will be Real.
@@ -38,6 +38,7 @@ import Base: <=
 @inline reconstruct(d::UnivariateDistribution,   val::Union{Vector,SubArray}, T::Type) = val[1]
 @inline reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = Array{T, 1}(val)
 @inline reconstruct(d::MatrixDistribution,       val::Union{Vector,SubArray}, T::Type) = Array{T, 2}(reshape(val, size(d)...))
+
 
 @inline reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}) = reconstruct!(r, d, val, typeof(val[1]))
 @inline reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type) = (r[:] = val; r)
