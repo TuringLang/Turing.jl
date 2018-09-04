@@ -41,10 +41,10 @@ end
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
-@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
+#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
   DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE,Stan.Adapt}
   STAN_DEFAULT_ADAPT_CONF = Stan.Adapt()
-end
+#  end
 
 # NOTE: the implementation of HMC is removed,
 #       it now reuses the one of HMCDA
@@ -181,6 +181,9 @@ assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:H
   r = vi[vn]
   # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
   # r
+  @debug "dist = $dist"
+  @debug "vn = $vn"
+  @debug "r = $r" "typeof(r)=$(typeof(r))"
   r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 

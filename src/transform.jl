@@ -348,7 +348,7 @@ invlink(d::PDMatDistribution, Z::Vector{Matrix{T}}) where {T<:Real} = begin
   Z
 end
 
-logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T<:Real} = begin
+logpdf_with_trans(d::PDMatDistribution, x::Array{T0,2}, transform::Bool) where {T0<:Union{T,Tracker.TrackedReal{T}}} where {T<:Real} = begin
   lp = logpdf(d, x)
   if transform && isfinite(lp)
     U = cholesky(x).U
@@ -361,11 +361,11 @@ logpdf_with_trans(d::PDMatDistribution, x::Array{T,2}, transform::Bool) where {T
   lp
 end
 
-logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T}}, transform::Bool) where {T<:Real} = begin
+logpdf_with_trans(d::PDMatDistribution, X::Vector{Matrix{T0}}, transform::Bool) where {T0<:Union{T,Tracker.TrackedReal{T}}} where {T<:Real} = begin
   lp = logpdf(d, X)
   if transform && all(isfinite.(lp))
     n = length(X)
-    U = Vector{Matrix{T}}(undef, n)
+    U = Vector{Matrix{T0}}(undef, n)
     for i = 1:n
       U[i] = cholesky(X[i]).U'
     end
