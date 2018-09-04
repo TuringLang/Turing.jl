@@ -131,7 +131,7 @@ link!(vi::VarInfo, spl::Sampler) = begin
       settrans!(vi, true, vn)
     end
   else
-    warn("[Turing] attempt to link a linked vi")
+    @warn("[Turing] attempt to link a linked vi")
   end
 end
 
@@ -145,7 +145,7 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
       settrans!(vi, false, vn)
     end
   else
-    warn("[Turing] attempt to invlink an invlinked vi")
+    @warn("[Turing] attempt to invlink an invlinked vi")
   end
 end
 
