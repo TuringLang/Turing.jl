@@ -129,35 +129,74 @@ end
 
 const SimplexDistribution = Union{Dirichlet}
 
-function link(d::SimplexDistribution, x::AbstractVector{<:Real})
-  y, K, T = similar(x), length(x), eltype(x)
+function link(d::SimplexDistribution, x::AbstractVector{T}) where T<:Real
+  y, K = similar(x), length(x)
 
   sum_tmp = zero(T)
   z = x[1]
-  y[1] = logit(z) - log(one(T) / (K-1))
-  @inbounds for k in 2:K-1
-    sum_tmp += x[k-1]
+  y[1] = logit(z) - log(one(T) / (K - 1))
+  @inbounds for k in 2:K - 1
+    sum_tmp += x[k - 1]
     z = x[k] / (one(T) - sum_tmp)
-    y[k] = logit(z) - log(one(T) / (K-k))
+    y[k] = logit(z) - log(one(T) / (K - k))
   end
-  y[end] = zero(T)
+  y[K] = zero(T)
+
   return y
 end
 
-function invlink(d::SimplexDistribution, y::AbstractVector{<:Real})
-  x, K, T = similar(y), length(y), eltype(y)
+# Vectorised implementation of the above.
+function link(d::SimplexDistribution, X::AbstractMatrix{T}) where T<:Real
+  Y, K, N = similar(X), size(X, 1), size(X, 2)
+
+  @inbounds for n in 1:size(X, 2)
+    sum_tmp, z = zero(T), X[1, n]
+    Y[1, n] = logit(z) - log(one(T) / (K - 1))
+    for k in 2:K - 1
+      sum_tmp += X[k - 1, n]
+      z = X[k, n] / (one(T) - sum_tmp)
+      Y[k, n] = logit(z) - log(one(T) / (K - k))
+    end
+    Y[K, n] = zero(T)
+  end
+
+  return Y
+end
+
+function invlink(d::SimplexDistribution, y::AbstractVector{T}) where T<:Real
+  x, K = similar(y), length(y)
 
   z = invlogit(y[1] + log(one(T) / (K - 1)))
   x[1] = z
   sum_tmp = zero(T)
-  @inbounds for k = 2:K-1
+  @inbounds for k = 2:K - 1
     z = invlogit(y[k] + log(one(T) / (K - k)))
     sum_tmp += x[k-1]
     x[k] = (one(T) - sum_tmp) * z
   end
   sum_tmp += x[K-1]
   x[K] = one(T) - sum_tmp
+
   return x
+end
+
+# Vectorised implementation of the above.
+function invlink(d::SimplexDistribution, Y::AbstractMatrix{T}) where T<:Real
+  X, K, N = similar(Y), size(Y, 1), size(Y, 2)
+
+  @inbounds for n in 1:size(X, 2)
+    sum_tmp, z = zero(T), invlogit(Y[1, n] + log(one(T) / (K - 1)))
+    X[1, n] = z
+    for k in 2:K - 1
+      z = invlogit(Y[k, n] + log(one(T) / (K - k)))
+      sum_tmp += X[k - 1]
+      X[k, n] = (one(T) - sum_tmp) * z
+    end
+    sum_tmp += X[K - 1, n]
+    X[K, n] = one(T) - sum_tmp
+  end
+
+  return X
 end
 
 function logpdf_with_trans(
@@ -276,7 +315,6 @@ function logpdf_with_trans(
   return [logpdf_with_trans(d, view(X, :, n), transform) for n in 1:size(X, 2)]
 end
 
-
 # MatrixDistributions
 using Distributions: MatrixDistribution
 
@@ -296,63 +334,3 @@ function logpdf_with_trans(
 )
   return logpdf_with_trans.(Ref(d), X, Ref(transform))
 end
-
-
-# link(d::SimplexDistribution, X::AbstractMatrix{<:Real}) = link!(similar(X), d, X)
-# function link!(Y, d::SimplexDistribution, X::AbstractMatrix{T}) where {T<:Real}
-#   nrow, ncol = size(X)
-#   K = nrow
-
-#   key = (:cache_mat, T, nrow - 1, ncol)
-#   if key in keys(TRANS_CACHE)
-#     Z = TRANS_CACHE[key]
-#   else
-#     Z = Matrix{T}(undef, nrow - 1, ncol)
-#     TRANS_CACHE[key] = Z
-#   end
-
-#   for k in 1:K-1
-#     Z[k, :] = X[k, :] ./ (one(T) .- sum(X[1:k-1, :], dims=1))'
-#   end
-
-#   @simd for k in 1:K-1
-#     @inbounds Y[k, :] = logit.(Z[k, :]) .- log.(one(T) ./ (K - k))
-#   end
-
-#   Y
-# end
-
-# invlink(d::SimplexDistribution, Y::AbstractMatrix{<:Real}) = invlink!(similar(Y), d, Y)
-# function invlink!(X, d::SimplexDistribution, Y::AbstractMatrix{T}) where {T<:Real}
-#   nrow, ncol = size(Y)
-#   K = nrow
-
-#   key = (:cache_mat, T, nrow - 1, ncol)
-#   if key in keys(TRANS_CACHE)
-#     Z = TRANS_CACHE[key]
-#   else
-#     Z = Matrix{T}(nrow - 1, ncol)
-#     TRANS_CACHE[key] = Z
-#   end
-
-#   for k in 1:K-1
-#     tmp = Y[k, :]
-#     @inbounds Z[k, :] = invlogit.(tmp .+ log.(one(T) / (K - k)))
-#   end
-
-#   for k in 1:K-1
-#     X[k, :] = (one(T) .- sum(X[1:k-1, :], dims=1)) .* Z[k, :]'
-#   end
-#   X[K, :] = one(T) .- sum(X[1:K-1, :], dims=1)
-
-#   # X[1,:] = Z[1,:]'
-#   # sum_tmp = 0
-#   # for k = 2:K-1
-#   #   sum_tmp += X[k-1,:]
-#   #   X[k,:] = (one(T) - sum_tmp') .* Z[k,:]
-#   # end
-#   # sum_tmp += X[K-1,:]
-#   # X[K,:] = one(T) - sum_tmp'
-
-#   X
-# end
