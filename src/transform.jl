@@ -255,7 +255,6 @@ function logpdf_with_trans(
   return logpdf_with_trans.(Ref(d), x, transform)
 end
 
-
 # MultivariateDistributions
 using Distributions: MultivariateDistribution
 
