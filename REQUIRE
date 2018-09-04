@@ -1,13 +1,10 @@
-julia 0.6
+julia 0.7
 
-Requires
-Markdown
-Distributions 0.11.0
-ForwardDiff
-MCMCChain 0.1.0
-Flux
+Requires 0.5.0
+Distributions 0.16.0
+ForwardDiff 0.8.0
+MCMCChain 0.1.1
+Flux 0.6.0
 Stan
-
-ProgressMeter
-
-BinaryProvider 0.3.0
+ProgressMeter 0.6.0
+BinaryProvider 0.4.0
