@@ -95,7 +95,6 @@ verifygrad(grad::Vector{Float64}) = begin
 end
 
 # Direct call of ForwardDiff.gradient; this is slow
-
 gradient_slow(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   vi = deepcopy(_vi)
