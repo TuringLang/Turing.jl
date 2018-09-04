@@ -57,11 +57,7 @@ function gen_rev_func(vi, spl)
     elseif ADBACKEND == :reverse_diff
       vi_spl = vi[spl]
       for i = 1:length(θ_old)
-        if isa(vi_spl[i], ReverseDiff.TrackedReal)
-          vi_spl[i].value = θ_old[i]
-        else
-          vi_spl[i] = θ_old[i]
-        end
+        vi_spl[i] = θ_old[i]
       end
     end
     setlogp!(vi, old_logp)

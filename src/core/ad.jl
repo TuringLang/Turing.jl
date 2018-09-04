@@ -79,6 +79,8 @@ gradient(vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
     spl.info[:grad_cache][θ_hash] = grad
   end
 
+  vi.logp = realpart(vi.logp)
+
   grad
 end
 
@@ -93,8 +95,7 @@ verifygrad(grad::Vector{Float64}) = begin
 end
 
 # Direct call of ForwardDiff.gradient; this is slow
-
-gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
+gradient_slow(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
 
   vi = deepcopy(_vi)
 
@@ -108,38 +109,19 @@ gradient2(_vi::VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
   g(vi[spl])
 end
 
-@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-
-gradient_r(theta::Vector{Float64}, vi::VarInfo, model::Function) = gradient_r(theta, vi, model, nothing)
-gradient_r(theta::Vector{Float64}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
-    inputs = (theta)
-
-    if Turing.ADSAFE || (spl == nothing || length(spl.info[:reverse_diff_cache]) == 0)
-        f_r(ipts) = begin
-          vi[spl][:] = ipts[:]
-          -runmodel(model, vi, spl).logp
-        end
-        gtape = GradientTape(f_r, inputs)
-        ctape = compile(gtape)
-        res = (similar(theta))
-
-        if spl != nothing
-          spl.info[:reverse_diff_cache][:ctape] = ctape
-          spl.info[:reverse_diff_cache][:res] = res
-        end
-    else
-        ctape = spl.info[:reverse_diff_cache][:ctape]
-        res = spl.info[:reverse_diff_cache][:res]
-    end
-
-    grad = ReverseDiff.gradient!(res, ctape, inputs)
-
-    # grad = ReverseDiff.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), inputs)
-
-    # vi[spl] = realpart(vi[spl])
-    # vi.logp = 0
-
-    grad
+gradient_r(theta::AbstractVector{<:Real}, vi::VarInfo, model::Function) = 
+  gradient_r(theta, vi, model, nothing)
+gradient_r(theta::AbstractVector{<:Real}, vi::Turing.VarInfo, model::Function, spl::Union{Nothing, Sampler}) = begin
+  # Use Flux.Tracker to get gradient
+  grad = Tracker.gradient(x -> (vi[spl] = x; -runmodel(model, vi, spl).logp), theta)
+  # Clean tracked numbers 
+  # Numbers do not need to be tracked between two gradient calls
+  vi.logp = vi.logp.data
+  vi_spl = vi[spl]
+  for i = 1:length(theta)
+    vi_spl[i] = vi_spl[i].data
+  end
+  # Return non-tracked graident value
+  return first(grad).data
 end
 
-end

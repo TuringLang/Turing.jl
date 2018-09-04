@@ -16,25 +16,21 @@ using LinearAlgebra
 using ProgressMeter
 using Markdown
 
-@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
+#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
   using Stan
   import Stan: Adapt, Hmc
-end
-@init @require ReverseDiff="37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-  using ReverseDiff: GradientTape, GradientConfig, gradient!, compile, TrackedArray
-  import ReverseDiff: gradient
-end
-
+#  end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
+using Flux: Tracker
 import MCMCChain: AbstractChains, Chains
 
 ##############################
 # Global variables/constants #
 ##############################
 
-global ADBACKEND = :forward_diff
+global ADBACKEND = :reverse_diff
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   global ADBACKEND = backend_sym
