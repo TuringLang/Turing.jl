@@ -209,15 +209,15 @@ function link(d::PDMatDistribution, X::AbstractMatrix{T}) where {T<:Real}
   for m in 1:size(Y, 1)
     Y[m, m] = log(Y[m, m])
   end
-  return Y
+  return Matrix(Y)
 end
 
-function invlink(d::PDMatDistribution, Y::LowerTriangular{T}) where {T<:Real}
+function invlink(d::PDMatDistribution, Y::AbstractMatrix{T}) where {T<:Real}
   X, dim = copy(Y), size(Y)
   for m in 1:size(X, 1)
     X[m, m] = exp(X[m, m])
   end
-  return X * X'
+  return LowerTriangular(X) * LowerTriangular(X)'
 end
 
 function logpdf_with_trans(d::PDMatDistribution, X::AbstractMatrix{<:Real}, transform::Bool)
@@ -307,10 +307,10 @@ end
 # MatrixDistributions
 using Distributions: MatrixDistribution
 
-link(d::MatrixDistribution, X::AbstractMatrix{<:Real}) = X
+link(d::MatrixDistribution, X::AbstractMatrix{<:Real}) = copy(X)
 link(d::MatrixDistribution, X::AbstractVector{<:AbstractMatrix{<:Real}}) = link.(Ref(d), X)
 
-invlink(d::MatrixDistribution, Y::AbstractMatrix{<:Real}) = Y
+invlink(d::MatrixDistribution, Y::AbstractMatrix{<:Real}) = copy(Y)
 function invlink(d::MatrixDistribution, Y::AbstractVector{<:AbstractMatrix{<:Real}})
   return invlink.(Ref(d), Y)
 end
