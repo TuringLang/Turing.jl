@@ -129,46 +129,35 @@ end
 
 const SimplexDistribution = Union{Dirichlet}
 
-link(d::SimplexDistribution, x::AbstractVector{<:Real}) = link!(similar(x), d, x)
-function link!(
-  y::AbstractVector{<:Real},
-  d::SimplexDistribution,
-  x::AbstractVector{<:Real},
-)
-  K, T = length(x), eltype(x)
+function link(d::SimplexDistribution, x::AbstractVector{<:Real})
+  y, K, T = similar(x), length(x), eltype(x)
 
   sum_tmp = zero(T)
   z = x[1]
   y[1] = logit(z) - log(one(T) / (K-1))
-  @simd for k in 2:K-1
-    @inbounds sum_tmp += x[k-1]
-    @inbounds z = x[k] / (one(T) - sum_tmp)
-    @inbounds y[k] = logit(z) - log(one(T) / (K-k))
+  @inbounds for k in 2:K-1
+    sum_tmp += x[k-1]
+    z = x[k] / (one(T) - sum_tmp)
+    y[k] = logit(z) - log(one(T) / (K-k))
   end
-
-  y
+  y[end] = zero(T)
+  return y
 end
 
-invlink(d::SimplexDistribution, y::AbstractVector{<:Real})= invlink!(similar(y), d, y)
-function invlink!(
-  x::AbstractVector{<:Real},
-  d::SimplexDistribution,
-  y::AbstractVector{<:Real},
-)
-  K, T = length(y), eltype(y)
+function invlink(d::SimplexDistribution, y::AbstractVector{<:Real})
+  x, K, T = similar(y), length(y), eltype(y)
 
   z = invlogit(y[1] + log(one(T) / (K - 1)))
   x[1] = z
   sum_tmp = zero(T)
-  @simd for k = 2:K-1
-    @inbounds z = invlogit(y[k] + log(one(T) / (K - k)))
-    @inbounds sum_tmp += x[k-1]
-    @inbounds x[k] = (one(T) - sum_tmp) * z
+  @inbounds for k = 2:K-1
+    z = invlogit(y[k] + log(one(T) / (K - k)))
+    sum_tmp += x[k-1]
+    x[k] = (one(T) - sum_tmp) * z
   end
   sum_tmp += x[K-1]
   x[K] = one(T) - sum_tmp
-
-  x
+  return x
 end
 
 function logpdf_with_trans(
@@ -183,18 +172,18 @@ function logpdf_with_trans(
     sum_tmp = zero(eltype(x))
     z = x[1]
     lp += log(z) + log(one(eltype(x)) - z)
-    @simd for k in 2:K-1
-      @inbounds sum_tmp += x[k-1]
-      @inbounds z = x[k] / (one(eltype(x)) - sum_tmp)
-      @inbounds lp += log(z) + log(one(eltype(x)) - z) + log(one(eltype(x)) - sum_tmp)
+    @inbounds for k in 2:K-1
+      sum_tmp += x[k-1]
+      z = x[k] / (one(eltype(x)) - sum_tmp)
+      lp += log(z) + log(one(eltype(x)) - z) + log(one(eltype(x)) - sum_tmp)
     end
   end
-  lp
+  return lp
 end
 
 # REVIEW: why do we put this piece of code here?
 function logpdf_with_trans(d::Categorical, x::Int)
-  d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
+  return d.p[x] > 0.0 && insupport(d, x) ? log(d.p[x]) : eltype(d.p)(-Inf)
 end
 
 
@@ -225,7 +214,7 @@ function logpdf_with_trans(d::PDMatDistribution, X::AbstractMatrix{<:Real}, tran
   if transform && isfinite(lp)
     U = cholesky(X).U
     for i in 1:dim(d)
-      lp += (dim(d) - i + 2.0) * log(U[i, i])
+      lp += (dim(d) - i + 2) * log(U[i, i])
     end
     lp += dim(d) * log(2.0)
   end
@@ -258,37 +247,22 @@ end
 # MultivariateDistributions
 using Distributions: MultivariateDistribution
 
-link(d::MultivariateDistribution, x::AbstractVector{<:Real}) = link!(similar(x), d, x)
-function link!(
-  y::AbstractVector{<:Real},
-  d::MultivariateDistribution,
-  x::AbstractVector{<:Real},
-)
-  return copyto!(y, x)
-end
-link(d::MultivariateDistribution, X::AbstractMatrix{<:Real}) = link(similar(X), d, X)
-function invlink!(
-  Y::AbstractMatrix{<:Real},
-  d::MultivariateDistribution,
-  X::AbstractMatrix{<:Real},
-)
-  return [link!(view(Y, :, n), d, view(X, :, n)) for n in 1:size(X, 2)]
+link(d::MultivariateDistribution, x::AbstractVector{<:Real}) = copy(x)
+function link(d::MultivariateDistribution, X::AbstractMatrix{<:Real})
+  Y = similar(X)
+  for n in 1:size(X, 2)
+    Y[:, n] = link(d, view(X, :, n))
+  end
+  return Y
 end
 
-invlink(d::MultivariateDistribution, y::AbstractVector{<:Real}) = invlink!(similar(y), d, y)
-function invlink!(
-  x::AbstractVector{<:Real},
-  d::MultivariateDistribution,
-  y::AbstractVector{<:Real})
-  return copyto!(x, y)
-end
-invlink(d::MultivariateDistribution, Y::AbstractMatrix{<:Real}) = invlink!(similar(Y), d, Y)
-function invlink!(
-  X::AbstractMatrix{<:Real},
-  d::MultivariateDistribution,
-  Y::AbstractMatrix{<:Real},
-)
-  return [invlink!(view(X, :, n), d, view(Y, :, n)) for n in 1:size(Y, 2)]
+invlink(d::MultivariateDistribution, y::AbstractVector{<:Real}) = copy(y)
+function invlink(d::MultivariateDistribution, Y::AbstractMatrix{<:Real})
+  X = similar(Y)
+  for n in 1:size(Y, 2)
+    X[:, n] = invlink(d, view(Y, :, n))
+  end
+  return X
 end
 
 function logpdf_with_trans(d::MultivariateDistribution, x::AbstractVector{<:Real}, ::Bool)
