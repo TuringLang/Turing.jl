@@ -1,13 +1,4 @@
-module Traces
-using Markdown
-using Turing: Sampler
 using Turing.VarReplay
-
-include("taskcopy.jl")
-include("tarray.jl")
-
-export Trace, current_trace, fork, forkr, randr, TArray, tzeros,
-       localcopy, consume, produce
 
 mutable struct Trace
   task  ::  Task
@@ -43,7 +34,7 @@ function Trace(f::Function, spl::Sampler, vi :: VarInfo)
 end
 
 # step to the next observe statement, return log likelihood
-consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
+Turing.consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)
@@ -73,5 +64,3 @@ function forkr(trace :: Trace)
 end
 
 current_trace() = current_task().storage[:turing_trace]
-
-end

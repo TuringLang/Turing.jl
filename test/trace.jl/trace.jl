@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: Trace, Trace, current_trace, fork, VarName, Sampler
+import Turing: Trace, current_trace, fork, VarName, Sampler
 
 global n = 0
 
