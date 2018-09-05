@@ -10,7 +10,7 @@ macro VarName(ex::Union{Expr, Symbol})
   s = string(gensym())
   if isa(ex, Symbol)
     ex_str = string(ex)
-    return :(Symbol($ex_str), nothing, Symbol($s))
+    return :(Symbol($ex_str), (), Symbol($s))
   elseif ex.head == :ref
     _2 = ex
     _1 = ""
