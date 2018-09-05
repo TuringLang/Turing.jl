@@ -10,7 +10,7 @@ macro VarName(ex::Union{Expr, Symbol})
   s = string(gensym())
   if isa(ex, Symbol)
     ex_str = string(ex)
-    return :(Symbol($ex_str), Symbol($s))
+    return :(Symbol($ex_str), "nothing", Symbol($s))
   elseif ex.head == :ref
     _2 = ex
     _1 = ""
@@ -25,7 +25,7 @@ macro VarName(ex::Union{Expr, Symbol})
     end
     return esc(parse(_1))
   else
-    error("VarName: Mis-formed variable name $(e)!")
+    error("VarName: Mis-formed variable name $(ex)!")
   end
 end
 
@@ -83,7 +83,8 @@ macro ~(left, right)
       #csym_str = string(gensym())
       if isa(left, Symbol)
         # Symbol
-        csym = Symbol(string(Turing._compiler_[:fname])*"_var"*string(@__LINE__))
+        sym, idcs, csym = @VarName(left)
+        csym = Symbol(string(Turing._compiler_[:fname])*string(csym))
         syms = Symbol[csym, left]
         assume_ex = quote
           vn = Turing.VarName(vi, $syms, "")
@@ -109,7 +110,7 @@ macro ~(left, right)
       else
         assume_ex = quote
           sym, idcs, csym = @VarName $left
-          csym_str = string(Turing._compiler_[:fname]) * string(@__LINE__)
+          csym_str = string(Turing._compiler_[:fname])*string(csym)
           indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
           vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
           $(left), __lp = Turing.assume(
