@@ -90,8 +90,8 @@ mutable struct Sampler{T<:InferenceAlgorithm}
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
-include("helper.jl")
-include("transform.jl")
+include("utilities/helper.jl")
+include("utilities/transform.jl")
 include("core/varinfo.jl")  # core internal variable container
 include("core/trace.jl")   # to run probabilistic programs as tasks
 
