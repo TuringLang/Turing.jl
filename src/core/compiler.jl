@@ -37,7 +37,7 @@ Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
 If `var_name` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if `var_name` is defined, this variable will be treated as data.
 """
 macro ~(left::Real, right)
-  
+
   # Call observe
   esc(
       quote
@@ -171,43 +171,14 @@ macro model(fexpr)
   #      Main.eval(ex)
   #   end
 
-	# translate all ~ occurences to macro calls
+  # translate all ~ occurences to macro calls
   fexpr = translate(fexpr)
 
-	# extract components of the model definition
+  # extract components of the model definition
   fname, fargs, fbody = extractcomponents(fexpr)
 
-  # Modify fbody, so that we always return VarInfo
-  fbody_inner = deepcopy(fbody)
-
-  return_ex = fbody.args[end] # get last statement of defined model
-  if typeof(return_ex) == Symbol
-    pop!(fbody_inner.args)
-    # NOTE: code below is commented out to disable explict return
-    # vstr = string(return_ex)
-    # push!(fbody_inner.args, :(vn = Turing.VarName(:ret, Symbol($vstr*"_ret"), "", 1)))
-    # NOTE: code above is commented out to disable explict return
-  elseif return_ex.head == :return || return_ex.head == :tuple
-    pop!(fbody_inner.args)
-    # NOTE: code below is commented out to disable explict return
-    # # Turn statement from return to tuple
-    # if return_ex.head == :return && typeof(return_ex.args[1]) != Symbol && return_ex.args[1].head == :tuple
-    #   return_ex = return_ex.args[1]
-    # end
-    #
-    # # Replace :return or :tuple statement with corresponding operations on vi
-    # for v = return_ex.args
-    #   @assert typeof(v) == Symbol "Returned variable ($v) name must be a symbol."
-    #   push!(fbody_inner.args, :(if sampler != nothing vi.pred[Symbol($(string(v)))] = Turing.realpart($v) end))
-    # end
-    # NOTE: code above is commented out to disable explict return
-  end
-
-  pushfirst!(fbody_inner.args, :(_lp = zero(Real)))
-  push!(fbody_inner.args, :(vi.logp = _lp))
-  push!(fbody_inner.args, Expr(:return, :vi)) # always return vi in the end of function body
-
-  @debug fbody_inner
+  # Insert varinfo expressions into the function body 
+  body_inner = insertvarinfo(fbody)
 
   fname_inner_str = "$(fname)_model"
   fname_inner = Symbol(fname_inner_str)
@@ -326,22 +297,41 @@ end
 ###################
 # Helper function #
 ###################
+insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
+
+function insertvarinfo!(fexpr::Expr)
+  return_ex = fexpr.args[end] # get last statement of defined model
+  if typeof(return_ex) == Symbol
+    pop!(fexpr.args)
+  elseif return_ex.head == :return || return_ex.head == :tuple
+    pop!(fexpr.args)
+  else
+    @error("Unknown return expression: $(return_ex)")
+  end
+
+  pushfirst!(fexpr.args, :(_lp = zero(Real)))
+  push!(fexpr.args, :(vi.logp = _lp))
+  push!(fexpr.args, Expr(:return, :vi))
+
+  fexpr
+end
+
 function extractcomponents_(fnode::LineNumberNode, fexpr::Expr)
-	return extractcomponents_(fexpr.args[1], fexpr.args[2])
+  return extractcomponents_(fexpr.args[1], fexpr.args[2])
 end
 
 function extractcomponents_(fexpr::Expr, args)
-	return (fexpr, args)
+  return (fexpr, args)
 end
 
 function extractcomponents(fexpr::Expr)
 
-	fheader, fbody = extractcomponents_(fexpr.args[1], fexpr.args[2])  
+  fheader, fbody = extractcomponents_(fexpr.args[1], fexpr.args[2])  
 
-	# model name
-	fname = fheader.args[1]
-	# model parameters, e.g. (x,y; z= ....)	
-	fargs = fheader.args[2:end]
+  # model name
+  fname = fheader.args[1]
+  # model parameters, e.g. (x,y; z= ....)	
+  fargs = fheader.args[2:end]
 
   # Ensure we have allow for keyword arguments, e.g.
   #   f(x,y)
@@ -355,7 +345,7 @@ function extractcomponents(fexpr::Expr)
     insert!(fargs, 1, Expr(:parameters))
   end
 
-	return (fname, fargs, fbody)
+  return (fname, fargs, fbody)
 end
 
 

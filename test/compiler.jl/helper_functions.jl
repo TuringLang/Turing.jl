@@ -23,4 +23,9 @@ fname, fargs, fbody = Turing.extractcomponents(fexpr)
 @test length(fargs) == 2
 @test fbody == fexpr.args[2].args[2]
 
-# test 
+# test the insertion of the VarInfo statements
+fbody2 = Turing.insertvarinfo(fbody)
+
+@test fbody2.args[1] == :(_lp = zero(Real))
+@test fbody2.args[end-1] == :(vi.logp = _lp)
+@test fbody2.args[end] == :(return vi)
