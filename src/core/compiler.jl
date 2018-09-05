@@ -1,5 +1,34 @@
 using Base.Meta: parse
 
+"""
+  @data(model_f(), data_dict)
+
+Manipulate the keyword arguments of the function call 
+of model_f() to use the data specified in the data_dict dictionary.
+
+Example:
+```julia
+f(;x = 1) = 2*x
+d = Dict(x => 2)
+
+@data(f(), d) # => 4
+```
+"""
+macro data(fexpr::Expr, dexpr::Expr)
+
+  if (dexpr.args[1] == :Dict)
+    dargs = filter(d -> d.args[1] == :(=>), dexpr.args[2:end])
+    fname = string(fexpr.args[1])
+
+    fcall = Expr(:call, Symbol(fname))
+    for kw in dargs
+      push!(fcall.args, Expr(:kw, kw.args[2], kw.args[3]))
+    end
+
+    esc(fcall)
+  end
+end
+
 #################
 # Overload of ~ #
 #################
@@ -30,7 +59,7 @@ macro VarName(ex::Union{Expr, Symbol})
 end
 
 """
-var_name ~ Distribution()
+  var_name ~ Distribution()
 
 Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
 
@@ -131,7 +160,7 @@ end
 #################
 
 """
-@model(name, fbody)
+  @model(name, fbody)
 
 Wrapper for models.
 
@@ -180,22 +209,25 @@ macro model(fexpr)
   # Insert varinfo expressions into the function body 
   body_inner = insertvarinfo(fbody)
 
-  fname_inner_str = "$(fname)_model"
-  fname_inner = Symbol(fname_inner_str)
-  fdefn_inner = Expr(:(=), fname_inner,
-                     Expr(:function, Expr(:call, fname_inner))) # fdefn = :( $fname() )
-  # push!(fdefn_inner.args[2].args[1].args, fargs_inner...)   # set parameters (x,y;data..)
+  # construct new function
+  fname_inner = Symbol("$(fname)_model")
+  fname_inner_str = string(fname_inner)
+  fdefn_inner_func = constructfunc(
+                                   fname_inner,
+                                   [
+                                    :(vi::Turing.VarInfo),
+                                    :(sampler::Union{Nothing,Turing.Sampler})
+                                   ],
+                                   fbody_inner
+                                  )
+  fdefn_inner = Expr(:(=), fname_inner, fdefn_inner_func) 
 
-  push!(fdefn_inner.args[2].args[1].args, :(vi::Turing.VarInfo))
-  push!(fdefn_inner.args[2].args[1].args, :(sampler::Union{Nothing,Turing.Sampler}))
-
-  push!(fdefn_inner.args[2].args, deepcopy(fbody_inner))    # set function definition
-  @debug fdefn_inner
-
+  # construct helper functions
   fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
   fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
   fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
 
+  # construct compiler dictionary
   compiler = Dict(:fname => fname,
                   :fargs => fargs,
                   :fbody => fbody,
@@ -208,24 +240,34 @@ macro model(fexpr)
 
   # Outer function defintion 1: f(x,y) ==> f(x,y;data=Dict())
   fargs_outer = deepcopy(fargs)
-  # Add data argument to outer function
-  push!(fargs_outer[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+
+  # Add data argument to outer function -> TODO: move to extra macro!
+  #push!(fargs_outer[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
+
   # Add data argument to outer function
   push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
+
+  # turn f(x;..) into f(x=nothing;..)
   for i = 2:length(fargs_outer)
-    s = fargs_outer[i]
-    if isa(s, Symbol)
-      fargs_outer[i] = Expr(:kw, s, :nothing) # turn f(x;..) into f(x=nothing;..)
+    if isa(fargs_outer[i], Symbol)
+      fargs_outer[i] = Expr(:kw, fargs_outer[i], :nothing)
     end
   end
 
-  fdefn_outer = Expr(:function, Expr(:call, fname, fargs_outer...),
-                     Expr(:block, Expr(:return, fname_inner)))
+  # construct outer call-back function
+  fdefn_outer = constructfunc(
+                              fname,
+                              fargs_outer,
+                              Expr(:block, Expr(:return, fname_inner))
+                             )
 
+  # add function definitions
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_3)))
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_2)))
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback_1)))
   pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
+
+  # add 
   pushfirst!(fdefn_outer.args[2].args, quote
                # Check fargs, data
                Turing.eval(:(_compiler_ = deepcopy($compiler)))
@@ -286,6 +328,8 @@ macro model(fexpr)
       pushfirst!(fdefn_outer.args[2].args, data_check_ex)
     end
   end
+
+
   pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
 
   @debug esc(fdefn_outer)
@@ -297,6 +341,17 @@ end
 ###################
 # Helper function #
 ###################
+function constructfunc(fname::Symbol, fargs, fbody)
+  fdefn = Expr(:function, 
+               Expr(:call, 
+                    fname,
+                    fargs...
+                   ),
+               deepcopy(fbody)
+              )
+  return fdefn
+end
+
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
 
 function insertvarinfo!(fexpr::Expr)

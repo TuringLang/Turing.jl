@@ -29,3 +29,9 @@ fbody2 = Turing.insertvarinfo(fbody)
 @test fbody2.args[1] == :(_lp = zero(Real))
 @test fbody2.args[end-1] == :(vi.logp = _lp)
 @test fbody2.args[end] == :(return vi)
+
+# test function construction
+ftest = Turing.constructfunc(:test_f, [:x, :y], Expr(:block, Expr(:return, 1)))
+eval(ftest)
+
+@test test_f(1, 1) == 1
