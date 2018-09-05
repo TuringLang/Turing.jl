@@ -152,10 +152,10 @@ function resample!( pc :: ParticleContainer,
   map(i->num_children[i]+=1, indx)
   for i = 1:n1
     is_ref = particles[i] == ref
-    p = is_ref ? Traces.fork(particles[i], is_ref) : particles[i]
+    p = is_ref ? fork(particles[i], is_ref) : particles[i]
     num_children[i] > 0 && push!(pc, p)
     for k=1:num_children[i]-1
-      newp = Traces.fork(p, is_ref)
+      newp = fork(p, is_ref)
       push!(pc, newp)
     end
   end
