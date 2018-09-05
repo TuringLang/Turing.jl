@@ -1,4 +1,4 @@
-# Turing.jl
+# Turing.jl Documentation
 
 **Turing** is a *universal* probabilistic programming language with a focus on intuitive modelling interface, composable probabilistic inference and computational scalability.
 
