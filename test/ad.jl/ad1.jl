@@ -23,7 +23,7 @@ mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(getval(vi, svn)[1])
 _m = realpart(getval(vi, mvn)[1])
 spl = nothing
-∇E = gradient_forward(realpart(vi[spl]), vi, ad_test_f)
+_, ∇E = gradient_forward(realpart(vi[spl]), vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)

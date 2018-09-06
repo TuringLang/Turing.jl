@@ -32,7 +32,7 @@ function gradient_forward(
   # Replace old parameters to ensure this function doesn't mutate `vi`.
   vi[spl] = θ_old
 
-  return ∂l∂θ
+  return getlogp(vi), ∂l∂θ
 end
 
 """
