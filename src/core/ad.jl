@@ -47,27 +47,27 @@ Computes the gradient of the log joint of `θ` for the model specified by `(vi, 
 using reverse-mode AD from Flux.jl.
 """
 function gradient_reverse(
-  x::AbstractVector{<:Real},
+  θ::AbstractVector{<:Real},
   vi::Turing.VarInfo,
   model::Function,
   spl::Union{Nothing, Sampler}=nothing,
 )
   # Specify objective function.
-  function f(x)
-    vi[spl] = x
+  function f(θ)
+    vi[spl] = θ
     return -runmodel(model, vi, spl).logp
   end
 
   # Compute forward and reverse passes.
-  l, ȳ = Tracker.forward(f, x)
-  ∂l∂x = ȳ(1)[1]
+  l, ȳ = Tracker.forward(f, θ)
+  ∂l∂θ = ȳ(1)[1]
 
   # Remove tracking info from variables in model (because mutable state).
   vi.logp = Tracker.data(vi.logp)
   vi[spl] .= Tracker.data.(vi[spl])
 
   # Return non-tracked gradient value
-  return Tracker.data(l), Tracker.data(∂l∂x)
+  return Tracker.data(l), Tracker.data(∂l∂θ)
 end
 
 function verifygrad(grad::AbstractVector{<:Real})
