@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: gradient_r, invlink, link, getval, realpart
+using Turing: gradient_reverse, invlink, link, getval, realpart
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -24,7 +24,7 @@ _s = realpart(getval(vi, svn)[1])
 _m = realpart(getval(vi, mvn)[1])
 
 x = map(_->Float64(_), vi[nothing])
-∇E = gradient_r(x, vi, ad_test_f)
+∇E = gradient_reverse(x, vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)
