@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: gradient, invlink, link, getval, realpart
+using Turing: gradient_forward, invlink, link, getval, realpart
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -22,7 +22,8 @@ svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = realpart(getval(vi, svn)[1])
 _m = realpart(getval(vi, mvn)[1])
-∇E = gradient(vi, ad_test_f)
+spl = nothing
+∇E = gradient_forward(realpart(vi[spl]), vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)
