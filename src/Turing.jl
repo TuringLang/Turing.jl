@@ -103,7 +103,7 @@ using Turing.VarReplay
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, @VarName                   # modelling
+export @model, @~, @VarName, @data            # modelling
 export MH, Gibbs                              # classic sampling
 export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
 export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
