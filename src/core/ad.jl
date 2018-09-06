@@ -14,6 +14,17 @@ function gradient_forward(
   vi::VarInfo,
   model::Function,
   spl::Union{Nothing, Sampler}=nothing,
+  chunk_size::Int=CHUNKSIZE,
+)
+  return _gradient_forward(θ, vi, model, spl, ForwardDiff.Chunk(min(length(θ), chunk_size)))
+end
+
+function _gradient_forward(
+  θ::AbstractVector{<:Real},
+  vi::VarInfo,
+  model::Function,
+  spl::Union{Nothing, Sampler},
+  chunk::ForwardDiff.Chunk,
 )
   # Record old parameters.
   θ_old = vi[spl]
@@ -25,7 +36,6 @@ function gradient_forward(
   end
 
   # Set chunk size and do ForwardMode.
-  chunk = ForwardDiff.Chunk(min(CHUNKSIZE, length(θ)))
   config = ForwardDiff.GradientConfig(f, θ, chunk)
   ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
 
