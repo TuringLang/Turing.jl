@@ -78,7 +78,7 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     @debug "recording old variables..."
     old_θ = realpart(vi[spl]);
     θ = deepcopy(old_θ)
-    grad = gradient_forward(old_θ, vi, model, spl)
+    _, grad = gradient_forward(old_θ, vi, model, spl)
     old_v = deepcopy(spl.info[:v])
     v = deepcopy(old_v)
 

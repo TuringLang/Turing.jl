@@ -11,8 +11,7 @@ function gen_grad_func(vi, spl, model)
   grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
     if ADBACKEND == :forward_diff
-      grad = gradient_forward(θ, vi, model, spl)
-      lp = getlogp(vi)
+      lp, grad = gradient_forward(θ, vi, model, spl)
     elseif ADBACKEND == :reverse_diff
       lp, grad = gradient_reverse(θ, vi, model, spl)
     end
