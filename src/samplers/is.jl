@@ -50,13 +50,13 @@ sample(model::Function, alg::IS) = begin
   Chain(exp.(le), samples)
 end
 
-assume(spl::Sampler{IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   r = rand(dist)
   push!(vi, vn, r, dist, 0)
   r, zero(Real)
 end
 
-observe(spl::Sampler{IS}, dist::Distribution, value::Any, vi::VarInfo) = begin
+observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo) = begin
   # acclogp!(vi, logpdf(dist, value))
   logpdf(dist, value)
 end

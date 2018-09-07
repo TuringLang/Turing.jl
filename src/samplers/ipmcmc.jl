@@ -24,22 +24,24 @@ end
 sample(gdemo([1.5, 2]), IPMCMC(100, 100, 4, 2))
 ```
 """
-mutable struct IPMCMC <: InferenceAlgorithm
+mutable struct IPMCMC{T, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   n_nodes               ::    Int         # number of nodes running SMC and CSMC
   n_csmc_nodes          ::    Int         # number of nodes CSMC
-  resampler             ::    Function    # function to resample
-  space                 ::    Set         # sampling space, emtpy means all
+  resampler             ::    F           # function to resample
+  space                 ::    Set{T}      # sampling space, emtpy means all
   gid                   ::    Int         # group ID
-  IPMCMC(n1::Int, n2::Int) = new(n1, n2, 32, 16, resampleSystematic, Set(), 0)
-  IPMCMC(n1::Int, n2::Int, n3::Int) = new(n1, n2, n3, Int(ceil(n3/2)), resampleSystematic, Set(), 0)
-  IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = new(n1, n2, n3, n4, resampleSystematic, Set(), 0)
-  function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, n3, n4, resampleSystematic, space, 0)
-  end
-  IPMCMC(alg::IPMCMC, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.n_nodes, alg.n_csmc_nodes, alg.resampler, alg.space, new_gid)
+end
+IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16, resampleSystematic, Set(), 0)
+IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)), resampleSystematic, Set(), 0)
+IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = IPMCMC(n1, n2, n3, n4, resampleSystematic, Set(), 0)
+function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  IPMCMC(n1, n2, n3, n4, resampleSystematic, _space, 0)
+end
+function IPMCMC(alg::IPMCMC, new_gid::Int)
+  IPMCMC(alg.n_particles, alg.n_iters, alg.n_nodes, alg.n_csmc_nodes, alg.resampler, alg.space, new_gid)
 end
 
 function Sampler(alg::IPMCMC)
@@ -62,7 +64,7 @@ function Sampler(alg::IPMCMC)
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
+step(model::Function, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
   # Initialise array for marginal likelihood estimators
   log_zs = zeros(spl.alg.n_nodes)
 

@@ -24,30 +24,38 @@ end
 sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
 ```
 """
-mutable struct HMCDA <: Hamiltonian
+mutable struct HMCDA{T} <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   lambda    ::  Float64   # target leapfrog length
-  space     ::  Set       # sampling space, emtpy means all
+  space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
-
-  HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...) = new(1, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMCDA(n_iters::Int, delta::Float64, lambda::Float64) = begin
-    n_adapt_default = Int(round(n_iters / 2))
-    new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
-  end
-  HMCDA(alg::HMCDA, new_gid::Int) =
-    new(alg.n_iters, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
-  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64) =
-    new(n_iters, n_adapt, delta, lambda, Set(), 0)
-  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...) =
-    new(n_iters, n_adapt, delta, lambda, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space::Set, gid::Int) =
-    new(n_iters, n_adapt, delta, lambda, space, gid)
+end
+function HMCDA(n_adapt::Int, delta::Float64, lambda::Float64, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  HMCDA(1, n_adapt, delta, lambda, _space, 0)
+end
+function HMCDA(n_iters::Int, delta::Float64, lambda::Float64)
+  n_adapt_default = Int(round(n_iters / 2))
+  HMCDA(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, lambda, Set(), 0)
+end
+function HMCDA(alg::HMCDA, new_gid::Int)
+  HMCDA(alg.n_iters, alg.n_adapt, alg.delta, alg.lambda, alg.space, new_gid)
+end
+HMCDA{T}(alg::HMCDA, new_gid::Int) where {T} = HMCDA(alg, new_gid)
+function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)
+  HMCDA(n_iters, n_adapt, delta, lambda, Set(), 0)
+end
+function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  HMCDA(n_iters, n_adapt, delta, lambda, _space, 0)
+end
+function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, space::Set, gid::Int)
+  HMCDA{eltype(space)}(n_iters, n_adapt, delta, lambda, space, gid)
 end
 
-function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
+function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
   if is_first
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R
