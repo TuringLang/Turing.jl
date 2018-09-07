@@ -93,7 +93,7 @@ step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
     propose(model, spl, vi)
 
     @debug "computing accept rate α..."
-    is_accept, logα = mh_accept(-old_logp, -getlogp(vi); log_proposal_ratio=spl.info[:proposal_ratio])
+    is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
 
     @debug "decide wether to accept..."
     if is_accept && !spl.info[:violating_support]  # accepted

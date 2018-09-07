@@ -80,12 +80,16 @@ step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
   end
 
   if !violating_support # do not run SMC if going to refuse anyway
-  @debug "Propose new state with SMC..."
-  vi = step(model, spl.info[:samplers][end], vi)
-  new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
+    @debug "Propose new state with SMC..."
+    vi = step(model, spl.info[:samplers][end], vi)
+    new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
-  @debug "computing accept rate α..."
-  is_accept, logα = mh_accept(-(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]), -(new_likelihood_estimate + new_prior_prob); log_proposal_ratio=proposal_ratio)
+    @debug "computing accept rate α..."
+    is_accept, logα = mh_accept(
+      -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
+      -(new_likelihood_estimate + new_prior_prob),
+      proposal_ratio,
+    )
   end
 
   @debug "decide whether to accept..."
