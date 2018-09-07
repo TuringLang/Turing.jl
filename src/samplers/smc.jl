@@ -24,20 +24,22 @@ end
 sample(gdemo([1.5, 2]), SMC(1000))
 ```
 """
-mutable struct SMC <: InferenceAlgorithm
+mutable struct SMC{T, F} <: InferenceAlgorithm
   n_particles           ::  Int
-  resampler             ::  Function
+  resampler             ::  F
   resampler_threshold   ::  Float64
-  space                 ::  Set
+  space                 ::  Set{T}
   gid                   ::  Int
-  SMC(n) = new(n, resampleSystematic, 0.5, Set(), 0)
-  SMC(n::Int, resampler::Function, resampler_threshold::Float64, space::Set, gid::Int) = new(n, resampler, resampler_threshold, space, gid)
-  function SMC(n_particles::Int, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_particles, resampleSystematic, 0.5, space, 0)
-  end
-  SMC(alg::SMC, new_gid::Int) = new(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 end
+SMC(n) = SMC(n, resampleSystematic, 0.5, Set(), 0)
+function SMC(n::Int, resampler::F, resampler_threshold::Float64, space::Set{T}, gid::Int) where {T, F}
+  SMC{T, F}(n, resampler, resampler_threshold, space, gid)
+end
+function SMC(n_particles::Int, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  SMC(n_particles, resampleSystematic, 0.5, _space, 0)
+end
+SMC(alg::SMC, new_gid::Int) = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 
 Sampler(alg::SMC) = begin
   info = Dict{Symbol, Any}()
@@ -45,7 +47,7 @@ Sampler(alg::SMC) = begin
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{SMC}, vi::VarInfo) = begin
+step(model::Function, spl::Sampler{<:SMC}, vi::VarInfo) = begin
     particles = ParticleContainer{Trace}(model)
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
     set_retained_vns_del_by_spl!(vi, spl)
