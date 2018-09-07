@@ -85,14 +85,14 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
 end
 
 function sample(model::Function, alg::T;
-                                chunk_size=CHUNKSIZE,               # set temporary chunk size
+                                chunk_size=CHUNKSIZE[],               # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF  # adapt configuration
                                ) where T<:Hamiltonian
 
-  default_chunk_size = CHUNKSIZE  # record global chunk size
+  default_chunk_size = CHUNKSIZE[]  # record global chunk size
   setchunksize(chunk_size)        # set temp chunk size
 
   spl = reuse_spl_n > 0 ?
@@ -128,7 +128,7 @@ function sample(model::Function, alg::T;
   end
 
   # HMC steps
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
+  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
   for i = 1:n
     @debug "$alg_str stepping..."
 
@@ -143,7 +143,7 @@ function sample(model::Function, alg::T;
     samples[i].value[:elapsed] = time_elapsed
     samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
 
-    if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
+    PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
   end
 
   println("[$alg_str] Finished with")

@@ -93,7 +93,7 @@ sample(model::Function, alg::Gibbs;
   n = spl.alg.n_iters; i_thin = 1
 
   # Gibbs steps
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0) end
+  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0))
   for i = 1:n
     @debug "Gibbs stepping..."
 
@@ -102,7 +102,7 @@ sample(model::Function, alg::Gibbs;
 
     for local_spl in spl.info[:samplers]
       last_spl = local_spl
-      # if PROGRESS && haskey(spl.info, :progress) local_spl.info[:progress] = spl.info[:progress] end
+      # PROGRESS[] && haskey(spl.info, :progress) && (local_spl.info[:progress] = spl.info[:progress])
 
       @debug "$(typeof(local_spl)) stepping..."
 
@@ -151,7 +151,7 @@ sample(model::Function, alg::Gibbs;
       if lf_num != nothing samples[i].value[:lf_num] = lf_num end
     end
 
-    if PROGRESS
+    if PROGRESS[]
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
     end
   end
