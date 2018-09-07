@@ -105,7 +105,7 @@ sample(model::Function, alg::PG;
        resume_from.info[:vi]
 
   pm = nothing
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0) end
+  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
 
   for i = 1:n
     time_elapsed = @elapsed vi = step(model, spl, vi)
@@ -114,7 +114,7 @@ sample(model::Function, alg::PG;
 
     time_total += time_elapsed
 
-    if PROGRESS  && spl.alg.gid == 0
+    if PROGRESS[]  && spl.alg.gid == 0
       ProgressMeter.next!(spl.info[:progress])
     end
   end

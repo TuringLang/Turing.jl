@@ -139,7 +139,7 @@ function sample(model::Function, alg::MH;
   end
 
   # MH steps
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
+  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
   for i = 1:n
     @debug "$alg_str stepping..."
 
@@ -153,7 +153,7 @@ function sample(model::Function, alg::MH;
     end
     samples[i].value[:elapsed] = time_elapsed
 
-    if PROGRESS ProgressMeter.next!(spl.info[:progress]) end
+    PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
   end
 
   println("[$alg_str] Finished with")

@@ -86,7 +86,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
     θ_new, da_stat = _nuts_step(θ, ϵ, lj_func, grad_func, stds)
 
-    if PROGRESS && spl.alg.gid == 0
+    if PROGRESS[] && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(

@@ -128,7 +128,7 @@ sample(model::Function, alg::PMMH;
     n = spl.alg.n_iters
 
     # PMMH steps
-    if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0) end
+    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
       @debug "$alg_str stepping..."
       time_elapsed = @elapsed vi = step(model, spl, vi, i==1)
@@ -140,7 +140,7 @@ sample(model::Function, alg::PMMH;
       end
 
       time_total += time_elapsed
-      if PROGRESS
+      if PROGRESS[]
         haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
       end
     end

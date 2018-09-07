@@ -5,23 +5,26 @@ using Distributions
 
 import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler, consume, produce
 
-global n = 0
+if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
+  n[] = 0
+else
+  const n = Ref(0)
+end
 
 alg = PG(5, 1)
 spl = Turing.Sampler(alg)
 dist = Normal(0, 1)
 
 function f()
-  global n
   t = TArray(Float64, 1);
   t[1] = 0;
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
     produce(0)
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
     t[1] = 1 + t[1]
   end
 end

@@ -94,7 +94,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, λ, stds;
                                              rev_func=rev_func, log_func=log_func)
 
-    if PROGRESS && spl.alg.gid == 0
+    if PROGRESS[] && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
       haskey(spl.info, :progress) && ProgressMeter.update!(
@@ -110,19 +110,16 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
       setlogp!(vi, lj_func(θ_new))
     else                      # rejected
       push!(spl.info[:accept_his], false)
-
       # Reset Θ
-      if ADBACKEND == :forward_diff
-
+      if ADBACKEND[] == :forward_diff
         vi[spl] = θ
-
-      elseif ADBACKEND == :reverse_diff
-
+      elseif ADBACKEND[] == :reverse_diff
         vi_spl = vi[spl]
         for i = 1:length(θ)
           vi_spl[i] = θ[i]
         end
-
+      else
+        error("Unsupported ADBACKEND = $(ADBACKEND[])")
       end
 
       setlogp!(vi, lj)  # reset logp
