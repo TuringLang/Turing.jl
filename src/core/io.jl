@@ -86,18 +86,18 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-mutable struct Chain <: AbstractChains
+mutable struct Chain{R<:AbstractRange{Int}} <: AbstractChains
   weight  ::  Float64                 # log model evidence
   value2  ::  Array{Sample}
   value   ::  Array{Float64, 3}
-  range   ::  AbstractRange{Int} # TODO: Perhaps change to UnitRange?
-  names   ::  Vector{AbstractString}
+  range   ::  R # TODO: Perhaps change to UnitRange?
+  names   ::  Vector{String}
   chains  ::  Vector{Int}
   info    ::  Dict{Symbol,Any}
 end
 
-Chain() = Chain(0, Vector{Sample}(), Array{Float64, 3}(undef, 0,0,0), 0:0,
-                Vector{AbstractString}(), Vector{Int}(), Dict{Symbol,Any}())
+Chain() = Chain{AbstractRange{Int}}(0.0, Vector{Sample}(), Array{Float64, 3}(undef, 0, 0, 0), 0:0,
+                Vector{String}(), Vector{Int}(), Dict{Symbol,Any}())
 
 Chain(w::Real, s::Array{Sample}) = begin
   chn = Chain()

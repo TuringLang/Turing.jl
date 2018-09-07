@@ -11,17 +11,17 @@ alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
 alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
 ```
 """
-mutable struct PMMH <: InferenceAlgorithm
+mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
   n_iters               ::    Int               # number of iterations
-  algs                  ::    Tuple             # Proposals for state & parameters
-  space                 ::    Set               # sampling space, emtpy means all
+  algs                  ::    A                 # Proposals for state & parameters
+  space                 ::    Set{T}            # sampling space, emtpy means all
   gid                   ::    Int               # group ID
-  PMMH(n_iters::Int, algs::Tuple, space::Set, gid::Int) = new(n_iters, algs, space, gid)
-  PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...) = begin
-      new(n_iters, tuple(parameter_algs..., smc_alg), Set(), 0)
-  end
-  PMMH(alg::PMMH, new_gid) = new(alg.n_iters, alg.algs, alg.space, new_gid)
 end
+PMMH(n_iters::Int, algs::Tuple, space::Set, gid::Int) = PMMH(n_iters, algs, space, gid)
+function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
+  PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set(), 0)
+end
+PMMH(alg::PMMH, new_gid) = PMMH(alg.n_iters, alg.algs, alg.space, new_gid)
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
 
@@ -63,7 +63,7 @@ function Sampler(alg::PMMH)
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{PMMH}, vi::VarInfo, is_first::Bool) = begin
+step(model::Function, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool) = begin
   violating_support = false
   proposal_ratio = 0.0
   new_prior_prob = 0.0

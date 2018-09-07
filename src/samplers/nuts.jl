@@ -24,25 +24,26 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-mutable struct NUTS <: Hamiltonian
+mutable struct NUTS{T} <: Hamiltonian
   n_iters   ::  Int       # number of samples
   n_adapt   ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
-  space     ::  Set       # sampling space, emtpy means all
+  space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
-
-  NUTS(n_adapt::Int, delta::Float64, space...) =
-    new(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...) =
-    new(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  NUTS(n_iters::Int, delta::Float64) = begin
-    n_adapt_default = Int(round(n_iters / 2))
-    new(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
-  end
-  NUTS(alg::NUTS, new_gid::Int) = new(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
 end
+function NUTS(n_adapt::Int, delta::Float64, space...)
+  NUTS(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+end
+function NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...)
+  NUTS(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+end
+function NUTS(n_iters::Int, delta::Float64)
+  n_adapt_default = Int(round(n_iters / 2))
+  NUTS(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
+end
+NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
 
-function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
+function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end      # X -> R

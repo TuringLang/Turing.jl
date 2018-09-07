@@ -19,4 +19,4 @@ sampler = Sampler(alg)
 
 println(typeof(alg))
 println(isa(alg, HMCDA))
-println(isa(sampler, Sampler{Turing.Hamiltonian}))
+println(isa(sampler, Sampler{<:Turing.Hamiltonian}))
