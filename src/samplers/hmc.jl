@@ -24,18 +24,28 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-mutable struct HMC <: Hamiltonian
+mutable struct HMC{T} <: Hamiltonian
   n_iters   ::  Int       # number of samples
   epsilon   ::  Float64   # leapfrog step size
   tau       ::  Int       # leapfrog step number
-  space     ::  Set       # sampling space, emtpy means all
+  space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
-  HMC(epsilon::Float64, tau::Int, space...) = HMC(1, epsilon, tau, space..., 0)
-  HMC(n_iters::Int, epsilon::Float64, tau::Int) = new(n_iters, epsilon, tau, Set(), 0)
-  HMC(n_iters::Int, epsilon::Float64, tau::Int, space...) =
-    new(n_iters, epsilon, tau, isa(space, Symbol) ? Set([space]) : Set(space), 0)
-  HMC(alg::HMC, new_gid::Int) = new(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
+function HMC(epsilon::Float64, tau::Int, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  HMC(1, epsilon, tau, _space, 0)
+end
+function HMC(n_iters::Int, epsilon::Float64, tau::Int)
+  HMC(n_iters, epsilon, tau, Set(), 0)
+end
+function HMC(n_iters::Int, epsilon::Float64, tau::Int, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  HMC(n_iters, epsilon, tau, _space, 0)
+end
+function HMC(alg::HMC, new_gid::Int)
+  HMC(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
+end
+HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 
 # Below is a trick to remove the dependency of Stan by Requires.jl
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
@@ -55,7 +65,7 @@ Sampler(alg::HMC, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   spl
 end
 
-Sampler(alg::Hamiltonian) =  Sampler(alg::Hamiltonian, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
+Sampler(alg::Hamiltonian) =  Sampler(alg, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
 Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
   info=Dict{Symbol, Any}()
 

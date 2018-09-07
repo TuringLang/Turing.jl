@@ -15,10 +15,11 @@ mutable struct ParticleContainer{T<:Particle}
   # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
   conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
-  ParticleContainer{T}(m::Function,n::Int) where T = new(m,n,Vector{Particle}(),Vector{Float64}(),0.0,nothing,0)
 end
-
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
+function ParticleContainer{T}(m::Function,n::Int) where T
+  ParticleContainer{T}(m, n, Vector{T}(), Vector{Float64}(), 0.0, nothing, 0)
+end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
 Base.length(pc :: ParticleContainer)  = length(pc.vals)

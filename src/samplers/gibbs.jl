@@ -9,14 +9,14 @@ Usage:
 alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
 ```
 """
-mutable struct Gibbs <: InferenceAlgorithm
+mutable struct Gibbs{A} <: InferenceAlgorithm
   n_iters   ::  Int     # number of Gibbs iterations
-  algs      ::  Tuple   # component sampling algorithms
+  algs      ::  A   # component sampling algorithms
   thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
   gid       ::  Int
-  Gibbs(n_iters::Int, algs...; thin=true) = new(n_iters, algs, thin, 0)
-  Gibbs(alg::Gibbs, new_gid) = new(alg.n_iters, alg.algs, alg.thin, new_gid)
 end
+Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin, 0)
+Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
