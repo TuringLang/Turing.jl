@@ -270,10 +270,23 @@ macro model(fexpr)
     fdefn_inner = Expr(:(=), fname_inner, fdefn_inner_func) 
 
     # construct helper functions
-    fdefn_inner_callback_1 = parse("$fname_inner_str(vi::Turing.VarInfo)=$fname_inner_str(vi,nothing)")
-    fdefn_inner_callback_2 = parse("$fname_inner_str(sampler::Turing.Sampler)=$fname_inner_str(Turing.VarInfo(),nothing)")
-    fdefn_inner_callback_3 = parse("$fname_inner_str()=$fname_inner_str(Turing.VarInfo(),nothing)")
-
+    fdefn_inner_callback_1 = constructfunc(
+                                           fname_inner,
+                                           [:(vi::Turing.VarInfo)],
+                                           :($fname_inner(vi, nothing))
+                                          )
+    
+    fdefn_inner_callback_2 = constructfunc(
+                                           fname_inner,
+                                           [:(sampler::Turing.Sampler)],
+                                           :($fname_inner(Turing.VarInfo(), nothing))
+                                          )
+    
+    fdefn_inner_callback_3 = constructfunc(
+                                           fname_inner,
+                                           [],
+                                           :($fname_inner(Turing.VarInfo(), nothing))
+                                          )
     # construct compiler dictionary
     compiler = Dict(:fname => fname,
                     :fargs => fargs,
@@ -316,9 +329,9 @@ macro model(fexpr)
 
     # TODO: clean up this part! 
     pushfirst!(fdefn_outer.args[2].args, quote
-                   # Check fargs, data
-                   Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                   fargs = Turing._compiler_[:fargs];
+                 
+                 Turing.eval(:(_compiler_ = deepcopy($compiler)))
+                 fargs = Turing._compiler_[:fargs];
 
                    # Copy the expr of function definition and callbacks
                    fdefn_inner = Turing._compiler_[:fdefn_inner];
@@ -327,7 +340,7 @@ macro model(fexpr)
                    fdefn_inner_callback_3 = Turing._compiler_[:fdefn_inner_callback_3];
 
                    # Add gensym to function name
-                   fname_inner_with_gensym = gensym((fdefn_inner.args[2].args[1].args[1]));
+                   fname_inner_with_gensym = gensym(fdefn_inner.args[2].args[1].args[1]);
 
                    # Change the name of inner function definition to the one with gensym()
                    fdefn_inner.args[2].args[1].args[1] = fname_inner_with_gensym
@@ -338,49 +351,9 @@ macro model(fexpr)
                    fdefn_inner_callback_3.args[1].args[1] = fname_inner_with_gensym
                    fdefn_inner_callback_3.args[2].args[2].args[1] = fname_inner_with_gensym
 
-                   # Copy data dictionary
-                   for k in keys(data)
-                       if fdefn_inner.args[2].args[2].args[1].head == :line
-                           # Preserve comments, useful for debuggers to
-                           # correctly locate source code oringin.
-                           insert!(fdefn_inner.args[2].args[2].args, 2, Expr(:(=), Symbol(k), data[k]))
-                       else
-                           insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), Symbol(k), data[k]))
-                       end
-                   end
                    # @debug fdefn_inner
                end )
 
-    # TODO: extract into a function ?
-    for k in fargs
-        if isa(k, Symbol)       # f(x,..)
-            _k = k
-        elseif k.head == :kw    # f(z=1,..)
-            _k = k.args[1]
-        else
-            _k = nothing
-        end
-        if _k != nothing
-            _k_str = string(_k)
-            @debug _k_str, " = ", _k
-            data_check_ex = quote
-                if haskey(data, keytype(data)($_k_str))
-                    if nothing != $_k
-                        Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
-                    end
-                else
-                    data[keytype(data)($_k_str)] = $_k
-                    data[keytype(data)($_k_str)] == nothing && @error("Data `"*$_k_str*"` is not provided.")
-                end
-            end
-            pushfirst!(fdefn_outer.args[2].args, data_check_ex)
-        end
-    end
-
-
-    pushfirst!(fdefn_outer.args[2].args, quote data = copy(data) end)
-
-    @debug esc(fdefn_outer)
     esc(fdefn_outer)
 end
 
@@ -389,6 +362,12 @@ end
 ###################
 # Helper function #
 ###################
+
+"""
+  constructfunc(fname::Symbol, fargs, fbody)
+
+Construct a function.
+"""
 function constructfunc(fname::Symbol, fargs, fbody)
     fdefn = Expr(:function, 
                  Expr(:call, 
@@ -400,23 +379,18 @@ function constructfunc(fname::Symbol, fargs, fbody)
     return fdefn
 end
 
+"""
+  insertvarinfo(fexpr::Expr)
+
+Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
+"""
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
-
 function insertvarinfo!(fexpr::Expr)
-    return_ex = fexpr.args[end] # get last statement of defined model
-    if typeof(return_ex) == Symbol
-        pop!(fexpr.args)
-    elseif return_ex.head == :return || return_ex.head == :tuple
-        pop!(fexpr.args)
-    else
-        @error("Unknown return expression: $(return_ex)")
-    end
+  pushfirst!(fexpr.args, :(_lp = zero(Real)))
+  push!(fexpr.args, :(vi.logp = _lp))
+#    push!(fexpr.args, Expr(:return, :vi))
 
-    pushfirst!(fexpr.args, :(_lp = zero(Real)))
-    push!(fexpr.args, :(vi.logp = _lp))
-    push!(fexpr.args, Expr(:return, :vi))
-
-    fexpr
+  fexpr
 end
 
 function extractcomponents_(fnode::LineNumberNode, fexpr::Expr)
