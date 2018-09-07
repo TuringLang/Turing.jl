@@ -341,7 +341,7 @@ macro model(fexpr)
       data_check_ex = quote
             if haskey(data, keytype(data)($_k_str))
               if nothing != $_k
-                Turing.dwarn(0, " parameter "*$_k_str*" found twice, value in data dictionary will be used.")
+                @warn "[Turing] parameter "*$_k_str*" found twice, value in data dictionary will be used."
               end
             else
               data[keytype(data)($_k_str)] = $_k
