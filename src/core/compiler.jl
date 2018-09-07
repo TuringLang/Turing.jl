@@ -164,6 +164,7 @@ macro ~(left, right)
         syms = Symbol[csym, left]
         assume_ex = quote
           vn = Turing.VarName(vi, $syms, "")
+          isa(sampler, Union{PG,SMC}) && (vi = current_trace().vi)
           if isa($(right), Vector)
             $(left), __lp = Turing.assume(
               sampler,
