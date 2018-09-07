@@ -287,6 +287,8 @@ macro model(fexpr)
                                            [],
                                            :($fname_inner(Turing.VarInfo(), nothing))
                                           )
+    @info(fdefn_inner)
+    
     # construct compiler dictionary
     compiler = Dict(:fname => fname,
                     :fargs => fargs,
@@ -386,11 +388,19 @@ Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
 """
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
 function insertvarinfo!(fexpr::Expr)
+	
   pushfirst!(fexpr.args, :(_lp = zero(Real)))
-  push!(fexpr.args, :(vi.logp = _lp))
-#    push!(fexpr.args, Expr(:return, :vi))
+	
+	return_ex = fbody.args[end] # get last statement of defined model
+  if (typeof(return_ex) == Symbol) || return_ex.head == :return || return_ex.head == :tuple
+  	pop!(fbody_inner.args)
+  	push!(fexpr.args, :(vi.logp = _lp))
+  	push!(fexpr.args, return_ex)
+	else
+  	push!(fexpr.args, :(vi.logp = _lp))
+ 	end 
 
-  fexpr
+  return fexpr
 end
 
 function extractcomponents_(fnode::LineNumberNode, fexpr::Expr)
