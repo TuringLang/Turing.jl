@@ -4,7 +4,7 @@ gradient_forward(
   vi::VarInfo,
   model::Function,
   spl::Union{Nothing, Sampler}=nothing,
-  chunk_size::Int=CHUNKSIZE,
+  chunk_size::Int=CHUNKSIZE[],
 )
 
 Computes the gradient of the log joint of `θ` for the model specified by `(vi, spl, model)`
@@ -15,7 +15,7 @@ function gradient_forward(
   vi::VarInfo,
   model::Function,
   spl::Union{Nothing, Sampler}=nothing,
-  chunk_size::Int=CHUNKSIZE,
+  chunk_size::Int=CHUNKSIZE[],
 )
   # Record old parameters.
   θ_old = vi[spl]

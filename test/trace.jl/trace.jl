@@ -5,23 +5,26 @@ using Distributions
 
 import Turing: Trace, Trace, current_trace, fork, VarName, Sampler
 
-global n = 0
+if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
+  n[] = 0
+else
+  const n = Ref(0)
+end
 
 alg = PG(5, 1)
 spl = Turing.Sampler(alg)
 dist = Normal(0, 1)
 
 function f2()
-  global n
   t = TArray(Int, 1);
   t[1] = 0;
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n += 1;
+    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
     t[1] = 1 + t[1]
   end
 end

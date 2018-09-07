@@ -30,40 +30,40 @@ import MCMCChain: AbstractChains, Chains
 # Global variables/constants #
 ##############################
 
-global ADBACKEND = :reverse_diff
+const ADBACKEND = Ref(:reverse_diff)
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
-  global ADBACKEND = backend_sym
+  ADBACKEND[] = backend_sym
 end
 
-global ADSAFE = false
+const ADSAFE = Ref(false)
 setadsafe(switch::Bool) = begin
   @info("[Turing]: global ADSAFE is set as $switch")
-  global ADSAFE = switch
+  ADSAFE[] = switch
 end
 
-global CHUNKSIZE = 0        # default chunksize used by AD
-global SEEDS                # pre-alloced dual parts
+const CHUNKSIZE = Ref(0) # default chunksize used by AD
+
 setchunksize(chunk_size::Int) = begin
-  if ~(CHUNKSIZE == chunk_size)
+  if ~(CHUNKSIZE[] == chunk_size)
     @info("[Turing]: AD chunk size is set as $chunk_size")
-    global CHUNKSIZE = chunk_size
-    global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64})
+    CHUNKSIZE[] = chunk_size
+    global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64}) # pre-alloced dual parts
   end
 end
 
 setchunksize(40)
 
-global PROGRESS = true
+const PROGRESS = Ref(true)
 turnprogress(switch::Bool) = begin
   @info("[Turing]: global PROGRESS is set as $switch")
-  global PROGRESS = switch
+  PROGRESS[] = switch
 end
 
-# Constans for caching
-global const CACHERESET  = 0b00
-global const CACHEIDCS   = 0b10
-global const CACHERANGES = 0b01
+# Constants for caching
+const CACHERESET  = 0b00
+const CACHEIDCS   = 0b10
+const CACHERANGES = 0b01
 
 #######################
 # Sampler abstraction #
