@@ -198,6 +198,7 @@ macro ~(left, right)
           _lp += __lp
         end
         esc(assume_ex)
+        end
     end
 end
 
