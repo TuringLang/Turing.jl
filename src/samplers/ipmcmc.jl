@@ -115,7 +115,7 @@ sample(model::Function, alg::IPMCMC) = begin
   n = spl.alg.n_iters
 
   # IPMCMC steps
-  if PROGRESS spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
+  if PROGRESS[] spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
   for i = 1:n
     @debug "IPMCMC stepping..."
     time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
@@ -126,7 +126,7 @@ sample(model::Function, alg::IPMCMC) = begin
     end
 
     time_total += time_elapsed
-    if PROGRESS
+    if PROGRESS[]
       haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
     end
   end

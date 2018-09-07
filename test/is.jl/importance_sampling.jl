@@ -40,28 +40,29 @@ function reference()
   return d
 end
 
-@model normal() = begin
-  a ~ Normal(4,5)
-  3 ~ Normal(a,2)
-  b ~ Normal(a,1)
-  1.5 ~ Normal(b,2)
-  a, b
-end
-
-n = 10
-alg = IS(n)
-seed = 0
-
-_f = normal();
-for i=1:100
-  Random.seed!(seed)
-  exact = reference(n)
-  Random.seed!(seed)
-  tested = sample(_f, alg)
-  for i = 1:n
-    @test exact[:samples][i][:a] == tested[:samples][i][:a]
-    @test exact[:samples][i][:b] == tested[:samples][i][:b]
-    @test exact[:logweights][i]  == tested[:logweights][i]
+let n = 10
+  @model normal() = begin
+    a ~ Normal(4,5)
+    3 ~ Normal(a,2)
+    b ~ Normal(a,1)
+    1.5 ~ Normal(b,2)
+    a, b
   end
-  @test exact[:logevidence] == tested[:logevidence]
+
+  alg = IS(n)
+  seed = 0
+
+  _f = normal();
+  for i=1:100
+    Random.seed!(seed)
+    exact = reference(n)
+    Random.seed!(seed)
+    tested = sample(_f, alg)
+    for i = 1:n
+      @test exact[:samples][i][:a] == tested[:samples][i][:a]
+      @test exact[:samples][i][:b] == tested[:samples][i][:b]
+      @test exact[:logweights][i]  == tested[:logweights][i]
+    end
+    @test exact[:logevidence] == tested[:logevidence]
+  end
 end

@@ -10,9 +10,9 @@ function gen_grad_func(vi, spl, model)
 
   grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
-    if ADBACKEND == :forward_diff
+    if ADBACKEND[] == :forward_diff
       lp, grad = gradient_forward(θ, vi, model, spl)
-    elseif ADBACKEND == :reverse_diff
+    elseif ADBACKEND[] == :reverse_diff
       lp, grad = gradient_reverse(θ, vi, model, spl)
     end
 
@@ -52,13 +52,15 @@ function gen_rev_func(vi, spl)
 
   rev_func(θ_old::T, old_logp::R) where {T<:Union{Vector,SubArray},R<:Real} = begin
 
-    if ADBACKEND == :forward_diff
+    if ADBACKEND[] == :forward_diff
       vi[spl] = θ_old
-    elseif ADBACKEND == :reverse_diff
+    elseif ADBACKEND[] == :reverse_diff
       vi_spl = vi[spl]
       for i = 1:length(θ_old)
         vi_spl[i] = θ_old[i]
       end
+    else
+      error("Unsupported ADBACKEND = $(ADBACKEND[])")
     end
     setlogp!(vi, old_logp)
 
