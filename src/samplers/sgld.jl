@@ -96,7 +96,7 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     vi[spl] = θ
 
     @debug "R -> X..."
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+    spl.alg.gid != 0 && invlink!(vi, spl)
 
     vi
   end

@@ -105,7 +105,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     # end
 
     @debug "R -> X..."
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+    spl.alg.gid != 0 && invlink!(vi, spl)
 
     vi
   end

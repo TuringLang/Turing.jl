@@ -100,7 +100,7 @@ function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
     push!(spl.info[:accept_his], true)
 
     @debug "R -> X..."
-    if spl.alg.gid != 0 invlink!(vi, spl); cleandual!(vi) end
+    spl.alg.gid != 0 && invlink!(vi, spl)
 
     vi
   end

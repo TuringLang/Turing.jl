@@ -9,8 +9,9 @@ using Distributions
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 import Turing: link!, invlink!, link, invlink
 
-export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, copybyindex, 
-       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval
+export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!,
+    is_flagged, unset_flag!, setgid!, copybyindex, setorder!, updategid!, acclogp!, istrans,
+    link!, invlink!, setlogp!, getranges, getrange, getvns, getval
 export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 
 ###########
@@ -147,13 +148,6 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
   else
     @warn("[Turing] attempt to invlink an invlinked vi")
   end
-end
-
-function cleandual!(vi::VarInfo)
-  for i = 1:length(vi.vals)
-    vi.vals[i] = realpart(vi.vals[i])
-  end
-  vi.logp = realpart(getlogp(vi))
 end
 
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
