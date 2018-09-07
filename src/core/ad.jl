@@ -1,9 +1,10 @@
 """
 gradient_forward(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    spl::Sampler,
-    model::Function,
+  θ::AbstractVector{<:Real},
+  vi::VarInfo,
+  model::Function,
+  spl::Union{Nothing, Sampler}=nothing,
+  chunk_size::Int=CHUNKSIZE,
 )
 
 Computes the gradient of the log joint of `θ` for the model specified by `(vi, spl, model)`
@@ -14,6 +15,7 @@ function gradient_forward(
   vi::VarInfo,
   model::Function,
   spl::Union{Nothing, Sampler}=nothing,
+  chunk_size::Int=CHUNKSIZE,
 )
   # Record old parameters.
   θ_old = vi[spl]
@@ -25,7 +27,9 @@ function gradient_forward(
   end
 
   # Set chunk size and do ForwardMode.
-  ∂l∂θ = ForwardDiff.gradient(f, θ)
+  chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
+  config = ForwardDiff.GradientConfig(f, θ, chunk)
+  ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
 
   # Replace old parameters to ensure this function doesn't mutate `vi`.
   vi[spl] = θ_old
@@ -35,10 +39,10 @@ end
 
 """
 gradient_reverse(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    spl::Sampler,
-    model::Function,
+  θ::AbstractVector{<:Real},
+  vi::VarInfo,
+  model::Function,
+  spl::Union{Nothing, Sampler}=nothing,
 )
 
 Computes the gradient of the log joint of `θ` for the model specified by `(vi, spl, model)`
