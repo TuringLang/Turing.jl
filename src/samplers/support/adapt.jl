@@ -122,7 +122,7 @@ adapt_step_size!(wum::WarmUpManager, stats::Float64) = begin
   @debug "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])"
 
   if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
-      dwarn(0, "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead.")
+      @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead."
   else
       push!(wum[:ϵ], ϵ)
       wum[:x_bar], wum[:H_bar] = x_bar, H_bar
