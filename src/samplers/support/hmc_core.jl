@@ -3,20 +3,20 @@
 """
   gen_grad_func(vi, spl, model)
 
-Generate a function that takes `θ` and returns log-joint probabilty and gradient at `θ`, using Turing-related variables `vi`, `spl` and `model`.
+Generate a function that takes `θ` and returns log-joint probabilty and gradient at `θ`,
+using Turing-related variables `vi`, `spl` and `model`.
 """
 function gen_grad_func(vi, spl, model)
 
   grad_func(θ::T) where {T<:Union{Vector,SubArray}} = begin
 
     if ADBACKEND == :forward_diff
-      vi[spl] = θ
-      grad = gradient(vi, model, spl)
+      lp, grad = gradient_forward(θ, vi, model, spl)
     elseif ADBACKEND == :reverse_diff
-      grad = gradient_r(θ, vi, model, spl)
+      lp, grad = gradient_reverse(θ, vi, model, spl)
     end
 
-    return getlogp(vi), grad
+    return lp, grad
 
   end
 

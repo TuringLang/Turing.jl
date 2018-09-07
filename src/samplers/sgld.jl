@@ -80,7 +80,7 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     @debug "recording old variables..."
     old_θ = realpart(vi[spl])
     θ = deepcopy(old_θ)
-    grad = gradient(vi, model, spl)
+    _, grad = gradient_forward(old_θ, vi, model, spl)
 
     if verifygrad(grad)
       @debug "update latent variables..."
