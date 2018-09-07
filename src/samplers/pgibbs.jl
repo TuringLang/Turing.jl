@@ -139,8 +139,7 @@ sample(model::Function, alg::PG;
   c
 end
 
-assume(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) where T<:Union{PG,SMC} = begin
-  vi = current_trace().vi
+assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Union{PG,SMC} = begin
   if isempty(spl.alg.space) || vn.sym in spl.alg.space
     if ~haskey(vi, vn)
       r = rand(dist)
