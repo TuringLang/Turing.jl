@@ -7,7 +7,7 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, sampler, model)`.
 """
 function gen_grad_func(vi::VarInfo, sampler::Sampler, model)
-    return θ::AbstractVector{<:Real}->gradient(θ, vi, sampler, model)
+    return θ::AbstractVector{<:Real}->gradient(θ, vi, model, sampler)
 end
 
 """
@@ -49,19 +49,19 @@ function gen_log_func(sampler::Sampler)
     end
 end
 
-function runmodel(model::Function, vi::VarInfo, spl::Union{Nothing, Sampler})
+function runmodel(model::Function, vi::VarInfo, sampler::Union{Nothing, Sampler})
     @debug "run model..."
     setlogp!(vi, zero(Real))
-    if spl != nothing
-        spl.info[:total_eval_num] += 1
+    if sampler != nothing
+        sampler.info[:total_eval_num] += 1
     end
-    return Base.invokelatest(model, vi, spl)
+    return Base.invokelatest(model, vi, sampler)
 end
 
-function sample_momentum(vi::VarInfo, spl::Sampler)
+function sample_momentum(vi::VarInfo, sampler::Sampler)
     @debug "sampling momentum..."
-    d = length(getranges(vi, spl))
-    stds = spl.info[:wum][:stds]
+    d = length(getranges(vi, sampler))
+    stds = sampler.info[:wum][:stds]
     return _sample_momentum(d, stds)
 end
 
@@ -78,10 +78,10 @@ function leapfrog(
     vi::VarInfo,
     sampler::Sampler,
 )
-    lp_grad = gen_grad_func(vi, spl, model)
-    rev = gen_rev_func(vi, spl)
-    logger = gen_log_func(spl)
-    return _leapfrog(realpart(θ), p, τ, ϵ, lp_grad; rev_func=rev_func, log_func=logger)
+    lp_grad = gen_grad_func(vi, sampler, model)
+    rev = gen_rev_func(vi, sampler)
+    logger = gen_log_func(sampler)
+    return _leapfrog(realpart(θ), p, τ, ϵ, lp_grad; rev_func=rev, log_func=logger)
 end
 
 function _leapfrog(
@@ -133,7 +133,7 @@ function _find_H(
     logpdf_func_float::Function,
     stds::AbstractVector{<:Real},
 )
-    return _find_H(theta, p, logpdf_func_float(θ), stds)
+    return _find_H(θ, p, logpdf_func_float(θ), stds)
 end
 
 function _find_H(
@@ -149,16 +149,16 @@ end
 # TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-function find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where T
+function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where T
     println("[Turing] looking for good initial eps...")
     ϵ = 0.1
 
-    p = sample_momentum(vi, spl)
-    H0 = find_H(p, model, vi, spl)
+    p = sample_momentum(vi, sampler)
+    H0 = find_H(p, model, vi, sampler)
 
-    θ = realpart(vi[spl])
-    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-    h = τ == 0 ? Inf : find_H(p_prime, model, vi, spl)
+    θ = realpart(vi[sampler])
+    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
+    h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
 
     delta_H = H0 - h
     direction = delta_H > log(0.8) ? 1 : -1
@@ -168,11 +168,11 @@ function find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where T
     # Heuristically find optimal ϵ
     while (iter_num <= 12)
 
-        p = sample_momentum(vi, spl)
-        H0 = find_H(p, model, vi, spl)
+        p = sample_momentum(vi, sampler)
+        H0 = find_H(p, model, vi, sampler)
 
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : find_H(p_prime, model, vi, spl)
+        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
+        h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
         @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
@@ -190,8 +190,8 @@ function find_good_eps(model::Function, vi::VarInfo, spl::Sampler{T}) where T
 
     while h == Inf  # revert if the last change is too big
         ϵ = ϵ / 2               # safe is more important than large
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : find_H(p_prime, model, vi, spl)
+        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
+        h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
     end
     println("\r[$T] found initial ϵ: ", ϵ)
     return ϵ
@@ -203,7 +203,9 @@ end
 Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance
 ratio in log space.
 """
-mh_accept(H, H_new) = mh_accept(H, H_new, 0)
-function hm_accept(H, H_new, log_proposal_ratio)
-    return log(rand()) + H_new < min(H_new, H) + log_proposal_ratio, min(0, -(H_new - H))
+function mh_accept(H::Real, H_new::Real)
+    return log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))
+end
+function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
+    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
