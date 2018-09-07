@@ -44,7 +44,7 @@ function gradient_forward(
     chunk_size::Int=CHUNKSIZE[],
 )
     # Record old parameters.
-    θ_old = vi[sampler]
+    θ_old, logp_old = copy(vi.vals), copy(vi.logp)
 
     # Define function to compute log joint.
     function f(θ)
@@ -56,11 +56,11 @@ function gradient_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
+    logp = vi.logp.value
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
-    vi[sampler] = θ_old
-
-    return getlogp(vi), ∂l∂θ
+    vi.vals, vi.logp = θ_old, logp_old
+    return logp, ∂l∂θ
 end
 
 """
@@ -80,6 +80,8 @@ function gradient_reverse(
     model::Function,
     sampler::Union{Nothing, Sampler}=nothing,
 )
+    θ_old, logp_old = copy(vi.vals), copy(vi.logp)
+
     # Specify objective function.
     function f(θ)
         vi[sampler] = θ
@@ -87,15 +89,14 @@ function gradient_reverse(
     end
 
     # Compute forward and reverse passes.
-    l, ȳ = Tracker.forward(f, θ)
-    ∂l∂θ = ȳ(1)[1]
+    l_tracked, ȳ = Tracker.forward(f, θ)
+    l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     # Remove tracking info from variables in model (because mutable state).
-    vi.logp = Tracker.data(vi.logp)
-    vi[sampler] .= Tracker.data.(vi[sampler])
+    vi.vals, vi.logp = θ_old, logp_old
 
     # Return non-tracked gradient value
-    return Tracker.data(l), Tracker.data(∂l∂θ)
+    return l, ∂l∂θ
 end
 
 function verifygrad(grad::AbstractVector{<:Real})
