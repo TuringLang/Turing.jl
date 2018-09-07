@@ -11,7 +11,7 @@ alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
 alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
 ```
 """
-mutable struct PMMH{T, A} <: InferenceAlgorithm
+mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
   n_iters               ::    Int               # number of iterations
   algs                  ::    A                 # Proposals for state & parameters
   space                 ::    Set{T}            # sampling space, emtpy means all
