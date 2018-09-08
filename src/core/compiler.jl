@@ -159,25 +159,18 @@ end
 """
     @model(name, fbody)
 
-Wrapper for models.
-
-Usage:
-
-```julia
-@model model() = begin
-# body
-end
-```
+Macro to specify a probabilistic model.
 
 Example:
 
 ```julia
-@model gauss() = begin
-s ~ InverseGamma(2,3)
-m ~ Normal(0,sqrt.(s))
-1.5 ~ Normal(m, sqrt.(s))
-2.0 ~ Normal(m, sqrt.(s))
-return(s, m)
+@model Gaussian(x) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt.(s))
+    for i in 1:length(x)
+        x[i] ~ Normal(m, sqrt.(s))
+    end
+    return (s, m)
 end
 ```
 """
