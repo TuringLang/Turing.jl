@@ -26,10 +26,11 @@ macro VarName(ex::Union{Expr, Symbol})
         return esc(parse(_1))
     else
         @error "VarName: Mis-formed variable name $(ex)!"
+        return :()    
     end
 end
 
-function generate_observe(right, left)
+function generate_observe(left, right)
     obsexpr = esc( quote
             _lp += Turing.observe(
                                   sampler,
@@ -43,92 +44,111 @@ end
 
 
 """
-    var_name ~ Distribution()
+    macro: @~ var Distribution()
 
-Tilde notation `~` can be used to specifiy *a variable follows a distributions*.
+Tilde notation macro. This macro constructs Turing.observe or 
+Turing.assume calls depending on the left-hand argument.
+Note that the macro is interconnected with the @model macro and 
+assumes that a `compiler` struct is available.
 
-If `var_name` is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if `var_name` is defined, this variable will be treated as data.
+Example:
+```julia
+@~ x Normal()
+```
 """
-macro ~(left::Real, right)
+macro ~(left, right)
     @info "Observe constant - ", left
-    return generate_observe(right, left)
+    return generate_observe(left, right)
 end
 
-macro ~(left, right)
+macro ~(left::Symbol, right)
+
+    # check if left-hand side is a observation
+    if left in Turing._compiler_[:fargs]
+        if ~(left in Turing._compiler_[:dvars])
+            @info " Observe - `$(left)` is an observation"
+            push!(Turing._compiler_[:dvars], left)
+        end
+
+        return generate_observe(left, right)
+    else
+        # assume its a paramter
+        if ~(left in Turing._compiler_[:pvars])
+            msg = " Assume - `$(left)` is a parameter"
+            if isdefined(Main, left)
+                msg  *= " (ignoring `$(left)` found in global scope)"
+            end
+        
+            @info msg
+            push!(Turing._compiler_[:pvars], left)
+        end
+      
+        sym, idcs, csym = @VarName(left)
+        csym = Symbol(string(Turing._compiler_[:fname])*string(csym))
+        syms = Symbol[csym, left]
+        assume_ex = quote
+            vn = Turing.VarName(vi, $syms, "")
+            if isa($(right), Vector)
+                $(left), __lp = Turing.assume(
+                                              sampler,
+                                              $(right),   # dist
+                                              vn,         # VarName
+                                              $(left),
+                                              vi          # VarInfo
+                                             )
+                _lp += __lp
+            else
+                $(left), __lp = Turing.assume(
+                                              sampler,
+                                              $(right),   # dist
+                                              vn,         # VarName
+                                              vi          # VarInfo
+                                             )
+                _lp += __lp
+            end
+        end
+        # end of quote block
+        return(esc(assume_ex))
+    end
+end
+
+macro ~(left::Expr, right)
     vsym = getvsym(left)
-    vsym_str = string(vsym)
+    @assert isa(vsym, Symbol)
     
-    # Require all data to be stored in data dictionary.
     if vsym in Turing._compiler_[:fargs]
         if ~(vsym in Turing._compiler_[:dvars])
-            @info " Observe - `" * vsym_str * "` is an observation"
+            @info " Observe - `$(vsym)` is an observation"
             push!(Turing._compiler_[:dvars], vsym)
         end
 
         return generate_observe(right, left)
     else
         if ~(vsym in Turing._compiler_[:pvars])
-            msg = " Assume - `" * vsym_str * "` is a parameter"
-            if isdefined(Main, Symbol(vsym_str))
-                msg  *= " (ignoring `$(vsym_str)` found in global scope)"
+            msg = " Assume - `$(vsym)` is a parameter"
+            if isdefined(Main, vsym)
+                msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
         
             @info msg
             push!(Turing._compiler_[:pvars], vsym)
         end
-      
-        # The if statement is to deterimnet how to pass the prior.
-        # It only supports pure symbol and Array(/Dict) now.
-        #csym_str = string(gensym())
-        
-        assume_ex = if isa(left, Symbol)
+        assume_ex = quote
+            sym, idcs, csym = @VarName $left
+            csym_str = string(Turing._compiler_[:fname])*string(csym)
+            indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
             
-            # Symbol
-            sym, idcs, csym = @VarName(left)
-            csym = Symbol(string(Turing._compiler_[:fname])*string(csym))
-            syms = Symbol[csym, left]
-            assume_ex_ = quote
-                vn = Turing.VarName(vi, $syms, "")
-                if isa($(right), Vector)
-                    $(left), __lp = Turing.assume(
-                                                  sampler,
-                                                  $(right),   # dist
-                                                  vn,         # VarName
-                                                  $(left),
-                                                  vi          # VarInfo
-                                                 )
-                    _lp += __lp
-                else
-                    $(left), __lp = Turing.assume(
-                                                  sampler,
-                                                  $(right),   # dist
-                                                  vn,         # VarName
-                                                  vi          # VarInfo
-                                                 )
-                    _lp += __lp
-                end
-            end
-            # end of quote block
-            assume_ex_
-        else
-            assume_ex_ = quote
-                sym, idcs, csym = @VarName $left
-                csym_str = string(Turing._compiler_[:fname])*string(csym)
-                indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
-                
-                vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-                
-                $(left), __lp = Turing.assume(
-                                              sampler,
-                                              $right,   # dist
-                                              vn,       # VarName
-                                              vi        # VarInfo
-                                             )
-                _lp += __lp
-            end
-            assume_ex_
+            vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
+            
+            $(left), __lp = Turing.assume(
+                                          sampler,
+                                          $right,   # dist
+                                          vn,       # VarName
+                                          vi        # VarInfo
+                                         )
+            _lp += __lp
         end
-        esc(assume_ex)
+        return esc(assume_ex)
     end
 end
 
@@ -257,11 +277,10 @@ macro model(fexpr)
     )
 
     # add function definitions
-    @info(fdefn_inner.args[2].args[1].args[1])
     pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback3)))
     pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback2)))
     pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback1)))
-    pushfirst!(fdefn_outer.args[2].args, :( @info("here"); Main.eval(fdefn_inner)))
+    pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
 
     # TODO: clean up this part! 
     pushfirst!(fdefn_outer.args[2].args, quote
@@ -276,26 +295,26 @@ macro model(fexpr)
                    fdefn_inner_callback3 = Turing._compiler_[:fdefn_inner_callback_3];
 
                     # Add gensym to function name
-                    fname, _, _ = extractcomponents(fdefn_inner)
+                    fname, _, _ = Turing.extractcomponents(fdefn_inner)
                     fname_gensym = gensym(fname)
 
                     # Change the name of inner function definition to the one with gensym()
-                    setfname!(fdefn_inner, fname_gensym)
+                    Turing.setfname!(fdefn_inner, fname_gensym)
                     
-                    setfname!(fdefn_inner_callback1, fname_gensym)
-                    setfcall!(fdefn_inner_callback1, fname_gensym)
+                    Turing.setfname!(fdefn_inner_callback1, fname_gensym)
+                    Turing.setfcall!(fdefn_inner_callback1, fname_gensym)
                     
-                    setfname!(fdefn_inner_callback2, fname_gensym)
-                    setfcall!(fdefn_inner_callback2, fname_gensym)
+                    Turing.setfname!(fdefn_inner_callback2, fname_gensym)
+                    Turing.setfcall!(fdefn_inner_callback2, fname_gensym)
                     
-                    setfname!(fdefn_inner_callback3, fname_gensym)
-                    setfcall!(fdefn_inner_callback3, fname_gensym)
+                    Turing.setfname!(fdefn_inner_callback3, fname_gensym)
+                    Turing.setfcall!(fdefn_inner_callback3, fname_gensym)
 
-                    @info(fdefn_inner_callback1)
-                    @info(fdefn_inner_callback2)
-                    @info(fdefn_inner_callback3)
+                    @debug(fdefn_inner_callback1)
+                    @debug(fdefn_inner_callback2)
+                    @debug(fdefn_inner_callback3)
 
-                    @info fdefn_inner
+                    @debug fdefn_inner
                end )
 
     esc(fdefn_outer)
