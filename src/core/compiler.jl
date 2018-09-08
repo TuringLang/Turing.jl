@@ -1,84 +1,8 @@
 using Base.Meta: parse
 
-"""
-    @data(model_f(), data_dict)
-
-Manipulate the keyword arguments of the function call of model_f() to use the data 
-specified in the data_dict dictionary.
-
-Example:
-```julia
-f(;x = 1) = 2*x
-d = Dict(x => 2)
-
-@data(f(), d) # => 4
-```
-"""
-macro data(fexpr::Expr, dexpr::Expr)
-    if (dexpr.args[1] == :Dict)
-        dargs = filter(d -> d.args[1] == :(=>), dexpr.args[2:end])
-        fname = string(fexpr.args[1])
-
-        fcall = Expr(:call, Symbol(fname))
-        @debug(fexpr)
-
-        existingkws = fexpr.args[2:end]
-        existingkws_var = Symbol[]
-
-        for kw in existingkws
-            push!(existingkws_var, kw.args[1])
-            push!(fcall.args, Expr(:kw, kw.args[1], kw.args[2]))
-        end
-
-        for kw in dargs
-            var = isa(kw.args[2], Symbol) ? kw.args[2] : kw.args[2].value
-            @assert isa(var, Symbol)
-
-            if !(var in existingkws_var)
-                push!(fcall.args, Expr(:kw, var, kw.args[3]))
-            end
-        end
-        return esc(fcall)
-    else
-        @warn("Unexpected second argument: ", dexpr)
-    end
-end
-
-macro data(fexpr::Expr, d::Symbol)
-
-    # evaluate d in the main scope
-    ddata = Main.eval(d)
-    
-    if isa(ddata, Dict)
-
-        fname = string(fexpr.args[1])
-
-        fcall = Expr(:call, Symbol(fname))
-        @debug(fexpr)
-
-        existingkws = fexpr.args[2:end]
-        existingkws_var = Symbol[]
-
-        for kw in existingkws
-            push!(existingkws_var, kw.args[1])
-            push!(fcall.args, Expr(:kw, kw.args[1], kw.args[2]))
-        end
-
-        for key in keys(ddata)
-            if !(key in existingkws_var)
-                push!(fcall.args, Expr(:kw, key, ddata[key]))
-            end
-        end
-        esc(fcall)
-    else
-        @warn("Unexpected data type, got a $(typeof(ddata)) was expecting a Dict!")
-    end
-end
-
 #################
 # Overload of ~ #
 #################
-
 
 macro VarName(ex::Union{Expr, Symbol})
   # Usage: @VarName x[1,2][1+5][45][3]
