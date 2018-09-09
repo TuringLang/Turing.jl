@@ -1,6 +1,6 @@
 using Documenter, Turing
 makedocs(
-    format = :html,
+    # format = :html,
     sitename = "Turing.jl",
     pages = [
         "Home" => ["index.md",
@@ -11,4 +11,9 @@ makedocs(
         "Tutorials" => ["ex/0_Introduction.md"],
         "API" => "functions.md"
     ]
+)
+
+deploydocs(
+    repo = "github.com/cpfiffer/Turing.jl.git",
+    julia = "1.0"
 )
