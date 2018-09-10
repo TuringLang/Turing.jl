@@ -13,7 +13,7 @@ reset!(ve::VarEstimator) = begin
   ve.M = zeros(size(ve.M))
 end
 
-add_sample!(ve::VarEstimator{T}, s::Vector{T}) where T<:Real = begin
+add_sample!(ve::VarEstimator{T}, s::AbstractVector{T}) where T<:Real = begin
   ve.n += 1
   δ = s .- ve.μ
   ve.μ .+= δ ./ ve.n
