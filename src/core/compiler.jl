@@ -121,7 +121,7 @@ macro ~(left::Expr, right)
             push!(Turing._compiler_[:dvars], vsym)
         end
 
-        return generate_observe(right, left)
+        return generate_observe(left, right)
     else
         if ~(vsym in Turing._compiler_[:pvars])
             msg = " Assume - `$(vsym)` is a parameter"
@@ -317,28 +317,23 @@ end
 ###################
 # Helper function #
 ###################
-function setfcall!_(fexpr::Expr, name::Symbol)
+function setfcall!(fexpr::Expr, name::Symbol)
     if fexpr.head == :function
         @assert fexpr.args[2].head == :call
         fexpr.args[2].args[1] = name
     else
         @assert length(fexpr.args) > 1
-        setfcall!_(fexpr.args[2], name)
+        setfcall!(fexpr.args[2], name)
     end
 end
-function setfcall!(fexpr::Expr, name::Symbol)
-    setfcall!_(fexpr, name)
-end
-function setfname!_(fexpr::Expr, name::Symbol)
+
+function setfname!(fexpr::Expr, name::Symbol)
     if fexpr.head == :function
         fexpr.args[1].args[1] = name
     else
         @assert length(fexpr.args) > 1
-        setfname!_(fexpr.args[2], name)
+        setfname!(fexpr.args[2], name)
     end
-end
-function setfname!(fexpr::Expr, name::Symbol)
-    setfname!_(fexpr, name)
 end
 
 """
