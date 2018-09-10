@@ -1,25 +1,3 @@
-#####################################
-# Helper functions for Dual numbers #
-#####################################
-
-realpart(r::Real) = r
-realpart(d::ForwardDiff.Dual) = d.value
-realpart(ds::Union{Vector,SubArray}) = Float64[realpart(d) for d in ds]
-function realpart!(arr::Union{Array,SubArray}, ds::Union{Array,SubArray})
-    for i = 1:length(ds)
-        arr[i] = realpart(ds[i])
-    end
-end
-realpart(ds::Matrix{T}) where {T <: Real} = Float64[realpart(col) for col in ds]
-realpart(ds::Matrix{Any}) = [realpart(col) for col in ds]
-realpart(ds::Array)  = map(realpart, ds)  # NOTE: this function is not optimized
-# @inline realpart(ds::TArray) = realpart(Array(ds))    # TODO: is it disabled temporary
-realpart(ta::Tracker.TrackedReal) = ta.data
-
-# Base.promote_rule(D1::Type{Real}, D2::Type{ForwardDiff.Dual}) = D2
-import Base: <=
-<=(a::Tracker.TrackedReal, b::Tracker.TrackedReal) = a.data <= b.data
-
 #####################################################
 # Helper functions for vectorize/reconstruct values #
 #####################################################
