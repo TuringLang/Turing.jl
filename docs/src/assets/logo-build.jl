@@ -15,9 +15,11 @@ mu0 = 0.0
 sig0 = 1.0
 sig_like = 1.0
 prior = Normal(mu0, sig0)
+
 # Inference
 obs = [5.0]
 posterior_1 = Normal(compute_posterior_parameters(obs, mu0, sig0, sig_like)...)
+
 # Inference with more data
 push!(obs, 1.0)
 posterior_2 = Normal(compute_posterior_parameters(obs, mu0, sig0, sig_like)...)
