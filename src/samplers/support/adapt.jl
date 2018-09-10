@@ -2,29 +2,29 @@
 
 # Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
 mutable struct VarEstimator{T<:Real}
-  n :: Int
-  μ :: Vector{T}
-  M :: Vector{T}
+    n::Int
+    μ::Vector{T}
+    M::Vector{T}
 end
 
-reset!(ve::VarEstimator) = begin
-  ve.n = 0
-  ve.μ = zeros(size(ve.μ))
-  ve.M = zeros(size(ve.M))
+function reset!(ve::VarEstimator{T}) where T
+    ve.n = 0
+    ve.μ .= zero(T)
+    ve.M .= zero(T)
+    return ve
 end
 
-add_sample!(ve::VarEstimator{T}, s::AbstractVector{T}) where T<:Real = begin
-  ve.n += 1
-  δ = s .- ve.μ
-  ve.μ .+= δ ./ ve.n
-  ve.M .+= δ .* (s .- ve.μ)
+function add_sample!(ve::VarEstimator, s::AbstractVector)
+    ve.n += 1
+    δ = s .- ve.μ
+    ve.μ .+= δ ./ ve.n
+    ve.M .+= δ .* (s .- ve.μ)
+    return ve
 end
 
-get_var(ve::VarEstimator) = begin
-  @assert ve.n >= 2
-  var = ve.M / (ve.n - 1)
-  var = (ve.n / (ve.n + 5.0)) * var .+ 1e-3 * (5.0 / (ve.n + 5.0))
-  return var
+function get_var(ve::VarEstimator)
+    @assert ve.n >= 2
+    return (ve.n / ((ve.n + 5) * (ve.n - 1))) .* ve.M .+ 1e-3 * (5.0 / (ve.n + 5))
 end
 
 
