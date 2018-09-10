@@ -57,7 +57,6 @@ Example:
 ```
 """
 macro ~(left, right)
-    @info "Observe constant - ", left
     return generate_observe(left, right)
 end
 
