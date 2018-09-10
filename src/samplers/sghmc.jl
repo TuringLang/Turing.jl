@@ -19,26 +19,26 @@ end
 sample(example, SGHMC(1000, 0.01, 0.1))
 ```
 """
-mutable struct SGHMC <: Hamiltonian
+mutable struct SGHMC{T} <: Hamiltonian
   n_iters        ::  Int       # number of samples
   learning_rate  ::  Float64   # learning rate
   momentum_decay ::  Float64   # momentum decay
-  space          ::  Set       # sampling space, emtpy means all
+  space          ::  Set{T}    # sampling space, emtpy means all
   gid            ::  Int
-  function SGHMC(learning_rate::Float64, momentum_decay::Float64, space...)
-    SGHMC(1, learning_rate, momentum_decay, space..., 0)
-  end
-  function SGHMC(n_iters, learning_rate, momentum_decay)
-    new(n_iters, learning_rate, momentum_decay, Set(), 0)
-  end
-  function SGHMC(n_iters, learning_rate, momentum_decay, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_iters, learning_rate, momentum_decay, space, 0)
-  end
-  SGHMC(alg::SGHMC, new_gid::Int) = new(alg.n_iters, alg.learning_rate, alg.momentum_decay, alg.space, new_gid)
 end
+function SGHMC(learning_rate::Float64, momentum_decay::Float64, space...)
+  SGHMC(1, learning_rate, momentum_decay, space..., 0)
+end
+function SGHMC(n_iters, learning_rate, momentum_decay)
+  SGHMC(n_iters, learning_rate, momentum_decay, Set(), 0)
+end
+function SGHMC(n_iters, learning_rate, momentum_decay, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  SGHMC(n_iters, learning_rate, momentum_decay, _space, 0)
+end
+SGHMC(alg::SGHMC, new_gid::Int) = SGHMC(alg.n_iters, alg.learning_rate, alg.momentum_decay, alg.space, new_gid)
 
-function step(model, spl::Sampler{SGHMC}, vi::VarInfo, is_first::Bool)
+function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
   if is_first
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R

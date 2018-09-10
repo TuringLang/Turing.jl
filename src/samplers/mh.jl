@@ -24,30 +24,30 @@ end
 sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
 ```
 """
-mutable struct MH <: InferenceAlgorithm
+mutable struct MH{T} <: InferenceAlgorithm
   n_iters   ::  Int       # number of iterations
   proposals ::  Dict{Symbol,Any}  # Proposals for paramters
-  space     ::  Set       # sampling space, emtpy means all
+  space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
-  function MH(n_iters::Int, space...)
-    new_space = Set()
-    proposals = Dict{Symbol,Any}()
-
-    # parse random variables with their hypothetical proposal
-    for element in space
-        if isa(element, Symbol)
-          push!(new_space, element)
-        else
-          @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
-          push!(new_space, element[1])
-          proposals[element[1]] = element[2]
-        end
-    end
-
-    new(n_iters, proposals, Set(new_space), 0)
-  end
-  MH(alg::MH, new_gid::Int) = new(alg.n_iters, alg.proposals, alg.space, new_gid)
 end
+function MH(n_iters::Int, space...)
+  new_space = Set()
+  proposals = Dict{Symbol,Any}()
+
+  # parse random variables with their hypothetical proposal
+  for element in space
+      if isa(element, Symbol)
+        push!(new_space, element)
+      else
+        @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
+        push!(new_space, element[1])
+        proposals[element[1]] = element[2]
+      end
+  end
+  set = Set(new_space)
+  MH{eltype(set)}(n_iters, proposals, set, 0)
+end
+MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, alg.space, new_gid)
 
 Sampler(alg::MH) = begin
   alg_str = "MH"
@@ -70,14 +70,14 @@ Sampler(alg::MH) = begin
   Sampler(alg, info)
 end
 
-propose(model::Function, spl::Sampler{MH}, vi::VarInfo) = begin
+propose(model::Function, spl::Sampler{<:MH}, vi::VarInfo) = begin
   spl.info[:proposal_ratio] = 0.0
   spl.info[:prior_prob] = 0.0
   spl.info[:violating_support] = false
   runmodel(model, vi ,spl)
 end
 
-step(model::Function, spl::Sampler{MH}, vi::VarInfo, is_first::Bool) = begin
+step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Bool) = begin
   if is_first
     push!(spl.info[:accept_his], true)
     vi
@@ -172,7 +172,7 @@ function sample(model::Function, alg::MH;
   c
 end
 
-assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
       if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
       old_val = vi[vn]
@@ -217,11 +217,11 @@ assume(spl::Sampler{MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
     r, logpdf(dist, r)
 end
 
-assume(spl::Sampler{MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where D<:Distribution =
+assume(spl::Sampler{<:MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where D<:Distribution =
   error("[Turing] MH doesn't support vectorizing assume statement")
 
-observe(spl::Sampler{MH}, d::Distribution, value::Any, vi::VarInfo) =
+observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo) =
   observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 
-observe(spl::Sampler{MH}, ds::Vector{D}, value::Any, vi::VarInfo)  where D<:Distribution =
+observe(spl::Sampler{<:MH}, ds::Vector{D}, value::Any, vi::VarInfo)  where D<:Distribution =
   observe(nothing, ds, value, vi) # accumulate pdf of likelihood

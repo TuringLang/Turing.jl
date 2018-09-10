@@ -19,25 +19,25 @@ end
 sample(example, SGLD(1000, 0.5))
 ```
 """
-mutable struct SGLD <: Hamiltonian
+mutable struct SGLD{T} <: Hamiltonian
   n_iters   ::  Int       # number of samples
   step_size ::  Float64   # constant scale factor of learning rate
-  space     ::  Set       # sampling space, emtpy means all
+  space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int
-  function SGLD(step_size::Float64, space...)
-    SGLD(1, step_size, space..., 0)
-  end
-  function SGLD(n_iters, step_size)
-    new(n_iters, step_size, Set(), 0)
-  end
-  function SGLD(n_iters, step_size, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n_iters, step_size, space, 0)
-  end
-  SGLD(alg::SGLD, new_gid::Int) = new(alg.n_iters, alg.step_size, alg.space, new_gid)
 end
+function SGLD(step_size::Float64, space...)
+  SGLD(1, step_size, space..., 0)
+end
+function SGLD(n_iters, step_size)
+  SGLD(n_iters, step_size, Set(), 0)
+end
+function SGLD(n_iters, step_size, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  SGLD(n_iters, step_size, _space, 0)
+end
+SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.step_size, alg.space, new_gid)
 
-function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
+function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
   if is_first
     if ~haskey(spl.info, :wum)
       if spl.alg.gid != 0 link!(vi, spl) end    # X -> R

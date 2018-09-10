@@ -24,20 +24,23 @@ end
 sample(gdemo([1.5, 2]), PG(100, 100))
 ```
 """
-mutable struct PG <: InferenceAlgorithm
+mutable struct PG{T, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
-  resampler             ::    Function    # function to resample
-  space                 ::    Set         # sampling space, emtpy means all
+  resampler             ::    F           # function to resample
+  space                 ::    Set{T}      # sampling space, emtpy means all
   gid                   ::    Int         # group ID
-  PG(n1::Int, n2::Int) = new(n1, n2, resampleSystematic, Set(), 0)
-  PG(n1::Int, n2::Int, resampler::Function, space::Set, gid::Int) = new(n1, n2, resampler, space, gid)
-  function PG(n1::Int, n2::Int, space...)
-    space = isa(space, Symbol) ? Set([space]) : Set(space)
-    new(n1, n2, resampleSystematic, space, 0)
-  end
-  PG(alg::PG, new_gid::Int) = new(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 end
+PG(n1::Int, n2::Int) = PG(n1, n2, resampleSystematic, Set(), 0)
+function PG(n1::Int, n2::Int, resampler::F, space::Set{T}, gid::Int) where {T,F}
+  PG{T, F}(n1, n2, resampler, space, gid)
+end
+function PG(n1::Int, n2::Int, space...)
+  _space = isa(space, Symbol) ? Set([space]) : Set(space)
+  PG(n1, n2, resampleSystematic, _space, 0)
+end
+PG(alg::PG, new_gid::Int) = PG(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
+PG{T, F}(alg::PG, new_gid::Int) where {T, F} = PG{T, F}(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
@@ -47,9 +50,9 @@ Sampler(alg::PG) = begin
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
+step(model::Function, spl::Sampler{<:PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
 
-step(model::Function, spl::Sampler{PG}, vi::VarInfo) = begin
+step(model::Function, spl::Sampler{<:PG}, vi::VarInfo) = begin
   particles = ParticleContainer{Trace}(model)
 
   vi.num_produce = 0;  # Reset num_produce before new sweep\.
