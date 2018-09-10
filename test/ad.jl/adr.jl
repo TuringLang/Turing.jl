@@ -1,6 +1,6 @@
 using Distributions
 using Turing
-using Turing: gradient_reverse, invlink, link, getval, realpart
+using Turing: gradient_reverse, invlink, link, getval
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -20,8 +20,8 @@ ad_test_f = ad_test()
 vi = ad_test_f(Turing.VarInfo(), nothing)
 svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
-_s = realpart(getval(vi, svn)[1])
-_m = realpart(getval(vi, mvn)[1])
+_s = getval(vi, svn)[1]
+_m = getval(vi, mvn)[1]
 
 x = map(_->Float64(_), vi[nothing])
 ∇E = gradient_reverse(x, vi, ad_test_f)

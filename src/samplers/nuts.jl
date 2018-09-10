@@ -49,7 +49,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      θ = realpart(vi[spl])
+      θ = vi[spl]
       ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
       vi[spl] = θ
 
@@ -79,7 +79,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     rev_func = gen_rev_func(vi, spl)
     log_func = gen_log_func(spl)
 
-    θ = realpart(vi[spl])
+    θ = vi[spl]
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
@@ -101,7 +101,7 @@ function step(model::Function, spl::Sampler{NUTS}, vi::VarInfo, is_first::Bool)
     # Adapt step-size and pre-cond
     # TODO: figure out whether or not the condition below is needed
     # if τ_valid > 0
-      adapt!(spl.info[:wum], da_stat, realpart(vi[spl]), adapt_M = true, adapt_ϵ = true)
+      adapt!(spl.info[:wum], da_stat, vi[spl], adapt_M = true, adapt_ϵ = true)
     # end
 
     @debug "R -> X..."

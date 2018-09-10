@@ -3,7 +3,7 @@ module VarReplay
 
 
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
-using Turing: Sampler, realpart, dualpart, vectorize, reconstruct, reconstruct!, SimplexDistribution
+using Turing: Sampler, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
 
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
@@ -281,7 +281,7 @@ end
 #################################
 
 # expand!(vi::VarInfo) = begin
-#   push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
+#   push!(vi.vals, vi.vals[end]); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
 #   push!(vi.trans, deepcopy(vi.trans[end]))
 #   push!(vi.logp, zero(Real))
 # end

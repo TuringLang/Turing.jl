@@ -81,7 +81,7 @@ function leapfrog(
     lp_grad = gen_grad_func(vi, sampler, model)
     rev = gen_rev_func(vi, sampler)
     logger = gen_log_func(sampler)
-    return _leapfrog(realpart(θ), p, τ, ϵ, lp_grad; rev_func=rev, log_func=logger)
+    return _leapfrog(θ, p, τ, ϵ, lp_grad; rev_func=rev, log_func=logger)
 end
 
 function _leapfrog(
@@ -100,7 +100,7 @@ function _leapfrog(
     for t in 1:τ
         # NOTE: we dont need copy here becase arr += another_arr
         #       doesn't change arr in-place
-        p_old = p; θ_old = copy(θ)
+        p_old, θ_old = copy(p), copy(θ)
 
         p -= ϵ .* grad / 2
         θ += ϵ .* p  # full step for state
@@ -156,7 +156,7 @@ function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where 
     p = sample_momentum(vi, sampler)
     H0 = find_H(p, model, vi, sampler)
 
-    θ = realpart(vi[sampler])
+    θ = vi[sampler]
     θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
     h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
 

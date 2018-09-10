@@ -49,7 +49,7 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
       wum[:stds] = ones(D)
       spl.info[:wum] = wum
 
-      oldθ = realpart(vi[spl])
+      oldθ = vi[spl]
       vi[spl] = oldθ
 
       # Initialize iteration counter
@@ -78,7 +78,7 @@ function step(model, spl::Sampler{SGLD}, vi::VarInfo, is_first::Bool)
     end
 
     @debug "recording old variables..."
-    old_θ = realpart(vi[spl])
+    old_θ = vi[spl]
     θ = deepcopy(old_θ)
     _, grad = gradient(old_θ, vi, model, spl)
 

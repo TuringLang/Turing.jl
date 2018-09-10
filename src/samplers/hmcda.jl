@@ -54,7 +54,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
 
       init_warm_up_params(vi, spl)
 
-      θ = realpart(vi[spl])
+      θ = vi[spl]
       ϵ = spl.alg.delta > 0 ?
           find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
           spl.info[:pre_set_ϵ]
@@ -87,7 +87,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     rev_func = gen_rev_func(vi, spl)
     log_func = gen_log_func(spl)
 
-    θ = realpart(vi[spl])
+    θ = vi[spl]
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
@@ -129,8 +129,7 @@ function step(model, spl::Sampler{HMCDA}, vi::VarInfo, is_first::Bool)
     if spl.alg.delta > 0
     # TODO: figure out whether or not the condition below is needed
     # if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
-      # TODO: figure out why realpart() is needed for α in HMCDA
-      adapt!(spl.info[:wum], realpart(α), realpart(vi[spl]), adapt_ϵ = true)
+      adapt!(spl.info[:wum], α, vi[spl], adapt_ϵ = true)
     end
 
     @debug "R -> X..."

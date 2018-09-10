@@ -56,11 +56,15 @@ function gradient_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    logp = vi.logp.value
+    l = vi.logp.value
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
     vi.vals, vi.logp = θ_old, logp_old
-    return logp, ∂l∂θ
+
+    # Strip tracking info from θ to avoid mutating it.
+    θ .= ForwardDiff.value.(θ)
+
+    return l, ∂l∂θ
 end
 
 """
@@ -94,6 +98,9 @@ function gradient_reverse(
 
     # Remove tracking info from variables in model (because mutable state).
     vi.vals, vi.logp = θ_old, logp_old
+
+    # Strip tracking info from θ to avoid mutating it.
+    θ .= Tracker.data.(θ)
 
     # Return non-tracked gradient value
     return l, ∂l∂θ
