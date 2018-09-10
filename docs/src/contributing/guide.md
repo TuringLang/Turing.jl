@@ -1,8 +1,8 @@
 # Contributing
 
-Turing is an open source project. If you feel you have some relevant skills and are interested in contributing, then please do get in touch. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
+Turing is an open source project. If you feel that you have some relevant skills and are interested in contributing, then please do get in touch. You can contribute by opening issues on GitHub or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
-Turing has a [style guide](../style_guide.html). It is not strictly necessary to review it, but particularly adventurous contributors may enjoy reviewing it.
+Turing has a [style guide](../style_guide.html). It is not strictly necessary to review it before making a pull request, but you may be asked to change portions of your code to conform with the style guide before it is merged.
 
 ## How to Contribute
 
