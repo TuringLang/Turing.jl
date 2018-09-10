@@ -245,11 +245,8 @@ macro model(fexpr)
     :fdefn_inner_callback_2 => fdefn_inner_callback2,
     :fdefn_inner_callback_3 => fdefn_inner_callback3)
 
-    # Outer function defintion 1: f(x,y) ==> f(x,y;data=Dict())
+    # Outer function defintion
     fargs_outer = deepcopy(fargs)
-
-    # Add data argument to outer function -> TODO: move to extra macro!
-    #push!(fargs_outer[1].args, Expr(:kw, :data, :(Dict{Symbol,Any}())))
 
     # Add data argument to outer function
     push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
@@ -308,6 +305,29 @@ macro model(fexpr)
 
                     @debug fdefn_inner
                end )
+	
+	# check for keyword arguments
+	for k in fargs
+	    if isa(k, Symbol)       # f(x,..)
+			_k = k
+		elseif k.head == :kw    # f(z=1,..)
+      		_k = k.args[1]
+		else
+	  		_k = nothing
+		end
+
+		if _k != nothing
+      		_k_str = string(_k)
+      		@debug _k_str, " = ", _k
+      		
+			data_check_ex = quote
+				if $_k == nothing
+					@error("Data `"*$_k_str*"` is not provided.")
+            	end
+          	end
+      		pushfirst!(fdefn_outer.args[2].args, data_check_ex)
+    	end
+	end
 
     esc(fdefn_outer)
 end
