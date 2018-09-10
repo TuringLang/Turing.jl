@@ -273,15 +273,15 @@ macro model(fexpr)
 
     # TODO: clean up this part! 
     pushfirst!(fdefn_outer.args[2].args, quote
-                 
-                 Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                 fargs = Turing._compiler_[:fargs];
+                   
+                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
+                    fargs = Turing._compiler_[:fargs];
 
-                   # Copy the expr of function definition and callbacks
-                   fdefn_inner = Turing._compiler_[:fdefn_inner];
-                   fdefn_inner_callback1 = Turing._compiler_[:fdefn_inner_callback_1];
-                   fdefn_inner_callback2 = Turing._compiler_[:fdefn_inner_callback_2];
-                   fdefn_inner_callback3 = Turing._compiler_[:fdefn_inner_callback_3];
+                    # Copy the expr of function definition and callbacks
+                    #fdefn_inner = Turing._compiler_[:fdefn_inner];
+                    fdefn_inner_callback1 = Turing._compiler_[:fdefn_inner_callback_1];
+                    fdefn_inner_callback2 = Turing._compiler_[:fdefn_inner_callback_2];
+                    fdefn_inner_callback3 = Turing._compiler_[:fdefn_inner_callback_3];
 
                     # Add gensym to function name
                     fname, _, _ = Turing.extractcomponents(fdefn_inner)
@@ -289,16 +289,17 @@ macro model(fexpr)
 
                     # Change the name of inner function definition to the one with gensym()
                     Turing.setfname!(fdefn_inner, fname_gensym)
-                    
+
                     Turing.setfname!(fdefn_inner_callback1, fname_gensym)
                     Turing.setfcall!(fdefn_inner_callback1, fname_gensym)
-                    
+
                     Turing.setfname!(fdefn_inner_callback2, fname_gensym)
                     Turing.setfcall!(fdefn_inner_callback2, fname_gensym)
-                    
+
                     Turing.setfname!(fdefn_inner_callback3, fname_gensym)
                     Turing.setfcall!(fdefn_inner_callback3, fname_gensym)
 
+                    # insert observation values
                     @debug(fdefn_inner_callback1)
                     @debug(fdefn_inner_callback2)
                     @debug(fdefn_inner_callback3)
@@ -307,10 +308,11 @@ macro model(fexpr)
                end )
 	
 	# check for keyword arguments
+	# this should be moved into a function...
 	for k in fargs
-	    if isa(k, Symbol)       # f(x,..)
+	    if isa(k, Symbol)
 			_k = k
-		elseif k.head == :kw    # f(z=1,..)
+		elseif k.head == :kw
       		_k = k.args[1]
 		else
 	  		_k = nothing
@@ -318,21 +320,27 @@ macro model(fexpr)
 
 		if _k != nothing
       		_k_str = string(_k)
-      		@debug _k_str, " = ", _k
       		
 			data_check_ex = quote
 				if $_k == nothing
 					@error("Data `"*$_k_str*"` is not provided.")
-            	end
+                else
+					k_sym = Symbol($_k_str)
+					if fdefn_inner.args[2].args[2].args[1].head == :line
+          				insert!(fdefn_inner.args[2].args[2].args, 2, Expr(:(=), k_sym, $_k))
+        			else
+          				insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), k_sym, $_k))
+        			end
+				end
           	end
       		pushfirst!(fdefn_outer.args[2].args, data_check_ex)
     	end
 	end
 
-    esc(fdefn_outer)
+	pushfirst!(fdefn_outer.args[2].args, :(fdefn_inner = Turing._compiler_[:fdefn_inner]))
+
+    return esc(fdefn_outer)
 end
-
-
 
 ###################
 # Helper function #
@@ -410,6 +418,7 @@ end
 function extractcomponents_(fnode::Symbol, fexpr::Expr)
     return extractcomponents_(fexpr.args[1], fexpr.args[2])
 end
+
 """
     extractcomponents(fexpr::Expr)
 
@@ -440,7 +449,7 @@ end
 
 
 function insdelim(c, deli=",")
-    reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+    return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
 end
 
 getvsym(s::Symbol) = s
@@ -450,7 +459,7 @@ getvsym(expr::Expr) = begin
     while isa(curr, Expr) && curr.head == :ref
         curr = curr.args[1]
     end
-    curr
+    return curr
 end
 
 
@@ -463,6 +472,6 @@ translate!(ex::Expr) = begin
     else
         map(translate!, ex.args)
     end
-    ex
+    return ex
 end
 translate(ex::Expr) = translate!(deepcopy(ex))
