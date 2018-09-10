@@ -128,9 +128,13 @@ function sample(model::Function, alg::T;
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
 
-  vi = resume_from == nothing ?
-       Base.invokelatest(model, VarInfo(), nothing) :
-       deepcopy(resume_from.info[:vi])
+    vi = if resume_from == nothing 
+        vi_ = VarInfo()
+        Base.invokelatest(model, vi_, nothing)
+        vi_
+    else
+        deepcopy(resume_from.info[:vi])
+    end
 
   if spl.alg.gid == 0
     link!(vi, spl)

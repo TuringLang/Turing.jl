@@ -130,9 +130,13 @@ function sample(model::Function, alg::MH;
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
 
-  vi = resume_from == nothing ?
-            Base.invokelatest(model, VarInfo(), nothing) :
-            resume_from.info[:vi]
+    vi = if resume_from == nothing
+        vi_ = VarInfo()
+        Base.invokelatest(model, vi_, nothing)
+        vi_
+    else
+        resume_from.info[:vi]
+    end
 
   if spl.alg.gid == 0
     runmodel(model, vi, spl)
