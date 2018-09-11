@@ -71,19 +71,14 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
         end
 
         @debug "recording old variables..."
-        θ = vi[spl]
+        θ, v = vi[spl], spl.info[:v]
         _, grad = gradient(θ, vi, model, spl)
-        v = spl.info[:v]
+        verifygrad(grad)
 
-        if verifygrad(grad)
-            @debug "update latent variables and velocity..."
-            # Implements the update equations from (15) of Chen et al. (2014).
-            for k in 1:size(θ, 1)
-                θ[k, :] = θ[k, :] + v[k, :]
-                noise = rand(MvNormal(sqrt(2 * η * α) .* ones(length(θ[k, :]))))
-                v[k, :] = (1 - α) * v[k, :] - η * grad[k, :] + noise # NOTE: divide η by batch size
-            end
-        end
+        # Implements the update equations from (15) of Chen et al. (2014).
+        @debug "update latent variables and velocity..."
+        θ .+= v
+        v .= (1 - α) .* v - η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
 
         @debug "saving new latent variables..."
         vi[spl] = θ

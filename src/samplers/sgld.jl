@@ -54,12 +54,11 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
         push!(spl.info[:accept_his], true)
     else
         # Update iteration counter
-        t = deepcopy(spl.info[:t]) + 1
-        spl.info[:t] = deepcopy(t)
+        spl.info[:t] += 1
 
         @debug "compute current step size..."
         γ = .35
-        ϵ_t = spl.alg.step_size / t^γ # NOTE: Choose γ=.55 in paper
+        ϵ_t = spl.alg.step_size / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
         push!(spl.info[:wum][:ϵ], ϵ_t)
 
         @debug "X-> R..."
@@ -71,15 +70,10 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
         @debug "recording old variables..."
         θ = vi[spl]
         _, grad = gradient(θ, vi, model, spl)
+        verifygrad(grad)
 
-        if verifygrad(grad)
-            @debug "update latent variables..."
-            v = zeros(Float64, size(θ))
-            for k in 1:size(θ, 1)
-                noise = rand(MvNormal(sqrt(ϵ_t) .* ones(length(θ[k, :]))))
-                θ[k, :] .-= ϵ_t .* grad[k, :] ./ 2 .+ noise
-            end
-        end
+        @debug "update latent variables..."
+        θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
         @debug "always accept..."
         push!(spl.info[:accept_his], true)

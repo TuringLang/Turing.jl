@@ -118,6 +118,20 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
             setlogp!(vi, lj_func(θ_new))
         else
             push!(spl.info[:accept_his], false)
+
+            # Reset Θ
+            if ADBACKEND[] == :forward_diff
+                vi[spl] = θ
+            elseif ADBACKEND[] == :reverse_diff
+                vi_spl = vi[spl]
+                for i = 1:length(θ)
+                    vi_spl[i] = θ[i]
+                end
+            else
+                error("Unsupported ADBACKEND = $(ADBACKEND[])")
+            end
+
+            setlogp!(vi, lj)  # reset logp
         end
 
         # QUES: why do we need the 2nd condition here (Kai)
