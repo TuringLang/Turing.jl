@@ -1,7 +1,6 @@
 # Test ParticleContainer
 
 using Turing
-using Distributions
 
 import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler, consume, produce
 

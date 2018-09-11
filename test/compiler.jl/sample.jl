@@ -1,4 +1,3 @@
-using Distributions
 using Turing
 
 @model gdemo2(x) = begin

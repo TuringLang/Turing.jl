@@ -1,6 +1,6 @@
 include("../utility.jl")
 using Test
-using Distributions, Turing
+using Turing
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2, 3)

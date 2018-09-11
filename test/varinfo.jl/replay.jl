@@ -1,6 +1,6 @@
 # Test replay for loop
 
-using Turing, Distributions
+using Turing
 using ForwardDiff: Dual
 
 # Generate synthesised data

@@ -15,7 +15,6 @@ using Turing
 # Plain Julia
 
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Distributions
 using Turing: invlink, logpdf
 
 θ_dim = 2

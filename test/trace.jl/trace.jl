@@ -1,7 +1,6 @@
 # Test Trace
 
 using Turing
-using Distributions
 
 import Turing: Trace, Trace, current_trace, fork, VarName, Sampler
 

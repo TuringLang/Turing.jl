@@ -1,6 +1,6 @@
 # Test the multivariate distribution support for HMC sampler
 
-using Turing, Distributions
+using Turing
 
 # Define helper functions
 function sigmoid(t)

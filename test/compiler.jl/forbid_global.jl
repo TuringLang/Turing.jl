@@ -1,4 +1,3 @@
-using Distributions
 using Turing
 using Test
 
@@ -24,7 +23,6 @@ chain = sample(fggibbstest(xs), gibbs);
 
 #
 #
-# using Distributions
 # using Turing
 # using Test
 #
