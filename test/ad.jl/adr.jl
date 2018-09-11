@@ -1,4 +1,3 @@
-using Distributions
 using Turing
 using Turing: gradient_reverse, invlink, link, getval, realpart
 using ForwardDiff

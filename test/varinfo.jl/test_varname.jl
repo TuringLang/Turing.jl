@@ -1,4 +1,3 @@
-using Distributions
 using ForwardDiff: Dual
 using Turing
 using Test

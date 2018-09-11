@@ -1,7 +1,6 @@
 # Test resample
 
 using Turing
-using Distributions
 using Test
 
 num_samples = Int(1e6)

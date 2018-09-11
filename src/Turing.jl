@@ -9,7 +9,9 @@ module Turing
 ########################################################################
 
 using Requires
-using Distributions
+using Reexport
+@reexport using Distributions
+@reexport using MCMCChain
 using ForwardDiff
 
 using LinearAlgebra

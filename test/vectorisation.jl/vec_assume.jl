@@ -1,5 +1,5 @@
 include("../utility.jl")
-using Distributions, Turing, Test
+using Turing, Test
 
 N = 10
 setchunksize(N)
