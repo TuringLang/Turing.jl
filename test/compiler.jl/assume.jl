@@ -1,7 +1,6 @@
 # Test @assume and @predict macros on a model without conditioning.
 
 using Turing
-using Distributions
 using Test
 
 @model test_assume() = begin

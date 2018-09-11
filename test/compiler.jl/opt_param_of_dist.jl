@@ -1,5 +1,4 @@
 using Turing
-using Distributions
 using Test
 
 @model testassume begin

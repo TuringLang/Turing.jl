@@ -1,4 +1,4 @@
-using Turing, Distributions
+using Turing
 using Test
 using Random
 

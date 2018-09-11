@@ -1,7 +1,6 @@
-using Distributions, Turing
+using Turing
 using Turing: Chain, Sample
 using Test
-using MCMCChain
 using MCMCChain: describe
 
 c = Chain()

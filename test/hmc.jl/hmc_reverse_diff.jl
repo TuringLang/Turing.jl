@@ -1,5 +1,4 @@
 using Turing
-using Distributions
 using Test
 
 @model gdemo(x) = begin
