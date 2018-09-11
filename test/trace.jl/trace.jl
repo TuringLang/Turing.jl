@@ -3,7 +3,7 @@
 using Turing
 using Distributions
 
-import Turing: Trace, Trace, current_trace, fork, VarName, Sampler
+import Turing: Trace, current_trace, fork, VarName, Sampler
 
 if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
   n[] = 0

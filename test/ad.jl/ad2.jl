@@ -4,9 +4,9 @@ using Turing: Sampler
 # Define model
 @model ad_test2(xs) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
-  xs[1] ~ Normal(m, sqrt.(s))
-  xs[2] ~ Normal(m, sqrt.(s))
+  m ~ Normal(0, sqrt(s))
+  xs[1] ~ Normal(m, sqrt(s))
+  xs[2] ~ Normal(m, sqrt(s))
   s, m
 end
 

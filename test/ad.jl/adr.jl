@@ -36,8 +36,8 @@ function logp(x::Vector)
   s = x[2]
   # s = invlink(dist_s, s)
   m = x[1]
-  lik_dist = Normal(m, sqrt.(s))
-  lp = logpdf(dist_s, s, false) + logpdf(Normal(0,sqrt.(s)), m, false)
+  lik_dist = Normal(m, sqrt(s))
+  lp = logpdf(dist_s, s, false) + logpdf(Normal(0,sqrt(s)), m, false)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
   lp
 end
