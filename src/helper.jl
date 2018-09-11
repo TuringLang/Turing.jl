@@ -12,45 +12,29 @@ vectorize(d::MatrixDistribution, r::AbstractMatrix{<:Real}) = Vector{Real}(vec(r
 # otherwise we will have error for MatrixDistribution.
 # Note this is not the case for MultivariateDistribution so I guess this might be lack of
 # support for some types related to matrices (like PDMat).
-function reconstruct(d::Distribution, val::Union{Vector,SubArray})
-    return reconstruct(d, val, typeof(val[1]))
-end
-# NOTE: the implementation below was: `T(val[1])`; it is changed to `val[1]` due to the need of ReverseDiff.jl, no side effect found yet
-reconstruct(d::UnivariateDistribution, val::Union{Vector,SubArray}, T::Type) = val[1]
-function reconstruct(d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type)
-    return Vector{T}(val)
-end
-function reconstruct(d::MatrixDistribution, val::Union{Vector,SubArray}, T::Type)
+reconstruct(d::Distribution, val::AbstractVector) = reconstruct(d, val, typeof(val[1]))
+reconstruct(d::UnivariateDistribution, val::AbstractVector, T::Type) = val[1]
+reconstruct(d::MultivariateDistribution, val::AbstractVector, T::Type) = Vector{T}(val)
+function reconstruct(d::MatrixDistribution, val::AbstractVector, T::Type)
     return Array{T, 2}(reshape(val, size(d)...))
 end
-
-function reconstruct!(r, d::Distribution, val::Union{Vector,SubArray})
+function reconstruct!(r, d::Distribution, val::AbstractVector)
     return reconstruct!(r, d, val, typeof(val[1]))
 end
-function reconstruct!(r, d::MultivariateDistribution, val::Union{Vector,SubArray}, T::Type)
+function reconstruct!(r, d::MultivariateDistribution, val::AbstractVector, T::Type)
     r .= val
     return r
 end
-function reconstruct(d::Distribution, val::Union{Vector,SubArray}, n::Int)
+function reconstruct(d::Distribution, val::AbstractVector, n::Int)
     return reconstruct(d, val, typeof(val[1]), n)
 end
-function reconstruct(
-    d::UnivariateDistribution,
-    val::Union{Vector,SubArray},
-    T::Type,
-    n::Int,
-)
+function reconstruct(d::UnivariateDistribution, val::AbstractVector, T::Type, n::Int)
     return Vector{T}(val)
 end
-function reconstruct(
-    d::MultivariateDistribution,
-    val::Union{Vector,SubArray},
-    T::Type,
-    n::Int,
-)
+function reconstruct(d::MultivariateDistribution, val::AbstractVector, T::Type, n::Int)
     return Matrix{T}(reshape(val, size(d)[1], n))
 end
-function reconstruct(d::MatrixDistribution, val::Union{Vector,SubArray}, T::Type, n::Int)
+function reconstruct(d::MatrixDistribution, val::AbstractVector, T::Type, n::Int)
     orig = Vector{Matrix{T}}(undef, n)
     tmp = Array{T, 3}(reshape(val, size(d)[1], size(d)[2], n))
     for i = 1:n
@@ -58,16 +42,10 @@ function reconstruct(d::MatrixDistribution, val::Union{Vector,SubArray}, T::Type
     end
     return orig
 end
-function reconstruct!(r, d::Distribution, val::Union{Vector,SubArray}, n::Int)
+function reconstruct!(r, d::Distribution, val::AbstractVector, n::Int)
     return reconstruct!(r, d, val, typeof(val[1]), n)
 end
-function reconstruct!(
-    r,
-    d::MultivariateDistribution,
-    val::Union{Vector,SubArray},
-    T::Type,
-    n::Int,
-)
+function reconstruct!(r, d::MultivariateDistribution, val::AbstractVector, T::Type, n::Int)
     r .= val
     return r
 end

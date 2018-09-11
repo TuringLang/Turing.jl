@@ -67,8 +67,6 @@ end
 
 _sample_momentum(d::Int, stds::Vector) = randn(d) ./ stds
 
-# Leapfrog step
-# NOTE: leapfrog() doesn't change θ in place!
 function leapfrog(
     θ::AbstractVector{<:Real},
     p::AbstractVector{<:Real},
@@ -93,7 +91,7 @@ function _leapfrog(
     rev_func=nothing,
     log_func=nothing,
 )
-    old_logp, grad = lp_grad_func(θ)
+    _, grad = lp_grad_func(θ)
     verifygrad(grad) || (return θ, p, 0)
 
     τ_valid = 0
@@ -199,13 +197,12 @@ end
 
 """
     mh_accept(H, H_new)
+    mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
 
 Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance
 ratio in log space.
 """
-function mh_accept(H::Real, H_new::Real)
-    return log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))
-end
+mh_accept(H::Real, H_new::Real) = log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))
 function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end

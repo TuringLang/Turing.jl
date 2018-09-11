@@ -1,5 +1,3 @@
-using FillArrays
-
 """
     SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)
 
@@ -73,28 +71,21 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
         end
 
         @debug "recording old variables..."
-        old_θ = vi[spl]
-        θ = deepcopy(old_θ)
-        _, grad = gradient(old_θ, vi, model, spl)
-        old_v = deepcopy(spl.info[:v])
-        v = deepcopy(old_v)
-        @show typeof(old_θ)
-        println(old_θ)
+        θ = vi[spl]
+        _, grad = gradient(θ, vi, model, spl)
+        v = spl.info[:v]
 
         if verifygrad(grad)
             @debug "update latent variables and velocity..."
             # Implements the update equations from (15) of Chen et al. (2014).
-            for k in 1:size(old_θ, 1)
-                θ[k, :] = old_θ[k, :] + old_v[k, :]
-                noise = rand(MvNormal(
-                    sqrt(2 * η * α) .* ones(length(old_θ[k, :])),
-                ))
-                v[k, :] = (1 - α) * old_v[k, :] - η * grad[k, :] + noise # NOTE: divide η by batch size
+            for k in 1:size(θ, 1)
+                θ[k, :] = θ[k, :] + v[k, :]
+                noise = rand(MvNormal(sqrt(2 * η * α) .* ones(length(θ[k, :]))))
+                v[k, :] = (1 - α) * v[k, :] - η * grad[k, :] + noise # NOTE: divide η by batch size
             end
         end
 
-        @debug "saving new latent variables and velocity..."
-        spl.info[:v] = v
+        @debug "saving new latent variables..."
         vi[spl] = θ
 
         @debug "always accept..."
