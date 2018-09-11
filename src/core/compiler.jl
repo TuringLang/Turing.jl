@@ -31,14 +31,16 @@ macro VarName(ex::Union{Expr, Symbol})
 end
 
 function generate_observe(left, right)
-    obsexpr = esc( quote
-            _lp += Turing.observe(
-                                  sampler,
-                                  $(right),   # Distribution
-                                  $(left),    # Data point
-                                  vi
-                                 )
-        end )
+    obsexpr = esc( 
+                quote
+                    _lp += Turing.observe(
+                        sampler,
+                        $(right),   # Distribution
+                        $(left),    # Data point
+                        vi
+                    )
+                end 
+            )
     return obsexpr
 end
 
@@ -63,7 +65,7 @@ end
 macro ~(left::Symbol, right)
 
     # check if left-hand side is a observation
-    if left in Turing._compiler_[:fargs]
+    if left in Turing._compiler_[:args]
         if ~(left in Turing._compiler_[:dvars])
             @info " Observe - `$(left)` is an observation"
             push!(Turing._compiler_[:dvars], left)
@@ -83,7 +85,7 @@ macro ~(left::Symbol, right)
         end
       
         sym, idcs, csym = @VarName(left)
-        csym = Symbol(string(Turing._compiler_[:fname])*string(csym))
+        csym = Symbol(string(Turing._compiler_[:name])*string(csym))
         syms = Symbol[csym, left]
         assume_ex = quote
             vn = Turing.VarName(vi, $syms, "")
@@ -115,7 +117,7 @@ macro ~(left::Expr, right)
     vsym = getvsym(left)
     @assert isa(vsym, Symbol)
     
-    if vsym in Turing._compiler_[:fargs]
+    if vsym in Turing._compiler_[:args]
         if ~(vsym in Turing._compiler_[:dvars])
             @info " Observe - `$(vsym)` is an observation"
             push!(Turing._compiler_[:dvars], vsym)
@@ -134,7 +136,7 @@ macro ~(left::Expr, right)
         end
         assume_ex = quote
             sym, idcs, csym = @VarName $left
-            csym_str = string(Turing._compiler_[:fname])*string(csym)
+            csym_str = string(Turing._compiler_[:name])*string(csym)
             indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
             
             vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
@@ -192,123 +194,157 @@ macro model(fexpr)
     # translate all ~ occurences to macro calls
     fexpr = translate(fexpr)
 
-    # extract components of the model definition
-    fname, fargs, fbody = extractcomponents(fexpr)
+    # extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
+    modeldef = MacroTools.splitdef(fexpr)
 
-    lines = length(filter(l -> !isa(l, LineNumberNode), fbody.args))
+    lines = length(filter(l -> !isa(l, LineNumberNode), modeldef[:body].args))
     if lines < 1 # function body of the model is empty
         @warn("Model definition seems empty, still continue.")
     end
-    
-    # Insert varinfo expressions into the function body 
-    fbody_inner = insertvarinfo(fbody)
 
-    # construct new function
-    fname_inner = Symbol("$(fname)_model")
-    fname_inner_str = string(fname_inner)
-    fdefn_inner_func = constructfunc(
-                                     fname_inner,
-                                     [
-                                      :(vi::Turing.VarInfo),
-                                      :(sampler::Union{Nothing,Turing.Sampler})
-                                     ],
-                                     fbody_inner
-                                    )
-    fdefn_inner = Expr(:(=), fname_inner, fdefn_inner_func) 
-
-    # construct helper functions
-    fdefn_inner_callback1 = constructfunc(
-                                           fname_inner,
-                                           [:(vi::Turing.VarInfo)],
-                                           :($fname_inner(vi, nothing))
-                                          )
-    
-    fdefn_inner_callback2 = constructfunc(
-                                           fname_inner,
-                                           [:(sampler::Turing.Sampler)],
-                                           :($fname_inner(Turing.VarInfo(), nothing))
-                                          )
-    
-    fdefn_inner_callback3 = constructfunc(
-                                           fname_inner,
-                                           [],
-                                           :($fname_inner(Turing.VarInfo(), nothing))
-                                          )
-    # construct compiler dictionary
-    compiler = Dict(:fname => fname,
-                    :fargs => fargs,
-                    :fbody => fbody,
-                    :dvars => Set{Symbol}(),  # data
-    :pvars => Set{Symbol}(),  # parameter
-    :fdefn_inner => fdefn_inner,
-    :fdefn_inner_callback_1 => fdefn_inner_callback1,
-    :fdefn_inner_callback_2 => fdefn_inner_callback2,
-    :fdefn_inner_callback_3 => fdefn_inner_callback3)
-
-    # Outer function defintion
-    fargs_outer = deepcopy(fargs)
+   # # adjust args, i.e. add 
+    #fargs_outer = deepcopy(fargs)
 
     # Add data argument to outer function
-    push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
+    #push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
 
     # turn f(x;..) into f(x=nothing;..)
-    for i = 2:length(fargs_outer)
-        if isa(fargs_outer[i], Symbol)
-            fargs_outer[i] = Expr(:kw, fargs_outer[i], :nothing)
+    #for i = 2:length(fargs_outer)
+    #    if isa(fargs_outer[i], Symbol)
+    #        fargs_outer[i] = Expr(:kw, fargs_outer[i], :nothing)
+    #    end
+    #end
+
+    # construct compiler dictionary
+    compiler = Dict(
+        :name => modeldef[:name],
+        :closure_name => Symbol(modeldef[:name], :_model),
+        :args => modeldef[:args],
+        :kwargs => modeldef[:kwargs],
+        :body => insertvarinfo(modeldef[:body]),
+        :dvars => Set{Symbol}(),
+        :pvars => Set{Symbol}()
+    )
+    
+    # manipulate the function arguments
+    fargs = deepcopy(modeldef[:args])
+    for i in 1:length(fargs)
+        if isa(fargs[i], Symbol)
+            fargs[i] = Expr(:kw, fargs[i], :nothing)
         end
     end
 
-    # construct outer call-back function
-    fdefn_outer = constructfunc(
-                                fname,
-                                fargs_outer,
-                                Expr(:block, Expr(:return, fname_inner))
+    # construct user function
+    fdefn = Dict(
+        :name => compiler[:name],
+        :kwargs => [Expr(:kw, :compiler, compiler)],
+        :args => fargs,
+        :body => Expr(:return, compiler[:closure_name])
     )
 
+    modelfun = MacroTools.combinedef(fdefn)
+ 
+    # construct closure
+    closure_def = Dict(
+        :name => compiler[:closure_name],
+        :kwargs => fargs,
+        :args => [
+            :(vi::Turing.VarInfo),
+            :(sampler::Union{Nothing, Turing.Sampler})
+        ],
+        :body => compiler[:body]
+    )
+    closure = Expr(:(=), compiler[:closure_name], MacroTools.combinedef(closure_def))
+
+    # construct aliases
+    alias1 = MacroTools.combinedef(
+                Dict(
+                    :name => compiler[:closure_name],
+                    :args => [:(vi::Turing.VarInfo)],
+                    :kwargs => [],
+                    :body => :(return $(compiler[:closure_name])(vi, nothing))
+
+                )
+    )
+
+    alias2 = MacroTools.combinedef(
+                Dict(
+                    :name => compiler[:closure_name],
+                    :args => [:(sampler::Turing.Sampler)],
+                    :kwargs => [],
+                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), nothing))
+
+                )
+    )
+
+    alias3 = MacroTools.combinedef(
+                Dict(
+                    :name => compiler[:closure_name],
+                    :args => [],
+                    :kwargs => [],
+                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), nothing))
+
+                )
+    )
+
+    # add definitions to the compiler
+    compiler[:alias3] = alias3
+    compiler[:alias2] = alias2
+    compiler[:alias1] = alias1
+    compiler[:closure] = closure
+
     # add function definitions
-    pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback3)))
-    pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback2)))
-    pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner_callback1)))
-    pushfirst!(fdefn_outer.args[2].args, :(Main.eval(fdefn_inner)))
-
-    # TODO: clean up this part! 
-    pushfirst!(fdefn_outer.args[2].args, quote
+    pushfirst!(modelfun.args[2].args, :(Main.eval(alias3)))
+    pushfirst!(modelfun.args[2].args, :(Main.eval(alias2)))
+    pushfirst!(modelfun.args[2].args, :(Main.eval(alias1)))
+    pushfirst!(modelfun.args[2].args, :(Main.eval(closure)))
+   
+    pushfirst!(modelfun.args[2].args, quote
+                    
+                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
                    
-                    #Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                    fargs = Turing._compiler_[:fargs];
-
                     # Copy the expr of function definition and callbacks
-                    #fdefn_inner = Turing._compiler_[:fdefn_inner];
-                    fdefn_inner_callback1 = Turing._compiler_[:fdefn_inner_callback_1];
-                    fdefn_inner_callback2 = Turing._compiler_[:fdefn_inner_callback_2];
-                    fdefn_inner_callback3 = Turing._compiler_[:fdefn_inner_callback_3];
+                    alias3 = Turing._compiler_[:alias3]
+                    alias2 = Turing._compiler_[:alias2]
+                    alias1 = Turing._compiler_[:alias1]
+                    closure = Turing._compiler_[:closure]
+
+                    fname = Turing._compiler_[:closure_name]
 
                     # Add gensym to function name
-                    fname, _, _ = Turing.extractcomponents(fdefn_inner)
                     fname_gensym = gensym(fname)
-
+                    
                     # Change the name of inner function definition to the one with gensym()
-                    Turing.setfname!(fdefn_inner, fname_gensym)
+                    Turing.setfname!(closure, fname_gensym)
 
-                    Turing.setfname!(fdefn_inner_callback1, fname_gensym)
-                    Turing.setfcall!(fdefn_inner_callback1, fname_gensym)
+                    Turing.setfname!(alias1, fname_gensym)
+                    Turing.setfcall!(alias1, fname_gensym)
+                    @info alias1
 
-                    Turing.setfname!(fdefn_inner_callback2, fname_gensym)
-                    Turing.setfcall!(fdefn_inner_callback2, fname_gensym)
+                    Turing.setfname!(alias2, fname_gensym)
+                    Turing.setfcall!(alias2, fname_gensym)
+                    @info alias2
 
-                    Turing.setfname!(fdefn_inner_callback3, fname_gensym)
-                    Turing.setfcall!(fdefn_inner_callback3, fname_gensym)
-
-                    # insert observation values
-                    @debug(fdefn_inner_callback1)
-                    @debug(fdefn_inner_callback2)
-                    @debug(fdefn_inner_callback3)
-
-                    @debug fdefn_inner
-               end )
+                    Turing.setfname!(alias3, fname_gensym)
+                    Turing.setfcall!(alias3, fname_gensym)
+               
+                    @info alias3
+                
+                end )
 	
-	# check for keyword arguments
-	# this should be moved into a function...
+    @info modelfun
+
+
+    #@info(Main.eval(f))
+
+    
+    return esc(modelfun)
+end
+
+###################
+# Helper function #
+###################
+function insertkwargvals!(fdefn, fargs)
 	for k in fargs
 	    if isa(k, Symbol)
 			_k = k
@@ -321,7 +357,7 @@ macro model(fexpr)
 		if _k != nothing
       		_k_str = string(_k)
       		
-			data_check_ex = quote
+			data_insertion = quote
                 if $_k == nothing
 					@error("Data `"*$_k_str*"` is not provided.")
                 else
@@ -333,32 +369,28 @@ macro model(fexpr)
         			end
 				end
           	end
-      		pushfirst!(fdefn_outer.args[2].args, data_check_ex)
+
+      		pushfirst!(fdefn.args[2].args, data_insertion)
     	end
 	end
-
-	pushfirst!(fdefn_outer.args[2].args, quote
-                   Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                   fdefn_inner = Turing._compiler_[:fdefn_inner]
-               end)
-
-    return esc(fdefn_outer)
 end
 
-###################
-# Helper function #
-###################
 function setfcall!(fexpr::Expr, name::Symbol)
-    if fexpr.head == :function
-        @assert fexpr.args[2].head == :call
-        fexpr.args[2].args[1] = name
+    if fexpr.head == :call
+        fexpr.args[1] = name
     else
-        @assert length(fexpr.args) > 1
-        setfcall!(fexpr.args[2], name)
+        if length(fexpr.args) > 1
+            setfcall!(fexpr.args[2], name)
+        else
+            setfcall!(fexpr.args[1], name)
+        end
     end
 end
 
 function setfname!(fexpr::Expr, name::Symbol)
+    
+    MacroTools.splitdef(fexpr)
+    
     if fexpr.head == :function
         fexpr.args[1].args[1] = name
     else
