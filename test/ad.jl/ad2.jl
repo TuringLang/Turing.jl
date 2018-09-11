@@ -1,5 +1,4 @@
-using Test, Distributions, Turing
-using Turing: Sampler
+using Test, Turing
 
 # Define model
 @model ad_test2(xs) = begin

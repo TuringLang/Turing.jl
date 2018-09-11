@@ -20,7 +20,7 @@ News: **Turing.jl is now Julia 1.0 compatible now! Be aware that some things sti
 Here's a simple example showing the package in action:
 ```julia
 using Turing
-using MCMCChain, Plots, Distributions
+using Plots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin

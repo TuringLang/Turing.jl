@@ -1,4 +1,3 @@
-using Distributions
 using Turing
 
 x = Float64[1 2]

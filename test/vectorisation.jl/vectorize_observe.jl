@@ -1,4 +1,3 @@
-# using Distributions
 # using Turing
 # using Stan
 #
@@ -32,7 +31,7 @@
 # print_log(logd)
 
 include("../utility.jl")
-using Distributions, Turing
+using Turing
 using Random
 Random.seed!(129)
 # Test for vectorize UnivariateDistribution

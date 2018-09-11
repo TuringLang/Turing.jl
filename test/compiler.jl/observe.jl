@@ -1,7 +1,6 @@
 # Test @assume and macros on a model with conditioning.
 
 using Turing
-using Distributions
 using Test
 
 @model test() = begin

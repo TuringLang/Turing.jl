@@ -1,17 +1,5 @@
-using Distributions
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
 using Turing: _hmc_step
-
-
-
-
-
-
-
-
-
-
-
 using Turing
 
 @model bayes_lr(xs, ys) = begin
