@@ -9,7 +9,7 @@ alg = HMC(1000, 0.2, 4)
 @model vdemo() = begin
   x = Vector{Real}(undef, N)
   for i = 1:N
-    x[i] ~ Normal(0, sqrt.(4))
+    x[i] ~ Normal(0, sqrt(4))
   end
 end
 
