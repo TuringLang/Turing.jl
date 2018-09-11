@@ -19,6 +19,7 @@ using LinearAlgebra
 using ProgressMeter
 using Markdown
 using Libtask
+using MacroTools
 
 #  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
 using Stan
