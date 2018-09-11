@@ -1,4 +1,4 @@
-using Turing, Distributions, Test
+using Turing, Test
 using Turing: link, invlink, logpdf_with_trans
 
 # Standard tests for all distributions involving a single-sample.
