@@ -274,7 +274,7 @@ macro model(fexpr)
     # TODO: clean up this part! 
     pushfirst!(fdefn_outer.args[2].args, quote
                    
-                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
+                    #Turing.eval(:(_compiler_ = deepcopy($compiler)))
                     fargs = Turing._compiler_[:fargs];
 
                     # Copy the expr of function definition and callbacks
@@ -322,7 +322,7 @@ macro model(fexpr)
       		_k_str = string(_k)
       		
 			data_check_ex = quote
-				if $_k == nothing
+                if $_k == nothing
 					@error("Data `"*$_k_str*"` is not provided.")
                 else
 					k_sym = Symbol($_k_str)
@@ -337,7 +337,10 @@ macro model(fexpr)
     	end
 	end
 
-	pushfirst!(fdefn_outer.args[2].args, :(fdefn_inner = Turing._compiler_[:fdefn_inner]))
+	pushfirst!(fdefn_outer.args[2].args, quote
+                   Turing.eval(:(_compiler_ = deepcopy($compiler)))
+                   fdefn_inner = Turing._compiler_[:fdefn_inner]
+               end)
 
     return esc(fdefn_outer)
 end
