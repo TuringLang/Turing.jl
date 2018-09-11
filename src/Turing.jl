@@ -15,10 +15,11 @@ using ForwardDiff
 using LinearAlgebra
 using ProgressMeter
 using Markdown
+using Libtask
 
 #  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
-  using Stan
-  import Stan: Adapt, Hmc
+using Stan
+import Stan: Adapt, Hmc
 #  end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
@@ -89,13 +90,11 @@ mutable struct Sampler{T<:InferenceAlgorithm}
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
-include("../deps/deps.jl"); check_deps();
-include("helper.jl")
-include("transform.jl")
+include("utilities/helper.jl")
+include("utilities/transform.jl")
 include("core/varinfo.jl")  # core internal variable container
-include("trace/trace.jl")   # to run probabilistic programs as tasks
+include("core/trace.jl")   # to run probabilistic programs as tasks
 
-using Turing.Traces
 using Turing.VarReplay
 
 ###########
@@ -110,13 +109,14 @@ export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
 export auto_tune_chunk_size!, setadbackend, setadsafe # helper
 export turnprogress  # debugging
+export consume, produce
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
 
 export @sym_str
 
-export UnivariateGMM2, Flat, FlatPos
+export Flat, FlatPos
 
 ##################
 # Inference code #

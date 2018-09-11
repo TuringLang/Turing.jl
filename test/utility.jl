@@ -58,7 +58,7 @@ function runtests(; tests = ["all"])
                    "mh.jl",
                    # "pmmh.jl", "ipmcmc.jl", "pgibbs.jl", "smc.jl"
                   ]
-  TRACE_TESTS = ["tarray.jl", "taskcopy.jl", "trace.jl"]
+  TRACE_TESTS = ["trace.jl"]
   ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
 
   # test groups that should be executed

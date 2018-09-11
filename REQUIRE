@@ -1,10 +1,12 @@
-julia 0.7
+julia 1.0
 
 Requires 0.5.0
 Distributions 0.16.0
 ForwardDiff 0.8.0
 MCMCChain 0.1.1
-Flux 0.6.0
+Libtask 0.1.1
+Flux 0.6.7
 Stan
+
 ProgressMeter 0.6.0
 BinaryProvider 0.4.0
