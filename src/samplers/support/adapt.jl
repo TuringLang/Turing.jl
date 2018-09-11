@@ -110,7 +110,8 @@ function adapt_step_size!(wum::WarmUpManager, stats::Real)
     wum[:m] = wum[:m] + 1
     m = wum[:m]
 
-    stats = stats > 1 ? 1 : stats # stats = δ - H_t, where δ is target accept prob
+    # Clip average MH acceptance probability.
+    stats = stats > 1 ? 1 : stats
 
     γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
     μ = wum[:μ]; x_bar = wum[:x_bar]; H_bar = wum[:H_bar]
