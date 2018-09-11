@@ -8,9 +8,9 @@ alg = SGHMC(10000, 0.02, 0.5)
 
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
-  x[1] ~ Normal(m, sqrt.(s))
-  x[2] ~ Normal(m, sqrt.(s))
+  m ~ Normal(0, sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
   return s, m
 end
 
