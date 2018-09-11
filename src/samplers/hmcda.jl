@@ -94,9 +94,7 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
         rev_func = gen_rev_func(vi, spl)
         log_func = gen_log_func(spl)
 
-        θ = vi[spl]
-        lj = vi.logp
-        stds = spl.info[:wum][:stds]
+        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum][:stds]
 
         θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
             θ, lj, lj_func, grad_func, ϵ, λ, stds; rev_func=rev_func, log_func=log_func)
@@ -111,27 +109,15 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
             )
         end
 
-        @debug "decide wether to accept..."
+        @debug "decide whether to accept..."
         if is_accept
             push!(spl.info[:accept_his], true)
             vi[spl] = θ_new
-            setlogp!(vi, lj_func(θ_new))
+            setlogp!(vi, lj_new)
         else
             push!(spl.info[:accept_his], false)
-
-            # Reset Θ
-            if ADBACKEND[] == :forward_diff
-                vi[spl] = θ
-            elseif ADBACKEND[] == :reverse_diff
-                vi_spl = vi[spl]
-                for i = 1:length(θ)
-                    vi_spl[i] = θ[i]
-                end
-            else
-                error("Unsupported ADBACKEND = $(ADBACKEND[])")
-            end
-
-            setlogp!(vi, lj)  # reset logp
+            vi[spl] = θ
+            setlogp!(vi, lj)
         end
 
         # QUES: why do we need the 2nd condition here (Kai)
