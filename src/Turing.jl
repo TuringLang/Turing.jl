@@ -1,4 +1,5 @@
 module Turing
+__precompile__(false)
 
 ##############
 # Dependency #
@@ -36,6 +37,7 @@ import MCMCChain: AbstractChains, Chains
 const ADBACKEND = Ref(:reverse_diff)
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
+  backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
   ADBACKEND[] = backend_sym
 end
 
@@ -51,11 +53,8 @@ setchunksize(chunk_size::Int) = begin
   if ~(CHUNKSIZE[] == chunk_size)
     @info("[Turing]: AD chunk size is set as $chunk_size")
     CHUNKSIZE[] = chunk_size
-    global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64}) # pre-alloced dual parts
   end
 end
-
-setchunksize(40)
 
 const PROGRESS = Ref(true)
 turnprogress(switch::Bool) = begin
