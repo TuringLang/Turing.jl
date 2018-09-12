@@ -313,31 +313,49 @@ macro model(fexpr)
 
                     # Add gensym to function name
                     fname_gensym = gensym(fname)
-                    
-                    # Change the name of inner function definition to the one with gensym()
+                
+					# TODO: use MacroTools or something more robust
+					for p in closure.args[2].args[1].args[1].args[2].args
+						value = data[p.args[1]]
+						p.args[2] = value
+					end
+
+				    # Change the name of inner function definition to the one with gensym()
                     Turing.setfname!(closure, fname_gensym)
 
                     Turing.setfname!(alias1, fname_gensym)
                     Turing.setfcall!(alias1, fname_gensym)
-                    @info alias1
 
                     Turing.setfname!(alias2, fname_gensym)
                     Turing.setfcall!(alias2, fname_gensym)
-                    @info alias2
 
                     Turing.setfname!(alias3, fname_gensym)
                     Turing.setfcall!(alias3, fname_gensym)
-               
-                    @info alias3
-                
                 end )
+
+	for k in fargs
+		if isa(k, Symbol)
+			_k = k
+		elseif k.head == :kw
+			_k = k.args[1]
+		else
+			_k = nothing
+		end
+		if _k != nothing
+			_k_str = string(_k)
+			data_check_ex = quote
+				if $_k == nothing
+					@error("Data `"*$_k_str*"` is not provided.")
+				end
+				data[Symbol($_k_str)] = $_k
+			end
+			pushfirst!(modelfun.args[2].args, data_check_ex)
+		end
+	end
+	pushfirst!(modelfun.args[2].args, :( data = Dict() ))
 	
     @info modelfun
 
-
-    #@info(Main.eval(f))
-
-    
     return esc(modelfun)
 end
 
@@ -389,10 +407,9 @@ end
 
 function setfname!(fexpr::Expr, name::Symbol)
     
-    MacroTools.splitdef(fexpr)
     
     if fexpr.head == :function
-        fexpr.args[1].args[1] = name
+        fexpr.args[1].args[1].args[1] = name
     else
         @assert length(fexpr.args) > 1
         setfname!(fexpr.args[2], name)
