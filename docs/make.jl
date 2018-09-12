@@ -13,10 +13,10 @@ makedocs(
     ]
 )
 
-deploydocs(
-    repo = "github.com/cpfiffer/Turing.jl.git",
-    target = "build",
-    deps   = nothing,
-    make   = nothing,
-    julia = "1.0"
-)
+# deploydocs(
+#     repo = "github.com/cpfiffer/Turing.jl.git",
+#     target = "build",
+#     deps   = nothing,
+#     make   = nothing,
+#     julia = "1.0"
+# )
