@@ -243,18 +243,18 @@ macro model(fexpr)
     )
 
     modelfun = MacroTools.combinedef(fdefn)
- 
+	
     # construct closure
     closure_def = Dict(
         :name => compiler[:closure_name],
-        :kwargs => fargs,
-        :args => [
+        :kwargs => [],
+		:args => [
             :(vi::Turing.VarInfo),
             :(sampler::Union{Nothing, Turing.Sampler})
         ],
         :body => compiler[:body]
     )
-    closure = Expr(:(=), compiler[:closure_name], MacroTools.combinedef(closure_def))
+    closure = MacroTools.combinedef(closure_def)
 
     # construct aliases
     alias1 = MacroTools.combinedef(
@@ -297,41 +297,7 @@ macro model(fexpr)
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias3)))
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias2)))
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias1)))
-    pushfirst!(modelfun.args[2].args, :(Main.eval(closure)))
-   
-    pushfirst!(modelfun.args[2].args, quote
-                    
-                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                   
-                    # Copy the expr of function definition and callbacks
-                    alias3 = Turing._compiler_[:alias3]
-                    alias2 = Turing._compiler_[:alias2]
-                    alias1 = Turing._compiler_[:alias1]
-                    closure = Turing._compiler_[:closure]
-
-                    fname = Turing._compiler_[:closure_name]
-
-                    # Add gensym to function name
-                    fname_gensym = gensym(fname)
-                
-					# TODO: use MacroTools or something more robust
-					for p in closure.args[2].args[1].args[1].args[2].args
-						value = data[p.args[1]]
-						p.args[2] = value
-					end
-
-				    # Change the name of inner function definition to the one with gensym()
-                    Turing.setfname!(closure, fname_gensym)
-
-                    Turing.setfname!(alias1, fname_gensym)
-                    Turing.setfcall!(alias1, fname_gensym)
-
-                    Turing.setfname!(alias2, fname_gensym)
-                    Turing.setfcall!(alias2, fname_gensym)
-
-                    Turing.setfname!(alias3, fname_gensym)
-                    Turing.setfcall!(alias3, fname_gensym)
-                end )
+    pushfirst!(modelfun.args[2].args, :(Main.eval( Expr(:(=), modelname, closure) )))
 
 	for k in fargs
 		if isa(k, Symbol)
@@ -343,16 +309,34 @@ macro model(fexpr)
 		end
 		if _k != nothing
 			_k_str = string(_k)
-			data_check_ex = quote
+			data_insertion = quote
 				if $_k == nothing
 					@error("Data `"*$_k_str*"` is not provided.")
+				else
+					
+					Turing.mockup(closure)
+
+					#for p in closure.args[2].args[1].args[1].args[2].args
+					#	if string(p.args[1]) == $_k_str
+				#			p.args[2] = $_k
+					#	end
+					#end
 				end
-				data[Symbol($_k_str)] = $_k
 			end
-			pushfirst!(modelfun.args[2].args, data_check_ex)
+			pushfirst!(modelfun.args[2].args, data_insertion)
 		end
 	end
-	pushfirst!(modelfun.args[2].args, :( data = Dict() ))
+    
+	pushfirst!(modelfun.args[2].args, quote
+                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
+                   
+                    # Copy the expr of function definition and callbacks
+                    alias3 = Turing._compiler_[:alias3]
+                    alias2 = Turing._compiler_[:alias2]
+                    alias1 = Turing._compiler_[:alias1]
+                    closure = Turing._compiler_[:closure]
+					modelname = Turing._compiler_[:closure_name]
+                end )
 	
     @info modelfun
 
@@ -362,6 +346,11 @@ end
 ###################
 # Helper function #
 ###################
+function mockup(fexpr)
+	funcdef = MacroTools.splitdef(fexpr)
+end
+
+
 function insertkwargvals!(fdefn, fargs)
 	for k in fargs
 	    if isa(k, Symbol)
