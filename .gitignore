@@ -13,5 +13,4 @@ deps/usr
 deps/deps.jl
 deps/build.log
 
-docs/build/
 docs/site/
