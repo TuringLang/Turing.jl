@@ -317,7 +317,7 @@ macro model(fexpr)
                     @error("Data `"*$_k_str*"` is not provided.")
                 else
                     
-                    if !(Symbol($_k_str) ∈ Turing._compiler_[:args])
+                    if Symbol($_k_str) ∉ Turing._compiler_[:args]
                         push!(Turing._compiler_[:args], Symbol($_k_str))
                     end
                     closure = Turing.setkwargs(closure, Symbol($_k_str), $_k)
@@ -349,6 +349,12 @@ function setkwargs(fexpr::Expr, kw::Symbol, value)
     # split up the function definition
     funcdef = MacroTools.splitdef(fexpr)
 
+    function insertvi(x)
+        return @capture(x, return _) ? Expr(:block, :(vi.logp = _lp), x) : x
+    end
+
+    expr_new = MacroTools.postwalk(x->insertvi(x), funcdef[:body])
+
     # add the new keyword argument
     push!(funcdef[:kwargs], Expr(:kw, kw, value))
 
@@ -364,21 +370,25 @@ Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
 function insertvarinfo!(fexpr::Expr)
     pushfirst!(fexpr.args, :(_lp = zero(Real)))
-    return_ex = fexpr.args[end] # get last statement of defined model
-    if (typeof(return_ex) == Symbol 
-        || return_ex.head == :return
-        || return_ex.head == :tuple)
 
-        pop!(fexpr.args)
+    # check for the existence of a return statement
+    found = false
+    MacroTools.postwalk(x -> @capture(x, return _) ? found = true : found = found, fexpr)
+
+    fexpr_new = if !found
         push!(fexpr.args, :(vi.logp = _lp))
-        push!(fexpr.args, return_ex)
+        fexpr
     else
-        push!(fexpr.args, :(vi.logp = _lp))
+        # traverse expression tree and insert :(vi.logp = _lp) before return statements
+        function insertvi(x)
+            return @capture(x, return _) ? Expr(:block, :(vi.logp = _lp), x) : x
+        end
+        MacroTools.postwalk(x->insertvi(x), fexpr)
     end
 
-    # TODO: ensure we set `vi.logp = _lp` before each return statement!
+    @info fexpr_new
 
-    return fexpr
+    return fexpr_new
 end
 
 function insdelim(c, deli=",")
