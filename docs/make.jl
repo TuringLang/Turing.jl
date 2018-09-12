@@ -6,7 +6,8 @@ makedocs(
     format = :html,
     sitename = "Turing.jl",
     pages = [
-        "Home" => ["get-started.md",
+        "Home" => ["index.md",
+                   "get-started.md",
                    "advanced.md",
                    "contributing/guide.md",
                    "contributing/style_guide.md",],
