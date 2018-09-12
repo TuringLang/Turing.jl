@@ -386,7 +386,7 @@ function insertvarinfo!(fexpr::Expr)
         MacroTools.postwalk(x->insertvi(x), fexpr)
     end
 
-    @info fexpr_new
+    @dbug fexpr_new
 
     return fexpr_new
 end
