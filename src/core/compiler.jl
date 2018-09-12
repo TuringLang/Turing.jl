@@ -219,15 +219,17 @@ macro model(fexpr)
     compiler = Dict(
         :name => modeldef[:name],
         :closure_name => Symbol(modeldef[:name], :_model),
-        :args => modeldef[:args],
+        :args => [],
         :kwargs => modeldef[:kwargs],
-        :body => insertvarinfo(modeldef[:body]),
         :dvars => Set{Symbol}(),
         :pvars => Set{Symbol}()
     )
+
+    # define model body
+    body = insertvarinfo(modeldef[:body])
     
     # manipulate the function arguments
-    fargs = deepcopy(modeldef[:args])
+    fargs = deepcopy(vcat(modeldef[:args], modeldef[:kwargs]))
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
             fargs[i] = Expr(:kw, fargs[i], :nothing)
@@ -252,7 +254,7 @@ macro model(fexpr)
             :(vi::Turing.VarInfo),
             :(sampler::Union{Nothing, Turing.Sampler})
         ],
-        :body => compiler[:body]
+        :body => body
     )
     closure = MacroTools.combinedef(closure_def)
 
@@ -313,14 +315,11 @@ macro model(fexpr)
 				if $_k == nothing
 					@error("Data `"*$_k_str*"` is not provided.")
 				else
+                    if !(Symbol($_k_str) ∈ Turing._compiler_[:args])
+                        push!(Turing._compiler_[:args], Symbol($_k_str))
+                    end
 					
-					Turing.mockup(closure)
-
-					#for p in closure.args[2].args[1].args[1].args[2].args
-					#	if string(p.args[1]) == $_k_str
-				#			p.args[2] = $_k
-					#	end
-					#end
+                    closure = Turing.setkwargs(closure, Symbol($_k_str), $_k)
 				end
 			end
 			pushfirst!(modelfun.args[2].args, data_insertion)
@@ -346,79 +345,16 @@ end
 ###################
 # Helper function #
 ###################
-function mockup(fexpr)
-	funcdef = MacroTools.splitdef(fexpr)
-end
+function setkwargs(fexpr::Expr, kw::Symbol, value)
+	
+    # split up the function definition
+    funcdef = MacroTools.splitdef(fexpr)
 
+    # add the new keyword argument
+    push!(funcdef[:kwargs], Expr(:kw, kw, value))
 
-function insertkwargvals!(fdefn, fargs)
-	for k in fargs
-	    if isa(k, Symbol)
-			_k = k
-		elseif k.head == :kw
-      		_k = k.args[1]
-		else
-	  		_k = nothing
-		end
-
-		if _k != nothing
-      		_k_str = string(_k)
-      		
-			data_insertion = quote
-                if $_k == nothing
-					@error("Data `"*$_k_str*"` is not provided.")
-                else
-					k_sym = Symbol($_k_str)
-					if fdefn_inner.args[2].args[2].args[1].head == :line
-          				insert!(fdefn_inner.args[2].args[2].args, 2, Expr(:(=), k_sym, $_k))
-        			else
-          				insert!(fdefn_inner.args[2].args[2].args, 1, Expr(:(=), k_sym, $_k))
-        			end
-				end
-          	end
-
-      		pushfirst!(fdefn.args[2].args, data_insertion)
-    	end
-	end
-end
-
-function setfcall!(fexpr::Expr, name::Symbol)
-    if fexpr.head == :call
-        fexpr.args[1] = name
-    else
-        if length(fexpr.args) > 1
-            setfcall!(fexpr.args[2], name)
-        else
-            setfcall!(fexpr.args[1], name)
-        end
-    end
-end
-
-function setfname!(fexpr::Expr, name::Symbol)
-    
-    
-    if fexpr.head == :function
-        fexpr.args[1].args[1].args[1] = name
-    else
-        @assert length(fexpr.args) > 1
-        setfname!(fexpr.args[2], name)
-    end
-end
-
-"""
-  constructfunc(fname::Symbol, fargs, fbody)
-
-Construct a function.
-"""
-function constructfunc(fname::Symbol, fargs, fbody)
-    fdefn = Expr(:function, 
-                 Expr(:call, 
-                      fname,
-                      fargs...
-                     ),
-                 deepcopy(fbody)
-                )
-    return fdefn
+    # recompose the function
+    return MacroTools.combinedef(funcdef)
 end
 
 """
@@ -439,55 +375,12 @@ function insertvarinfo!(fexpr::Expr)
   	    push!(fexpr.args, return_ex)
 	else
   	    push!(fexpr.args, :(vi.logp = _lp))
- 	end 
+ 	end
+
+    # TODO: ensure we set `vi.logp = _lp` before each return statement!
+
     return fexpr
 end
-
-"""
-    extractcomponents_(fnode::LineNumberNode, fexpr::Expr)
-
-Internal procedure to extract function header and body.
-"""
-function extractcomponents_(fnode::LineNumberNode, fexpr::Expr)
-    return extractcomponents_(fexpr.args[1], fexpr.args[2])
-end
-
-function extractcomponents_(fexpr::Expr, args)
-    return (fexpr, args)
-end
-
-function extractcomponents_(fnode::Symbol, fexpr::Expr)
-    return extractcomponents_(fexpr.args[1], fexpr.args[2])
-end
-
-"""
-    extractcomponents(fexpr::Expr)
-
-Extract function name, arguments and body.
-"""
-function extractcomponents(fexpr::Expr)
-    fheader, fbody = extractcomponents_(fexpr.args[1], fexpr.args[2])  
-
-    # model name
-    fname = fheader.args[1]
-    # model parameters, e.g. (x,y; z= ....)	
-    fargs = fheader.args[2:end]
-
-    # Ensure we have allow for keyword arguments, e.g.
-    #   f(x,y)
-    #       ==> f(x,y;)
-    #   f(x,y; c=1)
-    #       ==> unchanged
-
-    if (length(fargs) == 0 ||         # e.g. f()
-        isa(fargs[1], Symbol) ||  		# e.g. f(x,y)
-        fargs[1].head == :kw)     		# e.g. f(x,y=1)
-        insert!(fargs, 1, Expr(:parameters))
-    end
-
-    return (fname, fargs, fbody)
-end
-
 
 function insdelim(c, deli=",")
     return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
