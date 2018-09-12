@@ -34,6 +34,7 @@ align_internal!(x,n) = begin
   m = length(x)
   resize!(x, n)
   x[m+1:end] .= zero(eltype(x))
+  x
 end
 
 align(x,y) = begin
@@ -61,25 +62,21 @@ end
 
 auto_tune_chunk_size!(mf::Function, rep_num=10) = begin
   dim = length(mf().vals)
+  chunk_size = 8
   if dim > 8
-    n = 1
-    sz_cand = Int[]
-    while dim / n > 8
-      push!(sz_cand, ceil(Int, dim / n))
+    min_prof_log = Inf
+    n = ceil(Int, dim / 50)
+    while (sz = ceil(Int, dim / n)) > 8
+      println("[Turing] profiling chunk size = $(sz)")
+      setchunksize(sz)
+      prof_log = @elapsed for _ = 1:rep_num mf() end
+      if prof_log < min_prof_log
+        chunk_size = sz
+        min_prof_log = prof_log
+      end
       n += 1
     end
-    filter!(sz -> 8 < sz <= 50, sz_cand)
-    sz_num = length(sz_cand)
-    prof_log = Vector{Float64}(sz_num)
-    for i = 1:sz_num
-      println("[Turing] profiling chunk size = $(sz_cand[i])")
-      setchunksize(sz_cand[i])
-      prof_log[i] = @elapsed for _ = 1:rep_num mf() end
-    end
-    minval, minidx = findmin(prof_log)
-    println("[Turing] final chunk size chosen = $(sz_cand[minidx])")
-    setchunksize(sz_cand[minidx])
-  else
-    setchunksize(8)
+    println("[Turing] final chunk size chosen = $(chunk_size)")
   end
+  setchunksize(chunk_size)
 end
