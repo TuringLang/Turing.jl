@@ -1,4 +1,5 @@
 module Turing
+__precompile__(false)
 
 ##############
 # Dependency #
@@ -45,17 +46,14 @@ setadsafe(switch::Bool) = begin
   ADSAFE[] = switch
 end
 
-const CHUNKSIZE = Ref(0) # default chunksize used by AD
+const CHUNKSIZE = Ref(40) # default chunksize used by AD
 
 setchunksize(chunk_size::Int) = begin
   if ~(CHUNKSIZE[] == chunk_size)
     @info("[Turing]: AD chunk size is set as $chunk_size")
     CHUNKSIZE[] = chunk_size
-    global SEEDS = ForwardDiff.construct_seeds(ForwardDiff.Partials{chunk_size,Float64}) # pre-alloced dual parts
   end
 end
-
-setchunksize(40)
 
 const PROGRESS = Ref(true)
 turnprogress(switch::Bool) = begin
