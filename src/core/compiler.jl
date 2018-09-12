@@ -79,11 +79,11 @@ macro ~(left::Symbol, right)
             if isdefined(Main, left)
                 msg  *= " (ignoring `$(left)` found in global scope)"
             end
-        
+
             @info msg
             push!(Turing._compiler_[:pvars], left)
         end
-      
+
         sym, idcs, csym = @VarName(left)
         csym = Symbol(string(Turing._compiler_[:name])*string(csym))
         syms = Symbol[csym, left]
@@ -116,7 +116,7 @@ end
 macro ~(left::Expr, right)
     vsym = getvsym(left)
     @assert isa(vsym, Symbol)
-    
+
     if vsym in Turing._compiler_[:args]
         if ~(vsym in Turing._compiler_[:dvars])
             @info " Observe - `$(vsym)` is an observation"
@@ -130,7 +130,7 @@ macro ~(left::Expr, right)
             if isdefined(Main, vsym)
                 msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
-        
+
             @info msg
             push!(Turing._compiler_[:pvars], vsym)
         end
@@ -138,9 +138,9 @@ macro ~(left::Expr, right)
             sym, idcs, csym = @VarName $left
             csym_str = string(Turing._compiler_[:name])*string(csym)
             indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
-            
+
             vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-            
+
             $(left), __lp = Turing.assume(
                                           sampler,
                                           $right,   # dist
@@ -227,7 +227,7 @@ macro model(fexpr)
 
     # define model body
     body = insertvarinfo(modeldef[:body])
-    
+
     # manipulate the function arguments
     fargs = deepcopy(vcat(modeldef[:args], modeldef[:kwargs]))
     for i in 1:length(fargs)
@@ -245,12 +245,12 @@ macro model(fexpr)
     )
 
     modelfun = MacroTools.combinedef(fdefn)
-	
+
     # construct closure
     closure_def = Dict(
         :name => compiler[:closure_name],
         :kwargs => [],
-		:args => [
+        :args => [
             :(vi::Turing.VarInfo),
             :(sampler::Union{Nothing, Turing.Sampler})
         ],
@@ -301,43 +301,42 @@ macro model(fexpr)
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias1)))
     pushfirst!(modelfun.args[2].args, :(Main.eval( Expr(:(=), modelname, closure) )))
 
-	for k in fargs
-		if isa(k, Symbol)
-			_k = k
-		elseif k.head == :kw
-			_k = k.args[1]
-		else
-			_k = nothing
-		end
-		if _k != nothing
-			_k_str = string(_k)
-			data_insertion = quote
-				if $_k == nothing
-					@error("Data `"*$_k_str*"` is not provided.")
-				else
+    for k in fargs
+        if isa(k, Symbol)
+            _k = k
+        elseif k.head == :kw
+            _k = k.args[1]
+        else
+            _k = nothing
+        end
+
+        if _k != nothing
+            _k_str = string(_k)
+            data_insertion = quote
+                if $_k == nothing
+                    @error("Data `"*$_k_str*"` is not provided.")
+                else
+                    
                     if !(Symbol($_k_str) ∈ Turing._compiler_[:args])
                         push!(Turing._compiler_[:args], Symbol($_k_str))
                     end
-					
                     closure = Turing.setkwargs(closure, Symbol($_k_str), $_k)
-				end
-			end
-			pushfirst!(modelfun.args[2].args, data_insertion)
-		end
-	end
-    
-	pushfirst!(modelfun.args[2].args, quote
-                    Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                   
-                    # Copy the expr of function definition and callbacks
-                    alias3 = Turing._compiler_[:alias3]
-                    alias2 = Turing._compiler_[:alias2]
-                    alias1 = Turing._compiler_[:alias1]
-                    closure = Turing._compiler_[:closure]
-					modelname = Turing._compiler_[:closure_name]
-                end )
-	
-    @info modelfun
+                end
+            end
+            pushfirst!(modelfun.args[2].args, data_insertion)
+        end
+    end
+
+    pushfirst!(modelfun.args[2].args, quote
+        Turing.eval(:(_compiler_ = deepcopy($compiler)))
+
+        # Copy the expr of function definition and callbacks
+        alias3 = Turing._compiler_[:alias3]
+        alias2 = Turing._compiler_[:alias2]
+        alias1 = Turing._compiler_[:alias1]
+        closure = Turing._compiler_[:closure]
+        modelname = Turing._compiler_[:closure_name]
+    end)
 
     return esc(modelfun)
 end
@@ -346,7 +345,7 @@ end
 # Helper function #
 ###################
 function setkwargs(fexpr::Expr, kw::Symbol, value)
-	
+
     # split up the function definition
     funcdef = MacroTools.splitdef(fexpr)
 
@@ -364,18 +363,18 @@ Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
 """
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
 function insertvarinfo!(fexpr::Expr)
-	pushfirst!(fexpr.args, :(_lp = zero(Real)))
-	return_ex = fexpr.args[end] # get last statement of defined model
+    pushfirst!(fexpr.args, :(_lp = zero(Real)))
+    return_ex = fexpr.args[end] # get last statement of defined model
     if (typeof(return_ex) == Symbol 
         || return_ex.head == :return
         || return_ex.head == :tuple)
 
         pop!(fexpr.args)
         push!(fexpr.args, :(vi.logp = _lp))
-  	    push!(fexpr.args, return_ex)
-	else
-  	    push!(fexpr.args, :(vi.logp = _lp))
- 	end
+        push!(fexpr.args, return_ex)
+    else
+        push!(fexpr.args, :(vi.logp = _lp))
+    end
 
     # TODO: ensure we set `vi.logp = _lp` before each return statement!
 
