@@ -7,4 +7,4 @@ tagline: "example tagline"
 #sass:
 #    style: compressed
 
-exclude: [.scss, README.md, node_modules, gruntfile.js, package.json]
+exclude: [.scss, README.md, node_modules, gruntfile.js, package.json, src]
