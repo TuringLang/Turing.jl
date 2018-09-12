@@ -1,6 +1,54 @@
 var documenterSearchIndex = {"docs": [
 
 {
+    "location": "index.html#",
+    "page": "Turing.jl",
+    "title": "Turing.jl",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "index.html#Turing.jl-1",
+    "page": "Turing.jl",
+    "title": "Turing.jl",
+    "category": "section",
+    "text": "Turing is a universal probabilistic programming language with a focus on intuitive modelling interface, composable probabilistic inference and computational scalability."
+},
+
+{
+    "location": "index.html#Features-1",
+    "page": "Turing.jl",
+    "title": "Features",
+    "category": "section",
+    "text": "Turing provides Hamiltonian Monte Carlo (HMC) and particle MCMC sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:Universal probabilistic programming with an intuitive modelling interface\nHamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions\nParticle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows\nGibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms"
+},
+
+{
+    "location": "index.html#Resources-1",
+    "page": "Turing.jl",
+    "title": "Resources",
+    "category": "section",
+    "text": "Please visit Turing.jl wiki for documentation, tutorials (e.g. get started) and other topics (e.g. advanced usages). Below are some example models for Turing.Introduction\nGaussian Mixture Model\nBayesian Hidden Markov Model\nFactorical Hidden Markov Model\nTopic Models: LDA and MoC"
+},
+
+{
+    "location": "index.html#Citing-Turing-1",
+    "page": "Turing.jl",
+    "title": "Citing Turing",
+    "category": "section",
+    "text": "To cite Turing, please refer to the following paper. Sample BibTeX entry is given below:@InProceedings{turing17,\n  title = 	 {{T}uring: a language for flexible probabilistic inference},\n  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},\n  booktitle = 	 {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},\n  year = 	 {2018},\n  series = 	 {Proceedings of Machine Learning Research},\n  publisher = 	 {PMLR},\n}"
+},
+
+{
+    "location": "index.html#Other-probablistic/deep-learning-languages-1",
+    "page": "Turing.jl",
+    "title": "Other probablistic/deep learning languages",
+    "category": "section",
+    "text": "Stan\nInfer.NET\nPyTorch / Pyro\nTensorFlow / Edward\nDyNet"
+},
+
+{
     "location": "get-started.html#",
     "page": "Getting Started",
     "title": "Getting Started",
