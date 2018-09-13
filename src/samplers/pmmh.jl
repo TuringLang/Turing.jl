@@ -124,7 +124,7 @@ sample(model::Function, alg::PMMH;
     # Init parameters
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, nothing)
+        Base.invokelatest(model, vi_, HamiltonianRobustInit())
         vi_
     else
         resume_from.info[:vi]

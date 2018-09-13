@@ -26,12 +26,12 @@ macro VarName(ex::Union{Expr, Symbol})
         return esc(parse(_1))
     else
         @error "VarName: Mis-formed variable name $(ex)!"
-        return :()    
+        return :()
     end
 end
 
 function generate_observe(left, right)
-    obsexpr = esc( 
+    obsexpr = esc(
                 quote
                     vi.logp += Turing.observe(
                         sampler,
@@ -39,7 +39,7 @@ function generate_observe(left, right)
                         $(left),    # Data point
                         vi
                     )
-                end 
+                end
             )
     return obsexpr
 end
@@ -48,9 +48,9 @@ end
 """
     macro: @~ var Distribution()
 
-Tilde notation macro. This macro constructs Turing.observe or 
+Tilde notation macro. This macro constructs Turing.observe or
 Turing.assume calls depending on the left-hand argument.
-Note that the macro is interconnected with the @model macro and 
+Note that the macro is interconnected with the @model macro and
 assumes that a `compiler` struct is available.
 
 Example:
@@ -202,7 +202,7 @@ macro model(fexpr)
         @warn("Model definition seems empty, still continue.")
     end
 
-   # # adjust args, i.e. add 
+   # # adjust args, i.e. add
     #fargs_outer = deepcopy(fargs)
 
     # Add data argument to outer function
@@ -252,7 +252,7 @@ macro model(fexpr)
         :kwargs => [],
         :args => [
             :(vi::Turing.VarInfo),
-            :(sampler::Union{Nothing, Turing.Sampler})
+            :(sampler::Turing.AnySampler)
         ],
         :body => body
     )
@@ -264,7 +264,7 @@ macro model(fexpr)
                     :name => compiler[:closure_name],
                     :args => [:(vi::Turing.VarInfo)],
                     :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(vi, nothing))
+                    :body => :(return $(compiler[:closure_name])(vi, Turing.SampleFromPrior()))
 
                 )
     )
@@ -272,9 +272,9 @@ macro model(fexpr)
     alias2 = MacroTools.combinedef(
                 Dict(
                     :name => compiler[:closure_name],
-                    :args => [:(sampler::Turing.Sampler)],
+                    :args => [:(sampler::Turing.AnySampler)],
                     :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), nothing))
+                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
 
                 )
     )
@@ -284,7 +284,7 @@ macro model(fexpr)
                     :name => compiler[:closure_name],
                     :args => [],
                     :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), nothing))
+                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
 
                 )
     )
@@ -314,9 +314,9 @@ macro model(fexpr)
             _k_str = string(_k)
             data_insertion = quote
                 if $_k == nothing
-                    @error("Data `"*$_k_str*"` is not provided.")
+                    @warn("Data `"*$_k_str*"` is not provided.")
                 else
-                    
+
                     if Symbol($_k_str) ∉ Turing._compiler_[:args]
                         push!(Turing._compiler_[:args], Symbol($_k_str))
                     end
