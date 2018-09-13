@@ -48,9 +48,7 @@ setadsafe(switch::Bool) = begin
   ADSAFE[] = switch
 end
 
-# NOTE: Setting CHUNKSIZE to 0 breaks the ad.jl tests for this PR.
-# NOTE: We should investigate why CHUNKSIZE is not set correctly!
-const CHUNKSIZE = Ref(10) # default chunksize used by AD
+const CHUNKSIZE = Ref(40) # default chunksize used by AD
 
 setchunksize(chunk_size::Int) = begin
   if ~(CHUNKSIZE[] == chunk_size)
