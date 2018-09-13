@@ -33,7 +33,7 @@ end
 function generate_observe(left, right)
     obsexpr = esc( 
                 quote
-                    _lp += Turing.observe(
+                    vi.logp += Turing.observe(
                         sampler,
                         $(right),   # Distribution
                         $(left),    # Data point
@@ -90,22 +90,22 @@ macro ~(left::Symbol, right)
         assume_ex = quote
             vn = Turing.VarName(vi, $syms, "")
             if isa($(right), Vector)
-                $(left), __lp = Turing.assume(
+                $(left), _lp = Turing.assume(
                                               sampler,
                                               $(right),   # dist
                                               vn,         # VarName
                                               $(left),
                                               vi          # VarInfo
                                              )
-                _lp += __lp
+                vi.logp += _lp
             else
-                $(left), __lp = Turing.assume(
+                $(left), _lp = Turing.assume(
                                               sampler,
                                               $(right),   # dist
                                               vn,         # VarName
                                               vi          # VarInfo
                                              )
-                _lp += __lp
+                vi.logp += _lp
             end
         end
         # end of quote block
@@ -141,13 +141,13 @@ macro ~(left::Expr, right)
 
             vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
 
-            $(left), __lp = Turing.assume(
+            $(left), _lp = Turing.assume(
                                           sampler,
                                           $right,   # dist
                                           vn,       # VarName
                                           vi        # VarInfo
                                          )
-            _lp += __lp
+            vi.logp += _lp
         end
         return esc(assume_ex)
     end
@@ -369,26 +369,17 @@ Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
 """
 insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
 function insertvarinfo!(fexpr::Expr)
-    pushfirst!(fexpr.args, :(_lp = zero(Real)))
+    pushfirst!(fexpr.args, :(vi.logp = zero(Real)))
 
     # check for the existence of a return statement
     found = false
     MacroTools.postwalk(x -> @capture(x, return _) ? found = true : found = found, fexpr)
 
-    fexpr_new = if !found
-        push!(fexpr.args, :(vi.logp = _lp))
-        fexpr
-    else
-        # traverse expression tree and insert :(vi.logp = _lp) before return statements
-        function insertvi(x)
-            return @capture(x, return _) ? Expr(:block, :(vi.logp = _lp), x) : x
-        end
-        MacroTools.postwalk(x->insertvi(x), fexpr)
+    if !found
+        push!(fexpr.args, :(vi))
     end
 
-    @debug fexpr_new
-
-    return fexpr_new
+    return fexpr
 end
 
 function insdelim(c, deli=",")
