@@ -1,7 +1,33 @@
 using Documenter, Turing
+using LibGit2: clone
+using Weave
 
-docpath = joinpath(@__DIR__, "doc")
+# Get path of documentation.
+examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
 
+# Clone TuringTurorials
+tmp_path = tempname()
+mkdir(tmp_path)
+clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
+
+# Weave all examples
+try
+    for file in readdir(tmp_path)
+        if endswith(file, "ipynb")
+            full_path = joinpath(tmp_path, file)
+            Weave.weave(full_path,
+                doctype = "hugo",
+                out_path = examples_path,
+                mod = Main)
+        end
+    end
+catch e
+    println("Weaving error: $e")
+finally
+    rm(tmp_path, recursive = true)
+end
+
+# Build documentation
 makedocs(
     format = :html,
     sitename = "Turing.jl",
@@ -11,18 +37,9 @@ makedocs(
                    "advanced.md",
                    "contributing/guide.md",
                    "contributing/style_guide.md",],
-        "Tutorials" => ["ex/0_Introduction.md"],
+        "Tutorials" => ["ex/tutorials.md",
+                        "ex/0_Introduction.md"],
         "API" => "api.md"
     ],
     build = "doc"
 )
-
-# Unused at current (2018-09-11) as our documentation serving solution doesn't
-# play well with the deploydocs function.
-# deploydocs(
-#     repo = "github.com/cpfiffer/Turing.jl.git",
-#     target = "build",
-#     deps   = nothing,
-#     make   = nothing,
-#     julia = "1.0"
-# )

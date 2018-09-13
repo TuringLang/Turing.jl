@@ -2,15 +2,15 @@
 
 Turing is an open source project. If you feel that you have some relevant skills and are interested in contributing, then please do get in touch. You can contribute by opening issues on GitHub or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
-Turing has a [style guide](../style_guide.html). It is not strictly necessary to review it before making a pull request, but you may be asked to change portions of your code to conform with the style guide before it is merged.
+Turing has a [style guide](style_guide.md). It is not strictly necessary to review it before making a pull request, but you may be asked to change portions of your code to conform with the style guide before it is merged.
 
 ## How to Contribute
 
 ### Getting started
-* [Fork this repository](https://github.com/TuringLang/Turing.jl#fork-destination-box)
-* Clone your fork on your local machine: `git clone https://github.com/your_username/Turing.jl`
+* [Fork this repository](https://github.com/TuringLang/Turing.jl#fork-destination-box).
+* Clone your fork on your local machine: `git clone https://github.com/your_username/Turing.jl`.
 * Add a remote corresponding to this repository:
-`git remote add upstream https://github.com/TuringLang/Turing.jl`
+`git remote add upstream https://github.com/TuringLang/Turing.jl`.
 
 
 ### What can I do ?
@@ -23,10 +23,10 @@ git fetch upstream
 git checkout master
 git rebase upstream/master
 ```
-* Create a new branch: `git checkout -b branch_name` (usually use `feature-issue_id` or `bugfix-issue_id`)
-* Do your stuff: `git add ...`, `git commit -m '...'`
-* Push your local branch to your fork of this repository: `git push --set-upstream origin branch_name`
+* Create a new branch: `git checkout -b branch_name` (usually use `feature-issue_id` or `bugfix-issue_id`).
+* Do your stuff: `git add ...`, `git commit -m '...'`.
+* Push your local branch to your fork of this repository: `git push --set-upstream origin branch_name`.
 
 ### Make a pull request
-* Create a pull request by going to [this repository front page](https://github.com/TuringLang/Turing.jl) and selecting `Compare & pull request`
-* If related to a specific issue, link the pull request link in that issue, and in the pull request also link the issue
+* Create a pull request by going to [this repository front page](https://github.com/TuringLang/Turing.jl) and selecting `Compare & pull request`.
+* If related to a specific issue, link the pull request link in that issue, and in the pull request also link the issue.

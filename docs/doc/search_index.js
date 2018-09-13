@@ -2,31 +2,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#",
-    "page": "Turing.jl",
-    "title": "Turing.jl",
+    "page": "Resources",
+    "title": "Resources",
     "category": "page",
-    "text": ""
-},
-
-{
-    "location": "index.html#Turing.jl-1",
-    "page": "Turing.jl",
-    "title": "Turing.jl",
-    "category": "section",
-    "text": "Turing is a universal probabilistic programming language with a focus on intuitive modelling interface, composable probabilistic inference and computational scalability."
-},
-
-{
-    "location": "index.html#Features-1",
-    "page": "Turing.jl",
-    "title": "Features",
-    "category": "section",
-    "text": "Turing provides Hamiltonian Monte Carlo (HMC) and particle MCMC sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:Universal probabilistic programming with an intuitive modelling interface\nHamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions\nParticle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows\nGibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms"
+    "text": "Turing is a universal probabilistic programming language with a focus on an intuitive modelling interface, composable probabilistic inference and computational scalability.Turing provides Hamiltonian Monte Carlo (HMC) and particle MCMC sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:Universal probabilistic programming with an intuitive modelling interface\nHamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions\nParticle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow\nGibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms"
 },
 
 {
     "location": "index.html#Resources-1",
-    "page": "Turing.jl",
+    "page": "Resources",
     "title": "Resources",
     "category": "section",
     "text": "Please visit Turing.jl wiki for documentation, tutorials (e.g. get started) and other topics (e.g. advanced usages). Below are some example models for Turing.Introduction\nGaussian Mixture Model\nBayesian Hidden Markov Model\nFactorical Hidden Markov Model\nTopic Models: LDA and MoC"
@@ -34,15 +18,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "index.html#Citing-Turing-1",
-    "page": "Turing.jl",
+    "page": "Resources",
     "title": "Citing Turing",
     "category": "section",
-    "text": "To cite Turing, please refer to the following paper. Sample BibTeX entry is given below:@InProceedings{turing17,\n  title = 	 {{T}uring: a language for flexible probabilistic inference},\n  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},\n  booktitle = 	 {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},\n  year = 	 {2018},\n  series = 	 {Proceedings of Machine Learning Research},\n  publisher = 	 {PMLR},\n}"
+    "text": "To cite Turing, please refer to the following paper. A sample BiBTeX entry entry is given below:{% raw %}\n@InProceedings{turing17,\n  title = {{T}uring: a language for flexible probabilistic inference},\n  author = {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},\n  booktitle = {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},\n  year = {2018},\n  series = {Proceedings of Machine Learning Research},\n  publisher = {PMLR},\n}\n{% endraw %}"
 },
 
 {
     "location": "index.html#Other-probablistic/deep-learning-languages-1",
-    "page": "Turing.jl",
+    "page": "Resources",
     "title": "Other probablistic/deep learning languages",
     "category": "section",
     "text": "Stan\nInfer.NET\nPyTorch / Pyro\nTensorFlow / Edward\nDyNet"
@@ -77,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Install Julia",
     "category": "section",
-    "text": "You will need Julia 1.0, which you can get from the official Julia website.It provides three options for users:A command line version Julia/downloads (recommended)\nA community maintained IDE Juno\nJuliaBox.com - a Jupyter notebook in the browserFor command line version, we recommend that you install a version downloaded from Julia\'s official website, as Turing may not work correctly with Julia provided by other sources (e.g. Turing does not work with Julia installed via apt-get due to missing header files).Juno also needs the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.JuliaBox provides a pre-installed Jupyter notebook for Julia. You can take a shot at Turing without installing Julia on your machine in few seconds."
+    "text": "You will need Julia 1.0, which you can get from the official Julia website.There are three options for users:A command line version Julia/downloads (recommended).\nA community maintained IDE Juno.\nJuliaBox.com – a Jupyter notebook in the browser.For the command line version, we recommend that you install a version downloaded from Julia\'s official website, as Turing may not work correctly with Julia provided by other sources (e.g. Turing does not work with Julia installed via apt-get due to missing header files).Juno will also the command line version installed. This IDE is recommended for heavy users who require features like debugging, quick documentation check, etc.JuliaBox provides a pre-installed Jupyter notebook for Julia. You can take a shot at Turing without installing Julia on your machine in few seconds."
 },
 
 {
@@ -85,95 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Install Turing.jl",
     "category": "section",
-    "text": "Turing is an officially registered Julia package, so the following will install a stable version of Turing while inside Julia\'s package manager (press ] from the REPL):add Turing[Recommended] If you want to use the latest version of Turing with some experimental features, you can try the following instead:add Turing#master\ntest TuringIf all tests pass, you\'re ready to start using Turing."
-},
-
-{
-    "location": "get-started.html#Basics-1",
-    "page": "Getting Started",
-    "title": "Basics",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "get-started.html#Introduction-1",
-    "page": "Getting Started",
-    "title": "Introduction",
-    "category": "section",
-    "text": "A probabilistic program is Julia code wrapped in a @model macro. It can use arbitrary Julia code, but to ensure correctness of inference it should not have external effects or modify global state. Stack-allocated variables are safe, but mutable heap-allocated objects may lead to subtle bugs when using task copying. To help avoid those we provide a Turing-safe datatype TArray that can be used to create mutable arrays in Turing programs.For probabilistic effects, Turing programs should use the ~ notation:x ~ distr where x is a symbol and distr is a distribution. If x is undefined in the model function, inside the probabilistic program, this puts a random variable named x, distributed according to distr, in the current scope. distr can be a value of any type that implements rand(distr), which samples a value from the distribution distr. If x is defined, this is used for conditioning in a style similar to Anglican (another PPL). Here x should be a value that is observed to have been drawn from the distribution distr. The likelihood is computed using logpdf(distr,y) and should always be positive to ensure correctness of inference algorithms. The observe statements should be arranged so that every possible run traverses all of them in exactly the same order. This is equivalent to demanding that they are not placed inside stochastic control flow.Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC), Hamiltonian Monte Carlo with Dual Averaging (HMCDA) and The No-U-Turn Sampler (NUTS)."
-},
-
-{
-    "location": "get-started.html#Simple-Gaussian-demo-1",
-    "page": "Getting Started",
-    "title": "Simple Gaussian demo",
-    "category": "section",
-    "text": "Below is a simple Gaussian demo illustrate the basic usage of Turing.jl# Define a simple Normal model with unknown mean and variance.\n@model gdemo(x) = begin\n  s ~ InverseGamma(2,3)\n  m ~ Normal(0,sqrt(s))\n  x[1] ~ Normal(m, sqrt(s))\n  x[2] ~ Normal(m, sqrt(s))\n  return s, m\nendNote: for the interests of sanity check, some analytical results on the expectation of samples of this model are E[s] = 49/24 and E[m] = 7/6.Inference methods are functions which take the probabilistic program as one of the arguments.#  Run sampler, collect results\nc1 = sample(gdemo([1.5, 2]), SMC(1000))\nc2 = sample(gdemo([1.5, 2]), PG(10,1000))\nc3 = sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))\nc4 = sample(gdemo([1.5, 2]), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))\nc5 = sample(gdemo([1.5, 2]), HMCDA(1000, 0.15, 0.65))\nc6 = sample(gdemo([1.5, 2]), NUTS(1000,  0.65))\n\n# Summarise results\nMamba.describe(c3)\n\n# Plot results\np = Mamba.plot(c3)\nMamba.draw(p, fmt=:pdf, filename=\"gdemo-plot.pdf\")The arguments for each sampler areSMC: number of particles\nPG: number of particles, number of iterations\nHMC: number of samples, leapfrog step size, leapfrog step numbers\nGibbs: number of samples, component sampler 1, component sampler 2, ...\nHMCDA: number of samples, total leapfrog length, target accept ratio\nNUTS: number of samples, target accept ratioFor detailed information please check Turing.jl\'s APIs."
-},
-
-{
-    "location": "get-started.html#Modelling-syntax-explained-1",
-    "page": "Getting Started",
-    "title": "Modelling syntax explained",
-    "category": "section",
-    "text": "Models are wrapped by @model with a normal function definition syntax, i.e.@model model_name(arg_1, arg_2) = begin\n  ...\nendThis syntax defines a model which can take data as input to generate a posterior evaluator. The data can be provided either using the same function signature defined, or by using a dictionary containing each argument and its value as pairs, i.e.model_func = model_name(1, 2)\nmodel_func = model_name(Dict(:arg_1=>1, :arg_2=>2)This posterior evaluator can then be called by a sampler to run inference, i.e.chn = sample(model_func, HMC(..)) # do inference by sampling using HMCThe return chain contains samples of the variables in the model, one can use them do inference, e.g.var_1 = mean(chn[:var_1]) # taking the mean of a variable named var_1Note that the key should be a symbol. For this reason, in case of fetching x[1] one need to do chn[Symbol(:x[1]). Turing.jl provides a macro to work around this expression chn[sym\"x[1]\"]."
-},
-
-{
-    "location": "get-started.html#Beyond-basics-1",
-    "page": "Getting Started",
-    "title": "Beyond basics",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "get-started.html#Composition-sampling-using-Gibbs-1",
-    "page": "Getting Started",
-    "title": "Composition sampling using Gibbs",
-    "category": "section",
-    "text": "Turing.jl provides a Gibbs interface to combine different samplers. For example, one can combine a HMC sampler with a PG sampler to run inference for different parameters in a single model as below.@model simple_choice(xs) = begin\n  p ~ Beta(2, 2)\n  z ~ Categorical(p)\n  for x = xs\n    if z == 1\n      x ~ Normal(0, 1)\n    else\n      x ~ Normal(2, 1)\n    end\n  end\nend\n\nsimple_choice_f = simple_choice([1.5, 2.0, 0.3])\n\nchn = sample(simple_choice_f, Gibbs(1000, HMC(1,0.2,3,:p), PG(20,1,:z))For details of composition sampling in Turing.jl, please check the corresponding paper."
-},
-
-{
-    "location": "get-started.html#Working-with-Mamba.jl-1",
-    "page": "Getting Started",
-    "title": "Working with Mamba.jl",
-    "category": "section",
-    "text": "Turing.jl wraps its samples using Mamba.Chain so that all the functions working for Mamba.Chain can be re-used in Turing.jl. Two typical functions are Mamba.describe and Mamba.plot, which can be used as follow for an obtained chain chn.using Mamba: describe, plot\n\ndescribe(chn) # gives statistics of the samples\nplot(chn) # lots statistics of the samplesThere are a plenty of functions which are useful in Mamaba.jl, e.g. those for convergence diagnostics at here."
-},
-
-{
-    "location": "get-started.html#Changing-default-settings-1",
-    "page": "Getting Started",
-    "title": "Changing default settings",
-    "category": "section",
-    "text": "Some of Turing.jl\'s default settings can be changed for better usage."
-},
-
-{
-    "location": "get-started.html#AD-chunk-size-1",
-    "page": "Getting Started",
-    "title": "AD chunk size",
-    "category": "section",
-    "text": "Turing.jl uses ForwardDiff.jl for automatic differentiation, which uses the forward-mode chunk-wise AD. The chunk size can be manually set by setchunksize(new_chunk_size), or alternatively, use an auto-tuning helper function auto_tune_chunk_size!(mf::Function, rep_num=10) which will do simple profile of using different chunk size and choose the best one. Here mf is the model function, e.g. gdemo([1.5, 2]) and rep_num is the number of repetition for profiling."
-},
-
-{
-    "location": "get-started.html#AD-backend-1",
-    "page": "Getting Started",
-    "title": "AD backend",
-    "category": "section",
-    "text": "Since #428, Turing.jl supports ReverseDiff.jl as backend. To switch between ForwardDiff.jl and ReverseDiff.jl, one can call function setadbackend(backend_sym), where backend_sym can be :forward_diff or :reverse_diff."
-},
-
-{
-    "location": "get-started.html#Progress-meter-1",
-    "page": "Getting Started",
-    "title": "Progress meter",
-    "category": "section",
-    "text": "Turing.jl uses ProgressMeter.jl to show the progress of sampling, which may lead to slow down of inference or even cause bugs in some IDEs due to I/O. This can be turned on or off by turnprogress(true) and turnprogress(false), of which the former is set as default."
+    "text": "Turing is an officially registered Julia package, so the following will install a stable version of Turing while inside Julia\'s package manager (press ] from the REPL):add TuringIf you want to use the latest version of Turing with some experimental features, you can try the following instead:add Turing#master\ntest TuringIf all tests pass, you\'re ready to start using Turing."
 },
 
 {
@@ -193,65 +89,65 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "advanced.html#How-to-define-a-customized-distribution-1",
+    "location": "advanced.html#How-to-Define-a-Customized-Distribution-1",
     "page": "Advanced Usage",
-    "title": "How to define a customized distribution",
+    "title": "How to Define a Customized Distribution",
     "category": "section",
-    "text": "Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as sub-types of Distribution type of the Distributions.jl package, as well as corresponding functions.Below shows a workflow of how to define a customized distribution, using the flat prior as a simple example."
+    "text": "Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as subtypes of Distribution type of the Distributions.jl package, as well as corresponding functions.Below shows a workflow of how to define a customized distribution, using a flat prior as a simple example."
 },
 
 {
-    "location": "advanced.html#.-Define-the-distribution-type-1",
+    "location": "advanced.html#.-Define-the-Distribution-Type-1",
     "page": "Advanced Usage",
-    "title": "1. Define the distribution type",
+    "title": "1. Define the Distribution Type",
     "category": "section",
-    "text": "The first thing to do is to define a type of the distribution, as a subtype of a corresponding distribution type in the Distributions.jl package.immutable Flat <: ContinuousUnivariateDistribution\nend"
+    "text": "First, define a type of the distribution, as a subtype of a corresponding distribution type in the Distributions.jl package.immutable Flat <: ContinuousUnivariateDistribution\nend"
 },
 
 {
-    "location": "advanced.html#.-Define-functions-for-randomness-1",
+    "location": "advanced.html#.-Implement-Sampling-and-Evaluation-of-the-log-pdf-1",
     "page": "Advanced Usage",
-    "title": "2. Define functions for randomness",
+    "title": "2. Implement Sampling and Evaluation of the log-pdf",
     "category": "section",
-    "text": "The second thing to do is to define rand() and logpdf(), which will be used to run the model.Distributions.rand(d::Flat) = rand()\nDistributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)"
+    "text": "Second, define rand() and logpdf(), which will be used to run the model.Distributions.rand(d::Flat) = rand()\nDistributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)"
 },
 
 {
-    "location": "advanced.html#.-Define-helper-functions-1",
+    "location": "advanced.html#.-Define-Helper-Functions-1",
     "page": "Advanced Usage",
-    "title": "3. Define helper functions",
+    "title": "3. Define Helper Functions",
     "category": "section",
-    "text": "In most cases, it may be required to define helper functions."
+    "text": "In most cases, it may be required to define helper functions, such as the minimum, maximum, rand, and logpdf functions, among others."
 },
 
 {
-    "location": "advanced.html#.1-Domain-transformation-1",
+    "location": "advanced.html#.1-Domain-Transformation-1",
     "page": "Advanced Usage",
-    "title": "3.1 Domain transformation",
+    "title": "3.1 Domain Transformation",
     "category": "section",
-    "text": "Some helper functions will be used domain transformation. For univariate distributions, the necessary ones are minimum() and maximum().Distributions.minimum(d::Flat) = -Inf\nDistributions.maximum(d::Flat) = +InfFunctions for domain transformation which may be required from multi-variate or matrix-variate distributions are size(d), link(d, x) and invlink(d, x). Please see src/samplers/support/transform.jl for examples."
+    "text": "Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are minimum() and maximum().Distributions.minimum(d::Flat) = -Inf\nDistributions.maximum(d::Flat) = +InfFunctions for domain transformation which may be required by multivariate or matrix-variate distributions are size(d), link(d, x) and invlink(d, x). Please see Turing\'s transform.jl for examples."
 },
 
 {
-    "location": "advanced.html#.2-Vectorization-support-1",
+    "location": "advanced.html#.2-Vectorization-Support-1",
     "page": "Advanced Usage",
-    "title": "3.2 Vectorization support",
+    "title": "3.2 Vectorization Support",
     "category": "section",
-    "text": "Turing.jl supports a vectorization syntax rv ~ [distribution], which requires rand() and logpdf() to be called on multiple data points. The functions for Flat are shown below.Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])\nDistributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)"
+    "text": "The vectorization syntax follows rv ~ [distribution], which requires rand() and logpdf() to be called on multiple data points at once. An appropriate implementation for Flat are shown below.Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])\nDistributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)"
 },
 
 {
-    "location": "advanced.html#Avoid-using-@model-macro-1",
+    "location": "advanced.html#Avoid-Using-the-@model-Macro-1",
     "page": "Advanced Usage",
-    "title": "Avoid using @model macro",
+    "title": "Avoid Using the @model Macro",
     "category": "section",
-    "text": "When integrating Turing.jl with other libraries, it\'s usually necessary to avoid using the @model macro. To achieve this, one needs to understand the @model macro, which basically works as a closure and generates an amended function byAssigning the arguments to corresponding local variables;\nAdding two keyword arguments vi=VarInfo() and sampler=nothing to the scope\nForcing the function to return viThus by doing these three steps manually, one could get rid of the @model macro. Taking the gdemo model as an example, the two code sections below (macro and macro-free) have the same effect.@model gdemo(x) = begin\n  s ~ InverseGamma(2,3)\n  m ~ Normal(0,sqrt(s))\n  x[1] ~ Normal(m, sqrt(s))\n  x[2] ~ Normal(m, sqrt(s))\n  return s, m\nend\nmf = gdemo([1.5, 2.0])\nsample(mf, HMC(1000, 0.1, 5))# Force Turing.jl to initialize its compiler\nmf(vi, sampler; x=[1.5, 2.0]) = begin\n  s = Turing.assume(sampler,\n                    InverseGamma(2, 3),\n                    Turing.VarName(vi, [:c_s, :s], \"\"),\n                    vi)\n  m = Turing.assume(sampler,\n                    Normal(0,sqrt(s)),\n                    Turing.VarName(vi, [:c_m, :m], \"\"),\n                    vi)\n  for i = 1:2\n    Turing.observe(sampler,\n                   Normal(m, sqrt(s)),\n                   x[i],\n                   vi)\n  end\n  vi\nend\nmf() = mf(Turing.VarInfo(), nothing)\n\nsample(mf, HMC(1000, 0.1, 5))Note that the use of ~ must be removed due to the fact that in Julia 0.6, ~ is no longer a macro. For this reason, Turing.jl parses ~ within the @model macro to allow for this intuitive notation."
+    "text": "When integrating Turing.jl with other libraries, it\'s can be necessary to avoid using the @model macro. To achieve this, one needs to understand the @model macro, which works as a closure and generates an amended function byassigning the arguments to corresponding local variables;\nadding two keyword arguments vi=VarInfo() and sampler=nothing to the scope; and\nforcing the function to return vi.Thus by doing these three steps manually, one can get rid of the @model macro. Taking the gdemo model as an example, the two code sections below (macro and macro-free) are equivalent.@model gdemo(x) = begin\n    s ~ InverseGamma(2,3)\n    m ~ Normal(0,sqrt(s))\n    x[1] ~ Normal(m, sqrt(s))\n    x[2] ~ Normal(m, sqrt(s))\n    return s, m\nend\n\nmf = gdemo([1.5, 2.0])\nsample(mf, HMC(1000, 0.1, 5))# Force Turing.jl to initialize its compiler\nmf(vi, sampler; x=[1.5, 2.0]) = begin\n  s = Turing.assume(sampler,\n                    InverseGamma(2, 3),\n                    Turing.VarName(vi, [:c_s, :s], \"\"),\n                    vi)\n  m = Turing.assume(sampler,\n                    Normal(0,sqrt(s)),\n                    Turing.VarName(vi, [:c_m, :m], \"\"),\n                    vi)\n  for i = 1:2\n    Turing.observe(sampler,\n                   Normal(m, sqrt(s)),\n                   x[i],\n                   vi)\n  end\n  vi\nend\nmf() = mf(Turing.VarInfo(), nothing)\n\nsample(mf, HMC(1000, 0.1, 5))Note that the use of ~ must be removed due to the fact that in Julia 0.6, ~ is no longer a macro. For this reason, Turing.jl parses ~ within the @model macro to allow for this intuitive notation."
 },
 
 {
-    "location": "advanced.html#Task-copying-1",
+    "location": "advanced.html#Task-Copying-1",
     "page": "Advanced Usage",
-    "title": "Task copying",
+    "title": "Task Copying",
     "category": "section",
     "text": "Turing copies Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires building a small C program, which should be done automatically on Linux and Mac systems that have GCC and Make installed."
 },
@@ -285,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contributing",
     "title": "Getting started",
     "category": "section",
-    "text": "Fork this repository\nClone your fork on your local machine: git clone https://github.com/your_username/Turing.jl\nAdd a remote corresponding to this repository:git remote add upstream https://github.com/TuringLang/Turing.jl"
+    "text": "Fork this repository.\nClone your fork on your local machine: git clone https://github.com/your_username/Turing.jl.\nAdd a remote corresponding to this repository:git remote add upstream https://github.com/TuringLang/Turing.jl."
 },
 
 {
@@ -301,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contributing",
     "title": "Git workflow",
     "category": "section",
-    "text": "Make sure that your local master branch is up to date with this repository\'s one (for more details):git fetch upstream\ngit checkout master\ngit rebase upstream/masterCreate a new branch: git checkout -b branch_name (usually use feature-issue_id or bugfix-issue_id)\nDo your stuff: git add ..., git commit -m \'...\'\nPush your local branch to your fork of this repository: git push --set-upstream origin branch_name"
+    "text": "Make sure that your local master branch is up to date with this repository\'s one (for more details):git fetch upstream\ngit checkout master\ngit rebase upstream/masterCreate a new branch: git checkout -b branch_name (usually use feature-issue_id or bugfix-issue_id).\nDo your stuff: git add ..., git commit -m \'...\'.\nPush your local branch to your fork of this repository: git push --set-upstream origin branch_name."
 },
 
 {
@@ -309,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contributing",
     "title": "Make a pull request",
     "category": "section",
-    "text": "Create a pull request by going to this repository front page and selecting Compare & pull request\nIf related to a specific issue, link the pull request link in that issue, and in the pull request also link the issue"
+    "text": "Create a pull request by going to this repository front page and selecting Compare & pull request.\nIf related to a specific issue, link the pull request link in that issue, and in the pull request also link the issue."
 },
 
 {
@@ -457,43 +353,59 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "ex/0_Introduction.html#",
-    "page": "Probabilistic Programming with Turing",
-    "title": "Probabilistic Programming with Turing",
+    "location": "ex/tutorials.html#",
+    "page": "Tutorials",
+    "title": "Tutorials",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "ex/0_Introduction.html#Probabilistic-Programming-with-Turing-1",
-    "page": "Probabilistic Programming with Turing",
-    "title": "Probabilistic Programming with Turing",
+    "location": "ex/tutorials.html#Tutorials-1",
+    "page": "Tutorials",
+    "title": "Tutorials",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "ex/0_Introduction.html#",
+    "page": "Introduction to Turing",
+    "title": "Introduction to Turing",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "ex/0_Introduction.html#Introduction-to-Turing-1",
+    "page": "Introduction to Turing",
+    "title": "Introduction to Turing",
     "category": "section",
     "text": ""
 },
 
 {
     "location": "ex/0_Introduction.html#Introduction-1",
-    "page": "Probabilistic Programming with Turing",
+    "page": "Introduction to Turing",
     "title": "Introduction",
     "category": "section",
-    "text": "This notebook is the first of a series of tutorials on the universal probabilistic programming language Turing.Turing is probabilistic programming system written entirely in Julia. It has an intuitive modelling syntax and supports a wide range of sampling-based inference algorithms. Most importantly, Turing inference is composable: it combines Markov chain sampling operations on subsets of model variables, e.g. using a combination of a Hamiltonian Monte Carlo (HMC) engine and a particle Gibbs (PG) engine. This composable inference engine allows the user to easily switch between black-box style inference methods such as HMC and customized inference methods.Familiarity with Julia is assumed through out this notebook. If you are new to Julia, Learning Julia is a good starting point.For users new to Bayesian machine learning, please consider more thorough introductions to the field, such as Pattern Recognition and Machine Learning. This notebook tries to provide an intuition for Bayesian inference and gives a simple example on how to use Turing. Note that this notebook is not a comprehensive introduction to Bayesian machine learning."
+    "text": "This is the first of a series of tutorials on the universal probabilistic programming language Turing.Turing is probabilistic programming system written entirely in Julia. It has an intuitive modelling syntax and supports a wide range of sampling-based inference algorithms. Most importantly, Turing inference is composable: it combines Markov chain sampling operations on subsets of model variables, e.g. using a combination of a Hamiltonian Monte Carlo (HMC) engine and a particle Gibbs (PG) engine. This composable inference engine allows the user to easily switch between black-box style inference methods such as HMC and customized inference methods.Familiarity with Julia is assumed through out this tutorial. If you are new to Julia, Learning Julia is a good starting point.For users new to Bayesian machine learning, please consider more thorough introductions to the field, such as Pattern Recognition and Machine Learning. This tutorial tries to provide an intuition for Bayesian inference and gives a simple example on how to use Turing. Note that this is not a comprehensive introduction to Bayesian machine learning."
 },
 
 {
-    "location": "ex/0_Introduction.html#Coin-Flipping-without-Turing-1",
-    "page": "Probabilistic Programming with Turing",
-    "title": "Coin Flipping without Turing",
+    "location": "ex/0_Introduction.html#Coin-Flipping-Without-Turing-1",
+    "page": "Introduction to Turing",
+    "title": "Coin-Flipping Without Turing",
     "category": "section",
-    "text": "The following example aims to illustrate the effect of updating our beliefs with every piece of new evidence we observe. In particular, we will assume that we are unsure about the probability of heads in a coin flip. To get an intuitive understanding of what \"updating our beliefs\" is, we will visualize the probability of heads in a coin flip after each observed evidence.First, let\'s load some of the packages we are going to need to flip a coin (Random, Distributions) and show our results (Plots). You will note that Turing is not an import here – we are not going to need it for this example. If you are already familiar with posterior updates, you can proceed to the next step.# using Base modules\nusing Random\n\n# load a plotting library\nusing Plots\n\n# load the distributions library\nusing DistributionsNext, we configure our posterior update model. First, let\'s set the true probability that any coin flip will turn up heads and set the number of coin flips we will show our model:# set the true probability of heads in a coin\np_true = 0.5\n\n# iterate from having seen 0 observations to 100 observations\nNs = 0:100;We will use the Bernoulli distribution to flip 100 coins, and collect the results in a variable called data.# draw data from a Bernoulli distribution, i.e. draw heads or tails\nRandom.seed!(12)\ndata = rand(Bernoulli(p_true), last(Ns))\n\n# here\'s what the first five coin flips look like:\ndata[1:5]After flipping all our coins, we want to set a prior belief about what we think the distribution of coinflips look like. In our case, we are going to choose a common prior distribution called the Beta distribution. We will allow this distribution to change as we let our model see more evidence of coin flips.# our prior belief about the probability of heads in a coin toss\nprior_belief = Beta(1, 1);With our priors set and our data at hand, we can finally run our simple posterior update model.This is a fairly simple process. We expose one additional coin flip to our model every iteratior, such that the first run only sees the first coin flip, while the last iteration sees all the coin flips. Then, we set the updated_belief variable to an updated version of the original Beta distribution after accounting for the new proportion of heads and tails.# this is required for plotting only\nx = range(0, stop = 1, length = 100)\n\n# make an animation\nanimation = @animate for (i, N) in enumerate(Ns)\n\n    # count the number of heads and tails\n    heads = sum(data[1:i-1])\n    tails = N - heads\n\n    # update our prior belief in closed form (this is possible because we use a conjugate prior)\n    updated_belief = Beta(prior_belief.α + heads, prior_belief.β + tails)\n\n    # plotting\n    plot(x, pdf.(Ref(updated_belief), x),\n        size = (500, 250),\n        title = \"Updated belief after $N observations\",\n        xlabel = \"probability of heads\",\n        ylabel = \"\",\n        legend = nothing,\n        xlim = (0,1),\n        fill=0, α=0.3, w=3)\n    vline!([p_true])\nend;(Image: animation)The animation above shows that with increasing evidence our belief about the probability of heads in a coin flip slowly adjusts towards the true value. The orange line in the animation represents the true probability of seeing heads on a single coin flip, while the mode of the distribution shows what the model believes the probability of a heads is given the evidence it has seen."
+    "text": "The following example illustrates the effect of updating our beliefs with every piece of new evidence we observe. In particular, assume that we are unsure about the probability of heads in a coin flip. To get an intuitive understanding of what \"updating our beliefs\" is, we will visualize the probability of heads in a coin flip after each observed evidence.First, let\'s load some of the packages we need to flip a coin (Random, Distributions) and show our results (Plots). You will note that Turing is not an import here — we do not need it for this example. If you are already familiar with posterior updates, you can proceed to the next step.# Using Base modules.\nusing Random\n\n# Load a plotting library.\nusing Plots\n\n# Load the distributions library.\nusing DistributionsNext, we configure our posterior update model. First, let\'s set the true probability that any coin flip will turn up heads and set the number of coin flips we will show our model:# Set the true probability of heads in a coin.\np_true = 0.5\n\n# Iterate from having seen 0 observations to 100 observations.\nNs = 0:100;We will now use the Bernoulli distribution to flip 100 coins, and collect the results in a variable called data:# Draw data from a Bernoulli distribution, i.e. draw heads or tails.\nRandom.seed!(12)\ndata = rand(Bernoulli(p_true), last(Ns))\n\n# Here\'s what the first five coin flips look like:\ndata[1:5]5-element Array{Int64,1}:\n 1\n 0\n 1\n 1\n 0After flipping all our coins, we want to set a prior belief about what we think the distribution of coin flips look like. In this case, we are going to choose a common prior distribution called the Beta distribution.# Our prior belief about the probability of heads in a coin toss.\nprior_belief = Beta(1, 1);With our priors set and our data at hand, we can perform Bayesian inference.This is a fairly simple process. We expose one additional coin flip to our model every iteration, such that the first run only sees the first coin flip, while the last iteration sees all the coin flips. Then, we set the updated_belief variable to an updated version of the original Beta distribution that accounts for the new proportion of heads and tails. For the mathematically inclined, the Beta distribution is updated by adding each coin flip to the distribution\'s alpha and beta parameters, which are initially defined as alpha = 1 beta = 1. Over time, with more and more coin flips, alpha and beta will be approximately equal to each other as we are equally likely to flip a heads or a tails, and the plot of the beta distribution will become more tightly centered around 0.5. This works because mean of the Beta distribution is defined as the following:$\\text{E}[\\text{Beta}] = \\dfrac{\\alpha}{\\alpha+\\beta} $Which is 0.5 when alpha = beta, as we expect for a large enough number of coin flips. As we increase the number of samples, our variance will also decrease, such that the distribution will reflect less uncertainty about the probability of receiving a heads. The definition of the variance for the Beta distribution is the following:$\\text{var}[\\text{Beta}] = \\dfrac{\\alpha\\beta}{(\\alpha + \\beta)^2 (\\alpha + \\beta + 1)} $The intuition about this definition is that the variance of the distribution will approach 0 with more and more samples, as the denominator will grow faster than will the numerator. More samples means less variance.# This is required for plotting only.\nx = range(0, stop = 1, length = 100)\n\n# Make an animation.\nanimation = @animate for (i, N) in enumerate(Ns)\n\n    # Count the number of heads and tails.\n    heads = sum(data[1:i-1])\n    tails = N - heads\n    \n    # Update our prior belief in closed form (this is possible because we use a conjugate prior).\n    updated_belief = Beta(prior_belief.α + heads, prior_belief.β + tails)\n\n    # Plotting\n    plot(x, pdf.(Ref(updated_belief), x), \n        size = (500, 250), \n        title = \"Updated belief after $N observations\",\n        xlabel = \"probability of heads\", \n        ylabel = \"\", \n        legend = nothing,\n        xlim = (0,1),\n        fill=0, α=0.3, w=3)\n    vline!([p_true])\nend;(Image: animation)The animation above shows that with increasing evidence our belief about the probability of heads in a coin flip slowly adjusts towards the true value. The orange line in the animation represents the true probability of seeing heads on a single coin flip, while the mode of the distribution shows what the model believes the probability of a heads is given the evidence it has seen."
 },
 
 {
-    "location": "ex/0_Introduction.html#Coin-Flipping-with-Turing-1",
-    "page": "Probabilistic Programming with Turing",
-    "title": "Coin Flipping with Turing",
+    "location": "ex/0_Introduction.html#Coin-Flipping-With-Turing-1",
+    "page": "Introduction to Turing",
+    "title": "Coin Flipping With Turing",
     "category": "section",
-    "text": "In the previous example, we used the fact that our prior distribution is a conjugate prior. Note that a closed-form expression (the updated_belief expression) for the posterior is not accessible in general and usually does not exist for more interesting models.We are now going to move away from the closed-form expression above and specify the same model using Turing*. To do so, we will first need to import Turing, MCMCChain, Distributions, and StatPlots. MCMChain is a library built by the Turing team to help summarize Markov Chain Monte Carlo (MCMC) simulations, as well as a variety of utility functions for diagnostics and visualizations.# load Turing and MCMCChain\nusing Turing, MCMCChain\n\n# load the distributions library\nusing Distributions\n\n# load stats plots for density plots\nusing StatPlotsFirst, we will define the coin-flip model using Turing.@model coinflip(y) = begin\n\n    # our prior belief about the probability of heads in a coin\n    p ~ Beta(1, 1)\n\n    # the number of observations\n    N = length(y)\n    for n in 1:N\n        # heads or tails of a coin are drawn from a Bernoulli distribution\n        y[n] ~ Bernoulli(p)\n    end\nend;After defining the model, we can approximate the posterior distribution by pulling samples from the distribution. In this example, we use a Hamiltonian Monte Carlo sampler to construct these samples. Later tutorials will give more information on the samplers available in Turing and discuss their use for different models.# setting of Hamiltonian Monte Carlo (HMC) sampler\niterations = 1000\nϵ = 0.05\nτ = 10\n\n# start sampling\nchain = sample(coinflip(data), HMC(iterations, ϵ, τ));After finishing the sampling process, we can visualize the posterior distribution approximated using Turing against the posterior distribution in closed-form. We can extract the chain data from the sampler using the Chains(chain[:p]) function. This contains all the values of p we drew while sampling.# construct summary of the sampling process for the parameter p, i.e. the probability of heads in a coin\np_summary = Chains(chain[:p])Object of type \"Chains\"\n\nIterations = 1:1000\nThinning interval = 1\nChains = 1\nSamples per chain = 1000\n\n[0.859911; 0.219831; … ; 0.496273; 0.473286]Now we can build our plot:# compute the posterior distribution in closed-form\nN = length(data)\nheads = sum(data)\nupdated_belief = Beta(prior_belief.α + heads, prior_belief.β + N - heads)\n\n# visualize a blue density plot of the approximate posterior distribution using HMC (see Chain 1 in the legend)\np = densityplot(p_summary, xlim = (0,1), legend = :best, w = 2, c = :blue)\n\n# visualize a green density plot of posterior distribution in closed-form\nplot!(p, range(0, stop = 1, length = 100), pdf.(Ref(updated_belief), range(0, stop = 1, length = 100)),\n        xlabel = \"probability of heads\", ylabel = \"\", title = \"\", xlim = (0,1), label = \"Closed-form\",\n        fill=0, α=0.3, w=3, c = :lightgreen)\n\n# visualize the true probability of heads in red\nvline!(p, [p_true], label = \"True probability\", c = :red);(Image: sdf)As we can see, the Turing model closely approximates the true probability. Hopefully this has provided an introduction to Turing\'s simpler applications. More advanced usage is demonstrated in later tutorials."
+    "text": "In the previous example, we used the fact that our prior distribution is a conjugate prior. Note that a closed-form expression (the updated_belief expression) for the posterior is not accessible in general and usually does not exist for more interesting models. We are now going to move away from the closed-form expression above and specify the same model using Turing. To do so, we will first need to import Turing, MCMCChain, Distributions, and StatPlots. MCMChain is a library built by the Turing team to help summarize Markov Chain Monte Carlo (MCMC) simulations, as well as a variety of utility functions for diagnostics and visualizations.# Load Turing and MCMCChain.\nusing Turing, MCMCChain\n\n# Load the distributions library.\nusing Distributions\n\n# Load stats plots for density plots.\nusing StatPlotsFirst, we define the coin-flip model using Turing.@model coinflip(y) = begin\n    \n    # Our prior belief about the probability of heads in a coin.\n    p ~ Beta(1, 1)\n    \n    # The number of observations.\n    N = length(y)\n    for n in 1:N\n        # Heads or tails of a coin are drawn from a Bernoulli distribution.\n        y[n] ~ Bernoulli(p)\n    end\nend;After defining the model, we can approximate the posterior distribution by drawing samples from the distribution. In this example, we use a Hamiltonian Monte Carlo sampler to draw these samples. Later tutorials will give more information on the samplers available in Turing and discuss their use for different models.# Settings of the Hamiltonian Monte Carlo (HMC) sampler.\niterations = 1000\nϵ = 0.05\nτ = 10\n\n# Start sampling.\nchain = sample(coinflip(data), HMC(iterations, ϵ, τ));[HMC] Finished with\n  Running time        = 4.871686579000012;\n  Accept rate         = 0.997;\n  #lf / sample        = 9.99;\n  #evals / sample     = 12.985;\n  pre-cond. diag mat  = [1.0].After finishing the sampling process, we can visualize the posterior distribution approximated using Turing against the posterior distribution in closed-form. We can extract the chain data from the sampler using the Chains(chain[:p]) function, exported from the MCMCChain module. Chains(chain[:p]) creates an instance of the Chain type which summarizes the MCMC simulation — the MCMCChain module supports numerous tools for plotting, summarizing, and describing variables of type Chain.# Construct summary of the sampling process for the parameter p, i.e. the probability of heads in a coin.\np_summary = Chains(chain[:p])\nhistogramplot(p_summary){{< figure src=\"../figures/0Introduction9_1.svg\"  >}}Now we can build our plot:# Compute the posterior distribution in closed-form.\nN = length(data)\nheads = sum(data)\nupdated_belief = Beta(prior_belief.α + heads, prior_belief.β + N - heads)\n\n# Visualize a blue density plot of the approximate posterior distribution using HMC (see Chain 1 in the legend).\np = densityplot(p_summary, xlim = (0,1), legend = :best, w = 2, c = :blue)\n\n# Visualize a green density plot of posterior distribution in closed-form.\nplot!(p, range(0, stop = 1, length = 100), pdf.(Ref(updated_belief), range(0, stop = 1, length = 100)), \n        xlabel = \"probability of heads\", ylabel = \"\", title = \"\", xlim = (0,1), label = \"Closed-form\",\n        fill=0, α=0.3, w=3, c = :lightgreen)\n\n# Visualize the true probability of heads in red.\nvline!(p, [p_true], label = \"True probability\", c = :red);(Image: sdf)As we can see, the Turing model closely approximates the true probability. Hopefully this tutorial has provided an easy-to-follow, yet informative introduction to Turing\'s simpler applications. More advanced usage will be demonstrated in later tutorials."
 },
 
 {

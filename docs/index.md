@@ -3,15 +3,13 @@ layout: turing
 title: "The Turing language for probabilistic machine learning"
 ---
 
-**Turing** is a *universal* probabilistic programming language with a focus on intuitive modelling interface, composable probabilistic inference and computational scalability.
-
-# What you get...
+**Turing** is a *universal* probabilistic programming language with a focus on an intuitive modelling interface, composable probabilistic inference and computational scalability.
 
 Turing provides **Hamiltonian Monte Carlo** (HMC) and **particle MCMC** sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:
 
 - **Universal** probabilistic programming with an intuitive modelling interface
 - **Hamiltonian Monte Carlo** (HMC) sampling for differentiable posterior distributions
-- **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flows
+- **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow
 - **Gibbs** sampling that combines particle MCMC,  HMC and many other MCMC algorithms
 
 # Resources
@@ -26,7 +24,7 @@ Please visit [Turing.jl wiki](https://github.com/TuringLang/Turing.jl/wiki) for 
 
 # Citing Turing
 
-To cite Turing, please refer to the following paper. Sample BibTeX entry is given below:
+To cite Turing, please refer to the following paper. A sample BiBTeX entry entry is given below:
 
 ```
 {% raw %}
