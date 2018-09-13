@@ -30,8 +30,7 @@ function gen_lj_func(vi, spl, model)
 
     lj_func(θ) = begin
         vi[spl][:] = θ[:]
-        runmodel(model, vi, spl)
-        return vi.logp
+        return runmodel!(model, vi, spl).logp
     end
 
     return lj_func
@@ -80,14 +79,14 @@ function gen_log_func(spl)
     return log_func
 end
 
-function runmodel(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
-    @debug "run model..."
+function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
     setlogp!(vi, zero(Real))
     if spl != nothing 
         spl.info[:total_eval_num] += 1 
     end
     # model(vi=vi, sampler=spl) # run model
     Base.invokelatest(model, vi, spl)
+    vi
 end
 
 function sample_momentum(vi::VarInfo, spl::Sampler)

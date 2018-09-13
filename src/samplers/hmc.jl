@@ -138,7 +138,7 @@ function sample(model::Function, alg::T;
 
   if spl.alg.gid == 0
     link!(vi, spl)
-    runmodel(model, vi, spl)
+    runmodel!(model, vi, spl)
   end
 
   # HMC steps
