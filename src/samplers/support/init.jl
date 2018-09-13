@@ -1,6 +1,6 @@
 # Uniform rand with range e
 randrealuni() = Real(MathConstants.e * rand())  # may Euler's number give us good luck
-randrealuni(args...) = map(Real, 2 * rand(args...))
+randrealuni(args...) = map(Real, MathConstant.e * rand(args...))
 
 const Transformable = Union{TransformDistribution, SimplexDistribution, PDMatDistribution}
 
