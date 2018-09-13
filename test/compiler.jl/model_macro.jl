@@ -5,10 +5,9 @@ using Turing, Distributions, Test
     return x
 end
 
-f0 = testmodel0()
+f0_mm = testmodel0()
 
-#@test mean(f0() for _ in 1:1000) ≈ 0.
-
+@test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
 @model testmodel1(x1, x2) = begin
     s ~ InverseGamma(2,3)
@@ -20,15 +19,15 @@ f0 = testmodel0()
     return x1, x2
 end
 
-f1 = testmodel1(1., 10.)
-@test f1() == (1, 10)
+f1_mm = testmodel1(1., 10.)
+@test f1_mm() == (1, 10)
 
 @model testmodel2(x) = begin
     x ~ Normal()
 end
 
-f2 = testmodel2(2.)
-@test f2().logp == logpdf(Normal(), 2.)
+f2_mm = testmodel2(2.)
+@test f2_mm().logp == logpdf(Normal(), 2.)
 
 @model testmodel3() = begin
 
