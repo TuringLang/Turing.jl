@@ -38,8 +38,8 @@ assume(spl::Nothing, dist::Distribution, vn::VarName, vi::VarInfo) = begin
   if haskey(vi, vn)
     r = vi[vn]
   else
-    #r = init(dist)
-    r = rand(dist)
+    r = init(dist)
+    #r = rand(dist)
     push!(vi, vn, r, dist, 0)
   end
   # NOTE: The importance weight is not correctly computed here because
@@ -59,8 +59,8 @@ assume(spl::Nothing, dists::Vector{T}, vn::VarName, var::Any, vi::VarInfo) where
   if haskey(vi, vns[1])
     rs = vi[vns]
   else
-    rs = rand(dist, n)
-    #rs = init(dist, n)
+    #rs = rand(dist, n)
+    rs = init(dist, n)
 
     if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
       for i = 1:n
