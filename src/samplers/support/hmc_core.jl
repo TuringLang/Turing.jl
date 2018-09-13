@@ -86,7 +86,7 @@ function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler})
     end
     # model(vi=vi, sampler=spl) # run model
     Base.invokelatest(model, vi, spl)
-    vi
+    return vi
 end
 
 function sample_momentum(vi::VarInfo, spl::Sampler)
