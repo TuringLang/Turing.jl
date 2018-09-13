@@ -1,71 +1,72 @@
 # Advanced Usage
 
-## How to define a customized distribution
+## How to Define a Customized Distribution
 
-Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as sub-types of `Distribution` type of the Distributions.jl package, as well as corresponding functions.
+Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as subtypes of `Distribution` type of the Distributions.jl package, as well as corresponding functions.
 
-Below shows a workflow of how to define a customized distribution, using the flat prior as a simple example.
+Below shows a workflow of how to define a customized distribution, using a flat prior as a simple example.
 
-### 1. Define the distribution type
+### 1. Define the Distribution Type
 
-The first thing to do is to define a type of the distribution, as a subtype of a corresponding distribution type in the Distributions.jl package.
+First, define a type of the distribution, as a subtype of a corresponding distribution type in the Distributions.jl package.
 
 ```julia
 immutable Flat <: ContinuousUnivariateDistribution
 end
 ```
 
-### 2. Define functions for randomness
+### 2. Implement Sampling and Evaluation of the log-pdf
 
-The second thing to do is to define `rand()` and `logpdf()`, which will be used to run the model.
+Second, define `rand()` and `logpdf()`, which will be used to run the model.
 
 ```julia
 Distributions.rand(d::Flat) = rand()
 Distributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)
 ```
 
-### 3. Define helper functions
+### 3. Define Helper Functions
 
-In most cases, it may be required to define helper functions.
+In most cases, it may be required to define helper functions, such as the `minimum`, `maximum`, `rand`, and `logpdf` functions, among others.
 
-#### 3.1 Domain transformation
+#### 3.1 Domain Transformation
 
-Some helper functions will be used domain transformation. For univariate distributions, the necessary ones are `minimum()` and `maximum()`.
+Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are `minimum()` and `maximum()`.
 
 ```julia
 Distributions.minimum(d::Flat) = -Inf
 Distributions.maximum(d::Flat) = +Inf
 ```
 
-Functions for domain transformation which may be required from multi-variate or matrix-variate distributions are `size(d)`, `link(d, x)` and `invlink(d, x)`. Please see `src/samplers/support/transform.jl` for examples.
+Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size(d)`, `link(d, x)` and `invlink(d, x)`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
 
-#### 3.2 Vectorization support
+#### 3.2 Vectorization Support
 
-Turing.jl supports a vectorization syntax `rv ~ [distribution]`, which requires `rand()` and `logpdf()` to be called on multiple data points. The functions for `Flat` are shown below.
+The vectorization syntax follows `rv ~ [distribution]`, which requires `rand()` and `logpdf()` to be called on multiple data points at once. An appropriate implementation for `Flat` are shown below.
 
 ```julia
 Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
 Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
 ```
 
-## Avoid using `@model` macro
+## Avoid Using the `@model` Macro
 
-When integrating Turing.jl with other libraries, it's usually necessary to avoid using the `@model` macro. To achieve this, one needs to understand the `@model` macro, which basically works as a closure and generates an amended function by
+When integrating Turing.jl with other libraries, it's can be necessary to avoid using the `@model` macro. To achieve this, one needs to understand the `@model` macro, which works as a closure and generates an amended function by
 
-1. Assigning the arguments to corresponding local variables;
-2. Adding two keyword arguments `vi=VarInfo()` and `sampler=nothing` to the scope
-3. Forcing the function to return `vi`
+1. assigning the arguments to corresponding local variables;
+2. adding two keyword arguments `vi=VarInfo()` and `sampler=nothing` to the scope; and
+3. forcing the function to return `vi`.
 
-Thus by doing these three steps manually, one could get rid of the `@model` macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) have the same effect.
+Thus by doing these three steps manually, one can get rid of the `@model` macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
 
 ```julia
 @model gdemo(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
-  return s, m
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+    x[1] ~ Normal(m, sqrt(s))
+    x[2] ~ Normal(m, sqrt(s))
+    return s, m
 end
+
 mf = gdemo([1.5, 2.0])
 sample(mf, HMC(1000, 0.1, 5))
 ```
@@ -96,6 +97,6 @@ sample(mf, HMC(1000, 0.1, 5))
 
 Note that the use of `~` must be removed due to the fact that in Julia 0.6, `~` is no longer a macro. For this reason, Turing.jl parses `~` within the `@model` macro to allow for this intuitive notation.
 
-## Task copying
+## Task Copying
 
 Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires building a small C program, which should be done automatically on Linux and Mac systems that have GCC and Make installed.
