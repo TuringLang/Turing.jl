@@ -78,7 +78,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
         # Implements the update equations from (15) of Chen et al. (2014).
         @debug "update latent variables and velocity..."
         θ .+= v
-        v .= (1 - α) .* v - η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
+        v .= (1 - α) .* v .- η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
 
         @debug "saving new latent variables..."
         vi[spl] = θ

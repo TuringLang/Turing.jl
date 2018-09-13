@@ -94,27 +94,26 @@ function _leapfrog(
     _, grad = lp_grad_func(θ)
     verifygrad(grad) || (return θ, p, 0)
 
-    τ_valid = 0
-    for t in 1:τ
-        # NOTE: we dont need copy here becase arr += another_arr
-        #       doesn't change arr in-place
-        p_old, θ_old = copy(p), copy(θ)
+    p, θ, τ_valid = copy(p), copy(θ), 0
 
-        p -= ϵ .* grad / 2
-        θ += ϵ .* p  # full step for state
+    p .-= ϵ .* grad ./ 2
+    for t in 1:τ
 
         log_func != nothing && log_func()
 
-        old_logp, grad = lp_grad_func(θ)
+        θ .+= ϵ .* p
+        logp, grad = lp_grad_func(θ)
+
         if ~verifygrad(grad)
-            if rev_func != nothing rev_func(θ_old, old_logp) end
-            θ = θ_old; p = p_old; break
+            θ .-= ϵ .* p
+            rev_func != nothing && rev_func(θ, logp)
+            break
         end
 
-        p -= ϵ * grad / 2
-
+        p .-= ϵ .* grad
         τ_valid += 1
     end
+    p .+= ϵ .* grad ./ 2
 
     return θ, p, τ_valid
 end
