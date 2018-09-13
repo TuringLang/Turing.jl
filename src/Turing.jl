@@ -74,7 +74,7 @@ const CACHERANGES = 0b01
 
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
-
+abstract type AbstractSampler end
 """
     Sampler{T}
 
@@ -87,10 +87,20 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T<:InferenceAlgorithm}
+mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
   alg   ::  T
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
+
+"""
+Robust initialization method for model parameters in Hamiltonian samplers.
+"""
+struct HamiltonianRobustInit <: AbstractSampler end
+struct SampleFromPrior <: AbstractSampler end
+
+# This can be removed when all `spl=nothing` is replaced with
+#   `spl=SampleFromPrior`
+const AnySampler = Union{Nothing, AbstractSampler}
 
 include("utilities/helper.jl")
 include("utilities/transform.jl")

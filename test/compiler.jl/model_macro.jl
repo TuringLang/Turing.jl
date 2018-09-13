@@ -27,15 +27,15 @@ alias1 = Dict(
             :name => :testmodel_comp_model,
             :args => [:(vi::Turing.VarInfo)],
             :kwargs => [],
-            :body => :(return testmodel_comp_model(vi, nothing))
+            :body => :(return testmodel_comp_model(vi, Turing.SampleFromPrior()))
            )
 @test c[:alias1] == MacroTools.combinedef(alias1)
 
 alias2 = Dict(
             :name => :testmodel_comp_model,
-            :args => [:(sampler::Turing.Sampler)],
+            :args => [:(sampler::Turing.AnySampler)],
             :kwargs => [],
-            :body => :(return testmodel_comp_model(Turing.VarInfo(), nothing))
+            :body => :(return testmodel_comp_model(Turing.VarInfo(), Turing.SampleFromPrior()))
            )
 @test c[:alias2] == MacroTools.combinedef(alias2)
 
@@ -43,7 +43,7 @@ alias3 = Dict(
             :name => :testmodel_comp_model,
             :args => [],
             :kwargs => [],
-            :body => :(return testmodel_comp_model(Turing.VarInfo(), nothing))
+            :body => :(return testmodel_comp_model(Turing.VarInfo(), Turing.SampleFromPrior()))
            )
 @test c[:alias3] == MacroTools.combinedef(alias3)
 @test length(c[:closure].args[2].args[2].args) == 6
@@ -55,7 +55,7 @@ alias3 = Dict(
     return x
 end
 f0_mm = testmodel0()
-@test_broken mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
+@test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
 @model testmodel01(x) = begin
     x ~ Bernoulli(0.5)

@@ -49,7 +49,7 @@ function Sampler(alg::Gibbs)
 end
 
 function sample(
-                model::Function, 
+                model::Function,
                 alg::Gibbs;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
@@ -86,7 +86,7 @@ function sample(
     # Init parameters
     varInfo = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, nothing)
+        Base.invokelatest(model, vi_, HamiltonianRobustInit())
         vi_
     else
         resume_from.info[:vi]
