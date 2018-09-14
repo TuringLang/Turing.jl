@@ -33,7 +33,7 @@ end
 
 
 """
-    generate_observe(left, right)
+    generate_observe(observation, distribution)
 
 Generate an observe expression.
 """
@@ -52,37 +52,30 @@ function generate_observe(observation, distribution)
 end
 
 """
-    generate_observe(left, right)
+    generate_assume(variable, distribution, syms)
 
-Generate an observe expression.
+Generate an assume expression.
 """
-function generate_assume(variable, distribution::Vector, syms)
-    assumeexpr = esc(
-        quote
-            varname = Turing.VarName(vi, $syms, "")
-            $(variable), _lp = Turing.assume(
-                sampler,
-                $(variable),
-                varname,
-                $(distribution),
-                vi
-            )
-            vi.logp += _lp
-        end
-    )
-    return assumeexpr
-end
-
 function generate_assume(variable, distribution, syms)
     assumeexpr = esc(
         quote
             varname = Turing.VarName(vi, $syms, "")
-            $(variable), _lp = Turing.assume(
-                sampler,
-                $(distribution),
-                varname,
-                vi
-            )
+            ($(variable), _lp) = if isa($(distribution), Vector)
+                Turing.assume(
+                    sampler,
+                    $(distribution),
+                    varname,
+                    $(variable),
+                    vi
+                )
+            else
+                Turing.assume(
+                    sampler,
+                    $(distribution),
+                    varname,
+                    vi
+                )
+            end
             vi.logp += _lp
         end
     )
@@ -90,7 +83,6 @@ function generate_assume(variable, distribution, syms)
 end
 
 function generate_assume(variable::Expr, distribution)
-
     assumeexpr = esc(
         quote
             sym, idcs, csym = @VarName $variable
