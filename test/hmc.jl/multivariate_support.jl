@@ -1,6 +1,6 @@
 # Test the multivariate distribution support for HMC sampler
 
-using Turing, Distributions
+using Turing
 
 # Define helper functions
 function sigmoid(t)
@@ -29,7 +29,7 @@ ts = [ones(M); ones(M); zeros(M); zeros(M)]
 # Define model
 
 alpha = 0.16            # regularizatin term
-var = sqrt.(1.0 / alpha) # variance of the Gaussian prior
+var = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
 @model bnn(ts) = begin
   b1 ~ MvNormal([0 ;0; 0], [var 0 0; 0 var 0; 0 0 var])

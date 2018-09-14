@@ -1,7 +1,9 @@
-using Turing: VarName, insdelim
+using Turing: VarName
 using Turing.VarReplay: is_inside
 
 using Test
+
+include("../utility.jl")
 
 varname(s::Symbol)  = nothing, s
 varname(expr::Expr) = begin

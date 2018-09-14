@@ -72,7 +72,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
     @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
-      runmodel(model, vi, spl)
+      runmodel!(model, vi, spl)
     end
 
     @debug "recording old variables..."

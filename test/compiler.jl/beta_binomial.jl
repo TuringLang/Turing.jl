@@ -2,7 +2,6 @@
 # We may want to add comparison of p to the test. REVIEW: what does this comment mean? (Kai)
 
 using Turing
-using Distributions
 using Test
 
 prior = Beta(2,2)

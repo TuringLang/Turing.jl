@@ -1,4 +1,3 @@
-using Distributions
 using Turing
 using Test
 using Random
@@ -29,7 +28,7 @@ chain = sample(mhtest(x), alg)
 @test mean(chain[:m]) ≈ 7/6 atol=0.1
 
 # MH within Gibbs
-alg = Gibbs(100, MH(5, :m), MH(5, :s))
+alg = Gibbs(1000, MH(5, :m), MH(5, :s))
 chain = sample(mhtest(x), alg)
 @test mean(chain[:s]) ≈ 49/24 atol=0.1
 @test mean(chain[:m]) ≈ 7/6 atol=0.1

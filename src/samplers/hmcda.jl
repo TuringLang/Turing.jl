@@ -15,9 +15,9 @@ Example:
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
-  x[1] ~ Normal(m, sqrt.(s))
-  x[2] ~ Normal(m, sqrt.(s))
+  m ~ Normal(0, sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
   return s, m
 end
 
@@ -87,7 +87,7 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
     @debug "X-> R..."
     if spl.alg.gid != 0
       link!(vi, spl)
-      runmodel(model, vi, spl)
+      runmodel!(model, vi, spl)
     end
 
     grad_func = gen_grad_func(vi, spl, model)

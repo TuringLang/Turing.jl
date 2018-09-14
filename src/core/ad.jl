@@ -23,7 +23,7 @@ function gradient_forward(
   # Define function to compute log joint.
   function f(θ)
       vi[spl] = θ
-      return -runmodel(model, vi, spl).logp
+      return -runmodel!(model, vi, spl).logp
   end
 
   # Set chunk size and do ForwardMode.
@@ -57,7 +57,7 @@ function gradient_reverse(
   # Specify objective function.
   function f(θ)
     vi[spl] = θ
-    return -runmodel(model, vi, spl).logp
+    return -runmodel!(model, vi, spl).logp
   end
 
   # Compute forward and reverse passes.

@@ -1,4 +1,4 @@
-using Turing, Distributions
+using Turing
 using Test
 using Random
 
@@ -6,14 +6,14 @@ Random.seed!(125)
 
 @model gdemo() = begin
   s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt.(s))
-  1.5 ~ Normal(m, sqrt.(s))
-  2.0 ~ Normal(m, sqrt.(s))
+  m ~ Normal(0, sqrt(s))
+  1.5 ~ Normal(m, sqrt(s))
+  2.0 ~ Normal(m, sqrt(s))
   return s, m
 end
 
 N = 500
-s1 = PMMH(N, SMC(10, :s), MH(1,(:m, (s) -> Normal(s, sqrt.(1)))))
+s1 = PMMH(N, SMC(10, :s), MH(1,(:m, (s) -> Normal(s, sqrt(1)))))
 s2 = PMMH(N, SMC(10, :s), MH(1,:m))
 s3 = PIMH(N, SMC(10))
 

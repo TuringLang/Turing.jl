@@ -3,7 +3,6 @@
 # Both predictions and logevidence are compared for equality.
 
 using Turing
-using Distributions
 using Test
 using Random
 

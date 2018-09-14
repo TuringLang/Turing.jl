@@ -1,4 +1,4 @@
-using Stats, Distributions, Turing
+using Stats, Turing
 using Gadfly
 
 # include("ASCIIPlot.jl")
@@ -16,18 +16,18 @@ NSamples = 5000
 @model gdemo_fw() = begin
   s ~ InverseGamma(2,3)
   # s = 1
-  m ~ Normal(0,sqrt.(s))
-  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
+  m ~ Normal(0,sqrt(s))
+  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
   s ~ InverseGamma(2,3)
   # s = 1
-  m ~ Normal(0,sqrt.(s))
-  x ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
+  m ~ Normal(0,sqrt(s))
+  x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
   # Backward Step 2: x ~ x | theta
-  y ~ MvNormal([m; m; m], [sqrt.(s) 0 0; 0 sqrt.(s) 0; 0 0 sqrt.(s)])
+  y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 fw = IS(NSamples)
@@ -44,7 +44,7 @@ x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(undef, N)
 
 simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
-with_logger(simple_logger) do 
+with_logger(simple_logger) do
   i = 1
   while i <= N
     s_bk[i] = sample(gdemo_bk(x), bk);

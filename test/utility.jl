@@ -35,6 +35,10 @@ function getteststoskip(filepath)
   end
 end
 
+function insdelim(c, deli=",")
+    return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+end
+
 """
   runtests(; tests = ["all"])
 
@@ -58,7 +62,7 @@ function runtests(; tests = ["all"])
                    "mh.jl",
                    # "pmmh.jl", "ipmcmc.jl", "pgibbs.jl", "smc.jl"
                   ]
-  TRACE_TESTS = ["tarray.jl", "taskcopy.jl", "trace.jl"]
+  TRACE_TESTS = ["trace.jl"]
   ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
 
   # test groups that should be executed

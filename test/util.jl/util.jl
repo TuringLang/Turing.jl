@@ -16,3 +16,5 @@ randcat([0.1, 0.9])
 @test kl(Normal(0, 1), Normal(0, 1)) == 0
 @test align([1, 2, 3], [1]) == ([1,2,3],[1,0,0])
 @test align([1], [1, 2, 3]) == ([1,0,0],[1,2,3])
+
+@test Turing.data(Dict(:y => 1, :x => 2, :z => 1), [:x, :y]) == (x = 2, y = 1)

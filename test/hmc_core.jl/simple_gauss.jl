@@ -14,7 +14,6 @@ end
 # Plain Julia
 
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Distributions
 
 θ_dim = 1
 function lj_func(θ)
