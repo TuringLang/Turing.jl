@@ -14,7 +14,7 @@ alg = PG(5, 1)
 spl = Turing.Sampler(alg)
 dist = Normal(0, 1)
 
-function f()
+function fpc()
   t = TArray(Float64, 1);
   t[1] = 0;
   while true
@@ -28,7 +28,7 @@ function f()
   end
 end
 
-pc = ParticleContainer{Trace}(f)
+pc = ParticleContainer{Trace}(fpc)
 
 push!(pc, Trace(pc.model))
 push!(pc, Trace(pc.model))
