@@ -22,8 +22,8 @@ step_size = 0.1
         theta += step_size .* p
         p -= step_size .* lp_grad_func(theta)[2] / 2
 
-        @test theta == theta_turing
-        @test p == p_turing
+        @test theta ≈ theta_turing
+        @test p ≈ p_turing
 
     end
 
@@ -44,8 +44,8 @@ end
 
         theta_2_one_call, p_2_one_call, _ = _leapfrog(theta_0, p_0, 2, step_size, lp_grad_func)
 
-        @test theta_2 == theta_2_one_call
-        @test p_2 == p_2_one_call
+        @test theta_2 ≈ theta_2_one_call
+        @test p_2 ≈ p_2_one_call
 
     end
 
