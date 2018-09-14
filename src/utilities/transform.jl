@@ -36,7 +36,7 @@ function link(d::TransformDistribution, x::Real)
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    logit((x - a) / (b - a))
+    StatsFuns.logit((x - a) / (b - a))
   elseif lowerbounded
     log(x - a)
   elseif upperbounded
@@ -50,7 +50,7 @@ function invlink(d::TransformDistribution, x::Real)
   a, b = minimum(d), maximum(d)
   lowerbounded, upperbounded = isfinite(a), isfinite(b)
   if lowerbounded && upperbounded
-    (b - a) * invlogit(x) + a
+    (b - a) * StatsFuns.logistic(x) + a
   elseif lowerbounded
     exp(x) + a
   elseif upperbounded
@@ -114,9 +114,9 @@ end
 
 const UnitDistribution = Union{Beta, KSOneSided, NoncentralBeta}
 
-link(d::UnitDistribution, x::Real) = logit(x)
+link(d::UnitDistribution, x::Real) = StatsFuns.logit(x)
 
-invlink(d::UnitDistribution, x::Real) = invlogit(x)
+invlink(d::UnitDistribution, x::Real) = StatsFuns.logistic(x)
 
 function logpdf_with_trans(d::UnitDistribution, x::Real, transform::Bool)
   return logpdf(d, x) + transform * log(x * (one(x) - x))
@@ -134,11 +134,11 @@ function link(d::SimplexDistribution, x::AbstractVector{T}) where T<:Real
 
   sum_tmp = zero(T)
   z = x[1]
-  y[1] = logit(z) - log(one(T) / (K - 1))
+  y[1] = StatsFuns.logit(z) - log(one(T) / (K - 1))
   @inbounds for k in 2:K - 1
     sum_tmp += x[k - 1]
     z = x[k] / (one(T) - sum_tmp)
-    y[k] = logit(z) - log(one(T) / (K - k))
+    y[k] = StatsFuns.logit(z) - log(one(T) / (K - k))
   end
   y[K] = zero(T)
 
@@ -151,11 +151,11 @@ function link(d::SimplexDistribution, X::AbstractMatrix{T}) where T<:Real
 
   @inbounds for n in 1:size(X, 2)
     sum_tmp, z = zero(T), X[1, n]
-    Y[1, n] = logit(z) - log(one(T) / (K - 1))
+    Y[1, n] = StatsFuns.logit(z) - log(one(T) / (K - 1))
     for k in 2:K - 1
       sum_tmp += X[k - 1, n]
       z = X[k, n] / (one(T) - sum_tmp)
-      Y[k, n] = logit(z) - log(one(T) / (K - k))
+      Y[k, n] = StatsFuns.logit(z) - log(one(T) / (K - k))
     end
     Y[K, n] = zero(T)
   end
@@ -166,11 +166,11 @@ end
 function invlink(d::SimplexDistribution, y::AbstractVector{T}) where T<:Real
   x, K = similar(y), length(y)
 
-  z = invlogit(y[1] + log(one(T) / (K - 1)))
+  z = StatsFuns.logistic(y[1] + log(one(T) / (K - 1)))
   x[1] = z
   sum_tmp = zero(T)
   @inbounds for k = 2:K - 1
-    z = invlogit(y[k] + log(one(T) / (K - k)))
+    z = StatsFuns.logistic(y[k] + log(one(T) / (K - k)))
     sum_tmp += x[k-1]
     x[k] = (one(T) - sum_tmp) * z
   end
@@ -185,10 +185,10 @@ function invlink(d::SimplexDistribution, Y::AbstractMatrix{T}) where T<:Real
   X, K, N = similar(Y), size(Y, 1), size(Y, 2)
 
   @inbounds for n in 1:size(X, 2)
-    sum_tmp, z = zero(T), invlogit(Y[1, n] + log(one(T) / (K - 1)))
+    sum_tmp, z = zero(T), StatsFuns.logistic(Y[1, n] + log(one(T) / (K - 1)))
     X[1, n] = z
     for k in 2:K - 1
-      z = invlogit(Y[k, n] + log(one(T) / (K - k)))
+      z = StatsFuns.logistic(Y[k, n] + log(one(T) / (K - k)))
       sum_tmp += X[k - 1]
       X[k, n] = (one(T) - sum_tmp) * z
     end

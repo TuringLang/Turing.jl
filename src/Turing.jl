@@ -14,6 +14,7 @@ using Reexport
 @reexport using Distributions
 @reexport using MCMCChain
 using ForwardDiff
+using StatsFuns
 
 using LinearAlgebra
 using ProgressMeter
@@ -104,6 +105,8 @@ const AnySampler = Union{Nothing, AbstractSampler}
 
 include("utilities/helper.jl")
 include("utilities/transform.jl")
+include("utilities/util.jl")         # utility functions
+include("utilities/io.jl")           # I/O
 include("core/varinfo.jl")  # core internal variable container
 include("core/trace.jl")   # to run probabilistic programs as tasks
 
@@ -134,10 +137,8 @@ export Flat, FlatPos
 # Inference code #
 ##################
 
-include("core/util.jl")         # utility functions
 include("core/compiler.jl")     # compiler
 include("core/container.jl")    # particle container
-include("core/io.jl")           # I/O
 include("samplers/sampler.jl")  # samplers
 include("core/ad.jl")           # Automatic Differentiation
 
