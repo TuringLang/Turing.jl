@@ -7,9 +7,6 @@ expr = Turing.generate_observe(:x, :y)
 @test expr.args[1].head == :block
 @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args[1].args
 
-expr = Turing.insertvarinfo(:())
-@test expr == :((vi.logp = zero(Real), vi))
-
 @model testmodel_comp(x, y) = begin
     s ~ InverseGamma(2,3)
     m ~ Normal(0,sqrt(s))
@@ -76,11 +73,3 @@ f01_mm = testmodel01()
 end
 f1_mm = testmodel1(1., 10.)
 @test f1_mm() == (1, 10)
-
-# test if we get a varinfo object back if no return value is set
-@model testmodel2(x) = begin
-    x ~ Normal()
-end
-f2_mm = testmodel2(2.)
-@test isa(f2_mm(), Turing.VarInfo)
-@test f2_mm().logp == logpdf(Normal(), 2.)
