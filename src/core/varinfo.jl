@@ -1,14 +1,15 @@
 module VarReplay
 
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
-using Turing: Sampler, realpart, dualpart, vectorize, reconstruct, reconstruct!, SimplexDistribution
+using Turing: Sampler, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
 
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 import Turing: link, invlink
 
-export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!, is_flagged, unset_flag!, setgid!, copybyindex,
-       setorder!, updategid!, acclogp!, istrans, link!, invlink!, setlogp!, getranges, getrange, getvns, cleandual!, getval
+export VarName, VarInfo, uid, sym, getlogp, set_retained_vns_del_by_spl!, resetlogp!,
+    is_flagged, unset_flag!, setgid!, copybyindex, setorder!, updategid!, acclogp!, istrans,
+    link!, invlink!, setlogp!, getranges, getrange, getvns, getval
 export string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 
 ###########
@@ -147,13 +148,6 @@ invlink!(vi::VarInfo, spl::Sampler) = begin
   end
 end
 
-function cleandual!(vi::VarInfo)
-  for i = 1:length(vi.vals)
-    vi.vals[i] = realpart(vi.vals[i])
-  end
-  vi.logp = realpart(getlogp(vi))
-end
-
 vns(vi::VarInfo) = Set(keys(vi.idcs))            # get all vns
 syms(vi::VarInfo) = map(vn -> vn.sym, vns(vi))  # get all symbols
 
@@ -285,7 +279,7 @@ end
 #################################
 
 # expand!(vi::VarInfo) = begin
-#   push!(vi.vals, realpart(vi.vals[end])); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
+#   push!(vi.vals, vi.vals[end]); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
 #   push!(vi.trans, deepcopy(vi.trans[end]))
 #   push!(vi.logp, zero(Real))
 # end

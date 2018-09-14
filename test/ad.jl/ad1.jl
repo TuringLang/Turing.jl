@@ -1,5 +1,5 @@
 using Turing
-using Turing: gradient_forward, invlink, link, getval, realpart
+using Turing: gradient_forward, invlink, link, getval
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -16,13 +16,14 @@ end
 # Call Turing's AD
 # The result out is the gradient information on R
 ad_test_f = ad_test()
-vi = ad_test_f(Turing.VarInfo(), nothing)
+vi = Turing.VarInfo()
+ad_test_f(vi, nothing)
 svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
-_s = realpart(getval(vi, svn)[1])
-_m = realpart(getval(vi, mvn)[1])
+_s = getval(vi, svn)[1]
+_m = getval(vi, mvn)[1]
 spl = nothing
-_, ∇E = gradient_forward(realpart(vi[spl]), vi, ad_test_f)
+_, ∇E = gradient_forward(vi[spl], vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)
