@@ -1,7 +1,5 @@
 module VarReplay
 
-
-
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
 using Turing: Sampler, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
@@ -300,7 +298,7 @@ end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
-getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0 || vi.gids[i] == 0, 1:length(vi.gids))
+getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
 getidcs(vi::VarInfo, spl::Sampler) = begin
   # NOTE: 0b00 is the sanity flag for
   #         |\____ getidcs   (mask = 0b10)
