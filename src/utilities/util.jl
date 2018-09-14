@@ -16,11 +16,3 @@ function randcat(p::Vector{Float64})
 
   s
 end
-
-# Numerically stable sum of values represented in log domain.
-logsumexp(xs::Vector{T}) where T<:Real = begin
-  @assert length(xs) > 0
-  largest = maximum(xs)
-  return log(mapreduce(x->exp(x - largest), +, xs)) + largest
-end
-
