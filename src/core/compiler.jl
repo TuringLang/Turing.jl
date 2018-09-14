@@ -4,6 +4,7 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
+# TODO: Replace this macro, see issue #514
 macro VarName(ex::Union{Expr, Symbol})
   # Usage: @VarName x[1,2][1+5][45][3]
   #    return: (:x,[1,2],6,45,3)
@@ -30,20 +31,84 @@ macro VarName(ex::Union{Expr, Symbol})
     end
 end
 
-function generate_observe(left, right)
+
+"""
+    generate_observe(left, right)
+
+Generate an observe expression.
+"""
+function generate_observe(observation, distribution)
     obsexpr = esc(
-                quote
-                    vi.logp += Turing.observe(
-                        sampler,
-                        $(right),   # Distribution
-                        $(left),    # Data point
-                        vi
-                    )
-                end
+        quote
+            vi.logp += Turing.observe(
+                sampler,
+                $(distribution),
+                $(observation),
+                vi
             )
+        end
+    )
     return obsexpr
 end
 
+"""
+    generate_observe(left, right)
+
+Generate an observe expression.
+"""
+function generate_assume(variable, distribution::Vector, syms)
+    assumeexpr = esc(
+        quote
+            varname = Turing.VarName(vi, $syms, "")
+            $(variable), _lp = Turing.assume(
+                sampler,
+                $(variable),
+                varname,
+                $(distribution),
+                vi
+            )
+            vi.logp += _lp
+        end
+    )
+    return assumeexpr
+end
+
+function generate_assume(variable, distribution, syms)
+    assumeexpr = esc(
+        quote
+            varname = Turing.VarName(vi, $syms, "")
+            $(variable), _lp = Turing.assume(
+                sampler,
+                $(distribution),
+                varname,
+                vi
+            )
+            vi.logp += _lp
+        end
+    )
+    return assumeexpr
+end
+
+function generate_assume(variable::Expr, distribution)
+
+    assumeexpr = esc(
+        quote
+            sym, idcs, csym = @VarName $variable
+            csym_str = string(Turing._compiler_[:name])*string(csym)
+            indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
+            varname = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
+
+            $(variable), _lp = Turing.assume(
+                sampler,
+                $(distribution),
+                varname,
+                vi
+            )
+            vi.logp += _lp
+        end
+    )
+    return assumeexpr
+end
 
 """
     macro: @~ var Distribution()
@@ -87,29 +152,8 @@ macro ~(left::Symbol, right)
         sym, idcs, csym = @VarName(left)
         csym = Symbol(string(Turing._compiler_[:name])*string(csym))
         syms = Symbol[csym, left]
-        assume_ex = quote
-            vn = Turing.VarName(vi, $syms, "")
-            if isa($(right), Vector)
-                $(left), _lp = Turing.assume(
-                                              sampler,
-                                              $(right),   # dist
-                                              vn,         # VarName
-                                              $(left),
-                                              vi          # VarInfo
-                                             )
-                vi.logp += _lp
-            else
-                $(left), _lp = Turing.assume(
-                                              sampler,
-                                              $(right),   # dist
-                                              vn,         # VarName
-                                              vi          # VarInfo
-                                             )
-                vi.logp += _lp
-            end
-        end
-        # end of quote block
-        return(esc(assume_ex))
+
+        return generate_assume(left, right, syms)
     end
 end
 
@@ -134,22 +178,8 @@ macro ~(left::Expr, right)
             @info msg
             push!(Turing._compiler_[:pvars], vsym)
         end
-        assume_ex = quote
-            sym, idcs, csym = @VarName $left
-            csym_str = string(Turing._compiler_[:name])*string(csym)
-            indexing = isempty(idcs) ? "" : mapreduce(idx -> string(idx), *, idcs)
-
-            vn = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-
-            $(left), _lp = Turing.assume(
-                                          sampler,
-                                          $right,   # dist
-                                          vn,       # VarName
-                                          vi        # VarInfo
-                                         )
-            vi.logp += _lp
-        end
-        return esc(assume_ex)
+        
+        return generate_assume(left, right)
     end
 end
 
@@ -176,19 +206,20 @@ end
 ```
 """
 macro model(fexpr)
-    # Compiler design: sample(fname_compiletime(x,y), sampler)
-    #   fname_compiletime(x=nothing,y=nothing; data=data,compiler=compiler) = begin
-    #      ex = quote
-    #          fname_runtime(vi::VarInfo,sampler::Sampler) = begin
-    #              x=x,y=y
-    #              # pour all variables in data dictionary, e.g.
-    #              k = data[:k]
-    #              # pour model definition `fbody`, e.g.
-    #              x ~ Normal(0,1)
-    #              k ~ Normal(x, 1)
-    #          end
-    #      end
-    #      Main.eval(ex)
+    # Compiler design: sample(fname(x,y), sampler)
+    #   fname(x=nothing,y=nothing; compiler=compiler) = begin
+    #       ex = quote
+    #           # poor in kwargs for those args where value != nothing
+    #           fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
+    #               vi.logp = zero(Real)
+    #               
+    #               # poor in model definition
+    #               x ~ Normal(0,1)
+    #               y ~ Normal(x, 1)
+    #               return x, y
+    #               end
+    #       end
+    #       Main.eval(ex)
     #   end
 
     # translate all ~ occurences to macro calls
@@ -260,33 +291,30 @@ macro model(fexpr)
 
     # construct aliases
     alias1 = MacroTools.combinedef(
-                Dict(
-                    :name => compiler[:closure_name],
-                    :args => [:(vi::Turing.VarInfo)],
-                    :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(vi, Turing.SampleFromPrior()))
-
-                )
+        Dict(
+            :name => compiler[:closure_name],
+            :args => [:(vi::Turing.VarInfo)],
+            :kwargs => [],
+            :body => :(return $(compiler[:closure_name])(vi, Turing.SampleFromPrior()))
+        )
     )
 
     alias2 = MacroTools.combinedef(
-                Dict(
-                    :name => compiler[:closure_name],
-                    :args => [:(sampler::Turing.AnySampler)],
-                    :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-
-                )
+        Dict(
+            :name => compiler[:closure_name],
+            :args => [:(sampler::Turing.AnySampler)],
+            :kwargs => [],
+            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
+        )
     )
 
     alias3 = MacroTools.combinedef(
-                Dict(
-                    :name => compiler[:closure_name],
-                    :args => [],
-                    :kwargs => [],
-                    :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-
-                )
+        Dict(
+            :name => compiler[:closure_name],
+            :args => [],
+            :kwargs => [],
+            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
+        )
     )
 
     # add definitions to the compiler
@@ -301,6 +329,7 @@ macro model(fexpr)
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias1)))
     pushfirst!(modelfun.args[2].args, :(Main.eval( Expr(:(=), modelname, closure) )))
 
+    # insert argument values as kwargs to the closure
     for k in fargs
         if isa(k, Symbol)
             _k = k
@@ -314,9 +343,9 @@ macro model(fexpr)
             _k_str = string(_k)
             data_insertion = quote
                 if $_k == nothing
-                    @warn("Data `"*$_k_str*"` is not provided.")
+                    # notify the user if an argument is missing
+                    @warn("Data `"*$_k_str*"` not provided, treating as parameter instead.")
                 else
-
                     if Symbol($_k_str) ∉ Turing._compiler_[:args]
                         push!(Turing._compiler_[:args], Symbol($_k_str))
                     end
@@ -327,16 +356,19 @@ macro model(fexpr)
         end
     end
 
-    pushfirst!(modelfun.args[2].args, quote
-        Turing.eval(:(_compiler_ = deepcopy($compiler)))
+    pushfirst!(
+        modelfun.args[2].args, 
+        quote
+            Turing.eval(:(_compiler_ = deepcopy($compiler)))
 
-        # Copy the expr of function definition and callbacks
-        alias3 = Turing._compiler_[:alias3]
-        alias2 = Turing._compiler_[:alias2]
-        alias1 = Turing._compiler_[:alias1]
-        closure = Turing._compiler_[:closure]
-        modelname = Turing._compiler_[:closure_name]
-    end)
+            # Copy the expr of function definition and callbacks
+            alias3 = Turing._compiler_[:alias3]
+            alias2 = Turing._compiler_[:alias2]
+            alias1 = Turing._compiler_[:alias1]
+            closure = Turing._compiler_[:closure]
+            modelname = Turing._compiler_[:closure_name]
+        end
+    )
 
     return esc(modelfun)
 end
@@ -401,8 +433,8 @@ translate!(ex::Any) = ex
 translate!(ex::Expr) = begin
     if (ex.head === :call && ex.args[1] === :(~))
         ex.head = :macrocall; ex.args[1] = Symbol("@~")
-        insert!(ex.args, 2, LineNumberNode(-1)) # NOTE: a `LineNumberNode` object is required
-        #       at the second args for macro call in 0.7
+        # NOTE: a `LineNumberNode` object is required at the second args for Julia 0.7
+        insert!(ex.args, 2, LineNumberNode(-1))
     else
         map(translate!, ex.args)
     end
