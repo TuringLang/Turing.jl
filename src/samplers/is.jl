@@ -45,7 +45,7 @@ sample(model::Function, alg::IS) = begin
     samples[i] = Sample(vi)
   end
 
-  le = logsum(map(x->x[:lp], samples)) - log(n)
+  le = logsumexp(map(x->x[:lp], samples)) - log(n)
 
   Chain(exp.(le), samples)
 end

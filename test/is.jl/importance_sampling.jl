@@ -6,13 +6,6 @@ using Turing
 using Test
 using Random
 
-function logsum(xs :: Vector{Float64})
-  largest = maximum(xs)
-  ys = map(x -> exp.(x - largest), xs)
-  result = log(sum(ys)) + largest
-  return result
-end
-
 function reference(n :: Int)
   logweights = zeros(Float64, n)
   samples = Array{Dict{Symbol,Any}}(undef, n)
@@ -20,7 +13,7 @@ function reference(n :: Int)
     samples[i] = reference()
     logweights[i] = samples[i][:logweight]
   end
-  logevidence = logsum(logweights) - log(n)
+  logevidence = Turing.logsumexp(logweights) - log(n)
   results = Dict{Symbol,Any}()
   results[:logevidence] = logevidence
   results[:logweights] = logweights

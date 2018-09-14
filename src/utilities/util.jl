@@ -20,7 +20,7 @@ end
 struct NotImplementedException <: Exception end
 
 # Numerically stable sum of values represented in log domain.
-logsum(xs::Vector{T}) where T<:Real = begin
+logsumexp(xs::Vector{T}) where T<:Real = begin
   largest = maximum(xs)
   ys = map(x -> exp.(x - largest), xs)
 
