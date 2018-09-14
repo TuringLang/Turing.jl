@@ -9,9 +9,8 @@ end
 # Check that gradient_forward doesn't change the RV values or logp of a VarInfo.
 let
     # Construct model.
-    model = foo_ad()
-    sampler = nothing
-    vi = model(VarInfo(), sampler)
+    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model(vi, sampler)
 
     # Record initial values.
     θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)
@@ -27,9 +26,8 @@ end
 # Check that gradient_reverse doesn't change the RV values or logp of a VarInfo.
 let
     # Construct model
-    model = foo_ad()
-    sampler = nothing
-    vi = model(VarInfo(), sampler)
+    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model(vi, sampler)
 
     # Record initial values.
     θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)

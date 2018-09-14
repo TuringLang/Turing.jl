@@ -39,6 +39,10 @@ function getteststoskip(filepath)
   end
 end
 
+function insdelim(c, deli=",")
+    return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
+end
+
 """
   runtests(; tests = ["all"])
 

@@ -128,13 +128,17 @@ function sample(model::Function, alg::T;
     samples[i] = Sample(weight, Dict{Symbol, Any}())
   end
 
-  vi = resume_from == nothing ?
-       Base.invokelatest(model, VarInfo(), nothing) :
-       deepcopy(resume_from.info[:vi])
+    vi = if resume_from == nothing
+        vi_ = VarInfo()
+        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        vi_
+    else
+        deepcopy(resume_from.info[:vi])
+    end
 
   if spl.alg.gid == 0
     link!(vi, spl)
-    runmodel(model, vi, spl)
+    runmodel!(model, vi, spl)
   end
 
   # HMC steps
@@ -209,16 +213,16 @@ assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) wh
   # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
   if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-    @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+    @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
     var = rs
   elseif isa(dist, MultivariateDistribution)
     if isa(var, Vector)
-      @assert length(var) == size(rs)[2] "[assume] variable and random number dimension unmatched"
+      @assert length(var) == size(rs)[2] "Turing.assume variable and random number dimension unmatched"
       for i = 1:n
         var[i] = rs[:,i]
       end
     elseif isa(var, Matrix)
-      @assert size(var) == size(rs) "[assume] variable and random number dimension unmatched"
+      @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
       var = rs
     else
       error("[Turing] unsupported variable container")

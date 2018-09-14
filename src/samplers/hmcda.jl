@@ -86,7 +86,7 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
         @debug "X-> R..."
         if spl.alg.gid != 0
             link!(vi, spl)
-            runmodel(model, vi, spl)
+            runmodel!(model, vi, spl)
         end
 
         grad_func = gen_grad_func(vi, spl, model)

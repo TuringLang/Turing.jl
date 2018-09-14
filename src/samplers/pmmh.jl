@@ -126,9 +126,13 @@ sample(model::Function, alg::PMMH;
     end
 
     # Init parameters
-    vi = resume_from == nothing ?
-              Base.invokelatest(model, VarInfo(), nothing) :
-              resume_from.info[:vi]
+    vi = if resume_from == nothing
+        vi_ = VarInfo()
+        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        vi_
+    else
+        resume_from.info[:vi]
+    end
     n = spl.alg.n_iters
 
     # PMMH steps

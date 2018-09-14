@@ -30,5 +30,9 @@ after_success:
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
                 using Coverage; Coveralls.submit(process_folder())
               end'
+  - julia -e 'using Pkg; Pkg.add("Documenter")'
+  - julia -e 'using Pkg, Turing;
+              cd(joinpath(dirname(pathof(Turing)), ".."));
+              include(joinpath("docs", "make.jl"))'
 notifications:
     email: false

@@ -93,9 +93,10 @@ g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg, hmc = g.info[:samplers]
 
-vi = g_demo_f(Turing.VarInfo(), nothing)
+vi = Turing.VarInfo()
+g_demo_f(vi, nothing)
 vi = step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 
-vi = g_demo_f(vi, hmc)
+g_demo_f(vi, hmc)
 @test vi.gids == [1,1,1,2,2]

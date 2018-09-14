@@ -19,7 +19,7 @@ Generate a function that takes `θ` and returns logpdf at `θ` for the model spe
 function gen_lj_func(vi::VarInfo, sampler::Sampler, model)
     return function(θ::AbstractVector{<:Real})
         vi[sampler] .= θ
-        return runmodel(model, vi, sampler).logp
+        return runmodel!(model, vi, sampler).logp
     end
 end
 
@@ -49,23 +49,22 @@ function gen_log_func(sampler::Sampler)
     end
 end
 
-function runmodel(model::Function, vi::VarInfo, sampler::Union{Nothing, Sampler})
-    @debug "run model..."
-    setlogp!(vi, zero(Real))
-    if sampler != nothing
-        sampler.info[:total_eval_num] += 1
-    end
-    return Base.invokelatest(model, vi, sampler)
-end
-
 function sample_momentum(vi::VarInfo, sampler::Sampler)
-    @debug "sampling momentum..."
     d = length(getranges(vi, sampler))
     stds = sampler.info[:wum][:stds]
     return _sample_momentum(d, stds)
 end
 
 _sample_momentum(d::Int, stds::Vector) = randn(d) ./ stds
+
+function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
+    setlogp!(vi, zero(Real))
+    if spl != nothing 
+        spl.info[:total_eval_num] += 1 
+    end
+    Base.invokelatest(model, vi, spl)
+    return vi
+end
 
 function leapfrog(
     θ::AbstractVector{<:Real},
@@ -94,7 +93,7 @@ function _leapfrog(
     _, grad = lp_grad_func(θ)
     verifygrad(grad) || (return θ, p, 0)
 
-    p, θ, τ_valid = copy(p), copy(θ), 0
+    p, θ, τ_valid = deepcopy(p), deepcopy(θ), 0
 
     p .-= ϵ .* grad ./ 2
     for t in 1:τ
@@ -104,6 +103,7 @@ function _leapfrog(
         θ .+= ϵ .* p
         logp, grad = lp_grad_func(θ)
 
+        # If gradients explode, tidy up and return.
         if ~verifygrad(grad)
             θ .-= ϵ .* p
             rev_func != nothing && rev_func(θ, logp)
@@ -113,6 +113,8 @@ function _leapfrog(
         p .-= ϵ .* grad
         τ_valid += 1
     end
+
+    # Undo half a step in the momenta.
     p .+= ϵ .* grad ./ 2
 
     return θ, p, τ_valid
@@ -195,11 +197,11 @@ function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where 
 end
 
 """
-    mh_accept(H, H_new)
+    mh_accept(H::Real, H_new::Real)
     mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria. Returns a boolean for whether or not accept and the acceptance
-ratio in log space.
+Peform MH accept criteria. Returns a boolean for whether or not accept and the 
+acceptance ratio in log space.
 """
 mh_accept(H::Real, H_new::Real) = log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))
 function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
