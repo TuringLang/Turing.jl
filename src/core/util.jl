@@ -46,37 +46,3 @@ align(x,y) = begin
 
   (x,y)
 end
-
-#######
-# I/O #
-#######
-
-macro sym_str(var)
-  var_str = string(var)
-  :(Symbol($var_str))
-end
-
-##########
-# Helper #
-##########
-
-auto_tune_chunk_size!(mf::Function, rep_num=10) = begin
-  dim = length(mf().vals)
-  chunk_size = 8
-  if dim > 8
-    min_prof_log = Inf
-    n = ceil(Int, dim / 50)
-    while (sz = ceil(Int, dim / n)) > 8
-      println("[Turing] profiling chunk size = $(sz)")
-      setchunksize(sz)
-      prof_log = @elapsed for _ = 1:rep_num mf() end
-      if prof_log < min_prof_log
-        chunk_size = sz
-        min_prof_log = prof_log
-      end
-      n += 1
-    end
-    println("[Turing] final chunk size chosen = $(chunk_size)")
-  end
-  setchunksize(chunk_size)
-end
