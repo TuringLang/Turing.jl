@@ -1,6 +1,4 @@
-using Turing
-using Test
-using Random
+using Test, Random, Distributions, Turing
 
 Random.seed!(125)
 
@@ -15,5 +13,6 @@ alg = SGHMC(10000, 0.02, 0.5)
 end
 
 chain = sample(gdemo([1.5, 2.0]), alg)
+
 @test mean(chain[:s]) ≈ 49/24 atol=0.1
 @test mean(chain[:m]) ≈ 7/6 atol=0.1

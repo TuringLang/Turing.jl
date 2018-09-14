@@ -1,5 +1,5 @@
 using Turing
-using Turing: gradient_forward, invlink, link, realpart
+using Turing: gradient_forward, invlink, link
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -19,7 +19,7 @@ vi = Turing.VarInfo()
 ad_test_3_f(vi)
 
 vvn = collect(Iterators.filter(vn -> vn.sym == :v, keys(vi)))[1]
-_v = map(d -> realpart(d), vi[vvn])
+_v = vi[vvn]
 _, grad_Turing = gradient_forward(vi[nothing], vi, ad_test_3_f)
 
 dist_v = Wishart(7, [1 0.5; 0.5 1])

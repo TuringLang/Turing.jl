@@ -26,8 +26,8 @@ init(dist::Distribution, n::Int) = rand(dist, n)
 
 inittrans(dist::UnivariateDistribution, n::Int) = invlink(dist, randrealuni(n))
 function inittrans(dist::MultivariateDistribution, n::Int)
-  return invlink(dist, randrealuni(size(dist)[1], n))
+    return invlink(dist, randrealuni(size(dist)[1], n))
 end
 function inittrans(dist::MatrixDistribution, n::Int)
-  return invlink(dist, [randrealuni(size(dist)...) for _ in 1:n])
+    return invlink(dist, [randrealuni(size(dist)...) for _ in 1:n])
 end
