@@ -1,6 +1,6 @@
 using Turing: @VarName, randcat
 using Distributions: Normal
-using Test
+using Test, StatsFuns
 
 i = 1
 @test @VarName(s)[1:end-1] == (:s,())
