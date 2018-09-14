@@ -5,6 +5,7 @@
 using Turing
 using Test
 using Random
+using StatsFuns
 
 function reference(n :: Int)
   logweights = zeros(Float64, n)
@@ -13,7 +14,7 @@ function reference(n :: Int)
     samples[i] = reference()
     logweights[i] = samples[i][:logweight]
   end
-  logevidence = Turing.logsumexp(logweights) - log(n)
+  logevidence = logsumexp(logweights) - log(n)
   results = Dict{Symbol,Any}()
   results[:logevidence] = logevidence
   results[:logweights] = logweights

@@ -14,6 +14,7 @@ using Reexport
 @reexport using Distributions
 @reexport using MCMCChain
 using ForwardDiff
+using StatsFuns
 
 using LinearAlgebra
 using ProgressMeter
