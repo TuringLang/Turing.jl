@@ -19,9 +19,8 @@ end
 
 # Numerically stable sum of values represented in log domain.
 logsumexp(xs::Vector{T}) where T<:Real = begin
+  @assert length(xs) > 0
   largest = maximum(xs)
-  ys = map(x -> exp.(x - largest), xs)
-
-  log(sum(ys)) + largest
+  return log(mapreduce(x->exp(x - largest), +, xs)) + largest
 end
 
