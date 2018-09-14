@@ -1,14 +1,36 @@
-using Turing: VarEstimator, add_sample!, get_var
+using Turing: VarEstimator, add_sample!, get_var, reset!
 using Test
 
-D = 10
-ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+let
+    D = 1000
+    ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+    ve = reset!(add_sample!(ve, randn(D)))
 
-for _ = 1:10000
-    s = randn(D)
-    add_sample!(ve, s)
+    # Check that reseting zeros everything.
+    @test ve.n === 0
+    @test ve.μ == zeros(D)
+    @test ve.M == zeros(D)
+
+    # Ensure that asking for the variance doesn't mutate the VarEstimator.
+    add_sample!(ve, randn(D))
+    add_sample!(ve, randn(D))
+    μ, M = deepcopy(ve.μ), deepcopy(ve.M)
+    get_var(ve)
+    @test ve.μ == μ
+    @test ve.M == M
 end
 
-var = get_var(ve)
+# Check that the estimated variance is approximately correct.
+let
+    D = 10
+    ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
 
-@test var ≈ ones(D) atol=0.5
+    for _ = 1:10000
+        s = randn(D)
+        add_sample!(ve, s)
+    end
+
+    var = get_var(ve)
+
+    @test var ≈ ones(D) atol=0.5
+end

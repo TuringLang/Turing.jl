@@ -1,6 +1,4 @@
-using Turing
-using Test
-using Random
+using Test, Random, Turing
 
 Random.seed!(128)
 
