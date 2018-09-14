@@ -1,7 +1,5 @@
 module VarReplay
 
-
-
 using Turing: CACHERESET, CACHEIDCS, CACHERANGES
 using Turing: Sampler, realpart, dualpart, vectorize, reconstruct, reconstruct!, SimplexDistribution
 using Distributions
