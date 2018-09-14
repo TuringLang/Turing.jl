@@ -1,7 +1,6 @@
-using Turing: @VarName, StatsFuns.logistic, StatsFuns.logit, randcat
+using Turing: @VarName, randcat
 using Distributions: Normal
 using Test
-
 
 i = 1
 @test @VarName(s)[1:end-1] == (:s,())
