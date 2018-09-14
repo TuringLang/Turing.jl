@@ -38,7 +38,7 @@ end
 Generate an observe expression.
 """
 function generate_observe(observation, distribution)
-    obsexpr = esc(
+    return esc(
         quote
             vi.logp += Turing.observe(
                 sampler,
@@ -48,7 +48,6 @@ function generate_observe(observation, distribution)
             )
         end
     )
-    return obsexpr
 end
 
 """
@@ -57,7 +56,7 @@ end
 Generate an assume expression.
 """
 function generate_assume(variable, distribution, syms)
-    assumeexpr = esc(
+    return esc(
         quote
             varname = Turing.VarName(vi, $syms, "")
             ($(variable), _lp) = if isa($(distribution), Vector)
@@ -79,11 +78,10 @@ function generate_assume(variable, distribution, syms)
             vi.logp += _lp
         end
     )
-    return assumeexpr
 end
 
 function generate_assume(variable::Expr, distribution)
-    assumeexpr = esc(
+    return esc(
         quote
             sym, idcs, csym = @VarName $variable
             csym_str = string(Turing._compiler_[:name])*string(csym)
@@ -99,7 +97,6 @@ function generate_assume(variable::Expr, distribution)
             vi.logp += _lp
         end
     )
-    return assumeexpr
 end
 
 """
@@ -120,8 +117,7 @@ macro ~(left, right)
 end
 
 macro ~(left::Symbol, right)
-
-    # check if left-hand side is a observation
+    # Check if left-hand side is a observation.
     if left in Turing._compiler_[:args]
         if ~(left in Turing._compiler_[:dvars])
             @info " Observe - `$(left)` is an observation"
@@ -130,7 +126,7 @@ macro ~(left::Symbol, right)
 
         return generate_observe(left, right)
     else
-        # assume its a paramter
+        # Assume it is a parameter.
         if ~(left in Turing._compiler_[:pvars])
             msg = " Assume - `$(left)` is a parameter"
             if isdefined(Main, left)
@@ -170,7 +166,7 @@ macro ~(left::Expr, right)
             @info msg
             push!(Turing._compiler_[:pvars], vsym)
         end
-        
+
         return generate_assume(left, right)
     end
 end
@@ -196,23 +192,26 @@ Example:
     return (s, m)
 end
 ```
+
+Compiler design: `sample(fname(x,y), sampler)`.
+```julia
+fname(x=nothing,y=nothing; compiler=compiler) = begin
+    ex = quote
+        # Pour in kwargs for those args where value != nothing.
+        fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
+            vi.logp = zero(Real)
+          
+            # Pour in model definition.
+            x ~ Normal(0,1)
+            y ~ Normal(x, 1)
+            return x, y
+        end
+    end
+    return Main.eval(ex)
+end
+```
 """
 macro model(fexpr)
-    # Compiler design: sample(fname(x,y), sampler)
-    #   fname(x=nothing,y=nothing; compiler=compiler) = begin
-    #       ex = quote
-    #           # poor in kwargs for those args where value != nothing
-    #           fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
-    #               vi.logp = zero(Real)
-    #               
-    #               # poor in model definition
-    #               x ~ Normal(0,1)
-    #               y ~ Normal(x, 1)
-    #               return x, y
-    #               end
-    #       end
-    #       Main.eval(ex)
-    #   end
 
     # translate all ~ occurences to macro calls
     fexpr = translate(fexpr)
@@ -225,19 +224,6 @@ macro model(fexpr)
         @warn("Model definition seems empty, still continue.")
     end
 
-   # # adjust args, i.e. add
-    #fargs_outer = deepcopy(fargs)
-
-    # Add data argument to outer function
-    #push!(fargs_outer[1].args, Expr(:kw, :compiler, compiler))
-
-    # turn f(x;..) into f(x=nothing;..)
-    #for i = 2:length(fargs_outer)
-    #    if isa(fargs_outer[i], Symbol)
-    #        fargs_outer[i] = Expr(:kw, fargs_outer[i], :nothing)
-    #    end
-    #end
-
     # construct compiler dictionary
     compiler = Dict(
         :name => modeldef[:name],
@@ -248,10 +234,11 @@ macro model(fexpr)
         :pvars => Set{Symbol}()
     )
 
-    # define model body
-    body = insertvarinfo(modeldef[:body])
+    # Initialise logp in VarInfo.
+    body = modeldef[:body]
+    pushfirst!(body.args, :(vi.logp = zero(Real)))
 
-    # manipulate the function arguments
+    # Manipulate the function arguments.
     fargs = deepcopy(vcat(modeldef[:args], modeldef[:kwargs]))
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
@@ -259,7 +246,7 @@ macro model(fexpr)
         end
     end
 
-    # construct user function
+    # Construct user function.
     fdefn = Dict(
         :name => compiler[:name],
         :kwargs => [Expr(:kw, :compiler, compiler)],
@@ -269,7 +256,7 @@ macro model(fexpr)
 
     modelfun = MacroTools.combinedef(fdefn)
 
-    # construct closure
+    # Construct closure.
     closure_def = Dict(
         :name => compiler[:closure_name],
         :kwargs => [],
@@ -281,7 +268,7 @@ macro model(fexpr)
     )
     closure = MacroTools.combinedef(closure_def)
 
-    # construct aliases
+    # Construct aliases.
     alias1 = MacroTools.combinedef(
         Dict(
             :name => compiler[:closure_name],
@@ -309,19 +296,19 @@ macro model(fexpr)
         )
     )
 
-    # add definitions to the compiler
+    # Add definitions to the compiler.
     compiler[:alias3] = alias3
     compiler[:alias2] = alias2
     compiler[:alias1] = alias1
     compiler[:closure] = closure
 
-    # add function definitions
+    # Add function definitions.
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias3)))
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias2)))
     pushfirst!(modelfun.args[2].args, :(Main.eval(alias1)))
     pushfirst!(modelfun.args[2].args, :(Main.eval( Expr(:(=), modelname, closure) )))
 
-    # insert argument values as kwargs to the closure
+    # Insert argument values as kwargs to the closure.
     for k in fargs
         if isa(k, Symbol)
             _k = k
@@ -335,7 +322,7 @@ macro model(fexpr)
             _k_str = string(_k)
             data_insertion = quote
                 if $_k == nothing
-                    # notify the user if an argument is missing
+                    # Notify the user if an argument is missing.
                     @warn("Data `"*$_k_str*"` not provided, treating as parameter instead.")
                 else
                     if Symbol($_k_str) ∉ Turing._compiler_[:args]
@@ -349,11 +336,11 @@ macro model(fexpr)
     end
 
     pushfirst!(
-        modelfun.args[2].args, 
+        modelfun.args[2].args,  # Body of modelfun.
         quote
             Turing.eval(:(_compiler_ = deepcopy($compiler)))
 
-            # Copy the expr of function definition and callbacks
+            # Copy the expr of function definition and callbacks.
             alias3 = Turing._compiler_[:alias3]
             alias2 = Turing._compiler_[:alias2]
             alias1 = Turing._compiler_[:alias1]
@@ -365,12 +352,14 @@ macro model(fexpr)
     return esc(modelfun)
 end
 
-###################
-# Helper function #
-###################
+
+####################
+# Helper functions #
+####################
+
 function setkwargs(fexpr::Expr, kw::Symbol, value)
 
-    # split up the function definition
+    # Split up the function definition.
     funcdef = MacroTools.splitdef(fexpr)
 
     function insertvi(x)
@@ -379,39 +368,15 @@ function setkwargs(fexpr::Expr, kw::Symbol, value)
 
     expr_new = MacroTools.postwalk(x->insertvi(x), funcdef[:body])
 
-    # add the new keyword argument
+    # Add the new keyword argument.
     push!(funcdef[:kwargs], Expr(:kw, kw, value))
 
-    # recompose the function
+    # Recompose the function.
     return MacroTools.combinedef(funcdef)
 end
 
-"""
-  insertvarinfo(fexpr::Expr)
-
-Insert `_lp=0` to function call and set `vi.logp=_lp` inplace at the end.
-"""
-insertvarinfo(fexpr::Expr) = insertvarinfo!(deepcopy(fexpr))
-function insertvarinfo!(fexpr::Expr)
-    pushfirst!(fexpr.args, :(vi.logp = zero(Real)))
-
-    # check for the existence of a return statement
-    found = false
-    MacroTools.postwalk(x -> @capture(x, return _) ? found = true : found = found, fexpr)
-
-    if !found
-        push!(fexpr.args, :(vi))
-    end
-
-    return fexpr
-end
-
-function insdelim(c, deli=",")
-    return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
-end
-
 getvsym(s::Symbol) = s
-getvsym(expr::Expr) = begin
+function getvsym(expr::Expr)
     @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
     curr = expr
     while isa(curr, Expr) && curr.head == :ref
@@ -420,12 +385,11 @@ getvsym(expr::Expr) = begin
     return curr
 end
 
-
 translate!(ex::Any) = ex
-translate!(ex::Expr) = begin
-    if (ex.head === :call && ex.args[1] === :(~))
-        ex.head = :macrocall; ex.args[1] = Symbol("@~")
-        # NOTE: a `LineNumberNode` object is required at the second args for Julia 0.7
+function translate!(ex::Expr)
+    if ex.head === :call && ex.args[1] === :(~)
+        ex.head = :macrocall
+        ex.args[1] = Symbol("@~")
         insert!(ex.args, 2, LineNumberNode(-1))
     else
         map(translate!, ex.args)
