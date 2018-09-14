@@ -17,8 +17,6 @@ function randcat(p::Vector{Float64})
   s
 end
 
-struct NotImplementedException <: Exception end
-
 # Numerically stable sum of values represented in log domain.
 logsumexp(xs::Vector{T}) where T<:Real = begin
   largest = maximum(xs)
@@ -27,22 +25,3 @@ logsumexp(xs::Vector{T}) where T<:Real = begin
   log(sum(ys)) + largest
 end
 
-# KL-divergence
-kl(p::Normal, q::Normal) = (log(q.σ / p.σ) + (p.σ^2 + (p.μ - q.μ)^2) / (2 * q.σ^2) - 0.5)
-
-align_internal!(x,n) = begin
-  m = length(x)
-  resize!(x, n)
-  x[m+1:end] .= zero(eltype(x))
-  x
-end
-
-align(x,y) = begin
-  if length(x) < length(y)
-    align_internal!(x, length(y))
-  elseif length(x) > length(y)
-    align_internal!(y, length(x))
-  end
-
-  (x,y)
-end

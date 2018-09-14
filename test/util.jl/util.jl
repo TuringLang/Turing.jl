@@ -13,6 +13,5 @@ i = 1
 @test isnan.(logit(0.)) == false
 @test isinf.(logit(0.)) == true
 randcat([0.1, 0.9])
-@test kl(Normal(0, 1), Normal(0, 1)) == 0
 @test align([1, 2, 3], [1]) == ([1,2,3],[1,0,0])
 @test align([1], [1, 2, 3]) == ([1,0,0],[1,2,3])
