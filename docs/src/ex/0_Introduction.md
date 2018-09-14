@@ -86,11 +86,11 @@ For the mathematically inclined, the `Beta` distribution is updated by adding ea
 
 This works because mean of the `Beta` distribution is defined as the following:
 
-$$ \text{E}[\text{Beta}] = \dfrac{\alpha}{\alpha+\beta} $$
+\$\$ \text{E}[\text{Beta}] = \dfrac{\alpha}{\alpha+\beta} \$\$
 
 Which is 0.5 when $\alpha = \beta$, as we expect for a large enough number of coin flips. As we increase the number of samples, our variance will also decrease, such that the distribution will reflect less uncertainty about the probability of receiving a heads. The definition of the variance for the `Beta` distribution is the following:
 
-$$ \text{var}[\text{Beta}] = \dfrac{\alpha\beta}{(\alpha + \beta)^2 (\alpha + \beta + 1)} $$
+\$\$ \text{var}[\text{Beta}] = \dfrac{\alpha\beta}{(\alpha + \beta)^2 (\alpha + \beta + 1)} \$\$
 
 The intuition about this definition is that the variance of the distribution will approach 0 with more and more samples, as the denominator will grow faster than will the numerator. More samples means less variance.
 
@@ -185,7 +185,7 @@ chain = sample(coinflip(data), HMC(iterations, ϵ, τ));
 
 ````
 [HMC] Finished with
-  Running time        = 4.871686579000012;
+  Running time        = 3.9648889480000014;
   Accept rate         = 0.997;
   #lf / sample        = 9.99;
   #evals / sample     = 12.985;
