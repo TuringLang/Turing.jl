@@ -185,7 +185,7 @@ chain = sample(coinflip(data), HMC(iterations, ϵ, τ));
 
 ````
 [HMC] Finished with
-  Running time        = 3.9648889480000014;
+  Running time        = 4.126384291;
   Accept rate         = 0.997;
   #lf / sample        = 9.99;
   #evals / sample     = 12.985;

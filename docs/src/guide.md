@@ -32,7 +32,7 @@ end
 
 Note: As a sanity check, the expectation of `s` is 49/24 (2.04166666...) and the expectation of `m` is 7/6 (1.16666666...).
 
-Inference methods are functions which take the probabilistic program as one of the arguments.
+We can perform inference by using the `sample` function, the first argument of which is our probabalistic program and the second of which is a sampler. More information on each sampler is located in the [API](api.md).
 
 ```julia
 #  Run sampler, collect results.
