@@ -50,7 +50,7 @@ Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
 
 ## Avoid Using the `@model` Macro
 
-When integrating Turing.jl with other libraries, it's can be necessary to avoid using the `@model` macro. To achieve this, one needs to understand the `@model` macro, which works as a closure and generates an amended function by
+When integrating Turing.jl with other libraries, it can be necessary to avoid using the `@model` macro. To achieve this, one needs to understand the `@model` macro, which works as a closure and generates an amended function by
 
 1. assigning the arguments to corresponding local variables;
 2. adding two keyword arguments `vi=VarInfo()` and `sampler=nothing` to the scope; and
