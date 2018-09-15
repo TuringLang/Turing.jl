@@ -2,8 +2,12 @@ using Documenter, Turing
 using LibGit2: clone
 using Weave
 
-# Get path of documentation.
+# DEBUG
+# include("documenter-debug.jl")
+
+# Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
+# build_path = joinpath(@__DIR__, "build")
 
 # Clone TuringTurorials
 tmp_path = tempname()
@@ -53,6 +57,28 @@ makedocs(
                    "contributing/style_guide.md",],
         "Tutorials" => ["ex/0_Introduction.md"],
         "API" => "api.md"
-    ],
-    build = "doc"
+    ]
+)
+
+# # Copy the homepage files to the build/ directory.
+# site_files = ["index.md",
+#     "CNAME",
+#     "_config.yml",
+#     "_includes",
+#     "_layouts",
+#     "assets"]
+#
+# for item in site_files
+#     src = joinpath(@__DIR__, item)
+#     dst = joinpath(build_path, item)
+#     println("$src => $dst")
+#     cp(src, dst, force = true)
+# end
+
+# Deploy documentation.
+deploydocs(
+    repo   = "github.com/cpfiffer/Turing.jl",
+    target = "build",
+    deps   = nothing,
+    make   = nothing
 )
