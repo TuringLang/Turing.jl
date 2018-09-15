@@ -14,3 +14,4 @@ deps/deps.jl
 deps/build.log
 
 docs/site/
+docs/build/
