@@ -52,6 +52,7 @@ makedocs(
     pages = [
         "Home" => ["index.md",
                    "get-started.md",
+                   "guide.md",
                    "advanced.md",
                    "contributing/guide.md",
                    "contributing/style_guide.md",],

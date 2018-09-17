@@ -59,15 +59,15 @@ When integrating Turing.jl with other libraries, it can be necessary to avoid us
 Thus by doing these three steps manually, one can get rid of the `@model` macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
 
 ```julia
-@model gdemo(x) = begin
+@model gdemo(x, y) = begin
     s ~ InverseGamma(2,3)
     m ~ Normal(0,sqrt(s))
-    x[1] ~ Normal(m, sqrt(s))
-    x[2] ~ Normal(m, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    x ~ Normal(m, sqrt(s))
     return s, m
 end
 
-mf = gdemo([1.5, 2.0])
+mf = gdemo(1.5, 2.0)
 sample(mf, HMC(1000, 0.1, 5))
 ```
 
