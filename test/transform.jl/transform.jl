@@ -103,6 +103,12 @@ for dist in vector_dists
 
     if dist isa Dirichlet
         single_sample_tests(dist)
+
+        # This should fail at the minute. Not sure what the correct way to test this is.
+        x = rand(dist)
+        logpdf_turing = logpdf_with_trans(dist, x, true)
+        J = jacobian(x->link(dist, x), x)
+        @test_broken logpdf(dist, x) - _logabsdet(J) ≈ logpdf_turing
     else
         single_sample_tests(dist, jacobian)
     end
@@ -122,6 +128,12 @@ matrix_dists = [
 for dist in matrix_dists
 
     single_sample_tests(dist)
+
+    # This should fail at the minute. Not sure what the correct way to test this is.
+    x = rand(dist)
+    logpdf_turing = logpdf_with_trans(dist, x, true)
+    J = jacobian(x->link(dist, x), x)
+    @test_broken logpdf(dist, x) - _logabsdet(J) ≈ logpdf_turing
 
     # Multi-sample tests comprising vectors of matrices.
     N = 10
