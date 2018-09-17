@@ -222,6 +222,22 @@ function logpdf_with_trans(d::Categorical, x::Int)
 end
 
 
+###############
+# MvLogNormal #
+###############
+
+using Distributions: AbstractMvLogNormal
+
+link(d::AbstractMvLogNormal, x::AbstractVector{<:Real}) = log.(x)
+invlink(d::AbstractMvLogNormal, y::AbstractVector{<:Real}) = exp.(y)
+function logpdf_with_trans(
+    d::AbstractMvLogNormal,
+    x::AbstractVector{<:Real},
+    transform::Bool,
+)
+    return logpdf(d, x) + transform * sum(log, x)
+end
+
 #####################
 # Positive definite #
 #####################
