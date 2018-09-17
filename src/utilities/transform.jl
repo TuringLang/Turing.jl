@@ -81,8 +81,9 @@ end
 # -∞ < x < -∞ #
 ###############
 
-const RealDistribution = Union{Cauchy, Gumbel, Laplace, Logistic,
-                               NoncentralT, Normal, NormalCanon, TDist}
+const RealDistribution = Union{
+    Cauchy, Gumbel, Laplace, Logistic, NoncentralT, Normal, NormalCanon, TDist,
+}
 
 link(d::RealDistribution, x::Real) = x
 invlink(d::RealDistribution, y::Real) = y

@@ -4,32 +4,19 @@ using ForwardDiff: derivative, jacobian
 using LinearAlgebra: logabsdet
 
 # logabsdet doesn't handle scalars.
-function _logabsdet(x::AbstractArray)
-    @show x
-    return logabsdet(x)
-end
+_logabsdet(x::AbstractArray) = logabsdet(x)[1]
 _logabsdet(x::Real) = log(abs(x))
 
 # Standard tests for all distributions involving a single-sample.
 function single_sample_tests(dist, jacobian)
 
-    # Check that invlink is inverse of link.
-    x = rand(dist)
-    @test invlink(dist, link(dist, copy(x))) ≈ x atol=1e-9
-
-    # Check that link is inverse of invlink. Hopefully this just holds given the above...
-    y = link(dist, x)
-    @test link(dist, invlink(dist, copy(y))) ≈ y atol=1e-9
+    # Do the regular single-sample tests.
+    single_sample_tests(dist)
 
     # Check that the implementation of the logpdf agrees with the AD version.
+    x = rand(dist)
     logpdf_ad = logpdf(dist, x) - _logabsdet(jacobian(x->link(dist, x), x))
     @test logpdf_ad ≈ logpdf_with_trans(dist, x, true)
-
-    # This should probably be exact.
-    @test logpdf(dist, x) == logpdf_with_trans(dist, x, false)
-
-    # This is a quirk of the current implementation, of which it would be nice to be rid.
-    @test typeof(x) == typeof(y)
 end
 
 # Standard tests for all distributions involving a single-sample. Doesn't check that the
@@ -97,7 +84,7 @@ uni_dists = [
 ]
 for dist in uni_dists
 
-    single_sample_tests(dist, ForwardDiff.derivative)
+    single_sample_tests(dist, derivative)
 
     # specialised multi-sample tests.
     N = 10
@@ -114,7 +101,11 @@ vector_dists = [
 ]
 for dist in vector_dists
 
-    single_sample_tests(dist)
+    if dist isa Dirichlet
+        single_sample_tests(dist)
+    else
+        single_sample_tests(dist, jacobian)
+    end
 
     # Multi-sample tests. Columns are observations due to Distributions.jl conventions.
     N = 10
@@ -138,8 +129,6 @@ for dist in matrix_dists
     xs = [x for _ in 1:N]
     multi_sample_tests(dist, x, xs, N)
 end
-
-
 
 ################################## Miscelaneous old tests ##################################
 
