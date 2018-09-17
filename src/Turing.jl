@@ -1,5 +1,5 @@
-module Turing
 __precompile__(false)
+module Turing
 
 ##############
 # Dependency #
