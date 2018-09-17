@@ -390,7 +390,7 @@ function translate!(ex::Expr)
     if ex.head === :call && ex.args[1] === :(~)
         ex.head = :macrocall
         ex.args[1] = Symbol("@~")
-        insert!(ex.args, 2, LineNumberNode(-1))
+        insert!(ex.args, 2, LineNumberNode(@__LINE__))
     else
         map(translate!, ex.args)
     end
