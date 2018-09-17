@@ -21,11 +21,11 @@ Below is a simple Gaussian demo illustrate the basic usage of Turing.jl.
 using Turing, MCMCChain, Distributions
 
 # Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
+@model gdemo(x, y) = begin
   s ~ InverseGamma(2,3)
   m ~ Normal(0,sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
+  x ~ Normal(m, sqrt(s))
+  y ~ Normal(m, sqrt(s))
   return s, m
 end
 ```
@@ -36,12 +36,12 @@ We can perform inference by using the `sample` function, the first argument of w
 
 ```julia
 #  Run sampler, collect results.
-c1 = sample(gdemo([1.5, 2]), SMC(1000))
-c2 = sample(gdemo([1.5, 2]), PG(10,1000))
-c3 = sample(gdemo([1.5, 2]), HMC(1000, 0.1, 5))
-c4 = sample(gdemo([1.5, 2]), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo([1.5, 2]), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo([1.5, 2]), NUTS(1000,  0.65))
+c1 = sample(gdemo(1.5, 2), SMC(1000))
+c2 = sample(gdemo(1.5, 2), PG(10,1000))
+c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
+c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
+c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
+c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
 
 # Summarise results
 MCMCChain.describe(c3)
@@ -91,7 +91,29 @@ The returned chain contains samples of the variables in the model, which can be 
 var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 ```
 
-Note that the key (`:var_1`) should be a symbol. For example, to fetch `x[1]`, one would need to do `chn[Symbol(:x[1])`. Turing.jl provides a macro to simplify this: `chn[sym"x[1]"]`.
+Note that the key (`:var_1`) should be a symbol. For example, to fetch `x[1]`, one would need to do `chn[Symbol(:x[1])`.
+
+### Sampling from the Prior
+
+Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.
+
+```julia
+@model gdemo(x, y) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x ~ Normal(m, sqrt(s))
+  y ~ Normal(m, sqrt(s))
+  return x, y
+end
+```
+
+Assign the function without inputs to a variable, and Turing will produce a sample from the prior distribution.
+
+```julia
+g = gdemo()
+g
+# Output: (0.685690547873451, -1.1972706455914328)
+```
 
 ## Beyond the Basics
 
@@ -138,7 +160,7 @@ Some of Turing.jl's default settings can be changed for better usage.
 
 #### AD Chunk Size
 
-Turing.jl uses ForwardDiff.jl for automatic differentiation, which uses forward-mode chunk-wise AD. The chunk size can be manually set by `setchunksize(new_chunk_size)`; alternatively, use an auto-tuning helper function `auto_tune_chunk_size!(mf::Function, rep_num=10)`, which will profile various chunk sizes. Here `mf` is the model function, e.g. `gdemo([1.5, 2])`, and `rep_num` is the number of repetitions during profiling.
+Turing.jl uses ForwardDiff.jl for automatic differentiation, which uses forward-mode chunk-wise AD. The chunk size can be manually set by `setchunksize(new_chunk_size)`; alternatively, use an auto-tuning helper function `auto_tune_chunk_size!(mf::Function, rep_num=10)`, which will profile various chunk sizes. Here `mf` is the model function, e.g. `gdemo(1.5, 2)`, and `rep_num` is the number of repetitions during profiling.
 
 #### AD Backend
 
