@@ -1,0 +1,10 @@
+# Site settings
+title: The Turing language for probabilistic programming
+tagline: "example tagline"
+# url: "http://yourwebsite.com" # The base hostname & protocol for your site. Use it if you need absolute URL's
+
+# Use this for production
+#sass:
+#    style: compressed
+
+exclude: [.scss, README.md, node_modules, gruntfile.js, package.json, src]
