@@ -31,7 +31,18 @@ import Distributions: sample
 import ForwardDiff: gradient
 using Flux: Tracker
 import MCMCChain: AbstractChains, Chains
+using DynamicHMC, LogDensityProblems
+using LogDensityProblems: AbstractLogDensityProblem, ValueGradient
 
+struct FunctionLogDensity{F} <: AbstractLogDensityProblem
+  dimension::Int
+  f::F
+end
+
+LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
+
+LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+   
 ##############################
 # Global variables/constants #
 ##############################

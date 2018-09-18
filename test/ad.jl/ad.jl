@@ -1,41 +1,26 @@
 using Test, Turing, Distributions
-using Turing: VarInfo, gradient_forward, gradient_reverse
+using Turing: VarInfo, gradient
 
 @model foo_ad() = begin
     x ~ Normal(3, 1)
     y ~ Normal(x, 1)
 end
 
-# Check that gradient_forward doesn't change the RV values or logp of a VarInfo.
-let
-    # Construct model.
-    model, sampler, vi = foo_ad(), nothing, VarInfo()
-    model(vi, sampler)
+# Check that gradient with forward and reverse mode doesn't change the RV values or logp of a VarInfo.
+for backend ∈ (:forward_diff, :reverse_diff)
+  let
+      # Construct model.
+      model, sampler, vi = foo_ad(), nothing, VarInfo()
+      model(vi, sampler)
 
-    # Record initial values.
-    θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)
+      # Record initial values.
+      θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)
 
-    # Compute gradient using ForwardDiff.
-    gradient_forward(deepcopy(θ), vi, model, sampler)
+      # Compute gradient using ForwardDiff.
+      gradient(deepcopy(θ), vi, model, sampler; backend=backend)
 
-    # Check that θ and logp haven't changed.
-    @test θ == vi.vals
-    @test logp == vi.logp
-end
-
-# Check that gradient_reverse doesn't change the RV values or logp of a VarInfo.
-let
-    # Construct model
-    model, sampler, vi = foo_ad(), nothing, VarInfo()
-    model(vi, sampler)
-
-    # Record initial values.
-    θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)
-
-    # Compute gradient using ForwardDiff.
-    gradient_reverse(deepcopy(θ), vi, model, sampler)
-
-    # Check that θ and logp haven't changed.
-    @test θ == vi.vals
-    @test logp == vi.logp
+      # Check that θ and logp haven't changed.
+      @test θ == vi.vals
+      @test logp == vi.logp
+  end
 end
