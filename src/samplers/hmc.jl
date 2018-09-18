@@ -189,7 +189,8 @@ function sample(model::Function, alg::T;
       save!(c, spl, model, vi)
     end
 
-  else
+  elseif implementation == :DynamicHMC
+    @assert alg isa NUTS "Only NUTS is available in DynamicHMC"
 
     function _lp(x)
       value, deriv = gradient(x, vi, model, spl; is_negativelogp=false) 
@@ -202,7 +203,8 @@ function sample(model::Function, alg::T;
       samples[i].value = Sample(vi, spl).value
     end
     c = Chain(0, samples)
-
+  else
+    @error "Unknown implementation=$implementation"
   end
 
   return c
