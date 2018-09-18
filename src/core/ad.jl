@@ -13,8 +13,8 @@ function gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Function,
-    sampler::Union{Nothing, Sampler}=nothing,
-    backend::Symbol=ADBACKEND[];
+    sampler::Union{Nothing, Sampler}=nothing;
+    backend::Symbol=ADBACKEND[],
     is_negativelogp=true
 )
 
@@ -23,18 +23,19 @@ function gradient(
 
     # Specify objective function.
     f(θ) = is_negativelogp ?
-      begin
-          vi[sampler] = θ
-          return -runmodel!(model, vi, sampler).logp
-      end :
-      begin
-          vi[sampler] = θ
-          return runmodel!(model, vi, sampler).logp
-      end
+        begin
+            vi[sampler] = θ
+            return -runmodel!(model, vi, sampler).logp
+        end :
+        begin
+            vi[sampler] = θ
+            return runmodel!(model, vi, sampler).logp
+        end
 
     @assert backend ∈ (:forward_diff, :reverse_diff)
     if backend == :forward_diff
-        l, ∂l∂θ = gradient_forward(θ, f)
+        ∂l∂θ = gradient_forward(θ, f)
+        l = vi.logp.value
     else
         l, ∂l∂θ = gradient_reverse(θ, f)
     end
@@ -64,12 +65,11 @@ function gradient_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
 
     # Strip tracking info from θ to avoid mutating it.
     θ .= ForwardDiff.value.(θ)
 
-    return l, ∂l∂θ
+    return ∂l∂θ
 end
 
 """
