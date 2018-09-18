@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>API · Turing.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="index.html"><img class="logo" src="assets/logo.png" alt="Turing.jl logo"/></a><h1>Turing.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><span class="toctext">Home</span><ul><li><a class="toctext" href="index.html">Turing.jl</a></li><li><a class="toctext" href="get-started.html">Getting Started</a></li><li><a class="toctext" href="advanced.html">Advanced Usage</a></li><li><a class="toctext" href="contributing/guide.html">Contributing</a></li><li><a class="toctext" href="contributing/style_guide.html">Style Guide</a></li></ul></li><li><span class="toctext">Tutorials</span><ul><li><a class="toctext" href="ex/0_Introduction.html">Probabilistic Programming with Turing</a></li></ul></li><li><a class="toctext" href="ex/misc.html">A Test</a></li><li class="current"><a class="toctext" href="api.html">API</a><ul class="internal"><li><a class="toctext" href="#Modelling-1">Modelling</a></li><li><a class="toctext" href="#Samplers-1">Samplers</a></li><li><a class="toctext" href="#Index-1">Index</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="api.html">API</a></li></ul><a class="edit-page" href="https://github.com/cpfiffer/Turing.jl/blob/master/docs/src/api.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>API</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Function-Documentation-1" href="#Function-Documentation-1">Function Documentation</a></h1><ul></ul><h2><a class="nav-anchor" id="Modelling-1" href="#Modelling-1">Modelling</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.@model" href="#Turing.@model"><code>Turing.@model</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">@model(name, fbody)</code></pre><p>Wrapper for models.</p><p>Usage:</p><pre><code class="language-julia">@model model() = begin
+  # body
+end</code></pre><p>Example:</p><pre><code class="language-julia">@model gauss() = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  1.5 ~ Normal(m, sqrt.(s))
+  2.0 ~ Normal(m, sqrt.(s))
+  return(s, m)
+end</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/core/compiler.jl#L134-L158">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.@~" href="#Turing.@~"><code>Turing.@~</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-none">var_name ~ Distribution()</code></pre><p>Tilde notation <code>~</code> can be used to specifiy <em>a variable follows a distributions</em>.</p><p>If <code>var_name</code> is an un-defined variable or a container (e.g. Vector or Matrix), this variable will be treated as model parameter; otherwise if <code>var_name</code> is defined, this variable will be treated as data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/core/compiler.jl#L32-L38">source</a></section><h2><a class="nav-anchor" id="Samplers-1" href="#Samplers-1">Samplers</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.Sampler" href="#Turing.Sampler"><code>Turing.Sampler</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">Sampler{T}</code></pre><p>Generic interface for implementing inference algorithms. An implementation of an algorithm should include the following:</p><ol><li>A type specifying the algorithm and its parameters, derived from InferenceAlgorithm</li><li>A method of <code>sample</code> function that produces results of inference, which is where actual inference happens.</li></ol><p>Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a <code>sampler</code> variable. To include a new inference algorithm implements the requirements mentioned above in a separate file, then include that file at the end of this one.</p></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/Turing.jl#L75-L86">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.Gibbs" href="#Turing.Gibbs"><code>Turing.Gibbs</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">Gibbs(n_iters, alg_1, alg_2)</code></pre><p>Compositional MCMC interface.</p><p>Usage:</p><pre><code class="language-julia">alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/gibbs.jl#L1-L11">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.HMC" href="#Turing.HMC"><code>Turing.HMC</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">HMC(n_iters::Int, epsilon::Float64, tau::Int)</code></pre><p>Hamiltonian Monte Carlo sampler.</p><p>Usage:</p><pre><code class="language-julia">HMC(1000, 0.05, 10)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/hmc.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.HMCDA" href="#Turing.HMCDA"><code>Turing.HMCDA</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)</code></pre><p>Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.</p><p>Usage:</p><pre><code class="language-julia">HMCDA(1000, 200, 0.65, 0.3)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/hmcda.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.IPMCMC" href="#Turing.IPMCMC"><code>Turing.IPMCMC</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int)</code></pre><p>Particle Gibbs sampler.</p><p>Usage:</p><pre><code class="language-julia">IPMCMC(100, 100, 4, 2)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), IPMCMC(100, 100, 4, 2))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/ipmcmc.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.IS" href="#Turing.IS"><code>Turing.IS</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">IS(n_particles::Int)</code></pre><p>Importance sampling algorithm object.</p><ul><li><code>n_particles</code> is the number of particles to use</li></ul><p>Usage:</p><pre><code class="language-julia">IS(1000)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), IS(1000))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/is.jl#L1-L28">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.MH" href="#Turing.MH"><code>Turing.MH</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">MH(n_iters::Int)</code></pre><p>Metropolis-Hasting sampler.</p><p>Usage:</p><pre><code class="language-julia">MH(100, (:m, (x) -&gt; Normal(x, 0.1)))</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x[1] ~ Normal(m, sqrt(s))
+  x[2] ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -&gt; Normal(x, 0.1)), :s)))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/mh.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.NUTS" href="#Turing.NUTS"><code>Turing.NUTS</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">NUTS(n_iters::Int, n_adapt::Int, delta::Float64)</code></pre><p>No-U-Turn Sampler (NUTS) sampler.</p><p>Usage:</p><pre><code class="language-julia">NUTS(1000, 200, 0.6j_max)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/nuts.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.PG" href="#Turing.PG"><code>Turing.PG</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">PG(n_particles::Int, n_iters::Int)</code></pre><p>Particle Gibbs sampler.</p><p>Usage:</p><pre><code class="language-julia">PG(100, 100)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), PG(100, 100))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/pgibbs.jl#L1-L26">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.PMMH" href="#Turing.PMMH"><code>Turing.PMMH</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})</code></pre><p>Particle independant Metropolis–Hastings and Particle marginal Metropolis–Hastings samplers.</p><p>Usage:</p><pre><code class="language-julia">alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
+alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -&gt; Normal(x, 1))))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/pmmh.jl#L1-L13">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.SGHMC" href="#Turing.SGHMC"><code>Turing.SGHMC</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)</code></pre><p>Stochastic Gradient Hamiltonian Monte Carlo sampler.</p><p>Usage:</p><pre><code class="language-julia">SGHMC(1000, 0.01, 0.1)</code></pre><p>Example:</p><pre><code class="language-julia">@model example begin
+  ...
+end
+
+sample(example, SGHMC(1000, 0.01, 0.1))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/sghmc.jl#L1-L21">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.SGLD" href="#Turing.SGLD"><code>Turing.SGLD</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">SGLD(n_iters::Int, step_size::Float64)</code></pre><p>Stochastic Gradient Langevin Dynamics sampler.</p><p>Usage:</p><pre><code class="language-julia">SGLD(1000, 0.5)</code></pre><p>Example:</p><pre><code class="language-julia">@model example begin
+  ...
+end
+
+sample(example, SGLD(1000, 0.5))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/sgld.jl#L1-L21">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Turing.SMC" href="#Turing.SMC"><code>Turing.SMC</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-none">SMC(n_particles::Int)</code></pre><p>Sequential Monte Carlo sampler.</p><p>Usage:</p><pre><code class="language-julia">SMC(1000)</code></pre><p>Example:</p><pre><code class="language-julia"># Define a simple Normal model with unknown mean and variance.
+@model gdemo(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt.(s))
+  x[1] ~ Normal(m, sqrt.(s))
+  x[2] ~ Normal(m, sqrt.(s))
+  return s, m
+end
+
+sample(gdemo([1.5, 2]), SMC(1000))</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/cpfiffer/Turing.jl/blob/60f8b3edde0dd200fbf157f6b00e5e2b91fc2299/src/samplers/smc.jl#L1-L26">source</a></section><h2><a class="nav-anchor" id="Index-1" href="#Index-1">Index</a></h2><ul><li><a href="api.html#Turing.Gibbs"><code>Turing.Gibbs</code></a></li><li><a href="api.html#Turing.HMC"><code>Turing.HMC</code></a></li><li><a href="api.html#Turing.HMCDA"><code>Turing.HMCDA</code></a></li><li><a href="api.html#Turing.IPMCMC"><code>Turing.IPMCMC</code></a></li><li><a href="api.html#Turing.IS"><code>Turing.IS</code></a></li><li><a href="api.html#Turing.MH"><code>Turing.MH</code></a></li><li><a href="api.html#Turing.NUTS"><code>Turing.NUTS</code></a></li><li><a href="api.html#Turing.PG"><code>Turing.PG</code></a></li><li><a href="api.html#Turing.PMMH"><code>Turing.PMMH</code></a></li><li><a href="api.html#Turing.SGHMC"><code>Turing.SGHMC</code></a></li><li><a href="api.html#Turing.SGLD"><code>Turing.SGLD</code></a></li><li><a href="api.html#Turing.SMC"><code>Turing.SMC</code></a></li><li><a href="api.html#Turing.Sampler"><code>Turing.Sampler</code></a></li><li><a href="api.html#Turing.@model"><code>Turing.@model</code></a></li><li><a href="api.html#Turing.@~"><code>Turing.@~</code></a></li></ul><footer><hr/><a class="previous" href="ex/misc.html"><span class="direction">Previous</span><span class="title">A Test</span></a></footer></article></body></html>

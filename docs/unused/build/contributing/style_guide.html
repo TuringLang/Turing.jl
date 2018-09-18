@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Style Guide · Turing.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><a href="../index.html"><img class="logo" src="../assets/logo.png" alt="Turing.jl logo"/></a><h1>Turing.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><span class="toctext">Home</span><ul><li><a class="toctext" href="../index.html">Turing.jl</a></li><li><a class="toctext" href="../get-started.html">Getting Started</a></li><li><a class="toctext" href="../advanced.html">Advanced Usage</a></li><li><a class="toctext" href="guide.html">Contributing</a></li><li class="current"><a class="toctext" href="style_guide.html">Style Guide</a><ul class="internal"><li><a class="toctext" href="#A-Word-on-Consistency-1">A Word on Consistency</a></li><li><a class="toctext" href="#Synopsis-1">Synopsis</a></li><li><a class="toctext" href="#Editor-Configuration-1">Editor Configuration</a></li><li><a class="toctext" href="#Code-Formatting-1">Code Formatting</a></li><li><a class="toctext" href="#Test-Formatting-1">Test Formatting</a></li></ul></li></ul></li><li><span class="toctext">Tutorials</span><ul><li><a class="toctext" href="../ex/0_Introduction.html">Probabilistic Programming with Turing</a></li></ul></li><li><a class="toctext" href="../ex/misc.html">A Test</a></li><li><a class="toctext" href="../api.html">API</a></li></ul></nav><article id="docs"><header><nav><ul><li>Home</li><li><a href="style_guide.html">Style Guide</a></li></ul><a class="edit-page" href="https://github.com/cpfiffer/Turing.jl/blob/master/docs/src/contributing/style_guide.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Style Guide</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Style-Guide-1" href="#Style-Guide-1">Style Guide</a></h1><p>This style guide is adapted from <a href="https://invenia.ca/labs/">Invenia</a>&#39;s style guide. We would like to thank them for allowing us to access and use it. Please don&#39;t let not having read it stop you from contributing to Turing! No one will be annoyed if you open a PR whose style doesn&#39;t follow these conventions; we will just help you correct it before it gets merged.</p><p>These conventions were originally written at Invenia, taking inspiration from a variety of sources including Python&#39;s <a href="http://legacy.python.org/dev/peps/pep-0008">PEP8</a>, Julia&#39;s <a href="https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md">Notes for Contributors</a>, and Julia&#39;s <a href="https://docs.julialang.org/en/latest/manual/style-guide/">Style Guide</a>.</p><p>What follows is a mixture of a verbatim copy of Invenia&#39;s original guide and some of our own modifications.</p><h2><a class="nav-anchor" id="A-Word-on-Consistency-1" href="#A-Word-on-Consistency-1">A Word on Consistency</a></h2><p>When adhering to this style it&#39;s important to realize that these are guidelines and not rules. This is <a href="http://legacy.python.org/dev/peps/pep-0008/#a-foolish-consistency-is-the-hobgoblin-of-little-minds">stated best in the PEP8</a>:</p><blockquote><p>A style guide is about consistency. Consistency with this style guide is important. Consistency within a project is more important. Consistency within one module or function is most important.</p></blockquote><blockquote><p>But most importantly: know when to be inconsistent – sometimes the style guide just doesn&#39;t apply. When in doubt, use your best judgment. Look at other examples and decide what looks best. And don&#39;t hesitate to ask!</p></blockquote><h2><a class="nav-anchor" id="Synopsis-1" href="#Synopsis-1">Synopsis</a></h2><p>Attempt to follow both the <a href="https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md#general-formatting-guidelines-for-julia-code-contributions">Julia Contribution Guidelines</a>, the <a href="https://docs.julialang.org/en/latest/manual/style-guide/">Julia Style Guide</a>, and this guide. When convention guidelines conflict this guide takes precedence (known conflicts will be noted in this guide).</p><ul><li>Use 4 spaces per indentation level, no tabs.</li><li>Try to adhere to a 92 character line length limit.</li><li>Use upper camel case convention for <a href="https://docs.julialang.org/en/latest/manual/modules/">modules</a> and <a href="https://docs.julialang.org/en/latest/manual/types/">types</a>.</li><li>Use lower case with underscores for method names (note: Julia code likes to use lower case without underscores).</li><li>Comments are good, try to explain the intentions of the code.</li><li>Use whitespace to make the code more readable.</li><li>No whitespace at the end of a line (trailing whitespace).</li><li>Avoid padding brackets with spaces. ex. <code>Int64(value)</code> preferred over <code>Int64( value )</code>.</li></ul><h2><a class="nav-anchor" id="Editor-Configuration-1" href="#Editor-Configuration-1">Editor Configuration</a></h2><h3><a class="nav-anchor" id="Sublime-Text-Settings-1" href="#Sublime-Text-Settings-1">Sublime Text Settings</a></h3><p>If you are a user of Sublime Text we recommend that you have the following options in your Julia syntax specific settings. To modify these settings first open any Julia file (<code>*.jl</code>) in Sublime Text. Then navigate to: <code>Preferences &gt; Settings - More &gt; Syntax Specific - User</code></p><pre><code class="language-json">{
+    &quot;translate_tabs_to_spaces&quot;: true,
+    &quot;tab_size&quot;: 4,
+    &quot;trim_trailing_white_space_on_save&quot;: true,
+    &quot;ensure_newline_at_eof_on_save&quot;: true,
+    &quot;rulers&quot;: [92]
+}</code></pre><h3><a class="nav-anchor" id="Vim-Settings-1" href="#Vim-Settings-1">Vim Settings</a></h3><p>If you are a user of Vim we recommend that you add the following options to your <code>.vimrc</code> file.</p><pre><code class="language-none">set tabstop=4                             &quot; Sets tabstops to a width of four columns.
+set softtabstop=4                         &quot; Determines the behaviour of TAB and BACKSPACE keys with expandtab.
+set shiftwidth=4                          &quot; Determines the results of &gt;&gt;, &lt;&lt;, and ==.
+
+au FileType julia setlocal expandtab      &quot; Replaces tabs with spaces.
+au FileType julia setlocal colorcolumn=93 &quot; Highlights column 93 to help maintain the 92 character line limit.</code></pre><p>By default, Vim seems to guess that <code>.jl</code> files are written in Lisp. To ensure that Vim recognizes Julia files you can manually have it check for the <code>.jl</code> extension, but a better solution is to install <a href="https://github.com/JuliaLang/julia-vim">Julia-Vim</a>, which also includes proper syntax highlighting and a few cool other features.</p><h3><a class="nav-anchor" id="Atom-Settings-1" href="#Atom-Settings-1">Atom Settings</a></h3><p>Atom defaults preferred line length to 80 characters. We want that at 92 for julia. To change it:</p><ol><li>Go to <code>Atom -&gt; Preferences -&gt; Packages</code>.</li><li>Search for the &quot;language-julia&quot; package and open the settings for it.</li><li>Find preferred line length (under &quot;Julia Grammar&quot;) and change it to 92.</li></ol><h2><a class="nav-anchor" id="Code-Formatting-1" href="#Code-Formatting-1">Code Formatting</a></h2><h3><a class="nav-anchor" id="Function-Naming-1" href="#Function-Naming-1">Function Naming</a></h3><p>Names of functions should describe an action or property irrespective of the type of the argument; the argument&#39;s type provides this information instead. For example, <code>buyfood(food)</code> should be <code>buy(food::Food)</code>.</p><p>Names of functions should usually be limited to one or two lowercase words. Ideally write <code>buyfood</code> not <code>buy_food</code>, but if you are writing a function whose name is hard to read without underscores then please do use them.</p><h3><a class="nav-anchor" id="Method-Definitions-1" href="#Method-Definitions-1">Method Definitions</a></h3><p>Only use short-form function definitions when they fit on a single line:</p><pre><code class="language-julia"># Yes:
+foo(x::Int64) = abs(x) + 3
+# No:
+foobar(array_data::AbstractArray{T}, item::T) where {T&lt;:Int64} = T[
+    abs(x) * abs(item) + 3 for x in array_data
+]
+
+# No:
+foobar(
+    array_data::AbstractArray{T},
+    item::T,
+) where {T&lt;:Int64} = T[abs(x) * abs(item) + 3 for x in array_data]
+# Yes:
+function foobar(array_data::AbstractArray{T}, item::T) where T&lt;:Int64
+    return T[abs(x) * abs(item) + 3 for x in array_data]
+end</code></pre><p>When using long-form functions <a href="https://groups.google.com/forum/#!topic/julia-users/4RVR8qQDrUg">always use the <code>return</code> keyword</a>:</p><pre><code class="language-julia"># Yes:
+function fnc(x::T) where T
+    result = zero(T)
+    result += fna(x)
+    return result
+end
+# No:
+function fnc(x::T) where T
+    result = zero(T)
+    result += fna(x)
+end
+
+# Yes:
+function Foo(x, y)
+    return new(x, y)
+end
+# No:
+function Foo(x, y)
+    new(x, y)
+end</code></pre><p>Functions definitions with parameter lines which exceed 92 characters should separate each parameter by a newline and indent by one-level:</p><pre><code class="language-julia"># Yes:
+function foobar(
+    df::DataFrame,
+    id::Symbol,
+    variable::Symbol,
+    value::AbstractString,
+    prefix::AbstractString=&quot;&quot;,
+)
+    # code
+end
+
+# Ok:
+function foobar(df::DataFrame, id::Symbol, variable::Symbol, value::AbstractString, prefix::AbstractString=&quot;&quot;)
+    # code
+end
+# No:
+function foobar(df::DataFrame, id::Symbol, variable::Symbol, value::AbstractString,
+    prefix::AbstractString=&quot;&quot;)
+
+    # code
+end
+# No:
+function foobar(
+        df::DataFrame,
+        id::Symbol,
+        variable::Symbol,
+        value::AbstractString,
+        prefix::AbstractString=&quot;&quot;,
+    )
+    # code
+end</code></pre><h3><a class="nav-anchor" id="Keyword-Arguments-1" href="#Keyword-Arguments-1">Keyword Arguments</a></h3><p>When calling a function always separate your keyword arguments from your positional arguments with a semicolon. This avoids mistakes in ambiguous cases (such as splatting a <code>Dict</code>).</p><pre><code class="language-julia"># Yes:
+xy = foo(x; y=3)
+# No:
+xy = foo(x, y=3)</code></pre><h3><a class="nav-anchor" id="Whitespace-1" href="#Whitespace-1">Whitespace</a></h3><p>Avoid extraneous whitespace in the following situations:</p><ul><li><p>Immediately inside parentheses, square brackets or braces.</p><p><code>julia   Yes: spam(ham[1], [eggs])   No:  spam( ham[ 1 ], [ eggs ] )</code></p></li><li><p>Immediately before a comma or semicolon:</p><p><code>julia   Yes: if x == 4 @show(x, y); x, y = y, x end   No:  if x == 4 @show(x , y) ; x , y = y , x end</code></p></li><li><p>When using ranges unless additional operators are used:</p><p><code>julia   Yes: ham[1:9], ham[1:3:9], ham[1:3:end]   No:  ham[1: 9], ham[1 : 3: 9]</code></p><p><code>julia   Yes: ham[lower:upper], ham[lower:step:upper]   Yes: ham[lower + offset : upper + offset]   Yes: ham[(lower + offset):(upper + offset)]   No:  ham[lower + offset:upper + offset]</code></p></li><li><p>More than one space around an assignment (or other) operator to align it with another:</p><p>```</p><h1>Yes:</h1><p>x = 1   y = 2   long_variable = 3</p><h1>No:</h1><p>x             = 1   y             = 2   long_variable = 3   ```</p></li><li><p>Always surround these binary operators with a single space on either side: assignment (<code>=</code>), <a href="https://docs.julialang.org/en/latest/manual/mathematical-operations/#Updating-operators-1">updating operators</a> (<code>+=</code>, <code>-=</code>, etc.), <a href="https://docs.julialang.org/en/latest/manual/mathematical-operations/#Numeric-Comparisons-1">numeric comparisons operators</a> (<code>==</code>, <code>&lt;</code>, <code>&gt;</code>, <code>!=</code>, etc.). Note that this guideline does not apply when performing assignment in method definitions.</p><p>```   Yes: i = i + 1   No:  i=i+1</p><p>Yes: submitted += 1   No:  submitted +=1</p><p>Yes: x^2 &lt; y   No:  x^2&lt;y   ```</p></li><li><p>Assignments using expanded array, tuple, or function notation should have the first open bracket on the same line assignment operator and the closing bracket should match the indentation level of the assignment. Alternatively you can perform assignments on a single line when they are short:</p><p>```julia</p><h1>Yes:</h1><p>arr = [       1,       2,       3,   ]   arr = [       1, 2, 3,   ]   result = Function(       arg1,       arg2,   )   arr = [1, 2, 3]</p></li></ul><pre><code class="language-none"># No:
+arr =
+[
+    1,
+    2,
+    3,
+]
+arr =
+[
+    1, 2, 3,
+]
+arr = [
+    1,
+    2,
+    3,
+    ]
+```</code></pre><ul><li><p>Nested array or tuples that are in expanded notation should have the opening and closing brackets at the same indentation level:</p><p>```julia</p><h1>Yes:</h1><p>x = [       [           1, 2, 3,       ],       [           &quot;hello&quot;,           &quot;world&quot;,       ],       [&#39;a&#39;, &#39;b&#39;, &#39;c&#39;],   ]</p><h1>No:</h1><p>y = [       [           1, 2, 3,       ], [           &quot;hello&quot;,           &quot;world&quot;,       ],   ]   z = [[           1, 2, 3,       ], [           &quot;hello&quot;,           &quot;world&quot;,       ],   ]   ```</p></li><li><p>Always include the trailing comma when working with expanded arrays, tuples or functions notation. This allows future edits to easily move elements around or add additional elements. The trailing comma should be excluded when the notation is only on a single-line:</p><p>```julia</p><h1>Yes:</h1><p>arr = [       1,       2,       3,   ]   result = Function(       arg1,       arg2,   )   arr = [1, 2, 3]</p><h1>No:</h1><p>arr = [       1,       2,       3   ]   result = Function(       arg1,       arg2   )   arr = [1, 2, 3,]   ```</p></li><li><p>Triple-quotes use the indentation of the lowest indented line (excluding the opening triple-quote). This means the closing triple-quote should be aligned to least indented line in the string. Triple-backticks should also follow this style even though the indentation does not matter for them.</p><p>```julia</p><h1>Yes:</h1><p>str = &quot;&quot;&quot;       hello       world!       &quot;&quot;&quot;   str = &quot;&quot;&quot;           hello       world!       &quot;&quot;&quot;   cmd = <code>program           --flag value           parameter</code></p><h1>No:</h1><p>str = &quot;&quot;&quot;       hello       world!   &quot;&quot;&quot;   ```</p></li></ul><h3><a class="nav-anchor" id="Comments-1" href="#Comments-1">Comments</a></h3><p>Comments should be used to state the intended behaviour of code. This is especially important when the code is doing something clever that may not be obvious upon first inspection. Avoid writing comments that state exactly what the code obviously does.</p><pre><code class="language-julia"># Yes:
+x = x + 1      # Compensate for border
+
+# No:
+x = x + 1      # Increment x</code></pre><p>Comments that contradict the code are much worse than no comments. Always make a priority of keeping the comments up-to-date with code changes!</p><p>Comments should be complete sentences. If a comment is a phrase or sentence, its first word should be capitalized, unless it is an identifier that begins with a lower case letter (never alter the case of identifiers!).</p><p>If a comment is short, the period at the end can be omitted. Block comments generally consist of one or more paragraphs built out of complete sentences, and each sentence should end in a period.</p><p>Comments should be separated by at least two spaces from the expression and have a single space after the <code>#</code>.</p><p>When referencing Julia in documentation note that &quot;Julia&quot; refers to the programming language while &quot;julia&quot; (typically in backticks, e.g. <code>julia</code>) refers to the executable.</p><pre><code class="language-julia">
+# A commment
+code
+
+# anothher comment
+more code
+
+TODO</code></pre><h3><a class="nav-anchor" id="Documentation-1" href="#Documentation-1">Documentation</a></h3><p>It is recommended that most modules, types and functions should have <a href="http://docs.julialang.org/en/latest/manual/documentation/">docstrings</a>. That being said, only exported functions are required to be documented. Avoid documenting methods like <code>==</code> as the built in docstring for the function already covers the details well. Try to document a function and not individual methods where possible as typically all methods will have similar docstrings. If you are adding a method to a function which was defined in <code>Base</code> or another package only add a docstring if the behaviour of your function deviates from the existing docstring.</p><p>Docstrings are written in <a href="https://en.wikipedia.org/wiki/Markdown">Markdown</a> and should be concise. Docstring lines should be wrapped at 92 characters.</p><pre><code class="language-julia">&quot;&quot;&quot;
+    bar(x[, y])
+
+Compute the Bar index between `x` and `y`. If `y` is missing, compute the Bar index between
+all pairs of columns of `x`.
+&quot;&quot;&quot;
+function bar(x, y) ...</code></pre><p>When types or methods have lots of parameters it may not be feasible to write a concise docstring. In these cases it is recommended you use the templates below. Note if a section doesn&#39;t apply or is overly verbose (for example &quot;Throws&quot; if your function doesn&#39;t throw an exception) it can be excluded. It is recommended that you have a blank line between the headings and the content when the content is of sufficient length. Try to be consistent within a docstring whether you use this additional whitespace. Note that the additional space is only for reading raw markdown and does not effect the rendered version.</p><p>Type Template (should be skipped if is redundant with the constructor(s) docstring):</p><pre><code class="language-julia">&quot;&quot;&quot;
+    MyArray{T,N}
+
+My super awesome array wrapper!
+
+# Fields
+- `data::AbstractArray{T,N}`: stores the array being wrapped
+- `metadata::Dict`: stores metadata about the array
+&quot;&quot;&quot;
+struct MyArray{T,N} &lt;: AbstractArray{T,N}
+    data::AbstractArray{T,N}
+    metadata::Dict
+end</code></pre><p>Function Template (only required for exported functions):</p><pre><code class="language-julia">&quot;&quot;&quot;
+    mysearch(array::MyArray{T}, val::T; verbose=true) where {T} -&gt; Int
+
+Searches the `array` for the `val`. For some reason we don&#39;t want to use Julia&#39;s
+builtin search :)
+
+# Arguments
+- `array::MyArray{T}`: the array to search
+- `val::T`: the value to search for
+
+# Keywords
+- `verbose::Bool=true`: print out progress details
+
+# Returns
+- `Int`: the index where `val` is located in the `array`
+
+# Throws
+- `NotFoundError`: I guess we could throw an error if `val` isn&#39;t found.
+&quot;&quot;&quot;
+function mysearch(array::AbstractArray{T}, val::T) where T
+    ...
+end</code></pre><p>If your method contains lots of arguments or keywords you may want to exclude them from the method signature on the first line and instead use <code>args...</code> and/or <code>kwargs...</code>.</p><pre><code class="language-julia">&quot;&quot;&quot;
+    Manager(args...; kwargs...) -&gt; Manager
+
+A cluster manager which spawns workers.
+
+# Arguments
+
+- `min_workers::Integer`: The minimum number of workers to spawn or an exception is thrown
+- `max_workers::Integer`: The requested number of worker to spawn
+
+# Keywords
+
+- `definition::AbstractString`: Name of the job definition to use. Defaults to the
+    definition used within the current instance.
+- `name::AbstractString`: ...
+- `queue::AbstractString`: ...
+&quot;&quot;&quot;
+function Manager(...)
+    ...
+end</code></pre><p>Feel free to document multiple methods for a function within the same docstring. Be careful to only do this for functions you have defined.</p><pre><code class="language-julia">&quot;&quot;&quot;
+    Manager(max_workers; kwargs...)
+    Manager(min_workers:max_workers; kwargs...)
+    Manager(min_workers, max_workers; kwargs...)
+
+A cluster manager which spawns workers.
+
+# Arguments
+
+- `min_workers::Int`: The minimum number of workers to spawn or an exception is thrown
+- `max_workers::Int`: The number of requested workers to spawn
+
+# Keywords
+
+- `definition::AbstractString`: Name of the job definition to use. Defaults to the
+    definition used within the current instance.
+- `name::AbstractString`: ...
+- `queue::AbstractString`: ...
+&quot;&quot;&quot;
+function Manager end
+</code></pre><p>If the documentation for bullet-point exceeds 92 characters the line should be wrapped and slightly indented. Avoid aligning the text to the <code>:</code>.</p><pre><code class="language-julia">&quot;&quot;&quot;
+...
+
+# Keywords
+- `definition::AbstractString`: Name of the job definition to use. Defaults to the
+    definition used within the current instance.
+&quot;&quot;&quot;</code></pre><p>For additional details on documenting in Julia see the <a href="http://docs.julialang.org/en/latest/manual/documentation/">official documentation</a>.</p><h2><a class="nav-anchor" id="Test-Formatting-1" href="#Test-Formatting-1">Test Formatting</a></h2><h3><a class="nav-anchor" id="Testsets-1" href="#Testsets-1">Testsets</a></h3><p>Julia provides <a href="https://docs.julialang.org/en/latest/stdlib/Test/#Working-with-Test-Sets-1">test sets</a> which allows developers to group tests into logical groupings. Test sets can be nested and ideally packages should only have a single &quot;root&quot; test set. It is recommended that the &quot;runtests.jl&quot; file contains the root test set which contains the remainder of the tests:</p><pre><code class="language-julia">@testset &quot;PkgExtreme&quot; begin
+    include(&quot;arithmetic.jl&quot;)
+    include(&quot;utils.jl&quot;)
+end</code></pre><h3><a class="nav-anchor" id="Comparisons-1" href="#Comparisons-1">Comparisons</a></h3><p>Most tests are written in the form <code>@test x == y</code>. Since the <code>==</code> function doesn&#39;t take types into account tests like the following are valid: <code>@test 1.0 == 1</code>. Avoid adding visual noise into test comparisons:</p><pre><code class="language-julia"># Yes:
+@test value == 0
+
+# No:
+@test value == 0.0</code></pre><footer><hr/><a class="previous" href="guide.html"><span class="direction">Previous</span><span class="title">Contributing</span></a><a class="next" href="../ex/0_Introduction.html"><span class="direction">Next</span><span class="title">Probabilistic Programming with Turing</span></a></footer></article></body></html>
