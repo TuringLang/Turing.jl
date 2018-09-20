@@ -46,7 +46,7 @@ makedocs(
 
 # Deploy documentation.
 deploydocs(
-    repo   = "TuringLang/Turing.jl",
+    repo   = "github.com/TuringLang/Turing.jl.git",
     target = "build",
     deps   = nothing,
     make   = nothing,
