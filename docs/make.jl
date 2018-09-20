@@ -1,6 +1,5 @@
 using Documenter, Turing
 using LibGit2: clone
-using Weave
 
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
