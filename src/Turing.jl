@@ -103,8 +103,11 @@ struct SampleFromPrior <: AbstractSampler end
 #   `spl=SampleFromPrior`
 const AnySampler = Union{Nothing, AbstractSampler}
 
+include("utilities/resample.jl")
+include("utilities/stan-interface.jl")
 include("utilities/helper.jl")
 include("utilities/transform.jl")
+include("utilities/robustinit.jl")
 include("utilities/util.jl")         # utility functions
 include("utilities/io.jl")           # I/O
 include("core/varinfo.jl")  # core internal variable container
