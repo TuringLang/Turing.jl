@@ -8,7 +8,7 @@ examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
 # Clone TuringTurorials
 tmp_path = tempname()
 mkdir(tmp_path)
-clone("https://github.com/cpfiffer/TuringTutorials", tmp_path)
+clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
 
 # Move to markdown folder.
 md_path = joinpath(tmp_path, "markdown")
@@ -46,9 +46,9 @@ makedocs(
 )
 
 # Deploy documentation.
-# deploydocs(
-#     repo   = "github.com/TuringLang/Turing.jl",
-#     target = "build",
-#     deps   = nothing,
-#     make   = nothing
-# )
+deploydocs(
+    repo   = "github.com/TuringLang/Turing.jl",
+    target = "build",
+    deps   = nothing,
+    make   = nothing
+)
