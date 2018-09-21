@@ -1,4 +1,4 @@
-using Turing, Test
+using DynamicHMC, Turing, Test
 
 @model gdemo(x, y) = begin
   s ~ InverseGamma(2,3)
