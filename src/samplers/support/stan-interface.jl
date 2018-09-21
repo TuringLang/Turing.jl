@@ -11,7 +11,6 @@
 
 #   Ref
 #     http://goedman.github.io/Stan.jl/latest/index.html#Types-1
-
 sample(mf::T, ss::Stan.Sample) where {T<:Function} = sample(mf, ss.num_samples, ss.num_warmup, ss.save_warmup, ss.thin, ss.adapt, ss.alg)
 sample(mf::T, num_samples::Int, num_warmup::Int, save_warmup::Bool, thin::Int, ss::Stan.Sample) where{T<:Function} =
   sample(mf, num_samples, num_warmup, save_warmup, thin, ss.adapt, ss.alg)

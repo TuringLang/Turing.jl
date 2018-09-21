@@ -22,10 +22,10 @@ using Markdown
 using Libtask
 using MacroTools
 
-#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
-using Stan
-import Stan: Adapt, Hmc
-#  end
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" @eval begin
+    using Stan
+    import Stan: Adapt, Hmc
+end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
@@ -34,14 +34,16 @@ import MCMCChain: AbstractChains, Chains
 using DynamicHMC, LogDensityProblems
 using LogDensityProblems: AbstractLogDensityProblem, ValueGradient
 
-struct FunctionLogDensity{F} <: AbstractLogDensityProblem
-  dimension::Int
-  f::F
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
+    struct FunctionLogDensity{F} <: AbstractLogDensityProblem
+      dimension::Int
+      f::F
+    end
+
+    LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
+
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
 end
-
-LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
-
-LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
    
 ##############################
 # Global variables/constants #

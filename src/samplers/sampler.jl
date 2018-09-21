@@ -7,13 +7,17 @@ include("support/distributions.jl")
 include("support/hmc_core.jl")
 include("support/adapt.jl")
 include("support/init.jl")
-include("support/stan-interface.jl")
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" @eval begin
+    include("support/stan-interface.jl")
+end
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
 include("sgld.jl")
 include("hmc.jl")
-include("dynamichmc.jl")
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
+    include("dynamichmc.jl")
+end
 include("mh.jl")
 include("is.jl")
 include("smc.jl")
