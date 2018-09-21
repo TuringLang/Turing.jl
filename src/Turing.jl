@@ -31,10 +31,10 @@ import Distributions: sample
 import ForwardDiff: gradient
 using Flux: Tracker
 import MCMCChain: AbstractChains, Chains
-using DynamicHMC, LogDensityProblems
-using LogDensityProblems: AbstractLogDensityProblem, ValueGradient
-
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
+    using DynamicHMC, LogDensityProblems
+    using LogDensityProblems: AbstractLogDensityProblem, ValueGradient
+
     struct FunctionLogDensity{F} <: AbstractLogDensityProblem
       dimension::Int
       f::F
