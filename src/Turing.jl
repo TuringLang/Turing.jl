@@ -44,7 +44,7 @@ import MCMCChain: AbstractChains, Chains
 
     LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
 end
-   
+
 ##############################
 # Global variables/constants #
 ##############################
