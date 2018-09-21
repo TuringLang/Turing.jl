@@ -10,7 +10,7 @@ end
 
 mf = gdemo(1.5, 2.0)
 
-chn = sample(mf, NUTS(2000, 200, 0.6), implementation=:DynamicHMC);
+chn = sample(mf, DynamicNUTS(2000));
 
 @test mean(chn[:s]) ≈ 49/24 atol=0.2
 @test mean(chn[:m]) ≈ 7/6 atol=0.2

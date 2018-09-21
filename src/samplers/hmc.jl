@@ -100,114 +100,95 @@ function sample(model::Function, alg::T;
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
-                                implementation=:Turing
                                ) where T<:Hamiltonian
+    if ADBACKEND[] == :forward_diff
+        default_chunk_size = CHUNKSIZE[]  # record global chunk size
+        setchunksize(chunk_size)        # set temp chunk size
+    end
 
-  default_chunk_size = CHUNKSIZE[]  # record global chunk size
-  setchunksize(chunk_size)        # set temp chunk size
+    spl = reuse_spl_n > 0 ?
+          resume_from.info[:spl] :
+          Sampler(alg, adapt_conf)
 
-  spl = reuse_spl_n > 0 ?
-        resume_from.info[:spl] :
-        Sampler(alg, adapt_conf)
+    @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
-  @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
+    alg_str = isa(alg, HMC)   ? "HMC"   :
+              isa(alg, HMCDA) ? "HMCDA" :
+              isa(alg, SGHMC) ? "SGHMC" :
+              isa(alg, SGLD)  ? "SGLD"  :
+              isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
-  alg_str = isa(alg, HMC)   ? "HMC"   :
-            isa(alg, HMCDA) ? "HMCDA" :
-            isa(alg, SGHMC) ? "SGHMC" :
-            isa(alg, SGLD)  ? "SGLD"  :
-            isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
+    # Initialization
+    time_total = zero(Float64)
+    n = reuse_spl_n > 0 ?
+        reuse_spl_n :
+        alg.n_iters
+    samples = Array{Sample}(undef, n)
+    weight = 1 / n
+    for i = 1:n
+        samples[i] = Sample(weight, Dict{Symbol, Any}())
+    end
 
-  # Initialization
-  time_total = zero(Float64)
-  n = reuse_spl_n > 0 ?
-      reuse_spl_n :
-      alg.n_iters
-  samples = Array{Sample}(undef, n)
-  weight = 1 / n
-  for i = 1:n
-      samples[i] = Sample(weight, Dict{Symbol, Any}())
-  end
+    vi = if resume_from == nothing
+        vi_ = VarInfo()
+        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        vi_
+    else
+        deepcopy(resume_from.info[:vi])
+    end
 
-  vi = if resume_from == nothing
-      vi_ = VarInfo()
-      Base.invokelatest(model, vi_, HamiltonianRobustInit())
-      vi_
-  else
-      deepcopy(resume_from.info[:vi])
-  end
+    if spl.alg.gid == 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
+    end
 
-  if spl.alg.gid == 0
-      link!(vi, spl)
-      runmodel!(model, vi, spl)
-  end
+    # HMC steps
+    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
+    for i = 1:n
+        @debug "$alg_str stepping..."
 
-  if implementation == :Turing
+        time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
+        time_total += time_elapsed
 
-      # HMC steps
-      PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-      for i = 1:n
-          @debug "$alg_str stepping..."
+        if spl.info[:accept_his][end]     # accepted => store the new predcits
+            samples[i].value = Sample(vi, spl).value
+        else                              # rejected => store the previous predcits
+            samples[i] = samples[i - 1]
+        end
+        samples[i].value[:elapsed] = time_elapsed
+        samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
 
-          time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
-          time_total += time_elapsed
+        PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
+    end
 
-          if spl.info[:accept_his][end]     # accepted => store the new predcits
-              samples[i].value = Sample(vi, spl).value
-          else                              # rejected => store the previous predcits
-              samples[i] = samples[i - 1]
-          end
-          samples[i].value[:elapsed] = time_elapsed
-          samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
+    println("[$alg_str] Finished with")
+    println("  Running time        = $time_total;")
+    if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
+        accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
+        println("  Accept rate         = $accept_rate;")
+    end
+    println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
+    println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
+    stds_str = string(spl.info[:wum][:stds])
+    stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
+    println("  pre-cond. diag mat  = $(stds_str).")
 
-          PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
-      end
+    if ADBACKEND[] == :forward_diff
+        setchunksize(default_chunk_size)      # revert global chunk size
+    end
 
-      println("[$alg_str] Finished with")
-      println("  Running time        = $time_total;")
-      if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
-          accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
-          println("  Accept rate         = $accept_rate;")
-      end
-      println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
-      println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
-      stds_str = string(spl.info[:wum][:stds])
-      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
-      println("  pre-cond. diag mat  = $(stds_str).")
-
-      setchunksize(default_chunk_size)      # revert global chunk size
-
-      if resume_from != nothing   # concat samples
-          pushfirst!(samples, resume_from.value2...)
-      end
-      c = Chain(0, samples)       # wrap the result by Chain
-      if save_state               # save state
-          # Convert vi back to X if vi is required to be saved
-          if spl.alg.gid == 0 invlink!(vi, spl) end
-          spl.info[:grad_cache] = Dict{UInt64,Vector}()
-          spl.info[:reverse_diff_cache] = Dict()
-          save!(c, spl, model, vi)
-      end
-
-  elseif implementation == :DynamicHMC
-      @assert alg isa NUTS "Only NUTS is available in DynamicHMC"
-
-      function _lp(x)
-          value, deriv = gradient(x, vi, model, spl) 
-          return ValueGradient(-value, -deriv)
-      end
-      chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters;
-                                           init=init, mid=mid, M=M, term=term)
-      for i = 1:alg.n_iters
-          vi[spl] = chn_dynamic[i].q
-          samples[i].value = Sample(vi, spl).value
-      end
-      c = Chain(0, samples)
-  else
-      @error "Unknown implementation=$implementation"
-  end
-
-  return c
+    if resume_from != nothing   # concat samples
+        pushfirst!(samples, resume_from.value2...)
+    end
+    c = Chain(0, samples)       # wrap the result by Chain
+    if save_state               # save state
+        # Convert vi back to X if vi is required to be saved
+        if spl.alg.gid == 0 invlink!(vi, spl) end
+        spl.info[:grad_cache] = Dict{UInt64,Vector}()
+        spl.info[:reverse_diff_cache] = Dict()
+        save!(c, spl, model, vi)
+    end
+    return c
 end
 
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin

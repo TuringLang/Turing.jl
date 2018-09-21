@@ -131,6 +131,7 @@ using Turing.VarReplay
 export @model, @~, @VarName                   # modelling
 export MH, Gibbs                              # classic sampling
 export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
+export DynamicNUTS
 export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
 export sample, setchunksize, resume           # inference
 export auto_tune_chunk_size!, setadbackend, setadsafe # helper
