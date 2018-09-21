@@ -20,7 +20,7 @@ macro VarName(expr::Union{Expr, Symbol})
             end
         ex = ex.args[1]
         isa(ex, Symbol) && return var_tuple(ex, inds)
-        end
+    end
     throw("VarName: Mis-formed variable name $(expr)!")
 end
 function var_tuple(sym::Symbol, inds::Expr=:(()))
@@ -326,10 +326,6 @@ end
 ####################
 # Helper functions #
 ####################
-
-function insertvi(x)
-    return @capture(x, return _) ? Expr(:block, :(vi.logp = _lp), x) : x
-end    
 
 function data_insertion(k)
         if isa(k, Symbol)
