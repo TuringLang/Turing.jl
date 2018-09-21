@@ -116,10 +116,16 @@ struct SampleFromPrior <: AbstractSampler end
 #   `spl=SampleFromPrior`
 const AnySampler = Union{Nothing, AbstractSampler}
 
+include("utilities/resample.jl")
+@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" @eval begin
+    include("support/stan-interface.jl")
+end
 include("utilities/helper.jl")
 include("utilities/transform.jl")
+include("utilities/robustinit.jl")
 include("utilities/util.jl")         # utility functions
 include("utilities/io.jl")           # I/O
+include("models/distributions.jl")
 include("core/varinfo.jl")  # core internal variable container
 include("core/trace.jl")   # to run probabilistic programs as tasks
 

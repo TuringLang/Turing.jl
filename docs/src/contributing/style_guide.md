@@ -190,185 +190,184 @@ Avoid extraneous whitespace in the following situations:
 
 - Immediately inside parentheses, square brackets or braces.
 
-    ```julia
-    Yes: spam(ham[1], [eggs])
-    No:  spam( ham[ 1 ], [ eggs ] )
-    ```
+```julia
+Yes: spam(ham[1], [eggs])
+No:  spam( ham[ 1 ], [ eggs ] )
+```
 
 - Immediately before a comma or semicolon:
 
-    ```julia
-    Yes: if x == 4 @show(x, y); x, y = y, x end
-    No:  if x == 4 @show(x , y) ; x , y = y , x end
-    ```
+```julia
+Yes: if x == 4 @show(x, y); x, y = y, x end
+No:  if x == 4 @show(x , y) ; x , y = y , x end
+```
 
 - When using ranges unless additional operators are used:
 
-    ```julia
-    Yes: ham[1:9], ham[1:3:9], ham[1:3:end]
-    No:  ham[1: 9], ham[1 : 3: 9]
-    ```
+```julia
+Yes: ham[1:9], ham[1:3:9], ham[1:3:end]
+No:  ham[1: 9], ham[1 : 3: 9]
+```
 
-    ```julia
-    Yes: ham[lower:upper], ham[lower:step:upper]
-    Yes: ham[lower + offset : upper + offset]
-    Yes: ham[(lower + offset):(upper + offset)]
-    No:  ham[lower + offset:upper + offset]
-    ```
+```julia
+Yes: ham[lower:upper], ham[lower:step:upper]
+Yes: ham[lower + offset : upper + offset]
+Yes: ham[(lower + offset):(upper + offset)]
+No:  ham[lower + offset:upper + offset]
+```
 
 - More than one space around an assignment (or other) operator to align it with another:
 
-    ```
-    # Yes:
-    x = 1
-    y = 2
-    long_variable = 3
+```julia
+# Yes:
+x = 1
+y = 2
+long_variable = 3
 
-    # No:
-    x             = 1
-    y             = 2
-    long_variable = 3
-    ```
+# No:
+x             = 1
+y             = 2
+long_variable = 3
+```
 
-- Always surround these binary operators with a single space on either side: assignment (`=`), [updating operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Updating-operators-1) (`+=`, `-=`, etc.), [numeric comparisons operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Numeric-Comparisons-1) (`==`, `<`, `>`, `!=`, etc.). Note that this guideline does not apply when performing assignment in method definitions.
+- Always surround these binary operators with a single space on either side: assignment (``=``), [updating operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Updating-operators-1) (``+=``, ``-=``, etc.), [numeric comparisons operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Numeric-Comparisons-1) (``==``, ``<``, ``>``, ``!=``, etc.). Note that this guideline does not apply when performing assignment in method definitions.
 
-    ```
-    Yes: i = i + 1
-    No:  i=i+1
+```julia
+Yes: i = i + 1
+No:  i=i+1
 
-    Yes: submitted += 1
-    No:  submitted +=1
+Yes: submitted += 1
+No:  submitted +=1
 
-    Yes: x^2 < y
-    No:  x^2<y
-    ```
+Yes: x^2 < y
+No:  x^2<y
+```
 
-- Assignments using expanded array, tuple, or function notation should have the first open bracket on the same line assignment operator and the closing bracket should match the indentation level of the assignment.
-  Alternatively you can perform assignments on a single line when they are short:
+- Assignments using expanded array, tuple, or function notation should have the first open bracket on the same line assignment operator and the closing bracket should match the indentation level of the assignment. Alternatively you can perform assignments on a single line when they are short:
 
-    ```julia
-    # Yes:
-    arr = [
-        1,
-        2,
-        3,
+```julia
+# Yes:
+arr = [
+    1,
+    2,
+    3,
+]
+arr = [
+    1, 2, 3,
+]
+result = Function(
+    arg1,
+    arg2,
+)
+arr = [1, 2, 3]
+
+
+# No:
+arr =
+[
+    1,
+    2,
+    3,
+]
+arr =
+[
+    1, 2, 3,
+]
+arr = [
+    1,
+    2,
+    3,
     ]
-    arr = [
-        1, 2, 3,
-    ]
-    result = Function(
-        arg1,
-        arg2,
-    )
-    arr = [1, 2, 3]
-
-
-    # No:
-    arr =
-    [
-        1,
-        2,
-        3,
-    ]
-    arr =
-    [
-        1, 2, 3,
-    ]
-    arr = [
-        1,
-        2,
-        3,
-        ]
-    ```
+```
 
 - Nested array or tuples that are in expanded notation should have the opening and closing brackets at the same indentation level:
 
-    ```julia
-    # Yes:
-    x = [
-        [
-            1, 2, 3,
-        ],
-        [
-            "hello",
-            "world",
-        ],
-        ['a', 'b', 'c'],
-    ]
+```julia
+# Yes:
+x = [
+    [
+        1, 2, 3,
+    ],
+    [
+        "hello",
+        "world",
+    ],
+    ['a', 'b', 'c'],
+]
 
-    # No:
-    y = [
-        [
-            1, 2, 3,
-        ], [
-            "hello",
-            "world",
-        ],
-    ]
-    z = [[
-            1, 2, 3,
-        ], [
-            "hello",
-            "world",
-        ],
-    ]
-    ```
+# No:
+y = [
+    [
+        1, 2, 3,
+    ], [
+        "hello",
+        "world",
+    ],
+]
+z = [[
+        1, 2, 3,
+    ], [
+        "hello",
+        "world",
+    ],
+]
+```
 
 - Always include the trailing comma when working with expanded arrays, tuples or functions notation.
   This allows future edits to easily move elements around or add additional elements.
   The trailing comma should be excluded when the notation is only on a single-line:
 
-    ```julia
-    # Yes:
-    arr = [
-        1,
-        2,
-        3,
-    ]
-    result = Function(
-        arg1,
-        arg2,
-    )
-    arr = [1, 2, 3]
+```julia
+# Yes:
+arr = [
+    1,
+    2,
+    3,
+]
+result = Function(
+    arg1,
+    arg2,
+)
+arr = [1, 2, 3]
 
-    # No:
-    arr = [
-        1,
-        2,
-        3
-    ]
-    result = Function(
-        arg1,
-        arg2
-    )
-    arr = [1, 2, 3,]
-    ```
+# No:
+arr = [
+    1,
+    2,
+    3
+]
+result = Function(
+    arg1,
+    arg2
+)
+arr = [1, 2, 3,]
+```
 
 - Triple-quotes use the indentation of the lowest indented line (excluding the opening triple-quote).
   This means the closing triple-quote should be aligned to least indented line in the string.
   Triple-backticks should also follow this style even though the indentation does not matter for them.
 
-    ```julia
-    # Yes:
-    str = """
-        hello
-        world!
-        """
-    str = """
-            hello
-        world!
-        """
-    cmd = ```
-        program
-            --flag value
-            parameter
-        ```
-    # No:
-    str = """
-        hello
-        world!
+````julia
+# Yes:
+str = """
+    hello
+    world!
     """
-    ```
+str = """
+        hello
+    world!
+    """
+cmd = ```
+    program
+        --flag value
+        parameter
+      ```
+# No:
+str = """
+    hello
+    world!
+"""
+````
 
 ### Comments
 
@@ -402,7 +401,7 @@ When referencing Julia in documentation note that "Julia" refers to the programm
 # A commment
 code
 
-# anothher comment
+# Another comment
 more code
 
 TODO
