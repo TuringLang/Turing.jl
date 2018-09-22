@@ -100,6 +100,6 @@ isinstalled(x::AbstractString) = x ∈ keys(Pkg.installed())
 
 # NOTE: Remove the code below when DynamicHMC is registered.
 using Pkg;
+isinstalled("TransformVariables") || pkg"add https://github.com/tpapp/TransformVariables.jl#master";
+isinstalled("LogDensityProblems") || pkg"add https://github.com/tpapp/LogDensityProblems.jl#master";
 isinstalled("DynamicHMC") || pkg"add https://github.com/tpapp/DynamicHMC.jl#master";
-isinstalled("TransformVariables") || pkg"add https://github.com/tpapp/TransformVariables.jl";
-isinstalled("LogDensityProblems") || pkg"add https://github.com/tpapp/LogDensityProblems.jl";
