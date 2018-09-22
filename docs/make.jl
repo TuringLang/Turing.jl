@@ -1,45 +1,28 @@
 using Documenter, Turing
 using LibGit2: clone
-using Weave
-
-# DEBUG
-# include("documenter-debug.jl")
 
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
-# build_path = joinpath(@__DIR__, "build")
 
 # Clone TuringTurorials
 tmp_path = tempname()
 mkdir(tmp_path)
 clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
 
-function polish_latex(path::String)
-    txt = open(f -> read(f, String), path)
-    open(path, "w+") do f
-        write(f, replace(txt, raw"$$" => raw"\$\$"))
-    end
-end
+# Move to markdown folder.
+md_path = joinpath(tmp_path, "markdown")
 
-# Weave all examples
+# Copy the .md versions of all examples.
 try
-    for file in readdir(tmp_path)
-        if endswith(file, "ipynb")
-            out_name = split(file, ".")[1] * ".md"
-            out_path = joinpath(examples_path, out_name)
-
-            full_path = joinpath(tmp_path, file)
-
-            Weave.weave(full_path,
-                doctype = "hugo",
-                out_path = out_path,
-                mod = Main)
-
-            polish_latex(out_path)
-        end
+    println(md_path)
+    for file in readdir(md_path)
+        full_path = joinpath(md_path, file)
+        target_path = joinpath(examples_path, file)
+        println("Copying $full_path to $target_path")
+        cp(full_path, target_path, force = true)
     end
 catch e
-    println("Weaving error: $e")
+    # println("Markdown copy error: $e")
     rethrow(e)
 finally
     rm(tmp_path, recursive = true)
@@ -61,25 +44,11 @@ makedocs(
     ]
 )
 
-# # Copy the homepage files to the build/ directory.
-# site_files = ["index.md",
-#     "CNAME",
-#     "_config.yml",
-#     "_includes",
-#     "_layouts",
-#     "assets"]
-#
-# for item in site_files
-#     src = joinpath(@__DIR__, item)
-#     dst = joinpath(build_path, item)
-#     println("$src => $dst")
-#     cp(src, dst, force = true)
-# end
-
 # Deploy documentation.
 deploydocs(
-    repo   = "github.com/cpfiffer/Turing.jl",
+    repo   = "github.com/TuringLang/Turing.jl.git",
     target = "build",
     deps   = nothing,
-    make   = nothing
+    make   = nothing,
+    julia  = "1.0"
 )

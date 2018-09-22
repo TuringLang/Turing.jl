@@ -185,10 +185,10 @@ chain = sample(coinflip(data), HMC(iterations, ϵ, τ));
 
 ````
 [HMC] Finished with
-  Running time        = 4.130172302999996;
+  Running time        = 5.182771467999993;
   Accept rate         = 0.997;
   #lf / sample        = 9.99;
-  #evals / sample     = 12.985;
+  #evals / sample     = 11.989;
   pre-cond. diag mat  = [1.0].
 ````
 
@@ -204,7 +204,8 @@ histogramplot(p_summary)
 ````
 
 
-{{< figure src="../figures/0_Introduction_9_1.svg"  >}}
+![](figures/0_Introduction_9_1.svg)
+
 
 Now we can build our plot:
 
@@ -214,7 +215,7 @@ N = length(data)
 heads = sum(data)
 updated_belief = Beta(prior_belief.α + heads, prior_belief.β + N - heads)
 
-# Visualize a blue density plot of the approximate posterior distribution using HMC (see Chain 1 in the legend).
+# Visualize a blue density plot of the approximate posterior distribution using HMC (see "Chain 1" in the legend).
 p = densityplot(p_summary, xlim = (0,1), legend = :best, w = 2, c = :blue)
 
 # Visualize a green density plot of posterior distribution in closed-form.
