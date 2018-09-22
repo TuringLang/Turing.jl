@@ -17,3 +17,6 @@ docs/build/
 docs/site/
 docs/build/
 .DS_Store
+
+src/cmdstan_home.jl
+cmdstan/
