@@ -22,7 +22,10 @@ using Libtask
 using MacroTools
 
 #  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
-using Stan
+if (!haskey(ENV, "CMDSTAN_HOME") || ENV["CMDSTAN_HOME"] == "") && ispath(joinpath(@__DIR__, "cmdstan_home.jl"))
+    include("cmdstan_home.jl")
+end
+@reexport using Stan
 import Stan: Adapt, Hmc
 #  end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
@@ -36,31 +39,31 @@ import MCMCChain: AbstractChains, Chains
 ##############################
 
 const ADBACKEND = Ref(:reverse_diff)
-setadbackend(backend_sym) = begin
-  @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
-  backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
-  ADBACKEND[] = backend_sym
+function setadbackend(backend_sym)
+    @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
+    backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
+    ADBACKEND[] = backend_sym
 end
 
 const ADSAFE = Ref(false)
-setadsafe(switch::Bool) = begin
-  @info("[Turing]: global ADSAFE is set as $switch")
-  ADSAFE[] = switch
+function setadsafe(switch::Bool)
+    @info("[Turing]: global ADSAFE is set as $switch")
+    ADSAFE[] = switch
 end
 
 const CHUNKSIZE = Ref(40) # default chunksize used by AD
 
-setchunksize(chunk_size::Int) = begin
-  if ~(CHUNKSIZE[] == chunk_size)
-    @info("[Turing]: AD chunk size is set as $chunk_size")
-    CHUNKSIZE[] = chunk_size
-  end
+function setchunksize(chunk_size::Int)
+    if ~(CHUNKSIZE[] == chunk_size)
+        @info("[Turing]: AD chunk size is set as $chunk_size")
+        CHUNKSIZE[] = chunk_size
+    end
 end
 
 const PROGRESS = Ref(true)
-turnprogress(switch::Bool) = begin
-  @info("[Turing]: global PROGRESS is set as $switch")
-  PROGRESS[] = switch
+function turnprogress(switch::Bool)
+    @info("[Turing]: global PROGRESS is set as $switch")
+    PROGRESS[] = switch
 end
 
 # Constants for caching
@@ -88,8 +91,8 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
-  alg   ::  T
-  info  ::  Dict{Symbol, Any}         # sampler infomation
+    alg   ::  T
+    info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
 """
@@ -131,8 +134,6 @@ export consume, produce
 
 # Turing-safe data structures and associated functions
 export TArray, tzeros, localcopy, IArray
-
-export @sym_str
 
 export Flat, FlatPos
 
