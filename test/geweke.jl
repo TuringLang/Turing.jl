@@ -1,4 +1,4 @@
-using Stats, Turing
+using StatsBase, Turing
 using Gadfly
 
 # include("ASCIIPlot.jl")
