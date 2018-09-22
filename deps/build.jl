@@ -3,7 +3,7 @@ using Pkg
 if !haskey(ENV, "CMDSTAN_HOME") || ENV["CMDSTAN_HOME"] == ""
     # Make the cmdstan home directory
 
-    CMDSTAN = joinpath(@__DIR__, "..", "cmdstan", )
+    CMDSTAN = abspath(joinpath(@__DIR__, "..", "cmdstan", ))
     if !ispath(CMDSTAN)
         mkdir(CMDSTAN)
     end
@@ -30,5 +30,11 @@ if !haskey(ENV, "CMDSTAN_HOME") || ENV["CMDSTAN_HOME"] == ""
 
     # Wrie the src file that sets ENV["CMDSTAN_HOME"]
 
-    write(joinpath("..", "src", "cmdstan_home.jl"), "ENV[\"CMDSTAN_HOME\"] = $cmdstan_home")
+    write(joinpath("..", "src", "cmdstan_home.jl"), "cmdstan_home() = \"$(replace(cmdstan_home, "\\"=>"\\\\"))\"")
+else
+    cmdstan_home_path = joinpath("..", "src", "cmdstan_home.jl")
+    if ispath(cmdstan_home_path)
+        rm(cmdstan_home_path)
+    end
+    write(joinpath("..", "src", "cmdstan_home.jl"), "cmdstan_home() = $(ENV["CMDSTAN_HOME"])")
 end

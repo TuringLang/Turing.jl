@@ -11,6 +11,10 @@ module Turing
 using Requires
 using Reexport
 @reexport using Distributions
+#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
+import Stan: Adapt, Hmc
+@reexport using Stan
+#  end
 @reexport using MCMCChain
 using ForwardDiff
 using StatsFuns
@@ -21,13 +25,6 @@ using Markdown
 using Libtask
 using MacroTools
 
-#  @init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
-if (!haskey(ENV, "CMDSTAN_HOME") || ENV["CMDSTAN_HOME"] == "") && ispath(joinpath(@__DIR__, "cmdstan_home.jl"))
-    include("cmdstan_home.jl")
-end
-@reexport using Stan
-import Stan: Adapt, Hmc
-#  end
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import ForwardDiff: gradient
@@ -141,6 +138,7 @@ export Flat, FlatPos
 # Inference code #
 ##################
 
+include("cmdstan_home.jl")      # cmdstan home folder
 include("core/compiler.jl")     # compiler
 include("core/container.jl")    # particle container
 include("samplers/sampler.jl")  # samplers
