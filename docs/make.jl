@@ -60,6 +60,6 @@ deploydocs(
     repo = "github.com/TuringLang/Turing.jl.git",
     target = "build",
     deps = nothing,
-    make = ,
+    make = nothing,
     julia = "1.0"
 )
