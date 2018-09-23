@@ -15,5 +15,5 @@ deps/build.log
 
 docs/build/
 docs/site/
-docs/build/
+docs/src/ex
 .DS_Store
