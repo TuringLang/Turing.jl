@@ -57,7 +57,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
 
     # Initialize by Stan if Stan is installed
     is_init_by_stan = false
-    @require Stan begin
+    @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
         is_init_by_stan = true
 
         # Stan.Adapt

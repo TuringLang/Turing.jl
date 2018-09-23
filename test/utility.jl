@@ -89,3 +89,17 @@ function runtests(; tests = ["all"])
   println()
   Test.print_test_results(tr)
 end
+
+using Pkg;
+"""
+    isinstalled(x::String)
+Check if a package is installed.
+"""
+isinstalled(x::AbstractString) = x ∈ keys(Pkg.installed())
+
+
+# NOTE: Remove the code below when DynamicHMC is registered.
+using Pkg;
+isinstalled("TransformVariables") || pkg"add https://github.com/tpapp/TransformVariables.jl#master";
+isinstalled("LogDensityProblems") || pkg"add https://github.com/tpapp/LogDensityProblems.jl#master";
+isinstalled("DynamicHMC") || pkg"add https://github.com/tpapp/DynamicHMC.jl#master";
