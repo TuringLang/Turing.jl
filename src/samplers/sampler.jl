@@ -6,6 +6,9 @@ include("nuts.jl")
 include("sghmc.jl")
 include("sgld.jl")
 include("hmc.jl")
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
+    include("dynamichmc.jl")
+end
 include("mh.jl")
 include("is.jl")
 include("smc.jl")
