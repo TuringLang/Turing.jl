@@ -6,6 +6,7 @@ include("homepage-updater.jl")
 
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
+isdir(examples_path) || mkpath(examples_path)
 
 # Clone TuringTurorials
 tmp_path = tempname()
