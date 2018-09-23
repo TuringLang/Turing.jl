@@ -1,6 +1,10 @@
 using Documenter, Turing
 using LibGit2: clone
 
+# Include the update_homepage function.
+include("homepage-updater.jl")
+include("/home/cameron/code/julia/TuringWork/documenter-test.jl")
+
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
 
@@ -44,11 +48,18 @@ makedocs(
     ]
 )
 
-# Deploy documentation.
+# Define homepage update function.
+page_update = update_homepage(
+    "github.com/TuringLang/Turing.jl.git",
+    "gh-pages",
+    "homepage"
+)
+
+# # Deploy documentation.
 deploydocs(
-    repo   = "github.com/TuringLang/Turing.jl.git",
+    repo = "github.com/TuringLang/Turing.jl.git",
     target = "build",
-    deps   = nothing,
-    make   = nothing,
-    julia  = "1.0"
+    deps = nothing,
+    make = ,
+    julia = "1.0"
 )
