@@ -3,7 +3,6 @@ using LibGit2: clone
 
 # Include the update_homepage function.
 include("homepage-updater.jl")
-include("/home/cameron/code/julia/TuringWork/documenter-test.jl")
 
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
