@@ -160,7 +160,7 @@ Turing.jl uses ForwardDiff.jl for automatic differentiation, which uses forward-
 
 #### AD Backend
 
-Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports ReverseDiff.jl as backend. To switch between ForwardDiff.jl and ReverseDiff.jl, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
+Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Flux.Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Flux.Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
 
 #### Progress Meter
 
