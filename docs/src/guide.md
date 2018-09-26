@@ -18,7 +18,9 @@ Below is a simple Gaussian demo illustrate the basic usage of Turing.jl.
 
 ```julia
 # Import packages.
-using Turing, MCMCChain, Distributions
+using Turing
+using MCMCChain
+using StatPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x, y) = begin
@@ -42,13 +44,17 @@ c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
 c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
 c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
 c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+```
 
+The `MCMCChain` function provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChain](https://github.com/TuringLang/MCMCChain.jl) repository for more information.
+
+```julia
 # Summarise results
-MCMCChain.describe(c3)
+describe(c3)
 
 # Plot results
-p = MCMCChain.plot(c3)
-MCMCChain.draw(p, fmt=:pdf, filename="gdemo-plot.pdf")
+plot(c3)
+savefig("gdemo-plot.png")
 ```
 
 The arguments for each sampler are:
