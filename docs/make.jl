@@ -44,7 +44,7 @@ makedocs(
                    "contributing/guide.md",
                    "contributing/style_guide.md",],
         "Tutorials" => ["ex/0_Introduction.md"],
-        "API" => "api.md"
+        "Library" => "api.md"
     ]
 )
 
