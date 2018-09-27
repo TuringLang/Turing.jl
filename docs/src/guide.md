@@ -45,7 +45,7 @@ c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
 c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
 ```
 
-The `MCMCChain` function provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChain](https://github.com/TuringLang/MCMCChain.jl) repository for more information.
+The `MCMCChain` module (which is re-exported by Turing) provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChain](https://github.com/TuringLang/MCMCChain.jl) repository for more information on the suite of tools available for diagnosing MCMC chains.
 
 ```julia
 # Summarise results
