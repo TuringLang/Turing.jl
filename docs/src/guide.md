@@ -18,7 +18,8 @@ Below is a simple Gaussian demo illustrate the basic usage of Turing.jl.
 
 ```julia
 # Import packages.
-using Turing, MCMCChain, Distributions
+using Turing
+using StatPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x, y) = begin
@@ -42,13 +43,17 @@ c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
 c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
 c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
 c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+```
 
+The `MCMCChain` module (which is re-exported by Turing) provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChain](https://github.com/TuringLang/MCMCChain.jl) repository for more information on the suite of tools available for diagnosing MCMC chains.
+
+```julia
 # Summarise results
-MCMCChain.describe(c3)
+describe(c3)
 
 # Plot results
-p = MCMCChain.plot(c3)
-MCMCChain.draw(p, fmt=:pdf, filename="gdemo-plot.pdf")
+plot(c3)
+savefig("gdemo-plot.png")
 ```
 
 The arguments for each sampler are:
@@ -160,7 +165,7 @@ Turing.jl uses ForwardDiff.jl for automatic differentiation, which uses forward-
 
 #### AD Backend
 
-Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports ReverseDiff.jl as backend. To switch between ForwardDiff.jl and ReverseDiff.jl, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
+Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Flux.Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Flux.Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
 
 #### Progress Meter
 

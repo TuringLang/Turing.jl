@@ -3,20 +3,20 @@ layout: turing
 title: "The Turing language for probabilistic machine learning"
 ---
 
-**Turing** is a *universal* probabilistic programming language with a focus on an intuitive modelling interface, composable probabilistic inference and computational scalability.
+**Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference and computational scalability.
 
 Turing provides **Hamiltonian Monte Carlo** (HMC) and **particle MCMC** sampling algorithms for complex posterior distributions (e.g. those involving discrete variables and stochastic control flows). Current features include:
 
-- **Universal** probabilistic programming with an intuitive modelling interface
-- **Hamiltonian Monte Carlo** (HMC) sampling for differentiable posterior distributions
-- **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow
-- **Gibbs** sampling that combines particle MCMC,  HMC and many other MCMC algorithms
+- **Universal** probabilistic programming with an intuitive modelling interface;
+- **Hamiltonian Monte Carlo** (HMC) sampling for differentiable posterior distributions;
+- **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow; and
+- **Gibbs** sampling that combines particle MCMC,  HMC and many other MCMC algorithms.
 
 # Resources
 
-Please visit [Turing.jl wiki](https://github.com/TuringLang/Turing.jl/wiki) for documentation, tutorials (e.g. [get started](https://github.com/TuringLang/Turing.jl/wiki/Get-started)) and other topics (e.g. [advanced usages](https://github.com/TuringLang/Turing.jl/wiki/Advanced-usages)). Below are some example models for Turing.
+Please visit the [Turing.jl documentation](http://turing.ml/latest) for documentation, tutorials (e.g. [get started](http://turing.ml/latest/get-started.html)) and other topics (e.g. [advanced usages](http://turing.ml/latest/advanced.html)). Below are some example models for Turing.
 
-- [Introduction](https://github.com/TuringLang/TuringTutorials/tree/master/old-notebooks/Introduction.ipynb)
+- [Introduction](http://turing.ml/latest/ex/0_Introduction.html)
 - [Gaussian Mixture Model](https://github.com/TuringLang/TuringTutorials/tree/master/old-notebooks/GMM.ipynb)
 - [Bayesian Hidden Markov Model](https://github.com/TuringLang/TuringTutorials/tree/master/old-notebooks/BayesHmm.ipynb)
 - [Factorical Hidden Markov Model](https://github.com/TuringLang/TuringTutorials/tree/master/old-notebooks/FHMM.ipynb)

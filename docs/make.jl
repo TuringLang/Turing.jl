@@ -1,8 +1,12 @@
 using Documenter, Turing
 using LibGit2: clone
 
+# Include the update_homepage function.
+include("homepage-updater.jl")
+
 # Get paths.
 examples_path = joinpath(@__DIR__, joinpath("src", "ex"))
+isdir(examples_path) || mkpath(examples_path)
 
 # Clone TuringTurorials
 tmp_path = tempname()
@@ -40,15 +44,22 @@ makedocs(
                    "contributing/guide.md",
                    "contributing/style_guide.md",],
         "Tutorials" => ["ex/0_Introduction.md"],
-        "API" => "api.md"
+        "Library" => "api.md"
     ]
 )
 
-# Deploy documentation.
+# Define homepage update function.
+page_update = update_homepage(
+    "github.com/TuringLang/Turing.jl.git",
+    "gh-pages",
+    "homepage"
+)
+
+# # Deploy documentation.
 deploydocs(
-    repo   = "github.com/TuringLang/Turing.jl.git",
+    repo = "github.com/TuringLang/Turing.jl.git",
     target = "build",
-    deps   = nothing,
-    make   = nothing,
-    julia  = "1.0"
+    deps = nothing,
+    make = nothing,
+    julia = "1.0"
 )
