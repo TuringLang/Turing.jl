@@ -18,7 +18,7 @@ Generate a function that takes `θ` and returns logpdf at `θ` for the model spe
 """
 function gen_lj_func(vi::VarInfo, sampler::Sampler, model)
     return function(θ::AbstractVector{<:Real})
-        vi[sampler] .= θ
+        vi[sampler] = θ
         return runmodel!(model, vi, sampler).logp
     end
 end
