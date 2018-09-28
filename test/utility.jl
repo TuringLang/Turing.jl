@@ -60,7 +60,6 @@ function runtests(; tests = ["all"])
   CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
                 # "io.jl",
                 "util.jl"]
-  DISTR_TESTS = ["transform.jl"]
   SAMPLER_TESTS = ["resample.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
                    "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
                    "mh.jl",

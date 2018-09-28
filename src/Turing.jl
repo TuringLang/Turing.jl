@@ -11,6 +11,7 @@ module Turing
 using Requires
 using Reexport
 @reexport using Distributions
+using Bijectors
 @reexport using MCMCChain
 using ForwardDiff
 using StatsFuns
