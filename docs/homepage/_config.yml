@@ -18,6 +18,7 @@ teaser                   : # filename of teaser fallback teaser image placed in 
 # breadcrumbs            : false # true, false (default)
 words_per_minute         : 200
 minimal_mistakes_skin    : "default" # "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum" "sunrise"
+search: true
 
 comments:
   provider               :  # false (default), "disqus", "discourse", "facebook", "google-plus", "staticman", "custom"
@@ -149,6 +150,8 @@ defaults:
       author_profile: false
       share: false
       comments: false
+      toc_label: "Contents"
+      toc_icon: "list-ul"
       sidebar:
         nav: "docs"
   # _tutorials

@@ -25,7 +25,7 @@ docs:
     children:
       - title: "Getting Started"
         url: /docs/get-started/
-      - title: "Probablistic Programming in Thirty Seconds"
+      - title: "Quick Start"
         url: /docs/quick-start/
       - title: "Guide"
         url: /docs/guide/

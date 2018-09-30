@@ -14,7 +14,7 @@ $indent-var: 1.3em !default;
 
 /* system typefaces */
 $serif: Palatino, Georgia, Times, serif !default;
-$sans-serif: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI",
+$sans-serif: "Lato", -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI",
   "Helvetica Neue", "Lucida Grande", Arial, sans-serif !default;
 $monospace: Monaco, Consolas, "Lucida Console", monospace !default;
 
@@ -29,7 +29,7 @@ $bodoni: "Bodoni MT", serif !default;
 $calisto: "Calisto MT", serif !default;
 $garamond: Garamond, serif !default;
 
-$global-font-family: sans-serif !default;
+$global-font-family: $sans-serif !default;
 $header-font-family: $sans-serif !default;
 $caption-font-family: $serif !default;
 
@@ -39,9 +39,10 @@ $type-size-2: 1.953em !default; // ~31.248px
 $type-size-3: 1.563em !default; // ~25.008px
 $type-size-4: 1.25em !default; // ~20px
 $type-size-5: 1em !default; // ~16px
-$type-size-6: 0.75em !default; // ~12px
-$type-size-7: 0.6875em !default; // ~11px
-$type-size-8: 0.625em !default; // ~10px
+$type-size-6: 0.90em !default; // ~16px
+$type-size-7: 0.75em !default; // ~12px
+$type-size-8: 0.6875em !default; // ~11px
+$type-size-9: 0.625em !default; // ~10px
 
 /*
    Colors
@@ -106,6 +107,7 @@ $link-color-hover: mix(#000, $link-color, 25%) !default;
 $link-color-visited: mix(#fff, $link-color, 25%) !default;
 $masthead-link-color: $primary-color !default;
 $masthead-link-color-hover: mix(#000, $primary-color, 25%) !default;
+$masthead-background-color-hover: mix(#000, $primary-color, 100%) !default;
 $navicon-link-color-hover: mix(#fff, $primary-color, 75%) !default;
 
 /* syntax highlighting (base16) */

@@ -8,7 +8,7 @@ permalink: /:collection/:name/
 This is the first of a series of tutorials on the universal probabilistic programming language **Turing**.
 
 **Turing** is probabilistic programming system written entirely in *Julia*. It has an intuitive modelling syntax and supports a wide range of sampling-based inference algorithms. Most importantly, **Turing** inference is composable: it combines Markov chain sampling operations on subsets of model variables, e.g. using a combination of a Hamiltonian Monte Carlo (HMC) engine and a particle Gibbs (PG) engine. This composable inference engine allows the user to easily switch between black-box style inference methods such as HMC and customized inference methods.
-
+ 
 Familiarity with Julia is assumed through out this tutorial. If you are new to Julia, [Learning Julia](https://julialang.org/learning/) is a good starting point.
 
 For users new to Bayesian machine learning, please consider more thorough introductions to the field, such as [Pattern Recognition and Machine Learning](https://www.springer.com/us/book/9780387310732). This tutorial tries to provide an intuition for Bayesian inference and gives a simple example on how to use **Turing**. Note that this is not a comprehensive introduction to Bayesian machine learning.
@@ -82,10 +82,10 @@ prior_belief = Beta(1, 1);
 
 With our priors set and our data at hand, we can perform Bayesian inference.
 
-This is a fairly simple process. We expose one additional coin flip to our model every iteration, such that the first run only sees the first coin flip, while the last iteration sees all the coin flips. Then, we set the `updated_belief` variable to an updated version of the original Beta distribution that accounts for the new proportion of heads and tails.
+This is a fairly simple process. We expose one additional coin flip to our model every iteration, such that the first run only sees the first coin flip, while the last iteration sees all the coin flips. Then, we set the `updated_belief` variable to an updated version of the original Beta distribution that accounts for the new proportion of heads and tails. 
 
 
-For the mathematically inclined, the `Beta` distribution is updated by adding each coin flip to the distribution's $$\alpha$$ and $$\beta$$ parameters, which are initially defined as $$\alpha = 1, \beta = 1$$. Over time, with more and more coin flips, $$\alpha$$ and $$\beta$$ will be approximately equal to each other as we are equally likely to flip a heads or a tails, and the plot of the beta distribution will become more tightly centered around 0.5.
+For the mathematically inclined, the `Beta` distribution is updated by adding each coin flip to the distribution's $$\alpha$$ and $$\beta$$ parameters, which are initially defined as $$\alpha = 1, \beta = 1$$. Over time, with more and more coin flips, $$\alpha$$ and $$\beta$$ will be approximately equal to each other as we are equally likely to flip a heads or a tails, and the plot of the beta distribution will become more tightly centered around 0.5. 
 
 This works because mean of the `Beta` distribution is defined as the following:
 
@@ -107,16 +107,16 @@ animation = @animate for (i, N) in enumerate(Ns)
     # Count the number of heads and tails.
     heads = sum(data[1:i-1])
     tails = N - heads
-
+    
     # Update our prior belief in closed form (this is possible because we use a conjugate prior).
     updated_belief = Beta(prior_belief.α + heads, prior_belief.β + tails)
 
     # Plotting
-    plot(x, pdf.(Ref(updated_belief), x),
-        size = (500, 250),
+    plot(x, pdf.(Ref(updated_belief), x), 
+        size = (500, 250), 
         title = "Updated belief after $$N observations",
-        xlabel = "probability of heads",
-        ylabel = "",
+        xlabel = "probability of heads", 
+        ylabel = "", 
         legend = nothing,
         xlim = (0,1),
         fill=0, α=0.3, w=3)
@@ -135,7 +135,7 @@ The animation above shows that with increasing evidence our belief about the pro
 
 ### Coin Flipping With Turing
 
-In the previous example, we used the fact that our prior distribution is a [conjugate prior](https://en.wikipedia.org/wiki/Conjugate_prior). Note that a closed-form expression (the `updated_belief` expression) for the posterior is not accessible in general and usually does not exist for more interesting models.
+In the previous example, we used the fact that our prior distribution is a [conjugate prior](https://en.wikipedia.org/wiki/Conjugate_prior). Note that a closed-form expression (the `updated_belief` expression) for the posterior is not accessible in general and usually does not exist for more interesting models. 
 
 We are now going to move away from the closed-form expression above and specify the same model using **Turing**. To do so, we will first need to import `Turing`, `MCMCChain`, `Distributions`, and `StatPlots`. `MCMChain` is a library built by the Turing team to help summarize Markov Chain Monte Carlo (MCMC) simulations, as well as a variety of utility functions for diagnostics and visualizations.
 
@@ -157,10 +157,10 @@ First, we define the coin-flip model using Turing.
 
 ````julia
 @model coinflip(y) = begin
-
+    
     # Our prior belief about the probability of heads in a coin.
     p ~ Beta(1, 1)
-
+    
     # The number of observations.
     N = length(y)
     for n in 1:N
@@ -207,7 +207,7 @@ plot(p_summary)
 ````
 
 
-![]({{site.baseurl}}/tutorials/figures/0_Introduction_9_1.svg)
+![](figures/0_Introduction_9_1.svg)
 
 
 Now we can build our plot:
@@ -222,7 +222,7 @@ updated_belief = Beta(prior_belief.α + heads, prior_belief.β + N - heads)
 p = plot(p_summary, DensityPlot, xlim = (0,1), legend = :best, w = 2, c = :blue)
 
 # Visualize a green density plot of posterior distribution in closed-form.
-plot!(p, range(0, stop = 1, length = 100), pdf.(Ref(updated_belief), range(0, stop = 1, length = 100)),
+plot!(p, range(0, stop = 1, length = 100), pdf.(Ref(updated_belief), range(0, stop = 1, length = 100)), 
         xlabel = "probability of heads", ylabel = "", title = "", xlim = (0,1), label = "Closed-form",
         fill=0, α=0.3, w=3, c = :lightgreen)
 

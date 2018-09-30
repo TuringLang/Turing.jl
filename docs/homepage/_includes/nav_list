@@ -37,7 +37,10 @@
               {% assign active = "" %}
             {% endif %}
 
+            <div class="sidebar-link">
             <li><a href="{{ child_url }}" class="{{ active }}">{{ child.title }}</a></li>
+            </div>
+
           {% endfor %}
         </ul>
         {% endif %}

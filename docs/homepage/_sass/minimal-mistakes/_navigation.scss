@@ -133,12 +133,20 @@
     font-weight: bold;
     text-align: center;
     text-decoration: none;
-    color: $muted-text-color;
-    border: 1px solid mix(#000, $border-color, 25%);
+    // color: $muted-text-color;
+    // border: 1px solid mix(#000, $border-color, 25%);
     border-radius: $border-radius;
 
+    &.prev {
+      text-align: left;
+    }
+
+    &.next {
+      text-align: right;
+    }
+
     &:hover {
-      @include yiq-contrasted($muted-text-color);
+      // @include yiq-contrasted($muted-text-color);
     }
 
     &:first-child {
@@ -444,6 +452,7 @@
     padding-left: 0.5em;
     padding-right: 0.5em;
     font-weight: bold;
+    color: black;
   }
 
   @include breakpoint(max-width $large - 1px) {
