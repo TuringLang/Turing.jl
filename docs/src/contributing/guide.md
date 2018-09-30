@@ -1,6 +1,7 @@
 ---
+title: Contributing
+permalink: /docs/contributing/
 ---
-# Contributing
 
 Turing is an open source project. If you feel that you have some relevant skills and are interested in contributing, then please do get in touch. You can contribute by opening issues on GitHub or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 

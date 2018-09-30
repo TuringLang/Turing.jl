@@ -1,6 +1,6 @@
 ---
-layout: turing
-title: "The Turing language for probabilistic machine learning"
+title: Turing.jl
+layout: home
 ---
 
 **Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference and computational scalability.

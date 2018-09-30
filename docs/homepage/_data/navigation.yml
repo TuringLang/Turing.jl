@@ -1,0 +1,52 @@
+# main links links
+main:
+  - title: "Home"
+    url: /
+
+  - title: "Documenation"
+    url: /docs/
+
+  - title: "Tutorials"
+    url: /tutorials/
+
+  # - title: "About"
+  #   url: /about/
+  #
+  # - title: "News"
+  #   url: /news/
+
+  - title: "GitHub"
+    url: https://github.com/TuringLang/Turing.jl
+
+
+# documentation links
+docs:
+  - title: Using Turing
+    children:
+      - title: "Getting Started"
+        url: /docs/get-started/
+      - title: "Probablistic Programming in Thirty Seconds"
+        url: /docs/quick-start/
+      - title: "Guide"
+        url: /docs/guide/
+      - title: "Advanced Useage"
+        url: /docs/advanced/
+
+  - title: Library
+    children:
+      - title: "Public"
+        url: /docs/library/
+
+  - title: Contributing
+    children:
+      - title: "How to Contribute"
+        url: /docs/contributing/
+      - title: "Style Guide"
+        url: /docs/style-guide/
+
+# documentation links
+tutorials:
+  - title: Tutorials
+    children:
+      - title: "Introduction to Turing"
+        url: /tutorials/0-introduction/

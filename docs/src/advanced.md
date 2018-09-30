@@ -1,6 +1,9 @@
 ---
+title: Advanced Usage
+permalink: /docs/advanced/
+toc: true
+toc_sticky: true
 ---
-# Advanced Usage
 
 ## How to Define a Customized Distribution
 

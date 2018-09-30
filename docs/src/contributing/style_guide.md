@@ -1,6 +1,10 @@
 ---
+title: Style Guide
+permalink: /docs/style-guide/
+toc: true
+toc_sticky: true
 ---
-# Style Guide
+
 
 This style guide is adapted from [Invenia](https://invenia.ca/labs/)'s style guide. We would like to thank them for allowing us to access and use it. Please don't let not having read it stop you from contributing to Turing! No one will be annoyed if you open a PR whose style doesn't follow these conventions; we will just help you correct it before it gets merged.
 

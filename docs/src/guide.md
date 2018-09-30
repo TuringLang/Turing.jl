@@ -1,6 +1,9 @@
 ---
+title: Guide
+permalink: /docs/guide/
+toc: true
+toc_sticky: true
 ---
-# Guide
 
 ## Basics
 
