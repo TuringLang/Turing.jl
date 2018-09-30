@@ -48,5 +48,7 @@ docs:
 tutorials:
   - title: Tutorials
     children:
+      - title: "Home"
+        url: /tutorials/
       - title: "Introduction to Turing"
         url: /tutorials/0-introduction/
