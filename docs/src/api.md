@@ -1,12 +1,12 @@
-# Function Documentation
+---
+title: Library
+permalink: /docs/library/
+toc: true
+toc_sticky: true
+---
 
 ```@meta
 CurrentModule = Turing
-```
-
-```@contents
-Pages = ["functions.md"]
-Depth = 5
 ```
 
 ## Modelling

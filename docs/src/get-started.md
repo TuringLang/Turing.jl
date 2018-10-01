@@ -1,12 +1,15 @@
-# Getting Started
+---
+title: Getting Started
+permalink: /docs/get-started/
+---
 
 ## Installation
 
-To use Turing, you need install Julia first and then install Turing.
+To use Turing, you need to install Julia first and then install Turing.
 
 ### Install Julia
 
-You will need to install Julia 1.0, which you can get from [the official Julia website](http://julialang.org/downloads/).
+You will need to install Julia 1.0 or greater, which you can get from [the official Julia website](http://julialang.org/downloads/).
 
 ### Install Turing.jl
 

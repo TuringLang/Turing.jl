@@ -1,4 +1,7 @@
-# Probabalistic Programming in Thirty Seconds
+---
+title: Probablistic Programming in Thirty Seconds
+permalink: /docs/quick-start/
+---
 
 If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing's syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.
 
