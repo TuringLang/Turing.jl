@@ -1,4 +1,9 @@
-# Documentation
+---
+title: Documentation
+permalink: /docs/
+toc: true
+toc_sticky: true
+---
 
 **Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference and computational scalability.
 
@@ -14,14 +19,16 @@ Turing provides **Hamiltonian Monte Carlo** (HMC) and **particle MCMC** sampling
 To cite Turing, please refer to the following paper. A sample BiBTeX entry entry is given below:
 
 ```
+{% raw %}
 @InProceedings{turing17,
-  title = {{T}uring: a language for flexible probabilistic inference},
-  author = {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
-  booktitle = {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},
-  year = {2018},
-  series = {Proceedings of Machine Learning Research},
-  publisher = {PMLR},
+  title = 	 {{T}uring: a language for flexible probabilistic inference},
+  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
+  booktitle = 	 {Proceedings of the 21th International Conference on Artificial Intelligence and Statistics},
+  year = 	 {2018},
+  series = 	 {Proceedings of Machine Learning Research},
+  publisher = 	 {PMLR},
 }
+{% endraw %}
 ```
 
 ## Other Probablistic/Deep Learning Languages

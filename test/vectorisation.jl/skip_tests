@@ -1,2 +1,3 @@
 # tests to skip
 vec_assume_mv.jl
+vec_assume_mat.jl

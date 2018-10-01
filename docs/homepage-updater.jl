@@ -125,3 +125,120 @@ function filecopy(src, dst)
         cp(joinpath(src, item), joinpath(dst, item), force = true)
     end
 end
+
+function preprocess_markdown(folder)
+    yaml_dict = Dict()
+
+    try
+        for (root, dirs, files) in walkdir(folder)
+            for file in files
+				if endswith(file, ".md")
+	                full_path = joinpath(root, file)
+	                yaml_dict[full_path] = remove_yaml(full_path)
+				end
+            end
+        end
+    catch e
+        # println("Markdown copy error: $e")
+        rethrow(e)
+    end
+
+    return yaml_dict
+end
+
+function postprocess_markdown(folder, yaml_dict; original = "")
+    try
+        for (root, dirs, files) in walkdir(folder)
+            for file in files
+                full_path = joinpath(root, file)
+                original_path = full_path
+
+                if length(original) > 0
+                    original_path = replace(full_path, folder => original)
+                end
+
+                if haskey(yaml_dict, original_path)
+                    txt = open(f -> read(f, String), full_path)
+                    open(full_path, "w+") do f
+                        # Add in the yaml block.
+                        for line in yaml_dict[original_path]
+                            write(f, line)
+                        end
+
+						txt = replace(txt, "api.md" => "{{site.baseurl}}/docs/library/")
+
+                        # Add the rest of the text.
+						if original_path == full_path
+							write(f, txt)
+						else
+							write(f, replace(txt, "![](figures" => "![](/{{site.baseurl}}/tutorials/figures"))
+						end
+                    end
+                end
+
+				# Make specific api items headers.
+				if file == "api.md" && original_path != full_path
+					tidy_api(full_path)
+				end
+            end
+        end
+    catch e
+        # println("Markdown copy error: $e")
+        rethrow(e)
+    end
+
+    return yaml_dict
+end
+
+function remove_yaml(file)
+    lines = readlines(file, keep=true)
+    yaml = []
+
+    yaml_start = 1
+    yaml_stop = length(lines)
+
+    # Read out YAML block.
+    if replace(lines[1], "\n" => "") == "---"
+        for i = 2:length(lines)
+            if replace(lines[i], "\n" => "") == "---"
+                yaml = lines[1:i]
+                yaml_stop = i
+                break
+            end
+        end
+
+        # Write non-YAML back to file.
+        open(file, "w+") do f
+            for line in lines[yaml_stop + 1 : end]
+                write(f, line)
+            end
+        end
+    end
+
+    return yaml
+end
+
+function tidy_api(file)
+	lines = readlines(file, keep=true)
+
+    # Find the ID sections.
+    for i = 1:(length(lines)-1)
+		first = lines[i]
+		second = lines[i+1]
+        if startswith(first, "<a id=") && startswith(second, "**")
+            first = replace(first, "\n" => "")
+			second = replace(second, "\n" => "")
+			# final_line = replace(first, ">" => ">$second", count = 1)
+
+			lines[i] = "### $first $second"
+			lines[i+1] = ""
+        end
+    end
+
+    # Write lines back.
+    open(file, "w+") do f
+        for line in lines
+            write(f, line)
+        end
+    end
+end
