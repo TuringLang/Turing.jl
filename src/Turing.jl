@@ -11,6 +11,7 @@ module Turing
 using Requires
 using Reexport
 @reexport using Distributions
+using Bijectors
 @reexport using MCMCChain
 using ForwardDiff
 using StatsFuns
@@ -120,7 +121,6 @@ include("utilities/resample.jl")
     include("support/stan-interface.jl")
 end
 include("utilities/helper.jl")
-include("utilities/transform.jl")
 include("utilities/robustinit.jl")
 include("utilities/util.jl")         # utility functions
 include("utilities/io.jl")           # I/O
