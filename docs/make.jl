@@ -5,9 +5,9 @@ using LibGit2: clone
 include("homepage-updater.jl")
 
 # Get paths.
-examples_path = joinpath(@__DIR__, joinpath("homepage", "_tutorials"))
+examples_path = joinpath(@__DIR__, joinpath("site", "_tutorials"))
 source_path = joinpath(@__DIR__, "src")
-build_relative = joinpath("homepage", "_docs")
+build_relative = joinpath("site", "_docs")
 build_path = joinpath(@__DIR__, build_relative)
 
 isdir(examples_path) || mkpath(examples_path)
@@ -62,7 +62,7 @@ postprocess_markdown(build_path, yaml_dict, original = source_path)
 page_update = update_homepage(
     "github.com/TuringLang/Turing.jl.git",
     "gh-pages",
-    "homepage"
+    "site"
 )
 
 # # Deploy documentation.

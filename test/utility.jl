@@ -60,14 +60,13 @@ function runtests(; tests = ["all"])
   CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
                 # "io.jl",
                 "util.jl"]
-  DISTR_TESTS = ["transform.jl"]
   SAMPLER_TESTS = ["resample.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
                    "hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
                    "mh.jl",
                    # "pmmh.jl", "ipmcmc.jl", "pgibbs.jl", "smc.jl"
                   ]
   TRACE_TESTS = ["trace.jl"]
-  ALL = union(CORE_TESTS, DISTR_TESTS, SAMPLER_TESTS, TRACE_TESTS)
+  ALL = union(CORE_TESTS, SAMPLER_TESTS, TRACE_TESTS)
 
   # test groups that should be executed
   TEST_GROUPS = "all" ∈ tests ? ALL : tests

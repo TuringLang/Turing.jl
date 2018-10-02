@@ -15,7 +15,7 @@ deps/build.log
 
 docs/build/
 docs/site/
-docs/homepage/_site/
-docs/homepage/.sass-cache/
+docs/site/_site/
+docs/site/.sass-cache/
 
 .DS_Store

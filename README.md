@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.7.svg)](http://pkg.julialang.org/detail/Turing)
 [![Turing](http://pkg.julialang.org/badges/Turing_0.6.svg)](http://pkg.julialang.org/detail/Turing)
-[![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/latest/)
+[![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/)
 
 News: **Turing.jl is now Julia 1.0 compatible now! Be aware that some things still might fail.**
 
