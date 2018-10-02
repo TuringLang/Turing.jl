@@ -29,7 +29,7 @@ docs:
         url: /docs/quick-start/
       - title: "Guide"
         url: /docs/guide/
-      - title: "Advanced Useage"
+      - title: "Advanced Usage"
         url: /docs/advanced/
 
   - title: Library
