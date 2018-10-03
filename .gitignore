@@ -14,7 +14,6 @@ deps/deps.jl
 deps/build.log
 
 docs/build/
-docs/site/
 docs/site/_site/
 docs/site/.sass-cache/
 
