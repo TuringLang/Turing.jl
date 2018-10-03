@@ -52,3 +52,5 @@ tutorials:
         url: /tutorials/
       - title: "Introduction to Turing"
         url: /tutorials/0-introduction/
+      - title: "Gaussian Mixture Models"
+        url: /tutorials/1-gaussianmixturemodel/
