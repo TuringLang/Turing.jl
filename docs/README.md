@@ -17,16 +17,3 @@ at `Turing.jl/docs/make.jl`, which will run all the documents in the `docs/src` 
 them into the `docs/site/` folder. Any files located in the `docs/site/_docs/` or `docs/site/_tutorials/` directories 
 should **not** be edited directly, as they will be overwritten by the versions in the `docs/src/` directory. Edits must
 be made to the `docs/src/` versions.
-
-## MacOS Notes
-Under MacOS one might need to install the following additional gems's to have jekyll running as descibed above. 
-
-```
-gem install jekyll-paginate
-gem install jekyll-sitemap
-gem install jekyll-gist
-gem install jekyll-feed
-gem install jemoji
-```
-
-Note: I guess these packages should be installed automatically, but where not in my case.
