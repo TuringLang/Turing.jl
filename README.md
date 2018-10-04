@@ -53,16 +53,5 @@ You can see the full list of on Github: https://github.com/TuringLang/Turing.jl/
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. See the [Contribute wiki page](https://github.com/yebai/Turing.jl/wiki/Contribute) for details on the process. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
 ## Citing Turing.jl ##
-
-To cite Turing, please refer to the technical report. Sample BibTeX entry is given below:
-
-```
-@inproceedings{turing18,
-  title={{T}uring: a language for flexible probabilistic inference},
-  author={Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
-  booktitle={International Conference on Artificial Intelligence and Statistics},
-  pages={1682--1690},
-  year={2018}
-}
-```
+If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)
 
