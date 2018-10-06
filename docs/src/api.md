@@ -34,6 +34,16 @@ SGLD
 SMC
 ```
 
+## Data Structures
+```@docs
+TArray
+```
+
+## Utilities
+```@docs
+tzeros
+```
+
 ## Index
 
 ```@index

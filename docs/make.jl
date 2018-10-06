@@ -10,30 +10,34 @@ source_path = joinpath(@__DIR__, "src")
 build_relative = joinpath("site", "_docs")
 build_path = joinpath(@__DIR__, build_relative)
 
-isdir(examples_path) || mkpath(examples_path)
+# You can skip this part if you are on a metered
+# connection by calling `julia make.jl no-tutorials`
+if !in("no-tutorials", ARGS)
+    isdir(examples_path) || mkpath(examples_path)
 
-# Clone TuringTurorials
-tmp_path = tempname()
-mkdir(tmp_path)
-clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
+    # Clone TuringTurorials
+    tmp_path = tempname()
+    mkdir(tmp_path)
+    clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
 
-# Move to markdown folder.
-md_path = joinpath(tmp_path, "markdown")
+    # Move to markdown folder.
+    md_path = joinpath(tmp_path, "markdown")
 
-# Copy the .md versions of all examples.
-try
-    println(md_path)
-    for file in readdir(md_path)
-        full_path = joinpath(md_path, file)
-        target_path = joinpath(examples_path, file)
-        println("Copying $full_path to $target_path")
-        cp(full_path, target_path, force = true)
+    # Copy the .md versions of all examples.
+    try
+        println(md_path)
+        for file in readdir(md_path)
+            full_path = joinpath(md_path, file)
+            target_path = joinpath(examples_path, file)
+            println("Copying $full_path to $target_path")
+            cp(full_path, target_path, force = true)
+        end
+    catch e
+        # println("Markdown copy error: $e")
+        rethrow(e)
+    finally
+        rm(tmp_path, recursive = true)
     end
-catch e
-    # println("Markdown copy error: $e")
-    rethrow(e)
-finally
-    rm(tmp_path, recursive = true)
 end
 
 # Preprocess markdown files.
@@ -58,12 +62,14 @@ cp(src_temp, source_path, force = true)
 rm(src_temp, recursive = true)
 postprocess_markdown(build_path, yaml_dict, original = source_path)
 
-# Define homepage update function.
-page_update = update_homepage(
-    "github.com/TuringLang/Turing.jl.git",
-    "gh-pages",
-    "site"
-)
+if !in("no-publish", ARGS)
+    # Define homepage update function.
+    page_update = update_homepage(
+        "github.com/TuringLang/Turing.jl.git",
+        "gh-pages",
+        "site"
+    )
+end
 
 # # Deploy documentation.
 # deploydocs(
