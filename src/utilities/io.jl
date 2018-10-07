@@ -196,7 +196,7 @@ function Base.vcat(c1::Chain, args::Chain...)
   all(c -> c.chains == chains, args) ||
     throw(ArgumentError("sets of chains differ"))
 
-  value2 = cat(1, c1.value2, map(c -> c.value2, args)...)
+  value2 = cat(c1.value2, map(c -> c.value2, args)..., dims=1)
   Chain(0, value2)
 end
 
