@@ -20,7 +20,7 @@ end
 function resampleSystematic(w::AbstractVector{<:Real}, N::Int)
 
     Q = cumsum(w)
-    T = vcat(range(0, stop=maximum(Q) - 1 / N, length=N)) .+ rand() / N, 1)
+    T = vcat(range(0, stop=maximum(Q) - 1 / N, length=N) .+ rand() / N, 1)
 
     i, j, indx = 1, 1, Array{Int}(undef, N)
     while i <= N
