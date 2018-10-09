@@ -3,7 +3,7 @@ main:
   - title: "Home"
     url: /
 
-  - title: "Documenation"
+  - title: "Documentation"
     url: /docs/
 
   - title: "Tutorials"
