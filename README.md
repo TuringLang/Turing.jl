@@ -16,6 +16,23 @@ News: **Turing.jl is now Julia 1.0 compatible now! Be aware that some things sti
 - Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Gibbs sampling that combines particle MCMC,  HMC and many other MCMC algorithms
 
+## Getting Started
+
+To use Turing, you need to first install Julia. You will need to Julia 1.0 or greater, which you can get from [the official Julia website](http://julialang.org/downloads/). Once you have installing Julia, you need to add Turing to your Julia environment. Turing is an officially registered Julia package, so the following will install a stable version of Turing while inside Julia's package manager (press `]` from the REPL):
+
+```julia
+add Turing
+```
+
+If you want to use the latest version of Turing with some experimental features, you can try the following instead:
+
+```julia
+add Turing#master
+test Turing
+```
+
+## Example
+
 Here's a simple example showing the package in action:
 ```julia
 using Turing
