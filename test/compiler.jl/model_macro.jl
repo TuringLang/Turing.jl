@@ -73,3 +73,17 @@ f01_mm = testmodel01()
 end
 f1_mm = testmodel1(1., 10.)
 @test f1_mm() == (1, 10)
+
+# Test for assertions.
+@model brokentestmodel(x1, x2) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+
+    x1 ~ Normal(m, sqrt(s))
+    x2 ~ x1 + 2
+
+    return x1, x2
+end
+
+btest = brokentestmodel(1., 2.)
+@test_throws ArgumentError btest()
