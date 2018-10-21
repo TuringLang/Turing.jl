@@ -51,8 +51,9 @@ HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
-@init @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" @eval begin
-    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE,Stan.Adapt}
+
+@static if isdefined(Turing, :Stan)
+    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, Stan.Adapt}
     STAN_DEFAULT_ADAPT_CONF = Stan.Adapt()
 end
 
