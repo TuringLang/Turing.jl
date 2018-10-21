@@ -32,9 +32,6 @@ mutable struct SMC{T, F} <: InferenceAlgorithm
   gid                   ::  Int
 end
 SMC(n) = SMC(n, resampleSystematic, 0.5, Set(), 0)
-function SMC(n::Int, resampler::F, resampler_threshold::Float64, space::Set{T}, gid::Int) where {T, F}
-  SMC{T, F}(n, resampler, resampler_threshold, space, gid)
-end
 function SMC(n_particles::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
   SMC(n_particles, resampleSystematic, 0.5, _space, 0)

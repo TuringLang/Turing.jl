@@ -52,9 +52,6 @@ function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, spac
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMCDA(n_iters, n_adapt, delta, lambda, _space, 0)
 end
-function HMCDA(n_iters::Int, n_adapt::Int, δ::Float64, λ::Float64, space::Set, gid::Int)
-    return HMCDA{eltype(space)}(n_iters, n_adapt, δ, λ, space, gid)
-end
 
 function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
     if is_first
