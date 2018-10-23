@@ -17,7 +17,6 @@ mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
   space                 ::    Set{T}            # sampling space, emtpy means all
   gid                   ::    Int               # group ID
 end
-PMMH(n_iters::Int, algs::Tuple, space::Set, gid::Int) = PMMH(n_iters, algs, space, gid)
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
   PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set(), 0)
 end

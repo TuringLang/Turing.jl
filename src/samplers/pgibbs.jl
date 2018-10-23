@@ -32,9 +32,6 @@ mutable struct PG{T, F} <: InferenceAlgorithm
   gid                   ::    Int         # group ID
 end
 PG(n1::Int, n2::Int) = PG(n1, n2, resampleSystematic, Set(), 0)
-function PG(n1::Int, n2::Int, resampler::F, space::Set{T}, gid::Int) where {T,F}
-  PG{T, F}(n1, n2, resampler, space, gid)
-end
 function PG(n1::Int, n2::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
   PG(n1, n2, resampleSystematic, _space, 0)
