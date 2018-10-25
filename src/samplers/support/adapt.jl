@@ -1,3 +1,25 @@
+abstract type AbstractAdapt end
+abstract type StepSizeAdapt <: AbstractAdapt end
+abstract type Preconditioner <: AbstractAdapt end
+
+struct DualAveraging <: StepSizeAdapt
+end
+
+struct DiagonalPC <: Preconditioner
+end
+
+struct FullPC <: Preconditioner
+end
+
+struct CompositeAdapt <: AbstractAdapt
+  adapts :: Vector{AbstractAdapt}
+end
+
+
+### Old adaptation code below
+
+
+
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
 # Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
