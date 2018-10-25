@@ -54,3 +54,5 @@ tutorials:
         url: /tutorials/0-introduction/
       - title: "Gaussian Mixture Models"
         url: /tutorials/1-gaussianmixturemodel/
+      - title: "Bayesian Logistic Regression"
+        url: /tutorials/2-logisticregression/

@@ -78,10 +78,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     wum[:δ] = spl.alg.delta
 
     # Initialize by Stan if Stan is installed
-    is_init_by_stan = false
-    @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" begin
-        is_init_by_stan = true
-
+    @static if isdefined(Turing, :Stan)
         # Stan.Adapt
         adapt_conf = spl.info[:adapt_conf]
 
@@ -94,11 +91,9 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
         wum[:init_buffer] = adapt_conf.init_buffer
         wum[:term_buffer] = adapt_conf.term_buffer
         wum[:window_size] = adapt_conf.window
-    end
-
-    # If wum is not initialised by Stan (when Stan is not avaible),
-    # initialise wum by common default values.
-    if ~is_init_by_stan
+    else
+        # If wum is not initialised by Stan (when Stan is not avaible),
+         # initialise wum by common default values.
         wum[:γ] = 0.05
         wum[:t_0] = 10.0
         wum[:κ] = 0.75

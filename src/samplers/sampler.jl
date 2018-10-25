@@ -104,7 +104,7 @@ function observe(spl::A,
     value::Any,
     vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
-    vi.num_produce += 1
+    vi.num_produce += one(vi.num_produce)
     @debug "dist = $dist"
     @debug "value = $value"
 
