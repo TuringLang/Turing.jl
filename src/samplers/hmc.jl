@@ -53,8 +53,8 @@ DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
 @static if isdefined(Turing, :Stan)
-    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, Stan.Adapt}
-    STAN_DEFAULT_ADAPT_CONF = Stan.Adapt()
+    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
+    STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
 end
 
 # NOTE: the implementation of HMC is removed,
