@@ -52,7 +52,7 @@ HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-@static if isdefined(Turing, :Stan)
+@static if isdefined(Turing, :CmdStan)
     DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
     STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
 end
