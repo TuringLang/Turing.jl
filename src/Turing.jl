@@ -23,9 +23,9 @@ using Libtask
 using MacroTools
 
 function __init__()
-    @require Stan="682df890-35be-576f-97d0-3d8c8b33a550" @eval begin
-        using Stan
-        import Stan: Adapt, Hmc
+    @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+        using CmdStan
+        import CmdStan: Adapt, Hmc
     end
 
     @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
@@ -120,7 +120,7 @@ struct SampleFromPrior <: AbstractSampler end
 const AnySampler = Union{Nothing, AbstractSampler}
 
 include("utilities/resample.jl")
-@static if isdefined(Turing, :Stan)
+@static if isdefined(Turing, :CmdStan)
     include("utilities/stan-interface.jl")
 end
 include("utilities/helper.jl")

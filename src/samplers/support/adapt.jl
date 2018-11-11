@@ -56,8 +56,8 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     wum[:δ] = spl.alg.delta
 
     # Initialize by Stan if Stan is installed
-    @static if isdefined(Turing, :Stan)
-        # Stan.Adapt
+    @static if isdefined(Turing, :CmdStan)
+        #CmdStan.Adapt
         adapt_conf = spl.info[:adapt_conf]
 
         # Hyper parameters for dual averaging
