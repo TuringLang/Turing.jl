@@ -2,7 +2,6 @@
 title: Library
 permalink: /docs/library/
 toc: true
-toc_sticky: true
 ---
 
 ```@meta
