@@ -100,7 +100,7 @@ function sample(
         @debug "Gibbs stepping..."
 
         time_elapsed = zero(Float64)
-        lp = nothing; epsilon = nothing; lf_num = nothing
+        lp = nothing; epsilon = nothing; lf_num = nothing; eval_num = nothing
 
         for local_spl in spl.info[:samplers]
             last_spl = local_spl
@@ -121,6 +121,7 @@ function sample(
                             if lp != nothing samples[i_thin].value[:lp] = lp end
                             if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
                             if lf_num != nothing samples[i_thin].value[:lf_num] = lf_num end
+                            if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
                         end
                         i_thin += 1
                     end
@@ -131,6 +132,7 @@ function sample(
                     lp = getlogp(varInfo)
                     epsilon = local_spl.info[:wum][:ϵ][end]
                     lf_num = local_spl.info[:lf_num]
+                    eval_num = local_spl.info[:eval_num]
                 end
             else
                 @error("[Gibbs] unsupport base sampler $local_spl")
@@ -146,6 +148,7 @@ function sample(
             if lp != nothing samples[i].value[:lp] = lp end
             if epsilon != nothing samples[i].value[:epsilon] = epsilon end
             if lf_num != nothing samples[i].value[:lf_num] = lf_num end
+            if eval_num != nothing samples[i].value[:eval_num] = eval_num end
         end
 
         if PROGRESS[]

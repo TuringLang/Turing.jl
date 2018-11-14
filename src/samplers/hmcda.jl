@@ -78,7 +78,9 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
         ϵ = spl.info[:wum][:ϵ][end]
         @debug "current ϵ: $ϵ"
 
-        spl.info[:lf_num] = 0   # reset current lf num counter
+        # Reset current counters
+        spl.info[:lf_num] = 0   
+        spl.info[:eval_num] = 0
 
         @debug "X-> R..."
         if spl.alg.gid != 0

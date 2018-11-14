@@ -67,7 +67,9 @@ function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool
     # Set parameters
     ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
 
-    spl.info[:lf_num] = 0   # reset current lf num counter
+    # Reset current counters
+    spl.info[:lf_num] = 0   
+    spl.info[:eval_num] = 0
 
     @debug "X-> R..."
     if spl.alg.gid != 0

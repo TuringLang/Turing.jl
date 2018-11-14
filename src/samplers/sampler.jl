@@ -178,5 +178,9 @@ end
     s.value[:lf_num] = spl.info[:lf_num]
   end
 
-  s
+  if haskey(spl.info, :eval_num)
+    s.value[:eval_num] = spl.info[:eval_num]
+  end
+
+  return s
 end

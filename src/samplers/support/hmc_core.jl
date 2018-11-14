@@ -58,8 +58,8 @@ _sample_momentum(d::Int, stds::Vector) = randn(d) ./ stds
 
 function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
     setlogp!(vi, zero(Real))
-    if spl != nothing && :total_eval_num ∈ keys(spl.info)
-        spl.info[:total_eval_num] += 1 
+    if spl != nothing && :eval_num ∈ keys(spl.info)
+        spl.info[:eval_num] += 1 
     end
     Base.invokelatest(model, vi, spl)
     return vi
