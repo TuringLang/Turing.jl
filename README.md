@@ -29,6 +29,7 @@ If you want to use the latest version of Turing with some experimental features,
 ```julia
 add Turing#master
 test Turing
+
 ```
 
 ## Example
@@ -71,4 +72,3 @@ Turing is an open source project so if you feel you have some relevant skills an
 
 ## Citing Turing.jl ##
 If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)
-
