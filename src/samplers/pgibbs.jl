@@ -76,7 +76,7 @@ step(model::Function, spl::Sampler{<:PG}, vi::VarInfo) = begin
   indx = randcat(Ws)
   push!(spl.info[:logevidence], particles.logE)
 
-  particles[indx].vi
+  return particles[indx].vi, true
 end
 
 sample(model::Function, alg::PG;
@@ -108,7 +108,7 @@ sample(model::Function, alg::PG;
   PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
 
   for i = 1:n
-    time_elapsed = @elapsed vi = step(model, spl, vi)
+    time_elapsed = @elapsed vi, _ = step(model, spl, vi)
     push!(samples, Sample(vi))
     samples[i].value[:elapsed] = time_elapsed
 

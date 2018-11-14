@@ -58,8 +58,6 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
 
             spl.alg.gid != 0 && invlink!(vi, spl)
         end
-
-        push!(spl.info[:accept_his], true)
     else
         # Set parameters
         η, α = spl.alg.learning_rate, spl.alg.momentum_decay
@@ -83,11 +81,11 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
         @debug "saving new latent variables..."
         vi[spl] = θ
 
-        @debug "always accept..."
-        push!(spl.info[:accept_his], true)
 
         @debug "R -> X..."
         spl.alg.gid != 0 && invlink!(vi, spl)
     end
-    return vi
+
+    @debug "always accept..."
+    return vi, true
 end

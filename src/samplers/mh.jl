@@ -61,7 +61,6 @@ Sampler(alg::MH) = begin
   end
 
   info = Dict{Symbol, Any}()
-  info[:accept_his] = []
   info[:proposal_ratio] = 0.0
   info[:prior_prob] = 0.0
   info[:violating_support] = false
@@ -78,9 +77,7 @@ end
 
 step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Bool) = begin
   if is_first
-    push!(spl.info[:accept_his], true)
-    vi
-
+    return vi, true
   else
     if spl.alg.gid != 0 # Recompute joint in logp
       runmodel!(model, vi, nothing)
@@ -96,14 +93,14 @@ step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Bool) = begin
 
     @debug "decide wether to accept..."
     if is_accept && !spl.info[:violating_support]  # accepted
-      push!(spl.info[:accept_his], true)
+      is_accept = true
     else                      # rejected
-      push!(spl.info[:accept_his], false)
+      is_accept = false
       vi[spl] = old_θ         # reset Θ
       setlogp!(vi, old_logp)  # reset logp
     end
 
-    vi
+    return vi, is_accept
   end
 end
 
@@ -142,26 +139,29 @@ function sample(model::Function, alg::MH;
   end
 
   # MH steps
+  accept_his = Bool[]
   PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
   for i = 1:n
     @debug "$alg_str stepping..."
 
-    time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
+    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i == 1)
     time_total += time_elapsed
 
-    if spl.info[:accept_his][end]     # accepted => store the new predcits
-      samples[i].value = Sample(vi, spl).value
-    else                              # rejected => store the previous predcits
-      samples[i] = samples[i - 1]
+    if is_accept # accepted => store the new predcits
+        samples[i].value = Sample(vi, spl).value
+    else         # rejected => store the previous predcits
+        samples[i] = samples[i - 1]
     end
+
     samples[i].value[:elapsed] = time_elapsed
+    push!(accept_his, is_accept)
 
     PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
   end
 
   println("[$alg_str] Finished with")
   println("  Running time        = $time_total;")
-  accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
+  accept_rate = sum(accept_his) / n  # calculate the accept rate
   println("  Accept rate         = $accept_rate;")
 
   if resume_from != nothing   # concat samples

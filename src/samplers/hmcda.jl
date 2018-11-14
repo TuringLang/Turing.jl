@@ -71,7 +71,7 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
             update_da_μ(spl.info[:wum], ϵ)
         end
 
-        push!(spl.info[:accept_his], true)
+        return vi, true
     else
         # Set parameters
         λ = spl.alg.lambda
@@ -110,11 +110,9 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
 
         @debug "decide whether to accept..."
         if is_accept
-            push!(spl.info[:accept_his], true)
             vi[spl] = θ_new
             setlogp!(vi, lj_new)
         else
-            push!(spl.info[:accept_his], false)
             vi[spl] = θ
             setlogp!(vi, lj)
         end
@@ -128,8 +126,8 @@ function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
 
         @debug "R -> X..."
         spl.alg.gid != 0 && invlink!(vi, spl)
+        return vi, is_accept
     end
-    return vi
 end
 
 function _hmc_step(

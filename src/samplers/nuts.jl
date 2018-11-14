@@ -60,9 +60,7 @@ function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool
       update_da_μ(spl.info[:wum], ϵ)
     end
 
-    push!(spl.info[:accept_his], true)
-
-    vi
+    return vi, true
   else
     # Set parameters
     ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
@@ -97,7 +95,6 @@ function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool
                                        spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:pre_cond, stds_str)])
     end
 
-    push!(spl.info[:accept_his], true)
     vi[spl][:] = θ_new[:]
     setlogp!(vi, lj_func(θ_new))
 
@@ -110,7 +107,7 @@ function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool
     @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
-    vi
+    return vi, true
   end
 end
 

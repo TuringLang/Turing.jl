@@ -50,8 +50,6 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
 
             spl.alg.gid != 0 && invlink!(vi, spl)
         end
-
-        push!(spl.info[:accept_his], true)
     else
         # Update iteration counter
         spl.info[:t] += 1
@@ -76,11 +74,10 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
         θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
         @debug "always accept..."
-        push!(spl.info[:accept_his], true)
         vi[spl] = θ
 
         @debug "R -> X..."
         spl.alg.gid != 0 && invlink!(vi, spl)
     end
-    return vi
+    return vi, true
 end
