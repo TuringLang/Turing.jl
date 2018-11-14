@@ -76,12 +76,6 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     info[:total_lf_num] = 0
     info[:total_eval_num] = 0
 
-    # For pre-conditioning
-    info[:θ_mean] = nothing
-    info[:θ_num] = 0
-    info[:stds] = nothing
-    info[:vars] = nothing
-
     # Adapt configuration
     if adapt_conf != nothing
       info[:adapt_conf] = adapt_conf
