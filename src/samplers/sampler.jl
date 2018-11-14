@@ -175,7 +175,7 @@ end
   end
 
   if haskey(spl.info, :lf_num)
-    s.value[:lf_num] = spl.info[:lf_num][end]
+    s.value[:lf_num] = spl.info[:lf_num]
   end
 
   s

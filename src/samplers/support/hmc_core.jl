@@ -45,7 +45,6 @@ steps used in `sampler`.
 function gen_log_func(sampler::Sampler)
     return function()
         sampler.info[:lf_num] += 1
-        sampler.info[:total_lf_num] += 1
     end
 end
 

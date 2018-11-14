@@ -73,7 +73,6 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     # For sampler infomation
     info[:accept_his] = []
     info[:lf_num] = 0
-    info[:total_lf_num] = 0
     info[:total_eval_num] = 0
 
     # Adapt configuration
@@ -133,6 +132,7 @@ function sample(model::Function, alg::T;
     end
 
     # HMC steps
+    total_lf_num = 0
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
         @debug "$alg_str stepping..."
@@ -148,6 +148,7 @@ function sample(model::Function, alg::T;
         samples[i].value[:elapsed] = time_elapsed
         samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
 
+        total_lf_num += spl.info[:lf_num]
         PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
     end
 
@@ -157,7 +158,7 @@ function sample(model::Function, alg::T;
         accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
         println("  Accept rate         = $accept_rate;")
     end
-    println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
+    println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
     stds_str = string(spl.info[:wum][:stds])
     stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
