@@ -109,11 +109,6 @@ function sample(
             @debug "$(typeof(local_spl)) stepping..."
 
             if isa(local_spl.alg, GibbsComponent)
-                if isa(local_spl.alg, Hamiltonian)  # clean cache
-                    local_spl.info[:grad_cache] = Dict{UInt64,Vector}()
-                    local_spl.info[:reverse_diff_cache] = Dict()
-                end
-
                 for _ = 1:local_spl.alg.n_iters
                     @debug "recording old θ..."
                     time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
