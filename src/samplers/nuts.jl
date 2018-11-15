@@ -45,20 +45,18 @@ NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.sp
 
 function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool)
   if is_first
-    if ~haskey(spl.info, :wum)
-      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
+    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
 
-      init_warm_up_params(vi, spl)
+    init_warm_up_params(vi, spl)
 
-      θ = vi[spl]
-      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      vi[spl] = θ
+    θ = vi[spl]
+    ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
+    vi[spl] = θ
 
-      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
+    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
 
-      push!(spl.info[:wum][:ϵ], ϵ)
-      update_da_μ(spl.info[:wum], ϵ)
-    end
+    push!(spl.info[:wum][:ϵ], ϵ)
+    update_da_μ(spl.info[:wum], ϵ)
 
     return vi, true
   else
@@ -84,8 +82,11 @@ function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool
     lj = vi.logp
     stds = spl.info[:wum][:stds]
 
+    @debug "sampling momentums..."
+    θ_dim = length(θ)
+    p = _sample_momentum(θ_dim, stds)
 
-    θ_new, da_stat = _nuts_step(θ, ϵ, lj_func, grad_func, stds)
+    θ_new, da_stat = _nuts_step(θ, p, ϵ, lj_func, grad_func, stds)
 
     if PROGRESS[] && spl.alg.gid == 0
       stds_str = string(spl.info[:wum][:stds])
@@ -172,7 +173,7 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
 
 
 """
-  function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+  function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
                       j_max::Int=j_max) where {T<:Union{AbstractVector,SubArray}}
 
 Perform one NUTS step.
@@ -182,17 +183,16 @@ Ref: Algorithm 6 on http://www.stat.columbia.edu/~gelman/research/published/nuts
 Arguments:
 
 - `θ`         : model parameter
+- `r0`        : momentum
 - `ϵ`         : leapfrog step size
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
 - `stds`      : pre-conditioning matrix
 - `j_max`     : maximum expanding of doubling tree
 """
-function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
-  d = length(θ)
-  r0 = _sample_momentum(d, stds)
   H0 = _find_H(θ, r0, lj_func, stds)
   logu = log(rand()) + -H0
 
