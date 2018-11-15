@@ -31,10 +31,10 @@ mutable struct SMC{T, F} <: InferenceAlgorithm
   space                 ::  Set{T}
   gid                   ::  Int
 end
-SMC(n) = SMC(n, resampleSystematic, 0.5, Set(), 0)
+SMC(n) = SMC(n, resample_systematic, 0.5, Set(), 0)
 function SMC(n_particles::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  SMC(n_particles, resampleSystematic, 0.5, _space, 0)
+  SMC(n_particles, resample_systematic, 0.5, _space, 0)
 end
 SMC(alg::SMC, new_gid::Int) = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 
