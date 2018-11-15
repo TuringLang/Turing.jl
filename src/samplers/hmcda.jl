@@ -55,21 +55,19 @@ end
 
 function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
     if is_first
-        if ~haskey(spl.info, :wum)
-            spl.alg.gid != 0 && link!(vi, spl)
+        spl.alg.gid != 0 && link!(vi, spl)
 
-            init_warm_up_params(vi, spl)
+        init_warm_up_params(vi, spl)
 
-            θ = vi[spl]
-            ϵ = spl.alg.delta > 0 ?
-                find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
-                spl.info[:pre_set_ϵ]
-            vi[spl] = θ
+        θ = vi[spl]
+        ϵ = spl.alg.delta > 0 ?
+            find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
+            spl.info[:pre_set_ϵ]
+        vi[spl] = θ
 
-            spl.alg.gid != 0 && invlink!(vi, spl)
-            push!(spl.info[:wum][:ϵ], ϵ)
-            update_da_μ(spl.info[:wum], ϵ)
-        end
+        spl.alg.gid != 0 && invlink!(vi, spl)
+        push!(spl.info[:wum][:ϵ], ϵ)
+        update_da_μ(spl.info[:wum], ϵ)
 
         return vi, true
     else
@@ -176,7 +174,7 @@ function _hmc_step(
     grad_func,
     τ::Int,
     ϵ::Real,
-    stdsstds::AbstractVector{<:Real},
+    stds::AbstractVector{<:Real},
 )
     return _hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds)
 end

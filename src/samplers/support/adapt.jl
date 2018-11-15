@@ -228,14 +228,14 @@ function update_pre_cond!(wum::WarmUpManager, θ_new::AbstractVector{<:Real})
   if in_adaptation(wum)
     add_sample!(wum.ve, θ_new)
   end
-    if is_window_end(wum)
-        compute_next_window(wum)
-        var = get_var(wum.ve)
-        wum[:stds] = sqrt.(var)
-        reset!(wum.ve)
-        return true
-    end
-    return false
+  if is_window_end(wum)
+      compute_next_window(wum)
+      var = get_var(wum.ve)
+      wum[:stds] = sqrt.(var)
+      reset!(wum.ve)
+      return true
+  end
+  return false
 end
 
 function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M=false)
