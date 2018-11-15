@@ -187,6 +187,79 @@ function sample(model::Function, alg::T;
     return c
 end
 
+function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
+    if is_first
+        spl.alg.gid != 0 && link!(vi, spl)
+
+        init_warm_up_params(vi, spl)
+
+        θ = vi[spl]
+        # Heuristically find optimal ϵ
+        ϵ = spl.alg.delta > 0 ?
+            find_good_eps(model, vi, spl) :       
+            spl.info[:pre_set_ϵ]
+        vi[spl] = θ
+
+        spl.alg.gid != 0 && invlink!(vi, spl)
+        push!(spl.info[:wum][:ϵ], ϵ)
+        update_da_μ(spl.info[:wum], ϵ)
+
+        return vi, true
+    else
+        # Set parameters
+        ϵ = spl.info[:wum][:ϵ][end]
+        @debug "current ϵ: $ϵ"
+
+        # Reset current counters
+        spl.info[:lf_num] = 0   
+        spl.info[:eval_num] = 0
+
+        @debug "X-> R..."
+        if spl.alg.gid != 0
+            link!(vi, spl)
+            runmodel!(model, vi, spl)
+        end
+
+        grad_func = gen_grad_func(vi, spl, model)
+        lj_func = gen_lj_func(vi, spl, model)
+        rev_func = gen_rev_func(vi, spl)
+        log_func = gen_log_func(spl)
+
+        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum][:stds]
+
+        θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, spl.alg; rev_func=rev_func, log_func=log_func)
+
+        @debug "decide whether to accept..."
+        if is_accept
+            vi[spl] = θ_new
+            setlogp!(vi, lj_new)
+        else
+            vi[spl] = θ
+            setlogp!(vi, lj)
+        end
+
+        if PROGRESS[] && spl.alg.gid == 0
+            stds_str = string(spl.info[:wum][:stds])
+            stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+            haskey(spl.info, :progress) && ProgressMeter.update!(
+                spl.info[:progress],
+                spl.info[:progress].counter;
+                showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)],
+            )
+        end
+
+        # For vanilla HMC, delta is 0 = no adaptation
+        if spl.alg.delta > 0
+            adapt!(spl.info[:wum], α, vi[spl], adapt_M=true, adapt_ϵ=true)
+        end
+
+        @debug "R -> X..."
+        spl.alg.gid != 0 && invlink!(vi, spl)
+
+        return vi, is_accept
+    end
+end
+
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin
     @debug "assuming..."
     updategid!(vi, vn, spl)

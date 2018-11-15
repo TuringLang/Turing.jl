@@ -53,79 +53,10 @@ function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, spac
     return HMCDA(n_iters, n_adapt, delta, lambda, _space, 0)
 end
 
-function step(model, spl::Sampler{<:HMCDA}, vi::VarInfo, is_first::Bool)
-    if is_first
-        spl.alg.gid != 0 && link!(vi, spl)
-
-        init_warm_up_params(vi, spl)
-
-        θ = vi[spl]
-        ϵ = spl.alg.delta > 0 ?
-            find_good_eps(model, vi, spl) :       # heuristically find optimal ϵ
-            spl.info[:pre_set_ϵ]
-        vi[spl] = θ
-
-        spl.alg.gid != 0 && invlink!(vi, spl)
-        push!(spl.info[:wum][:ϵ], ϵ)
-        update_da_μ(spl.info[:wum], ϵ)
-
-        return vi, true
-    else
-        # Set parameters
-        λ = spl.alg.lambda
-        ϵ = spl.info[:wum][:ϵ][end]
-        @debug "current ϵ: $ϵ"
-
-        # Reset current counters
-        spl.info[:lf_num] = 0   
-        spl.info[:eval_num] = 0
-
-        @debug "X-> R..."
-        if spl.alg.gid != 0
-            link!(vi, spl)
-            runmodel!(model, vi, spl)
-        end
-
-        grad_func = gen_grad_func(vi, spl, model)
-        lj_func = gen_lj_func(vi, spl, model)
-        rev_func = gen_rev_func(vi, spl)
-        log_func = gen_log_func(spl)
-
-        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum][:stds]
-
-        θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, ϵ, λ, stds; rev_func=rev_func, log_func=log_func)
-
-        if PROGRESS[] && spl.alg.gid == 0
-            stds_str = string(spl.info[:wum][:stds])
-            stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
-            haskey(spl.info, :progress) && ProgressMeter.update!(
-                spl.info[:progress],
-                spl.info[:progress].counter;
-                showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)],
-            )
-        end
-
-        @debug "decide whether to accept..."
-        if is_accept
-            vi[spl] = θ_new
-            setlogp!(vi, lj_new)
-        else
-            vi[spl] = θ
-            setlogp!(vi, lj)
-        end
-
-        # QUES: why do we need the 2nd condition here (Kai)
-        if spl.alg.delta > 0
-            # TODO: figure out whether or not the condition below is needed
-            # if spl.alg.delta > 0 && τ_valid > 0    # only do adaption for HMCDA
-            adapt!(spl.info[:wum], α, vi[spl], adapt_ϵ = true)
-        end
-
-        @debug "R -> X..."
-        spl.alg.gid != 0 && invlink!(vi, spl)
-        return vi, is_accept
-    end
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, alg::HMCDA; rev_func=nothing, log_func=nothing)
+  θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
+            θ, lj, lj_func, grad_func, ϵ, alg.lambda, stds; rev_func=rev_func, log_func=log_func)
+  return θ_new, lj_new, is_accept, α
 end
 
 function _hmc_step(

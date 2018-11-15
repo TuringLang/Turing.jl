@@ -43,74 +43,13 @@ function NUTS(n_iters::Int, delta::Float64)
 end
 NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
 
-function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool)
-  if is_first
-    if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
-
-    init_warm_up_params(vi, spl)
-
-    θ = vi[spl]
-    ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-    vi[spl] = θ
-
-    if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
-
-    push!(spl.info[:wum][:ϵ], ϵ)
-    update_da_μ(spl.info[:wum], ϵ)
-
-    return vi, true
-  else
-    # Set parameters
-    ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
-
-    # Reset current counters
-    spl.info[:lf_num] = 0   
-    spl.info[:eval_num] = 0
-
-    @debug "X-> R..."
-    if spl.alg.gid != 0
-      link!(vi, spl)
-      runmodel!(model, vi, spl)
-    end
-
-    grad_func = gen_grad_func(vi, spl, model)
-    lj_func = gen_lj_func(vi, spl, model)
-    rev_func = gen_rev_func(vi, spl)
-    log_func = gen_log_func(spl)
-
-    θ = vi[spl]
-    lj = vi.logp
-    stds = spl.info[:wum][:stds]
-
-    @debug "sampling momentums..."
-    θ_dim = length(θ)
-    p = _sample_momentum(θ_dim, stds)
-
-    θ_new, da_stat = _nuts_step(θ, p, ϵ, lj_func, grad_func, stds)
-
-    if PROGRESS[] && spl.alg.gid == 0
-      stds_str = string(spl.info[:wum][:stds])
-      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
-      haskey(spl.info, :progress) && ProgressMeter.update!(
-                                       spl.info[:progress],
-                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:pre_cond, stds_str)])
-    end
-
-    vi[spl][:] = θ_new[:]
-    setlogp!(vi, lj_func(θ_new))
-
-    # Adapt step-size and pre-cond
-    # TODO: figure out whether or not the condition below is needed
-    # if τ_valid > 0
-      adapt!(spl.info[:wum], da_stat, vi[spl], adapt_M = true, adapt_ϵ = true)
-    # end
-
-    @debug "R -> X..."
-    spl.alg.gid != 0 && invlink!(vi, spl)
-
-    return vi, true
-  end
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, alg::NUTS; rev_func=nothing, log_func=nothing)
+  θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, stds)
+  lj_new = lj_func(θ_new)
+  is_accept = true
+  return θ_new, lj_new, is_accept, α
 end
+
 
 """
   function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
@@ -183,17 +122,21 @@ Ref: Algorithm 6 on http://www.stat.columbia.edu/~gelman/research/published/nuts
 Arguments:
 
 - `θ`         : model parameter
-- `r0`        : momentum
 - `ϵ`         : leapfrog step size
+- `lj`        : initial log-joint prob
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
 - `stds`      : pre-conditioning matrix
 - `j_max`     : maximum expanding of doubling tree
 """
-function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real, lj_func::Function, grad_func::Function, stds::AbstractVector;
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
-  H0 = _find_H(θ, r0, lj_func, stds)
+  @debug "sampling momentums..."
+  θ_dim = length(θ)
+  r0 = _sample_momentum(θ_dim, stds)
+
+  H0 = _find_H(θ, r0, lj, stds)
   logu = log(rand()) + -H0
 
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
