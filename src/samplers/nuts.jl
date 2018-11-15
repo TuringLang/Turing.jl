@@ -192,7 +192,7 @@ function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Func
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
   d = length(θ)
-  r0 = randn(d)
+  r0 = _sample_momentum(d, stds)
   H0 = _find_H(θ, r0, lj_func, stds)
   logu = log(rand()) + -H0
 
