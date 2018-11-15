@@ -35,21 +35,19 @@ SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.step_size, alg.space, new_
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
     if is_first
-        if ~haskey(spl.info, :wum)
-            spl.alg.gid != 0 && link!(vi, spl)
+        spl.alg.gid != 0 && link!(vi, spl)
 
-            D = length(vi[spl])
-            ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
-            wum = WarmUpManager(1, Dict(), ve)
-            wum[:ϵ] = [spl.alg.step_size]
-            wum[:stds] = ones(D)
-            spl.info[:wum] = wum
+        D = length(vi[spl])
+        ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+        wum = Dict()
+        wum[:ϵ] = [spl.alg.step_size]
+        wum[:stds] = ones(D)
+        spl.info[:wum] = wum
 
-            # Initialize iteration counter
-            spl.info[:t] = 0
+        # Initialize iteration counter
+        spl.info[:t] = 0
 
-            spl.alg.gid != 0 && invlink!(vi, spl)
-        end
+        spl.alg.gid != 0 && invlink!(vi, spl)
     else
         # Update iteration counter
         spl.info[:t] += 1

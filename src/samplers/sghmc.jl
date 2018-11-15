@@ -42,22 +42,13 @@ end
 
 function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
     if is_first
-        if ~haskey(spl.info, :wum)
-            spl.alg.gid != 0 && link!(vi, spl)
-      
-            D = length(vi[spl])
-            ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
-            wum = WarmUpManager(1, Dict(), ve)
-            wum[:ϵ] = [spl.alg.learning_rate]
-            wum[:stds] = ones(D)
-            spl.info[:wum] = wum
+        spl.alg.gid != 0 && link!(vi, spl)
+  
+        # Initialize velocity
+        v = zeros(Float64, size(vi[spl]))
+        spl.info[:v] = v
 
-            # Initialize velocity
-            v = zeros(Float64, size(vi[spl]))
-            spl.info[:v] = v
-
-            spl.alg.gid != 0 && invlink!(vi, spl)
-        end
+        spl.alg.gid != 0 && invlink!(vi, spl)
     else
         # Set parameters
         η, α = spl.alg.learning_rate, spl.alg.momentum_decay

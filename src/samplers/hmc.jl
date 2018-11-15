@@ -147,7 +147,9 @@ function sample(model::Function, alg::T;
             samples[i] = samples[i - 1]
         end
         samples[i].value[:elapsed] = time_elapsed
-        samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
+        if haskey(spl.info, :wum)
+          samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
+        end
 
         total_lf_num += spl.info[:lf_num]
         total_eval_num += spl.info[:eval_num]
@@ -163,9 +165,11 @@ function sample(model::Function, alg::T;
     end
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
-    stds_str = string(spl.info[:wum][:stds])
-    stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
-    println("  pre-cond. diag mat  = $(stds_str).")
+    if haskey(spl.info, :wum)
+      stds_str = string(spl.info[:wum][:stds])
+      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
+      println("  pre-cond. diag mat  = $(stds_str).")
+    end
 
     if ADBACKEND[] == :forward_diff
         setchunksize(default_chunk_size)      # revert global chunk size

@@ -1,8 +1,57 @@
+abstract type AbstractState end
+
+mutable struct HMCState{T<:Real} <: AbstractState
+  epsilon  :: T
+  stds     :: Vector{T}
+  lf_num   :: Integer
+  eval_num :: Integer
+end
+
+mutable struct TPState{T<:Integer} <: AbstractState
+  window_size :: T
+  next_window :: T
+end
+
 abstract type AbstractAdapt end
 abstract type StepSizeAdapt <: AbstractAdapt end
 abstract type Preconditioner <: AbstractAdapt end
+abstract type WindowAdapt <: AbstractAdapt end
 
-struct DualAveraging <: StepSizeAdapt
+struct DualAveraging{T} <: StepSizeAdapt where T<:Real
+  γ           :: T
+  t_0         :: T
+  κ           :: T
+end
+
+struct ThreePahse{T} <: WindowAdapt where T<:Integer
+  init_buffer :: T
+  term_buffer :: T
+  state       :: TPState{T}
+end
+
+function ThreePahse(init_buffer::Integer, term_buffer::Integer, window_size::Integer)
+  next_window = init_buffer + window_size - 1
+  return ThreePahse(init_buffer, term_buffer, TPState(window_size, next_window))
+end
+
+@static if isdefined(Turing, :CmdStan)
+
+  function DualAveraging(adapt_conf)
+      # Hyper parameters for dual averaging
+      γ = adapt_conf.gamma
+      t_0 = adapt_conf.t0
+      κ = adapt_conf.kappa
+      return DualAveraging(γ, t_0, κ)
+  end
+
+  function WindowAdapt(adapt_conf)
+      # Three phases settings
+      init_buffer = adapt_conf.init_buffer
+      term_buffer = adapt_conf.term_buffer
+      window_size = adapt_conf.window
+      return ThreePahse(init_buffer, term_buffer, window_size)
+  end
+
 end
 
 struct DiagonalPC <: Preconditioner
@@ -56,6 +105,8 @@ mutable struct WarmUpManager
     adapt_n::Int
     params::Dict{Symbol, Any}
     ve::VarEstimator
+    da::DualAveraging
+    tp::ThreePahse
 end
 
 getindex(wum::WarmUpManager, param) = wum.params[param]
@@ -66,7 +117,19 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     D = length(vi[spl])
     ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
 
-    wum = WarmUpManager(1, Dict(), ve)
+    # Initialize by Stan if Stan is installed
+    @static if isdefined(Turing, :CmdStan)
+        # CmdStan.Adapt
+        da = DualAveraging(spl.info[:adapt_conf])
+        tp = ThreePahse(spl.info[:adapt_conf])
+    else
+        # If wum is not initialised by Stan (when Stan is not avaible),
+        # initialise wum by common default values.
+        da = DualAveraging(0.05, 10.0, 0.75)
+        tp = ThreePahse(75, 50, 25)
+    end
+
+    wum = WarmUpManager(1, Dict(), ve, da, tp)
 
     # Pre-cond
     wum[:stds] = ones(D)
@@ -77,32 +140,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     wum[:n_warmup] = spl.alg.n_adapt
     wum[:δ] = spl.alg.delta
 
-    # Initialize by Stan if Stan is installed
-    @static if isdefined(Turing, :CmdStan)
-        #CmdStan.Adapt
-        adapt_conf = spl.info[:adapt_conf]
-
-        # Hyper parameters for dual averaging
-        wum[:γ] = adapt_conf.gamma
-        wum[:t_0] = adapt_conf.t0
-        wum[:κ] = adapt_conf.kappa
-
-        # Three phases settings
-        wum[:init_buffer] = adapt_conf.init_buffer
-        wum[:term_buffer] = adapt_conf.term_buffer
-        wum[:window_size] = adapt_conf.window
-    else
-        # If wum is not initialised by Stan (when Stan is not avaible),
-         # initialise wum by common default values.
-        wum[:γ] = 0.05
-        wum[:t_0] = 10.0
-        wum[:κ] = 0.75
-        wum[:init_buffer] = 75
-        wum[:term_buffer] = 50
-        wum[:window_size] = 25
-    end
-    wum[:next_window] = wum[:init_buffer] + wum[:window_size] - 1
-
+    
     @debug wum.params
 
     spl.info[:wum] = wum
@@ -130,7 +168,7 @@ function adapt_step_size!(wum::WarmUpManager, stats::Real)
     # Clip average MH acceptance probability.
     stats = stats > 1 ? 1 : stats
 
-    γ = wum[:γ]; t_0 = wum[:t_0]; κ = wum[:κ]; δ = wum[:δ]
+    γ = wum.da.γ; t_0 = wum.da.t_0; κ = wum.da.κ; δ = wum[:δ]
     μ = wum[:μ]; x_bar = wum[:x_bar]; H_bar = wum[:H_bar]
 
     η_H = 1.0 / (m + t_0)
@@ -158,27 +196,27 @@ end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
 function in_adaptation(wum::WarmUpManager)
-    return (wum.adapt_n >= wum[:init_buffer]) &&
-        (wum.adapt_n < wum[:n_warmup] - wum[:term_buffer]) &&
+    return (wum.adapt_n >= wum.tp.init_buffer) &&
+        (wum.adapt_n < wum[:n_warmup] - wum.tp.term_buffer) &&
         (wum.adapt_n != wum[:n_warmup])
 end
 
 function is_window_end(wum::WarmUpManager)
-    return (wum.adapt_n == wum[:next_window]) && (wum.adapt_n != wum[:n_warmup])
+    return (wum.adapt_n == wum.tp.state.next_window) && (wum.adapt_n != wum[:n_warmup])
 end
 
 function compute_next_window(wum::WarmUpManager)
 
-    if ~(wum[:next_window] == wum[:n_warmup] - wum[:term_buffer] - 1)
+    if ~(wum.tp.state.next_window == wum[:n_warmup] - wum.tp.term_buffer - 1)
 
-        wum[:window_size] *= 2
-        wum[:next_window] = wum.adapt_n + wum[:window_size]
+        wum.tp.state.window_size *= 2
+        wum.tp.state.next_window = wum.adapt_n + wum.tp.state.window_size
 
-        if ~(wum[:next_window] == wum[:n_warmup] - wum[:term_buffer] - 1)
-            next_window_boundary = wum[:next_window] + 2 * wum[:window_size]
+        if ~(wum.tp.state.next_window == wum[:n_warmup] - wum.tp.term_buffer - 1)
+            next_window_boundary = wum.tp.state.next_window + 2 * wum.tp.state.window_size
 
-            if (next_window_boundary >= wum[:n_warmup] - wum[:term_buffer])
-                wum[:next_window] = wum[:n_warmup] - wum[:term_buffer] - 1
+            if (next_window_boundary >= wum[:n_warmup] - wum.tp.term_buffer)
+                wum.tp.state.next_window = wum[:n_warmup] - wum.tp.term_buffer - 1
             end
         end
     end
