@@ -38,7 +38,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
         spl.alg.gid != 0 && link!(vi, spl)
 
         D = length(vi[spl])
-        ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+        ve = VarEstimator(0, zeros(D), zeros(D))
         wum = Dict()
         wum[:ϵ] = [spl.alg.step_size]
         wum[:stds] = ones(D)
