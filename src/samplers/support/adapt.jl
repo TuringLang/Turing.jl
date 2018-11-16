@@ -63,12 +63,9 @@ struct CompositeAdapt <: AbstractAdapt
 end
 
 
-### Old adaptation code below
-
-
-
-# Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
-
+##################################
+### Variance estimator - START ###
+##################################
 # Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
 mutable struct VarEstimator{T<:Real}
     n::Int
@@ -96,11 +93,22 @@ function get_var(ve::VarEstimator)
     @assert ve.n >= 2
     return (ve.n / ((ve.n + 5) * (ve.n - 1))) .* ve.M .+ 1e-3 * (5.0 / (ve.n + 5))
 end
+################################
+### Variance estimator - END ###
+################################
 
+
+
+### Old adaptation code below
+
+
+
+# Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
 
 mutable struct WarmUpManager
-    adapt_n::Int
+    i::Int
+    n_adapt::Int
     params::Dict{Symbol, Any}
     ve::VarEstimator
     da::DualAveraging
@@ -127,7 +135,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
         tp = ThreePhase(75, 50, 25)
     end
 
-    wum = WarmUpManager(1, Dict(), ve, da, tp)
+    wum = WarmUpManager(1, spl.alg.n_adapt, Dict(), ve, da, tp)
 
     # Pre-cond
     wum[:stds] = ones(D)
@@ -135,9 +143,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     # Dual averaging
     wum[:ϵ] = [] # why we are using a vector for ϵ
     restart_da(wum)
-    wum[:n_warmup] = spl.alg.n_adapt
     wum[:δ] = spl.alg.delta
-
 
     @debug wum.params
 
@@ -186,7 +192,7 @@ function adapt_step_size!(wum::WarmUpManager, stats::Real)
         wum[:x_bar], wum[:H_bar] = x_bar, H_bar
     end
 
-    if m == wum[:n_warmup]
+    if m == wum.n_adapt
         @debug " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption."
     end
 
@@ -194,27 +200,27 @@ end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
 function in_adaptation(wum::WarmUpManager)
-    return (wum.adapt_n >= wum.tp.init_buffer) &&
-        (wum.adapt_n < wum[:n_warmup] - wum.tp.term_buffer) &&
-        (wum.adapt_n != wum[:n_warmup])
+    return (wum.i >= wum.tp.init_buffer) &&
+        (wum.i < wum.n_adapt - wum.tp.term_buffer) &&
+        (wum.i != wum.n_adapt)
 end
 
 function is_window_end(wum::WarmUpManager)
-    return (wum.adapt_n == wum.tp.state.next_window) && (wum.adapt_n != wum[:n_warmup])
+    return (wum.i == wum.tp.state.next_window) && (wum.i != wum.n_adapt)
 end
 
 function compute_next_window(wum::WarmUpManager)
 
-    if ~(wum.tp.state.next_window == wum[:n_warmup] - wum.tp.term_buffer - 1)
+    if ~(wum.tp.state.next_window == wum.n_adapt - wum.tp.term_buffer - 1)
 
         wum.tp.state.window_size *= 2
-        wum.tp.state.next_window = wum.adapt_n + wum.tp.state.window_size
+        wum.tp.state.next_window = wum.i + wum.tp.state.window_size
 
-        if ~(wum.tp.state.next_window == wum[:n_warmup] - wum.tp.term_buffer - 1)
+        if ~(wum.tp.state.next_window == wum.n_adapt - wum.tp.term_buffer - 1)
             next_window_boundary = wum.tp.state.next_window + 2 * wum.tp.state.window_size
 
-            if (next_window_boundary >= wum[:n_warmup] - wum.tp.term_buffer)
-                wum.tp.state.next_window = wum[:n_warmup] - wum.tp.term_buffer - 1
+            if (next_window_boundary >= wum.n_adapt - wum.tp.term_buffer)
+                wum.tp.state.next_window = wum.n_adapt - wum.tp.term_buffer - 1
             end
         end
     end
@@ -238,7 +244,7 @@ end
 
 function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M=false)
 
-    if wum.adapt_n < wum[:n_warmup]
+    if wum.i < wum.n_adapt
 
         if adapt_ϵ
             adapt_step_size!(wum, stats)
@@ -256,9 +262,9 @@ function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M
             is_window_end(wum) && compute_next_window(wum)
         end
 
-        wum.adapt_n += 1
+        wum.i += 1
 
-    elseif wum.adapt_n == wum[:n_warmup]
+    elseif wum.i == wum.n_adapt
 
         if adapt_ϵ
             ϵ = exp(wum[:x_bar])
