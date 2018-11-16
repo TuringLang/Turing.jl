@@ -20,10 +20,10 @@ sample(example, SGLD(1000, 0.5))
 ```
 """
 mutable struct SGLD{T} <: Hamiltonian
-    n_iters::Int       # number of samples
-    step_size::Float64   # constant scale factor of learning rate
-    space::Set{T}    # sampling space, emtpy means all
-    gid::Int
+    n_iters   :: Int       # number of samples
+    step_size :: Float64   # constant scale factor of learning rate
+    space     :: Set{T}    # sampling space, emtpy means all
+    gid       :: Int
 end
 SGLD(step_size::Float64, space...) = SGLD(1, step_size, space..., 0)
 SGLD(n_iters, step_size) = SGLD(n_iters, step_size, Set(), 0)
@@ -37,12 +37,9 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
 
-        D = length(vi[spl])
-        ve = VarEstimator(0, zeros(D), zeros(D))
-        wum = Dict()
-        wum[:ϵ] = [spl.alg.step_size]
-        wum[:stds] = ones(D)
+        wum = WarmUpManager(vi, spl)
         spl.info[:wum] = wum
+        wum.da.state.ϵ = spl.alg.step_size
 
         # Initialize iteration counter
         spl.info[:t] = 0
@@ -55,7 +52,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
         @debug "compute current step size..."
         γ = .35
         ϵ_t = spl.alg.step_size / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
-        push!(spl.info[:wum][:ϵ], ϵ_t)
+        spl.info[:wum].da.state.ϵ = ϵ_t
 
         @debug "X-> R..."
         if spl.alg.gid != 0

@@ -1,95 +1,6 @@
-mutable struct HMCState{T<:Real} <: AbstractState
-    epsilon  :: T
-    stds     :: Vector{T}
-    lf_num   :: Integer
-    eval_num :: Integer
-end
-
-mutable struct TPState{T<:Integer} <: AbstractState
-    window_size :: T
-    next_window :: T
-end
-
-mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
-    m     :: TI
-    x_bar :: TF
-    H_bar :: TF
-end
-
-function DAState()
-    return DAState(0, 0.0, 0.0)
-end
-
-function reset!(dastate::DAState)
-    dastate.m = 0
-    dastate.x_bar = 0.0
-    dastate.H_bar = 0.0
-end
-
-abstract type AbstractAdapt end
-abstract type StepSizeAdapt <: AbstractAdapt end
-abstract type Preconditioner <: AbstractAdapt end
-abstract type WindowAdapt <: AbstractAdapt end
-
-struct DualAveraging{TI,TF} <: StepSizeAdapt where {TI<:Integer,TF<:Real}
-  γ     :: TF
-  t_0   :: TF
-  κ     :: TF
-  state :: DAState{TI,TF}
-end
-
-function DualAveraging()
-    return DualAveraging(0.05, 10.0, 0.75, DAState())
-end
-
-struct ThreePhase{T} <: WindowAdapt where T<:Integer
-  init_buffer :: T
-  term_buffer :: T
-  state       :: TPState{T}
-end
-
-function ThreePhase()
-    init_buffer = 75
-    term_buffer = 50
-    window_size = 25
-    next_window = init_buffer + window_size - 1
-    return ThreePhase(init_buffer, term_buffer, TPState(window_size, next_window))
-end
-
-@static if isdefined(Turing, :CmdStan)
-
-  function DualAveraging(adapt_conf)
-      # Hyper parameters for dual averaging
-      γ = adapt_conf.gamma
-      t_0 = adapt_conf.t0
-      κ = adapt_conf.kappa
-      return DualAveraging(γ, t_0, κ, DAState())
-  end
-
-  function WindowAdapt(adapt_conf)
-      # Three phases settings
-      init_buffer = adapt_conf.init_buffer
-      term_buffer = adapt_conf.term_buffer
-      window_size = adapt_conf.window
-      return ThreePhase(init_buffer, term_buffer, window_size)
-  end
-
-end
-
-struct DiagonalPC <: Preconditioner
-end
-
-struct FullPC <: Preconditioner
-end
-
-struct CompositeAdapt <: AbstractAdapt
-  adapts :: Vector{AbstractAdapt}
-end
-
-
-##################################
-### Variance estimator - START ###
-##################################
+##########################
+### Variance estimator ###
+##########################
 # Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
 mutable struct VarEstimator{TI<:Integer,TF<:Real}
     n :: TI
@@ -115,9 +26,109 @@ function get_var(ve::VarEstimator)
     @assert ve.n >= 2
     return (ve.n / ((ve.n + 5) * (ve.n - 1))) .* ve.M .+ 1e-3 * (5.0 / (ve.n + 5))
 end
-################################
-### Variance estimator - END ###
-################################
+
+###################################
+### Mutable states for adapters ###
+###################################
+
+mutable struct DPCState{T<:Real} <: AbstractState
+    std :: Vector{T}
+end
+
+mutable struct TPState{T<:Integer} <: AbstractState
+    window_size :: T
+    next_window :: T
+end
+
+mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
+    m     :: TI
+    ϵ     :: TF
+    μ     :: TF
+    x_bar :: TF
+    H_bar :: TF
+end
+
+function DAState()
+    ϵ = 0.0; μ = 0.0 # NOTE: these inital values doesn't affect anything as they will be overwritten
+    return DAState(0, ϵ, μ, 0.0, 0.0)
+end
+
+function reset!(dastate::DAState{TI,TF}) where {TI<:Integer,TF<:Real}
+    dastate.m = zero(TI)
+    dastate.x_bar = zero(TF)
+    dastate.H_bar = zero(TF)
+end
+
+################
+### Adapters ###
+################
+
+abstract type AbstractAdapt end
+abstract type StepSizeAdapt <: AbstractAdapt end
+abstract type Preconditioner <: AbstractAdapt end
+abstract type WindowAdapt <: AbstractAdapt end
+
+struct DualAveraging{TI,TF} <: StepSizeAdapt where {TI<:Integer,TF<:Real}
+  γ     :: TF
+  t_0   :: TF
+  κ     :: TF
+  δ     :: TF
+  state :: DAState{TI,TF}
+end
+
+struct ThreePhase{T} <: WindowAdapt where T<:Integer
+  init_buffer :: T
+  term_buffer :: T
+  state       :: TPState{T}
+end
+
+function ThreePhase(init_buffer, term_buffer, window_size)
+    next_window = init_buffer + window_size - 1
+    return ThreePhase(init_buffer, term_buffer, TPState(window_size, next_window))
+end
+
+@static if isdefined(Turing, :CmdStan)
+
+  function DualAveraging(adapt_conf::CmdStan.Adapt)
+      # Hyper parameters for dual averaging
+      γ = adapt_conf.gamma
+      t_0 = adapt_conf.t0
+      κ = adapt_conf.kappa
+      δ = adapt_conf.delta
+      return DualAveraging(γ, t_0, κ, δ, DAState())
+  end
+
+  function ThreePhase(adapt_conf::CmdStan.Adapt)
+      # Three phases settings
+      init_buffer = adapt_conf.init_buffer
+      term_buffer = adapt_conf.term_buffer
+      window_size = adapt_conf.window
+      return ThreePhase(init_buffer, term_buffer, window_size)
+  end
+
+end
+
+struct DiagonalPC{TI<:Integer,TF<:Real} <: Preconditioner
+    ve  :: VarEstimator{TI,TF}
+    state :: DPCState{TF}
+end
+
+function DiagonalPC(d::Integer)
+    ve = VarEstimator(0, zeros(d), zeros(d))
+    return DiagonalPC(ve, DPCState(ones(d)))
+end
+
+function update!(dpc::DiagonalPC)
+    var = get_var(dpc.ve)
+    dpc.state.std = sqrt.(var)
+end
+
+struct FullPC <: Preconditioner
+end
+
+struct CompositeAdapt{T<:AbstractAdapt} <: AbstractAdapt
+  adapts :: Vector{T}
+end
 
 
 
@@ -130,19 +141,14 @@ end
 mutable struct WarmUpManager{TI<:Integer,TF<:Real}
     i       :: TI
     n_adapt :: TI
-    params  :: Dict{Symbol,Any}
-    ve      :: VarEstimator{TI,TF}
+    dpc     :: DiagonalPC{TI,TF}
     da      :: DualAveraging{TI,TF}
     tp      :: ThreePhase{TI}
 end
 
-getindex(wum::WarmUpManager, param) = wum.params[param]
-
-setindex!(wum::WarmUpManager, value, param) = wum.params[param] = value
-
-function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
-    D = length(vi[spl])
-    ve = VarEstimator(0, zeros(D), zeros(D))
+function WarmUpManager(vi::VarInfo, spl::Sampler{<:Hamiltonian})
+    # Diagonal pre-conditioner
+    dpc = DiagonalPC(length(vi[spl]))
 
     # Initialize by Stan if Stan is installed
     @static if isdefined(Turing, :CmdStan)
@@ -152,31 +158,27 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     else
         # If wum is not initialised by Stan (when Stan is not avaible),
         # initialise wum by common default values.
-        da = DualAveraging()
-        tp = ThreePhase()
+        # TODO: remove this fieldnames hack after RFC
+        da = if :delta in fieldnames(typeof(spl.alg))
+            DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState())
+        else
+            DualAveraging(0.05, 10.0, 0.75, 0.8, DAState())
+        end
+        tp = ThreePhase(75, 50, 25)
     end
 
-    wum = WarmUpManager(1, spl.alg.n_adapt, Dict{Symbol,Any}(), ve, da, tp)
+    # TODO: remove this fieldnames hack after RFC
+    n_adapt = :n_adapt in fieldnames(typeof(spl.alg)) ? spl.alg.n_adapt : 0
+    return WarmUpManager(1, n_adapt, dpc, da, tp)
+end
 
-    # Pre-cond
-    wum[:stds] = ones(D)
-
-    # Dual averaging
-    wum[:ϵ] = [] # why we are using a vector for ϵ
-    wum[:δ] = spl.alg.delta
-
-    @debug wum.params
-
-    spl.info[:wum] = wum
+function update!(dastate::DAState, ϵ::Real)
+    dastate.ϵ = ϵ
+    dastate.μ = log(10 * ϵ) # see NUTS paper sec 3.2.1
 end
 
 function restart_da(wum::WarmUpManager)
     reset!(wum.da.state)
-end
-
-# See NUTS paper sec 3.2.1
-function update_da_μ(wum::WarmUpManager, ϵ::Float64)
-    wum[:μ] = log(10 * ϵ)
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
@@ -190,8 +192,8 @@ function adapt_step_size!(wum::WarmUpManager, stats::Real)
     # Clip average MH acceptance probability.
     stats = stats > 1 ? 1 : stats
 
-    γ = wum.da.γ; t_0 = wum.da.t_0; κ = wum.da.κ; δ = wum[:δ]
-    μ = wum[:μ]; x_bar = wum.da.state.x_bar; H_bar = wum.da.state.H_bar
+    γ = wum.da.γ; t_0 = wum.da.t_0; κ = wum.da.κ; δ = wum.da.δ
+    μ = wum.da.state.μ; x_bar = wum.da.state.x_bar; H_bar = wum.da.state.H_bar
 
     η_H = 1.0 / (m + t_0)
     H_bar = (1.0 - η_H) * H_bar + η_H * (δ - stats)
@@ -201,12 +203,12 @@ function adapt_step_size!(wum::WarmUpManager, stats::Real)
     x_bar = (1.0 - η_x) * x_bar + η_x * x
 
     ϵ = exp(x)
-    @debug "new ϵ = $(ϵ), old ϵ = $(wum[:ϵ][end])"
+    @debug "new ϵ = $(ϵ), old ϵ = $(wum.da.state.ϵ)"
 
     if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
-        @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(wum[:ϵ][end]) is used instead."
+        @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(wum.da.state.ϵ) is used instead."
     else
-        push!(wum[:ϵ], ϵ)
+        wum.da.state.ϵ = ϵ
         wum.da.state.x_bar, wum.da.state.H_bar = x_bar, H_bar
     end
 
@@ -248,13 +250,12 @@ end
 function update_pre_cond!(wum::WarmUpManager, θ_new::AbstractVector{<:Real})
 
   if in_adaptation(wum)
-    add_sample!(wum.ve, θ_new)
+    add_sample!(wum.dpc.ve, θ_new)
   end
   if is_window_end(wum)
       compute_next_window(wum)
-      var = get_var(wum.ve)
-      wum[:stds] = sqrt.(var)
-      reset!(wum.ve)
+      update!(wum.dpc)
+      reset!(wum.dpc.ve)
       return true
   end
   return false
@@ -268,8 +269,7 @@ function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M
             adapt_step_size!(wum, stats)
             if is_window_end(wum)
                 ϵ = exp(wum.da.state.x_bar)
-                push!(wum[:ϵ], ϵ)
-                update_da_μ(wum, ϵ)
+                update!(wum.da.state, ϵ)
                 restart_da(wum)
             end
         end
@@ -286,7 +286,7 @@ function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M
 
         if adapt_ϵ
             ϵ = exp(wum.da.state.x_bar)
-            push!(wum[:ϵ], ϵ)
+            wum.da.state.ϵ = ϵ
         end
     end
 end

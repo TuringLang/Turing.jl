@@ -50,7 +50,7 @@ end
 
 function sample_momentum(vi::VarInfo, sampler::Sampler)
     d = length(getranges(vi, sampler))
-    stds = sampler.info[:wum][:stds]
+    stds = sampler.info[:wum].dpc.state.std
     return _sample_momentum(d, stds)
 end
 
@@ -122,7 +122,7 @@ end
 # Compute the Hamiltonian
 function find_H(p::AbstractVector{<:Real}, model::Function, vi::VarInfo, sampler::Sampler)
     logpdf_func_float = gen_lj_func(vi, sampler, model)
-    return _find_H(vi[sampler], p, logpdf_func_float, sampler.info[:wum][:stds])
+    return _find_H(vi[sampler], p, logpdf_func_float, sampler.info[:wum].dpc.state.std)
 end
 
 function _find_H(

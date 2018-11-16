@@ -170,8 +170,8 @@ end
 @inline Sample(vi::VarInfo, spl::Sampler) = begin
   s = Sample(vi)
 
-  if haskey(spl.info, :ϵ)
-    s.value[:epsilon] = spl.info[:ϵ][end]
+  if haskey(spl.info, :wum)
+    s.value[:epsilon] = spl.info[:wum].da.state.ϵ
   end
 
   if haskey(spl.info, :lf_num)

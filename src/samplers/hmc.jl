@@ -148,7 +148,7 @@ function sample(model::Function, alg::T;
         end
         samples[i].value[:elapsed] = time_elapsed
         if haskey(spl.info, :wum)
-          samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
+          samples[i].value[:lf_eps] = spl.info[:wum].da.state.ϵ
         end
 
         total_lf_num += spl.info[:lf_num]
@@ -166,7 +166,7 @@ function sample(model::Function, alg::T;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      stds_str = string(spl.info[:wum][:stds])
+      stds_str = string(spl.info[:wum].dpc.state.std)
       stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
       println("  pre-cond. diag mat  = $(stds_str).")
     end
@@ -191,27 +191,27 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
 
-        init_warm_up_params(vi, spl)
+        spl.info[:wum] = WarmUpManager(vi, spl)
 
         θ = vi[spl]
         # Heuristically find optimal ϵ
         ϵ = spl.alg.delta > 0 ?
-            find_good_eps(model, vi, spl) :       
+            find_good_eps(model, vi, spl) :
             spl.info[:pre_set_ϵ]
         vi[spl] = θ
 
         spl.alg.gid != 0 && invlink!(vi, spl)
-        push!(spl.info[:wum][:ϵ], ϵ)
-        update_da_μ(spl.info[:wum], ϵ)
+
+        update!(spl.info[:wum].da.state, ϵ)
 
         return vi, true
     else
         # Set parameters
-        ϵ = spl.info[:wum][:ϵ][end]
+        ϵ = spl.info[:wum].da.state.ϵ
         @debug "current ϵ: $ϵ"
 
         # Reset current counters
-        spl.info[:lf_num] = 0   
+        spl.info[:lf_num] = 0
         spl.info[:eval_num] = 0
 
         @debug "X-> R..."
@@ -225,7 +225,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         rev_func = gen_rev_func(vi, spl)
         log_func = gen_log_func(spl)
 
-        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum][:stds]
+        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum].dpc.state.std
 
         θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, spl.alg; rev_func=rev_func, log_func=log_func)
 
@@ -239,7 +239,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         end
 
         if PROGRESS[] && spl.alg.gid == 0
-            stds_str = string(spl.info[:wum][:stds])
+            stds_str = string(spl.info[:wum].dpc.state.std)
             stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
             haskey(spl.info, :progress) && ProgressMeter.update!(
                 spl.info[:progress],

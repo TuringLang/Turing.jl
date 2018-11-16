@@ -109,6 +109,13 @@ mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
+# mutable struct HMCState{T<:Real} <: AbstractState
+#     epsilon  :: T
+#     stds     :: Vector{T}
+#     lf_num   :: Integer
+#     eval_num :: Integer
+# end
+# 
 #  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapt} <: AbstractSampler
 #    alg   :: TH
 #    state :: HMCState

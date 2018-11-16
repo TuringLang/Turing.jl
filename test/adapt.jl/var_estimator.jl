@@ -4,7 +4,8 @@ using Test
 let
     D = 1000
     ve = VarEstimator(0, zeros(D), zeros(D))
-    ve = reset!(add_sample!(ve, randn(D)))
+    add_sample!(ve, randn(D))
+    reset!(ve)
 
     # Check that reseting zeros everything.
     @test ve.n === 0
