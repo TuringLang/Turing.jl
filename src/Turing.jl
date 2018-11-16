@@ -88,6 +88,7 @@ const CACHERANGES = 0b01
 #######################
 # Sampler abstraction #
 #######################
+abstract type AbstractState end
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type AbstractSampler end

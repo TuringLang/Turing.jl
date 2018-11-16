@@ -1,5 +1,3 @@
-abstract type AbstractState end
-
 mutable struct HMCState{T<:Real} <: AbstractState
   epsilon  :: T
   stds     :: Vector{T}
@@ -23,15 +21,15 @@ struct DualAveraging{T} <: StepSizeAdapt where T<:Real
   κ           :: T
 end
 
-struct ThreePahse{T} <: WindowAdapt where T<:Integer
+struct ThreePhase{T} <: WindowAdapt where T<:Integer
   init_buffer :: T
   term_buffer :: T
   state       :: TPState{T}
 end
 
-function ThreePahse(init_buffer::Integer, term_buffer::Integer, window_size::Integer)
+function ThreePhase(init_buffer::Integer, term_buffer::Integer, window_size::Integer)
   next_window = init_buffer + window_size - 1
-  return ThreePahse(init_buffer, term_buffer, TPState(window_size, next_window))
+  return ThreePhase(init_buffer, term_buffer, TPState(window_size, next_window))
 end
 
 @static if isdefined(Turing, :CmdStan)
@@ -49,7 +47,7 @@ end
       init_buffer = adapt_conf.init_buffer
       term_buffer = adapt_conf.term_buffer
       window_size = adapt_conf.window
-      return ThreePahse(init_buffer, term_buffer, window_size)
+      return ThreePhase(init_buffer, term_buffer, window_size)
   end
 
 end
@@ -106,7 +104,7 @@ mutable struct WarmUpManager
     params::Dict{Symbol, Any}
     ve::VarEstimator
     da::DualAveraging
-    tp::ThreePahse
+    tp::ThreePhase
 end
 
 getindex(wum::WarmUpManager, param) = wum.params[param]
@@ -121,12 +119,12 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     @static if isdefined(Turing, :CmdStan)
         # CmdStan.Adapt
         da = DualAveraging(spl.info[:adapt_conf])
-        tp = ThreePahse(spl.info[:adapt_conf])
+        tp = ThreePhase(spl.info[:adapt_conf])
     else
         # If wum is not initialised by Stan (when Stan is not avaible),
         # initialise wum by common default values.
         da = DualAveraging(0.05, 10.0, 0.75)
-        tp = ThreePahse(75, 50, 25)
+        tp = ThreePhase(75, 50, 25)
     end
 
     wum = WarmUpManager(1, Dict(), ve, da, tp)
@@ -140,7 +138,7 @@ function init_warm_up_params(vi::VarInfo, spl::Sampler{<:Hamiltonian})
     wum[:n_warmup] = spl.alg.n_adapt
     wum[:δ] = spl.alg.delta
 
-    
+
     @debug wum.params
 
     spl.info[:wum] = wum
