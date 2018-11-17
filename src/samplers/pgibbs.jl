@@ -31,10 +31,10 @@ mutable struct PG{T, F} <: InferenceAlgorithm
   space                 ::    Set{T}      # sampling space, emtpy means all
   gid                   ::    Int         # group ID
 end
-PG(n1::Int, n2::Int) = PG(n1, n2, resampleSystematic, Set(), 0)
+PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, Set(), 0)
 function PG(n1::Int, n2::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  PG(n1, n2, resampleSystematic, _space, 0)
+  PG(n1, n2, resample_systematic, _space, 0)
 end
 PG(alg::PG, new_gid::Int) = PG(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 PG{T, F}(alg::PG, new_gid::Int) where {T, F} = PG{T, F}(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
