@@ -92,6 +92,8 @@ abstract type AbstractState end
 abstract type AbstractAdapt end
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type StaticHamiltonian <: Hamiltonian end
+abstract type AdaptiveHamiltonian <: Hamiltonian end
 abstract type AbstractSampler end
 """
     Sampler{T}

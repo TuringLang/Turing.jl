@@ -1,5 +1,5 @@
 """
-    NUTS(n_iters::Int, n_adapt::Int, delta::Float64)
+    NUTS(n_iters::Int, n_adapts::Int, delta::Float64)
 
 No-U-Turn Sampler (NUTS) sampler.
 
@@ -24,24 +24,24 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-mutable struct NUTS{T} <: Hamiltonian
+mutable struct NUTS{T} <: AdaptiveHamiltonian
   n_iters   ::  Int       # number of samples
-  n_adapt   ::  Int       # number of samples with adaption for epsilon
+  n_adapts  ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
 end
-function NUTS(n_adapt::Int, delta::Float64, space...)
-  NUTS(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+function NUTS(n_adapts::Int, delta::Float64, space...)
+  NUTS(1, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 end
-function NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...)
-  NUTS(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+function NUTS(n_iters::Int, n_adapts::Int, delta::Float64, space...)
+  NUTS(n_iters, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 end
 function NUTS(n_iters::Int, delta::Float64)
-  n_adapt_default = Int(round(n_iters / 2))
-  NUTS(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
+  n_adapts_default = Int(round(n_iters / 2))
+  NUTS(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, delta, Set(), 0)
 end
-NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
+NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
 
 function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::NUTS; rev_func=nothing, log_func=nothing)
   θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, std)
@@ -49,7 +49,6 @@ function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::NUTS; rev_func=nothi
   is_accept = true
   return θ_new, lj_new, is_accept, α
 end
-
 
 """
   function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,

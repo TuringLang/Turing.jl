@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-mutable struct HMC{T} <: Hamiltonian
+mutable struct HMC{T} <: StaticHamiltonian
     n_iters   ::  Int       # number of samples
     epsilon   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
@@ -47,6 +47,12 @@ function HMC(alg::HMC, new_gid::Int)
 end
 HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::HMC; rev_func=nothing, log_func=nothing)
+  θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
+            θ, lj, lj_func, grad_func, alg.tau, ϵ, std; rev_func=rev_func, log_func=log_func)
+  return θ_new, lj_new, is_accept, α
+end
+
 # Below is a trick to remove the dependency of Stan by Requires.jl
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Nothing
@@ -55,15 +61,6 @@ STAN_DEFAULT_ADAPT_CONF = nothing
 @static if isdefined(Turing, :CmdStan)
     DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
     STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
-end
-
-# NOTE: the implementation of HMC is removed,
-#       it now reuses the one of HMCDA
-Sampler(alg::HMC) = Sampler(alg::HMC, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
-Sampler(alg::HMC, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
-    spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), adapt_conf)
-    spl.info[:pre_set_ϵ] = alg.epsilon
-    spl
 end
 
 Sampler(alg::Hamiltonian) =  Sampler(alg, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
@@ -148,7 +145,7 @@ function sample(model::Function, alg::T;
         end
         samples[i].value[:elapsed] = time_elapsed
         if haskey(spl.info, :wum)
-          samples[i].value[:lf_eps] = spl.info[:wum].da.state.ϵ
+          samples[i].value[:lf_eps] = getss(spl.info[:wum].ssa)
         end
 
         total_lf_num += spl.info[:lf_num]
@@ -166,9 +163,9 @@ function sample(model::Function, alg::T;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      std_str = string(spl.info[:wum].dpc.state.std)
+      std_str = string(getstd(spl.info[:wum].pc))
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
-      println("  pre-cond. diag mat  = $(std_str).")
+      println("  pre-cond. metric    = $(std_str).")
     end
 
     if ADBACKEND[] == :forward_diff
@@ -191,23 +188,14 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
 
-        spl.info[:wum] = WarmUpManager(vi, spl)
-
-        θ = vi[spl]
-        # Heuristically find optimal ϵ
-        ϵ = spl.alg.delta > 0 ?
-            find_good_eps(model, vi, spl) :
-            spl.info[:pre_set_ϵ]
-        vi[spl] = θ
+        spl.info[:wum] = WarmUpManager(model, spl, vi) # passing everything because of possible find_good_eps() call
 
         spl.alg.gid != 0 && invlink!(vi, spl)
 
-        update!(spl.info[:wum].da.state, ϵ)
-
         return vi, true
     else
-        # Set parameters
-        ϵ = spl.info[:wum].da.state.ϵ
+        # Get step size
+        ϵ = getss(spl.info[:wum].ssa)
         @debug "current ϵ: $ϵ"
 
         # Reset current counters
@@ -225,7 +213,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         rev_func = gen_rev_func(vi, spl)
         log_func = gen_log_func(spl)
 
-        θ, lj, std = vi[spl], vi.logp, spl.info[:wum].dpc.state.std
+        θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum].pc)
 
         θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
 
@@ -239,7 +227,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         end
 
         if PROGRESS[] && spl.alg.gid == 0
-            std_str = string(spl.info[:wum].dpc.state.std)
+            std_str = string(getstd(spl.info[:wum].pc))
             std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
             haskey(spl.info, :progress) && ProgressMeter.update!(
                 spl.info[:progress],
@@ -248,8 +236,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
             )
         end
 
-        # For vanilla HMC, delta is 0 = no adaptation
-        if spl.alg.delta > 0
+        if spl.alg isa AdaptiveHamiltonian
             adapt!(spl.info[:wum], α, vi[spl], adapt_M=true, adapt_ϵ=true)
         end
 

@@ -19,7 +19,7 @@ end
 sample(example, SGHMC(1000, 0.01, 0.1))
 ```
 """
-mutable struct SGHMC{T} <: Hamiltonian
+mutable struct SGHMC{T} <: StaticHamiltonian
     n_iters::Int       # number of samples
     learning_rate::Float64   # learning rate
     momentum_decay::Float64   # momentum decay
@@ -43,7 +43,7 @@ end
 function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
-  
+
         # Initialize velocity
         v = zeros(Float64, size(vi[spl]))
         spl.info[:v] = v

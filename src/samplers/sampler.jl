@@ -171,7 +171,7 @@ end
   s = Sample(vi)
 
   if haskey(spl.info, :wum)
-    s.value[:epsilon] = spl.info[:wum].da.state.ϵ
+    s.value[:epsilon] = getss(spl.info[:wum].ssa)
   end
 
   if haskey(spl.info, :lf_num)

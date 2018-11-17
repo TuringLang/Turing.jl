@@ -48,9 +48,15 @@ end
 ### Adapters ###
 ################
 
-abstract type Preconditioner <: AbstractAdapt end
+abstract type PreConditioner <: AbstractAdapt end
 
-struct DiagonalPC{TI<:Integer,TF<:Real} <: Preconditioner
+struct NullPC <: PreConditioner end
+
+function getstd(::NullPC)
+    return [1.0]
+end
+
+struct DiagonalPC{TI<:Integer,TF<:Real} <: PreConditioner
     ve    :: VarEstimator{TI,TF}
     state :: DPCState{TF}
 end
@@ -60,12 +66,11 @@ function DiagonalPC(d::Integer)
     return DiagonalPC(ve, DPCState(ones(d)))
 end
 
-function update!(dpc::DiagonalPC)
-    var = get_var(dpc.ve)
-    dpc.state.std = sqrt.(var)
+function getstd(dpc::DiagonalPC)
+    return dpc.state.std
 end
 
-struct FullPC{TI<:Integer,TF<:Real} <: Preconditioner
+struct FullPC{TI<:Integer,TF<:Real} <: PreConditioner
     ce    :: CovarEstimator{TI,TF}
     state :: FPCState{TF}
 end

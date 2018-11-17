@@ -16,7 +16,7 @@ end
 
 abstract type WindowAdapt <: AbstractAdapt end
 
-struct ThreePhase{T} <: WindowAdapt where T<:Integer
+struct ThreePhase{T<:Integer} <: WindowAdapt
   init_buffer :: T
   term_buffer :: T
   state       :: TPState{T}
@@ -39,161 +39,120 @@ end
 
 end
 
+struct NullWindow <: WindowAdapt end
+
 struct CompositeAdapt{T<:AbstractAdapt} <: AbstractAdapt
   adapts :: Vector{T}
 end
 
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
-mutable struct WarmUpManager{TI<:Integer,TF<:Real}
-    i       :: TI
-    n_adapt :: TI
-    dpc     :: DiagonalPC{TI,TF}
-    da      :: DualAveraging{TI,TF}
-    tp      :: ThreePhase{TI}
+mutable struct WarmUpManager{T<:Integer}
+    n        :: T
+    n_adapts :: T
+    pc       :: PreConditioner
+    ssa      :: StepSizeAdapt
+    win      :: WindowAdapt
 end
 
-function WarmUpManager(vi::VarInfo, spl::Sampler{<:Hamiltonian})
+function WarmUpManager(model::Function, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo)
     # Diagonal pre-conditioner
-    dpc = DiagonalPC(length(vi[spl]))
+    pc = DiagonalPC(length(vi[spl]))
 
     # Initialize by Stan if Stan is installed
     @static if isdefined(Turing, :CmdStan)
         # CmdStan.Adapt
-        da = DualAveraging(spl.info[:adapt_conf])
-        tp = ThreePhase(spl.info[:adapt_conf])
+        ssa = DualAveraging(spl.info[:adapt_conf])
+        win = ThreePhase(spl.info[:adapt_conf])
     else
         # If wum is not initialised by Stan (when Stan is not avaible),
         # initialise wum by common default values.
-        # TODO: remove this fieldnames hack after RFC
-        da = if :delta in fieldnames(typeof(spl.alg))
-            DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState())
-        else
-            DualAveraging(0.05, 10.0, 0.75, 0.8, DAState())
-        end
-        tp = ThreePhase(75, 50, 25)
+        ssa = DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState(model, spl, vi))
+        win = ThreePhase(75, 50, 25)
     end
 
-    # TODO: remove this fieldnames hack after RFC
-    n_adapt = :n_adapt in fieldnames(typeof(spl.alg)) ? spl.alg.n_adapt : 0
-    return WarmUpManager(1, n_adapt, dpc, da, tp)
+    return WarmUpManager(1, spl.alg.n_adapts, pc, ssa, win)
 end
 
-function update!(dastate::DAState, ϵ::Real)
-    dastate.ϵ = ϵ
-    dastate.μ = log(10 * ϵ) # see NUTS paper sec 3.2.1
-end
-
-function restart_da(wum::WarmUpManager)
-    reset!(wum.da.state)
-end
-
-# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
-function adapt_step_size!(wum::WarmUpManager, stats::Real)
-
-    @debug "adapting step size ϵ..."
-    @debug "current α = $(stats)"
-    wum.da.state.m = wum.da.state.m + 1
-    m = wum.da.state.m
-
-    # Clip average MH acceptance probability.
-    stats = stats > 1 ? 1 : stats
-
-    γ = wum.da.γ; t_0 = wum.da.t_0; κ = wum.da.κ; δ = wum.da.δ
-    μ = wum.da.state.μ; x_bar = wum.da.state.x_bar; H_bar = wum.da.state.H_bar
-
-    η_H = 1.0 / (m + t_0)
-    H_bar = (1.0 - η_H) * H_bar + η_H * (δ - stats)
-
-    x = μ - H_bar * sqrt(m) / γ            # x ≡ logϵ
-    η_x = m^(-κ)
-    x_bar = (1.0 - η_x) * x_bar + η_x * x
-
-    ϵ = exp(x)
-    @debug "new ϵ = $(ϵ), old ϵ = $(wum.da.state.ϵ)"
-
-    if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
-        @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(wum.da.state.ϵ) is used instead."
-    else
-        wum.da.state.ϵ = ϵ
-        wum.da.state.x_bar, wum.da.state.H_bar = x_bar, H_bar
-    end
-
-    if m == wum.n_adapt
-        @debug " Adapted ϵ = $ϵ, $m HMC iterations is used for adaption."
-    end
-
+function WarmUpManager(model::Function, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo)
+    fss = FixedStepSize(spl.alg.epsilon)
+    return WarmUpManager(1, 0, NullPC(), fss, NullWindow())
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
-function in_adaptation(wum::WarmUpManager)
-    return (wum.i >= wum.tp.init_buffer) &&
-        (wum.i < wum.n_adapt - wum.tp.term_buffer) &&
-        (wum.i != wum.n_adapt)
+function in_adaptsation(wum::WarmUpManager)
+    tp = wum.win
+    return (wum.n >= tp.init_buffer) &&
+        (wum.n < wum.n_adapts - tp.term_buffer) &&
+        (wum.n != wum.n_adapts)
 end
 
 function is_window_end(wum::WarmUpManager)
-    return (wum.i == wum.tp.state.next_window) && (wum.i != wum.n_adapt)
+    tp = wum.win
+    return (wum.n == tp.state.next_window) && (wum.n != wum.n_adapts)
 end
 
 function compute_next_window(wum::WarmUpManager)
+    tp = wum.win
+    if ~(tp.state.next_window == wum.n_adapts - tp.term_buffer - 1)
 
-    if ~(wum.tp.state.next_window == wum.n_adapt - wum.tp.term_buffer - 1)
+        tp.state.window_size *= 2
+        tp.state.next_window = wum.n + tp.state.window_size
 
-        wum.tp.state.window_size *= 2
-        wum.tp.state.next_window = wum.i + wum.tp.state.window_size
+        if ~(tp.state.next_window == wum.n_adapts - tp.term_buffer - 1)
+            next_window_boundary = tp.state.next_window + 2 * tp.state.window_size
 
-        if ~(wum.tp.state.next_window == wum.n_adapt - wum.tp.term_buffer - 1)
-            next_window_boundary = wum.tp.state.next_window + 2 * wum.tp.state.window_size
-
-            if (next_window_boundary >= wum.n_adapt - wum.tp.term_buffer)
-                wum.tp.state.next_window = wum.n_adapt - wum.tp.term_buffer - 1
+            if (next_window_boundary >= wum.n_adapts - tp.term_buffer)
+                tp.state.next_window = wum.n_adapts - tp.term_buffer - 1
             end
         end
     end
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/nuts/adapt_diag_e_nuts.hpp
-function update_pre_cond!(wum::WarmUpManager, θ_new::AbstractVector{<:Real})
-
-  if in_adaptation(wum)
-    add_sample!(wum.dpc.ve, θ_new)
-  end
-  if is_window_end(wum)
-      compute_next_window(wum)
-      update!(wum.dpc)
-      reset!(wum.dpc.ve)
-      return true
-  end
-  return false
+function update_precond!(wum::WarmUpManager, θ::AbstractVector{<:Real})
+    dpc = wum.pc
+    if in_adaptsation(wum)
+        add_sample!(dpc.ve, θ)
+    end
+    if is_window_end(wum)
+        var = get_var(dpc.ve)
+        dpc.state.std = sqrt.(var)
+        reset!(dpc.ve)
+        return true
+    end
+    return false
 end
 
-function adapt!(wum::WarmUpManager, stats::Real, θ_new; adapt_ϵ=false, adapt_M=false)
+function update_stepsize!(wum::WarmUpManager, stats::Real)
+    da = wum.ssa
+    adapt_stepsize!(da, stats)
+    if is_window_end(wum) || wum.n == wum.n_adapts
+        ϵ = exp(da.state.x_bar)
+        da.state.ϵ = ϵ
+        da.state.μ = computeμ(ϵ)
+        reset!(da.state)
+    end
+    if wum.n == wum.n_adapts
+        ϵ = exp(da.state.x_bar)
+        da.state.ϵ = ϵ
+        @info " Adapted ϵ = $ϵ, $(wum.n_adapts) iterations is used for adaption."
+    end
+end
 
-    if wum.i < wum.n_adapt
-
+function adapt!(wum::WarmUpManager, stats::Real, θ; adapt_ϵ=false, adapt_M=false)
+    if wum.n <= wum.n_adapts
         if adapt_ϵ
-            adapt_step_size!(wum, stats)
-            if is_window_end(wum)
-                ϵ = exp(wum.da.state.x_bar)
-                update!(wum.da.state, ϵ)
-                restart_da(wum)
-            end
+            update_stepsize!(wum, stats)
         end
 
         if adapt_M
-            update_pre_cond!(wum, θ_new)  # window is updated implicitly.
-        else   # update window explicitly.
-            is_window_end(wum) && compute_next_window(wum)
+            update_precond!(wum, θ)
         end
 
-        wum.i += 1
+        # If window ends, compute next window
+        is_window_end(wum) && compute_next_window(wum)
 
-    elseif wum.i == wum.n_adapt
-
-        if adapt_ϵ
-            ϵ = exp(wum.da.state.x_bar)
-            wum.da.state.ϵ = ϵ
-        end
+        wum.n += 1
     end
 end

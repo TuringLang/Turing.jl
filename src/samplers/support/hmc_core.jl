@@ -48,18 +48,12 @@ function gen_log_func(sampler::Sampler)
     end
 end
 
-function sample_momentum(vi::VarInfo, sampler::Sampler)
-    d = length(getranges(vi, sampler))
-    std = sampler.info[:wum].dpc.state.std
-    return _sample_momentum(d, std)
-end
-
 _sample_momentum(d::Int, std::Vector) = randn(d) ./ std
 
-function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
+function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler})
     setlogp!(vi, zero(Real))
     if spl != nothing && :eval_num ∈ keys(spl.info)
-        spl.info[:eval_num] += 1 
+        spl.info[:eval_num] += 1
     end
     Base.invokelatest(model, vi, spl)
     return vi
@@ -119,12 +113,7 @@ function _leapfrog(
     return θ, p, τ_valid
 end
 
-# Compute the Hamiltonian
-function find_H(p::AbstractVector{<:Real}, model::Function, vi::VarInfo, sampler::Sampler)
-    logpdf_func_float = gen_lj_func(vi, sampler, model)
-    return _find_H(vi[sampler], p, logpdf_func_float, sampler.info[:wum].dpc.state.std)
-end
-
+# Compute Hamiltonian
 function _find_H(
     θ::AbstractVector{<:Real},
     p::AbstractVector{<:Real},
@@ -144,19 +133,79 @@ function _find_H(
     return isnan(H) ? Inf : H
 end
 
+function _hmc_step(
+    θ::AbstractVector{<:Real},
+    lj::Real,
+    lj_func,
+    grad_func,
+    τ::Int,
+    ϵ::Real,
+    std::AbstractVector{<:Real};
+    rev_func=nothing,
+    log_func=nothing,
+)
+
+    θ_dim = length(θ)
+
+    @debug "sampling momentums..."
+    p = _sample_momentum(θ_dim, std)
+
+    @debug "recording old values..."
+    H = _find_H(θ, p, lj, std)
+
+
+    @debug "leapfrog for $τ steps with step size $ϵ"
+    θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
+
+    @debug "computing new H..."
+    lj_new = lj_func(θ_new)
+    H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, std)
+
+    @debug "deciding wether to accept and computing accept rate α..."
+    is_accept, logα = mh_accept(H, H_new)
+
+    if is_accept
+        θ = θ_new
+        lj = lj_new
+    end
+
+    return θ, lj, is_accept, τ_valid, exp(logα)
+end
+
+function _hmc_step(
+    θ::AbstractVector{<:Real},
+    lj::Real,
+    lj_func,
+    grad_func,
+    ϵ::Real,
+    λ::Real,
+    std::AbstractVector{<:Real};
+    rev_func=nothing,
+    log_func=nothing,
+)
+    τ = max(1, round(Int, λ / ϵ))
+    return _hmc_step(θ, lj, lj_func, grad_func, τ, ϵ, std; rev_func=rev_func, log_func=log_func)
+end
+
+
 # TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where T
-    println("[Turing] looking for good initial eps...")
+function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
+    logpdf_func_float = gen_lj_func(vi, spl, model)
+
+    @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
-    p = sample_momentum(vi, sampler)
-    H0 = find_H(p, model, vi, sampler)
+    θ_dim = length(vi[spl])
+    unitstd = ones(θ_dim)
+    p = randn(θ_dim)
 
-    θ = vi[sampler]
-    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
-    h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
+    H0 = _find_H(vi[spl], p, logpdf_func_float, unitstd)
+
+    θ = vi[spl]
+    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
+    h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, unitstd)
 
     delta_H = H0 - h
     direction = delta_H > log(0.8) ? 1 : -1
@@ -166,11 +215,11 @@ function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where 
     # Heuristically find optimal ϵ
     while (iter_num <= 12)
 
-        p = sample_momentum(vi, sampler)
-        H0 = find_H(p, model, vi, sampler)
+        p = randn(θ_dim)
+        H0 = _find_H(vi[spl], p, logpdf_func_float, unitstd)
 
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
-        h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
+        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
+        h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, unitstd)
         @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
@@ -188,10 +237,10 @@ function find_good_eps(model::Function, vi::VarInfo, sampler::Sampler{T}) where 
 
     while h == Inf  # revert if the last change is too big
         ϵ = ϵ / 2               # safe is more important than large
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, sampler)
-        h = τ == 0 ? Inf : find_H(p_prime, model, vi, sampler)
+        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
+        h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, std)
     end
-    println("\r[$T] found initial ϵ: ", ϵ)
+    @info "\r[$T] found initial ϵ: $ϵ"
     return ϵ
 end
 
@@ -199,7 +248,7 @@ end
     mh_accept(H::Real, H_new::Real)
     mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria. Returns a boolean for whether or not accept and the 
+Peform MH accept criteria. Returns a boolean for whether or not accept and the
 acceptance ratio in log space.
 """
 mh_accept(H::Real, H_new::Real) = log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))

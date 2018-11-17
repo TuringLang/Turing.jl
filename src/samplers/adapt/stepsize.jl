@@ -10,9 +10,17 @@ mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
     H_bar :: TF
 end
 
-function DAState()
-    ϵ = 0.0; μ = 0.0 # NOTE: these inital values doesn't affect anything as they will be overwritten
+function DAState(model::Function, spl::Sampler{<:Hamiltonian}, vi::VarInfo)
+    θ = vi[spl]
+    ϵ = find_good_eps(model, spl, vi) # heuristically find optimal ϵ
+    vi[spl] = θ
+
+    μ = computeμ(ϵ) # NOTE: these inital values doesn't affect anything as they will be overwritten
     return DAState(0, ϵ, μ, 0.0, 0.0)
+end
+
+function computeμ(ϵ::Real)
+    return log(10 * ϵ) # see NUTS paper sec 3.2.1
 end
 
 function reset!(dastate::DAState{TI,TF}) where {TI<:Integer,TF<:Real}
@@ -21,13 +29,17 @@ function reset!(dastate::DAState{TI,TF}) where {TI<:Integer,TF<:Real}
     dastate.H_bar = zero(TF)
 end
 
+mutable struct MSSState{T<:Real}
+    ϵ :: T
+end
+
 ################
 ### Adapters ###
 ################
 
 abstract type StepSizeAdapt <: AbstractAdapt end
 
-struct DualAveraging{TI,TF} <: StepSizeAdapt where {TI<:Integer,TF<:Real}
+struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapt
   γ     :: TF
   t_0   :: TF
   κ     :: TF
@@ -36,7 +48,6 @@ struct DualAveraging{TI,TF} <: StepSizeAdapt where {TI<:Integer,TF<:Real}
 end
 
 @static if isdefined(Turing, :CmdStan)
-
   function DualAveraging(adapt_conf::CmdStan.Adapt)
       # Hyper parameters for dual averaging
       γ = adapt_conf.gamma
@@ -45,5 +56,55 @@ end
       δ = adapt_conf.delta
       return DualAveraging(γ, t_0, κ, δ, DAState())
   end
+end
 
+function getss(da::DualAveraging)
+    return da.state.ϵ
+end
+
+struct ManualSSAdapt{T<:Real} <:StepSizeAdapt
+    state :: MSSState{T}
+end
+
+function getss(mssa::ManualSSAdapt)
+    return mssa.state.ϵ
+end
+
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
+function adapt_stepsize!(da::DualAveraging, stats::Real)
+    @debug "adapting step size ϵ..."
+    @debug "current α = $(stats)"
+    da.state.m = da.state.m + 1
+    m = da.state.m
+
+    # Clip average MH acceptance probability.
+    stats = stats > 1 ? 1 : stats
+
+    γ = da.γ; t_0 = da.t_0; κ = da.κ; δ = da.δ
+    μ = da.state.μ; x_bar = da.state.x_bar; H_bar = da.state.H_bar
+
+    η_H = 1.0 / (m + t_0)
+    H_bar = (1.0 - η_H) * H_bar + η_H * (δ - stats)
+
+    x = μ - H_bar * sqrt(m) / γ            # x ≡ logϵ
+    η_x = m^(-κ)
+    x_bar = (1.0 - η_x) * x_bar + η_x * x
+
+    ϵ = exp(x)
+    @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
+
+    if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
+        @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
+    else
+        da.state.ϵ = ϵ
+        da.state.x_bar, da.state.H_bar = x_bar, H_bar
+    end
+end
+
+struct FixedStepSize{T<:Real} <: StepSizeAdapt
+    ϵ :: T
+end
+
+function getss(fss::FixedStepSize)
+    return fss.ϵ
 end
