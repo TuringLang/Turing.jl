@@ -29,8 +29,15 @@ function get_var(ve::VarEstimator)
 end
 
 # TODO: to implement cov estimater
+# https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_covar_estimator.hpp
 mutable struct CovarEstimator{TI<:Integer,TF<:Real}
 end
+
+# TODO: to implement cov estimater
+# https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/covar_adaptation.hpp
+function get_covar(ve::CovarEstimator)
+end
+# NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
 
 ######################
 ### Mutable states ###
