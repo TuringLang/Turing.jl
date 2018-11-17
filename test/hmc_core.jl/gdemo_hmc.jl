@@ -13,7 +13,7 @@ println("mean of m: $(mean(chn[:m][1000:end]))")
 
 # Plain Julia
 
-stds = ones(θ_dim)
+std = ones(θ_dim)
 θ = randn(θ_dim)
 lj = lj_func(θ)
 
@@ -28,7 +28,7 @@ totla_num = 5000
 for iter = 1:totla_num
 
   push!(chn[:θ], θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, stds)
+  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, std)
   accept_num += is_accept
 
 end

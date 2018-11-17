@@ -53,9 +53,9 @@ function HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64, spac
     return HMCDA(n_iters, n_adapt, delta, lambda, _space, 0)
 end
 
-function hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, alg::HMCDA; rev_func=nothing, log_func=nothing)
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::HMCDA; rev_func=nothing, log_func=nothing)
   θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, ϵ, alg.lambda, stds; rev_func=rev_func, log_func=log_func)
+            θ, lj, lj_func, grad_func, ϵ, alg.lambda, std; rev_func=rev_func, log_func=log_func)
   return θ_new, lj_new, is_accept, α
 end
 
@@ -66,7 +66,7 @@ function _hmc_step(
     grad_func,
     ϵ::Real,
     λ::Real,
-    stds::AbstractVector{<:Real};
+    std::AbstractVector{<:Real};
     rev_func=nothing,
     log_func=nothing,
 )
@@ -74,10 +74,10 @@ function _hmc_step(
     θ_dim = length(θ)
 
     @debug "sampling momentums..."
-    p = _sample_momentum(θ_dim, stds)
+    p = _sample_momentum(θ_dim, std)
 
     @debug "recording old values..."
-    H = _find_H(θ, p, lj, stds)
+    H = _find_H(θ, p, lj, std)
 
     τ = max(1, round(Int, λ / ϵ))
     @debug "leapfrog for $τ steps with step size $ϵ"
@@ -85,7 +85,7 @@ function _hmc_step(
 
     @debug "computing new H..."
     lj_new = lj_func(θ_new)
-    H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, stds)
+    H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, std)
 
     @debug "deciding wether to accept and computing accept rate α..."
     is_accept, logα = mh_accept(H, H_new)
@@ -105,7 +105,7 @@ function _hmc_step(
     grad_func,
     τ::Int,
     ϵ::Real,
-    stds::AbstractVector{<:Real},
+    std::AbstractVector{<:Real},
 )
-    return _hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, stds)
+    return _hmc_step(θ, lj, lj_func, grad_func, ϵ, τ * ϵ, std)
 end

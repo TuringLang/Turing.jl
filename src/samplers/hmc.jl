@@ -166,9 +166,9 @@ function sample(model::Function, alg::T;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      stds_str = string(spl.info[:wum].dpc.state.std)
-      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
-      println("  pre-cond. diag mat  = $(stds_str).")
+      std_str = string(spl.info[:wum].dpc.state.std)
+      std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
+      println("  pre-cond. diag mat  = $(std_str).")
     end
 
     if ADBACKEND[] == :forward_diff
@@ -225,9 +225,9 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         rev_func = gen_rev_func(vi, spl)
         log_func = gen_log_func(spl)
 
-        θ, lj, stds = vi[spl], vi.logp, spl.info[:wum].dpc.state.std
+        θ, lj, std = vi[spl], vi.logp, spl.info[:wum].dpc.state.std
 
-        θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, spl.alg; rev_func=rev_func, log_func=log_func)
+        θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
 
         @debug "decide whether to accept..."
         if is_accept
@@ -239,12 +239,12 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         end
 
         if PROGRESS[] && spl.alg.gid == 0
-            stds_str = string(spl.info[:wum].dpc.state.std)
-            stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
+            std_str = string(spl.info[:wum].dpc.state.std)
+            std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
             haskey(spl.info, :progress) && ProgressMeter.update!(
                 spl.info[:progress],
                 spl.info[:progress].counter;
-                showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, stds_str)],
+                showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, std_str)],
             )
         end
 

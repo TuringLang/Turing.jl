@@ -43,8 +43,8 @@ function NUTS(n_iters::Int, delta::Float64)
 end
 NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
 
-function hmc_step(θ, lj, lj_func, grad_func, ϵ, stds, alg::NUTS; rev_func=nothing, log_func=nothing)
-  θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, stds)
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::NUTS; rev_func=nothing, log_func=nothing)
+  θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, std)
   lj_new = lj_func(θ_new)
   is_accept = true
   return θ_new, lj_new, is_accept, α
@@ -53,7 +53,7 @@ end
 
 """
   function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                       H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
+                       H0::AbstractFloat,lj_func::Function, grad_func::Function, std::AbstractVector;
                        Δ_max::AbstractFloat=1000) where {T<:Union{Vector,SubArray}}
 
 Recursively build balanced tree.
@@ -71,17 +71,17 @@ Arguments:
 - `H0`        : initial H
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
-- `stds`      : pre-conditioning matrix
+- `std`      : pre-conditioning matrix
 - `Δ_max`     : threshold for exploeration error tolerance
 """
 function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                     H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
+                     H0::AbstractFloat,lj_func::Function, grad_func::Function, std::AbstractVector;
                      Δ_max::AbstractFloat=1000.0) where {T<:Union{AbstractVector,SubArray}}
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, τ_valid = _leapfrog(θ, r, 1, v * ϵ, grad_func)
       # Use old H to save computation
-      H′ = τ_valid == 0 ? Inf : _find_H(θ′, r′, lj_func, stds)
+      H′ = τ_valid == 0 ? Inf : _find_H(θ′, r′, lj_func, std)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
@@ -89,13 +89,13 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
       return θ′, r′, θ′, r′, θ′, n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′α = _build_tree(θ, r, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′α = _build_tree(θ, r, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θm, rm, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θm, rm, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θp, rp, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θp, rp, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
@@ -112,7 +112,7 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
 
 
 """
-  function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+  function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, std::AbstractVector;
                       j_max::Int=j_max) where {T<:Union{AbstractVector,SubArray}}
 
 Perform one NUTS step.
@@ -126,17 +126,17 @@ Arguments:
 - `lj`        : initial log-joint prob
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
-- `stds`      : pre-conditioning matrix
+- `std`      : pre-conditioning matrix
 - `j_max`     : maximum expanding of doubling tree
 """
-function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real, lj_func::Function, grad_func::Function, stds::AbstractVector;
+function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real, lj_func::Function, grad_func::Function, std::AbstractVector;
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
   @debug "sampling momentums..."
   θ_dim = length(θ)
-  r0 = _sample_momentum(θ_dim, stds)
+  r0 = _sample_momentum(θ_dim, std)
 
-  H0 = _find_H(θ, r0, lj, stds)
+  H0 = _find_H(θ, r0, lj, std)
   logu = log(rand()) + -H0
 
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
@@ -146,9 +146,9 @@ function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real, lj_func::Function, grad_
 
     v = rand([-1, 1])
     if v == -1
-        θm, rm, _, _, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
+        θm, rm, _, _, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, std)
     else
-        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
+        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, std)
     end
 
     if s′ == 1

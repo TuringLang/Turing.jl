@@ -50,11 +50,11 @@ end
 
 function sample_momentum(vi::VarInfo, sampler::Sampler)
     d = length(getranges(vi, sampler))
-    stds = sampler.info[:wum].dpc.state.std
-    return _sample_momentum(d, stds)
+    std = sampler.info[:wum].dpc.state.std
+    return _sample_momentum(d, std)
 end
 
-_sample_momentum(d::Int, stds::Vector) = randn(d) ./ stds
+_sample_momentum(d::Int, std::Vector) = randn(d) ./ std
 
 function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler}) 
     setlogp!(vi, zero(Real))
@@ -129,18 +129,18 @@ function _find_H(
     θ::AbstractVector{<:Real},
     p::AbstractVector{<:Real},
     logpdf_func_float::Function,
-    stds::AbstractVector{<:Real},
+    std::AbstractVector{<:Real},
 )
-    return _find_H(θ, p, logpdf_func_float(θ), stds)
+    return _find_H(θ, p, logpdf_func_float(θ), std)
 end
 
 function _find_H(
     θ::AbstractVector{<:Real},
     p::AbstractVector{<:Real},
     logp::Real,
-    stds::AbstractVector{<:Real},
+    std::AbstractVector{<:Real},
 )
-    H = sum(abs2, p .* stds) / 2 - logp
+    H = sum(abs2, p .* std) / 2 - logp
     return isnan(H) ? Inf : H
 end
 
