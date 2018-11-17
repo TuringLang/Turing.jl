@@ -37,8 +37,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
 
-        mssa = ManualSSAdapt(MSSState(spl.alg.epsilon))
-        spl.info[:wum] = WarmUpManager(1, 0, NullPC(), mssa, NullWindow())
+        spl.info[:wum] = NaiveCompAdapt(NullPC(), ManualSSAdapt(MSSState(spl.alg.epsilon)))
 
         # Initialize iteration counter
         spl.info[:t] = 0

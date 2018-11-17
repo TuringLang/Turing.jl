@@ -145,7 +145,7 @@ function sample(model::Function, alg::T;
         end
         samples[i].value[:elapsed] = time_elapsed
         if haskey(spl.info, :wum)
-          samples[i].value[:lf_eps] = getss(spl.info[:wum].ssa)
+          samples[i].value[:lf_eps] = getss(spl.info[:wum])
         end
 
         total_lf_num += spl.info[:lf_num]
@@ -163,7 +163,7 @@ function sample(model::Function, alg::T;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      std_str = string(getstd(spl.info[:wum].pc))
+      std_str = string(getstd(spl.info[:wum]))
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
       println("  pre-cond. metric    = $(std_str).")
     end
@@ -188,14 +188,18 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
     if is_first
         spl.alg.gid != 0 && link!(vi, spl)
 
-        spl.info[:wum] = WarmUpManager(model, spl, vi) # passing everything because of possible find_good_eps() call
+        if spl.alg isa AdaptiveHamiltonian
+            spl.info[:wum] = ThreePhase(model, spl, vi) # passing everything because of possible find_good_eps() call
+        else
+            spl.info[:wum] = NaiveCompAdapt(NullPC(), FixedStepSize(spl.alg.epsilon)) 
+        end
 
         spl.alg.gid != 0 && invlink!(vi, spl)
 
         return vi, true
     else
         # Get step size
-        ϵ = getss(spl.info[:wum].ssa)
+        ϵ = getss(spl.info[:wum])
         @debug "current ϵ: $ϵ"
 
         # Reset current counters
@@ -213,7 +217,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         rev_func = gen_rev_func(vi, spl)
         log_func = gen_log_func(spl)
 
-        θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum].pc)
+        θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
 
         θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
 
@@ -227,7 +231,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
         end
 
         if PROGRESS[] && spl.alg.gid == 0
-            std_str = string(getstd(spl.info[:wum].pc))
+            std_str = string(getstd(spl.info[:wum]))
             std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
             haskey(spl.info, :progress) && ProgressMeter.update!(
                 spl.info[:progress],

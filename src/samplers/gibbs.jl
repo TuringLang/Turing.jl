@@ -130,7 +130,7 @@ function sample(
 
                 if isa(local_spl.alg, Hamiltonian)
                     lp = getlogp(varInfo)
-                    epsilon = getss(local_spl.info[:wum].ssa)
+                    epsilon = getss(local_spl.info[:wum])
                     lf_num = local_spl.info[:lf_num]
                     eval_num = local_spl.info[:eval_num]
                 end

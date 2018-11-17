@@ -70,6 +70,19 @@ function getstd(dpc::DiagonalPC)
     return dpc.state.std
 end
 
+function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
+    if is_addsample
+        add_sample!(dpc.ve, θ)
+    end
+    if is_updatestd
+        var = get_var(dpc.ve)
+        dpc.state.std = sqrt.(var)
+        reset!(dpc.ve)
+        return true
+    end
+    return false
+end
+
 struct FullPC{TI<:Integer,TF<:Real} <: PreConditioner
     ce    :: CovarEstimator{TI,TF}
     state :: FPCState{TF}

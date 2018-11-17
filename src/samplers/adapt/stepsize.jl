@@ -39,6 +39,14 @@ end
 
 abstract type StepSizeAdapt <: AbstractAdapt end
 
+struct FixedStepSize{T<:Real} <: StepSizeAdapt
+    ϵ :: T
+end
+
+function getss(fss::FixedStepSize)
+    return fss.ϵ
+end
+
 struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapt
   γ     :: TF
   t_0   :: TF
@@ -101,10 +109,12 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     end
 end
 
-struct FixedStepSize{T<:Real} <: StepSizeAdapt
-    ϵ :: T
-end
-
-function getss(fss::FixedStepSize)
-    return fss.ϵ
+function adapt!(da::DualAveraging, stats::Real, is_updateϵ::Bool)
+    adapt_stepsize!(da, stats)
+    if is_updateϵ
+        ϵ = exp(da.state.x_bar)
+        da.state.ϵ = ϵ
+        da.state.μ = computeμ(ϵ)
+        reset!(da.state)
+    end
 end
