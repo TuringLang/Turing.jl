@@ -1,81 +1,20 @@
-##########################
-### Variance estimator ###
-##########################
-# Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
-mutable struct VarEstimator{TI<:Integer,TF<:Real}
-    n :: TI
-    μ :: Vector{TF}
-    M :: Vector{TF}
-end
+include("precond.jl")
+include("stepsize.jl")
 
-function reset!(ve::VarEstimator{TI,TF}) where {TI<:Integer,TF<:Real}
-    ve.n = zero(TI)
-    ve.μ .= zero(TF)
-    ve.M .= zero(TF)
-end
-
-function add_sample!(ve::VarEstimator, s::AbstractVector)
-    ve.n += 1
-    δ = s .- ve.μ
-    ve.μ .+= δ ./ ve.n
-    ve.M .+= δ .* (s .- ve.μ)
-end
-
-# https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/var_adaptation.hpp
-function get_var(ve::VarEstimator)
-    n, M = ve.n, ve.M
-    @assert n >= 2 "Cannot get variance with only one sample"
-    return (n / ((n + 5) * (n - 1))) .* M .+ 1e-3 * (5.0 / (n + 5))
-end
-
-###################################
-### Mutable states for adapters ###
-###################################
-
-mutable struct DPCState{T<:Real} <: AbstractState
-    std :: Vector{T}
-end
+######################
+### Mutable states ###
+######################
 
 mutable struct TPState{T<:Integer} <: AbstractState
     window_size :: T
     next_window :: T
 end
 
-mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
-    m     :: TI
-    ϵ     :: TF
-    μ     :: TF
-    x_bar :: TF
-    H_bar :: TF
-end
-
-function DAState()
-    ϵ = 0.0; μ = 0.0 # NOTE: these inital values doesn't affect anything as they will be overwritten
-    return DAState(0, ϵ, μ, 0.0, 0.0)
-end
-
-function reset!(dastate::DAState{TI,TF}) where {TI<:Integer,TF<:Real}
-    dastate.m = zero(TI)
-    dastate.x_bar = zero(TF)
-    dastate.H_bar = zero(TF)
-end
-
 ################
 ### Adapters ###
 ################
 
-abstract type AbstractAdapt end
-abstract type StepSizeAdapt <: AbstractAdapt end
-abstract type Preconditioner <: AbstractAdapt end
 abstract type WindowAdapt <: AbstractAdapt end
-
-struct DualAveraging{TI,TF} <: StepSizeAdapt where {TI<:Integer,TF<:Real}
-  γ     :: TF
-  t_0   :: TF
-  κ     :: TF
-  δ     :: TF
-  state :: DAState{TI,TF}
-end
 
 struct ThreePhase{T} <: WindowAdapt where T<:Integer
   init_buffer :: T
@@ -90,15 +29,6 @@ end
 
 @static if isdefined(Turing, :CmdStan)
 
-  function DualAveraging(adapt_conf::CmdStan.Adapt)
-      # Hyper parameters for dual averaging
-      γ = adapt_conf.gamma
-      t_0 = adapt_conf.t0
-      κ = adapt_conf.kappa
-      δ = adapt_conf.delta
-      return DualAveraging(γ, t_0, κ, δ, DAState())
-  end
-
   function ThreePhase(adapt_conf::CmdStan.Adapt)
       # Three phases settings
       init_buffer = adapt_conf.init_buffer
@@ -109,33 +39,9 @@ end
 
 end
 
-struct DiagonalPC{TI<:Integer,TF<:Real} <: Preconditioner
-    ve  :: VarEstimator{TI,TF}
-    state :: DPCState{TF}
-end
-
-function DiagonalPC(d::Integer)
-    ve = VarEstimator(0, zeros(d), zeros(d))
-    return DiagonalPC(ve, DPCState(ones(d)))
-end
-
-function update!(dpc::DiagonalPC)
-    var = get_var(dpc.ve)
-    dpc.state.std = sqrt.(var)
-end
-
-struct FullPC <: Preconditioner
-end
-
 struct CompositeAdapt{T<:AbstractAdapt} <: AbstractAdapt
   adapts :: Vector{T}
 end
-
-
-
-### Old adaptation code below
-
-
 
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
 
