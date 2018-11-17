@@ -23,8 +23,9 @@ end
 
 # https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/var_adaptation.hpp
 function get_var(ve::VarEstimator)
-    @assert ve.n >= 2
-    return (ve.n / ((ve.n + 5) * (ve.n - 1))) .* ve.M .+ 1e-3 * (5.0 / (ve.n + 5))
+    n, M = ve.n, ve.M
+    @assert n >= 2 "Cannot get variance with only one sample"
+    return (n / ((n + 5) * (n - 1))) .* M .+ 1e-3 * (5.0 / (n + 5))
 end
 
 ###################################
