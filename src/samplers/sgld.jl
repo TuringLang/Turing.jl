@@ -33,45 +33,47 @@ function SGLD(n_iters, epsilon, space...)
 end
 SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.epsilon, alg.space, new_gid)
 
-function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
-    if is_first
-        spl.alg.gid != 0 && link!(vi, spl)
+function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
+    spl.alg.gid != 0 && link!(vi, spl)
 
-        spl.info[:wum] = NaiveCompAdapt(NullPC(), ManualSSAdapt(MSSState(spl.alg.epsilon)))
+    spl.info[:wum] = NaiveCompAdapt(NullPC(), ManualSSAdapt(MSSState(spl.alg.epsilon)))
 
-        # Initialize iteration counter
-        spl.info[:t] = 0
+    # Initialize iteration counter
+    spl.info[:t] = 0
 
-        spl.alg.gid != 0 && invlink!(vi, spl)
-    else
-        # Update iteration counter
-        spl.info[:t] += 1
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    return vi, true
+end
 
-        @debug "compute current step size..."
-        γ = .35
-        ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
-        mssa = spl.info[:wum].ssa
-        mssa.state.ϵ = ϵ_t
+function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
+    # Update iteration counter
+    spl.info[:t] += 1
 
-        @debug "X-> R..."
-        if spl.alg.gid != 0
-            link!(vi, spl)
-            runmodel!(model, vi, spl)
-        end
+    @debug "compute current step size..."
+    γ = .35
+    ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
+    mssa = spl.info[:wum].ssa
+    mssa.state.ϵ = ϵ_t
 
-        @debug "recording old variables..."
-        θ = vi[spl]
-        _, grad = gradient(θ, vi, model, spl)
-        verifygrad(grad)
-
-        @debug "update latent variables..."
-        θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
-
-        @debug "always accept..."
-        vi[spl] = θ
-
-        @debug "R -> X..."
-        spl.alg.gid != 0 && invlink!(vi, spl)
+    @debug "X-> R..."
+    if spl.alg.gid != 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
     end
+
+    @debug "recording old variables..."
+    θ = vi[spl]
+    _, grad = gradient(θ, vi, model, spl)
+    verifygrad(grad)
+
+    @debug "update latent variables..."
+    θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
+
+    @debug "always accept..."
+    vi[spl] = θ
+
+    @debug "R -> X..."
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    
     return vi, true
 end

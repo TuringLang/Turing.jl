@@ -117,6 +117,7 @@ function sample(model::Function, alg::T;
     vi = if resume_from == nothing
         vi_ = VarInfo()
         Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        spl.info[:eval_num] += 1
         vi_
     else
         deepcopy(resume_from.info[:vi])
@@ -135,7 +136,7 @@ function sample(model::Function, alg::T;
     for i = 1:n
         @debug "$alg_str stepping..."
 
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i == 1)
+        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
         time_total += time_elapsed
 
         if is_accept # accepted => store the new predcits
@@ -184,71 +185,69 @@ function sample(model::Function, alg::T;
     return c
 end
 
-function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Bool)
-    if is_first
-        spl.alg.gid != 0 && link!(vi, spl)
+function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
+    spl.info[:wum] = NaiveCompAdapt(NullPC(), FixedStepSize(spl.alg.epsilon))
+    return vi, true
+end
 
-        if spl.alg isa AdaptiveHamiltonian
-            spl.info[:wum] = ThreePhase(model, spl, vi) # passing everything because of possible find_good_eps() call
-        else
-            spl.info[:wum] = NaiveCompAdapt(NullPC(), FixedStepSize(spl.alg.epsilon)) 
-        end
+function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
+    spl.alg.gid != 0 && link!(vi, spl)
+    spl.info[:wum] = ThreePhase(model, spl, vi) # passing everything because of possible find_good_eps() call
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    return vi, true
+end
 
-        spl.alg.gid != 0 && invlink!(vi, spl)
+function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
+    # Get step size
+    ϵ = getss(spl.info[:wum])
+    @debug "current ϵ: $ϵ"
 
-        return vi, true
-    else
-        # Get step size
-        ϵ = getss(spl.info[:wum])
-        @debug "current ϵ: $ϵ"
+    # Reset current counters
+    spl.info[:lf_num] = 0
+    spl.info[:eval_num] = 0
 
-        # Reset current counters
-        spl.info[:lf_num] = 0
-        spl.info[:eval_num] = 0
-
-        @debug "X-> R..."
-        if spl.alg.gid != 0
-            link!(vi, spl)
-            runmodel!(model, vi, spl)
-        end
-
-        grad_func = gen_grad_func(vi, spl, model)
-        lj_func = gen_lj_func(vi, spl, model)
-        rev_func = gen_rev_func(vi, spl)
-        log_func = gen_log_func(spl)
-
-        θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
-
-        θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
-
-        @debug "decide whether to accept..."
-        if is_accept
-            vi[spl] = θ_new
-            setlogp!(vi, lj_new)
-        else
-            vi[spl] = θ
-            setlogp!(vi, lj)
-        end
-
-        if PROGRESS[] && spl.alg.gid == 0
-            std_str = string(getstd(spl.info[:wum]))
-            std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
-            haskey(spl.info, :progress) && ProgressMeter.update!(
-                spl.info[:progress],
-                spl.info[:progress].counter;
-                showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, std_str)],
-            )
-        end
-
-        if spl.alg isa AdaptiveHamiltonian
-            adapt!(spl.info[:wum], α, vi[spl], adapt_M=true, adapt_ϵ=true)
-        end
-
-        @debug "R -> X..."
-        spl.alg.gid != 0 && invlink!(vi, spl)
-
-        return vi, is_accept
+    @debug "X-> R..."
+    if spl.alg.gid != 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
     end
+
+    grad_func = gen_grad_func(vi, spl, model)
+    lj_func = gen_lj_func(vi, spl, model)
+    rev_func = gen_rev_func(vi, spl)
+    log_func = gen_log_func(spl)
+
+    θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
+
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
+
+    @debug "decide whether to accept..."
+    if is_accept
+        vi[spl] = θ_new
+        setlogp!(vi, lj_new)
+    else
+        vi[spl] = θ
+        setlogp!(vi, lj)
+    end
+
+    if PROGRESS[] && spl.alg.gid == 0
+        std_str = string(getstd(spl.info[:wum]))
+        std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
+        haskey(spl.info, :progress) && ProgressMeter.update!(
+            spl.info[:progress],
+            spl.info[:progress].counter;
+            showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, std_str)],
+        )
+    end
+
+    if spl.alg isa AdaptiveHamiltonian
+        adapt!(spl.info[:wum], α, vi[spl], adapt_M=true, adapt_ϵ=true)
+    end
+
+    @debug "R -> X..."
+    spl.alg.gid != 0 && invlink!(vi, spl)
+
+    return vi, is_accept
 end
 
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin

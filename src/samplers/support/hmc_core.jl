@@ -194,6 +194,8 @@ end
 function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     logpdf_func_float = gen_lj_func(vi, spl, model)
 
+    spl.alg.gid != 0 && link!(vi, spl)
+
     @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
@@ -241,6 +243,9 @@ function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
         h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, std)
     end
     @info "\r[$T] found initial ϵ: $ϵ"
+
+    spl.alg.gid != 0 && invlink!(vi, spl)
+
     return ϵ
 end
 

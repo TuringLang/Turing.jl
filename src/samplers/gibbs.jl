@@ -111,7 +111,7 @@ function sample(
             if isa(local_spl.alg, GibbsComponent)
                 for _ = 1:local_spl.alg.n_iters
                     @debug "recording old θ..."
-                    time_elapsed_thin = @elapsed varInfo, is_accept = step(model, local_spl, varInfo, i==1)
+                    time_elapsed_thin = @elapsed varInfo, is_accept = step(model, local_spl, varInfo, Val(i==1))
 
                     if ~spl.alg.thin
                         samples[i_thin].value = Sample(varInfo).value

@@ -47,7 +47,7 @@ Sampler(alg::PG) = begin
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{<:PG}, vi::VarInfo, _::Bool) = step(model, spl, vi)
+step(model::Function, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
 
 step(model::Function, spl::Sampler{<:PG}, vi::VarInfo) = begin
   particles = ParticleContainer{Trace}(model)

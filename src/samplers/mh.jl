@@ -75,33 +75,33 @@ propose(model::Function, spl::Sampler{<:MH}, vi::VarInfo) = begin
   runmodel!(model, vi ,spl)
 end
 
-step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Bool) = begin
-  if is_first
-    return vi, true
-  else
-    if spl.alg.gid != 0 # Recompute joint in logp
-      runmodel!(model, vi, nothing)
-    end
-    old_θ = copy(vi[spl])
-    old_logp = getlogp(vi)
+function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
+  return vi, true
+end
 
-    @debug "Propose new parameters from proposals..."
-    propose(model, spl, vi)
-
-    @debug "computing accept rate α..."
-    is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
-
-    @debug "decide wether to accept..."
-    if is_accept && !spl.info[:violating_support]  # accepted
-      is_accept = true
-    else                      # rejected
-      is_accept = false
-      vi[spl] = old_θ         # reset Θ
-      setlogp!(vi, old_logp)  # reset logp
-    end
-
-    return vi, is_accept
+function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
+  if spl.alg.gid != 0 # Recompute joint in logp
+    runmodel!(model, vi, nothing)
   end
+  old_θ = copy(vi[spl])
+  old_logp = getlogp(vi)
+
+  @debug "Propose new parameters from proposals..."
+  propose(model, spl, vi)
+
+  @debug "computing accept rate α..."
+  is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
+
+  @debug "decide wether to accept..."
+  if is_accept && !spl.info[:violating_support]  # accepted
+    is_accept = true
+  else                      # rejected
+    is_accept = false
+    vi[spl] = old_θ         # reset Θ
+    setlogp!(vi, old_logp)  # reset logp
+  end
+
+  return vi, is_accept
 end
 
 function sample(model::Function, alg::MH;
@@ -144,7 +144,7 @@ function sample(model::Function, alg::MH;
   for i = 1:n
     @debug "$alg_str stepping..."
 
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i == 1)
+    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
     time_total += time_elapsed
 
     if is_accept # accepted => store the new predcits
