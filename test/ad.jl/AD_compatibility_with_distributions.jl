@@ -1,5 +1,5 @@
-using ForwardDiff
-using Distributions
+using ForwardDiff, Distributions, FDM, Flux.Tracker
+using StatsFuns: binomlogpdf
 
 # Real
 
@@ -27,4 +27,22 @@ for dist in dists
 
     g = x -> ForwardDiff.gradient(f, x)
 
+end
+
+let
+    foo = p->binomlogpdf(10, p, 3)
+    @test isapprox(
+        Tracker.gradient(foo, 0.5)[1],
+        central_fdm(5, 1)(foo, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+
+    bar = p->logpdf(Binomial(10, p), 3)
+    @test isapprox(
+        Tracker.gradient(bar, 0.5)[1],
+        central_fdm(5, 1)(bar, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
 end

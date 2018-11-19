@@ -118,3 +118,10 @@ function verifygrad(grad::AbstractVector{<:Real})
         return true
     end
 end
+
+import StatsFuns: binomlogpdf
+binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int) = Tracker.track(binomlogpdf, n, p, x)
+Tracker.@grad function binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int)
+    return binomlogpdf(n, Tracker.data(p), x),
+        Δ->(nothing, Δ * (x / p - (n - x) / (1 - p)), nothing)
+end
