@@ -88,7 +88,6 @@ const CACHERANGES = 0b01
 #######################
 # Sampler abstraction #
 #######################
-abstract type AbstractState end
 abstract type AbstractAdapt end
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
@@ -112,7 +111,7 @@ mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 
-# mutable struct HMCState{T<:Real} <: AbstractState
+# mutable struct HMCState{T<:Real}
 #     epsilon  :: T
 #     std     :: Vector{T}
 #     lf_num   :: Integer

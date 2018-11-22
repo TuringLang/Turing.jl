@@ -2,7 +2,7 @@
 ### Mutable states ###
 ######################
 
-mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
+mutable struct DAState{TI<:Integer,TF<:Real}
     m     :: TI
     ϵ     :: TF
     μ     :: TF

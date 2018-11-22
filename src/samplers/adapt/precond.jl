@@ -39,18 +39,6 @@ function get_covar(ve::CovarEstimator)
 end
 # NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
 
-######################
-### Mutable states ###
-######################
-
-mutable struct DPCState{T<:Real} <: AbstractState
-    std :: Vector{T}
-end
-
-# TODO: to implement full pc
-mutable struct FPCState{T<:Real} <: AbstractState
-end
-
 ################
 ### Adapters ###
 ################
@@ -64,17 +52,17 @@ function getstd(::NullPC)
 end
 
 struct DiagonalPC{TI<:Integer,TF<:Real} <: PreConditioner
-    ve    :: VarEstimator{TI,TF}
-    state :: DPCState{TF}
+    ve  :: VarEstimator{TI,TF}
+    std :: Vector{TF}
 end
 
 function DiagonalPC(d::Integer)
     ve = VarEstimator(0, zeros(d), zeros(d))
-    return DiagonalPC(ve, DPCState(ones(d)))
+    return DiagonalPC(ve, Vector(ones(d)))
 end
 
 function getstd(dpc::DiagonalPC)
-    return dpc.state.std
+    return dpc.std
 end
 
 function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
@@ -83,7 +71,7 @@ function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
     end
     if is_updatestd
         var = get_var(dpc.ve)
-        dpc.state.std = sqrt.(var)
+        dpc.std .= sqrt.(var)
         reset!(dpc.ve)
         return true
     end
@@ -91,6 +79,6 @@ function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
 end
 
 struct FullPC{TI<:Integer,TF<:Real} <: PreConditioner
-    ce    :: CovarEstimator{TI,TF}
-    state :: FPCState{TF}
+    ce  :: CovarEstimator{TI,TF}
+    std :: Matrix{TF}
 end

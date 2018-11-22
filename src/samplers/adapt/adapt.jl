@@ -6,7 +6,7 @@ include("stan.jl")
 ### Mutable states ###
 ######################
 
-mutable struct TPState{T<:Integer} <: AbstractState
+mutable struct ThreePhaseState{T<:Integer}
     n           :: T
     window_size :: T
     next_window :: T
@@ -32,13 +32,13 @@ function getss(tp::CompositeAdapt)
 end
 
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
-struct ThreePhase{T<:Integer} <: CompositeAdapt
+struct ThreePhaseAdapt{T<:Integer} <: CompositeAdapt
     n_adapts    :: T
     init_buffer :: T
     term_buffer :: T
     pc          :: PreConditioner
     ssa         :: StepSizeAdapt
-    state       :: TPState{T}
+    state       :: ThreePhaseState{T}
 end
 
 function get_threephase_params(::Nothing)
@@ -47,30 +47,30 @@ function get_threephase_params(::Nothing)
     return init_buffer, term_buffer, window_size, next_window
 end
 
-function ThreePhase(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
+function ThreePhaseAdapt(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
     pc = DiagonalPC(dim)
     # Dual averaging for step size
     ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
     # Window parameters
     init_buffer, term_buffer, window_size, next_window = get_threephase_params(spl.info[:adapt_conf])
-    tpstate = TPState(0, window_size, next_window)
-    return ThreePhase(spl.alg.n_adapts, init_buffer, term_buffer, pc, ssa, tpstate)
+    threephasestate = ThreePhaseState(0, window_size, next_window)
+    return ThreePhaseAdapt(spl.alg.n_adapts, init_buffer, term_buffer, pc, ssa, threephasestate)
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp
-function in_adaptation(tp::ThreePhase)
+function in_adaptation(tp::ThreePhaseAdapt)
     return (tp.state.n >= tp.init_buffer) &&
            (tp.state.n < tp.n_adapts - tp.term_buffer) &&
            (tp.state.n != tp.n_adapts)
 end
 
-function is_windowend(tp::ThreePhase)
+function is_windowend(tp::ThreePhaseAdapt)
     return (tp.state.n == tp.state.next_window) &&
            (tp.state.n != tp.n_adapts)
 end
 
-function compute_next_window!(tp::ThreePhase)
+function compute_next_window!(tp::ThreePhaseAdapt)
     if ~(tp.state.next_window == tp.n_adapts - tp.term_buffer - 1)
         tp.state.window_size *= 2
         tp.state.next_window = tp.state.n + tp.state.window_size
@@ -83,7 +83,7 @@ function compute_next_window!(tp::ThreePhase)
     end
 end
 
-function adapt!(tp::ThreePhase, stats::Real, θ; adapt_ϵ=false, adapt_M=false)
+function adapt!(tp::ThreePhaseAdapt, stats::Real, θ; adapt_ϵ=false, adapt_M=false)
     if tp.state.n < tp.n_adapts
         tp.state.n += 1
         if tp.state.n == tp.n_adapts

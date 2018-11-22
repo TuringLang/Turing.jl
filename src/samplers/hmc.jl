@@ -192,7 +192,7 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     spl.alg.gid != 0 && link!(vi, spl)
     epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
     dim = length(vi[spl])
-    spl.info[:wum] = ThreePhase(spl, epsilon, dim)
+    spl.info[:wum] = ThreePhaseAdapt(spl, epsilon, dim)
     spl.alg.gid != 0 && invlink!(vi, spl)
     return vi, true
 end
