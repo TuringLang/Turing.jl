@@ -100,7 +100,7 @@ function sample(
         @debug "Gibbs stepping..."
 
         time_elapsed = zero(Float64)
-        lp = nothing; epsilon = nothing; lf_num = nothing
+        lp = nothing; epsilon = nothing; lf_num = nothing; eval_num = nothing
 
         for local_spl in spl.info[:samplers]
             last_spl = local_spl
@@ -109,14 +109,9 @@ function sample(
             @debug "$(typeof(local_spl)) stepping..."
 
             if isa(local_spl.alg, GibbsComponent)
-                if isa(local_spl.alg, Hamiltonian)  # clean cache
-                    local_spl.info[:grad_cache] = Dict{UInt64,Vector}()
-                    local_spl.info[:reverse_diff_cache] = Dict()
-                end
-
                 for _ = 1:local_spl.alg.n_iters
                     @debug "recording old θ..."
-                    time_elapsed_thin = @elapsed varInfo = step(model, local_spl, varInfo, i==1)
+                    time_elapsed_thin = @elapsed varInfo, is_accept = step(model, local_spl, varInfo, Val(i==1))
 
                     if ~spl.alg.thin
                         samples[i_thin].value = Sample(varInfo).value
@@ -126,6 +121,7 @@ function sample(
                             if lp != nothing samples[i_thin].value[:lp] = lp end
                             if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
                             if lf_num != nothing samples[i_thin].value[:lf_num] = lf_num end
+                            if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
                         end
                         i_thin += 1
                     end
@@ -134,8 +130,9 @@ function sample(
 
                 if isa(local_spl.alg, Hamiltonian)
                     lp = getlogp(varInfo)
-                    epsilon = local_spl.info[:wum][:ϵ][end]
+                    epsilon = getss(local_spl.info[:wum])
                     lf_num = local_spl.info[:lf_num]
+                    eval_num = local_spl.info[:eval_num]
                 end
             else
                 @error("[Gibbs] unsupport base sampler $local_spl")
@@ -151,6 +148,7 @@ function sample(
             if lp != nothing samples[i].value[:lp] = lp end
             if epsilon != nothing samples[i].value[:epsilon] = epsilon end
             if lf_num != nothing samples[i].value[:lf_num] = lf_num end
+            if eval_num != nothing samples[i].value[:eval_num] = eval_num end
         end
 
         if PROGRESS[]

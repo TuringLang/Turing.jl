@@ -61,8 +61,6 @@ Sampler(alg::MH) = begin
   end
 
   info = Dict{Symbol, Any}()
-  info[:accept_his] = []
-  info[:total_eval_num] = 0
   info[:proposal_ratio] = 0.0
   info[:prior_prob] = 0.0
   info[:violating_support] = false
@@ -77,35 +75,33 @@ propose(model::Function, spl::Sampler{<:MH}, vi::VarInfo) = begin
   runmodel!(model, vi ,spl)
 end
 
-step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Bool) = begin
-  if is_first
-    push!(spl.info[:accept_his], true)
-    vi
+function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
+  return vi, true
+end
 
-  else
-    if spl.alg.gid != 0 # Recompute joint in logp
-      runmodel!(model, vi, nothing)
-    end
-    old_θ = copy(vi[spl])
-    old_logp = getlogp(vi)
-
-    @debug "Propose new parameters from proposals..."
-    propose(model, spl, vi)
-
-    @debug "computing accept rate α..."
-    is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
-
-    @debug "decide wether to accept..."
-    if is_accept && !spl.info[:violating_support]  # accepted
-      push!(spl.info[:accept_his], true)
-    else                      # rejected
-      push!(spl.info[:accept_his], false)
-      vi[spl] = old_θ         # reset Θ
-      setlogp!(vi, old_logp)  # reset logp
-    end
-
-    vi
+function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
+  if spl.alg.gid != 0 # Recompute joint in logp
+    runmodel!(model, vi, nothing)
   end
+  old_θ = copy(vi[spl])
+  old_logp = getlogp(vi)
+
+  @debug "Propose new parameters from proposals..."
+  propose(model, spl, vi)
+
+  @debug "computing accept rate α..."
+  is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
+
+  @debug "decide wether to accept..."
+  if is_accept && !spl.info[:violating_support]  # accepted
+    is_accept = true
+  else                      # rejected
+    is_accept = false
+    vi[spl] = old_θ         # reset Θ
+    setlogp!(vi, old_logp)  # reset logp
+  end
+
+  return vi, is_accept
 end
 
 function sample(model::Function, alg::MH;
@@ -143,26 +139,29 @@ function sample(model::Function, alg::MH;
   end
 
   # MH steps
+  accept_his = Bool[]
   PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
   for i = 1:n
     @debug "$alg_str stepping..."
 
-    time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
+    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
     time_total += time_elapsed
 
-    if spl.info[:accept_his][end]     # accepted => store the new predcits
-      samples[i].value = Sample(vi, spl).value
-    else                              # rejected => store the previous predcits
-      samples[i] = samples[i - 1]
+    if is_accept # accepted => store the new predcits
+        samples[i].value = Sample(vi, spl).value
+    else         # rejected => store the previous predcits
+        samples[i] = samples[i - 1]
     end
+
     samples[i].value[:elapsed] = time_elapsed
+    push!(accept_his, is_accept)
 
     PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
   end
 
   println("[$alg_str] Finished with")
   println("  Running time        = $time_total;")
-  accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
+  accept_rate = sum(accept_his) / n  # calculate the accept rate
   println("  Accept rate         = $accept_rate;")
 
   if resume_from != nothing   # concat samples

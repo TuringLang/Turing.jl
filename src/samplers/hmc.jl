@@ -24,7 +24,7 @@ end
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 ```
 """
-mutable struct HMC{T} <: Hamiltonian
+mutable struct HMC{T} <: StaticHamiltonian
     n_iters   ::  Int       # number of samples
     epsilon   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
@@ -47,6 +47,12 @@ function HMC(alg::HMC, new_gid::Int)
 end
 HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::HMC; rev_func=nothing, log_func=nothing)
+  θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
+            θ, lj, lj_func, grad_func, alg.tau, ϵ, std; rev_func=rev_func, log_func=log_func)
+  return θ_new, lj_new, is_accept, α
+end
+
 # Below is a trick to remove the dependency of Stan by Requires.jl
 # Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
 DEFAULT_ADAPT_CONF_TYPE = Nothing
@@ -57,46 +63,22 @@ STAN_DEFAULT_ADAPT_CONF = nothing
     STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
 end
 
-# NOTE: the implementation of HMC is removed,
-#       it now reuses the one of HMCDA
-Sampler(alg::HMC) = Sampler(alg::HMC, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
-Sampler(alg::HMC, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
-    spl = Sampler(HMCDA(alg.n_iters, 0, 0.0, alg.epsilon * alg.tau, alg.space, alg.gid), adapt_conf)
-    spl.info[:pre_set_ϵ] = alg.epsilon
-    spl
-end
-
 Sampler(alg::Hamiltonian) =  Sampler(alg, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
 Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     info=Dict{Symbol, Any}()
 
-    # For sampler infomation
-    info[:accept_his] = []
+    # For state infomation
     info[:lf_num] = 0
-    info[:total_lf_num] = 0
-    info[:total_eval_num] = 0
-
-    # For pre-conditioning
-    info[:θ_mean] = nothing
-    info[:θ_num] = 0
-    info[:stds] = nothing
-    info[:vars] = nothing
-    info[:ad] = Dict()
-
-    # For caching gradient
-    info[:grad_cache] = Dict{UInt64,Vector}()
-    info[:reverse_diff_cache] = Dict()
+    info[:eval_num] = 0
 
     # Adapt configuration
-    if adapt_conf != nothing
-      info[:adapt_conf] = adapt_conf
-    end
+    info[:adapt_conf] = adapt_conf
 
     Sampler(alg, info)
 end
 
 function sample(model::Function, alg::T;
-                                chunk_size=CHUNKSIZE[],               # set temporary chunk size
+                                chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
@@ -133,6 +115,7 @@ function sample(model::Function, alg::T;
     vi = if resume_from == nothing
         vi_ = VarInfo()
         Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        spl.info[:eval_num] += 1
         vi_
     else
         deepcopy(resume_from.info[:vi])
@@ -144,35 +127,45 @@ function sample(model::Function, alg::T;
     end
 
     # HMC steps
+    total_lf_num = 0
+    total_eval_num = 0
+    accept_his = Bool[]
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
         @debug "$alg_str stepping..."
 
-        time_elapsed = @elapsed vi = step(model, spl, vi, i == 1)
+        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
         time_total += time_elapsed
 
-        if spl.info[:accept_his][end]     # accepted => store the new predcits
+        if is_accept # accepted => store the new predcits
             samples[i].value = Sample(vi, spl).value
-        else                              # rejected => store the previous predcits
+        else         # rejected => store the previous predcits
             samples[i] = samples[i - 1]
         end
         samples[i].value[:elapsed] = time_elapsed
-        samples[i].value[:lf_eps] = spl.info[:wum][:ϵ][end]
+        if haskey(spl.info, :wum)
+          samples[i].value[:lf_eps] = getss(spl.info[:wum])
+        end
 
+        total_lf_num += spl.info[:lf_num]
+        total_eval_num += spl.info[:eval_num]
+        push!(accept_his, is_accept)
         PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
     end
 
     println("[$alg_str] Finished with")
     println("  Running time        = $time_total;")
     if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
-        accept_rate = sum(spl.info[:accept_his]) / n  # calculate the accept rate
+        accept_rate = sum(accept_his) / n  # calculate the accept rate
         println("  Accept rate         = $accept_rate;")
     end
-    println("  #lf / sample        = $(spl.info[:total_lf_num] / n);")
-    println("  #evals / sample     = $(spl.info[:total_eval_num] / n);")
-    stds_str = string(spl.info[:wum][:stds])
-    stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str   # only show part of pre-cond
-    println("  pre-cond. diag mat  = $(stds_str).")
+    println("  #lf / sample        = $(total_lf_num / n);")
+    println("  #evals / sample     = $(total_eval_num / n);")
+    if haskey(spl.info, :wum)
+      std_str = string(getstd(spl.info[:wum]))
+      std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
+      println("  pre-cond. metric    = $(std_str).")
+    end
 
     if ADBACKEND[] == :forward_diff
         setchunksize(default_chunk_size)      # revert global chunk size
@@ -185,11 +178,76 @@ function sample(model::Function, alg::T;
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
-        spl.info[:grad_cache] = Dict{UInt64,Vector}()
-        spl.info[:reverse_diff_cache] = Dict()
         save!(c, spl, model, vi)
     end
     return c
+end
+
+function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
+    spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), FixedStepSize(spl.alg.epsilon))
+    return vi, true
+end
+
+function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
+    spl.alg.gid != 0 && link!(vi, spl)
+    epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
+    dim = length(vi[spl])
+    spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    return vi, true
+end
+
+function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
+    # Get step size
+    ϵ = getss(spl.info[:wum])
+    @debug "current ϵ: $ϵ"
+
+    # Reset current counters
+    spl.info[:lf_num] = 0
+    spl.info[:eval_num] = 0
+
+    @debug "X-> R..."
+    if spl.alg.gid != 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
+    end
+
+    grad_func = gen_grad_func(vi, spl, model)
+    lj_func = gen_lj_func(vi, spl, model)
+    rev_func = gen_rev_func(vi, spl)
+    log_func = gen_log_func(spl)
+
+    θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
+
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
+
+    @debug "decide whether to accept..."
+    if is_accept
+        vi[spl] = θ_new
+        setlogp!(vi, lj_new)
+    else
+        vi[spl] = θ
+        setlogp!(vi, lj)
+    end
+
+    if PROGRESS[] && spl.alg.gid == 0
+        std_str = string(getstd(spl.info[:wum]))
+        std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
+        haskey(spl.info, :progress) && ProgressMeter.update!(
+            spl.info[:progress],
+            spl.info[:progress].counter;
+            showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, std_str)],
+        )
+    end
+
+    if spl.alg isa AdaptiveHamiltonian
+        adapt!(spl.info[:wum], α, vi[spl], adapt_M=true, adapt_ϵ=true)
+    end
+
+    @debug "R -> X..."
+    spl.alg.gid != 0 && invlink!(vi, spl)
+
+    return vi, is_accept
 end
 
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin

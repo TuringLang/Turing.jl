@@ -1,5 +1,5 @@
 """
-    SGLD(n_iters::Int, step_size::Float64)
+    SGLD(n_iters::Int, epsilon::Float64)
 
  Stochastic Gradient Langevin Dynamics sampler.
 
@@ -19,68 +19,61 @@ end
 sample(example, SGLD(1000, 0.5))
 ```
 """
-mutable struct SGLD{T} <: Hamiltonian
-    n_iters::Int       # number of samples
-    step_size::Float64   # constant scale factor of learning rate
-    space::Set{T}    # sampling space, emtpy means all
-    gid::Int
+mutable struct SGLD{T} <: StaticHamiltonian
+    n_iters :: Int       # number of samples
+    epsilon :: Float64   # constant scale factor of learning rate
+    space   :: Set{T}    # sampling space, emtpy means all
+    gid     :: Int
 end
-SGLD(step_size::Float64, space...) = SGLD(1, step_size, space..., 0)
-SGLD(n_iters, step_size) = SGLD(n_iters, step_size, Set(), 0)
-function SGLD(n_iters, step_size, space...)
+SGLD(epsilon::Float64, space...) = SGLD(1, epsilon, space..., 0)
+SGLD(n_iters, epsilon) = SGLD(n_iters, epsilon, Set(), 0)
+function SGLD(n_iters, epsilon, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGLD(n_iters, step_size, _space, 0)
+    return SGLD(n_iters, epsilon, _space, 0)
 end
-SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.step_size, alg.space, new_gid)
+SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.epsilon, alg.space, new_gid)
 
-function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Bool)
-    if is_first
-        if ~haskey(spl.info, :wum)
-            spl.alg.gid != 0 && link!(vi, spl)
+function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
+    spl.alg.gid != 0 && link!(vi, spl)
 
-            D = length(vi[spl])
-            ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
-            wum = WarmUpManager(1, Dict(), ve)
-            wum[:ϵ] = [spl.alg.step_size]
-            wum[:stds] = ones(D)
-            spl.info[:wum] = wum
+    spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
 
-            # Initialize iteration counter
-            spl.info[:t] = 0
+    # Initialize iteration counter
+    spl.info[:t] = 0
 
-            spl.alg.gid != 0 && invlink!(vi, spl)
-        end
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    return vi, true
+end
 
-        push!(spl.info[:accept_his], true)
-    else
-        # Update iteration counter
-        spl.info[:t] += 1
+function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
+    # Update iteration counter
+    spl.info[:t] += 1
 
-        @debug "compute current step size..."
-        γ = .35
-        ϵ_t = spl.alg.step_size / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
-        push!(spl.info[:wum][:ϵ], ϵ_t)
+    @debug "compute current step size..."
+    γ = .35
+    ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
+    mssa = spl.info[:wum].ssa
+    mssa.state.ϵ = ϵ_t
 
-        @debug "X-> R..."
-        if spl.alg.gid != 0
-            link!(vi, spl)
-            runmodel!(model, vi, spl)
-        end
-
-        @debug "recording old variables..."
-        θ = vi[spl]
-        _, grad = gradient(θ, vi, model, spl)
-        verifygrad(grad)
-
-        @debug "update latent variables..."
-        θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
-
-        @debug "always accept..."
-        push!(spl.info[:accept_his], true)
-        vi[spl] = θ
-
-        @debug "R -> X..."
-        spl.alg.gid != 0 && invlink!(vi, spl)
+    @debug "X-> R..."
+    if spl.alg.gid != 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
     end
-    return vi
+
+    @debug "recording old variables..."
+    θ = vi[spl]
+    _, grad = gradient(θ, vi, model, spl)
+    verifygrad(grad)
+
+    @debug "update latent variables..."
+    θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
+
+    @debug "always accept..."
+    vi[spl] = θ
+
+    @debug "R -> X..."
+    spl.alg.gid != 0 && invlink!(vi, spl)
+
+    return vi, true
 end

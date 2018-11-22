@@ -3,8 +3,9 @@ using Test
 
 let
     D = 1000
-    ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
-    ve = reset!(add_sample!(ve, randn(D)))
+    ve = VarEstimator(0, zeros(D), zeros(D))
+    add_sample!(ve, randn(D))
+    reset!(ve)
 
     # Check that reseting zeros everything.
     @test ve.n === 0
@@ -23,7 +24,7 @@ end
 # Check that the estimated variance is approximately correct.
 let
     D = 10
-    ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
+    ve = VarEstimator(0, zeros(D), zeros(D))
 
     for _ = 1:10000
         s = randn(D)

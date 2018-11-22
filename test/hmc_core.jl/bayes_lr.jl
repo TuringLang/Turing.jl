@@ -74,7 +74,7 @@ function grad_func(θ)
 
 end
 
-stds = ones(θ_dim)
+std = ones(θ_dim)
 θ = randn(θ_dim)
 lj = lj_func(θ)
 
@@ -85,7 +85,7 @@ accept_num = 1
 total_num = 2000
 for iter = 1:total_num
   push!(chn, θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 3, 0.005, stds)
+  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 3, 0.005, std)
   accept_num += is_accept
 #   if (iter % 50 == 0) println(θ) end
 end

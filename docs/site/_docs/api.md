@@ -150,7 +150,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
 
 
 ```
-HMCDA(n_iters::Int, n_adapt::Int, delta::Float64, lambda::Float64)
+HMCDA(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64)
 ```
 
 Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.
@@ -284,7 +284,7 @@ sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
 
 
 ```
-NUTS(n_iters::Int, n_adapt::Int, delta::Float64)
+NUTS(n_iters::Int, n_adapts::Int, delta::Float64)
 ```
 
 No-U-Turn Sampler (NUTS) sampler.

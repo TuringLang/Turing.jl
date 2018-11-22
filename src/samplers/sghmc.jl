@@ -19,7 +19,7 @@ end
 sample(example, SGHMC(1000, 0.01, 0.1))
 ```
 """
-mutable struct SGHMC{T} <: Hamiltonian
+mutable struct SGHMC{T} <: StaticHamiltonian
     n_iters::Int       # number of samples
     learning_rate::Float64   # learning rate
     momentum_decay::Float64   # momentum decay
@@ -40,54 +40,43 @@ function SGHMC(alg::SGHMC, new_gid::Int)
     return SGHMC(alg.n_iters, alg.learning_rate, alg.momentum_decay, alg.space, new_gid)
 end
 
-function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Bool)
-    if is_first
-        if ~haskey(spl.info, :wum)
-            spl.alg.gid != 0 && link!(vi, spl)
-      
-            D = length(vi[spl])
-            ve = VarEstimator{Float64}(0, zeros(D), zeros(D))
-            wum = WarmUpManager(1, Dict(), ve)
-            wum[:ϵ] = [spl.alg.learning_rate]
-            wum[:stds] = ones(D)
-            spl.info[:wum] = wum
+function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{true})
+    spl.alg.gid != 0 && link!(vi, spl)
 
-            # Initialize velocity
-            v = zeros(Float64, size(vi[spl]))
-            spl.info[:v] = v
+    # Initialize velocity
+    v = zeros(Float64, size(vi[spl]))
+    spl.info[:v] = v
 
-            spl.alg.gid != 0 && invlink!(vi, spl)
-        end
+    spl.alg.gid != 0 && invlink!(vi, spl)
+    return vi, true
+end
 
-        push!(spl.info[:accept_his], true)
-    else
-        # Set parameters
-        η, α = spl.alg.learning_rate, spl.alg.momentum_decay
+function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
+    # Set parameters
+    η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 
-        @debug "X-> R..."
-        if spl.alg.gid != 0
-            link!(vi, spl)
-            runmodel!(model, vi, spl)
-        end
-
-        @debug "recording old variables..."
-        θ, v = vi[spl], spl.info[:v]
-        _, grad = gradient(θ, vi, model, spl)
-        verifygrad(grad)
-
-        # Implements the update equations from (15) of Chen et al. (2014).
-        @debug "update latent variables and velocity..."
-        θ .+= v
-        v .= (1 - α) .* v .- η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
-
-        @debug "saving new latent variables..."
-        vi[spl] = θ
-
-        @debug "always accept..."
-        push!(spl.info[:accept_his], true)
-
-        @debug "R -> X..."
-        spl.alg.gid != 0 && invlink!(vi, spl)
+    @debug "X-> R..."
+    if spl.alg.gid != 0
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
     end
-    return vi
+
+    @debug "recording old variables..."
+    θ, v = vi[spl], spl.info[:v]
+    _, grad = gradient(θ, vi, model, spl)
+    verifygrad(grad)
+
+    # Implements the update equations from (15) of Chen et al. (2014).
+    @debug "update latent variables and velocity..."
+    θ .+= v
+    v .= (1 - α) .* v .- η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
+
+    @debug "saving new latent variables..."
+    vi[spl] = θ
+
+    @debug "R -> X..."
+    spl.alg.gid != 0 && invlink!(vi, spl)
+
+    @debug "always accept..."
+    return vi, true
 end

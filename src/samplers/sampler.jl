@@ -1,6 +1,6 @@
 # Concrete algorithm implementations.
 include("support/hmc_core.jl")
-include("support/adapt.jl")
+include("adapt/adapt.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
@@ -170,13 +170,17 @@ end
 @inline Sample(vi::VarInfo, spl::Sampler) = begin
   s = Sample(vi)
 
-  if haskey(spl.info, :ϵ)
-    s.value[:epsilon] = spl.info[:ϵ][end]
+  if haskey(spl.info, :wum)
+    s.value[:epsilon] = getss(spl.info[:wum])
   end
 
   if haskey(spl.info, :lf_num)
-    s.value[:lf_num] = spl.info[:lf_num][end]
+    s.value[:lf_num] = spl.info[:lf_num]
   end
 
-  s
+  if haskey(spl.info, :eval_num)
+    s.value[:eval_num] = spl.info[:eval_num]
+  end
+
+  return s
 end

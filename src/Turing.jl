@@ -88,9 +88,11 @@ const CACHERANGES = 0b01
 #######################
 # Sampler abstraction #
 #######################
-
+abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type StaticHamiltonian <: Hamiltonian end
+abstract type AdaptiveHamiltonian <: Hamiltonian end
 abstract type AbstractSampler end
 """
     Sampler{T}
@@ -108,6 +110,19 @@ mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
   alg   ::  T
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
+
+# mutable struct HMCState{T<:Real}
+#     epsilon  :: T
+#     std     :: Vector{T}
+#     lf_num   :: Integer
+#     eval_num :: Integer
+# end
+#
+#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
+#    alg   :: TH
+#    state :: HMCState
+#    adapt :: TA
+#  end
 
 """
 Robust initialization method for model parameters in Hamiltonian samplers.

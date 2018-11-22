@@ -1,5 +1,5 @@
 """
-    NUTS(n_iters::Int, n_adapt::Int, delta::Float64)
+    NUTS(n_iters::Int, n_adapts::Int, delta::Float64)
 
 No-U-Turn Sampler (NUTS) sampler.
 
@@ -24,97 +24,35 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-mutable struct NUTS{T} <: Hamiltonian
+mutable struct NUTS{T} <: AdaptiveHamiltonian
   n_iters   ::  Int       # number of samples
-  n_adapt   ::  Int       # number of samples with adaption for epsilon
+  n_adapts  ::  Int       # number of samples with adaption for epsilon
   delta     ::  Float64   # target accept rate
   space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
 end
-function NUTS(n_adapt::Int, delta::Float64, space...)
-  NUTS(1, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+function NUTS(n_adapts::Int, delta::Float64, space...)
+  NUTS(1, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 end
-function NUTS(n_iters::Int, n_adapt::Int, delta::Float64, space...)
-  NUTS(n_iters, n_adapt, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+function NUTS(n_iters::Int, n_adapts::Int, delta::Float64, space...)
+  NUTS(n_iters, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 end
 function NUTS(n_iters::Int, delta::Float64)
-  n_adapt_default = Int(round(n_iters / 2))
-  NUTS(n_iters, n_adapt_default > 1000 ? 1000 : n_adapt_default, delta, Set(), 0)
+  n_adapts_default = Int(round(n_iters / 2))
+  NUTS(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, delta, Set(), 0)
 end
-NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapt, alg.delta, alg.space, new_gid)
+NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
 
-function step(model::Function, spl::Sampler{<:NUTS}, vi::VarInfo, is_first::Bool)
-  if is_first
-    if ~haskey(spl.info, :wum)
-      if spl.alg.gid != 0 link!(vi, spl) end      # X -> R
-
-      init_warm_up_params(vi, spl)
-
-      θ = vi[spl]
-      ϵ = find_good_eps(model, vi, spl)           # heuristically find optimal ϵ
-      vi[spl] = θ
-
-      if spl.alg.gid != 0 invlink!(vi, spl) end   # R -> X
-
-      push!(spl.info[:wum][:ϵ], ϵ)
-      update_da_μ(spl.info[:wum], ϵ)
-    end
-
-    push!(spl.info[:accept_his], true)
-
-    vi
-  else
-    # Set parameters
-    ϵ = spl.info[:wum][:ϵ][end]; @debug "current ϵ: $ϵ"
-
-    spl.info[:lf_num] = 0   # reset current lf num counter
-
-    @debug "X-> R..."
-    if spl.alg.gid != 0
-      link!(vi, spl)
-      runmodel!(model, vi, spl)
-    end
-
-    grad_func = gen_grad_func(vi, spl, model)
-    lj_func = gen_lj_func(vi, spl, model)
-    rev_func = gen_rev_func(vi, spl)
-    log_func = gen_log_func(spl)
-
-    θ = vi[spl]
-    lj = vi.logp
-    stds = spl.info[:wum][:stds]
-
-
-    θ_new, da_stat = _nuts_step(θ, ϵ, lj_func, grad_func, stds)
-
-    if PROGRESS[] && spl.alg.gid == 0
-      stds_str = string(spl.info[:wum][:stds])
-      stds_str = length(stds_str) >= 32 ? stds_str[1:30]*"..." : stds_str
-      haskey(spl.info, :progress) && ProgressMeter.update!(
-                                       spl.info[:progress],
-                                       spl.info[:progress].counter; showvalues = [(:ϵ, ϵ), (:pre_cond, stds_str)])
-    end
-
-    push!(spl.info[:accept_his], true)
-    vi[spl][:] = θ_new[:]
-    setlogp!(vi, lj_func(θ_new))
-
-    # Adapt step-size and pre-cond
-    # TODO: figure out whether or not the condition below is needed
-    # if τ_valid > 0
-      adapt!(spl.info[:wum], da_stat, vi[spl], adapt_M = true, adapt_ϵ = true)
-    # end
-
-    @debug "R -> X..."
-    spl.alg.gid != 0 && invlink!(vi, spl)
-
-    vi
-  end
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::NUTS; rev_func=nothing, log_func=nothing)
+  θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, std)
+  lj_new = lj_func(θ_new)
+  is_accept = true
+  return θ_new, lj_new, is_accept, α
 end
 
 """
   function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                       H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
+                       H0::AbstractFloat,lj_func::Function, grad_func::Function, std::AbstractVector;
                        Δ_max::AbstractFloat=1000) where {T<:Union{Vector,SubArray}}
 
 Recursively build balanced tree.
@@ -132,17 +70,17 @@ Arguments:
 - `H0`        : initial H
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
-- `stds`      : pre-conditioning matrix
+- `std`      : pre-conditioning matrix
 - `Δ_max`     : threshold for exploeration error tolerance
 """
 function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::Int, ϵ::AbstractFloat,
-                     H0::AbstractFloat,lj_func::Function, grad_func::Function, stds::AbstractVector;
+                     H0::AbstractFloat,lj_func::Function, grad_func::Function, std::AbstractVector;
                      Δ_max::AbstractFloat=1000.0) where {T<:Union{AbstractVector,SubArray}}
     if j == 0
       # Base case - take one leapfrog step in the direction v.
       θ′, r′, τ_valid = _leapfrog(θ, r, 1, v * ϵ, grad_func)
       # Use old H to save computation
-      H′ = τ_valid == 0 ? Inf : _find_H(θ′, r′, lj_func, stds)
+      H′ = τ_valid == 0 ? Inf : _find_H(θ′, r′, lj_func, std)
       n′ = (logu <= -H′) ? 1 : 0
       s′ = (logu < Δ_max + -H′) ? 1 : 0
       α′ = exp(min(0, -H′ - (-H0)))
@@ -150,13 +88,13 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
       return θ′, r′, θ′, r′, θ′, n′, s′, α′, 1
     else
       # Recursion - build the left and right subtrees.
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′α = _build_tree(θ, r, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+      θm, rm, θp, rp, θ′, n′, s′, α′, n′α = _build_tree(θ, r, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
 
       if s′ == 1
         if v == -1
-          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θm, rm, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+          θm, rm, _, _, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θm, rm, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
         else
-          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θp, rp, logu, v, j - 1, ϵ, H0, lj_func, grad_func, stds)
+          _, _, θp, rp, θ′′, n′′, s′′, α′′, n′′α = _build_tree(θp, rp, logu, v, j - 1, ϵ, H0, lj_func, grad_func, std)
         end
         if rand() < n′′ / (n′ + n′′)
           θ′ = θ′′
@@ -173,7 +111,7 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
 
 
 """
-  function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+  function _nuts_step(θ::T, r0, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, std::AbstractVector;
                       j_max::Int=j_max) where {T<:Union{AbstractVector,SubArray}}
 
 Perform one NUTS step.
@@ -184,17 +122,20 @@ Arguments:
 
 - `θ`         : model parameter
 - `ϵ`         : leapfrog step size
+- `lj`        : initial log-joint prob
 - `lj_func`   : function for log-joint
 - `grad_func` : function for the gradient of log-joint
-- `stds`      : pre-conditioning matrix
+- `std`      : pre-conditioning matrix
 - `j_max`     : maximum expanding of doubling tree
 """
-function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Function, stds::AbstractVector;
+function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real, lj_func::Function, grad_func::Function, std::AbstractVector;
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
-  d = length(θ)
-  r0 = randn(d)
-  H0 = _find_H(θ, r0, lj_func, stds)
+  @debug "sampling momentums..."
+  θ_dim = length(θ)
+  r0 = _sample_momentum(θ_dim, std)
+
+  H0 = _find_H(θ, r0, lj, std)
   logu = log(rand()) + -H0
 
   θm = θ; θp = θ; rm = r0; rp = r0; j = 0; θ_new = θ; n = 1; s = 1
@@ -204,9 +145,9 @@ function _nuts_step(θ::T, ϵ::AbstractFloat, lj_func::Function, grad_func::Func
 
     v = rand([-1, 1])
     if v == -1
-        θm, rm, _, _, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
+        θm, rm, _, _, θ′, n′, s′, α, nα = _build_tree(θm, rm, logu, v, j, ϵ, H0, lj_func, grad_func, std)
     else
-        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, stds)
+        _, _, θp, rp, θ′, n′, s′, α, nα = _build_tree(θp, rp, logu, v, j, ϵ, H0, lj_func, grad_func, std)
     end
 
     if s′ == 1
