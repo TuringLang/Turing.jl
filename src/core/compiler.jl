@@ -28,23 +28,25 @@ function var_tuple(sym::Symbol, inds::Expr=:(()))
 end
 
 
-wrong_dist_errormsg = "Right-hand side of a ~ must be subtype of Distribution or a vector of Distributions."
+wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution or a vector of Distributions on line $(l)."
 
 """
     generate_observe(observation, distribution)
 
-Generate an observe expression.
+Generate an observe expression for observation `observation` drawn from 
+a distribution or a vector of distributions (`distribution`).
 """
 function generate_observe(observation, distribution)
     return esc(
         quote
-            # Sanity check.
-            isdist = if isa($(distribution), Vector)
+            isdist = if isa($(distribution), AbstractVector)
+                # Check if the right-hand side is a vector of distributions.
                 all(d -> isa(d, Distribution), $(distribution))
             else
+                # Check if the right-hand side is a distribution.
                 isa($(distribution), Distribution)
             end
-            @assert isdist @error($(wrong_dist_errormsg))
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
             vi.logp += Turing.observe(
                 sampler,
@@ -59,22 +61,25 @@ end
 """
     generate_assume(variable, distribution, syms)
 
-Generate an assume expression.
+Generate an assume expression for parameters `variable` drawn from 
+a distribution or a vector of distributions (`distribution`).
+
 """
 function generate_assume(variable, distribution, syms)
     return esc(
         quote
             varname = Turing.VarName(vi, $syms, "")
 
-            # Sanity check.
-            isdist = if isa($(distribution), Vector)
+            isdist = if isa($(distribution), AbstractVector)
+                # Check if the right-hand side is a vector of distributions.
                 all(d -> isa(d, Distribution), $(distribution))
             else
+                # Check if the right-hand side is a distribution.
                 isa($(distribution), Distribution)
             end
-            @assert isdist @error($(wrong_dist_errormsg))
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
-            ($(variable), _lp) = if isa($(distribution), Vector)
+            ($(variable), _lp) = if isa($(distribution), AbstractVector)
                 Turing.assume(
                     sampler,
                     $(distribution),
@@ -109,7 +114,7 @@ function generate_assume(variable::Expr, distribution)
             else
                 isa($(distribution), Distribution)
             end
-            @assert isdist @error($(wrong_dist_errormsg))
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
             $(variable), _lp = Turing.assume(
                 sampler,
