@@ -51,6 +51,10 @@ struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapt
   state :: DAState{TI,TF}
 end
 
+function DualAveraging(spl::Sampler{<:AdaptiveHamiltonian}, ::Nothing, ϵ::Real)
+    return DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState(ϵ))
+end
+
 function getss(da::DualAveraging)
     return da.state.ϵ
 end

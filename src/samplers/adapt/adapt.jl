@@ -41,7 +41,7 @@ struct ThreePhase{T<:Integer} <: CompositeAdapt
     state       :: TPState{T}
 end
 
-function get_threephase_params()
+function get_threephase_params(::Nothing)
     init_buffer, term_buffer, window_size = 75, 50, 25
     next_window = init_buffer + window_size - 1
     return init_buffer, term_buffer, window_size, next_window
@@ -50,18 +50,10 @@ end
 function ThreePhase(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
     pc = DiagonalPC(dim)
-
-    # Initialize by Stan if Stan is installed
-    if :adapt_conf in keys(spl.info)
-        # CmdStan.Adapt
-        ssa = DualAveraging(spl.info[:adapt_conf])
-        init_buffer, term_buffer, window_size, next_window = get_threephase_params(spl.info[:adapt_conf])
-    else
-        # If wum is not initialised by Stan (when Stan is not avaible),
-        # initialise wum by common default values.
-        ssa = DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState(ϵ))
-        init_buffer, term_buffer, window_size, next_window = get_threephase_params()
-    end
+    # Dual averaging for step size
+    ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
+    # Window parameters
+    init_buffer, term_buffer, window_size, next_window = get_threephase_params(spl.info[:adapt_conf])
     tpstate = TPState(0, window_size, next_window)
     return ThreePhase(spl.alg.n_adapts, init_buffer, term_buffer, pc, ssa, tpstate)
 end

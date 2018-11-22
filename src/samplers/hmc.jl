@@ -72,9 +72,7 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     info[:eval_num] = 0
 
     # Adapt configuration
-    if adapt_conf != nothing
-      info[:adapt_conf] = adapt_conf
-    end
+    info[:adapt_conf] = adapt_conf
 
     Sampler(alg, info)
 end
