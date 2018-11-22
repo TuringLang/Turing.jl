@@ -88,7 +88,7 @@ const CACHERANGES = 0b01
 #######################
 # Sampler abstraction #
 #######################
-abstract type AbstractAdapt end
+abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
@@ -118,7 +118,7 @@ end
 #     eval_num :: Integer
 # end
 #
-#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapt} <: AbstractSampler
+#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
 #    alg   :: TH
 #    state :: HMCState
 #    adapt :: TA

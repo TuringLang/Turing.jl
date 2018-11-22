@@ -33,9 +33,9 @@ end
 ### Adapters ###
 ################
 
-abstract type StepSizeAdapt <: AbstractAdapt end
+abstract type StepSizeAdapter <: AbstractAdapter end
 
-struct FixedStepSize{T<:Real} <: StepSizeAdapt
+struct FixedStepSize{T<:Real} <: StepSizeAdapter
     ϵ :: T
 end
 
@@ -43,7 +43,7 @@ function getss(fss::FixedStepSize)
     return fss.ϵ
 end
 
-struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapt
+struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapter
   γ     :: TF
   t_0   :: TF
   κ     :: TF
@@ -59,11 +59,11 @@ function getss(da::DualAveraging)
     return da.state.ϵ
 end
 
-struct ManualSSAdapt{T<:Real} <:StepSizeAdapt
+struct ManualSSAdapter{T<:Real} <:StepSizeAdapter
     state :: MSSState{T}
 end
 
-function getss(mssa::ManualSSAdapt)
+function getss(mssa::ManualSSAdapter)
     return mssa.state.ϵ
 end
 

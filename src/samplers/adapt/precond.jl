@@ -43,29 +43,29 @@ end
 ### Adapters ###
 ################
 
-abstract type PreConditioner <: AbstractAdapt end
+abstract type PreConditioner <: AbstractAdapter end
 
-struct NullPC <: PreConditioner end
+struct UnitPreConditioner <: PreConditioner end
 
-function getstd(::NullPC)
+function getstd(::UnitPreConditioner)
     return [1.0]
 end
 
-struct DiagonalPC{TI<:Integer,TF<:Real} <: PreConditioner
+struct DiagPreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
     ve  :: VarEstimator{TI,TF}
     std :: Vector{TF}
 end
 
-function DiagonalPC(d::Integer)
+function DiagPreConditioner(d::Integer)
     ve = VarEstimator(0, zeros(d), zeros(d))
-    return DiagonalPC(ve, Vector(ones(d)))
+    return DiagPreConditioner(ve, Vector(ones(d)))
 end
 
-function getstd(dpc::DiagonalPC)
+function getstd(dpc::DiagPreConditioner)
     return dpc.std
 end
 
-function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
+function adapt!(dpc::DiagPreConditioner, θ, is_addsample::Bool, is_updatestd::Bool)
     if is_addsample
         add_sample!(dpc.ve, θ)
     end
@@ -78,7 +78,7 @@ function adapt!(dpc::DiagonalPC, θ, is_addsample::Bool, is_updatestd::Bool)
     return false
 end
 
-struct FullPC{TI<:Integer,TF<:Real} <: PreConditioner
+struct DensePreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
     ce  :: CovarEstimator{TI,TF}
     std :: Matrix{TF}
 end

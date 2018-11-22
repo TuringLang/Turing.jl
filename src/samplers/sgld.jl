@@ -36,7 +36,7 @@ SGLD(alg::SGLD, new_gid::Int) = SGLD(alg.n_iters, alg.epsilon, alg.space, new_gi
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.alg.gid != 0 && link!(vi, spl)
 
-    spl.info[:wum] = NaiveCompAdapt(NullPC(), ManualSSAdapt(MSSState(spl.alg.epsilon)))
+    spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
 
     # Initialize iteration counter
     spl.info[:t] = 0
@@ -74,6 +74,6 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
 
     @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
-    
+
     return vi, true
 end
