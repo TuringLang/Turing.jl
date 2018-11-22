@@ -1,5 +1,6 @@
 include("precond.jl")
 include("stepsize.jl")
+include("stan.jl")
 
 ######################
 ### Mutable states ###
@@ -46,19 +47,9 @@ function get_threephase_params()
     return init_buffer, term_buffer, window_size, next_window
 end
 
-@static if isdefined(Turing, :CmdStan)
-    function get_threephase_params(adapt_conf::CmdStan.Adapt)
-        init_buffer = adapt_conf.init_buffer
-        term_buffer = adapt_conf.term_buffer
-        window_size = adapt_conf.window
-        next_window = init_buffer + window_size - 1
-        return init_buffer, term_buffer, window_size, next_window
-    end
-end
-
-function ThreePhase(model::Function, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo)
+function ThreePhase(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
-    pc = DiagonalPC(length(vi[spl]))
+    pc = DiagonalPC(dim)
 
     # Initialize by Stan if Stan is installed
     if :adapt_conf in keys(spl.info)
@@ -68,7 +59,7 @@ function ThreePhase(model::Function, spl::Sampler{<:AdaptiveHamiltonian}, vi::Va
     else
         # If wum is not initialised by Stan (when Stan is not avaible),
         # initialise wum by common default values.
-        ssa = DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState(model, spl, vi))
+        ssa = DualAveraging(0.05, 10.0, 0.75, spl.alg.delta, DAState(ϵ))
         init_buffer, term_buffer, window_size, next_window = get_threephase_params()
     end
     tpstate = TPState(0, window_size, next_window)

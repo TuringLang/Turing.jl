@@ -10,12 +10,8 @@ mutable struct DAState{TI<:Integer,TF<:Real} <: AbstractState
     H_bar :: TF
 end
 
-function DAState(model::Function, spl::Sampler{<:Hamiltonian}, vi::VarInfo)
-    θ = vi[spl]
-    ϵ = find_good_eps(model, spl, vi) # heuristically find optimal ϵ
-    vi[spl] = θ
-
-    μ = computeμ(ϵ) # NOTE: these inital values doesn't affect anything as they will be overwritten
+function DAState(ϵ::Real)
+    μ = computeμ(ϵ) # NOTE: this inital values doesn't affect anything as they will be overwritten
     return DAState(0, ϵ, μ, 0.0, 0.0)
 end
 
@@ -53,17 +49,6 @@ struct DualAveraging{TI<:Integer,TF<:Real} <: StepSizeAdapt
   κ     :: TF
   δ     :: TF
   state :: DAState{TI,TF}
-end
-
-@static if isdefined(Turing, :CmdStan)
-  function DualAveraging(adapt_conf::CmdStan.Adapt)
-      # Hyper parameters for dual averaging
-      γ = adapt_conf.gamma
-      t_0 = adapt_conf.t0
-      κ = adapt_conf.kappa
-      δ = adapt_conf.delta
-      return DualAveraging(γ, t_0, κ, δ, DAState())
-  end
 end
 
 function getss(da::DualAveraging)
