@@ -47,9 +47,10 @@ function HMC(alg::HMC, new_gid::Int)
 end
 HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 
-function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::HMC; rev_func=nothing, log_func=nothing)
+function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
+                  rev_func=nothing, log_func=nothing)
   θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, alg.tau, ϵ, std; rev_func=rev_func, log_func=log_func)
+            θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
   return θ_new, lj_new, is_accept, α
 end
 
@@ -216,10 +217,13 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     lj_func = gen_lj_func(vi, spl, model)
     rev_func = gen_rev_func(vi, spl)
     log_func = gen_log_func(spl)
+    momentum_sampler = gen_momentum_sampler(vi, spl, spl.info[:wum].pc)
+    H_func = gen_H_func(spl.info[:wum].pc)
 
-    θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
+    θ, lj = vi[spl], vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
+                                           rev_func=rev_func, log_func=log_func)
 
     @debug "decide whether to accept..."
     if is_accept
