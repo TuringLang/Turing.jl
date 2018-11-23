@@ -77,13 +77,13 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     Sampler(alg, info)
 end
 
-function sample(model::Function, alg::T;
+function sample(model::Function, alg::Hamiltonian;
                                 chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
-                               ) where T<:Hamiltonian
+                )
     if ADBACKEND[] == :forward_diff
         default_chunk_size = CHUNKSIZE[]  # record global chunk size
         setchunksize(chunk_size)        # set temp chunk size
@@ -250,7 +250,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     return vi, is_accept
 end
 
-assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin
+function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
     @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
@@ -262,7 +262,7 @@ assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:H
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} = begin
+function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::VarInfo)
     @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
     dist = dists[1]
     n = size(var)[end]
@@ -293,8 +293,8 @@ assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) wh
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) where A<:Hamiltonian=
+observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value::Any, vi::VarInfo) =
     observe(nothing, d, value, vi)
 
-observe(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} =
+observe(spl::Sampler{<:Hamiltonian}, ds::Vector{<:Distribution}, value::Any, vi::VarInfo) =
     observe(nothing, ds, value, vi)
