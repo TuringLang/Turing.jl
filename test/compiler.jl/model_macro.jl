@@ -73,3 +73,57 @@ f01_mm = testmodel01()
 end
 f1_mm = testmodel1(1., 10.)
 @test f1_mm() == (1, 10)
+
+# Test for assertions in observe statements.
+@model brokentestmodel_observe1(x1, x2) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+
+    x1 ~ Normal(m, sqrt(s))
+    x2 ~ x1 + 2
+
+    return x1, x2
+end
+
+btest = brokentestmodel_observe1(1., 2.)
+@test_throws ArgumentError btest()
+
+@model brokentestmodel_observe2(x) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+
+    x = Vector{Float64}(undef, 2)
+    x ~ [Normal(m, sqrt(s)), 2.0]
+
+    return x
+end
+
+btest = brokentestmodel_observe2([1., 2.])
+@test_throws ArgumentError btest()
+
+# Test for assertions in assume statements.
+@model brokentestmodel_assume1() = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+
+    x1 ~ Normal(m, sqrt(s))
+    x2 ~ x1 + 2
+
+    return x1, x2
+end
+
+btest = brokentestmodel_assume1()
+@test_throws ArgumentError btest()
+
+@model brokentestmodel_assume2() = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt(s))
+
+    x = Vector{Float64}(undef, 2)
+    x ~ [Normal(m, sqrt(s)), 2.0]
+
+    return x
+end
+
+btest = brokentestmodel_assume2()
+@test_throws ArgumentError btest()

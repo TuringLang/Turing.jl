@@ -27,14 +27,27 @@ function var_tuple(sym::Symbol, inds::Expr=:(()))
     return esc(:($(QuoteNode(sym)), $inds, $(QuoteNode(gensym()))))
 end
 
+
+wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution or a vector of Distributions on line $(l)."
+
 """
     generate_observe(observation, distribution)
 
-Generate an observe expression.
+Generate an observe expression for observation `observation` drawn from 
+a distribution or a vector of distributions (`distribution`).
 """
 function generate_observe(observation, distribution)
     return esc(
         quote
+            isdist = if isa($(distribution), AbstractVector)
+                # Check if the right-hand side is a vector of distributions.
+                all(d -> isa(d, Distribution), $(distribution))
+            else
+                # Check if the right-hand side is a distribution.
+                isa($(distribution), Distribution)
+            end
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+
             vi.logp += Turing.observe(
                 sampler,
                 $(distribution),
@@ -48,13 +61,25 @@ end
 """
     generate_assume(variable, distribution, syms)
 
-Generate an assume expression.
+Generate an assume expression for parameters `variable` drawn from 
+a distribution or a vector of distributions (`distribution`).
+
 """
 function generate_assume(variable, distribution, syms)
     return esc(
         quote
             varname = Turing.VarName(vi, $syms, "")
-            ($(variable), _lp) = if isa($(distribution), Vector)
+
+            isdist = if isa($(distribution), AbstractVector)
+                # Check if the right-hand side is a vector of distributions.
+                all(d -> isa(d, Distribution), $(distribution))
+            else
+                # Check if the right-hand side is a distribution.
+                isa($(distribution), Distribution)
+            end
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+
+            ($(variable), _lp) = if isa($(distribution), AbstractVector)
                 Turing.assume(
                     sampler,
                     $(distribution),
@@ -82,6 +107,14 @@ function generate_assume(variable::Expr, distribution)
             csym_str = string(Turing._compiler_[:name])*string(csym)
             indexing = mapfoldl(string, *, idcs, init = "")
             varname = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
+
+            # Sanity check.
+            isdist = if isa($(distribution), Vector)
+                all(d -> isa(d, Distribution), $(distribution))
+            else
+                isa($(distribution), Distribution)
+            end
+            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
             $(variable), _lp = Turing.assume(
                 sampler,
@@ -116,10 +149,11 @@ function tilde(left, right)
 end
 
 function tilde(left::Symbol, right)
+
     # Check if left-hand side is a observation.
     if left in Turing._compiler_[:args]
         if !(left in Turing._compiler_[:dvars])
-            @info " Observe - `$(left)` is an observation"
+            @debug " Observe - `$(left)` is an observation"
             push!(Turing._compiler_[:dvars], left)
         end
 
@@ -132,7 +166,7 @@ function tilde(left::Symbol, right)
                 msg  *= " (ignoring `$(left)` found in global scope)"
             end
 
-            @info msg
+            @debug msg
             push!(Turing._compiler_[:pvars], left)
         end
 
@@ -150,7 +184,7 @@ function tilde(left::Expr, right)
 
     if vsym in Turing._compiler_[:args]
         if !(vsym in Turing._compiler_[:dvars])
-            @info " Observe - `$(vsym)` is an observation"
+            @debug " Observe - `$(vsym)` is an observation"
             push!(Turing._compiler_[:dvars], vsym)
         end
 
@@ -162,7 +196,7 @@ function tilde(left::Expr, right)
                 msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
 
-            @info msg
+            @debug msg
             push!(Turing._compiler_[:pvars], vsym)
         end
 
