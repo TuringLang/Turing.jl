@@ -126,8 +126,9 @@ struct DensePreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
 end
 
 function DensePreConditioner(d::Integer)
-    # ce = WelfordCovar(0, zeros(d), zeros(d,d))
-    ce = NaiveCovar(0, Vector{Vector{Float64}}())
+    ce = WelfordCovar(0, zeros(d), zeros(d,d))
+    # TODO: take use of the line below when we have an interface to set which pre-conditioner to use
+    # ce = NaiveCovar(0, Vector{Vector{Float64}}())
     return DensePreConditioner(ce, LinearAlgebra.diagm(0 => ones(d)))
 end
 
