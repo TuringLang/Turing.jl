@@ -1,2 +1,3 @@
 # tests to skip
 adr.jl
+AD_compatibility_with_distributions.jl

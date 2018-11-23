@@ -1,4 +1,4 @@
-using ForwardDiff, Distributions, FDM, Flux.Tracker
+using Test, ForwardDiff, Distributions, FDM, Flux.Tracker
 using StatsFuns: binomlogpdf
 
 # Real
