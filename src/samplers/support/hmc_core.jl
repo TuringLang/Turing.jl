@@ -132,8 +132,8 @@ function _leapfrog(θ::AbstractVector{<:Real},
                    τ::Int,
                    ϵ::Real,
                    lp_grad_func::Function;
-                   rev_func::Function=nothing,
-                   log_func::Function=nothing,
+                   rev_func=nothing,
+                   log_func=nothing,
                    )
     _, grad = lp_grad_func(θ)
     verifygrad(grad) || (return θ, p, 0)
@@ -208,8 +208,8 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    ϵ::Real,
                    λ::Real,
                    momentum_sampler::Function;
-                   rev_func::Function=nothing,
-                   log_func::Function=nothing,
+                   rev_func=nothing,
+                   log_func=nothing,
                    )
     τ = max(1, round(Int, λ / ϵ))
     return _hmc_step(θ, lj, lj_func, grad_func, H_func, τ, ϵ, momentum_sampler;
