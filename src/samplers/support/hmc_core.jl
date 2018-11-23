@@ -50,6 +50,13 @@ end
 
 # TODO: improve typing for all generator functions
 
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler)
+    d = length(vi[spl])
+    return function()
+        return randn(d)
+    end
+end
+
 function gen_momentum_sampler(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
     d = length(vi[spl])
     return function()
@@ -92,6 +99,8 @@ function gen_H_func(pc::DiagPreConditioner)
         return isnan(H) ? Inf : H
     end
 end
+
+# NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
 
 ###
 
@@ -167,8 +176,6 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    rev_func=nothing,
                    log_func=nothing,
                    )
-    θ_dim = length(θ)
-
     @debug "sampling momentums..."
     p = momentum_sampler()
 
@@ -215,15 +222,13 @@ end
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     logpdf_func_float = gen_lj_func(vi, spl, model)
+    momentum_sampler = gen_momentum_sampler(vi, spl)
     H_func = gen_H_func()
-
-    spl.alg.gid != 0 && link!(vi, spl)
 
     @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
-    θ_dim = length(vi[spl])
-    p = randn(θ_dim)
+    p = momentum_sampler()
 
     θ = vi[spl]
     H0 = H_func(θ, p, logpdf_func_float(θ))
@@ -240,7 +245,7 @@ function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     # Heuristically find optimal ϵ
     while (iter_num <= 12)
 
-        p = randn(θ_dim)
+        p = momentum_sampler()
         H0 = H_func(vi[spl], p, logpdf_func_float(vi[spl]))
 
         θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
@@ -266,8 +271,6 @@ function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
         h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
     end
     @info "\r[$T] found initial ϵ: $ϵ"
-
-    spl.alg.gid != 0 && invlink!(vi, spl)
 
     return ϵ
 end

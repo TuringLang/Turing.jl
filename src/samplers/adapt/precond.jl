@@ -37,7 +37,6 @@ end
 # https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/covar_adaptation.hpp
 function get_covar(ve::CovarEstimator)
 end
-# NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
 
 ################
 ### Adapters ###
