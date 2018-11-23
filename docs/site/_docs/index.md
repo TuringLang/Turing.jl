@@ -1,11 +1,9 @@
 ---
-title: Documentation
+title: Turing Documentation
 permalink: /docs/
 toc: true
 toc_sticky: true
 ---
-
-# Turing 0.5 Documentation
 
 Welcome to the documentation for Turing 0.5.
 
