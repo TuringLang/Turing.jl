@@ -16,7 +16,7 @@ let
     add_sample!(wv, randn(D))
     add_sample!(wv, randn(D))
     μ, M = deepcopy(wv.μ), deepcopy(wv.M)
-    get_var(wv)
+
     @test wv.μ == μ
     @test wv.M == M
 end

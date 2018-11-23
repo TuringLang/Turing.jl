@@ -24,14 +24,15 @@ function add_sample!(wv::WelfordVar, s::AbstractVector)
 end
 
 # https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/var_adaptation.hpp
-function get_var(wv::VarEstimator)
+function get_var(wv::VarEstimator{TI,TF})::Vector{TF} where {TI<:Integer,TF<:Real}
     n, M = wv.n, wv.M
     @assert n >= 2 "Cannot get variance with only one sample"
-    return (n / ((n + 5) * (n - 1))) .* M .+ 1e-3 * (5.0 / (n + 5))
+    return (n / ((n + 5) * (n - 1))) .* M .+ 1e-3 * (5 / (n + 5))
 end
 
 abstract type CovarEstimator{TI<:Integer,TF<:Real} end
 
+# NOTE: this naive covariance estimator is used only in testing
 mutable struct NaiveCovar{TI,TF} <: CovarEstimator{TI,TF}
     n :: TI
     S :: Vector{Vector{TF}}
@@ -47,20 +48,38 @@ function reset!(nc::NaiveCovar{TI,TF}) where {TI<:Integer,TF<:Real}
     nc.S = Vector{Vector{TF}}()
 end
 
-function get_covar(nc::NaiveCovar)
+function get_covar(nc::NaiveCovar{TI,TF})::Matrix{TF} where {TI<:Integer,TF<:Real}
     @assert nc.n >= 2 "Cannot get variance with only one sample"
     return Statistics.cov(nc.S)
 end
 
-# TODO: to implement cov estimater
-# https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_covar_estimator.hpp
+# Ref: https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_covar_estimator.hpp
 mutable struct WelfordCovar{TI<:Integer,TF<:Real} <: CovarEstimator{TI,TF}
+    n :: TI
+    μ :: Vector{TF}
+    M :: Matrix{TF}
 end
 
-# TODO: to implement cov estimater
-# https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/covar_adaptation.hpp
-function get_covar(ve::WelfordCovar)
+function reset!(wc::WelfordCovar{TI,TF}) where {TI<:Integer,TF<:Real}
+    wc.n = zero(TI)
+    wc.μ .= zero(TF)
+    wc.M .= zero(TF)
 end
+
+function add_sample!(wc::WelfordCovar, s::AbstractVector)
+    wc.n += 1
+    δ = s .- wc.μ
+    wc.μ .+= δ ./ wc.n
+    wc.M .+= (s .- wc.μ) * δ'
+end
+
+# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/covar_adaptation.hpp
+function get_covar(wc::WelfordCovar{TI,TF})::Matrix{TF} where {TI<:Integer,TF<:Real}
+    n, M = wc.n, wc.M
+    @assert n >= 2 "Cannot get variance with only one sample"
+    return (n / ((n + 5) * (n - 1))) .* M + 1e-3 * (5 / (n + 5)) * LinearAlgebra.I
+end
+
 
 ################
 ### Adapters ###
@@ -107,6 +126,7 @@ struct DensePreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
 end
 
 function DensePreConditioner(d::Integer)
+    # ce = WelfordCovar(0, zeros(d), zeros(d,d))
     ce = NaiveCovar(0, Vector{Vector{Float64}}())
     return DensePreConditioner(ce, LinearAlgebra.diagm(0 => ones(d)))
 end
