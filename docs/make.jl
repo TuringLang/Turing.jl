@@ -1,4 +1,4 @@
-using Documenter, Turing
+using Documenter, DocumenterMarkdown, Turing
 using LibGit2: clone
 
 # Include the update_homepage function.
@@ -38,6 +38,8 @@ if !in("no-tutorials", ARGS)
     finally
         rm(tmp_path, recursive = true)
     end
+else
+    @info "Skipping tutorial copying."
 end
 
 # Preprocess markdown files.
@@ -48,7 +50,9 @@ yaml_dict = preprocess_markdown(source_path)
 # Build documentation
 try
     makedocs(
-        build = build_relative
+        sitename = "Turing.jl",
+        build = build_relative,
+        format = :markdown
     )
 catch e
     # Put back the original files in the event of an error.
@@ -69,6 +73,8 @@ if !in("no-publish", ARGS)
         "gh-pages",
         "site"
     )
+else
+    @info "Skipping publishing."
 end
 
 # # Deploy documentation.
