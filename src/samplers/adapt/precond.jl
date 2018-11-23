@@ -46,8 +46,8 @@ abstract type PreConditioner <: AbstractAdapter end
 
 struct UnitPreConditioner <: PreConditioner end
 
-function getstd(::UnitPreConditioner)
-    return [1.0]
+function Base.string(::UnitPreConditioner)
+    return string([1.0])
 end
 
 struct DiagPreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
@@ -60,8 +60,8 @@ function DiagPreConditioner(d::Integer)
     return DiagPreConditioner(ve, Vector(ones(d)))
 end
 
-function getstd(dpc::DiagPreConditioner)
-    return dpc.std
+function Base.string(dpc::DiagPreConditioner)
+    return string(dpc.std)
 end
 
 function adapt!(dpc::DiagPreConditioner, θ, is_addsample::Bool, is_updatestd::Bool)
@@ -78,6 +78,10 @@ function adapt!(dpc::DiagPreConditioner, θ, is_addsample::Bool, is_updatestd::B
 end
 
 struct DensePreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
-    ce  :: CovarEstimator{TI,TF}
-    std :: Matrix{TF}
+    ce    :: CovarEstimator{TI,TF}
+    covar :: Matrix{TF}
+end
+
+function Base.string(dpc::DensePreConditioner)
+    return string(LinearAlgebra.diag(dpc.std))
 end

@@ -163,7 +163,7 @@ function sample(model::Function, alg::Hamiltonian;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      std_str = string(getstd(spl.info[:wum]))
+      std_str = string(spl.info[:wum].pc)
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
       println("  pre-cond. metric    = $(std_str).")
     end
@@ -235,7 +235,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     if PROGRESS[] && spl.alg.gid == 0
-        std_str = string(getstd(spl.info[:wum]))
+        std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
             spl.info[:progress],

@@ -57,27 +57,19 @@ function gen_momentum_sampler(vi::VarInfo, spl::Sampler)
     end
 end
 
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
-    d = length(vi[spl])
-    return function()
-        return randn(d)
-    end
-end
-
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
-    d = length(vi[spl])
-    std = getstd(pc)
-    return function()
-        return randn(d) ./ std
-    end
-end
-
 function gen_H_func()
     return function(θ::AbstractVector{<:Real},
                     p::AbstractVector{<:Real},
                     logp::Real)
         H = sum(abs2, p) / 2 - logp
         return isnan(H) ? Inf : H
+    end
+end
+
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
+    d = length(vi[spl])
+    return function()
+        return randn(d)
     end
 end
 
@@ -90,8 +82,16 @@ function gen_H_func(::UnitPreConditioner)
     end
 end
 
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
+    d = length(vi[spl])
+    std = pc.std
+    return function()
+        return randn(d) ./ std
+    end
+end
+
 function gen_H_func(pc::DiagPreConditioner)
-    std = getstd(pc)
+    std = pc.std
     return function(θ::AbstractVector{<:Real},
                     p::AbstractVector{<:Real},
                     logp::Real)
@@ -101,6 +101,24 @@ function gen_H_func(pc::DiagPreConditioner)
 end
 
 # NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DensePreConditioner)
+    d = length(vi[spl])
+    A = getcovar(pc)
+    C = LinearAlgebra.cholesky(A)
+    return function()
+        return C.U \ randn(d)
+    end
+end
+
+function gen_H_func(pc::DensePreConditioner)
+    A = pc.covar
+    return function(θ::AbstractVector{<:Real},
+                    p::AbstractVector{<:Real},
+                    logp::Real)
+        H = p' * A * p / 2 - logp
+        return isnan(H) ? Inf : H
+    end
+end
 
 ###
 
