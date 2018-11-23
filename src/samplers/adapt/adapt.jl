@@ -45,7 +45,8 @@ end
 
 function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
-    pc = DiagPreConditioner(dim)
+    # pc = DiagPreConditioner(dim)
+    pc = DensePreConditioner(dim)
     # Dual averaging for step size
     ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
     # Window parameters

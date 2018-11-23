@@ -15,7 +15,7 @@ using Bijectors
 @reexport using MCMCChain
 using ForwardDiff
 using StatsFuns
-
+using Statistics
 using LinearAlgebra
 using ProgressMeter
 using Markdown
