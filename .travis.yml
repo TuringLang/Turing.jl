@@ -25,7 +25,7 @@ script:
              else
                 println("Unknown test command.")
              end'
-  - julia -e 'using Pkg; ps=Pkg.PackageSpec(name="Documenter", version="0.19"); Pkg.add(ps); Pkg.pin(ps)'
+  - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown")'
   - julia -e 'using Pkg, Turing;
               cd(joinpath(dirname(pathof(Turing)), ".."));
               include(joinpath("docs", "make.jl"))'
