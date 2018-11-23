@@ -99,6 +99,32 @@ var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 
 Note that the key (`:var_1`) should be a symbol. For example, to fetch `x[1]`, one would need to do `chn[Symbol(:x[1])`.
 
+Turing does not have a declarative form. More generally, the order in which you place the lines of a `@model` macro matters. For example, the following example works:
+
+```julia
+# Define a simple Normal model with unknown mean and variance.
+@model model_function(y) = begin
+  s ~ Poisson(1)
+  y ~ Normal(s, 1)
+  return y
+end
+
+sample(model_function(10), SMC(100))
+```
+
+But if we switch the `s ~ Poisson(1)` and `y ~ Normal(s, 1)` lines, the model will no longer sample correctly:
+
+```julia
+# Define a simple Normal model with unknown mean and variance.
+@model model_function(y) = begin
+  y ~ Normal(s, 1)
+  s ~ Poisson(1)
+  return y
+end
+
+sample(model_function(10), SMC(100))
+```
+
 ### Sampling from the Prior
 
 Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.
@@ -159,6 +185,42 @@ plot(chn) # Plots statistics of the samples.
 ```
 
 There are numerous functions in addition to `describe` and `plot` in the `MCMCChain` package, such as those used in convergence diagnostics. For more information on the package, please see the [GitHub repository](https://github.com/TuringLang/MCMCChain.jl).
+
+### Working with Libtask.jl
+
+The [Libtask.jl](https://github.com/TuringLang/Libtask.jl) library provides write-on-copy data structures that are safe for use in Turing's particle-based samplers. One data structure in particular is often required for use -- the [`TArray`](http://turing.ml/docs/library/#Libtask.TArray). The following sampler types require the use of a `TArray` to store distributions:
+
+- `IPMCMC`
+- `IS`
+- `PG`
+- `PMMH`
+- `SMC`
+
+If you do not use a `TArray` to store arrays of distributions when using a particle-based sampler, you may experience errors.
+
+Here is an example of how the `TArray` (using a `TArray` constructor function called `tzeros`) can be applied in this way:
+
+```julia
+# Turing model definition.
+@model BayesHmm(y) = begin
+    # Declare a TArray with a length of N.
+    s = tzeros(Int, N)
+    m = Vector{Real}(undef, K)
+    T = Vector{Vector{Real}}(undef, K)
+    for i = 1:K
+        T[i] ~ Dirichlet(ones(K)/K)
+        m[i] ~ Normal(i, 0.01)
+    end
+
+    # Draw from a distribution for each element in s.
+    s[1] ~ Categorical(K)
+    for i = 2:N
+        s[i] ~ Categorical(vec(T[s[i-1]]))
+        y[i] ~ Normal(m[s[i]], 0.1)
+    end
+    return(s, m)
+end;
+```
 
 ### Changing Default Settings
 
