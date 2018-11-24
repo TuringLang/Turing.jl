@@ -103,8 +103,7 @@ end
 # NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
 function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DensePreConditioner)
     d = length(vi[spl])
-    # TODO: the type coversion below is use to a possible bug in Julia.LinearAlgebra.cholesky for Float64
-    A = Matrix{Float32}(pc.covar)
+    A = Symmetric(pc.covar)
     C = LinearAlgebra.cholesky(A)
     return function()
         return C.U \ randn(d)
