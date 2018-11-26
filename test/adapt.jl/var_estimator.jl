@@ -33,5 +33,5 @@ let
 
     var = get_var(wv)
 
-    @test var ≈ ones(D) atol=0.5
+    @test var ≈ ones(D) atol=0.1
 end

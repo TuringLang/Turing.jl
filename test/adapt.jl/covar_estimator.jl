@@ -33,5 +33,5 @@ let
 
     covar = get_covar(wc)
 
-    @test covar ≈ LinearAlgebra.diagm(0 => ones(D)) atol=0.5
+    @test covar ≈ LinearAlgebra.diagm(0 => ones(D)) atol=0.1
 end
