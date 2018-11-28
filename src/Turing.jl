@@ -52,7 +52,7 @@ import MCMCChain: AbstractChains, Chains
 # Global variables/constants #
 ##############################
 
-const ADBACKEND = Ref(:reverse_diff)
+const ADBACKEND = Ref(:forward_diff)
 setadbackend(backend_sym) = begin
   @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
   backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
