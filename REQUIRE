@@ -1,4 +1,4 @@
-julia 0.7
+julia 1.0
 
 Requires 0.5.0
 Reexport 0.2.0
