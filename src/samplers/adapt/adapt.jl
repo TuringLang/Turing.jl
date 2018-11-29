@@ -23,10 +23,6 @@ struct NaiveCompAdapter <: CompositeAdapter
     ssa :: StepSizeAdapter
 end
 
-function getstd(tp::CompositeAdapter)
-    return getstd(tp.pc)
-end
-
 function getss(tp::CompositeAdapter)
     return getss(tp.ssa)
 end
@@ -49,7 +45,8 @@ end
 
 function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
-    pc = DiagPreConditioner(dim)
+    # pc = DiagPreConditioner(dim)
+    pc = DensePreConditioner(dim)
     # Dual averaging for step size
     ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
     # Window parameters
@@ -87,7 +84,7 @@ function adapt!(tp::ThreePhaseAdapter, stats::Real, θ; adapt_ϵ=false, adapt_M=
     if tp.state.n < tp.n_adapts
         tp.state.n += 1
         if tp.state.n == tp.n_adapts
-            @info " Adapted ϵ = $(getss(tp)), std = $(getstd(tp)); $(tp.state.n) iterations is used for adaption."
+            @info " Adapted ϵ = $(getss(tp)), std = $(string(tp.pc)); $(tp.state.n) iterations is used for adaption."
         else
             if adapt_ϵ
                 is_updateϵ = is_windowend(tp) || tp.state.n == tp.n_adapts

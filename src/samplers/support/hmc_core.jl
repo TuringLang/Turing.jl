@@ -48,7 +48,79 @@ function gen_log_func(sampler::Sampler)
     end
 end
 
-_sample_momentum(d::Int, std::Vector) = randn(d) ./ std
+# TODO: improve typing for all generator functions
+
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler)
+    d = length(vi[spl])
+    return function()
+        return randn(d)
+    end
+end
+
+function gen_H_func()
+    return function(θ::AbstractVector{<:Real},
+                    p::AbstractVector{<:Real},
+                    logp::Real)
+        H = sum(abs2, p) / 2 - logp
+        return isnan(H) ? Inf : H
+    end
+end
+
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
+    d = length(vi[spl])
+    return function()
+        return randn(d)
+    end
+end
+
+function gen_H_func(::UnitPreConditioner)
+    return function(θ::AbstractVector{<:Real},
+                    p::AbstractVector{<:Real},
+                    logp::Real)
+        H = sum(abs2, p) / 2 - logp
+        return isnan(H) ? Inf : H
+    end
+end
+
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
+    d = length(vi[spl])
+    std = pc.std
+    return function()
+        return randn(d) ./ std
+    end
+end
+
+function gen_H_func(pc::DiagPreConditioner)
+    std = pc.std
+    return function(θ::AbstractVector{<:Real},
+                    p::AbstractVector{<:Real},
+                    logp::Real)
+        H = sum(abs2, p .* std) / 2 - logp
+        return isnan(H) ? Inf : H
+    end
+end
+
+# NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
+function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DensePreConditioner)
+    d = length(vi[spl])
+    A = Symmetric(pc.covar)
+    C = LinearAlgebra.cholesky(A)
+    return function()
+        return C.U \ randn(d)
+    end
+end
+
+function gen_H_func(pc::DensePreConditioner)
+    A = pc.covar
+    return function(θ::AbstractVector{<:Real},
+                    p::AbstractVector{<:Real},
+                    logp::Real)
+        H = p' * A * p / 2 - logp
+        return isnan(H) ? Inf : H
+    end
+end
+
+###
 
 function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler})
     setlogp!(vi, zero(Real))
@@ -59,30 +131,28 @@ function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler})
     return vi
 end
 
-function leapfrog(
-    θ::AbstractVector{<:Real},
-    p::AbstractVector{<:Real},
-    τ::Int,
-    ϵ::Real,
-    model::Function,
-    vi::VarInfo,
-    sampler::Sampler,
-)
+function leapfrog(θ::AbstractVector{<:Real},
+                  p::AbstractVector{<:Real},
+                  τ::Int,
+                  ϵ::Real,
+                  model::Function,
+                  vi::VarInfo,
+                  sampler::Sampler,
+                  )
     lp_grad = gen_grad_func(vi, sampler, model)
     rev = gen_rev_func(vi, sampler)
     logger = gen_log_func(sampler)
     return _leapfrog(θ, p, τ, ϵ, lp_grad; rev_func=rev, log_func=logger)
 end
 
-function _leapfrog(
-    θ::AbstractVector{<:Real},
-    p::AbstractVector{<:Real},
-    τ::Int,
-    ϵ::Real,
-    lp_grad_func::Function;
-    rev_func=nothing,
-    log_func=nothing,
-)
+function _leapfrog(θ::AbstractVector{<:Real},
+                   p::AbstractVector{<:Real},
+                   τ::Int,
+                   ϵ::Real,
+                   lp_grad_func::Function;
+                   rev_func=nothing,
+                   log_func=nothing,
+                   )
     _, grad = lp_grad_func(θ)
     verifygrad(grad) || (return θ, p, 0)
 
@@ -113,53 +183,29 @@ function _leapfrog(
     return θ, p, τ_valid
 end
 
-# Compute Hamiltonian
-function _find_H(
-    θ::AbstractVector{<:Real},
-    p::AbstractVector{<:Real},
-    logpdf_func_float::Function,
-    std::AbstractVector{<:Real},
-)
-    return _find_H(θ, p, logpdf_func_float(θ), std)
-end
-
-function _find_H(
-    θ::AbstractVector{<:Real},
-    p::AbstractVector{<:Real},
-    logp::Real,
-    std::AbstractVector{<:Real},
-)
-    H = sum(abs2, p .* std) / 2 - logp
-    return isnan(H) ? Inf : H
-end
-
-function _hmc_step(
-    θ::AbstractVector{<:Real},
-    lj::Real,
-    lj_func,
-    grad_func,
-    τ::Int,
-    ϵ::Real,
-    std::AbstractVector{<:Real};
-    rev_func=nothing,
-    log_func=nothing,
-)
-
-    θ_dim = length(θ)
-
+function _hmc_step(θ::AbstractVector{<:Real},
+                   lj::Real,
+                   lj_func::Function,
+                   grad_func::Function,
+                   H_func::Function,
+                   τ::Int,
+                   ϵ::Real,
+                   momentum_sampler::Function;
+                   rev_func=nothing,
+                   log_func=nothing,
+                   )
     @debug "sampling momentums..."
-    p = _sample_momentum(θ_dim, std)
+    p = momentum_sampler()
 
     @debug "recording old values..."
-    H = _find_H(θ, p, lj, std)
-
+    H = H_func(θ, p, lj)
 
     @debug "leapfrog for $τ steps with step size $ϵ"
     θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
 
     @debug "computing new H..."
     lj_new = lj_func(θ_new)
-    H_new = (τ_valid == 0) ? Inf : _find_H(θ_new, p_new, lj_new, std)
+    H_new = (τ_valid == 0) ? Inf : H_func(θ_new, p_new, lj_new)
 
     @debug "deciding wether to accept and computing accept rate α..."
     is_accept, logα = mh_accept(H, H_new)
@@ -172,19 +218,20 @@ function _hmc_step(
     return θ, lj, is_accept, τ_valid, exp(logα)
 end
 
-function _hmc_step(
-    θ::AbstractVector{<:Real},
-    lj::Real,
-    lj_func,
-    grad_func,
-    ϵ::Real,
-    λ::Real,
-    std::AbstractVector{<:Real};
-    rev_func=nothing,
-    log_func=nothing,
-)
+function _hmc_step(θ::AbstractVector{<:Real},
+                   lj::Real,
+                   lj_func::Function,
+                   grad_func::Function,
+                   H_func::Function,
+                   ϵ::Real,
+                   λ::Real,
+                   momentum_sampler::Function;
+                   rev_func=nothing,
+                   log_func=nothing,
+                   )
     τ = max(1, round(Int, λ / ϵ))
-    return _hmc_step(θ, lj, lj_func, grad_func, τ, ϵ, std; rev_func=rev_func, log_func=log_func)
+    return _hmc_step(θ, lj, lj_func, grad_func, H_func, τ, ϵ, momentum_sampler;
+                     rev_func=rev_func, log_func=log_func)
 end
 
 
@@ -193,21 +240,20 @@ end
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     logpdf_func_float = gen_lj_func(vi, spl, model)
-
-    spl.alg.gid != 0 && link!(vi, spl)
+    momentum_sampler = gen_momentum_sampler(vi, spl)
+    H_func = gen_H_func()
 
     @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
-    θ_dim = length(vi[spl])
-    unitstd = ones(θ_dim)
-    p = randn(θ_dim)
-
-    H0 = _find_H(vi[spl], p, logpdf_func_float, unitstd)
+    p = momentum_sampler()
 
     θ = vi[spl]
+    H0 = H_func(θ, p, logpdf_func_float(θ))
+
+
     θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-    h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, unitstd)
+    h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
 
     delta_H = H0 - h
     direction = delta_H > log(0.8) ? 1 : -1
@@ -217,11 +263,11 @@ function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     # Heuristically find optimal ϵ
     while (iter_num <= 12)
 
-        p = randn(θ_dim)
-        H0 = _find_H(vi[spl], p, logpdf_func_float, unitstd)
+        p = momentum_sampler()
+        H0 = H_func(vi[spl], p, logpdf_func_float(vi[spl]))
 
         θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, unitstd)
+        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
         @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
@@ -240,11 +286,9 @@ function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
     while h == Inf  # revert if the last change is too big
         ϵ = ϵ / 2               # safe is more important than large
         θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : _find_H(vi[spl], p_prime, logpdf_func_float, std)
+        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
     end
     @info "\r[$T] found initial ϵ: $ϵ"
-
-    spl.alg.gid != 0 && invlink!(vi, spl)
 
     return ϵ
 end

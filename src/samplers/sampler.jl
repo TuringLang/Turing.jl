@@ -1,6 +1,8 @@
-# Concrete algorithm implementations.
-include("support/hmc_core.jl")
+# Helper functions
 include("adapt/adapt.jl")
+include("support/hmc_core.jl")
+
+# Concrete algorithm implementations.
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")

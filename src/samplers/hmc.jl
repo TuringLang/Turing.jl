@@ -47,9 +47,10 @@ function HMC(alg::HMC, new_gid::Int)
 end
 HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
 
-function hmc_step(θ, lj, lj_func, grad_func, ϵ, std, alg::HMC; rev_func=nothing, log_func=nothing)
+function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
+                  rev_func=nothing, log_func=nothing)
   θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, alg.tau, ϵ, std; rev_func=rev_func, log_func=log_func)
+            θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
   return θ_new, lj_new, is_accept, α
 end
 
@@ -77,13 +78,13 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     Sampler(alg, info)
 end
 
-function sample(model::Function, alg::T;
+function sample(model::Function, alg::Hamiltonian;
                                 chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
-                               ) where T<:Hamiltonian
+                )
     if ADBACKEND[] == :forward_diff
         default_chunk_size = CHUNKSIZE[]  # record global chunk size
         setchunksize(chunk_size)        # set temp chunk size
@@ -162,7 +163,7 @@ function sample(model::Function, alg::T;
     println("  #lf / sample        = $(total_lf_num / n);")
     println("  #evals / sample     = $(total_eval_num / n);")
     if haskey(spl.info, :wum)
-      std_str = string(getstd(spl.info[:wum]))
+      std_str = string(spl.info[:wum].pc)
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
       println("  pre-cond. metric    = $(std_str).")
     end
@@ -216,10 +217,13 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     lj_func = gen_lj_func(vi, spl, model)
     rev_func = gen_rev_func(vi, spl)
     log_func = gen_log_func(spl)
+    momentum_sampler = gen_momentum_sampler(vi, spl, spl.info[:wum].pc)
+    H_func = gen_H_func(spl.info[:wum].pc)
 
-    θ, lj, std = vi[spl], vi.logp, getstd(spl.info[:wum])
+    θ, lj = vi[spl], vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, std, spl.alg; rev_func=rev_func, log_func=log_func)
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
+                                           rev_func=rev_func, log_func=log_func)
 
     @debug "decide whether to accept..."
     if is_accept
@@ -231,7 +235,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     if PROGRESS[] && spl.alg.gid == 0
-        std_str = string(getstd(spl.info[:wum]))
+        std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
             spl.info[:progress],
@@ -250,7 +254,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     return vi, is_accept
 end
 
-assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:Hamiltonian = begin
+function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
     @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
@@ -262,7 +266,7 @@ assume(spl::Sampler{T}, dist::Distribution, vn::VarName, vi::VarInfo) where T<:H
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} = begin
+function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::VarInfo)
     @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
     dist = dists[1]
     n = size(var)[end]
@@ -293,8 +297,8 @@ assume(spl::Sampler{A}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) wh
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) where A<:Hamiltonian=
+observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value::Any, vi::VarInfo) =
     observe(nothing, d, value, vi)
 
-observe(spl::Sampler{A}, ds::Vector{D}, value::Any, vi::VarInfo) where {A<:Hamiltonian,D<:Distribution} =
+observe(spl::Sampler{<:Hamiltonian}, ds::Vector{<:Distribution}, value::Any, vi::VarInfo) =
     observe(nothing, ds, value, vi)
