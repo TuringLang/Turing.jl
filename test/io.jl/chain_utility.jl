@@ -10,7 +10,7 @@ d = Dict{Symbol, Any}()
 d[:m] = [1,2,3]
 sp = Sample(1, d)
 
-c2 = Chain(1, Vector{Sample}([sp]))
+c2 = Chain(1.0, Vector{Sample}([sp]))
 
 string(c2)
 samples = c2[:samples]
