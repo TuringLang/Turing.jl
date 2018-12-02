@@ -67,7 +67,7 @@ function HMCDA{AD, T}(alg::HMCDA, new_gid::Int) where {AD, T}
     return HMCDA{AD, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, alg.space, new_gid)
 end
 
-function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMCDA, momentum_sampler::Function;
+function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMCDA, momentum_sampler;
                   rev_func=nothing, log_func=nothing)
     θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
                 θ, lj, lj_func, grad_func, H_func, ϵ, alg.lambda, momentum_sampler; rev_func=rev_func, log_func=log_func)

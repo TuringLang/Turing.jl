@@ -34,7 +34,7 @@ PMMH(alg::PMMH, new_gid) = PMMH(alg.n_iters, alg.algs, alg.space, new_gid)
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
 
-function Sampler(alg::PMMH)
+function Sampler(model::CallableModel, alg::PMMH)
   alg_str = "PMMH"
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(undef, n_samplers)
@@ -56,10 +56,10 @@ function Sampler(alg::PMMH)
 
   # Sanity check for space
   if !isempty(space)
-    @assert issubset(Turing._compiler_[:pvars], space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+    @assert issubset(model.pvars, space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(model.pvars))"
 
-    if Turing._compiler_[:pvars] != space
-      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    if model.pvars != space
+      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, model.pvars))")
     end
   end
 
@@ -71,7 +71,7 @@ function Sampler(alg::PMMH)
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool) = begin
+step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool) = begin
   violating_support = false
   proposal_ratio = 0.0
   new_prior_prob = 0.0
@@ -113,13 +113,13 @@ step(model::Function, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool) = begin
   return vi, is_accept
 end
 
-sample(model::Function, alg::PMMH;
+sample(model::CallableModel, alg::PMMH;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
        reuse_spl_n=0             # flag for spl re-using
       ) = begin
 
-    spl = Sampler(alg)
+    spl = Sampler(model, alg)
     alg_str = "PMMH"
 
     # Number of samples to store

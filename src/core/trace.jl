@@ -8,7 +8,7 @@ mutable struct Trace
 end
 
 # NOTE: this function is called by `forkr`
-function Trace(f::Function)
+function Trace(f)
   res = Trace();
   # Task(()->f());
   res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
@@ -19,7 +19,7 @@ function Trace(f::Function)
   res
 end
 
-function Trace(f::Function, spl::Sampler, vi :: VarInfo)
+function Trace(f, spl::Sampler, vi :: VarInfo)
   res = Trace();
   res.spl = spl
   # Task(()->f());

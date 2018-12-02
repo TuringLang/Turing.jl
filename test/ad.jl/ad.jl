@@ -4,6 +4,7 @@ using Turing: VarInfo, gradient_forward, gradient_reverse
 @model foo_ad() = begin
     x ~ Normal(3, 1)
     y ~ Normal(x, 1)
+    return x, y
 end
 
 # Check that gradient_forward doesn't change the RV values or logp of a VarInfo.

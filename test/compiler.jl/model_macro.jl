@@ -3,9 +3,8 @@ using MacroTools
 
 # unit test model macro
 expr = Turing.generate_observe(:x, :y)
-@test expr.head == :escape
-@test expr.args[1].head == :block
-@test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args[1].args
+@test expr.head == :block
+@test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
 
 @model testmodel_comp(x, y) = begin
     s ~ InverseGamma(2,3)
@@ -16,45 +15,17 @@ expr = Turing.generate_observe(:x, :y)
 
     return x, y
 end
-
 testmodel_comp(1.0, 1.2)
-c = deepcopy(Turing._compiler_)
-
-alias1 = Dict(
-            :name => :testmodel_comp_model,
-            :args => [:(vi::Turing.VarInfo)],
-            :kwargs => [],
-            :body => :(return testmodel_comp_model(vi, Turing.SampleFromPrior()))
-           )
-@test c[:alias1] == MacroTools.combinedef(alias1)
-
-alias2 = Dict(
-            :name => :testmodel_comp_model,
-            :args => [:(sampler::Turing.AnySampler)],
-            :kwargs => [],
-            :body => :(return testmodel_comp_model(Turing.VarInfo(), Turing.SampleFromPrior()))
-           )
-@test c[:alias2] == MacroTools.combinedef(alias2)
-
-alias3 = Dict(
-            :name => :testmodel_comp_model,
-            :args => [],
-            :kwargs => [],
-            :body => :(return testmodel_comp_model(Turing.VarInfo(), Turing.SampleFromPrior()))
-           )
-@test c[:alias3] == MacroTools.combinedef(alias3)
-@test length(c[:closure].args[2].args[2].args) == 6
-@test mapreduce(line -> line.head == :macrocall, +, c[:closure].args[2].args[2].args) == 4
 
 # check if drawing from the prior works
-@model testmodel0(x) = begin
+@model testmodel0() = begin
     x ~ Normal()
     return x
 end
 f0_mm = testmodel0()
 @test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
-@model testmodel01(x) = begin
+@model testmodel01() = begin
     x ~ Bernoulli(0.5)
     return x
 end

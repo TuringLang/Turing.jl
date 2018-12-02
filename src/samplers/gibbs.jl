@@ -35,7 +35,7 @@ Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs)
+function Sampler(model::CallableModel, alg::Gibbs)
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
 
@@ -52,10 +52,10 @@ function Sampler(alg::Gibbs)
     end
 
     # Sanity check for space
-    @assert issubset(Turing._compiler_[:pvars], space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+    @assert issubset(model.pvars, space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(model.pvars))"
 
-    if Turing._compiler_[:pvars] != space
-        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    if model.pvars != space
+        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, model.pvars))")
     end
 
     info = Dict{Symbol, Any}()
@@ -65,7 +65,7 @@ function Sampler(alg::Gibbs)
 end
 
 function sample(
-                model::Function,
+                model::CallableModel,
                 alg::Gibbs;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
@@ -73,7 +73,7 @@ function sample(
                 )
 
     # Init the (master) Gibbs sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(model, alg)
 
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 

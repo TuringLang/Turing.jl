@@ -69,7 +69,7 @@ function HMC{AD, T}(alg::HMC, new_gid::Int) where {AD, T}
     return HMC{AD, T}(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
 
-function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
+function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler;
                   rev_func=nothing, log_func=nothing)
   θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
             θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
@@ -100,7 +100,7 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     Sampler(alg, info)
 end
 
-function sample(model::Function, alg::Hamiltonian;
+function sample(model, alg::Hamiltonian;
                                 chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
@@ -137,7 +137,7 @@ function sample(model::Function, alg::Hamiltonian;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        model(vi_, HamiltonianRobustInit())
         spl.info[:eval_num] += 1
         vi_
     else

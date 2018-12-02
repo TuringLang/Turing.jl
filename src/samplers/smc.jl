@@ -47,7 +47,7 @@ Sampler(alg::SMC) = begin
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{<:SMC}, vi::VarInfo) = begin
+step(model, spl::Sampler{<:SMC}, vi::VarInfo) = begin
     particles = ParticleContainer{Trace}(model)
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
     set_retained_vns_del_by_spl!(vi, spl)
@@ -71,7 +71,7 @@ step(model::Function, spl::Sampler{<:SMC}, vi::VarInfo) = begin
 end
 
 ## wrapper for smc: run the sampler, collect results.
-function sample(model::Function, alg::SMC)
+function sample(model, alg::SMC)
   spl = Sampler(alg);
 
   particles = ParticleContainer{Trace}(model)
