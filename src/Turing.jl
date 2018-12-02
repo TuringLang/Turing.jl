@@ -11,9 +11,10 @@ module Turing
 using Requires
 using Reexport
 @reexport using Distributions
+import Flux
+using ForwardDiff
 using Bijectors
 @reexport using MCMCChain
-using ForwardDiff
 using StatsFuns
 using Statistics
 using LinearAlgebra
