@@ -53,8 +53,8 @@ end
 
 function rand(d::ChineseRestaurantProcess)
     lp = crp(d.rpm, d.m)
-    p = exp.(lp .- logsumexp(lp))
-    return rand(Categorical(p))
+    p = exp.(lp)
+    return rand(Categorical(p ./ sum(p)))
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
@@ -102,7 +102,9 @@ stickbreaking(d::DirichletProcess) = rand(Beta(1., d.α))
 logpdf_stickbreaking(d::DirichletProcess, x::T) where T<:Real = logpdf(Beta(1., d.α), x)
 
 function crp(d::DirichletProcess, m::Vector{Int})
-    @assert all(mk -> mk > 0, m) 
+    if length(m) == 0
+        return [0.0]
+    end
     z = log(sum(m) - 1 + d.α)
     K = length(m)
     lp(k) = k > K ? log(d.α) - z : log(m[k]) - z
@@ -145,7 +147,9 @@ stickbreaking(d::PitmanYorProcess) = rand(Beta(1. - d.d, d.θ + d.t*d.d))
 logpdf_stickbreaking(d::PitmanYorProcess, x::Real) = logpdf(Beta(1-d.d, d.θ + d.t*d.d), x)
 
 function crp(d::PitmanYorProcess, m::Vector{Int})
-    @assert all(mk -> mk > 0, m) 
+    if length(m) == 0
+        return [0.0]
+    end
     z = log(sum(m) + d.θ)
     K = length(m)
     lp(k) = k > K ? log(d.θ + d.d*d.t) - z : log(m[k] - d.d) - z
