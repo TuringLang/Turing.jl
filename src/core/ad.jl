@@ -125,12 +125,3 @@ Tracker.@grad function binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int)
     return binomlogpdf(n, Tracker.data(p), x),
         Δ->(nothing, Δ * (x / p - (n - x) / (1 - p)), nothing)
 end
-
-
-import StatsFuns: poislogpdf
-poislogpdf(v::Tracker.TrackedReal, x::Int) = Tracker.track(poislogpdf, v, x)
-Tracker.@grad function poislogpdf(v::Tracker.TrackedReal, x::Int)
-      println("Called!")
-      return poislogpdf(Tracker.data(v), x),
-          Δ->(Δ * (x/v - 1), nothing)
-end

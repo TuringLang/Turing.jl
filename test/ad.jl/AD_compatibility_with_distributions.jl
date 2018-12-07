@@ -46,21 +46,3 @@ let
         atol=1e-8,
     )
 end
-
-let
-    foo = p->poislogpdf(1, p)
-    @test isapprox(
-        Tracker.gradient(foo, 0.5)[1],
-        central_fdm(5, 1)(foo, 0.5);
-        rtol=1e-8,
-        atol=1e-8,
-    )
-
-    bar = p->logpdf(Poisson(1), 3)
-    @test isapprox(
-        Tracker.gradient(bar, 0.5)[1],
-        central_fdm(5, 1)(bar, 0.5);
-        rtol=1e-8,
-        atol=1e-8,
-    )
-end
