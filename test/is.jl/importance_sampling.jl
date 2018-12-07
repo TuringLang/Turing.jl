@@ -56,6 +56,6 @@ let n = 10
       @test exact[:samples][i][:b] == tested[:samples][i][:b]
       @test exact[:logweights][i]  == tested[:logweights][i]
     end
-    @test exact[:logevidence] == tested[:logevidence]
+    @test exact[:logevidence] .== first(tested[:logevidence])
   end
 end

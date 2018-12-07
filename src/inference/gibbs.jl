@@ -61,7 +61,7 @@ function Sampler(alg::Gibbs, model::Model)
     info = Dict{Symbol, Any}()
     info[:samplers] = samplers
 
-    Sampler(alg, info)
+    return Sampler(alg, info)
 end
 
 function sample(
@@ -180,7 +180,7 @@ function sample(
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.value2...)
     end
-    c = Chain(0.0, samples)       # wrap the result by Chain
+    c = Chain(log(0.0), samples)       # wrap the result by Chain
 
     if save_state               # save state
         save!(c, spl, model, varInfo)

@@ -122,13 +122,13 @@ sample(model::Function, alg::PG;
   @info("[PG] Finished with")
   @info("  Running time    = $time_total;")
 
-  loge = exp(mean(spl.info[:logevidence]))
+  loge = mean(spl.info[:logevidence])
   if resume_from != nothing   # concat samples
     pushfirst!(samples, resume_from.value2...)
     pre_loge = resume_from.weight
     # Calculate new log-evidence
     pre_n = length(resume_from.value2)
-    loge = exp.((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
+    loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
   end
   c = Chain(loge, samples)       # wrap the result by Chain
 
@@ -136,7 +136,7 @@ sample(model::Function, alg::PG;
     save!(c, spl, model, vi)
   end
 
-  c
+  return c
 end
 
 assume(spl::Sampler{T}, dist::Distribution, vn::VarName, _::VarInfo) where T<:Union{PG,SMC} = begin

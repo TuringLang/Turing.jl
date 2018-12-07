@@ -161,7 +161,7 @@ sample(model::Function, alg::PMMH;
     if resume_from != nothing   # concat samples
       pushfirst!(samples, resume_from.value2...)
     end
-    c = Chain(0.0, samples)       # wrap the result by Chain
+    c = Chain(log(0.0), samples)       # wrap the result by Chain
 
     if save_state               # save state
       save!(c, spl, model, vi)
