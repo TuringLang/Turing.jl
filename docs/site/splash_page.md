@@ -41,9 +41,13 @@ flux:
     btn_class: "btn--inverse"
 
 
-tomcat:
-  - title: "Large Sampling Library"
-    excerpt: "Turing provides Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+samplers:
+  - image_path: /assets/mvnorm.svg
+    title: "Large Sampling Library"
+    excerpt: "Turing provides **Hamiltonian Monte Carlo** sampling for differentiable posterior distributions, **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow, and **Gibbs** sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+    url: "http://turing.ml/docs/library/#samplers"
+    btn_label: "Samplers"
+    btn_class: "btn--inverse"
 
 citing:
   - title: "Citing Turing"
@@ -52,6 +56,7 @@ citing:
 ---
 
 {% include feature_row id="main-feature_row" %}
+{% include feature_row id="samplers" type="left" %}
 {% include feature_row id="flux" type="right" %}
 
 
