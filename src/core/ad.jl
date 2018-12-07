@@ -130,7 +130,6 @@ end
 import StatsFuns: poislogpdf
 poislogpdf(v::Tracker.TrackedReal, x::Int) = Tracker.track(poislogpdf, v, x)
 Tracker.@grad function poislogpdf(v::Tracker.TrackedReal, x::Int)
-      println("Called!")
       return poislogpdf(Tracker.data(v), x),
           Δ->(Δ * (x/v - 1), nothing)
 end
