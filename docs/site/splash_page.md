@@ -4,17 +4,19 @@ layout: splash
 permalink: /splash/
 
 header:
-  overlay_color: "#FFF"
+  # overlay_color: "#000"
   # overlay_filter: "0.0"
-  # overlay_image: /assets/turing-logo-wide.svg
+  btn_class: "btn--primary"
+  overlay_image: /assets/turing-logo-wide.svg
   actions:
     - label: "Get Started"
+      btn_class: "btn--primary"
       url: "http://turing.ml/docs/get-started/"
     - label: "Documentation"
       url: "http://turing.ml/docs/"
     - label: "Tutorials"
       url: "http://turing.ml/tutorials/"
-excerpt: "**Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability."
+excerpt: "**Turing** is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability."
 
 intro:
   - excerpt: 'Turing provides Hamiltonian Monte Carlo and particle MCMC sampling algorithms for complex posterior distributions ideal for distributions involving discrete variables and stochastic control flows.'
@@ -23,30 +25,21 @@ current-features:
   - title: 'Current Features'
 
 main-feature_row:
-  - i_class: "fas fa-stroopwafel"
-    alt: "placeholder image 1"
-    title: "Placeholder 1"
-    excerpt: "This is some sample content that goes here with **Markdown** formatting."
-  - i_class: "fas fa-brain"
-    alt: "placeholder image 2"
-    title: "Placeholder 2"
-    excerpt: "This is some sample content that goes here with **Markdown** formatting."
-    url: "#test-link"
-    btn_label: "Read More"
-    btn_class: "btn--primary"
-  - image_path: /assets/images/unsplash-gallery-image-3-th.jpg
-    title: "Placeholder 3"
-    excerpt: "This is some sample content that goes here with **Markdown** formatting."
-
-feature_row:
+  - title: "Intuitive Syntax"
+    excerpt: "Turing models are easy to read and write. Specify models quickly and easily."
   - title: "Universal"
-    excerpt: "Turing is a universal probabilistic programming language with an intuitive modelling interface. Write models with ease in Julia's straightforward syntax."
-  # - title: "Large Sampling Library"
-  #   excerpt: "Turing provides **Hamiltonian Monte Carlo** (HMC) sampling for differentiable posterior distributions, **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow, and **Gibbs** sampling which combines particle MCMC, HMC and many other MCMC algorithms."
-  # - title: "Placeholder"
-  #   excerpt: "Something cool about Turing"
-  # - title: "Placeholder"
-  #   excerpt: "Something else cool about Turing"
+    excerpt: "Turing supports models with stochastic control flow — models work the way you write them."
+  - title: "Fully Hackable"
+    excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
+
+flux:
+  - image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
+    title: "Integrate With Other Deep Learning Packages"
+    excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
+    url: "http://turing.ml/tutorials/3-bayesnn/"
+    btn_label: "Bayesian Neural Network Tutorial"
+    btn_class: "btn--inverse"
+
 
 tomcat:
   - title: "Large Sampling Library"
@@ -58,13 +51,8 @@ citing:
   - excerpt: '<sub>If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)</sub>'
 ---
 
-{% include feature_row id="intro" type="left-center" %}
-
-<!-- {% include feature_row id="current-features" type="center" %} -->
-
-{% include feature_row type = "center"%}
-{% include feature_row id="main-feature_row" type = "center"%}
-{% include feature_row id="tomcat" type = "center"%}
+{% include feature_row id="main-feature_row" %}
+{% include feature_row id="flux" type="right" %}
 
 
-{% include feature_row id="citing" type = "left-center" %}
+{% include feature_row id="citing" type = "center-left" %}

@@ -63,6 +63,7 @@
   position: relative;
   border-radius: $border-radius;
   overflow: hidden;
+  text-align: center;
 
   img {
     width: 100%;
@@ -137,7 +138,7 @@
 
     &:nth-child(2n + 2) {
       clear: none;
-      // margin-left: gutter(of 10);
+      margin-left: gutter(of 10);
     }
   }
 
@@ -221,24 +222,19 @@
   @include breakpoint($small) {
     float: left;
     margin-bottom: 0;
-    width: span(3 of 12);
+    width: span(4 of 12);
 
-    &:nth-child(4n + 1) {
+    &:nth-child(3n + 1) {
       clear: both;
       margin-left: 0;
     }
 
-    &:nth-child(4n + 2) {
+    &:nth-child(3n + 2) {
       clear: none;
       margin-left: gutter(of 12);
     }
 
-    &:nth-child(4n + 3) {
-      clear: none;
-      margin-left: gutter(of 12);
-    }
-
-    &:nth-child(4n + 4) {
+    &:nth-child(3n + 3) {
       clear: none;
       margin-left: gutter(of 12);
     }
@@ -337,47 +333,20 @@
     }
   }
 
-  &--sub {
-    // float: left;
-    margin-left: auto;
-    margin-right: auto;
-    width: 60%;
-    // clear: both;
-    font-size: 1.1em;
-
-    .archive__item-teaser {
-      margin-bottom: 2em;
-    }
-
-    @include breakpoint($small) {
-      text-align: left;
-
-      .archive__item-teaser {
-        margin: 0 auto;
-        width: span(5 of 12);
-      }
-
-      .archive__item-body {
-        margin: auto;
-        width: span(7 of 12);
-      }
-    }
-  }
-
-  &--left-center {
-    // float: left;
-    margin-left: auto;
-    margin-right: auto;
+  &--center-left {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
     width: 100%;
-    // clear: both;
-    font-size: 1.1em;
+    clear: both;
+    font-size: 1.0em;
 
     .archive__item-teaser {
       margin-bottom: 2em;
     }
 
     @include breakpoint($small) {
-      text-align: left;
+      text-align: center;
 
       .archive__item-teaser {
         margin: 0 auto;
@@ -385,7 +354,7 @@
       }
 
       .archive__item-body {
-        margin: auto auto;
+        margin: 0 auto;
         width: span(7 of 12);
       }
     }
