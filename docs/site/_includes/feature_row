@@ -31,6 +31,17 @@
           </div>
         {% endif %}
 
+        {% if f.i_class %}
+          <span style="font-size: 3em">
+            <div class="archive__item-teaser" size="3em">
+              <i class="{{ f.i_class }}"></i>
+              {% if f.image_caption %}
+                <span class="archive__item-caption">{{ f.image_caption | markdownify | remove: "<p>" | remove: "</p>" }}</span>
+              {% endif %}
+            </div>
+          </span>
+        {% endif %}
+
         <div class="archive__item-body">
           {% if f.title %}
             <h2 class="archive__item-title">{{ f.title }}</h2>

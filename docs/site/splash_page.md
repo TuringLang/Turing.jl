@@ -4,9 +4,9 @@ layout: splash
 permalink: /splash/
 
 header:
-  overlay_color: "#0FF"
+  overlay_color: "#FFF"
   # overlay_filter: "0.0"
-  # overlay_image: /assets/turing-logo0.svg
+  # overlay_image: /assets/turing-logo-wide.svg
   actions:
     - label: "Get Started"
       url: "http://turing.ml/docs/get-started/"
@@ -14,13 +14,29 @@ header:
       url: "http://turing.ml/docs/"
     - label: "Tutorials"
       url: "http://turing.ml/tutorials/"
-excerpt: "**Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference and computational scalability."
+excerpt: "**Turing** is a *universal* probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability."
 
 intro:
   - excerpt: 'Turing provides Hamiltonian Monte Carlo and particle MCMC sampling algorithms for complex posterior distributions ideal for distributions involving discrete variables and stochastic control flows.'
 
 current-features:
   - title: 'Current Features'
+
+main-feature_row:
+  - i_class: "fas fa-stroopwafel"
+    alt: "placeholder image 1"
+    title: "Placeholder 1"
+    excerpt: "This is some sample content that goes here with **Markdown** formatting."
+  - i_class: "fas fa-brain"
+    alt: "placeholder image 2"
+    title: "Placeholder 2"
+    excerpt: "This is some sample content that goes here with **Markdown** formatting."
+    url: "#test-link"
+    btn_label: "Read More"
+    btn_class: "btn--primary"
+  - image_path: /assets/images/unsplash-gallery-image-3-th.jpg
+    title: "Placeholder 3"
+    excerpt: "This is some sample content that goes here with **Markdown** formatting."
 
 feature_row:
   - title: "Universal"
@@ -46,8 +62,9 @@ citing:
 
 <!-- {% include feature_row id="current-features" type="center" %} -->
 
-{% include feature_row type = "left-center"%}
-{% include feature_row id="tomcat" type = "left-center"%}
+{% include feature_row type = "center"%}
+{% include feature_row id="main-feature_row" type = "center"%}
+{% include feature_row id="tomcat" type = "center"%}
 
 
 {% include feature_row id="citing" type = "left-center" %}
