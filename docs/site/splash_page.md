@@ -34,7 +34,7 @@ main-feature_row:
 
 flux:
   - image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
-    title: "Integrate With Other Deep Learning Packages"
+    title: "Integrates With Other Deep Learning Packages"
     excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
     url: "http://turing.ml/tutorials/3-bayesnn/"
     btn_label: "Bayesian Neural Network Tutorial"
@@ -44,7 +44,7 @@ flux:
 samplers:
   - image_path: /assets/mvnorm.svg
     title: "Large Sampling Library"
-    excerpt: "Turing provides **Hamiltonian Monte Carlo** sampling for differentiable posterior distributions, **Particle MCMC** sampling for complex posterior distributions involving discrete variables and stochastic control flow, and **Gibbs** sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+    excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
     url: "http://turing.ml/docs/library/#samplers"
     btn_label: "Samplers"
     btn_class: "btn--inverse"
