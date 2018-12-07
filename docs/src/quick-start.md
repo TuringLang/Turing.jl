@@ -7,7 +7,7 @@ If you are already well-versed in probabalistic programming and just want to tak
 
 This example can be run on however you have Julia installed (see [Getting Started](get-started.md)), but you will need to install the packages `Turing`, `Distributions`, `MCMCChain`, and `StatPlots` if you have not done so already.
 
-This is an excerpt from a more formal example introducing probabalistic programming which can be found in Jupyter notebook form [here](https://github.com/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb) or as part of the documentation website [here](0_Introduction.md).
+This is an excerpt from a more formal example introducing probabalistic programming which can be found in Jupyter notebook form [here](https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb) or as part of the documentation website [here](../../tutorials/0-introduction/).
 
 ```julia
 # Import libraries.
