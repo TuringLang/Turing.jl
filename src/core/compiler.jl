@@ -70,90 +70,55 @@ Generate an assume expression for parameters `variable` drawn from
 a distribution or a vector of distributions (`distribution`).
 
 """
-function generate_assume(variable, distribution, model_info)
-    sym, idcs, csym = @VarName(variable)
-    csym = Symbol(model_info[:name], csym)
-    syms = Symbol[csym, variable]
+function generate_assume(variable::Union{Symbol, Expr}, distribution, model_info)
+    if variable isa Symbol
+        sym, idcs, csym = @VarName(variable)
+        csym = Symbol(model_info[:name], csym)
+        syms = Symbol[csym, variable]
+        varname_expr = :(varname = Turing.VarName(vi, $syms, ""))
+    else
+        sym, idcs, csym = @VarName variable
+        csym_str = string(model_info[:name])*string(csym)
+        indexing = mapfoldl(string, *, idcs, init = "")
+        varname_expr = :(varname = Turing.VarName(vi, Symbol($csym_str), $sym, $indexing))
+    end
     return quote
-            varname = Turing.VarName(vi, $syms, "")
-
-            isdist = if isa($(distribution), AbstractVector)
-                # Check if the right-hand side is a vector of distributions.
-                all(d -> isa(d, Distribution), $(distribution))
-            else
-                # Check if the right-hand side is a distribution.
-                isa($(distribution), Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            ($(variable), _lp) = if isa($(distribution), AbstractVector)
-                Turing.assume(
-                    sampler,
-                    $(distribution),
-                    varname,
-                    $(variable),
-                    vi
-                )
-            else
-                Turing.assume(
-                    sampler,
-                    $(distribution),
-                    varname,
-                    vi
-                )
-            end
-            vi.logp += _lp
+        $varname_expr
+        isdist = if isa($(distribution), AbstractVector)
+            # Check if the right-hand side is a vector of distributions.
+            all(d -> isa(d, Distribution), $(distribution))
+        else
+            # Check if the right-hand side is a distribution.
+            isa($(distribution), Distribution)
         end
-end
+        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
-function generate_assume(variable::Expr, distribution, model_info)
-    sym, idcs, csym = @VarName variable
-    csym_str = string(model_info[:name])*string(csym)
-    indexing = mapfoldl(string, *, idcs, init = "")
-    return quote
-            varname = Turing.VarName(vi, Symbol($csym_str), $sym, $indexing)
-            # Sanity check.
-            isdist = if isa($(distribution), Vector)
-                all(d -> isa(d, Distribution), $(distribution))
-            else
-                isa($(distribution), Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            $(variable), _lp = Turing.assume(
+        ($(variable), _lp) = if isa($(distribution), AbstractVector)
+            Turing.assume(
+                sampler,
+                $(distribution),
+                varname,
+                $(variable),
+                vi
+            )
+        else
+            Turing.assume(
                 sampler,
                 $(distribution),
                 varname,
                 vi
             )
-            vi.logp += _lp
         end
+        vi.logp += _lp
+    end
 end
 
-"""
-    macro: @~ var Distribution()
-
-Tilde notation macro. This macro constructs Turing.observe or
-Turing.assume calls depending on the left-hand argument.
-Note that the macro is interconnected with the @model macro and
-assumes that a `model_info` struct is available.
-
-Example:
-```julia
-@~ x Normal()
-```
-"""
-#macro ~(left, right)
-#    return tilde(left, right)
-#end
-
 function tilde(left::Number, right, model_info)
-    generate_observe(left, right)
+    return generate_observe(left, right)
 end
 
 function tilde(left, right, model_info)
     return quote
-        println($left)
         if $left isa Nothing
             $(generate_assume(left, right, model_info))
         else
@@ -266,95 +231,50 @@ end
 ```
 """
 macro model(fexpr)
-    # extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
+    # Extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
     modeldef = MacroTools.splitdef(fexpr)
-    # function body of the model is empty
+    # Function body of the model is empty
     warn_empty(modeldef[:body])
-    # construct model_info dictionary
+    # Construct model_info dictionary
     model_info = Dict(
         :name => modeldef[:name],
-        :closure_name => Symbol(modeldef[:name], :_model),
+        :closure_name => gensym(),
         :args => modeldef[:args],
         :kwargs => modeldef[:kwargs],
         :dvars => Set{Symbol}(),
         :pvars => Set{Symbol}()
     )
-    # extract dvars, pvars and unwrap ~ expressions
+    # Unwrap ~ expressions and extract dvars and pvars into `model_info`
     fexpr = translate(fexpr, model_info)
-    modeldef = MacroTools.splitdef(fexpr)
+
     fargs = modeldef[:args]
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
             fargs[i] = Expr(:kw, fargs[i], :nothing)
         end
     end    
-    
-    # Construct closure.
-    closure = MacroTools.combinedef(
-        Dict(
-            :name => model_info[:closure_name],
-            :kwargs => [],
-            :args => [
-                :(vi::Turing.VarInfo),
-                :(sampler::Turing.AnySampler)
-            ],
-            # Initialise logp in VarInfo.
-            :body => Expr(:block, :(vi.logp = zero(Real)), modeldef[:body].args...)
-        )
-    )
 
-    # Construct aliases.
-    alias1 = MacroTools.combinedef(
-        Dict(
-            :name => model_info[:closure_name],
-            :args => [:(vi::Turing.VarInfo)],
-            :kwargs => [],
-            :body => :(return $(model_info[:closure_name])(vi, Turing.SampleFromPrior()))
-        )
-    )
+    # Construct user-facing function
+    outer_function_name = model_info[:name]
+    pvars = model_info[:pvars]
+    dvars = model_info[:dvars]
 
-    alias2 = MacroTools.combinedef(
-        Dict(
-            :name => model_info[:closure_name],
-            :args => [:(sampler::Turing.AnySampler)],
-            :kwargs => [],
-            :body => :(return $(model_info[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-        )
-    )
+    closure_name = model_info[:closure_name]
+    # Updated body after expanding ~ expressions
+    closure_main_body = MacroTools.splitdef(fexpr)[:body]
 
-    alias3 = MacroTools.combinedef(
-        Dict(
-            :name => model_info[:closure_name],
-            :args => [],
-            :kwargs => [],
-            :body => :(return $(model_info[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-        )
-    )
-
-    # Add definitions to the model_info.
-    model_info[:closure] = closure
-    model_info[:alias1] = alias1
-    model_info[:alias2] = alias2
-    model_info[:alias3] = alias3
-
-    # Construct user function.
-    modelfun = MacroTools.combinedef(
-        Dict(
-            :name => model_info[:name],
-            :args => fargs,
-            :kwargs => [],
-            :body => Expr(:block, 
-                            # Eval the closure's methods globally and return it
-                            closure,
-                            alias1,
-                            alias2,
-                            alias3,
-                            :(return Turing.CallableModel($(model_info[:closure_name]), $(model_info[:pvars]), $(model_info[:dvars])))
-                        )
-        )
-    )
-    
-    return esc(modelfun)
+    return esc(quote
+        function $(outer_function_name)($(fargs...))
+            $closure_name(sampler::Turing.AnySampler) = $closure_name()
+            $closure_name() = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior())
+            $closure_name(vi::Turing.VarInfo) = $closure_name(vi, Turing.SampleFromPrior())
+            function $closure_name(vi::Turing.VarInfo, sampler::Turing.AnySampler)
+                vi.logp = zero(Real)
+                $closure_main_body
+            end
+            return Turing.CallableModel($closure_name, $pvars, $dvars)
+        end
+    end)
 end
 
 function warn_empty(body)
