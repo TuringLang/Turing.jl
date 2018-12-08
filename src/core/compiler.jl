@@ -9,7 +9,7 @@ struct CallableModel{F}
     pvars::Set{Symbol}
     dvars::Set{Symbol}
 end
-(m::CallableModel)(args...; kwargs...) = m.f(args...; kwargs...)
+(m::CallableModel)(args...; kwargs...) = m.f(args..., m; kwargs...)
 
 # TODO: Replace this macro, see issue #514
 """
@@ -135,10 +135,10 @@ function _tilde(vsym, left, dist, model_info)
         end
 
         return quote 
-            if $vsym == nothing
-                $(generate_assume(left, dist, model_info))
-            else
+            if $(QuoteNode(vsym)) ∈ model.dvars
                 $(generate_observe(left, dist))
+            else
+                $(generate_assume(left, dist, model_info))
             end
         end
     else
@@ -230,18 +230,31 @@ macro model(fexpr)
     # Updated body after expanding ~ expressions
     closure_main_body = MacroTools.splitdef(fexpr)[:body]
 
+    dvars_nt = :($([:($var = $var) for var in dvars]...),)
     return esc(quote
         function $(outer_function_name)($(fargs...))
-            $closure_name(sampler::Turing.AnySampler) = $closure_name()
-            $closure_name() = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior())
-            $closure_name(vi::Turing.VarInfo) = $closure_name(vi, Turing.SampleFromPrior())
-            function $closure_name(vi::Turing.VarInfo, sampler::Turing.AnySampler)
+            $closure_name(sampler::Turing.AnySampler, model) = $closure_name(model)
+            $closure_name(model) = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+            $closure_name(vi::Turing.VarInfo, model) = $closure_name(vi, Turing.SampleFromPrior(), model)
+            function $closure_name(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
                 vi.logp = zero(Real)
                 $closure_main_body
             end
-            return Turing.CallableModel($closure_name, $pvars, $dvars)
+            model = Turing.CallableModel($closure_name, $pvars, $dvars)
+            Turing.update_vars!(model, $dvars_nt)
+            return model
         end
     end)
+end
+function update_vars!(model, dvars_nt)
+    for (sym, val) in pairs(dvars_nt)
+        if val == nothing
+            pop!(model.dvars, sym)
+        else
+            push!(model.pvars, sym)
+        end
+    end
+    return
 end
 
 function warn_empty(body)
