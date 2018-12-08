@@ -127,7 +127,7 @@ function runmodel!(model, vi::VarInfo, spl::Union{Nothing,Sampler})
     if spl != nothing && :eval_num ∈ keys(spl.info)
         spl.info[:eval_num] += 1
     end
-    Base.invokelatest(model, vi, spl)
+    model(vi, spl)
     return vi
 end
 

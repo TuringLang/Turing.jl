@@ -52,7 +52,7 @@ function sample(model, alg::DynamicNUTS, chunk_size=CHUNKSIZE[]) where T <: Hami
     end
 
     vi = VarInfo()
-    Base.invokelatest(model, vi, HamiltonianRobustInit())
+    model(vi, HamiltonianRobustInit())
 
     if spl.alg.gid == 0
         link!(vi, spl)
