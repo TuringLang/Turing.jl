@@ -57,7 +57,7 @@ function NUTS{AD, T}(alg::NUTS, new_gid::Int) where {AD, T}
     NUTS{AD, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
 end
 
-function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::NUTS, momentum_sampler;
+function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::NUTS, momentum_sampler::Function;
                   rev_func=nothing, log_func=nothing)
     θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, H_func, momentum_sampler)
     lj_new = lj_func(θ_new)

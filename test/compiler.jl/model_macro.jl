@@ -18,14 +18,14 @@ end
 testmodel_comp(1.0, 1.2)
 
 # check if drawing from the prior works
-@model testmodel0() = begin
+@model testmodel0(x) = begin
     x ~ Normal()
     return x
 end
 f0_mm = testmodel0()
 @test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
-@model testmodel01() = begin
+@model testmodel01(x) = begin
     x ~ Bernoulli(0.5)
     return x
 end

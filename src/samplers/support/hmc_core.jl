@@ -185,9 +185,9 @@ end
 
 function _hmc_step(θ::AbstractVector{<:Real},
                    lj::Real,
-                   lj_func,
-                   grad_func,
-                   H_func,
+                   lj_func::Function,
+                   grad_func::Function,
+                   H_func::Function,
                    τ::Int,
                    ϵ::Real,
                    momentum_sampler;
@@ -220,12 +220,12 @@ end
 
 function _hmc_step(θ::AbstractVector{<:Real},
                    lj::Real,
-                   lj_func,
-                   grad_func,
-                   H_func,
+                   lj_func::Function,
+                   grad_func::Function,
+                   H_func::Function,
                    ϵ::Real,
                    λ::Real,
-                   momentum_sampler;
+                   momentum_sampler::Function;
                    rev_func=nothing,
                    log_func=nothing,
                    )

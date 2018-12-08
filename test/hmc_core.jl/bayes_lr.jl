@@ -81,6 +81,7 @@ lj = lj_func(θ)
 chn = []
 accept_num = 1
 
+## Note: undo this and fix
 #=
 total_num = 2000
 for iter = 1:total_num
