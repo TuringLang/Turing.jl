@@ -113,55 +113,21 @@ function generate_assume(variable::Union{Symbol, Expr}, distribution, model_info
     end
 end
 
-function tilde(left::Number, right, model_info)
+function tilde(left, right, model_info)
     return generate_observe(left, right)
 end
 
-function tilde(left, right, model_info)
-    return quote
-        if $left isa Nothing
-            $(generate_assume(left, right, model_info))
-        else
-            $(generate_observe(left, right))
-        end
-    end
-end
-
-function tilde(left::Symbol, right, model_info)
-    # Check if left-hand side is a observation.
-    if left in model_info[:args]
-        if !(left in model_info[:dvars])
-            @debug " Observe - `$(left)` is an observation"
-            push!(model_info[:dvars], left)
-        end
-
-        return quote 
-            if $left isa Nothing
-                $(generate_assume(left, right, model_info))
-            else
-                $(generate_observe(left, right))
-            end
-        end
+function tilde(left::Union{Symbol, Expr}, right, model_info)
+    if left isa Symbol
+        vsym = left
     else
-        # Assume it is a parameter.
-        if !(left in model_info[:pvars])
-            msg = " Assume - `$(left)` is a parameter"
-            if isdefined(Main, left)
-                msg  *= " (ignoring `$(left)` found in global scope)"
-            end
-
-            @debug msg
-            push!(model_info[:pvars], left)
-        end
-
-        return generate_assume(left, right, model_info)
+        vsym = getvsym(left)
     end
+    @assert isa(vsym, Symbol)
+    return _tilde(vsym, left, right, model_info)
 end
 
-function tilde(left::Expr, right, model_info)
-    vsym = getvsym(left)
-    @assert isa(vsym, Symbol)
-
+function _tilde(vsym, left, dist, model_info)
     if vsym in model_info[:args]
         if !(vsym in model_info[:dvars])
             @debug " Observe - `$(vsym)` is an observation"
@@ -169,13 +135,14 @@ function tilde(left::Expr, right, model_info)
         end
 
         return quote 
-            if $vsym isa Nothing
-                $(generate_assume(left, right, model_info))
+            if $vsym == nothing
+                $(generate_assume(left, dist, model_info))
             else
-                $(generate_observe(left, right))
+                $(generate_observe(left, dist))
             end
         end
     else
+        # Assume it is a parameter.
         if !(vsym in model_info[:pvars])
             msg = " Assume - `$(vsym)` is a parameter"
             if isdefined(Main, vsym)
@@ -186,7 +153,7 @@ function tilde(left::Expr, right, model_info)
             push!(model_info[:pvars], vsym)
         end
 
-        return generate_assume(left, right, model_info)
+        return generate_assume(left, dist, model_info)
     end
 end
 
