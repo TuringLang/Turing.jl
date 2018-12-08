@@ -5,9 +5,10 @@ struct DynamicNUTS{T} <: Hamiltonian
 end
 
 """
-    DynamicNUTS(n_iters::Integer, space...)
+    DynamicNUTS(n_iters::Integer)
 
 Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package.
+To use it, make sure you have the DynamicHMC package installed.
 
 ```julia
 # Import Turing and DynamicHMC.

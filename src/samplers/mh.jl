@@ -1,7 +1,7 @@
 """
     MH(n_iters::Int)
 
-Metropolis-Hasting sampler.
+Metropolis-Hastings sampler.
 
 Usage:
 
@@ -21,7 +21,7 @@ Example:
   return s, m
 end
 
-sample(gdemo([1.5, 2]), MH(1000, (:m, (x) -> Normal(x, 0.1)), :s)))
+chn = sample(gdemo([1.5, 2]), MH(1000))
 ```
 """
 mutable struct MH{T} <: InferenceAlgorithm

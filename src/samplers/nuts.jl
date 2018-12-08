@@ -9,6 +9,12 @@ Usage:
 NUTS(1000, 200, 0.6j_max)
 ```
 
+Arguments:
+
+- `n_iters::Int` : The number of samples to pull.
+- `n_adapts::Int` : The number of samples to use with adapatation.
+- `delta::Float64` : Target acceptance rate.
+
 Example:
 
 ```julia
@@ -31,6 +37,17 @@ mutable struct NUTS{T} <: AdaptiveHamiltonian
   space     ::  Set{T}    # sampling space, emtpy means all
   gid       ::  Int       # group ID
 end
+"""
+    NUTS(n_iters::Int, delta::Float64)
+
+No-U-Turn Sampler (NUTS) sampler, called only with a target acceptance rate.
+
+Usage:
+
+```julia
+NUTS(1000, 0.6)
+```
+"""
 function NUTS(n_adapts::Int, delta::Float64, space...)
   NUTS(1, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
 end

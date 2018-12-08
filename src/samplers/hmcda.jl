@@ -1,13 +1,20 @@
 """
     HMCDA(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64)
 
-Hamiltonian Monte Carlo sampler wiht Dual Averaging algorithm.
+Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
 Usage:
 
 ```julia
 HMCDA(1000, 200, 0.65, 0.3)
 ```
+
+Arguments:
+
+- `n_iters::Int` : Number of samples to pull.
+- `n_adapts::Int` : Numbers of samples to use for adaptation.
+- `delta::Float64` : Target acceptance rate. 65% is often recommended.
+- `lambda::Float64` : Target leapfrop length.
 
 Example:
 
@@ -23,6 +30,8 @@ end
 
 sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
 ```
+
+A paper on this can be found [here](https://arxiv.org/abs/1111.4246).
 """
 mutable struct HMCDA{T} <: AdaptiveHamiltonian
   n_iters   ::  Int       # number of samples

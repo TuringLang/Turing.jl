@@ -4,12 +4,22 @@
 Particle independant Metropolis–Hastings and
 Particle marginal Metropolis–Hastings samplers.
 
+Note that this method is particle-based, and arrays of variables
+must be stored in a [`TArray`](@ref) object.
+
 Usage:
 
 ```julia
 alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
 alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
 ```
+
+Arguments:
+
+- `n_iters::Int` : Number of iterations to run.
+- `smc_alg:::SMC` : An [`SMC`](@ref) algorithm to use.
+- `parameters_algs::Tuple{MH}` : An [`MH`](@ref) algorithm, which includes a
+sample space specification.
 """
 mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
   n_iters               ::    Int               # number of iterations

@@ -3,11 +3,21 @@
 
 Particle Gibbs sampler.
 
+Note that this method is particle-based, and arrays of variables
+must be stored in a [`TArray`](@ref) object.
+
 Usage:
 
 ```julia
 IPMCMC(100, 100, 4, 2)
 ```
+
+Arguments:
+
+- `n_particles::Int` : Number of particles to use.
+- `n_iters::Int` : Number of iterations to employ.
+- `n_nodes::Int` : The number of nodes running SMC and CSMC.
+- `n_csmc_nodes::Int` : The number of CSMC nodes.
 
 Example:
 
@@ -23,6 +33,8 @@ end
 
 sample(gdemo([1.5, 2]), IPMCMC(100, 100, 4, 2))
 ```
+
+A paper on this can be found [here](https://arxiv.org/abs/1602.05128).
 """
 mutable struct IPMCMC{T, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used

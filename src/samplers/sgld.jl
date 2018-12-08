@@ -9,6 +9,11 @@ Usage:
 SGLD(1000, 0.5)
 ```
 
+Arguments:
+
+- `n_iters::Int` : Number of samples to pull.
+- `epsilon::Float64` : The scaling factor for the learing rate.
+
 Example:
 
 ```julia
