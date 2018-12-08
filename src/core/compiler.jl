@@ -64,15 +64,15 @@ function generate_observe(observation, distribution)
 end
 
 """
-    generate_assume(variable, distribution, compiler)
+    generate_assume(variable, distribution, model_info)
 
 Generate an assume expression for parameters `variable` drawn from 
 a distribution or a vector of distributions (`distribution`).
 
 """
-function generate_assume(variable, distribution, compiler)
+function generate_assume(variable, distribution, model_info)
     sym, idcs, csym = @VarName(variable)
-    csym = Symbol(compiler[:name], csym)
+    csym = Symbol(model_info[:name], csym)
     syms = Symbol[csym, variable]
     return quote
             varname = Turing.VarName(vi, $syms, "")
@@ -106,9 +106,9 @@ function generate_assume(variable, distribution, compiler)
         end
 end
 
-function generate_assume(variable::Expr, distribution, compiler)
+function generate_assume(variable::Expr, distribution, model_info)
     sym, idcs, csym = @VarName variable
-    csym_str = string(compiler[:name])*string(csym)
+    csym_str = string(model_info[:name])*string(csym)
     indexing = mapfoldl(string, *, idcs, init = "")
     return quote
             varname = Turing.VarName(vi, Symbol($csym_str), $sym, $indexing)
@@ -136,7 +136,7 @@ end
 Tilde notation macro. This macro constructs Turing.observe or
 Turing.assume calls depending on the left-hand argument.
 Note that the macro is interconnected with the @model macro and
-assumes that a `compiler` struct is available.
+assumes that a `model_info` struct is available.
 
 Example:
 ```julia
@@ -147,81 +147,81 @@ Example:
 #    return tilde(left, right)
 #end
 
-function tilde(left::Number, right, compiler)
+function tilde(left::Number, right, model_info)
     generate_observe(left, right)
 end
 
-function tilde(left, right, compiler)
+function tilde(left, right, model_info)
     return quote
         println($left)
         if $left isa Nothing
-            $(generate_assume(left, right, compiler))
+            $(generate_assume(left, right, model_info))
         else
             $(generate_observe(left, right))
         end
     end
 end
 
-function tilde(left::Symbol, right, compiler)
+function tilde(left::Symbol, right, model_info)
     # Check if left-hand side is a observation.
-    if left in compiler[:args]
-        if !(left in compiler[:dvars])
+    if left in model_info[:args]
+        if !(left in model_info[:dvars])
             @debug " Observe - `$(left)` is an observation"
-            push!(compiler[:dvars], left)
+            push!(model_info[:dvars], left)
         end
 
         return quote 
             if $left isa Nothing
-                $(generate_assume(left, right, compiler))
+                $(generate_assume(left, right, model_info))
             else
                 $(generate_observe(left, right))
             end
         end
     else
         # Assume it is a parameter.
-        if !(left in compiler[:pvars])
+        if !(left in model_info[:pvars])
             msg = " Assume - `$(left)` is a parameter"
             if isdefined(Main, left)
                 msg  *= " (ignoring `$(left)` found in global scope)"
             end
 
             @debug msg
-            push!(compiler[:pvars], left)
+            push!(model_info[:pvars], left)
         end
 
-        return generate_assume(left, right, compiler)
+        return generate_assume(left, right, model_info)
     end
 end
 
-function tilde(left::Expr, right, compiler)
+function tilde(left::Expr, right, model_info)
     vsym = getvsym(left)
     @assert isa(vsym, Symbol)
 
-    if vsym in compiler[:args]
-        if !(vsym in compiler[:dvars])
+    if vsym in model_info[:args]
+        if !(vsym in model_info[:dvars])
             @debug " Observe - `$(vsym)` is an observation"
-            push!(compiler[:dvars], vsym)
+            push!(model_info[:dvars], vsym)
         end
 
         return quote 
             if $vsym isa Nothing
-                $(generate_assume(left, right, compiler))
+                $(generate_assume(left, right, model_info))
             else
                 $(generate_observe(left, right))
             end
         end
     else
-        if !(vsym in compiler[:pvars])
+        if !(vsym in model_info[:pvars])
             msg = " Assume - `$(vsym)` is a parameter"
             if isdefined(Main, vsym)
                 msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
 
             @debug msg
-            push!(compiler[:pvars], vsym)
+            push!(model_info[:pvars], vsym)
         end
 
-        return generate_assume(left, right, compiler)
+        return generate_assume(left, right, model_info)
     end
 end
 
@@ -249,7 +249,7 @@ end
 
 Compiler design: `sample(fname(x,y), sampler)`.
 ```julia
-fname(x=nothing,y=nothing; compiler=compiler) = begin
+fname(x=nothing,y=nothing) = begin
     ex = quote
         # Pour in kwargs for those args where value != nothing.
         fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
@@ -270,8 +270,8 @@ macro model(fexpr)
     modeldef = MacroTools.splitdef(fexpr)
     # function body of the model is empty
     warn_empty(modeldef[:body])
-    # construct compiler dictionary
-    compiler = Dict(
+    # construct model_info dictionary
+    model_info = Dict(
         :name => modeldef[:name],
         :closure_name => Symbol(modeldef[:name], :_model),
         :args => modeldef[:args],
@@ -280,7 +280,7 @@ macro model(fexpr)
         :pvars => Set{Symbol}()
     )
     # extract dvars, pvars and unwrap ~ expressions
-    fexpr = translate(fexpr, compiler)
+    fexpr = translate(fexpr, model_info)
     modeldef = MacroTools.splitdef(fexpr)
     fargs = modeldef[:args]
     for i in 1:length(fargs)
@@ -292,7 +292,7 @@ macro model(fexpr)
     # Construct closure.
     closure = MacroTools.combinedef(
         Dict(
-            :name => compiler[:closure_name],
+            :name => model_info[:closure_name],
             :kwargs => [],
             :args => [
                 :(vi::Turing.VarInfo),
@@ -306,41 +306,41 @@ macro model(fexpr)
     # Construct aliases.
     alias1 = MacroTools.combinedef(
         Dict(
-            :name => compiler[:closure_name],
+            :name => model_info[:closure_name],
             :args => [:(vi::Turing.VarInfo)],
             :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(vi, Turing.SampleFromPrior()))
+            :body => :(return $(model_info[:closure_name])(vi, Turing.SampleFromPrior()))
         )
     )
 
     alias2 = MacroTools.combinedef(
         Dict(
-            :name => compiler[:closure_name],
+            :name => model_info[:closure_name],
             :args => [:(sampler::Turing.AnySampler)],
             :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
+            :body => :(return $(model_info[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
         )
     )
 
     alias3 = MacroTools.combinedef(
         Dict(
-            :name => compiler[:closure_name],
+            :name => model_info[:closure_name],
             :args => [],
             :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
+            :body => :(return $(model_info[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
         )
     )
 
-    # Add definitions to the compiler.
-    compiler[:closure] = closure
-    compiler[:alias1] = alias1
-    compiler[:alias2] = alias2
-    compiler[:alias3] = alias3
+    # Add definitions to the model_info.
+    model_info[:closure] = closure
+    model_info[:alias1] = alias1
+    model_info[:alias2] = alias2
+    model_info[:alias3] = alias3
 
     # Construct user function.
     modelfun = MacroTools.combinedef(
         Dict(
-            :name => compiler[:name],
+            :name => model_info[:name],
             :args => fargs,
             :kwargs => [],
             :body => Expr(:block, 
@@ -349,7 +349,7 @@ macro model(fexpr)
                             alias1,
                             alias2,
                             alias3,
-                            :(return Turing.CallableModel($(compiler[:closure_name]), $(compiler[:pvars]), $(compiler[:dvars])))
+                            :(return Turing.CallableModel($(model_info[:closure_name]), $(model_info[:pvars]), $(model_info[:dvars])))
                         )
         )
     )
@@ -374,9 +374,9 @@ function getvsym(expr::Expr)
     return getvsym(expr.args[1])
 end
 
-translate!(ex::Any, compiler) = ex
-function translate!(ex::Expr, compiler)
-    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, compiler) : x, ex)
+translate!(ex::Any, model_info) = ex
+function translate!(ex::Expr, model_info)
+    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
     return ex
 end
-translate(ex::Expr, compiler) = translate!(deepcopy(ex), compiler)
+translate(ex::Expr, model_info) = translate!(deepcopy(ex), model_info)
