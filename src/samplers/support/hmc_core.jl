@@ -190,7 +190,7 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    H_func::Function,
                    τ::Int,
                    ϵ::Real,
-                   momentum_sampler;
+                   momentum_sampler::Function;
                    rev_func=nothing,
                    log_func=nothing,
                    )
