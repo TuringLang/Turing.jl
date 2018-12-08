@@ -90,7 +90,7 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     ϵ = exp(x)
     @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
 
-    if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
+    if isnan(ϵ) || isinf(ϵ)
         @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
     else
         da.state.ϵ = ϵ
