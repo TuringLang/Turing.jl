@@ -16,6 +16,7 @@ using ForwardDiff
 using Bijectors
 @reexport using MCMCChain
 using StatsFuns
+using SpecialFunctions
 using Statistics
 using LinearAlgebra
 using ProgressMeter
@@ -169,7 +170,7 @@ export TArray, tzeros, localcopy, IArray
 
 export @sym_str
 
-export Flat, FlatPos
+export Flat, FlatPos, BinomialLogit, VecBinomialLogit
 
 ##################
 # Inference code #
