@@ -138,9 +138,9 @@
     margin-bottom: 2em;
     padding: 3em 0;
     @include clearfix;
-    background-size: cover;
+    background-size: 100% 40%;
     background-repeat: no-repeat;
-    background-position: center;
+    background-position: bottom;
     -webkit-animation: $intro-transition;
     animation: $intro-transition;
     -webkit-animation-delay: 0.25s;
@@ -148,6 +148,10 @@
 
     a {
       color: #fff;
+    }
+
+    @include breakpoint($large) {
+      background-size: 100% 90%;
     }
 
     .wrapper {
@@ -161,14 +165,18 @@
 
     .page__title,
     .page__meta,
-    .page__lead,
+    .page__lead {
+      color: $text-color;
+      text-shadow: 1px 1px 4px rgba(#fff, 0.5);
+    }
+
     .btn {
-      color: #fff;
-      text-shadow: 1px 1px 4px rgba(#000, 0.5);
+      color: $text-color;
+      text-shadow: 1px 1px 4px rgba(#fff, 0.5);
     }
 
     .page__lead {
-      max-width: $medium;
+      max-width: $small;
     }
 
     .page__title {

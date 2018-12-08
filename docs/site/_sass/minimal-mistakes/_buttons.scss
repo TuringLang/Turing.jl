@@ -33,6 +33,7 @@
   (primary, $primary-color),
   (inverse, #fff),
   (light-outline, transparent),
+  (dark-outline, transparent),
   (success, $success-color),
   (warning, $warning-color),
   (danger, $danger-color),
@@ -46,10 +47,14 @@
     &--#{$buttoncolor} {
       @include yiq-contrasted($color);
       @if ($buttoncolor == inverse) {
-        border: 1px solid $border-color;
+        border: 1px solid $inverse-border-color;
       }
       @if ($buttoncolor == light-outline) {
         border: 1px solid #fff;
+      }
+      @if ($buttoncolor == dark-outline) {
+        border: 1px solid $text-color;
+        background-color: rgba(255, 255, 255, 0.5);
       }
 
       &:visited {

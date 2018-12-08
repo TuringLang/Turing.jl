@@ -63,6 +63,7 @@
   position: relative;
   border-radius: $border-radius;
   overflow: hidden;
+  text-align: center;
 
   img {
     width: 100%;
@@ -312,6 +313,33 @@
     width: 100%;
     clear: both;
     font-size: 1.125em;
+
+    .archive__item-teaser {
+      margin-bottom: 2em;
+    }
+
+    @include breakpoint($small) {
+      text-align: center;
+
+      .archive__item-teaser {
+        margin: 0 auto;
+        width: span(5 of 12);
+      }
+
+      .archive__item-body {
+        margin: 0 auto;
+        width: span(7 of 12);
+      }
+    }
+  }
+
+  &--center-left {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    clear: both;
+    font-size: 1.0em;
 
     .archive__item-teaser {
       margin-bottom: 2em;
