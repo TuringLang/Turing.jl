@@ -52,7 +52,8 @@ try
     makedocs(
         sitename = "Turing.jl",
         build = build_relative,
-        format = :markdown
+        format = :markdown,
+        checkdocs = :all
     )
 catch e
     # Put back the original files in the event of an error.
