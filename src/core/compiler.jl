@@ -43,23 +43,17 @@ wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution
 Generate an observe expression for observation `observation` drawn from 
 a distribution or a vector of distributions (`distribution`).
 """
-function generate_observe(observation, distribution)
+function generate_observe(observation, dist)
     return quote
-            isdist = if isa($(distribution), AbstractVector)
+            isdist = if isa($dist, AbstractVector)
                 # Check if the right-hand side is a vector of distributions.
-                all(d -> isa(d, Distribution), $(distribution))
+                all(d -> isa(d, Distribution), $dist)
             else
                 # Check if the right-hand side is a distribution.
-                isa($(distribution), Distribution)
+                isa($dist, Distribution)
             end
             @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            vi.logp += Turing.observe(
-                sampler,
-                $(distribution),
-                $(observation),
-                vi
-            )
+            vi.logp += Turing.observe(sampler, $dist, $observation, vi)
         end
 end
 
@@ -70,44 +64,33 @@ Generate an assume expression for parameters `variable` drawn from
 a distribution or a vector of distributions (`distribution`).
 
 """
-function generate_assume(variable::Union{Symbol, Expr}, distribution, model_info)
-    if variable isa Symbol
-        sym, idcs, csym = @VarName(variable)
+function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
+    if var isa Symbol
+        sym, idcs, csym = @VarName(var)
         csym = Symbol(model_info[:name], csym)
-        syms = Symbol[csym, variable]
+        syms = Symbol[csym, var]
         varname_expr = :(varname = Turing.VarName(vi, $syms, ""))
     else
-        sym, idcs, csym = @VarName variable
+        sym, idcs, csym = @VarName var
         csym_str = string(model_info[:name])*string(csym)
         indexing = mapfoldl(string, *, idcs, init = "")
         varname_expr = :(varname = Turing.VarName(vi, Symbol($csym_str), $sym, $indexing))
     end
     return quote
         $varname_expr
-        isdist = if isa($(distribution), AbstractVector)
+        isdist = if isa($dist, AbstractVector)
             # Check if the right-hand side is a vector of distributions.
-            all(d -> isa(d, Distribution), $(distribution))
+            all(d -> isa(d, Distribution), $dist)
         else
             # Check if the right-hand side is a distribution.
-            isa($(distribution), Distribution)
+            isa($dist, Distribution)
         end
         @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
-        ($(variable), _lp) = if isa($(distribution), AbstractVector)
-            Turing.assume(
-                sampler,
-                $(distribution),
-                varname,
-                $(variable),
-                vi
-            )
+        ($var, _lp) = if isa($dist, AbstractVector)
+            Turing.assume(sampler, $dist, varname, $var, vi)
         else
-            Turing.assume(
-                sampler,
-                $(distribution),
-                varname,
-                vi
-            )
+            Turing.assume(sampler, $dist, varname, vi)
         end
         vi.logp += _lp
     end
