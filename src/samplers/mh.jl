@@ -112,7 +112,7 @@ function sample(model, alg::MH;
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
-        Sampler(alg)
+        Sampler(model, alg)
   alg_str = "MH"
 
   # Initialization

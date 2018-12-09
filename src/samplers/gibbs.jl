@@ -44,7 +44,7 @@ function Sampler(model::CallableModel, alg::Gibbs)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
+            samplers[i] = Sampler(model, typeof(sub_alg)(sub_alg, i))
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
