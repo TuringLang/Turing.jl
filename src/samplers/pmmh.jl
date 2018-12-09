@@ -34,7 +34,7 @@ PMMH(alg::PMMH, new_gid) = PMMH(alg.n_iters, alg.algs, alg.space, new_gid)
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
 
-function Sampler(model::CallableModel, alg::PMMH)
+function Sampler(alg::PMMH, model::CallableModel)
   alg_str = "PMMH"
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(undef, n_samplers)
@@ -44,7 +44,7 @@ function Sampler(model::CallableModel, alg::PMMH)
   for i in 1:n_samplers
     sub_alg = alg.algs[i]
     if isa(sub_alg, Union{SMC, MH})
-      samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
+      samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i), model)
     else
       error("[$alg_str] unsupport base sampling algorithm $alg")
     end
@@ -119,7 +119,7 @@ sample(model::CallableModel, alg::PMMH;
        reuse_spl_n=0             # flag for spl re-using
       ) = begin
 
-    spl = Sampler(model, alg)
+    spl = Sampler(alg)
     alg_str = "PMMH"
 
     # Number of samples to store

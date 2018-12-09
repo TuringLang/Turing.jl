@@ -49,7 +49,7 @@ function MH(n_iters::Int, space...)
 end
 MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, alg.space, new_gid)
 
-Sampler(model::CallableModel, alg::MH) = begin
+Sampler(alg::MH, model::CallableModel) = begin
   alg_str = "MH"
 
   # Sanity check for space
@@ -112,7 +112,7 @@ function sample(model, alg::MH;
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
-        Sampler(model, alg)
+        Sampler(alg, model)
   alg_str = "MH"
 
   # Initialization

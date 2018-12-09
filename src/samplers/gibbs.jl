@@ -35,7 +35,7 @@ Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(model::CallableModel, alg::Gibbs)
+function Sampler(alg::Gibbs, model::CallableModel)
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
 
@@ -44,7 +44,7 @@ function Sampler(model::CallableModel, alg::Gibbs)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(model, typeof(sub_alg)(sub_alg, i))
+            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i), model)
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
@@ -73,7 +73,7 @@ function sample(
                 )
 
     # Init the (master) Gibbs sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(model, alg)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
 
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 

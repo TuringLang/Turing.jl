@@ -112,6 +112,7 @@ mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
   alg   ::  T
   info  ::  Dict{Symbol, Any}         # sampler infomation
 end
+Sampler(alg, model) = Sampler(alg)
 
 # mutable struct HMCState{T<:Real}
 #     epsilon  :: T
