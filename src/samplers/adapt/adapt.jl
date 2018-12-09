@@ -45,8 +45,9 @@ end
 
 function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
     # Diagonal pre-conditioner
-    # pc = DiagPreConditioner(dim)
-    pc = DensePreConditioner(dim)
+    # pc = UnitPreConditioner()
+    pc = DiagPreConditioner(dim)
+    # pc = DensePreConditioner(dim)
     # Dual averaging for step size
     ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
     # Window parameters
@@ -84,11 +85,14 @@ function adapt!(tp::ThreePhaseAdapter, stats::Real, θ; adapt_ϵ=false, adapt_M=
     if tp.state.n < tp.n_adapts
         tp.state.n += 1
         if tp.state.n == tp.n_adapts
+            if adapt_ϵ
+                tp.ssa.state.ϵ = exp(tp.ssa.state.x_bar)
+            end
             @info " Adapted ϵ = $(getss(tp)), std = $(string(tp.pc)); $(tp.state.n) iterations is used for adaption."
         else
             if adapt_ϵ
-                is_updateϵ = is_windowend(tp) || tp.state.n == tp.n_adapts
-                adapt!(tp.ssa, stats, is_updateϵ)
+                is_updateμ = is_windowend(tp)# || tp.state.n == tp.n_adapts
+                adapt!(tp.ssa, stats, is_updateμ)
             end
 
             # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/nuts/adapt_diag_e_nuts.hpp

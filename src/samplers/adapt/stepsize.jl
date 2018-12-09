@@ -71,7 +71,7 @@ end
 function adapt_stepsize!(da::DualAveraging, stats::Real)
     @debug "adapting step size ϵ..."
     @debug "current α = $(stats)"
-    da.state.m = da.state.m + 1
+    da.state.m += 1
     m = da.state.m
 
     # Clip average MH acceptance probability.
@@ -90,20 +90,19 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     ϵ = exp(x)
     @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
 
-    if isnan(ϵ) || isinf(ϵ) || ϵ <= 1e-3
+    if isnan(ϵ) || isinf(ϵ)
         @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
     else
         da.state.ϵ = ϵ
-        da.state.x_bar, da.state.H_bar = x_bar, H_bar
     end
+    da.state.x_bar = x_bar
+    da.state.H_bar = H_bar
 end
 
-function adapt!(da::DualAveraging, stats::Real, is_updateϵ::Bool)
+function adapt!(da::DualAveraging, stats::Real, is_updateμ::Bool)
     adapt_stepsize!(da, stats)
-    if is_updateϵ
-        ϵ = exp(da.state.x_bar)
-        da.state.ϵ = ϵ
-        da.state.μ = computeμ(ϵ)
+    if is_updateμ
+        da.state.μ = computeμ(da.state.ϵ)
         reset!(da.state)
     end
 end
