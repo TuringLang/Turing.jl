@@ -233,7 +233,6 @@ function update_vars!(model, dvars_nt)
     for (sym, val) in pairs(dvars_nt)
         if val == nothing
             pop!(model.dvars, sym)
-        else
             push!(model.pvars, sym)
         end
     end
