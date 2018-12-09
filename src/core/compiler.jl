@@ -66,15 +66,19 @@ a distribution or a vector of distributions (`distribution`).
 """
 function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     if var isa Symbol
-        sym, idcs, csym = @VarName(var)
-        csym = Symbol(model_info[:name], csym)
-        syms = Symbol[csym, var]
-        varname_expr = :(varname = Turing.VarName(vi, $syms, ""))
+        varname_expr = quote
+            sym, idcs, csym = @VarName $var
+            csym = Symbol($(model_info[:name]), csym)
+            syms = Symbol[csym, $(QuoteNode(var))]
+            varname = Turing.VarName(vi, syms, "")
+        end
     else
-        sym, idcs, csym = @VarName var
-        csym_str = string(model_info[:name])*string(csym)
-        indexing = mapfoldl(string, *, idcs, init = "")
-        varname_expr = :(varname = Turing.VarName(vi, Symbol($csym_str), $sym, $indexing))
+        varname_expr = quote
+            sym, idcs, csym = @VarName $var
+            csym_str = string($(model_info[:name]))*string(csym)
+            indexing = mapfoldl(string, *, idcs, init = "")
+            varname = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
+        end
     end
     return quote
         $varname_expr

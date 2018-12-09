@@ -89,7 +89,7 @@ end
 
 # Test the update of group IDs
 g_demo_f = gdemo()
-g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
+g = Turing.Sampler(g_demo_f, Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)))
 
 pg, hmc = g.info[:samplers]
 
