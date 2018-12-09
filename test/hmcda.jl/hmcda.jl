@@ -18,7 +18,7 @@ end
 
 res1 = sample(gdemo([1.5, 2.0]), alg1)
 
-#check_numerical(res1, [:s, :m], [49/24, 7/6])
+check_numerical(res1, [:s, :m], [49/24, 7/6])
 
 # res2 = sample(gdemo([1.5, 2.0]), alg2)
 #
@@ -27,7 +27,7 @@ res1 = sample(gdemo([1.5, 2.0]), alg1)
 
 res3 = sample(gdemo([1.5, 2.0]), alg3)
 
-#check_numerical(res3, [:s, :m], [49/24, 7/6])
+check_numerical(res3, [:s, :m], [49/24, 7/6])
 
 # res1 = sample(gdemo([1.5, 2.0]), HMC(3000, 0.2, 4))
 # println("HMC")

@@ -13,4 +13,4 @@ end
 
 chain = sample(constrained_test(obs), HMC(1000, 1.5, 3)) # using a large step size (1.5)
 
-#check_numerical(chain, [:p], [10/14], eps=0.1)
+check_numerical(chain, [:p], [10/14], eps=0.1)

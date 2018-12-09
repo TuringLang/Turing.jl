@@ -24,9 +24,6 @@ function dummy_print(args...)
   nothing
 end
 
-## Note: undo this and fix
-
-#=
 totla_num = 5000
 for iter = 1:totla_num
   push!(chn[:θ], θ)
@@ -43,6 +40,5 @@ samples_m = map(x -> x[2], chn[:θ])
 @show std(samples_m[1000:end])
 
 @show accept_num / totla_num
-=#
 
 # Unit tests

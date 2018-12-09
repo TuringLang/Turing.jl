@@ -13,4 +13,4 @@ end
 
 chain = sample(constrained_simplex_test(obs12), HMC(1000, 0.75, 2))
 
-#check_numerical(chain, [:ps], [[5/16; 11/16]], eps=0.015)
+check_numerical(chain, [:ps], [[5/16; 11/16]], eps=0.015)

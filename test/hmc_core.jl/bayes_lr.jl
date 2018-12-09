@@ -81,8 +81,6 @@ lj = lj_func(θ)
 chn = []
 accept_num = 1
 
-## Note: undo this and fix
-#=
 total_num = 2000
 for iter = 1:total_num
   global θ, chn, lj, lj_func, grad_func, std, accept_num
@@ -94,4 +92,3 @@ end
 
 @show mean(chn[1000:end]), lj
 @show accept_num / total_num
-=#
