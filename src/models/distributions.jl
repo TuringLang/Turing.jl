@@ -43,10 +43,10 @@ function logpdf_binomial_logit(n, logitp, k)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
-function Distributions.logpdf(d::BinomialLogit{<:Real}, k::T) where T<:Integer
+function Distributions.logpdf(d::BinomialLogit{<:Real}, k::Int64)
     return logpdf_binomial_logit(d.n, d.logitp, k)
 end
 
-function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer})
+function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{Int64})
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
 end
