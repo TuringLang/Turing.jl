@@ -7,7 +7,7 @@ var_atol = 1.0
 
 for dist ∈ [Normal(0, 1), Gamma(2, 3), InverseGamma(2, 3), Beta(2, 1), Cauchy(0, 1)]
 
-    @testset "$(typeof(dist))" begin
+    @testset "$(string(typeof(dist)))" begin
 
         function mf(vi::Turing.VarInfo, sampler::Turing.AnySampler; )::Any
             vi.logp = zero(Real)
