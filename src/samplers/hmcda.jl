@@ -31,7 +31,9 @@ end
 sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
 ```
 
-A paper on this can be found [here](https://arxiv.org/abs/1111.4246).
+For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
+
+Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning Research 15, no. 1 (2014): 1593-1623.
 """
 mutable struct HMCDA{T} <: AdaptiveHamiltonian
   n_iters   ::  Int       # number of samples

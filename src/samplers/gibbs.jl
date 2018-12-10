@@ -20,8 +20,8 @@ alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
 ```
 
 Tips:
-- `HMC` and `NUTS` are very active, and can throw off particle-based
-samplers. You can increase the effectiveness of particle sampling by including
+- `HMC` and `NUTS` are fast samplers, and can throw off particle-based
+methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
 mutable struct Gibbs{A} <: InferenceAlgorithm
