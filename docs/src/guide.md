@@ -156,19 +156,19 @@ Turing.jl provides a Gibbs interface to combine different samplers. For example,
 ```julia
 @model simple_choice(xs) = begin
   p ~ Beta(2, 2)
-  z ~ Categorical(p)
-  for x = xs
+  z ~ Bernoulli(p)
+  for i in 1:length(xs)
     if z == 1
-      x ~ Normal(0, 1)
+      xs[i] ~ Normal(0, 1)
     else
-      x ~ Normal(2, 1)
+      xs[i] ~ Normal(2, 1)
     end
   end
 end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
 
-chn = sample(simple_choice_f, Gibbs(1000, HMC(1,0.2,3,:p), PG(20,1,:z))
+chn = sample(simple_choice_f, Gibbs(1000, HMC(1,0.2,3,:p), PG(20,1,:z)))
 ```
 
 For details of compositional sampling in Turing.jl, please check the corresponding [paper](http://xuk.ai/assets/aistats2018-turing.pdf).
