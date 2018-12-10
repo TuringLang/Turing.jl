@@ -7,9 +7,8 @@ Random.seed!(12)
 data = vcat(rand(Normal(0, 0.5), 10), rand(Normal(8, 0.5), 10))
 
 @model crpimm(y;
-              α = 0.1,
               H = Normal(mean(y), std(y) * 2),
-              rpm = DirichletProcess(α)
+              rpm = DirichletProcess(0.1)
              ) = begin
     # Latent assignments.
     N = length(y)
