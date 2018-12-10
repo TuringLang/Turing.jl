@@ -79,7 +79,7 @@ end
 
 function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
     Q, N = cumsum(w), num_particles
-    T = if (maximum(Q) - 1/N) >= N
+    T = if N != 1
         collect(range(0, stop = maximum(Q)-1/N, length = N))
     else
         zeros(N)
