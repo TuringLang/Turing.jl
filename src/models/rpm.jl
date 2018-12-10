@@ -102,13 +102,21 @@ stickbreaking(d::DirichletProcess) = rand(Beta(1., d.α))
 logpdf_stickbreaking(d::DirichletProcess, x::T) where T<:Real = logpdf(Beta(1., d.α), x)
 
 function crp(d::DirichletProcess, m::Vector{Int})
-    if length(m) == 0
+    if sum(m) == 0
         return [0.0]
+    elseif sum(m .== 0) > 0
+        z = log(sum(m) - 1 + d.α)
+        K = length(m)
+        zidx = findall(m .== 0)
+        zid = rand(zidx)
+        lpt(k) = k ∈ zidx ? (k == zid ? log(d.α) - z : -Inf) : log(m[k]) - z
+        return map(k -> lpt(k), 1:K)
+    else
+        z = log(sum(m) - 1 + d.α)
+        K = length(m)
+        lp(k) = k > K ? log(d.α) - z : log(m[k]) - z
+        return map(k -> lp(k), 1:(K+1))
     end
-    z = log(sum(m) - 1 + d.α)
-    K = length(m)
-    lp(k) = k > K ? log(d.α) - z : log(m[k]) - z
-    return map(k -> lp(k), 1:(K+1))
 end
 
 """
@@ -147,11 +155,19 @@ stickbreaking(d::PitmanYorProcess) = rand(Beta(1. - d.d, d.θ + d.t*d.d))
 logpdf_stickbreaking(d::PitmanYorProcess, x::Real) = logpdf(Beta(1-d.d, d.θ + d.t*d.d), x)
 
 function crp(d::PitmanYorProcess, m::Vector{Int})
-    if length(m) == 0
+    if sum(m) == 0
         return [0.0]
+    elseif sum(m .== 0) > 0
+        z = log(sum(m) + d.θ)
+        K = length(m)
+        zidx = findall(m .== 0)
+        zid = rand(zidx)
+        lpt(k) = k ∈ zidx ? (k == zid ? log(d.θ+d.d*d.t) - z : -Inf) : log(m[k]-d.d) - z
+        return map(k -> lpt(k), 1:K)
+    else
+        z = log(sum(m) + d.θ)
+        K = length(m)
+        lp(k) = k > K ? log(d.θ + d.d*d.t) - z : log(m[k] - d.d) - z
+        return map(k -> lp(k), 1:(K+1))
     end
-    z = log(sum(m) + d.θ)
-    K = length(m)
-    lp(k) = k > K ? log(d.θ + d.d*d.t) - z : log(m[k] - d.d) - z
-    return map(k -> lp(k), 1:(K+1))
 end

@@ -78,10 +78,14 @@ function resample_stratified(w::AbstractVector{<:Real}, num_particles::Integer)
 end
 
 function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
-
     Q, N = cumsum(w), num_particles
+    T = if (maximum(Q) - 1/N) >= N
+        collect(range(0, stop = maximum(Q)-1/N, length = N))
+    else
+        zeros(N)
+    end
 
-    T = collect(range(0, stop = maximum(Q)-1/N, length = N)) .+ rand()/N
+    T .+= rand()/N
     push!(T, 1)
 
     indx, i, j = Array{Int}(undef, N), 1, 1
