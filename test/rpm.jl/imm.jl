@@ -37,7 +37,7 @@ end
 
 data = shuffle(data)
 mf = crpimm(data)
-chn = sample(mf, PG(50, 500))
+chn = sample(mf, SMC(500))
 
 k = map(length, map(unique, chn[:z]))
 cs = map(i -> sum(k .== i), 1:maximum(k))
