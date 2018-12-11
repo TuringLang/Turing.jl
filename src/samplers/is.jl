@@ -1,9 +1,14 @@
 """
     IS(n_particles::Int)
 
-Importance sampling algorithm object.
+Importance sampling algorithm.
 
-- `n_particles` is the number of particles to use
+Note that this method is particle-based, and arrays of variables
+must be stored in a [`TArray`](@ref) object.
+
+Arguments:
+
+- `n_particles` is the number of particles to use.
 
 Usage:
 

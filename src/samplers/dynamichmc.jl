@@ -4,6 +4,29 @@ struct DynamicNUTS{T} <: Hamiltonian
     gid       ::  Integer   # group ID
 end
 
+"""
+    DynamicNUTS(n_iters::Integer)
+
+Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package.
+To use it, make sure you have the DynamicHMC package installed.
+
+```julia
+# Import Turing and DynamicHMC.
+using DynamicHMC, Turing
+
+# Model definition.
+@model gdemo(x, y) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  x ~ Normal(m, sqrt(s))
+  y ~ Normal(m, sqrt(s))
+  return s, m
+end
+
+# Pull 2,000 samples using DynamicNUTS.
+chn = sample(gdemo(1.5, 2.0), DynamicNUTS(2000))
+```
+"""
 function DynamicNUTS(n_iters::Integer, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     DynamicNUTS(n_iters, _space, 0)
@@ -18,7 +41,7 @@ function sample(model::Function, alg::DynamicNUTS, chunk_size=CHUNKSIZE[]) where
         default_chunk_size = CHUNKSIZE[]  # record global chunk size
         setchunksize(chunk_size)        # set temp chunk size
     end
-    
+
     spl = Sampler(alg)
 
     n = alg.n_iters
@@ -37,12 +60,12 @@ function sample(model::Function, alg::DynamicNUTS, chunk_size=CHUNKSIZE[]) where
     end
 
     function _lp(x)
-        value, deriv = gradient(x, vi, model, spl) 
+        value, deriv = gradient(x, vi, model, spl)
         return ValueGradient(-value, -deriv)
     end
 
     chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters)
-                                         
+
     for i = 1:alg.n_iters
         vi[spl] = chn_dynamic[i].q
         samples[i].value = Sample(vi, spl).value

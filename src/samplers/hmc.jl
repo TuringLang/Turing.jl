@@ -3,6 +3,12 @@
 
 Hamiltonian Monte Carlo sampler.
 
+Arguments:
+
+- `n_iters::Int` : The number of samples to pull.
+- `epsilon::Float64` : The leapfrog step size to use.
+- `tau::Int` : The number of leapfrop steps to use.
+
 Usage:
 
 ```julia
@@ -22,6 +28,19 @@ Example:
 end
 
 sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
+```
+
+Tips:
+
+- If you are receiving gradient errors when using `HMC`, try reducing the
+`step_size` parameter.
+
+```julia
+# Original step_size
+sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
+
+# Reduced step_size.
+sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
 mutable struct HMC{T} <: StaticHamiltonian

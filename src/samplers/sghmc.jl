@@ -9,6 +9,12 @@ Usage:
 SGHMC(1000, 0.01, 0.1)
 ```
 
+Arguments:
+
+- `n_iters::Int` : Number of samples to pull.
+- `learning_rate::Float64` : The learning rate.
+- `momentum_decay::Float64` : Momentum decay variable.
+
 Example:
 
 ```julia

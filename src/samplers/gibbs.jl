@@ -1,12 +1,28 @@
 """
-    Gibbs(n_iters, alg_1, alg_2)
+    Gibbs(n_iters, algs...)
 
-Compositional MCMC interface.
+Compositional MCMC interface. Gibbs sampling combines one or more
+sampling algorithms, each of which samples from a different set of
+variables in a model.
 
 Example:
 ```julia
+@model gibbs_example(x) = begin
+    v1 ~ Normal(0,1)
+    v2 ~ Categorical(5)
+        ...
+end
+
+# Use PG for a 'v2' variable, and use HMC for the 'v1' variable.
+# Note that v2 is discrete, so the PG sampler is more appropriate
+# than is HMC.
 alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
 ```
+
+Tips:
+- `HMC` and `NUTS` are fast samplers, and can throw off particle-based
+methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
+more particles in the particle sampler.
 """
 mutable struct Gibbs{A} <: InferenceAlgorithm
     n_iters   ::  Int     # number of Gibbs iterations
