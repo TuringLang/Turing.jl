@@ -1,4 +1,4 @@
-using Documenter, DocumenterMarkdown, Turing
+using Documenter, DocumenterMarkdown, DynamicHMC, Turing
 using LibGit2: clone
 
 # Include the update_homepage function.
@@ -52,7 +52,7 @@ try
     makedocs(
         sitename = "Turing.jl",
         build = build_relative,
-        format = :markdown,
+        format = Markdown(),
         checkdocs = :all
     )
 catch e
