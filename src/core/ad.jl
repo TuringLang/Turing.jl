@@ -134,6 +134,13 @@ Tracker.@grad function poislogpdf(v::Tracker.TrackedReal, x::Int)
           Δ->(Δ * (x/v - 1), nothing)
 end
 
+function binomlogpdf(n::Int, p::ForwardDiff.Dual{T}, x::Int) where {T}
+    FD = ForwardDiff.Dual{T}
+    val = ForwardDiff.value(p)
+    Δ = ForwardDiff.partials(p)
+    return FD(binomlogpdf(n, val, x),  Δ * (x / val - (n - x) / (1 - val)))
+end
+
 function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
     FD = ForwardDiff.Dual{T}
     val = ForwardDiff.value(v)
