@@ -31,6 +31,8 @@ docs:
         url: /docs/guide/
       - title: "Advanced Usage"
         url: /docs/advanced/
+      - title: "Using DynamicHMC"
+        url: /docs/dynamichmc/
 
   - title: Library
     children:
