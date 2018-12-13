@@ -133,3 +133,10 @@ Tracker.@grad function poislogpdf(v::Tracker.TrackedReal, x::Int)
       return poislogpdf(Tracker.data(v), x),
           Δ->(Δ * (x/v - 1), nothing)
 end
+
+function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
+    FD = ForwardDiff.Dual{T}
+    val = ForwardDiff.value(v)
+    Δ = ForwardDiff.partials(v)
+    return FD(poislogpdf(val, x), Δ * (x/val - 1))
+end
