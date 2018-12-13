@@ -23,8 +23,8 @@ mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = getval(vi, svn)[1]
 _m = getval(vi, mvn)[1]
 
-x = map(_->Float64(_), vi[nothing])
-∇E = gradient_reverse(x, vi, ad_test_f)
+x = map(x->Float64(x), vi[nothing])
+∇E = gradient_reverse(x, vi, ad_test_f)[2]
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)
@@ -37,7 +37,7 @@ function logp(x::Vector)
   # s = invlink(dist_s, s)
   m = x[1]
   lik_dist = Normal(m, sqrt(s))
-  lp = logpdf(dist_s, s, false) + logpdf(Normal(0,sqrt(s)), m, false)
+  lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
   lp
 end
