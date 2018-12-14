@@ -37,6 +37,12 @@ let
         rtol=1e-8,
         atol=1e-8,
     )
+    @test isapprox(
+        Tracker.gradient(foo, 0.5)[1],
+        ForwardDiff.derivative(foo, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
 
     bar = p->logpdf(Binomial(10, p), 3)
     @test isapprox(
@@ -45,21 +51,39 @@ let
         rtol=1e-8,
         atol=1e-8,
     )
+    @test isapprox(
+        Tracker.gradient(bar, 0.5)[1],
+        ForwardDiff.derivative(bar, 0.5),
+        rtol=1e-8,
+        atol=1e-8,
+    )
 end
 
 let
-    foo = p->poislogpdf(1, p)
+    foo = p->Turing.poislogpdf(p, 1)
     @test isapprox(
         Tracker.gradient(foo, 0.5)[1],
         central_fdm(5, 1)(foo, 0.5);
         rtol=1e-8,
         atol=1e-8,
     )
+    @test isapprox(
+        Tracker.gradient(foo, 0.5)[1],
+        ForwardDiff.derivative(foo, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
 
-    bar = p->logpdf(Poisson(1), 3)
+    bar = p->logpdf(Poisson(p), 3)
     @test isapprox(
         Tracker.gradient(bar, 0.5)[1],
         central_fdm(5, 1)(bar, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    @test isapprox(
+        Tracker.gradient(bar, 0.5)[1],
+        ForwardDiff.derivative(bar, 0.5);
         rtol=1e-8,
         atol=1e-8,
     )
