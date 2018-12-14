@@ -1,26 +1,96 @@
+abstract type ADBackend end
+struct ForwardDiffAD{chunk} <: ADBackend end
+struct FluxTrackerAD <: ADBackend end
+struct NoAD <: ADBackend end
+ADBackend() = ADBackend(ADBACKEND[])
+ADBackend(T::Symbol) = ADBackend(Val(T))
+function ADBackend(::Val{T}) where {T}
+    if T === :forward_diff
+        return ForwardDiffAD{CHUNKSIZE[]}
+    else
+        return FluxTrackerAD
+    end
+end
+
+getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = Val(chunk)
+
+
+"""
+getADtype(alg)
+
+Finds the autodifferentiation type of the algorithm `alg`.
+"""
+function getADtype()
+    if ADBACKEND[] == :forward_diff
+        return ForwardDiffAD{CHUNKSIZE[]}
+    else
+        return FluxTrackerAD
+    end
+end
+getADtype(::Any) = NoAD
+getADtype(s::Sampler) = getADtype(typeof(s))
+getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
+getADtype(alg::Union{Hamiltonian, Gibbs, PMMH}) = getADtype(typeof(alg))
+getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
+
+@generated function getADtype(::Union{Type{<:Gibbs{A}}, Type{<:PMMH{T, A}}}) where {T, A <: Tuple}
+    ad_types = getADtype.([A.types...])
+    i = 1
+    while i <= length(ad_types)
+        if ad_types[i] === NoAD
+            deleteat!(ad_types, i)
+        else
+            i += 1
+        end
+    end
+    if length(ad_types) == 0
+        return :(NoAD)
+    elseif length(ad_types) == 1
+        return :($(ad_types[1]))
+    else
+        if all(x->x==ad_types[1], ad_types[2:end])
+            return :($(ad_types[1]))
+        else
+            return :(throw("Mismatched autodiff types in sub-algorithms is not supported."))
+        end
+    end
+end
+
 """
 gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
 Computes the gradient of the log joint of `θ` for the model specified by
 `(vi, sampler, model)` using whichever automatic differentation tool is currently active.
 """
-function gradient(
+@generated function gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
-    sampler::Union{Nothing, Sampler}=nothing,
-    backend::Symbol=ADBACKEND[],
-)
-    @assert backend ∈ (:forward_diff, :reverse_diff)
-    if backend == :forward_diff
-        return gradient_forward(θ, vi, model, sampler)
+    model,
+    sampler::TS=nothing,
+) where {TS <: Union{Nothing, Sampler}}
+    if TS == Nothing
+        return quote
+            ad_type = getADtype()
+            if ad_type <: ForwardDiffAD
+                gradient_forward(θ, vi, model, sampler, getchunksize(ad_type))
+            else
+                gradient_reverse(θ, vi, model, sampler)
+            end
+        end
     else
-        return gradient_reverse(θ, vi, model, sampler)
+        ad_type = getADtype(TS)
+        @assert any(T -> ad_type <: T, (ForwardDiffAD, FluxTrackerAD))
+        if ad_type <: ForwardDiffAD 
+            chunk = getchunksize(ad_type)
+            return :(gradient_forward(θ, vi, model, sampler, $chunk))
+        else ad_type <: FluxTrackerAD
+            return :(gradient_reverse(θ, vi, model, sampler))
+        end
     end
 end
 
@@ -41,8 +111,8 @@ function gradient_forward(
     vi::VarInfo,
     model::Function,
     sampler::Union{Nothing, Sampler}=nothing,
-    chunk_size::Int=CHUNKSIZE[],
-)
+    ::Val{chunk_size}=Val(CHUNKSIZE[]),
+) where chunk_size
     # Record old parameters.
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)
 
@@ -71,7 +141,7 @@ end
 gradient_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
