@@ -15,20 +15,26 @@ matrix:
 
 notifications:
     email: false
-script:
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-             Pkg.clone(pwd(), "Turing");
-             Pkg.build("Turing");
-             if ENV["GROUP"] == "Test"
-                Pkg.test("Turing"; coverage=true)
-             else
-                println("Unknown test command.")
-             end'
-  - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
-  - julia -e 'using Pkg, Turing;
-              cd(joinpath(dirname(pathof(Turing)), ".."));
-              include(joinpath("docs", "make.jl"))'
+jobs:
+  include:
+    - stage: tests
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                   Pkg.clone(pwd(), "Turing");
+                   Pkg.build("Turing");
+                   if ENV["GROUP"] == "Test"
+                      Pkg.test("Turing"; coverage=true)
+                   else
+                      println("Unknown test command.")
+                   end'
+    - stage: documentation
+      if: branch = master
+      script:
+        - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
+        - julia -e 'using Pkg, Turing;
+                    cd(joinpath(dirname(pathof(Turing)), ".."));
+                    include(joinpath("docs", "make.jl"))'
 after_success:
   - julia -e 'if ENV["GROUP"] == "Test"
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
