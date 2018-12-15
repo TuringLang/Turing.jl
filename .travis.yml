@@ -14,6 +14,7 @@ jobs:
                    Pkg.build("Turing");
                    Pkg.test("Turing"; coverage=true)'
     - stage: test
+      if: branch = master
       os: osx
       env: STAGE=test
       script:
