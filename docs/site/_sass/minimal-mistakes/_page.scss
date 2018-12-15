@@ -136,9 +136,10 @@
   &--overlay {
     position: relative;
     margin-bottom: 2em;
-    padding: 3em 0;
+    padding-top: 4em;
+    padding-bottom: 4em;
     @include clearfix;
-    background-size: 100% 40%;
+    background-size: 130% 40%;
     background-repeat: no-repeat;
     background-position: bottom;
     -webkit-animation: $intro-transition;
@@ -151,7 +152,8 @@
     }
 
     @include breakpoint($large) {
-      background-size: 100% 90%;
+      background-size: 125% 90%;
+      padding-left: 9em;
     }
 
     .wrapper {
