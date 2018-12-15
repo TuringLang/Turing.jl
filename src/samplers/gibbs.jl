@@ -52,10 +52,10 @@ function Sampler(alg::Gibbs, model::CallableModel)
     end
 
     # Sanity check for space
-    @assert issubset(model.pvars, space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(model.pvars))"
+    @assert issubset(Set(pvars(model)), space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(pvars(model))))"
 
-    if model.pvars != space
-        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, model.pvars))")
+    if Set(pvars(model)) != space
+        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(pvars(model))))")
     end
 
     info = Dict{Symbol, Any}()

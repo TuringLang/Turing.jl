@@ -4,11 +4,31 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
-struct CallableModel{F}
+struct CallableModel{pvars, dvars, F}
     f::F
-    pvars::Set{Symbol}
-    dvars::Set{Symbol}
 end
+function CallableModel{pvars, dvars}(f::F) where {pvars, dvars, F}
+    return CallableModel{pvars, dvars, F}(f)
+end
+pvars(m::CallableModel{params}) where {params} = Tuple(params.types)
+function dvars(m::CallableModel{params, data}) where {params, data}
+    return Tuple(data.types)
+end
+@generated function inpvars(::Val{sym}, ::CallableModel{params}) where {sym, params}
+    if sym in params.types
+        return :(true)
+    else
+        return :(false)
+    end
+end
+@generated function indvars(::Val{sym}, ::CallableModel{params, data}) where {sym, params, data}
+    if sym in data.types
+        return :(true)
+    else
+        return :(false)
+    end
+end
+
 (m::CallableModel)(args...; kwargs...) = m.f(args..., m; kwargs...)
 
 # TODO: Replace this macro, see issue #514
@@ -122,7 +142,7 @@ function _tilde(vsym, left, dist, model_info)
         end
 
         return quote 
-            if $(QuoteNode(vsym)) ∈ model.dvars
+            if Turing.indvars($(Val(vsym)), model)
                 $(generate_observe(left, dist))
             else
                 $(generate_assume(left, dist, model_info))
@@ -195,8 +215,8 @@ macro model(fexpr)
         :closure_name => gensym(),
         :args => modeldef[:args],
         :kwargs => modeldef[:kwargs],
-        :dvars => Set{Symbol}(),
-        :pvars => Set{Symbol}()
+        :dvars => Symbol[],
+        :pvars => Symbol[]
     )
     # Unwrap ~ expressions and extract dvars and pvars into `model_info`
     fexpr = translate(fexpr, model_info)
@@ -220,6 +240,7 @@ macro model(fexpr)
     dvars_nt = :($([:($var = $var) for var in dvars]...),)
     return esc(quote
         function $(outer_function_name)($(fargs...))
+            pvars, dvars = Turing.get_vars($(Tuple{pvars...}), $dvars_nt)
             $closure_name(sampler::Turing.AnySampler, model) = $closure_name(model)
             $closure_name(model) = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior(), model)
             $closure_name(vi::Turing.VarInfo, model) = $closure_name(vi, Turing.SampleFromPrior(), model)
@@ -227,20 +248,24 @@ macro model(fexpr)
                 vi.logp = zero(Real)
                 $closure_main_body
             end
-            model = Turing.CallableModel($closure_name, $pvars, $dvars)
-            Turing.update_vars!(model, $dvars_nt)
+            model = Turing.CallableModel{pvars, dvars}($closure_name)
             return model
         end
     end)
 end
-function update_vars!(model, dvars_nt)
-    for (sym, val) in pairs(dvars_nt)
-        if val == nothing
-            pop!(model.dvars, sym)
-            push!(model.pvars, sym)
-        end
-    end
-    return
+
+@generated function get_vars(pvars::Type{<:Tuple}, dvars::Tuple{})
+    return :(pvars, $(dvars))
+end
+@generated function get_vars(pvars::Type{Tpvars}, dvars_nt::NamedTuple) where {Tpvars <: Tuple}
+    pvar_syms = [Tpvars.types...]
+    dvar_syms = [dvars_nt.names...]
+    dvar_types = [dvars_nt.types...]
+    append!(pvar_syms, [dvar_syms[i] for i in 1:length(dvar_syms) if dvar_types[i] == Nothing])
+    setdiff!(dvar_syms, pvar_syms)    
+    pvars = Tuple{pvar_syms...}
+    dvars = Tuple{dvar_syms...}
+    return :($pvars, $dvars)
 end
 
 function warn_empty(body)

@@ -56,10 +56,10 @@ function Sampler(alg::PMMH, model::CallableModel)
 
   # Sanity check for space
   if !isempty(space)
-    @assert issubset(model.pvars, space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(model.pvars))"
+    @assert issubset(Set(pvars(model)), space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(pvars(model))))"
 
-    if model.pvars != space
-      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, model.pvars))")
+    if Set(pvars(model)) != space
+      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(pvars(model))))")
     end
   end
 
