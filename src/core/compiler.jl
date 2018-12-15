@@ -4,11 +4,12 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
-struct CallableModel{pvars, dvars, F}
+struct CallableModel{pvars, dvars, F, TD}
     f::F
+    data::TD
 end
-function CallableModel{pvars, dvars}(f::F) where {pvars, dvars, F}
-    return CallableModel{pvars, dvars, F}(f)
+function CallableModel{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
+    return CallableModel{pvars, dvars, F, TD}(f, data)
 end
 pvars(m::CallableModel{params}) where {params} = Tuple(params.types)
 function dvars(m::CallableModel{params, data}) where {params, data}
@@ -205,6 +206,9 @@ end
 ```
 """
 macro model(fexpr)
+    _model(fexpr)
+end
+function _model(fexpr)
     # Extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
     modeldef = MacroTools.splitdef(fexpr)
     # Function body of the model is empty
@@ -237,26 +241,40 @@ macro model(fexpr)
     # Updated body after expanding ~ expressions
     closure_main_body = MacroTools.splitdef(fexpr)[:body]
 
-    dvars_nt = :($([:($var = $var) for var in dvars]...),)
+    if length(dvars) == 0
+        dvars_nt = :(NamedTuple())
+    else
+        dvars_nt = :($([:($var = $var) for var in dvars]...),)
+    end
+    unwrap_data_expr = Expr(:block)
+    for var in dvars
+        push!(unwrap_data_expr.args, quote
+            local $var
+            if isdefined(model.data, $(QuoteNode(var)))
+                $var = model.data.$var
+            else
+                $var = nothing
+            end
+        end)
+    end
     return esc(quote
         function $(outer_function_name)($(fargs...))
             pvars, dvars = Turing.get_vars($(Tuple{pvars...}), $dvars_nt)
+            data = Turing.get_data(dvars, $dvars_nt)
             $closure_name(sampler::Turing.AnySampler, model) = $closure_name(model)
             $closure_name(model) = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior(), model)
             $closure_name(vi::Turing.VarInfo, model) = $closure_name(vi, Turing.SampleFromPrior(), model)
             function $closure_name(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+                $unwrap_data_expr
                 vi.logp = zero(Real)
                 $closure_main_body
             end
-            model = Turing.CallableModel{pvars, dvars}($closure_name)
+            model = Turing.CallableModel{pvars, dvars}($closure_name, data)
             return model
         end
     end)
 end
 
-@generated function get_vars(pvars::Type{<:Tuple}, dvars::Tuple{})
-    return :(pvars, $(dvars))
-end
 @generated function get_vars(pvars::Type{Tpvars}, dvars_nt::NamedTuple) where {Tpvars <: Tuple}
     pvar_syms = [Tpvars.types...]
     dvar_syms = [dvars_nt.names...]
@@ -266,6 +284,19 @@ end
     pvars = Tuple{pvar_syms...}
     dvars = Tuple{dvar_syms...}
     return :($pvars, $dvars)
+end
+
+@generated function get_data(::Type{Tdvars}, nt) where Tdvars
+    dvars = Tdvars.types
+    args = []
+    for var in dvars
+        push!(args, :($var = nt.$var))
+    end
+    if length(args) == 0
+        return :(NamedTuple())
+    else
+        return :($(args...),)
+    end
 end
 
 function warn_empty(body)
