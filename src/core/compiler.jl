@@ -214,10 +214,12 @@ function _model(fexpr)
     # Function body of the model is empty
     warn_empty(modeldef[:body])
     # Construct model_info dictionary
+    
+    args = [(arg isa Symbol) ? arg : arg.args[1] for arg in modeldef[:args]]
     model_info = Dict(
         :name => modeldef[:name],
         :closure_name => gensym(),
-        :args => modeldef[:args],
+        :args => args,
         :kwargs => modeldef[:kwargs],
         :dvars => Symbol[],
         :pvars => Symbol[]
@@ -226,12 +228,19 @@ function _model(fexpr)
     fexpr = translate(fexpr, model_info)
 
     fargs = modeldef[:args]
+    fargs_default_values = Dict()
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
+            fargs_default_values[fargs[i]] = :nothing
             fargs[i] = Expr(:kw, fargs[i], :nothing)
+        elseif isa(fargs[i], Expr) && fargs[i].head == :kw
+            fargs_default_values[fargs[i].args[1]] = fargs[i].args[2]
+            fargs[i] = Expr(:kw, fargs[i].args[1], :nothing)
+        else
+            throw("Unsupported argument type $(fargs[i]).")
         end
-    end    
-
+    end
+    
     # Construct user-facing function
     outer_function_name = model_info[:name]
     pvars = model_info[:pvars]
@@ -253,7 +262,7 @@ function _model(fexpr)
             if isdefined(model.data, $(QuoteNode(var)))
                 $var = model.data.$var
             else
-                $var = nothing
+                $var = $(fargs_default_values[var])
             end
         end)
     end
