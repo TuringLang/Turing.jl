@@ -27,6 +27,7 @@ jobs:
       if: branch = master
       env: STAGE=documentation
       script:
+        - julia -e 'Pkg.update(); Pkg.clone(pwd(), "Turing"); Pkg.build("Turing");'
         - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
         - julia -e 'using Pkg, Turing;
                     cd(joinpath(dirname(pathof(Turing)), ".."));
