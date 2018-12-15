@@ -267,9 +267,11 @@ function _model(fexpr)
         end)
     end
     return esc(quote
+        $outer_function_name(;$(fargs...)) = $outer_function_name($(args...))
         function $(outer_function_name)($(fargs...))
             pvars, dvars = Turing.get_vars($(Tuple{pvars...}), $dvars_nt)
             data = Turing.get_data(dvars, $dvars_nt)
+            
             $closure_name(sampler::Turing.AnySampler, model) = $closure_name(model)
             $closure_name(model) = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior(), model)
             $closure_name(vi::Turing.VarInfo, model) = $closure_name(vi, Turing.SampleFromPrior(), model)
