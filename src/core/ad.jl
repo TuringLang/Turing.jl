@@ -20,14 +20,7 @@ getADtype(alg)
 
 Finds the autodifferentiation type of the algorithm `alg`.
 """
-function getADtype()
-    if ADBACKEND[] == :forward_diff
-        return ForwardDiffAD{CHUNKSIZE[]}
-    else
-        return FluxTrackerAD
-    end
-end
-getADtype(::Any) = NoAD
+getADtype() = ADBackend()
 getADtype(s::Sampler) = getADtype(typeof(s))
 getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
 getADtype(alg::Union{Hamiltonian, Gibbs, PMMH}) = getADtype(typeof(alg))
