@@ -1,13 +1,22 @@
 environment:
   matrix:
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x64/1.0/julia-1.0.0-win64.exe"
-    OS: w64
-  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/1.0/julia-1.0.0-win32.exe"
-    OS: W32
+  - julia_version: 1
+ # - julia_version: nightly
 
+platform:
+  - x86 # 32-bit
+  - x64 # 64-bit
+
+# # Uncomment the following lines to allow failures on nightly julia
+# # (tests will run but not make your overall status red)
 matrix:
-  allow_failures: # Cairo.jl doesn't build on Win32; remove this when Cairo has a new release.
-  - OS: w32
+  allow_failures:
+  - julia_version: nightly
+
+branches:
+  only:
+    - master
+#    - /release-.*/
 
 notifications:
   - provider: Email
@@ -15,26 +24,13 @@ notifications:
     on_build_failure: false
     on_build_status_changed: false
 
-cache:
-# Cache large downloads to avoid network unreliability
-  # - C:\Users\appveyor\.julia\v0.6
-
 install:
-  - ps: "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12"
-# Download most recent Julia Windows binary
-  - ps: (new-object net.webclient).DownloadFile(
-        $env:JULIA_URL,
-        "C:\projects\julia-binary.exe")
-# Run installer silently, output to C:\projects\julia
-  - C:\projects\julia-binary.exe /S /D=C:\projects\julia
+  - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
 
 build_script:
-# Need to convert from shallow to complete for Pkg.clone to work
-  - IF EXIST .git\shallow (git fetch --unshallow)
-  - C:\projects\julia\bin\julia -e "using Pkg, InteractiveUtils; versioninfo(); 
-      Pkg.update(); 
-      Pkg.clone(pwd(), \"Turing\");
-      Pkg.build(\"Turing\")"
+  - echo "%JL_BUILD_SCRIPT%"
+  - C:\julia\bin\julia -e "%JL_BUILD_SCRIPT%"
 
 test_script:
-  - C:\projects\julia\bin\julia --check-bounds=yes -e "using Pkg; Pkg.test(\"Turing\"; coverage=true)"
+  - echo "%JL_TEST_SCRIPT%"
+  - C:\julia\bin\julia -e "%JL_TEST_SCRIPT%"
