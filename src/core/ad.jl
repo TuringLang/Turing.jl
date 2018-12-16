@@ -26,29 +26,6 @@ getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
 getADtype(alg::Union{Hamiltonian, Gibbs, PMMH}) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
-@generated function getADtype(::Union{Type{<:Gibbs{A}}, Type{<:PMMH{T, A}}}) where {T, A <: Tuple}
-    ad_types = getADtype.([A.types...])
-    i = 1
-    while i <= length(ad_types)
-        if ad_types[i] === NoAD
-            deleteat!(ad_types, i)
-        else
-            i += 1
-        end
-    end
-    if length(ad_types) == 0
-        return :(NoAD)
-    elseif length(ad_types) == 1
-        return :($(ad_types[1]))
-    else
-        if all(x->x==ad_types[1], ad_types[2:end])
-            return :($(ad_types[1]))
-        else
-            return :(throw("Mismatched autodiff types in sub-algorithms is not supported."))
-        end
-    end
-end
-
 """
 gradient(
     θ::AbstractVector{<:Real},
