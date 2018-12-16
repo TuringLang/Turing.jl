@@ -1,7 +1,7 @@
 abstract type ADBackend end
 struct ForwardDiffAD{chunk} <: ADBackend end
 struct FluxTrackerAD <: ADBackend end
-struct NoAD <: ADBackend end
+
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 function ADBackend(::Val{T}) where {T}
@@ -23,7 +23,7 @@ Finds the autodifferentiation type of the algorithm `alg`.
 getADtype() = ADBackend()
 getADtype(s::Sampler) = getADtype(typeof(s))
 getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
-getADtype(alg::Union{Hamiltonian, Gibbs, PMMH}) = getADtype(typeof(alg))
+getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
 """
