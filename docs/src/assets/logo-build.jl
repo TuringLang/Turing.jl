@@ -36,4 +36,4 @@ plot!(xs, pdf.(Ref(posterior_2), xs), color=julia_green, linewidth=lw, lab="post
 xaxis!(false)
 yaxis!(false)
 
-png("turing-logo")
+savefig("turing-logo.svg")
