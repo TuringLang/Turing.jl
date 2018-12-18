@@ -7,8 +7,8 @@ include("make-utils.jl")
 # Make paths.
 examples_path = joinpath(@__DIR__, joinpath("site", "_tutorials"))
 source_path = joinpath(@__DIR__, "src")
-build_relative = "site"
-build_path = joinpath(@__DIR__, build_relative, "site")
+build_relative = "build"
+build_path = joinpath(@__DIR__, build_relative)
 site_path = joinpath(@__DIR__, "site")
 
 # You can skip this part if you are on a metered
@@ -66,15 +66,17 @@ end
 # Postprocess markdown files (put the YAML headers back in)
 cp(src_temp, source_path, force = true)
 rm(src_temp, recursive = true)
-postprocess_markdown(site_path, yaml_dict, original = source_path)
+postprocess_markdown(build_path, yaml_dict, original = source_path)
 
-println()
-@info "YAML dict:"
-for key in keys(yaml_dict)
-    println(key)
+@info "YAML DICT"
+for i in keys(yaml_dict)
+    @info i
 end
 
-if false
+# Copy the built files to the site directory.
+filecopy_deep(build_path, site_path)
+
+if !in(ARGS, "no-publish")
     # Define homepage update function.
     page_update = update_homepage(
         "github.com/TuringLang/Turing.jl.git",

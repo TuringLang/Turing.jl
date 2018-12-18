@@ -120,9 +120,20 @@ function withfile(func, file::AbstractString, contents::AbstractString)
     end
 end
 
-function filecopy(src, dst)
+function filecopy(src, dst, force_copy = true)
     for item in readdir(src)
-        cp(joinpath(src, item), joinpath(dst, item), force = true)
+        cp(joinpath(src, item), joinpath(dst, item), force = force_copy)
+    end
+end
+
+function filecopy_deep(src, dst)
+    for (root, dirs, files) in walkdir(src)
+        for file in files
+            source = joinpath(root, file)
+            target = replace(source, src => dst)
+            isdir(dirname(target)) || mkpath(dirname(target))
+            cp(source, target, force=true)
+        end
     end
 end
 
@@ -150,23 +161,17 @@ function postprocess_markdown(folder, yaml_dict; original = "")
     try
         for (root, dirs, files) in walkdir(folder)
             for file in files
-                verbose = endswith(file, "get-started.md")
                 full_path = joinpath(root, file)
                 original_path = full_path
 
                 if length(original) > 0
                     # original_path = abspath(original, file)
-                    # original_path = replace(full_path, folder => original)
-                    original_path = replace(
-                        full_path,
-                        joinpath("docs", "site") => joinpath("docs", "src")
-                    )
+                    original_path = replace(full_path, folder => original)
+                    # original_path = replace(
+                    #     full_path,
+                    #     joinpath("docs", "site") => joinpath("docs", "src")
+                    # )
                 end
-
-                verbose ? println("Original: $original_path \n Full: $full_path
-                root: $root
-                dirs: $dirs ") : nothing
-
 
                 if haskey(yaml_dict, original_path)
                     # println("Original: $original_path => Full path: $full_path")
@@ -187,8 +192,9 @@ function postprocess_markdown(folder, yaml_dict; original = "")
 							write(f, replace(txt, "![](figures" => "![](/{{site.baseurl}}/tutorials/figures"))
 						end
                     end
-                elseif endswith(full_path, ".md")
-                    # println("Original: $original_path => Full path: $full_path")
+                elseif endswith(file, ".md")
+                    println("Original: $original_path")
+                    println("Full:     $full_path \n")
                 end
 
 				# Make specific api items headers.

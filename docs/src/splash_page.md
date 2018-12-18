@@ -55,9 +55,9 @@ citing:
   - excerpt: '<sub>If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)</sub>'
 ---
 
+```@raw html
 {% include feature_row id="main-feature_row" %}
 {% include feature_row id="samplers" type="left" %}
 {% include feature_row id="flux" type="right" %}
-
-
 {% include feature_row id="citing" type = "center-left" %}
+```
