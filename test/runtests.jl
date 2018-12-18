@@ -11,7 +11,21 @@ cd(path); include("utility.jl")
 @debug("[runtests.jl] utility.jl loaded")
 @debug("[runtests.jl] testing starts")
 
-# run all tests
-runtests()
+if get(ENV, "TRAVIS", false)
+    # If Travis is testing, separate the tests.
+    numerical_tests = [joinpath("hmc.jl", "matrix_support.jl"),
+                       joinpath("hmc.jl", "error_test.jl")]
+
+    if ENV["STAGE"] == "test"
+        runtests(exclude = numerical_tests)
+    elseif ENV["STAGE"] == "numerical"
+        runtests(specific_tests = numerical_tests)
+    else
+        @warn "Unknown Travis stage, currently set to: $(ENV["STAGE"])"
+    end
+else
+    # Otherwise, test everything.
+    runtests()
+end
 
 @debug("[runtests.jl] all tests finished")
