@@ -1,6 +1,9 @@
 # Editing the Documentation Site
 
+The Turing site is broken into two different folder structures:
 
+- `docs/src` contains all the _content_ of the site. This is where any markdown (`.md`) file is located. When the site is built, the files in this directory are run through `Documenter`, as well as some Turing-specific pre and postprocessing to get LaTeX and YAML headers correct.
+- `docs/site` contains anything related to the _structure_ and _appearance_ of the website. You can find all the webpage formatting, site configuration, and navigation configuration files here.
 
 # Building the Documentation Site Locally
 
