@@ -1,3 +1,7 @@
+---
+title: Introduction to Turing
+permalink: /:collection/:name/
+---
 
 
 ## Introduction
@@ -97,9 +101,6 @@ The intuition about this definition is that the variance of the distribution wil
 # Import StatsPlots for animating purposes.
 using StatPlots
 
-# This is required for plotting only.
-x = range(0, stop = 1, length = 100)
-
 # Make an animation.
 animation = @animate for (i, N) in enumerate(Ns)
 
@@ -187,7 +188,7 @@ chain = sample(coinflip(data), HMC(iterations, ϵ, τ));
 
 ````
 [HMC] Finished with
-  Running time        = 5.213980837999997;
+  Running time        = 9.639088371000007;
   Accept rate         = 0.997;
   #lf / sample        = 9.99;
   #evals / sample     = 11.989;
@@ -206,7 +207,7 @@ plot(p_summary, seriestype = :histogram)
 ````
 
 
-![](figures/0_Introduction_9_1.svg)
+![](/tutorials/figures/0_Introduction_9_1.svg)
 
 
 Now we can build our plot:

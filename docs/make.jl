@@ -4,11 +4,12 @@ using LibGit2: clone
 # Include the update_homepage function.
 include("homepage-updater.jl")
 
-# Get paths.
+# Make paths.
 examples_path = joinpath(@__DIR__, joinpath("site", "_tutorials"))
 source_path = joinpath(@__DIR__, "src")
 build_relative = joinpath("site", "_docs")
 build_path = joinpath(@__DIR__, build_relative)
+site_path = joinpath(@__DIR__, "site")
 
 # You can skip this part if you are on a metered
 # connection by calling `julia make.jl no-tutorials`
@@ -77,12 +78,3 @@ if !in("no-publish", ARGS)
 else
     @info "Skipping publishing."
 end
-
-# # Deploy documentation.
-# deploydocs(
-#     repo = "github.com/TuringLang/Turing.jl.git",
-#     target = "build",
-#     deps = nothing,
-#     make = nothing,
-#     julia = "1.0"
-# )
