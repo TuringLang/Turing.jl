@@ -3,10 +3,22 @@ language: julia
 julia: 1.0
 
 jobs:
+  allow_failures:
+    - env: STAGE=numerical
   include:
     - stage: test
       os: linux
       env: STAGE=test
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                   Pkg.clone(pwd(), "Turing");
+                   Pkg.build("Turing");
+                   Pkg.test("Turing"; coverage=true)'
+    - stage: numerical
+      allow_failures:
+      os: linux
+      env: STAGE=numerical
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
@@ -22,7 +34,7 @@ jobs:
         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
                    Pkg.clone(pwd(), "Turing");
                    Pkg.build("Turing");
-                   Pkg.test("Turing"; coverage=true)'         
+                   Pkg.test("Turing"; coverage=true)'
     - stage: documentation
       if: branch = master
       env: STAGE=documentation
