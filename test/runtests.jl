@@ -11,7 +11,7 @@ cd(path); include("utility.jl")
 @debug("[runtests.jl] utility.jl loaded")
 @debug("[runtests.jl] testing starts")
 
-if get(ENV, "TRAVIS", false)
+if get(ENV, "TRAVIS", "false") == "true"
     # If Travis is testing, separate the tests.
     numerical_tests = [joinpath("hmc.jl", "matrix_support.jl"),
                        joinpath("hmc.jl", "error_test.jl")]
