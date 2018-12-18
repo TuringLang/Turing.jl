@@ -2,13 +2,13 @@ using Documenter, DocumenterMarkdown, DynamicHMC, Turing
 using LibGit2: clone
 
 # Include the update_homepage function.
-include("homepage-updater.jl")
+include("make-utils.jl")
 
 # Make paths.
 examples_path = joinpath(@__DIR__, joinpath("site", "_tutorials"))
 source_path = joinpath(@__DIR__, "src")
-build_relative = joinpath("site", "_docs")
-build_path = joinpath(@__DIR__, build_relative)
+build_relative = "site"
+build_path = joinpath(@__DIR__, build_relative, "site")
 site_path = joinpath(@__DIR__, "site")
 
 # You can skip this part if you are on a metered
@@ -66,9 +66,15 @@ end
 # Postprocess markdown files (put the YAML headers back in)
 cp(src_temp, source_path, force = true)
 rm(src_temp, recursive = true)
-postprocess_markdown(build_path, yaml_dict, original = source_path)
+postprocess_markdown(site_path, yaml_dict, original = source_path)
 
-if !in("no-publish", ARGS)
+println()
+@info "YAML dict:"
+for key in keys(yaml_dict)
+    println(key)
+end
+
+if false
     # Define homepage update function.
     page_update = update_homepage(
         "github.com/TuringLang/Turing.jl.git",
