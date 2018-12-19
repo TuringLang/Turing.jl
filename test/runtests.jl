@@ -13,8 +13,7 @@ cd(path); include("utility.jl")
 
 if get(ENV, "TRAVIS", "false") == "true"
     # If Travis is testing, separate the tests.
-    numerical_tests = [joinpath("hmc.jl", "matrix_support.jl"),
-                       joinpath("hmc.jl", "error_test.jl")]
+    numerical_tests = [joinpath("hmc.jl", "matrix_support.jl")]
 
     if ENV["STAGE"] == "test"
         runtests(exclude = numerical_tests)
