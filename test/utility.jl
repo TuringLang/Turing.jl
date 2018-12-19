@@ -89,7 +89,7 @@ function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 	if has_specific_tests
 		TEST_GROUPS = []
 		for i in specific_tests
-			push!(TEST_GROUPS, dirname(i))
+			TEST_GROUPS = TEST_GROUPS ∪ dirname(i)
 		end
 	end
 
@@ -104,10 +104,12 @@ function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 					@testset "$(test)" begin
 						test_path = joinpath(test_group, test)
 
+						# If we've got specific tests, examine those.
 						if has_specific_tests
 							if test_path in specific_tests
 								include(joinpath(test_group, test))
 							end
+						# Otherwise look at every file in the folder.
 						else
 							if test_path in exclude
 								@info "Skipping $test_path."
