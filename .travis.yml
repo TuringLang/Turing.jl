@@ -4,7 +4,8 @@ julia: 1.0
 
 jobs:
   allow_failures:
-    - env: STAGE=numerical
+    - julia: 1.0
+      env: STAGE=numerical
   include:
     - stage: test
       os: linux
