@@ -89,7 +89,7 @@ function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 	if has_specific_tests
 		TEST_GROUPS = []
 		for i in specific_tests
-			TEST_GROUPS = TEST_GROUPS ∪ dirname(i)
+			TEST_GROUPS = TEST_GROUPS ∪ [dirname(i)]
 		end
 	end
 
