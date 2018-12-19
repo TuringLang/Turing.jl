@@ -4,8 +4,8 @@ environment:
  # - julia_version: nightly
 
 platform:
-  - x86 # 32-bit
   - x64 # 64-bit
+  - x86 # 32-bit
 
 # # Uncomment the following lines to allow failures on nightly julia
 # # (tests will run but not make your overall status red)
