@@ -14,7 +14,11 @@ deps/deps.jl
 deps/build.log
 
 docs/build/
+docs/site/_tutorials/
+docs/site/_docs/
 docs/site/_site/
+docs/site/assets/
+docs/site/*.md
 docs/site/.sass-cache/
 
 .DS_Store
