@@ -7,8 +7,6 @@
 [![Turing](http://pkg.julialang.org/badges/Turing_0.6.svg)](http://pkg.julialang.org/detail/Turing)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/)
 
-News: **Turing.jl is now Julia 1.0 compatible now! Be aware that some things still might fail.**
-
 **Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Current features include:
 
 - Universal probabilistic programming with an intuitive modelling interface
