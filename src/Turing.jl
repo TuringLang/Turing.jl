@@ -92,9 +92,9 @@ const CACHERANGES = 0b01
 #######################
 abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
-abstract type Hamiltonian <: InferenceAlgorithm end
-abstract type StaticHamiltonian <: Hamiltonian end
-abstract type AdaptiveHamiltonian <: Hamiltonian end
+abstract type Hamiltonian{AD} <: InferenceAlgorithm end
+abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
+abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AbstractSampler end
 """
     Sampler{T}

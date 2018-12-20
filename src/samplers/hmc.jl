@@ -43,28 +43,31 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
 sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
-mutable struct HMC{T} <: StaticHamiltonian
+mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     n_iters   ::  Int       # number of samples
     epsilon   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
     space     ::  Set{T}    # sampling space, emtpy means all
     gid       ::  Int       # group ID
 end
-function HMC(epsilon::Float64, tau::Int, space...)
+HMC(args...) = HMC{ADBackend()}(args...)
+function HMC{AD}(epsilon::Float64, tau::Int, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    HMC(1, epsilon, tau, _space, 0)
+    return HMC{AD, eltype(_space)}(1, epsilon, tau, _space, 0)
 end
-function HMC(n_iters::Int, epsilon::Float64, tau::Int)
-    HMC(n_iters, epsilon, tau, Set(), 0)
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int) where AD
+    return HMC{AD, Any}(n_iters, epsilon, tau, Set(), 0)
 end
-function HMC(n_iters::Int, epsilon::Float64, tau::Int, space...)
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    HMC(n_iters, epsilon, tau, _space, 0)
+    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, 0)
 end
-function HMC(alg::HMC, new_gid::Int)
-    HMC(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
+function HMC{AD1}(alg::HMC{AD2, T}, new_gid::Int) where {AD1, AD2, T}
+    return HMC{AD1, T}(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
 end
-HMC{T}(alg::HMC, new_gid::Int) where {T} = HMC(alg, new_gid)
+function HMC{AD, T}(alg::HMC, new_gid::Int) where {AD, T}
+    return HMC{AD, T}(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
+end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
                   rev_func=nothing, log_func=nothing)

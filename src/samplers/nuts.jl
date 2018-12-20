@@ -30,42 +30,39 @@ end
 sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
 ```
 """
-mutable struct NUTS{T} <: AdaptiveHamiltonian
-  n_iters   ::  Int       # number of samples
-  n_adapts  ::  Int       # number of samples with adaption for epsilon
-  delta     ::  Float64   # target accept rate
-  space     ::  Set{T}    # sampling space, emtpy means all
-  gid       ::  Int       # group ID
+mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
+    n_iters   ::  Int       # number of samples
+    n_adapts  ::  Int       # number of samples with adaption for epsilon
+    delta     ::  Float64   # target accept rate
+    space     ::  Set{T}    # sampling space, emtpy means all
+    gid       ::  Int       # group ID
 end
-"""
-    NUTS(n_iters::Int, delta::Float64)
-
-No-U-Turn Sampler (NUTS) sampler, called only with a target acceptance rate.
-
-Usage:
-
-```julia
-NUTS(1000, 0.6)
-```
-"""
-function NUTS(n_adapts::Int, delta::Float64, space...)
-  NUTS(1, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
+function NUTS{AD}(n_adapts::Int, delta::Float64, space...) where AD
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
+    NUTS{AD, eltype(_space)}(1, n_adapts, delta, _space, 0)
 end
-function NUTS(n_iters::Int, n_adapts::Int, delta::Float64, space...)
-  NUTS(n_iters, n_adapts, delta, isa(space, Symbol) ? Set([space]) : Set(space), 0)
+function NUTS{AD}(n_iters::Int, n_adapts::Int, delta::Float64, space...) where AD
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
+    NUTS{AD, eltype(_space)}(n_iters, n_adapts, delta, _space, 0)
 end
-function NUTS(n_iters::Int, delta::Float64)
-  n_adapts_default = Int(round(n_iters / 2))
-  NUTS(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, delta, Set(), 0)
+function NUTS{AD}(n_iters::Int, delta::Float64) where AD
+    n_adapts_default = Int(round(n_iters / 2))
+    NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, delta, Set(), 0)
 end
-NUTS(alg::NUTS, new_gid::Int) = NUTS(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
+function NUTS{AD1}(alg::NUTS{AD2, T}, new_gid::Int) where {AD1, AD2, T}
+    NUTS{AD1, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
+end
+function NUTS{AD, T}(alg::NUTS, new_gid::Int) where {AD, T}
+    NUTS{AD, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.space, new_gid)
+end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::NUTS, momentum_sampler::Function;
                   rev_func=nothing, log_func=nothing)
-  θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, H_func, momentum_sampler)
-  lj_new = lj_func(θ_new)
-  is_accept = true
-  return θ_new, lj_new, is_accept, α
+    θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, H_func, momentum_sampler)
+    lj_new = lj_func(θ_new)
+    is_accept = true
+    return θ_new, lj_new, is_accept, α
 end
 
 """
