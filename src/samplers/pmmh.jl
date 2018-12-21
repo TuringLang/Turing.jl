@@ -34,7 +34,7 @@ PMMH(alg::PMMH, new_gid) = PMMH(alg.n_iters, alg.algs, alg.space, new_gid)
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
 
-function Sampler(alg::PMMH, model::CallableModel)
+function Sampler(alg::PMMH, model::Model)
   alg_str = "PMMH"
   n_samplers = length(alg.algs)
   samplers = Array{Sampler}(undef, n_samplers)
@@ -113,7 +113,7 @@ step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool) = begin
   return vi, is_accept
 end
 
-sample(model::CallableModel, alg::PMMH;
+sample(model::Model, alg::PMMH;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
        reuse_spl_n=0             # flag for spl re-using

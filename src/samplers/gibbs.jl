@@ -35,7 +35,7 @@ Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs, model::CallableModel)
+function Sampler(alg::Gibbs, model::Model)
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
 
@@ -65,7 +65,7 @@ function Sampler(alg::Gibbs, model::CallableModel)
 end
 
 function sample(
-                model::CallableModel,
+                model::Model,
                 alg::Gibbs;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue

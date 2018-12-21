@@ -4,25 +4,25 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
-struct CallableModel{pvars, dvars, F, TD}
+struct Model{pvars, dvars, F, TD}
     f::F
     data::TD
 end
-function CallableModel{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
-    return CallableModel{pvars, dvars, F, TD}(f, data)
+function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
+    return Model{pvars, dvars, F, TD}(f, data)
 end
-pvars(m::CallableModel{params}) where {params} = Tuple(params.types)
-function dvars(m::CallableModel{params, data}) where {params, data}
+pvars(m::Model{params}) where {params} = Tuple(params.types)
+function dvars(m::Model{params, data}) where {params, data}
     return Tuple(data.types)
 end
-@generated function inpvars(::Val{sym}, ::CallableModel{params}) where {sym, params}
+@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
     if sym in params.types
         return :(true)
     else
         return :(false)
     end
 end
-@generated function indvars(::Val{sym}, ::CallableModel{params, data}) where {sym, params, data}
+@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
     if sym in data.types
         return :(true)
     else
@@ -30,7 +30,7 @@ end
     end
 end
 
-(m::CallableModel)(args...; kwargs...) = m.f(args..., m; kwargs...)
+(m::Model)(args...; kwargs...) = m.f(args..., m; kwargs...)
 
 # TODO: Replace this macro, see issue #514
 """
@@ -280,7 +280,7 @@ function _model(fexpr)
                 vi.logp = zero(Real)
                 $closure_main_body
             end
-            model = Turing.CallableModel{pvars, dvars}($closure_name, data)
+            model = Turing.Model{pvars, dvars}($closure_name, data)
             return model
         end
     end)
