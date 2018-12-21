@@ -30,7 +30,7 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
@@ -40,7 +40,7 @@ Computes the gradient of the log joint of `θ` for the model specified by
 @generated function gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     sampler::TS=nothing,
 ) where {TS <: Union{Nothing, Sampler}}
     if TS == Nothing
@@ -68,7 +68,7 @@ end
 gradient_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     spl::Union{Nothing, Sampler}=nothing,
     chunk_size::Int=CHUNKSIZE[],
 )
@@ -111,7 +111,7 @@ end
 gradient_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
