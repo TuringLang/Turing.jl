@@ -1,11 +1,12 @@
 using Turing
-import Turing.translate!
+import Turing.translate_tilde!
 
-model_info = Dict(:name => :model, 
-                  :args => [], 
-                  :dvars => Set{Symbol}(), 
-                  :pvars => Set{Symbol}())
-res = translate!(:(y~Normal(1,1)), model_info)
+model_info = Dict(:name => "model", :main_body_names => Dict(:model => :model, :vi => :vi, :sampler => :sampler), :arg_syms => [], :pvars_list => [])
+
+ex = :(y ~ Normal(1,1))
+model_info[:main_body] = ex
+translate_tilde!(model_info)
+res = model_info[:main_body]
 Base.@assert res.head == :block
 
 ex = quote
@@ -13,9 +14,7 @@ ex = quote
   y = rand()
   y ~ Normal(0,1)
 end
-model_info = Dict(:name => :model, 
-                  :args => [], 
-                  :dvars => Set{Symbol}(), 
-                  :pvars => Set{Symbol}())
-res2 = translate!(ex, model_info)
+model_info[:main_body] = ex
+translate_tilde!(model_info)
+res = model_info[:main_body]
 Base.@assert res.head == :block

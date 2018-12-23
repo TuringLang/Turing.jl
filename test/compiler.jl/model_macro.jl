@@ -1,8 +1,9 @@
 using Turing, Distributions, Test
 using MacroTools
 
+model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
 # unit test model macro
-expr = Turing.generate_observe(:x, :y)
+expr = Turing.generate_observe(:x, :y, model_info)
 @test expr.head == :block
 @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
 
