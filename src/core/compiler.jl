@@ -10,7 +10,8 @@ using Base.Meta: parse
         data::TD
     end
     
-A `Model` struct that with parameter variables `pvars`, data variables `dvars`, inner function `f` and `data::NamedTuple`.
+A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
+function `f` and `data::NamedTuple`.
 """
 struct Model{pvars, dvars, F, TD}
     f::F
@@ -20,22 +21,12 @@ function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
     return Model{pvars, dvars, F, TD}(f, data)
 end
 pvars(m::Model{params}) where {params} = Tuple(params.types)
-function dvars(m::Model{params, data}) where {params, data}
-    return Tuple(data.types)
-end
+dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
 @generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
-    if sym in params.types
-        return :(true)
-    else
-        return :(false)
-    end
+    return sym in params.types ? :(true) : :(false)
 end
 @generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
-    if sym in data.types
-        return :(true)
-    else
-        return :(false)
-    end
+    return sym in data.types ? :(true) : :(false)
 end
 
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
@@ -64,47 +55,48 @@ function var_tuple(sym::Symbol, inds::Expr=:(()))
 end
 
 
-wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution or a vector of Distributions on line $(l)."
+function wrong_dist_errormsg(l)
+    return "Right-hand side of a ~ must be subtype of Distribution or a vector of" * 
+        "Distributions on line $(l)."
+end
 
 """
-    generate_observe(observation, distribution, model_info)
+    generate_observe(observation, dist, model_info)
 
 Generate an observe expression for observation `observation` drawn from 
-a distribution or a vector of distributions (`distribution`).
-
+a distribution or a vector of distributions (`dist`).
 """
 function generate_observe(observation, dist, model_info)
     main_body_names = model_info[:main_body_names]
     vi = main_body_names[:vi]
     sampler = main_body_names[:sampler]
     return quote
-            isdist = if isa($dist, AbstractVector)
-                # Check if the right-hand side is a vector of distributions.
-                all(d -> isa(d, Distribution), $dist)
-            else
-                # Check if the right-hand side is a distribution.
-                isa($dist, Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-            $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
+        isdist = if isa($dist, AbstractVector)
+            # Check if the right-hand side is a vector of distributions.
+            all(d -> isa(d, Distribution), $dist)
+        else
+            # Check if the right-hand side is a distribution.
+            isa($dist, Distribution)
         end
+        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+        $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
+    end
 end
 
 """
-    generate_assume(variable, distribution, model_info)
+    generate_assume(var, dist, model_info)
 
-Generate an assume expression for parameters `variable` drawn from 
-a distribution or a vector of distributions (`distribution`).
-
+Generate an assume expression for parameters `var` drawn from 
+a distribution or a vector of distributions (`dist`).
 """
 function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     main_body_names = model_info[:main_body_names]
     vi = main_body_names[:vi]
     sampler = main_body_names[:sampler]
     
-    varname = gensym()
-    sym = gensym(); idcs = gensym(); csym = gensym(); 
-    csym_str = gensym(); indexing = gensym(); syms = gensym()
+    varname = gensym(:varname)
+    sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
+    csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
     
     if var isa Symbol
         varname_expr = quote
@@ -122,7 +114,7 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         end
     end
     
-    _lp = gensym()
+    lp = gensym(:lp)
     return quote
         $varname_expr
         isdist = if isa($dist, AbstractVector)
@@ -134,12 +126,12 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         end
         @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
-        ($var, $_lp) = if isa($dist, AbstractVector)
+        ($var, $lp) = if isa($dist, AbstractVector)
             Turing.assume($sampler, $dist, $varname, $var, $vi)
         else
             Turing.assume($sampler, $dist, $varname, $vi)
         end
-        $vi.logp += $_lp
+        $vi.logp += $lp
     end
 end
 
@@ -147,19 +139,12 @@ end
     tilde(left, right, model_info)
 
 The `tilde` function generates observation expression for data variables and assumption expressions for parameter variables, updating `model_info` in the process.
-
 """
 function tilde(left, right, model_info)
     return generate_observe(left, right, model_info)
 end
 function tilde(left::Union{Symbol, Expr}, right, model_info)
-    if left isa Symbol
-        vsym = left
-    else
-        vsym = getvsym(left)
-    end
-    @assert isa(vsym, Symbol)
-    return _tilde(vsym, left, right, model_info)
+    return _tilde(getvsym(left), left, right, model_info)
 end
 
 function _tilde(vsym, left, dist, model_info)
@@ -260,7 +245,6 @@ end
     build_model_info(input_expr)
 
 Builds the `model_info` dictionary from the model's expression.
-
 """
 function build_model_info(input_expr)
     # Extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
@@ -280,13 +264,13 @@ function build_model_info(input_expr)
         :tent_dvars_list => Symbol[],
         :tent_pvars_list => Symbol[],
         :main_body_names => Dict(
-            :vi => gensym(), 
-            :sampler => gensym(),
-            :model => gensym(),
-            :pvars => gensym(),
-            :dvars => gensym(),
-            :data => gensym(),
-            :inner_function => gensym()
+            :vi => gensym(:vi), 
+            :sampler => gensym(:sampler),
+            :model => gensym(:model),
+            :pvars => gensym(:pvars),
+            :dvars => gensym(:dvars),
+            :data => gensym(:data),
+            :inner_function => gensym(:inner_function)
         )
     )
 
