@@ -209,9 +209,12 @@ function model_generator(x = nothing, y = nothing)
     data = Turing.get_data(dvars, (x = x, y = y))
     
     inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
-    inner_function(model) = inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
-    inner_function(vi::Turing.VarInfo, model) = inner_function(vi, Turing.SampleFromPrior(), model)
-
+    function inner_function(model)
+        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+    end
+    function inner_function(vi::Turing.VarInfo, model)
+        return inner_function(vi, Turing.SampleFromPrior(), model)
+    end
     # Define the main inner function
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
         local x
@@ -377,12 +380,23 @@ function build_output(model_info)
             $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
             
             # Define fallback inner functions
-            $inner_function_name($sampler_name::Turing.AnySampler, $model_name) = $inner_function_name($model_name)
-            $inner_function_name($model_name) = $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
-            $inner_function_name($vi_name::Turing.VarInfo, $model_name) = $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+            function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
+                return $inner_function_name($model_name)
+            end
+            function $inner_function_name($model_name)
+                return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
+            end
+            function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
+                return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+            end
 
             # Define the main inner function
-            function $inner_function_name($vi_name::Turing.VarInfo, $sampler_name::Turing.AnySampler, $model_name)
+            function $inner_function_name(
+                $vi_name::Turing.VarInfo, 
+                $sampler_name::Turing.AnySampler, 
+                $model_name
+                )
+                
                 $unwrap_data_expr
                 $vi_name.logp = zero(Real)
                 $main_body
