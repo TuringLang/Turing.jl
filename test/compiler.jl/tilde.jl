@@ -1,7 +1,7 @@
 using Turing
 import Turing.translate_tilde!
 
-model_info = Dict(:name => "model", :main_body_names => Dict(:model => :model, :vi => :vi, :sampler => :sampler), :arg_syms => [], :pvars_list => [])
+model_info = Dict(:name => "model", :main_body_names => Dict(:model => :model, :vi => :vi, :sampler => :sampler), :arg_syms => [], :tent_pvars_list => [])
 
 ex = :(y ~ Normal(1,1))
 model_info[:main_body] = ex

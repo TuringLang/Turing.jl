@@ -4,6 +4,14 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
+"""
+    struct Model{pvars, dvars, F, TD}
+        f::F
+        data::TD
+    end
+    
+A `Model` struct that with parameter variables `pvars`, data variables `dvars`, inner function `f` and `data::NamedTuple`.
+"""
 struct Model{pvars, dvars, F, TD}
     f::F
     data::TD
@@ -30,7 +38,7 @@ end
     end
 end
 
-(m::Model)(args...; kwargs...) = m.f(args..., m; kwargs...)
+(model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 
 # TODO: Replace this macro, see issue #514
 """
@@ -63,6 +71,7 @@ wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution
 
 Generate an observe expression for observation `observation` drawn from 
 a distribution or a vector of distributions (`distribution`).
+
 """
 function generate_observe(observation, dist, model_info)
     main_body_names = model_info[:main_body_names]
@@ -134,10 +143,15 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     end
 end
 
+"""
+    tilde(left, right, model_info)
+
+The `tilde` function generates observation expression for data variables and assumption expressions for parameter variables, updating `model_info` in the process.
+
+"""
 function tilde(left, right, model_info)
     return generate_observe(left, right, model_info)
 end
-
 function tilde(left::Union{Symbol, Expr}, right, model_info)
     if left isa Symbol
         vsym = left
@@ -153,9 +167,9 @@ function _tilde(vsym, left, dist, model_info)
     model_name = main_body_names[:model]
 
     if vsym in model_info[:arg_syms]
-        if !(vsym in model_info[:dvars_list])
+        if !(vsym in model_info[:tent_dvars_list])
             @debug " Observe - `$(vsym)` is an observation"
-            push!(model_info[:dvars_list], vsym)
+            push!(model_info[:tent_dvars_list], vsym)
         end
 
         return quote 
@@ -167,14 +181,14 @@ function _tilde(vsym, left, dist, model_info)
         end
     else
         # Assume it is a parameter.
-        if !(vsym in model_info[:pvars_list])
+        if !(vsym in model_info[:tent_pvars_list])
             msg = " Assume - `$(vsym)` is a parameter"
             if isdefined(Main, vsym)
                 msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
 
             @debug msg
-            push!(model_info[:pvars_list], vsym)
+            push!(model_info[:tent_pvars_list], vsym)
         end
 
         return generate_assume(left, dist, model_info)
@@ -186,45 +200,68 @@ end
 #################
 
 """
-    @model(name, fbody)
+    @model(body)
 
 Macro to specify a probabilistic model.
 
 Example:
 
+Model definition:
+
 ```julia
-@model Gaussian(x) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt.(s))
-    for i in 1:length(x)
-        x[i] ~ Normal(m, sqrt.(s))
-    end
-    return (s, m)
+@model model_generator(x = default_x, y) = begin
+    ...
 end
 ```
 
-Compiler design: `sample(fname(x,y), sampler)`.
+Expanded model definition
+
 ```julia
-fname(x=nothing,y=nothing) = begin
-    ex = quote
-        # Pour in kwargs for those args where value != nothing.
-        fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
-            vi.logp = zero(Real)
-          
-            # Pour in model definition.
-            x ~ Normal(0,1)
-            y ~ Normal(x, 1)
-            return x, y
+# Allows passing arguments as kwargs
+model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
+function model_generator(x = nothing, y = nothing)
+    pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
+    data = Turing.get_data(dvars, (x = x, y = y))
+    
+    inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
+    inner_function(model) = inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+    inner_function(vi::Turing.VarInfo, model) = inner_function(vi, Turing.SampleFromPrior(), model)
+
+    # Define the main inner function
+    function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+        local x
+        if isdefined(model.data, :x)
+            x = model.data.x
+        else
+            x = default_x
         end
+        local y
+        if isdefined(model.data, :y)
+            y = model.data.y
+        else
+            y = nothing
+        end
+
+        vi.logp = zero(Real)
+        ...
     end
-    return Main.eval(ex)
+    model = Turing.Model{pvars, dvars}(inner_function, data)
+    return model
 end
 ```
+
+Generating a model: `model_generator(x_value)::Model`.
 """
 macro model(input_expr)
     build_model_info(input_expr) |> translate_tilde! |> update_args! |> build_output
 end
 
+"""
+    build_model_info(input_expr)
+
+Builds the `model_info` dictionary from the model's expression.
+
+"""
 function build_model_info(input_expr)
     # Extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
     modeldef = MacroTools.splitdef(input_expr)
@@ -240,8 +277,8 @@ function build_model_info(input_expr)
         :arg_syms => arg_syms,
         :args => modeldef[:args],
         :kwargs => modeldef[:kwargs],
-        :dvars_list => Symbol[],
-        :pvars_list => Symbol[],
+        :tent_dvars_list => Symbol[],
+        :tent_pvars_list => Symbol[],
         :main_body_names => Dict(
             :vi => gensym(), 
             :sampler => gensym(),
@@ -249,13 +286,18 @@ function build_model_info(input_expr)
             :pvars => gensym(),
             :dvars => gensym(),
             :data => gensym(),
-            :closure => gensym()
+            :inner_function => gensym()
         )
     )
 
     return model_info
 end
 
+"""
+    translate_tilde!(model_info)
+
+Translates ~ expressions to observation or assumption expressions, updating `model_info`.
+"""
 function translate_tilde!(model_info)
     ex = model_info[:main_body]
     ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
@@ -263,6 +305,11 @@ function translate_tilde!(model_info)
     return model_info
 end
 
+"""
+    update_args!(model_info)
+
+Extracts default argument values and replaces them with `nothing`.
+"""
 function update_args!(model_info)
     fargs = model_info[:args]
     fargs_default_values = Dict()
@@ -283,6 +330,11 @@ function update_args!(model_info)
     return model_info
 end
 
+"""
+    build_output(model_info)
+
+Builds the output expression.
+"""
 function build_output(model_info)
     # Construct user-facing function
     main_body_names = model_info[:main_body_names]
@@ -292,24 +344,32 @@ function build_output(model_info)
     data_name = main_body_names[:data]
     pvars_name = main_body_names[:pvars]
     dvars_name = main_body_names[:dvars]
-    closure_name = main_body_names[:closure]
+    inner_function_name = main_body_names[:inner_function]
 
     args = model_info[:args]
     arg_syms = model_info[:arg_syms]
     outer_function_name = model_info[:name]
-    pvars_list = model_info[:pvars_list]
-    dvars_list = model_info[:dvars_list]
-    closure_main_body = model_info[:main_body]
+    tent_pvars_list = model_info[:tent_pvars_list]
+    tent_dvars_list = model_info[:tent_dvars_list]
+    main_body = model_info[:main_body]
     arg_defaults = model_info[:arg_defaults]
 
-    if length(dvars_list) == 0
-        dvars_nt = :(NamedTuple())
+    if length(tent_dvars_list) == 0
+        tent_dvars_nt = :(NamedTuple())
     else
-        dvars_nt = :($([:($var = $var) for var in dvars_list]...),)
+        tent_dvars_nt = :($([:($var = $var) for var in tent_dvars_list]...),)
     end
 
+    #= Does the following for each of the tentative dvars
+        local x
+        if isdefined(model.data, :x)
+            x = model.data.x
+        else
+            x = default_x
+        end
+    =#
     unwrap_data_expr = Expr(:block)
-    for var in dvars_list
+    for var in tent_dvars_list
         push!(unwrap_data_expr.args, quote
             local $var
             if isdefined($model_name.data, $(QuoteNode(var)))
@@ -321,33 +381,42 @@ function build_output(model_info)
     end
 
     return esc(quote
+        # Allows passing arguments as kwargs
         $outer_function_name(;$(args...)) = $outer_function_name($(arg_syms...))
+        # Outer function with `nothing` as default values
         function $outer_function_name($(args...))
-            $pvars_name, $dvars_name = Turing.get_vars($(Tuple{pvars_list...}), $(dvars_nt))
-            $data_name = Turing.get_data($dvars_name, $dvars_nt)
+            # Adds variables equal to `nothing` to pvars and the rest to dvars
+            # `tent_pvars_list` is the tentative list of pvars
+            # `tent_dvars_nt` is the tentative named tuple of dvars
+            $pvars_name, $dvars_name = Turing.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
+            # Filter out the dvars equal to `nothing`
+            $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
             
-            $closure_name($sampler_name::Turing.AnySampler, $model_name) = $closure_name($model_name)
-            $closure_name($model_name) = $closure_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
-            $closure_name($vi_name::Turing.VarInfo, $model_name) = $closure_name($vi_name, Turing.SampleFromPrior(), $model_name)
-            function $closure_name($vi_name::Turing.VarInfo, $sampler_name::Turing.AnySampler, $model_name)
+            # Define fallback inner functions
+            $inner_function_name($sampler_name::Turing.AnySampler, $model_name) = $inner_function_name($model_name)
+            $inner_function_name($model_name) = $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
+            $inner_function_name($vi_name::Turing.VarInfo, $model_name) = $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+
+            # Define the main inner function
+            function $inner_function_name($vi_name::Turing.VarInfo, $sampler_name::Turing.AnySampler, $model_name)
                 $unwrap_data_expr
                 $vi_name.logp = zero(Real)
-                $closure_main_body
+                $main_body
             end
-            $model_name = Turing.Model{$pvars_name, $dvars_name}($closure_name, $data_name)
+            $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name)
             return $model_name
         end
     end)
 end
 
-@generated function get_vars(pvars::Type{Tpvars}, dvars_nt::NamedTuple) where {Tpvars <: Tuple}
-    pvar_syms = [Tpvars.types...]
-    dvar_syms = [dvars_nt.names...]
-    dvar_types = [dvars_nt.types...]
-    append!(pvar_syms, [dvar_syms[i] for i in 1:length(dvar_syms) if dvar_types[i] == Nothing])
-    setdiff!(dvar_syms, pvar_syms)    
-    pvars_tuple = Tuple{pvar_syms...}
-    dvars_tuple = Tuple{dvar_syms...}
+@generated function get_vars(tent_pvars::Type{Tpvars}, tent_dvars_nt::NamedTuple) where {Tpvars <: Tuple}
+    tent_pvar_syms = [Tpvars.types...]
+    tent_dvar_syms = [tent_dvars_nt.names...]
+    dvar_types = [tent_dvars_nt.types...]
+    append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing])
+    setdiff!(tent_dvar_syms, tent_pvar_syms)    
+    pvars_tuple = Tuple{tent_pvar_syms...}
+    dvars_tuple = Tuple{tent_dvar_syms...}
 
     return :($pvars_tuple, $dvars_tuple)
 end
