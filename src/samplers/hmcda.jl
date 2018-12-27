@@ -35,41 +35,30 @@ For more information, please view the following paper ([arXiv link](https://arxi
 
 Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning Research 15, no. 1 (2014): 1593-1623.
 """
-mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
+mutable struct HMCDA{AD, space} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
     n_adapts  ::  Int       # number of samples with adaption for epsilon
     delta     ::  Float64   # target accept rate
     lambda    ::  Float64   # target leapfrog length
-    space     ::  Set{T}    # sampling space, emtpy means all
     gid       ::  Int       # group ID
 end
-HMCDA(args...) = HMCDA{ADBackend()}(args...)
 function HMCDA{AD}(n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(1, n_adapts, delta, lambda, _space, 0)
+    return HMCDA{AD, space}(1, n_adapts, delta, lambda, 0)
 end
 function HMCDA{AD}(n_iters::Int, delta::Float64, lambda::Float64) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set(), 0)
+    return HMCDA{AD, ()}(n_iters, n_adapts, delta, lambda, 0)
 end
 function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64) where AD
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set(), 0)
+    return HMCDA{AD, ()}(n_iters, n_adapts, delta, lambda, 0)
 end
 function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, delta, lambda, _space, 0)
+    return HMCDA{AD, space}(n_iters, n_adapts, delta, lambda, 0)
 end
-function HMCDA{AD1}(alg::HMCDA{AD2, T}, new_gid::Int) where {AD1, AD2, T}
-    return HMCDA{AD1, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, alg.space, new_gid)
+function HMCDA{AD1}(alg::HMCDA{AD2, space}, new_gid::Int) where {AD1, AD2, space}
+    return HMCDA{AD1, space}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, new_gid)
 end
-function HMCDA{AD, T}(alg::HMCDA, new_gid::Int) where {AD, T}
-    return HMCDA{AD, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, alg.space, new_gid)
-end
-
-function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMCDA, momentum_sampler::Function;
-                  rev_func=nothing, log_func=nothing)
-    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-                θ, lj, lj_func, grad_func, H_func, ϵ, alg.lambda, momentum_sampler; rev_func=rev_func, log_func=log_func)
-    return θ_new, lj_new, is_accept, α
+function HMCDA{AD, space}(alg::HMCDA, new_gid::Int) where {AD, space}
+    return HMCDA{AD, space}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, new_gid)
 end

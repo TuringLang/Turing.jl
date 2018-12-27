@@ -1,35 +1,11 @@
+module Compiler
+
+using MacroTools
 using Base.Meta: parse
+using ..VarReplay
 
-#################
-# Overload of ~ #
-#################
-
-"""
-    struct Model{pvars, dvars, F, TD}
-        f::F
-        data::TD
-    end
-    
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
-function `f` and `data::NamedTuple`.
-"""
-struct Model{pvars, dvars, F, TD}
-    f::F
-    data::TD
-end
-function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
-    return Model{pvars, dvars, F, TD}(f, data)
-end
-pvars(m::Model{params}) where {params} = Tuple(params.types)
-dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
-@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
-    return sym in params.types ? :(true) : :(false)
-end
-@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
-    return sym in data.types ? :(true) : :(false)
-end
-
-(model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
+export  @model,
+        runmodel!
 
 # TODO: Replace this macro, see issue #514
 """
@@ -79,7 +55,7 @@ function generate_observe(observation, dist, model_info)
             isa($dist, Distribution)
         end
         @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-        $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
+        $vi.logp += Turing.Inference.observe($sampler, $dist, $observation, $vi)
     end
 end
 
@@ -100,17 +76,16 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     
     if var isa Symbol
         varname_expr = quote
-            $sym, $idcs, $csym = @VarName $var
+            $sym, $idcs, $csym = Turing.Core.Compiler.@VarName $var
             $csym = Symbol($(model_info[:name]), $csym)
-            $syms = Symbol[$csym, $(QuoteNode(var))]
-            $varname = Turing.VarName($vi, $syms, "")
+            $varname = Turing.Core.VarReplay.VarName{$(QuoteNode(var))}($vi, $csym, "")
         end
     else
         varname_expr = quote
-            $sym, $idcs, $csym = @VarName $var
+            $sym, $idcs, $csym = Turing.Core.Compiler.@VarName $var
             $csym_str = string($(model_info[:name]))*string($csym)
             $indexing = mapfoldl(string, *, $idcs, init = "")
-            $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
+            $varname = Turing.Core.VarReplay.VarName{$sym}($vi, Symbol($csym_str), $indexing)
         end
     end
     
@@ -127,9 +102,9 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
         ($var, $lp) = if isa($dist, AbstractVector)
-            Turing.assume($sampler, $dist, $varname, $var, $vi)
+            Turing.Inference.assume($sampler, $dist, $varname, $var, $vi)
         else
-            Turing.assume($sampler, $dist, $varname, $vi)
+            Turing.Inference.assume($sampler, $dist, $varname, $vi)
         end
         $vi.logp += $lp
     end
@@ -205,18 +180,18 @@ Expanded model definition
 # Allows passing arguments as kwargs
 model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
 function model_generator(x = nothing, y = nothing)
-    pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
-    data = Turing.get_data(dvars, (x = x, y = y))
+    pvars, dvars = Turing.Core.Compiler.get_vars(Tuple{:x, :y}, (x = x, y = y))
+    data = Turing.Core.Compiler.get_data(dvars, (x = x, y = y))
     
-    inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
+    inner_function(sampler::Turing.Samplers.AnySampler, model) = inner_function(model)
     function inner_function(model)
-        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+        return inner_function(Turing.Core.VarReplay.VarInfo(), Turing.Samplers.SampleFromPrior(), model)
     end
-    function inner_function(vi::Turing.VarInfo, model)
-        return inner_function(vi, Turing.SampleFromPrior(), model)
+    function inner_function(vi::Turing.Core.VarReplay.AbstractVarInfo, model)
+        return inner_function(vi, Turing.Samplers.SampleFromPrior(), model)
     end
     # Define the main inner function
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+    function inner_function(vi::Turing.Core.VarReplay.AbstractVarInfo, sampler::Turing.Samplers.AnySampler, model)
         local x
         if isdefined(model.data, :x)
             x = model.data.x
@@ -238,7 +213,7 @@ function model_generator(x = nothing, y = nothing)
 end
 ```
 
-Generating a model: `model_generator(x_value)::Model`.
+Generating a model: `model_generator(x_value)::Turing.Model`.
 """
 macro model(input_expr)
     build_model_info(input_expr) |> translate_tilde! |> update_args! |> build_output
@@ -375,25 +350,25 @@ function build_output(model_info)
             # Adds variables equal to `nothing` to pvars and the rest to dvars
             # `tent_pvars_list` is the tentative list of pvars
             # `tent_dvars_nt` is the tentative named tuple of dvars
-            $pvars_name, $dvars_name = Turing.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
+            $pvars_name, $dvars_name = Turing.Core.Compiler.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
             # Filter out the dvars equal to `nothing`
-            $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
+            $data_name = Turing.Core.Compiler.get_data($dvars_name, $tent_dvars_nt)
             
             # Define fallback inner functions
-            function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
+            function $inner_function_name($sampler_name::Turing.Samplers.AnySampler, $model_name)
                 return $inner_function_name($model_name)
             end
             function $inner_function_name($model_name)
-                return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
+                return $inner_function_name(Turing.Core.VarReplay.VarInfo(), Turing.Samplers.SampleFromPrior(), $model_name)
             end
-            function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
-                return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+            function $inner_function_name($vi_name::Turing.Core.VarReplay.AbstractVarInfo, $model_name)
+                return $inner_function_name($vi_name, Turing.Samplers.SampleFromPrior(), $model_name)
             end
 
             # Define the main inner function
             function $inner_function_name(
-                $vi_name::Turing.VarInfo, 
-                $sampler_name::Turing.AnySampler, 
+                $vi_name::Turing.Core.VarReplay.AbstractVarInfo, 
+                $sampler_name::Turing.Samplers.AnySampler, 
                 $model_name
                 )
                 
@@ -448,3 +423,5 @@ function getvsym(expr::Expr)
     @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
     return getvsym(expr.args[1])
 end
+
+end # module

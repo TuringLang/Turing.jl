@@ -3,7 +3,7 @@ using Turing: reconstruct, invlink, step
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
-randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
+randr(vi::UntypedVarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
   if ~haskey(vi, vn)
     r = rand(dist)
     Turing.push!(vi, vn, r, dist, spl.alg.gid)

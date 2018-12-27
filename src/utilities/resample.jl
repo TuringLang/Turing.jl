@@ -27,7 +27,6 @@ function resample_multinomial(w::AbstractVector{<:Real}, num_particles::Integer)
 end
 
 function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
-
     M = length(w)
 
     # "Repetition counts" (plus the random part, later on):
@@ -78,7 +77,6 @@ function resample_stratified(w::AbstractVector{<:Real}, num_particles::Integer)
 end
 
 function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
-
     Q, N = cumsum(w), num_particles
 
     T = collect(range(0, stop = maximum(Q)-1/N, length = N)) .+ rand()/N

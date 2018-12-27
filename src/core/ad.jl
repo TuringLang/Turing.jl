@@ -1,3 +1,44 @@
+module AD
+
+import ForwardDiff
+import Flux.Tracker
+using ..VarReplay
+using ...Samplers
+using ...Turing: Model, runmodel!
+
+export  setadbackend, 
+        setadsafe, 
+        ForwardDiffAD, 
+        FluxTrackerAD,
+        value,
+        gradient,
+        CHUNKSIZE, 
+        ADBACKEND,
+        setchunksize,
+        verifygrad
+
+const ADBACKEND = Ref(:forward_diff)
+function setadbackend(backend_sym)
+    @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
+    backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
+    ADBACKEND[] = backend_sym
+end
+
+const ADSAFE = Ref(false)
+function setadsafe(switch::Bool)
+    @info("[Turing]: global ADSAFE is set as $switch")
+    ADSAFE[] = switch
+end
+
+const CHUNKSIZE = Ref(40) # default chunksize used by AD
+
+function setchunksize(chunk_size::Int)
+    if ~(CHUNKSIZE[] == chunk_size)
+        @info("[Turing]: AD chunk size is set as $chunk_size")
+        CHUNKSIZE[] = chunk_size
+    end
+end
+
 abstract type ADBackend end
 struct ForwardDiffAD{chunk} <: ADBackend end
 struct FluxTrackerAD <: ADBackend end
@@ -12,8 +53,9 @@ function ADBackend(::Val{T}) where {T}
     end
 end
 
-getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = Val(chunk)
-
+for A in (:HMC, :HMCDA, :NUTS, :SGHMC, :SGLD)
+    @eval Samplers.$A(args...; kwargs...) = $A{ADBackend()}(args...; kwargs...)
+end
 
 """
 getADtype(alg)
@@ -26,10 +68,16 @@ getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
 getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
+getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = Val(chunk)
+
+value(n::ForwardDiff.Dual) = ForwardDiff.value(n)
+value(n::Union{Tracker.TrackedReal, Tracker.TrackedArray}) = n.data
+value(n) = n
+
 """
 gradient(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
@@ -39,7 +87,7 @@ Computes the gradient of the log joint of `θ` for the model specified by
 """
 @generated function gradient(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::TS=nothing,
 ) where {TS <: Union{Nothing, Sampler}}
@@ -67,7 +115,7 @@ end
 """
 gradient_forward(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     spl::Union{Nothing, Sampler}=nothing,
     chunk_size::Int=CHUNKSIZE[],
@@ -78,30 +126,35 @@ using forwards-mode AD from ForwardDiff.jl.
 """
 function gradient_forward(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
     ::Val{chunk_size}=Val(CHUNKSIZE[]),
 ) where chunk_size
     # Record old parameters.
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Define function to compute log joint.
     function f(θ)
-        vi[sampler] = θ
-        return -runmodel!(model, vi, sampler).logp
+        new_vi = NewVarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = value.(θ)
+        vi.logp = value(logp)
+        return -logp
     end
 
     # Set chunk size and do ForwardMode.
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
+    l = vi.logp
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
-    vi.vals, vi.logp = vals_old, logp_old
+    vi[sampler], vi.logp = vals_old, logp_old
 
     # Strip tracking info from θ to avoid mutating it.
+    # Not needed anymore?
     θ .= ForwardDiff.value.(θ)
 
     return l, ∂l∂θ
@@ -110,7 +163,7 @@ end
 """
 gradient_reverse(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
@@ -120,16 +173,20 @@ Computes the gradient of the log joint of `θ` for the model specified by
 """
 function gradient_reverse(
     θ::AbstractVector{<:Real},
-    vi::Turing.VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Specify objective function.
     function f(θ)
-        vi[sampler] = θ
-        return -runmodel!(model, vi, sampler).logp
+        new_vi = NewVarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = value(θ)
+        vi.logp = value(logp)
+        return -logp
     end
 
     # Compute forward and reverse passes.
@@ -137,7 +194,7 @@ function gradient_reverse(
     l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     # Remove tracking info from variables in model (because mutable state).
-    vi.vals, vi.logp = vals_old, logp_old
+    vi[sampler], vi.logp = vals_old, logp_old
 
     # Strip tracking info from θ to avoid mutating it.
     θ .= Tracker.data.(θ)
@@ -187,3 +244,5 @@ function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
     Δ = ForwardDiff.partials(v)
     return FD(poislogpdf(val, x), Δ * (x/val - 1))
 end
+
+end # module 

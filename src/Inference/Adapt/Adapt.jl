@@ -1,3 +1,19 @@
+module Adapt
+
+using ...Samplers
+import ...Turing
+
+export  UnitPreConditioner,
+        DiagPreConditioner,
+        DensePreConditioner,
+        ThreePhaseAdapter,
+        NaiveCompAdapter,
+        FixedStepSize,
+        getss,
+        adapt!
+
+abstract type AbstractAdapter end
+
 include("precond.jl")
 include("stepsize.jl")
 include("stan.jl")
@@ -106,3 +122,5 @@ function adapt!(tp::ThreePhaseAdapter, stats::Real, θ; adapt_ϵ=false, adapt_M=
         end
     end
 end
+
+end # module 

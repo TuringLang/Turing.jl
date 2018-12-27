@@ -1,29 +1,4 @@
-# Helper functions
-include("adapt/adapt.jl")
-include("support/hmc_core.jl")
-
-# Concrete algorithm implementations.
-include("hmcda.jl")
-include("nuts.jl")
-include("sghmc.jl")
-include("sgld.jl")
-include("hmc.jl")
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
-    include("dynamichmc.jl")
-end
-include("mh.jl")
-include("is.jl")
-include("smc.jl")
-include("pgibbs.jl")
-include("pmmh.jl")
-include("ipmcmc.jl")
-include("gibbs.jl")
-
 ## Fallback functions
-
-# utility funcs for querying sampler information
-require_gradient(spl::Sampler) = false
-require_particles(spl::Sampler) = false
 
 assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
@@ -38,7 +13,7 @@ error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 function assume(spl::A,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::AbstractVarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
     if haskey(vi, vn)
         r = vi[vn]
@@ -58,7 +33,7 @@ function assume(spl::A,
     dists::Vector{T},
     vn::VarName,
     var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::AbstractVarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -104,7 +79,7 @@ end
 function observe(spl::A,
     dist::Distribution,
     value::Any,
-    vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::AbstractVarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
     vi.num_produce += one(vi.num_produce)
     @debug "dist = $dist"
@@ -118,7 +93,7 @@ end
 function observe(spl::A,
     dists::Vector{T},
     value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::AbstractVarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -131,58 +106,4 @@ function observe(spl::A,
         sum(logpdf(dist, value))
     end
 
-end
-
-
-##############
-# Utilities  #
-##############
-
-# VarInfo to Sample
-@inline Sample(vi::VarInfo) = begin
-  value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
-  for vn in keys(vi)
-    value[sym(vn)] = vi[vn]
-  end
-
-  # NOTE: do we need to check if lp is 0?
-  value[:lp] = getlogp(vi)
-
-
-
-  if ~isempty(vi.pred)
-    for sym in keys(vi.pred)
-      # if ~haskey(sample.value, sym)
-        value[sym] = vi.pred[sym]
-      # end
-    end
-    # TODO: check why 1. 2. cause errors
-    # TODO: which one is faster?
-    # 1. Using empty!
-    # empty!(vi.pred)
-    # 2. Reassign an enmtpy dict
-    # vi.pred = Dict{Symbol,Any}()
-    # 3. Do nothing?
-  end
-
-  Sample(0.0, value)
-end
-
-# VarInfo, combined with spl.info, to Sample
-@inline Sample(vi::VarInfo, spl::Sampler) = begin
-  s = Sample(vi)
-
-  if haskey(spl.info, :wum)
-    s.value[:epsilon] = getss(spl.info[:wum])
-  end
-
-  if haskey(spl.info, :lf_num)
-    s.value[:lf_num] = spl.info[:lf_num]
-  end
-
-  if haskey(spl.info, :eval_num)
-    s.value[:eval_num] = spl.info[:eval_num]
-  end
-
-  return s
 end

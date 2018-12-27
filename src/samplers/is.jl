@@ -31,38 +31,12 @@ end
 sample(gdemo([1.5, 2]), IS(1000))
 ```
 """
-mutable struct IS <: InferenceAlgorithm
+mutable struct IS{space} <: InferenceAlgorithm
     n_particles ::  Int
 end
+IS(n_particles) = IS{()}(n_particles)
 
-Sampler(alg::IS) = begin
+function Sampler(alg::IS)
     info = Dict{Symbol, Any}()
     Sampler(alg, info)
-end
-
-function sample(model::Model, alg::IS)
-    spl = Sampler(alg);
-    samples = Array{Sample}(undef, alg.n_particles)
-
-    n = spl.alg.n_particles
-    for i = 1:n
-        vi = VarInfo()
-        model(vi, spl)
-        samples[i] = Sample(vi)
-    end
-
-    le = logsumexp(map(x->x[:lp], samples)) - log(n)
-
-    Chain(exp.(le), samples)
-end
-
-assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
-    r = rand(dist)
-    push!(vi, vn, r, dist, 0)
-    r, zero(Real)
-end
-
-observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo) = begin
-    # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
 end

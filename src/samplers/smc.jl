@@ -27,63 +27,25 @@ end
 sample(gdemo([1.5, 2]), SMC(1000))
 ```
 """
-mutable struct SMC{T, F} <: InferenceAlgorithm
-  n_particles           ::  Int
-  resampler             ::  F
-  resampler_threshold   ::  Float64
-  space                 ::  Set{T}
-  gid                   ::  Int
+mutable struct SMC{space, F} <: InferenceAlgorithm
+    n_particles           ::  Int
+    resampler             ::  F
+    resampler_threshold   ::  Float64
+    gid                   ::  Int
 end
-SMC(n) = SMC(n, resample_systematic, 0.5, Set(), 0)
+SMC(n) = SMC(n, resample_systematic, 0.5, 0)
 function SMC(n_particles::Int, space...)
-  _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  SMC(n_particles, resample_systematic, 0.5, _space, 0)
+    F = typeof(resample_systematic)
+    SMC{space, F}(n_particles, resample_systematic, 0.5, 0)
 end
-SMC(alg::SMC, new_gid::Int) = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
-
-Sampler(alg::SMC) = begin
-  info = Dict{Symbol, Any}()
-  info[:logevidence] = []
-  Sampler(alg, info)
+function SMC(alg::SMC{space, F}, new_gid::Int) where {space, F}
+    SMC{space, F}(alg.n_particles, alg.resampler, alg.resampler_threshold, new_gid)
 end
 
-step(model, spl::Sampler{<:SMC}, vi::VarInfo) = begin
-    particles = ParticleContainer{Trace}(model)
-    vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+getspace(::SMC{space}) where space = space
 
-    push!(particles, spl.alg.n_particles, spl, vi)
-
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
-    end
-
-    ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
-    push!(spl.info[:logevidence], particles.logE)
-
-    particles[indx].vi
-end
-
-## wrapper for smc: run the sampler, collect results.
-function sample(model::Model, alg::SMC)
-  spl = Sampler(alg);
-
-  particles = ParticleContainer{Trace}(model)
-  push!(particles, spl.alg.n_particles, spl, VarInfo())
-
-  while consume(particles) != Val{:done}
-    ess = effectiveSampleSize(particles)
-    if ess <= spl.alg.resampler_threshold * length(particles)
-      resample!(particles,spl.alg.resampler)
-    end
-  end
-  w, samples = getsample(particles)
-  res = Chain(w, samples)
-
+function Sampler(alg::SMC)
+    info = Dict{Symbol, Any}()
+    info[:logevidence] = []
+    Sampler(alg, info)
 end
