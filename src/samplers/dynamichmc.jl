@@ -36,7 +36,11 @@ function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}())
 end
 
-function sample(model, alg::DynamicNUTS, chunk_size=CHUNKSIZE[]) where T <: Hamiltonian
+function sample(model::Model, 
+                alg::DynamicNUTS, 
+                chunk_size=CHUNKSIZE[]
+                ) where T <: Hamiltonian
+    
     if ADBACKEND[] == :forward_diff
         default_chunk_size = CHUNKSIZE[]  # record global chunk size
         setchunksize(chunk_size)        # set temp chunk size

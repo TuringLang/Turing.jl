@@ -104,7 +104,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   return vi, is_accept
 end
 
-function sample(model, alg::MH;
+function sample(model::Model, alg::MH;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
                 reuse_spl_n=0,            # flag for spl re-using

@@ -106,7 +106,7 @@ step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = 
   VarInfos[nodes_permutation]
 end
 
-sample(model, alg::IPMCMC) = begin
+function sample(model::Model, alg::IPMCMC)
 
   spl = Sampler(alg)
 

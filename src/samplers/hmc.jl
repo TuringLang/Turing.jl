@@ -100,7 +100,7 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     Sampler(alg, info)
 end
 
-function sample(model, alg::Hamiltonian;
+function sample(model::Model, alg::Hamiltonian;
                                 chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue

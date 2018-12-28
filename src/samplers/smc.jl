@@ -71,7 +71,7 @@ step(model, spl::Sampler{<:SMC}, vi::VarInfo) = begin
 end
 
 ## wrapper for smc: run the sampler, collect results.
-function sample(model, alg::SMC)
+function sample(model::Model, alg::SMC)
   spl = Sampler(alg);
 
   particles = ParticleContainer{Trace}(model)

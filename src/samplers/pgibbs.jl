@@ -82,7 +82,7 @@ step(model, spl::Sampler{<:PG}, vi::VarInfo) = begin
   return particles[indx].vi, true
 end
 
-sample(model, alg::PG;
+sample(model::Model, alg::PG;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
        reuse_spl_n=0             # flag for spl re-using
