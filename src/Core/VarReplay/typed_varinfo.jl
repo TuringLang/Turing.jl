@@ -238,15 +238,15 @@ syms(vi::TypedVarInfo) = fieldnames(vi.vis)
 end
 @generated function Base.setindex!(vi::TypedVarInfo{Tvis}, val::Any, spl::Sampler) where Tvis
     expr = Expr(:block)
-    start = 0
+    push!(expr.args, :(start = 0))
     for f in fieldnames(Tvis)
         push!(expr.args, quote
             r = @views vi.vis.$f.vals[ranges.$f]
-            v = @views val[$start + 1 : $start + length(r)]
+            v = @views val[start + 1 : start + length(r)]
             n = length(v)
             vi.vis.$f.vals[ranges.$f] .= v
+            start += length(r)
         end)
-        start = :($start + length(r))
     end
 
     return quote

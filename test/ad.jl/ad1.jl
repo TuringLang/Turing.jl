@@ -1,7 +1,7 @@
 using Turing
 using Turing.Core.AD: gradient_forward
 using Turing.Core.VarReplay: getval
-using Bijectors: invlink, link
+using Bijectors: invlink, link, logpdf_with_trans
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -38,7 +38,7 @@ function logp(x::Vector)
   # s = invlink(dist_s, s)
   m = x[1]
   lik_dist = Normal(m, sqrt(s))
-  lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt(s)), m, false)
+  lp = logpdf_with_trans(dist_s, s, false) + logpdf_with_trans(Normal(0,sqrt(s)), m, false)
   lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
   return lp
 end

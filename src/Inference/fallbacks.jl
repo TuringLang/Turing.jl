@@ -4,7 +4,7 @@ assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
 
 observe(spl::Sampler, weight::Float64) =
-error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+error("Turing.Core.Compiler.observe: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
 ##  Note: `A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}` can be
@@ -95,9 +95,9 @@ function observe(spl::A,
     value::Any,
     vi::AbstractVarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
-    @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
+    @assert length(dists) == 1 "Turing.Core.Compiler.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
+    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.Core.Compiler.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
         sum(logpdf.(Ref(dist), value))
