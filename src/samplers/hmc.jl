@@ -100,7 +100,7 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
     Sampler(alg, info)
 end
 
-function sample(model::Function, alg::Hamiltonian;
+function sample(model::Model, alg::Hamiltonian;
                                 chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
@@ -137,7 +137,7 @@ function sample(model::Function, alg::Hamiltonian;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        model(vi_, HamiltonianRobustInit())
         spl.info[:eval_num] += 1
         vi_
     else

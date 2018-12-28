@@ -76,7 +76,7 @@ function Sampler(alg::IPMCMC)
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
+step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
   # Initialise array for marginal likelihood estimators
   log_zs = zeros(spl.alg.n_nodes)
 
@@ -106,7 +106,7 @@ step(model::Function, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first
   VarInfos[nodes_permutation]
 end
 
-sample(model::Function, alg::IPMCMC) = begin
+function sample(model::Model, alg::IPMCMC)
 
   spl = Sampler(alg)
 

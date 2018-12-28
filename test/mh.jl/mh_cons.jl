@@ -1,5 +1,7 @@
 using Turing
 using Test
+using Random
+Random.seed!(0)
 
 @model gdemo() = begin
   s ~ InverseGamma(2,3)

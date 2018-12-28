@@ -40,7 +40,7 @@ Sampler(alg::IS) = begin
     Sampler(alg, info)
 end
 
-sample(model::Function, alg::IS) = begin
+function sample(model::Model, alg::IS)
     spl = Sampler(alg);
     samples = Array{Sample}(undef, alg.n_particles)
 

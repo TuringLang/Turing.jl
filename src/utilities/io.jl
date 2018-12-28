@@ -200,7 +200,7 @@ function Base.vcat(c1::Chain, args::Chain...)
   Chain(0, value2)
 end
 
-save!(c::Chain, spl::Sampler, model::Function, vi) = begin
+save!(c::Chain, spl::Sampler, model, vi) = begin
   c.info[:spl] = spl
   c.info[:model] = model
   c.info[:vi] = deepcopy(vi)

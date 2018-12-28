@@ -6,8 +6,8 @@ Data structure for particle filters
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-mutable struct ParticleContainer{T<:Particle}
-  model :: Function
+mutable struct ParticleContainer{T<:Particle, F}
+  model :: F
   num_particles :: Int
   vals  :: Array{T}
   logWs :: Array{Float64}  # Log weights (Trace) or incremental likelihoods (ParticleContainer)
@@ -17,8 +17,8 @@ mutable struct ParticleContainer{T<:Particle}
   n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
 end
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
-function ParticleContainer{T}(m::Function,n::Int) where T
-  ParticleContainer{T}(m, n, Vector{T}(), Vector{Float64}(), 0.0, nothing, 0)
+function ParticleContainer{T}(m::F, n::Int) where {T, F}
+  ParticleContainer{T, F}(m, n, Vector{T}(), Vector{Float64}(), 0.0, nothing, 0)
 end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array

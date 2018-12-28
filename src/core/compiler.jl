@@ -4,6 +4,33 @@ using Base.Meta: parse
 # Overload of ~ #
 #################
 
+"""
+    struct Model{pvars, dvars, F, TD}
+        f::F
+        data::TD
+    end
+    
+A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
+function `f` and `data::NamedTuple`.
+"""
+struct Model{pvars, dvars, F, TD}
+    f::F
+    data::TD
+end
+function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
+    return Model{pvars, dvars, F, TD}(f, data)
+end
+pvars(m::Model{params}) where {params} = Tuple(params.types)
+dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
+@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
+    return sym in params.types ? :(true) : :(false)
+end
+@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
+    return sym in data.types ? :(true) : :(false)
+end
+
+(model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
+
 # TODO: Replace this macro, see issue #514
 """
 Usage: @VarName x[1,2][1+5][45][3]
@@ -28,179 +55,128 @@ function var_tuple(sym::Symbol, inds::Expr=:(()))
 end
 
 
-wrong_dist_errormsg(l) = "Right-hand side of a ~ must be subtype of Distribution or a vector of Distributions on line $(l)."
+function wrong_dist_errormsg(l)
+    return "Right-hand side of a ~ must be subtype of Distribution or a vector of" * 
+        "Distributions on line $(l)."
+end
 
 """
-    generate_observe(observation, distribution)
+    generate_observe(observation, dist, model_info)
 
 Generate an observe expression for observation `observation` drawn from 
-a distribution or a vector of distributions (`distribution`).
+a distribution or a vector of distributions (`dist`).
 """
-function generate_observe(observation, distribution)
-    return esc(
-        quote
-            isdist = if isa($(distribution), AbstractVector)
-                # Check if the right-hand side is a vector of distributions.
-                all(d -> isa(d, Distribution), $(distribution))
-            else
-                # Check if the right-hand side is a distribution.
-                isa($(distribution), Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            vi.logp += Turing.observe(
-                sampler,
-                $(distribution),
-                $(observation),
-                vi
-            )
+function generate_observe(observation, dist, model_info)
+    main_body_names = model_info[:main_body_names]
+    vi = main_body_names[:vi]
+    sampler = main_body_names[:sampler]
+    return quote
+        isdist = if isa($dist, AbstractVector)
+            # Check if the right-hand side is a vector of distributions.
+            all(d -> isa(d, Distribution), $dist)
+        else
+            # Check if the right-hand side is a distribution.
+            isa($dist, Distribution)
         end
-    )
-end
-
-"""
-    generate_assume(variable, distribution, syms)
-
-Generate an assume expression for parameters `variable` drawn from 
-a distribution or a vector of distributions (`distribution`).
-
-"""
-function generate_assume(variable, distribution, syms)
-    return esc(
-        quote
-            varname = Turing.VarName(vi, $syms, "")
-
-            isdist = if isa($(distribution), AbstractVector)
-                # Check if the right-hand side is a vector of distributions.
-                all(d -> isa(d, Distribution), $(distribution))
-            else
-                # Check if the right-hand side is a distribution.
-                isa($(distribution), Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            ($(variable), _lp) = if isa($(distribution), AbstractVector)
-                Turing.assume(
-                    sampler,
-                    $(distribution),
-                    varname,
-                    $(variable),
-                    vi
-                )
-            else
-                Turing.assume(
-                    sampler,
-                    $(distribution),
-                    varname,
-                    vi
-                )
-            end
-            vi.logp += _lp
-        end
-    )
-end
-
-function generate_assume(variable::Expr, distribution)
-    return esc(
-        quote
-            sym, idcs, csym = @VarName $variable
-            csym_str = string(Turing._compiler_[:name])*string(csym)
-            indexing = mapfoldl(string, *, idcs, init = "")
-            varname = Turing.VarName(vi, Symbol(csym_str), sym, indexing)
-
-            # Sanity check.
-            isdist = if isa($(distribution), Vector)
-                all(d -> isa(d, Distribution), $(distribution))
-            else
-                isa($(distribution), Distribution)
-            end
-            @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-            $(variable), _lp = Turing.assume(
-                sampler,
-                $(distribution),
-                varname,
-                vi
-            )
-            vi.logp += _lp
-        end
-    )
-end
-
-"""
-    macro: @~ var Distribution()
-
-Tilde notation macro. This macro constructs Turing.observe or
-Turing.assume calls depending on the left-hand argument.
-Note that the macro is interconnected with the @model macro and
-assumes that a `compiler` struct is available.
-
-Example:
-```julia
-@~ x Normal()
-```
-"""
-macro ~(left, right)
-    return tilde(left, right)
-end
-
-function tilde(left, right)
-    return generate_observe(left, right)
-end
-
-function tilde(left::Symbol, right)
-
-    # Check if left-hand side is a observation.
-    if left in Turing._compiler_[:args]
-        if !(left in Turing._compiler_[:dvars])
-            @debug " Observe - `$(left)` is an observation"
-            push!(Turing._compiler_[:dvars], left)
-        end
-
-        return generate_observe(left, right)
-    else
-        # Assume it is a parameter.
-        if !(left in Turing._compiler_[:pvars])
-            msg = " Assume - `$(left)` is a parameter"
-            if isdefined(Main, left)
-                msg  *= " (ignoring `$(left)` found in global scope)"
-            end
-
-            @debug msg
-            push!(Turing._compiler_[:pvars], left)
-        end
-
-        sym, idcs, csym = @VarName(left)
-        csym = Symbol(Turing._compiler_[:name], csym)
-        syms = Symbol[csym, left]
-
-        return generate_assume(left, right, syms)
+        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+        $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
     end
 end
 
-function tilde(left::Expr, right)
-    vsym = getvsym(left)
-    @assert isa(vsym, Symbol)
+"""
+    generate_assume(var, dist, model_info)
 
-    if vsym in Turing._compiler_[:args]
-        if !(vsym in Turing._compiler_[:dvars])
+Generate an assume expression for parameters `var` drawn from 
+a distribution or a vector of distributions (`dist`).
+"""
+function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
+    main_body_names = model_info[:main_body_names]
+    vi = main_body_names[:vi]
+    sampler = main_body_names[:sampler]
+    
+    varname = gensym(:varname)
+    sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
+    csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
+    
+    if var isa Symbol
+        varname_expr = quote
+            $sym, $idcs, $csym = @VarName $var
+            $csym = Symbol($(model_info[:name]), $csym)
+            $syms = Symbol[$csym, $(QuoteNode(var))]
+            $varname = Turing.VarName($vi, $syms, "")
+        end
+    else
+        varname_expr = quote
+            $sym, $idcs, $csym = @VarName $var
+            $csym_str = string($(model_info[:name]))*string($csym)
+            $indexing = mapfoldl(string, *, $idcs, init = "")
+            $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
+        end
+    end
+    
+    lp = gensym(:lp)
+    return quote
+        $varname_expr
+        isdist = if isa($dist, AbstractVector)
+            # Check if the right-hand side is a vector of distributions.
+            all(d -> isa(d, Distribution), $dist)
+        else
+            # Check if the right-hand side is a distribution.
+            isa($dist, Distribution)
+        end
+        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+
+        ($var, $lp) = if isa($dist, AbstractVector)
+            Turing.assume($sampler, $dist, $varname, $var, $vi)
+        else
+            Turing.assume($sampler, $dist, $varname, $vi)
+        end
+        $vi.logp += $lp
+    end
+end
+
+"""
+    tilde(left, right, model_info)
+
+The `tilde` function generates observation expression for data variables and assumption expressions for parameter variables, updating `model_info` in the process.
+"""
+function tilde(left, right, model_info)
+    return generate_observe(left, right, model_info)
+end
+function tilde(left::Union{Symbol, Expr}, right, model_info)
+    return _tilde(getvsym(left), left, right, model_info)
+end
+
+function _tilde(vsym, left, dist, model_info)
+    main_body_names = model_info[:main_body_names]
+    model_name = main_body_names[:model]
+
+    if vsym in model_info[:arg_syms]
+        if !(vsym in model_info[:tent_dvars_list])
             @debug " Observe - `$(vsym)` is an observation"
-            push!(Turing._compiler_[:dvars], vsym)
+            push!(model_info[:tent_dvars_list], vsym)
         end
 
-        return generate_observe(left, right)
+        return quote 
+            if Turing.indvars($(Val(vsym)), $model_name)
+                $(generate_observe(left, dist, model_info))
+            else
+                $(generate_assume(left, dist, model_info))
+            end
+        end
     else
-        if !(vsym in Turing._compiler_[:pvars])
+        # Assume it is a parameter.
+        if !(vsym in model_info[:tent_pvars_list])
             msg = " Assume - `$(vsym)` is a parameter"
             if isdefined(Main, vsym)
                 msg  *= " (ignoring `$(vsym)` found in global scope)"
             end
 
             @debug msg
-            push!(Turing._compiler_[:pvars], vsym)
+            push!(model_info[:tent_pvars_list], vsym)
         end
 
-        return generate_assume(left, right)
+        return generate_assume(left, dist, model_info)
     end
 end
 
@@ -209,206 +185,266 @@ end
 #################
 
 """
-    @model(name, fbody)
+    @model(body)
 
 Macro to specify a probabilistic model.
 
 Example:
 
+Model definition:
+
 ```julia
-@model Gaussian(x) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt.(s))
-    for i in 1:length(x)
-        x[i] ~ Normal(m, sqrt.(s))
-    end
-    return (s, m)
+@model model_generator(x = default_x, y) = begin
+    ...
 end
 ```
 
-Compiler design: `sample(fname(x,y), sampler)`.
+Expanded model definition
+
 ```julia
-fname(x=nothing,y=nothing; compiler=compiler) = begin
-    ex = quote
-        # Pour in kwargs for those args where value != nothing.
-        fname_model(vi::VarInfo, sampler::Sampler; x = x, y = y) = begin
-            vi.logp = zero(Real)
-          
-            # Pour in model definition.
-            x ~ Normal(0,1)
-            y ~ Normal(x, 1)
-            return x, y
+# Allows passing arguments as kwargs
+model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
+function model_generator(x = nothing, y = nothing)
+    pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
+    data = Turing.get_data(dvars, (x = x, y = y))
+    
+    inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
+    function inner_function(model)
+        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+    end
+    function inner_function(vi::Turing.VarInfo, model)
+        return inner_function(vi, Turing.SampleFromPrior(), model)
+    end
+    # Define the main inner function
+    function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+        local x
+        if isdefined(model.data, :x)
+            x = model.data.x
+        else
+            x = default_x
         end
+        local y
+        if isdefined(model.data, :y)
+            y = model.data.y
+        else
+            y = nothing
+        end
+
+        vi.logp = zero(Real)
+        ...
     end
-    return Main.eval(ex)
+    model = Turing.Model{pvars, dvars}(inner_function, data)
+    return model
 end
 ```
+
+Generating a model: `model_generator(x_value)::Model`.
 """
-macro model(fexpr)
+macro model(input_expr)
+    build_model_info(input_expr) |> translate_tilde! |> update_args! |> build_output
+end
 
-    # translate all ~ occurences to macro calls
-    fexpr = translate(fexpr)
+"""
+    build_model_info(input_expr)
 
-    # extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
-    modeldef = MacroTools.splitdef(fexpr)
-
-    # function body of the model is empty
-    if all(l -> isa(l, LineNumberNode), modeldef[:body].args)
-        @warn("Model definition seems empty, still continue.")
-    end
-
-    # construct compiler dictionary
-    compiler = Dict(
+Builds the `model_info` dictionary from the model's expression.
+"""
+function build_model_info(input_expr)
+    # Extract model name (:name), arguments (:args), (:kwargs) and definition (:body)
+    modeldef = MacroTools.splitdef(input_expr)
+    # Function body of the model is empty
+    warn_empty(modeldef[:body])
+    # Construct model_info dictionary
+    
+    arg_syms = [(arg isa Symbol) ? arg : arg.args[1] for arg in modeldef[:args]]
+    model_info = Dict(
         :name => modeldef[:name],
-        :closure_name => Symbol(modeldef[:name], :_model),
-        :args => [],
+        :input_expr => input_expr,
+        :main_body => modeldef[:body],
+        :arg_syms => arg_syms,
+        :args => modeldef[:args],
         :kwargs => modeldef[:kwargs],
-        :dvars => Set{Symbol}(),
-        :pvars => Set{Symbol}()
+        :tent_dvars_list => Symbol[],
+        :tent_pvars_list => Symbol[],
+        :main_body_names => Dict(
+            :vi => gensym(:vi), 
+            :sampler => gensym(:sampler),
+            :model => gensym(:model),
+            :pvars => gensym(:pvars),
+            :dvars => gensym(:dvars),
+            :data => gensym(:data),
+            :inner_function => gensym(:inner_function)
+        )
     )
 
-    # Manipulate the function arguments.
-    fargs = deepcopy(vcat(modeldef[:args], modeldef[:kwargs]))
+    return model_info
+end
+
+"""
+    translate_tilde!(model_info)
+
+Translates ~ expressions to observation or assumption expressions, updating `model_info`.
+"""
+function translate_tilde!(model_info)
+    ex = model_info[:main_body]
+    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+
+"""
+    update_args!(model_info)
+
+Extracts default argument values and replaces them with `nothing`.
+"""
+function update_args!(model_info)
+    fargs = model_info[:args]
+    fargs_default_values = Dict()
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
+            fargs_default_values[fargs[i]] = :nothing
             fargs[i] = Expr(:kw, fargs[i], :nothing)
+        elseif isa(fargs[i], Expr) && fargs[i].head == :kw
+            fargs_default_values[fargs[i].args[1]] = fargs[i].args[2]
+            fargs[i] = Expr(:kw, fargs[i].args[1], :nothing)
+        else
+            throw("Unsupported argument type $(fargs[i]).")
         end
     end
+    model_info[:args] = fargs
+    model_info[:arg_defaults] = fargs_default_values
 
-    # Construct closure.
-    closure = MacroTools.combinedef(
-        Dict(
-            :name => compiler[:closure_name],
-            :kwargs => [],
-            :args => [
-                :(vi::Turing.VarInfo),
-                :(sampler::Turing.AnySampler)
-            ],
-            # Initialise logp in VarInfo.
-            :body => Expr(:block, :(vi.logp = zero(Real)), modeldef[:body].args...)
-        )
-    )
-
-    # Construct aliases.
-    alias1 = MacroTools.combinedef(
-        Dict(
-            :name => compiler[:closure_name],
-            :args => [:(vi::Turing.VarInfo)],
-            :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(vi, Turing.SampleFromPrior()))
-        )
-    )
-
-    alias2 = MacroTools.combinedef(
-        Dict(
-            :name => compiler[:closure_name],
-            :args => [:(sampler::Turing.AnySampler)],
-            :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-        )
-    )
-
-    alias3 = MacroTools.combinedef(
-        Dict(
-            :name => compiler[:closure_name],
-            :args => [],
-            :kwargs => [],
-            :body => :(return $(compiler[:closure_name])(Turing.VarInfo(), Turing.SampleFromPrior()))
-        )
-    )
-
-    # Add definitions to the compiler.
-    compiler[:closure] = closure
-    compiler[:alias1] = alias1
-    compiler[:alias2] = alias2
-    compiler[:alias3] = alias3
-
-    # Construct user function.
-    modelfun = MacroTools.combinedef(
-        Dict(
-            :name => compiler[:name],
-            :kwargs => [Expr(:kw, :compiler, compiler)],
-            :args => fargs,
-            :body => Expr(:block, 
-                            quote
-                                Turing.eval(:(_compiler_ = deepcopy($compiler)))
-                                # Copy the expr of function definition and callbacks
-                                closure = Turing._compiler_[:closure]
-                                alias1 = Turing._compiler_[:alias1]
-                                alias2 = Turing._compiler_[:alias2]
-                                alias3 = Turing._compiler_[:alias3]
-                                modelname = Turing._compiler_[:closure_name]
-                            end,
-                            # Insert argument values as kwargs to the closure
-                            map(data_insertion, fargs)...,
-                            # Eval the closure's methods globally and return it
-                            quote
-                                Main.eval(Expr(:(=), modelname, closure))
-                                Main.eval(alias1)
-                                Main.eval(alias2)
-                                Main.eval(alias3)
-                                return $(compiler[:closure_name])
-                            end,
-                        )
-        )
-    )
-    
-    return esc(modelfun)
+    return model_info
 end
 
+"""
+    build_output(model_info)
+
+Builds the output expression.
+"""
+function build_output(model_info)
+    # Construct user-facing function
+    main_body_names = model_info[:main_body_names]
+    vi_name = main_body_names[:vi]
+    model_name = main_body_names[:model]
+    sampler_name = main_body_names[:sampler]
+    data_name = main_body_names[:data]
+    pvars_name = main_body_names[:pvars]
+    dvars_name = main_body_names[:dvars]
+    inner_function_name = main_body_names[:inner_function]
+
+    args = model_info[:args]
+    arg_syms = model_info[:arg_syms]
+    outer_function_name = model_info[:name]
+    tent_pvars_list = model_info[:tent_pvars_list]
+    tent_dvars_list = model_info[:tent_dvars_list]
+    main_body = model_info[:main_body]
+    arg_defaults = model_info[:arg_defaults]
+
+    if length(tent_dvars_list) == 0
+        tent_dvars_nt = :(NamedTuple())
+    else
+        tent_dvars_nt = :($([:($var = $var) for var in tent_dvars_list]...),)
+    end
+
+    #= Does the following for each of the tentative dvars
+        local x
+        if isdefined(model.data, :x)
+            x = model.data.x
+        else
+            x = default_x
+        end
+    =#
+    unwrap_data_expr = Expr(:block)
+    for var in tent_dvars_list
+        push!(unwrap_data_expr.args, quote
+            local $var
+            if isdefined($model_name.data, $(QuoteNode(var)))
+                $var = $model_name.data.$var
+            else
+                $var = $(arg_defaults[var])
+            end
+        end)
+    end
+
+    return esc(quote
+        # Allows passing arguments as kwargs
+        $outer_function_name(;$(args...)) = $outer_function_name($(arg_syms...))
+        # Outer function with `nothing` as default values
+        function $outer_function_name($(args...))
+            # Adds variables equal to `nothing` to pvars and the rest to dvars
+            # `tent_pvars_list` is the tentative list of pvars
+            # `tent_dvars_nt` is the tentative named tuple of dvars
+            $pvars_name, $dvars_name = Turing.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
+            # Filter out the dvars equal to `nothing`
+            $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
+            
+            # Define fallback inner functions
+            function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
+                return $inner_function_name($model_name)
+            end
+            function $inner_function_name($model_name)
+                return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
+            end
+            function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
+                return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+            end
+
+            # Define the main inner function
+            function $inner_function_name(
+                $vi_name::Turing.VarInfo, 
+                $sampler_name::Turing.AnySampler, 
+                $model_name
+                )
+                
+                $unwrap_data_expr
+                $vi_name.logp = zero(Real)
+                $main_body
+            end
+            $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name)
+            return $model_name
+        end
+    end)
+end
+
+@generated function get_vars(tent_pvars::Type{Tpvars}, tent_dvars_nt::NamedTuple) where {Tpvars <: Tuple}
+    tent_pvar_syms = [Tpvars.types...]
+    tent_dvar_syms = [tent_dvars_nt.names...]
+    dvar_types = [tent_dvars_nt.types...]
+    append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing])
+    setdiff!(tent_dvar_syms, tent_pvar_syms)    
+    pvars_tuple = Tuple{tent_pvar_syms...}
+    dvars_tuple = Tuple{tent_dvar_syms...}
+
+    return :($pvars_tuple, $dvars_tuple)
+end
+
+@generated function get_data(::Type{Tdvars}, nt) where Tdvars
+    dvars = Tdvars.types
+    args = []
+    for var in dvars
+        push!(args, :($var = nt.$var))
+    end
+    if length(args) == 0
+        return :(NamedTuple())
+    else
+        return :($(args...),)
+    end
+end
+
+function warn_empty(body)
+    if all(l -> isa(l, LineNumberNode), body.args)
+        @warn("Model definition seems empty, still continue.")
+    end
+    return 
+end
 
 ####################
 # Helper functions #
 ####################
-
-function data_insertion(k)
-        if isa(k, Symbol)
-            _k = k
-        elseif k.head == :kw
-            _k = k.args[1]
-        else
-        return :()
-        end
-
-    return  quote
-                if $_k == nothing
-                    # Notify the user if an argument is missing.
-                    @warn("Data `"*$(string(_k))*"` not provided, treating as parameter instead.")
-                else
-                    if $(QuoteNode(_k)) ∉ Turing._compiler_[:args]
-                        push!(Turing._compiler_[:args], $(QuoteNode(_k)))
-                    end
-                    closure = Turing.setkwargs(closure, $(QuoteNode(_k)), $_k)
-                end
-            end
-end
-
-function setkwargs(fexpr::Expr, kw::Symbol, value)
-    # Split up the function definition.
-    funcdef = MacroTools.splitdef(fexpr)
-
-    # Add the new keyword argument.
-    push!(funcdef[:kwargs], Expr(:kw, kw, value))
-
-    # Recompose the function.
-    return MacroTools.combinedef(funcdef)
-end
 
 getvsym(s::Symbol) = s
 function getvsym(expr::Expr)
     @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
     return getvsym(expr.args[1])
 end
-
-translate!(ex::Any) = ex
-function translate!(ex::Expr)
-    if ex.head === :call && ex.args[1] === :(~)
-        ex.head = :macrocall
-        ex.args[1] = Symbol("@~")
-        insert!(ex.args, 2, LineNumberNode(@__LINE__))
-    else
-        map(translate!, ex.args)
-    end
-    return ex
-end
-translate(ex::Expr) = translate!(deepcopy(ex))

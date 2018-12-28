@@ -31,7 +31,7 @@ end
 @test length(c4[:s]) == N * (3 + 2)
 
 # Test gid of each samplers
-g = Turing.Sampler(s3)
+g = Turing.Sampler(s3, gdemo())
 
 @test g.info[:samplers][1].alg.gid == 1
 @test g.info[:samplers][2].alg.gid == 2

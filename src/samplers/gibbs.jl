@@ -35,7 +35,7 @@ Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs)
+function Sampler(alg::Gibbs, model::Model)
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
 
@@ -44,7 +44,7 @@ function Sampler(alg::Gibbs)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
+            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i), model)
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
@@ -52,10 +52,10 @@ function Sampler(alg::Gibbs)
     end
 
     # Sanity check for space
-    @assert issubset(Turing._compiler_[:pvars], space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
+    @assert issubset(Set(pvars(model)), space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(pvars(model))))"
 
-    if Turing._compiler_[:pvars] != space
-        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Turing._compiler_[:pvars]))")
+    if Set(pvars(model)) != space
+        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(pvars(model))))")
     end
 
     info = Dict{Symbol, Any}()
@@ -65,7 +65,7 @@ function Sampler(alg::Gibbs)
 end
 
 function sample(
-                model::Function,
+                model::Model,
                 alg::Gibbs;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
@@ -73,7 +73,7 @@ function sample(
                 )
 
     # Init the (master) Gibbs sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
 
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
@@ -102,7 +102,7 @@ function sample(
     # Init parameters
     varInfo = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        model(vi_, HamiltonianRobustInit())
         vi_
     else
         resume_from.info[:vi]

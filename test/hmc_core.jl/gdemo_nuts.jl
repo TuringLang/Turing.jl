@@ -44,7 +44,7 @@ for test_id = 1:2
 
     totla_num = 10000
     for iter = 1:totla_num
-      
+      global logϵ, lj_func, grad_func, M_adapt, δ, μ
       θ, da_stat = _nuts_step(θ, exp(logϵ), lj_func, grad_func, std)
       if test_id == 1
         logϵ, Hbar, logϵbar = _adapt_ϵ(logϵ, Hbar, logϵbar, da_stat, iter, M_adapt, δ, μ)

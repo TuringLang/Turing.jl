@@ -43,7 +43,8 @@ x = [s[:y][1]...]
 s_bk = Array{Turing.Chain}(undef, N)
 
 simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
-with_logger(simple_logger) do
+Base.CoreLogging.with_logger(simple_logger) do
+  global x, bk, s_bk
   i = 1
   while i <= N
     s_bk[i] = sample(gdemo_bk(x), bk);

@@ -2,7 +2,7 @@ using Test
 
 function test_grad(turing_model, grad_f; trans=Dict())
     model_f = turing_model()
-    vi = Base.invokelatest(model_f)
+    vi = model_f()
     for i in trans
         vi.flags["trans"][i] = true
     end

@@ -50,9 +50,9 @@ Sampler(alg::PG) = begin
   Sampler(alg, info)
 end
 
-step(model::Function, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
+step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
 
-step(model::Function, spl::Sampler{<:PG}, vi::VarInfo) = begin
+step(model, spl::Sampler{<:PG}, vi::VarInfo) = begin
   particles = ParticleContainer{Trace}(model)
 
   vi.num_produce = 0;  # Reset num_produce before new sweep\.
@@ -82,7 +82,7 @@ step(model::Function, spl::Sampler{<:PG}, vi::VarInfo) = begin
   return particles[indx].vi, true
 end
 
-sample(model::Function, alg::PG;
+sample(model::Model, alg::PG;
        save_state=false,         # flag for state saving
        resume_from=nothing,      # chain to continue
        reuse_spl_n=0             # flag for spl re-using

@@ -30,7 +30,7 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
@@ -40,7 +40,7 @@ Computes the gradient of the log joint of `θ` for the model specified by
 @generated function gradient(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model::Model,
     sampler::TS=nothing,
 ) where {TS <: Union{Nothing, Sampler}}
     if TS == Nothing
@@ -68,7 +68,7 @@ end
 gradient_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model::Model,
     spl::Union{Nothing, Sampler}=nothing,
     chunk_size::Int=CHUNKSIZE[],
 )
@@ -79,7 +79,7 @@ using forwards-mode AD from ForwardDiff.jl.
 function gradient_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
     ::Val{chunk_size}=Val(CHUNKSIZE[]),
 ) where chunk_size
@@ -111,7 +111,7 @@ end
 gradient_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
-    model::Function,
+    model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
@@ -121,7 +121,7 @@ Computes the gradient of the log joint of `θ` for the model specified by
 function gradient_reverse(
     θ::AbstractVector{<:Real},
     vi::Turing.VarInfo,
-    model::Function,
+    model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)

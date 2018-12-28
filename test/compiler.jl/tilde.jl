@@ -1,23 +1,20 @@
 using Turing
-import Turing.translate!
+import Turing.translate_tilde!
+
+model_info = Dict(:name => "model", :main_body_names => Dict(:model => :model, :vi => :vi, :sampler => :sampler), :arg_syms => [], :tent_pvars_list => [])
+
+ex = :(y ~ Normal(1,1))
+model_info[:main_body] = ex
+translate_tilde!(model_info)
+res = model_info[:main_body]
+Base.@assert res.head == :block
 
 ex = quote
   x = 1
   y = rand()
   y ~ Normal(0,1)
 end
-
-res = translate!(:(y~Normal(1,1)))
-
-Base.@assert res.head == :macrocall
-Base.@assert res.args[1] == Symbol("@~")
-Base.@assert res.args[3] == :y
-Base.@assert res.args[4] == :(Normal(1, 1))
-
-
-res2 = translate!(ex)
-
-Base.@assert res2.args[end].head == :macrocall
-Base.@assert res2.args[end].args[1] == Symbol("@~")
-Base.@assert res2.args[end].args[3] == :y
-Base.@assert res2.args[end].args[4] == :(Normal(0, 1))
+model_info[:main_body] = ex
+translate_tilde!(model_info)
+res = model_info[:main_body]
+Base.@assert res.head == :block

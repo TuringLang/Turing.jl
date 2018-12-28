@@ -49,14 +49,14 @@ function MH(n_iters::Int, space...)
 end
 MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, alg.space, new_gid)
 
-Sampler(alg::MH) = begin
+Sampler(alg::MH, model::Model) = begin
   alg_str = "MH"
 
   # Sanity check for space
   if alg.gid == 0 && !isempty(alg.space)
-    @assert issubset(Turing._compiler_[:pvars], alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Turing._compiler_[:pvars]))"
-    if Turing._compiler_[:pvars] != alg.space
-      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Turing._compiler_[:pvars]))")
+    @assert issubset(Set(pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(pvars(model))))"
+    if Set(pvars(model)) != alg.space
+      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(pvars(model))))")
     end
   end
 
@@ -68,18 +68,18 @@ Sampler(alg::MH) = begin
   Sampler(alg, info)
 end
 
-propose(model::Function, spl::Sampler{<:MH}, vi::VarInfo) = begin
+propose(model, spl::Sampler{<:MH}, vi::VarInfo) = begin
   spl.info[:proposal_ratio] = 0.0
   spl.info[:prior_prob] = 0.0
   spl.info[:violating_support] = false
   runmodel!(model, vi ,spl)
 end
 
-function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
+function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
   return vi, true
 end
 
-function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
+function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   if spl.alg.gid != 0 # Recompute joint in logp
     runmodel!(model, vi, nothing)
   end
@@ -104,7 +104,7 @@ function step(model::Function, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{fa
   return vi, is_accept
 end
 
-function sample(model::Function, alg::MH;
+function sample(model::Model, alg::MH;
                 save_state=false,         # flag for state saving
                 resume_from=nothing,      # chain to continue
                 reuse_spl_n=0,            # flag for spl re-using
@@ -112,7 +112,7 @@ function sample(model::Function, alg::MH;
 
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
-        Sampler(alg)
+        Sampler(alg, model)
   alg_str = "MH"
 
   # Initialization
@@ -128,7 +128,7 @@ function sample(model::Function, alg::MH;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        Base.invokelatest(model, vi_, HamiltonianRobustInit())
+        model(vi_, HamiltonianRobustInit())
         vi_
     else
         resume_from.info[:vi]

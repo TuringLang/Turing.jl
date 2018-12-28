@@ -81,9 +81,9 @@ lj = lj_func(θ)
 chn = []
 accept_num = 1
 
-
 total_num = 2000
 for iter = 1:total_num
+  global θ, chn, lj, lj_func, grad_func, std, accept_num
   push!(chn, θ)
   θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 3, 0.005, std)
   accept_num += is_accept

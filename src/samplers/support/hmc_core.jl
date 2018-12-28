@@ -122,12 +122,12 @@ end
 
 ###
 
-function runmodel!(model::Function, vi::VarInfo, spl::Union{Nothing,Sampler})
+function runmodel!(model, vi::VarInfo, spl::Union{Nothing,Sampler})
     setlogp!(vi, zero(Real))
     if spl != nothing && :eval_num ∈ keys(spl.info)
         spl.info[:eval_num] += 1
     end
-    Base.invokelatest(model, vi, spl)
+    model(vi, spl)
     return vi
 end
 
@@ -135,7 +135,7 @@ function leapfrog(θ::AbstractVector{<:Real},
                   p::AbstractVector{<:Real},
                   τ::Int,
                   ϵ::Real,
-                  model::Function,
+                  model,
                   vi::VarInfo,
                   sampler::Sampler,
                   )
@@ -238,7 +238,7 @@ end
 # TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-function find_good_eps(model::Function, spl::Sampler{T}, vi::VarInfo) where T
+function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
     logpdf_func_float = gen_lj_func(vi, spl, model)
     momentum_sampler = gen_momentum_sampler(vi, spl)
     H_func = gen_H_func()
