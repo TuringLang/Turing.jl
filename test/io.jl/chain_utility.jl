@@ -1,5 +1,5 @@
 using Turing
-using Turing: Chain, Sample
+using Turing.Utilities: Chain, Sample
 using Test
 using MCMCChain: describe
 

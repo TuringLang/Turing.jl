@@ -1,5 +1,5 @@
 using Turing
-using Turing: Sampler
+using Turing.Samplers: Sampler
 using Test
 
 alg = SGHMC(1000, 0.01, 0.1)

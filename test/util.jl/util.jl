@@ -1,4 +1,5 @@
-using Turing: @VarName, randcat
+using Turing.Core.Compiler: @VarName
+using Turing.Utilities: randcat
 using Distributions: Normal
 using Test, StatsFuns
 

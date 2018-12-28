@@ -1,6 +1,4 @@
-using Turing: VarName
-using Turing.VarReplay: is_inside
-
+using Turing.Core.VarReplay: VarName, is_inside
 using Test
 
 include("../utility.jl")

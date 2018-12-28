@@ -256,7 +256,8 @@ end
     end
 end
 
-NewVarInfo(old_vi, spl, x) = newvarinfo(old_vi, spl, x)
+NewVarInfo(old_vi::UntypedVarInfo, spl, x) = old_vi
+NewVarInfo(old_vi::TypedVarInfo, spl, x) = newvarinfo(old_vi, spl, x)
 @generated function newvarinfo(old_vi::TypedVarInfo{Tvis}, spl::S, x::Type{T}) where {Tvis, T, S}
     syms = getspace(S)
     vi = :(old_vi.vis)

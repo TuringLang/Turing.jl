@@ -1,5 +1,5 @@
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Turing: _hmc_step
+using Turing.Inference: _hmc_step
 using Turing
 using HDF5, JLD
 sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]

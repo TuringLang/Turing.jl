@@ -1,7 +1,10 @@
 using Turing, Test
-using Turing: reconstruct, invlink, step, CACHERESET
-using Turing.VarReplay
-using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
+using Utilities: reconstruct
+using Bijectors: invlink
+using Turing.Inference: step
+using Turing: CACHERESET
+using Turing.Core.VarReplay
+using Turing.Core.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
 
 # Mock assume method for CSMC cf src/samplers/pgibbs.jl

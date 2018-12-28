@@ -1,5 +1,5 @@
 using Main.Test
-using Turing: _leapfrog
+using Turing.Inference: _leapfrog
 
 D = 10
 

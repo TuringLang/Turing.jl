@@ -1,5 +1,6 @@
 using Test, ForwardDiff, Distributions, FDM, Flux.Tracker
-using StatsFuns: binomlogpdf
+using StatsFuns: binomlogpdf, poislogpdf
+using Turing.AD
 
 # Real
 
@@ -60,7 +61,7 @@ let
 end
 
 let
-    foo = p->Turing.poislogpdf(p, 1)
+    foo = p->poislogpdf(p, 1)
     @test isapprox(
         Tracker.gradient(foo, 0.5)[1],
         central_fdm(5, 1)(foo, 0.5);

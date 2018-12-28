@@ -15,7 +15,9 @@ export  setadbackend,
         CHUNKSIZE, 
         ADBACKEND,
         setchunksize,
-        verifygrad
+        verifygrad,
+        gradient_forward,
+        gradient_reverse
 
 const ADBACKEND = Ref(:forward_diff)
 function setadbackend(backend_sym)

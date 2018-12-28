@@ -1,5 +1,5 @@
-using Turing.VarReplay
-using Turing.VarReplay: set_flag!, unset_flag!
+using Turing.Core.VarReplay
+using Turing.Core.VarReplay: set_flag!, unset_flag!
 using Distributions
 using Test
 

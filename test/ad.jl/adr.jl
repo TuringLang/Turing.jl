@@ -1,5 +1,7 @@
 using Turing
-using Turing: gradient_reverse, invlink, link, getval
+using Turing.Core.AD: gradient_reverse
+using Turing.Core.VarReplay: getval
+using Bijectors: invlink, link
 using ForwardDiff
 using ForwardDiff: Dual
 using Test

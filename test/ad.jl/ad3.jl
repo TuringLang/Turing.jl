@@ -1,5 +1,6 @@
 using Turing
-using Turing: gradient_forward, invlink, link
+using Turing.Core.AD: gradient_forward
+using Bijectors: invlink, link, logpdf_with_trans
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -27,7 +28,7 @@ dist_v = Wishart(7, [1 0.5; 0.5 1])
 # Hand-written logp
 function logp3(x::Vector)
   v = [x[1] x[3]; x[2] x[4]]
-  lp = Turing.logpdf_with_trans(dist_v, v, false)
+  lp = logpdf_with_trans(dist_v, v, false)
   lp
 end
 

@@ -1,5 +1,6 @@
 using Test, Turing, Distributions
-using Turing: VarInfo, gradient_forward, gradient_reverse
+using Turing.Core.AD: gradient_forward, gradient_reverse
+using Turing.Core.VarReplay: VarInfo
 
 @model foo_ad() = begin
     x ~ Normal(3, 1)

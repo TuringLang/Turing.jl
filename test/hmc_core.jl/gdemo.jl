@@ -15,7 +15,7 @@ using Turing
 # Plain Julia
 
 using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
-using Turing: invlink, logpdf
+using Bijectors: invlink, logpdf
 
 θ_dim = 2
 function lj_func(θ)

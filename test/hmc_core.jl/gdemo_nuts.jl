@@ -1,5 +1,5 @@
 using Main.Test
-using Turing: _nuts_step
+using Turing.Inference: _nuts_step
 
 include("unit_test_helper.jl")
 include("gdemo.jl")

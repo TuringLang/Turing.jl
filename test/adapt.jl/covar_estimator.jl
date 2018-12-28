@@ -1,4 +1,4 @@
-using Turing: WelfordCovar, NaiveCovar, add_sample!, get_covar, reset!
+using Turing.Inference.Adapt: WelfordCovar, NaiveCovar, add_sample!, get_covar, reset!
 using Test, LinearAlgebra
 
 let

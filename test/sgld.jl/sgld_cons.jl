@@ -1,5 +1,5 @@
 using Turing
-using Turing: Sampler
+using Turing.Samplers: Sampler
 using Test
 
 alg = SGLD(1000, 0.25)

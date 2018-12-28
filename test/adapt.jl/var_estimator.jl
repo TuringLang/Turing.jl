@@ -1,4 +1,4 @@
-using Turing: WelfordVar, add_sample!, get_var, reset!
+using Turing.Inference.Adapt: WelfordVar, add_sample!, get_var, reset!
 using Test
 
 let

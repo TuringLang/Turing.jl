@@ -1,4 +1,4 @@
-using Turing: _hmc_step
+using Turing.Inference: _hmc_step
 
 include("unit_test_helper.jl")
 include("simple_gauss.jl")

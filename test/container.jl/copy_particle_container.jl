@@ -1,4 +1,4 @@
-using Turing: ParticleContainer, Trace, copy
+using Turing.Container: ParticleContainer, Trace, copy
 using Test
 
 pc = ParticleContainer{Trace}(x -> x * x)
