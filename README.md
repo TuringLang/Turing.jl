@@ -3,8 +3,6 @@
 [![Build Status](https://travis-ci.org/TuringLang/Turing.jl.svg?branch=master)](https://travis-ci.org/TuringLang/Turing.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/gp1xtxsc3971pwi6/branch/master?svg=true)](https://ci.appveyor.com/project/TuringLang/turing-jl/branch/master)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
-[![Turing](http://pkg.julialang.org/badges/Turing_0.7.svg)](http://pkg.julialang.org/detail/Turing)
-[![Turing](http://pkg.julialang.org/badges/Turing_0.6.svg)](http://pkg.julialang.org/detail/Turing)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/)
 
 **Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Current features include:
