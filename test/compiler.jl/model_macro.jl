@@ -26,7 +26,7 @@ end
 f0_mm = testmodel0()
 @test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
-# check if drawing from the prior works
+# Test #544
 @model testmodel0(x = Vector{Float64}(undef, 2)) = begin
     x[1] ~ Normal()
     x[2] ~ Normal()
