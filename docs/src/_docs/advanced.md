@@ -93,7 +93,7 @@ mf(vi, sampler; x=[1.5, 2.0]) = begin
   for i = 1:2
     # Observe each value of x[i], according to a
     # Normal distribution.
-    Turing.Core.Compiler.observe(sampler,
+    Turing.Inference.observe(sampler,
                    Normal(m, sqrt(s)),
                    x[i],
                    vi)

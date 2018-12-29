@@ -15,6 +15,7 @@ using ..Core.AD
 using ProgressMeter
 using ..Turing: runmodel!
 using LinearAlgebra
+using StatsFuns: logsumexp
 
 # Adaptation
 include("Adapt/Adapt.jl")

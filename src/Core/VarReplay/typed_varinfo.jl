@@ -69,7 +69,7 @@ function TypedVarInfo(vi::UntypedVarInfo)
     vis = SingleVarInfo[]
     syms_tuple = Tuple(syms(vi))
     for s in syms_tuple
-        sym_inds = findall(vn -> sym(vn) == s, vns)
+        sym_inds = findall(vn -> vn.sym == s, vns)
         sym_vns = getindex.((vns,), sym_inds)
 
         offsets = sym_inds .- (1:length(sym_inds))
@@ -301,7 +301,7 @@ function push!(
             gid::Int
             ) where sym
     
-    @assert ~(haskey(mvi, vn)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to TypedVarInfo of syms $(syms(mvi)) with dist=$dist, gid=$gid"
+    @assert ~(haskey(mvi, vn)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to TypedVarInfo of syms $(syms(mvi)) with dist=$dist, gid=$gid"
 
     val = vectorize(dist, r)
 

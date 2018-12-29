@@ -71,6 +71,7 @@ using .Inference
 using .Inference.Adapt
 
 using Reexport
+using Libtask
 @reexport using Distributions
 @reexport using MCMCChain
 

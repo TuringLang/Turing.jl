@@ -197,7 +197,7 @@ function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
     @debug "dist = $dist"
     @debug "vn = $vn"
     @debug "r = $r" "typeof(r)=$(typeof(r))"
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    value.(r), logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::AbstractVarInfo)
@@ -228,7 +228,7 @@ function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::
         end
     end
 
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    value.(var), sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
 observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value::Any, vi::AbstractVarInfo) =

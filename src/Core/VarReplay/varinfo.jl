@@ -139,7 +139,7 @@ function invlink!(vi::UntypedVarInfo, spl::Sampler)
 end
 
 vns(vi::UntypedVarInfo) = Set(keys(vi.idcs))            # get all vns
-syms(vi::UntypedVarInfo) = map(vn -> vn.sym, vi.vns)  # get all symbols
+syms(vi::UntypedVarInfo) = unique!(map(vn -> vn.sym, vi.vns))  # get all symbols
 
 # The default getindex & setindex!() for get & set values
 # NOTE: vi[vn] will always transform the variable to its original space and Julia type
@@ -195,7 +195,7 @@ end
 
 # Add a new entry to VarInfo
 function push!(vi::UntypedVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Int)
-    @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
+    @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
     val = vectorize(dist, r)
 

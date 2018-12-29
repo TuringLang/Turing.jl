@@ -4,7 +4,7 @@ assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
 
 observe(spl::Sampler, weight::Float64) =
-error("Turing.Core.Compiler.observe: unmanaged inference algorithm: $(typeof(spl))")
+error("Turing.Inference.observe: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
 ##  Note: `A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}` can be
@@ -25,7 +25,7 @@ function assume(spl::A,
     #       r is genereated from some uniform distribution which is different from the prior
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    value.(r), logpdf_with_trans(dist, r, istrans(vi, vn))
 
 end
 
@@ -72,7 +72,7 @@ function assume(spl::A,
 
     # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    value.(var), sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 
 end
 
@@ -95,9 +95,9 @@ function observe(spl::A,
     value::Any,
     vi::AbstractVarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
-    @assert length(dists) == 1 "Turing.Core.Compiler.observe only support vectorizing i.i.d distribution"
+    @assert length(dists) == 1 "Turing.Inference.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.Core.Compiler.observe: vectorizing matrix distribution is not supported"
+    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.Inference.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
         sum(logpdf.(Ref(dist), value))

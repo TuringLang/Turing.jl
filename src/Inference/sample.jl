@@ -20,7 +20,7 @@ end
     for f in fieldnames(Tvis)
         push!(expr.args, quote
             for vn in keys(vi.vis.$f.idcs)
-                value[sym(vn)] = vi.vis.$f.idcs[vn]
+                value[sym(vn)] = vi[vn]
             end
         end)
     end

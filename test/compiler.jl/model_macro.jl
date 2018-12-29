@@ -6,7 +6,7 @@ model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
 # unit test model macro
 expr = generate_observe(:x, :y, model_info)
 @test expr.head == :block
-@test :(vi.logp += Turing.Core.Compiler.observe(sampler, y, x, vi)) in expr.args
+@test :(vi.logp += Turing.Inference.observe(sampler, y, x, vi)) in expr.args
 
 @model testmodel_comp(x, y) = begin
     s ~ InverseGamma(2,3)
