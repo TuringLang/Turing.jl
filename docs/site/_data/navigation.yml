@@ -31,6 +31,8 @@ docs:
         url: /docs/guide/
       - title: "Advanced Usage"
         url: /docs/advanced/
+      - title: "Automatic Differentiation"
+        url: /docs/autodiff/
       - title: "Using DynamicHMC"
         url: /docs/dynamichmc/
 
