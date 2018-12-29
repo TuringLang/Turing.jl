@@ -90,7 +90,7 @@ function get_sampler(model, alg; kwargs...)
     return spl
 end
 
-function default_sampler(model, alg; reuse_spl_n = 0, resume_from = nothing)
+function default_sampler(model, alg; reuse_spl_n = 0, resume_from = nothing, kwargs...)
     if reuse_spl_n > 0
         return resume_from.info[:spl]
     else

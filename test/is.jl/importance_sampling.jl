@@ -50,7 +50,7 @@ let n = 10
     Random.seed!(seed)
     exact = reference(n)
     Random.seed!(seed)
-    tested = sample(_f, alg)
+    tested = sample(_f, alg, stable=false)
     for i = 1:n
       @test exact[:samples][i][:a] == tested[:samples][i][:a]
       @test exact[:samples][i][:b] == tested[:samples][i][:b]
