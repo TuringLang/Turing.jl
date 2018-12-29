@@ -1,6 +1,6 @@
-const TorVec{T} = AbstractVector{T}
+const Vec{T} = AbstractVector{T}
 
-struct SingleVarInfo{sym, T, TDist <: Distribution, TDists <: TorVec{TDist}, TVN <: TorVec{VarName{sym}}, TVal <: TorVec{T}, TRanges <: TorVec{UnitRange{Int}}, TId <: TorVec{Int}}
+struct SingleVarInfo{sym, T, TDist <: Distribution, TDists <: Vec{TDist}, TVN <: Vec{VarName{sym}}, TVal <: Vec{T}, TRanges <: Vec{UnitRange{Int}}, TId <: Vec{Int}}
     idcs        ::    Dict{VarName{sym}, Int}
     vns         ::    TVN
     ranges      ::    TRanges
@@ -82,11 +82,11 @@ function TypedVarInfo(vi::UntypedVarInfo)
         sym_ranges = Vector{eltype(_ranges)}(undef, length(sym_inds))
         start = 0
         for i in sym_inds
-            sym_ranges[i] = start + 1 : length(_vals[i])
+            sym_ranges[i] = start + 1 : start + length(_vals[i])
             start += length(_vals[i])
         end
         sym_vals = foldl(vcat, _vals)
-        
+
         push!(vis, 
             SingleVarInfo(
                             sym_idcs,
