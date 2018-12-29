@@ -65,25 +65,27 @@ end
     return :(TypedVarInfo{NamedTuple{$(Tuple(syms)), $(Tuple{Ts...})}, Float64}($nt, Ref(0.0), Ref(0)))
 end
 function TypedVarInfo(vi::UntypedVarInfo)
-    @unpack idcs, vns, ranges, vals, dists, gids, orders, flags = vi
     vis = SingleVarInfo[]
     syms_tuple = Tuple(syms(vi))
     for s in syms_tuple
-        sym_inds = findall(vn -> vn.sym == s, vns)
-        sym_vns = getindex.((vns,), sym_inds)
-
-        offsets = sym_inds .- (1:length(sym_inds))
+        _inds = findall(vn -> vn.sym == s, vi.vns)
+        sym_inds = collect(1:length(_inds))
+        sym_vns = getindex.((vi.vns,), _inds)
+        sym_ranges = getindex.((vi.ranges,), _inds)
         sym_idcs = Dict(a => i for (i, a) in enumerate(sym_vns))
-        sym_ranges = getindex.((ranges,), sym_inds)
+        sym_dists = getindex.((vi.dists,), _inds)
+        sym_gids = getindex.((vi.gids,), _inds)
+        sym_orders = getindex.((vi.orders,), _inds)
+        sym_flags = Dict(a => vi.flags[a][_inds] for a in keys(vi.flags))
+
+        offsets = _inds .- sym_inds
         map!(sym_ranges, 1:length(sym_ranges)) do i
             sym_ranges[i].start - offsets[i] : sym_ranges[i].stop - offsets[i]
         end
-
-        sym_vals = getindex.((vals,), sym_inds)
-        sym_dists = getindex.((dists,), sym_inds)
-        sym_gids = getindex.((gids,), sym_inds)
-        sym_orders = getindex.((orders,), sym_inds)
-        sym_flags = Dict(a => flags[a][sym_inds] for a in keys(flags))
+        sym_vals = mapreduce(vcat, sym_inds) do i
+            vi.vals[sym_ranges[i]]
+        end
+        
         push!(vis, 
             SingleVarInfo(
                             sym_idcs,

@@ -2,6 +2,7 @@ module Adapt
 
 using ...Samplers
 import ...Turing
+using LinearAlgebra
 
 export  UnitPreConditioner,
         DiagPreConditioner,

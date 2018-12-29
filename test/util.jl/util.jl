@@ -1,5 +1,5 @@
 using Turing.Core.Compiler: @VarName
-using Turing.Utilities: randcat
+using Turing.Utilities: randcat, data
 using Distributions: Normal
 using Test, StatsFuns
 
@@ -14,4 +14,4 @@ i = 1
 @test isinf.(StatsFuns.logit(0.)) == true
 randcat([0.1, 0.9])
 
-@test Turing.data(Dict(:y => 1, :x => 2, :z => 1), [:x, :y]) == (x = 2, y = 1)
+@test data(Dict(:y => 1, :x => 2, :z => 1), [:x, :y]) == (x = 2, y = 1)

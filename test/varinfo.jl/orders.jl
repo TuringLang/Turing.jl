@@ -1,5 +1,5 @@
 using Turing, Test
-using Utilities: reconstruct
+using Turing.Utilities: reconstruct
 using Bijectors: invlink
 using Turing.Inference: step
 using Turing: CACHERESET

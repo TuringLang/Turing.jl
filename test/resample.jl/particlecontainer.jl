@@ -2,7 +2,11 @@
 
 using Turing
 
-import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler, consume, produce
+using Turing.Core.Container: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, current_trace
+using Turing.Core.VarReplay: VarName
+using Turing.Samplers: Sampler
+using Libtask: consume, produce
+using Turing.Inference: assume
 
 if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
   n[] = 0
@@ -11,7 +15,7 @@ else
 end
 
 alg = PG(5, 1)
-spl = Turing.Sampler(alg)
+spl = Sampler(alg)
 dist = Normal(0, 1)
 
 function fpc()
@@ -20,10 +24,10 @@ function fpc()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
+    assume(spl, dist, vn, ct.vi); n[] += 1;
     produce(0)
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
+    assume(spl, dist, vn, ct.vi); n[] += 1;
     t[1] = 1 + t[1]
   end
 end

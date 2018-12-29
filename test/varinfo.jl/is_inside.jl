@@ -49,7 +49,7 @@ end
 
 
 
-space = Set([:x, :y, :(z[1])])
+space = (:x, :y, :(z[1]))
 vn1 = genvn(:x)
 vn2 = genvn(:y)
 vn3 = genvn(:(x[1]))

@@ -25,7 +25,7 @@ function assume(spl::A,
     #       r is genereated from some uniform distribution which is different from the prior
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
-    value.(r), logpdf_with_trans(dist, r, istrans(vi, vn))
+    r, logpdf_with_trans(dist, r, istrans(vi, vn))
 
 end
 
@@ -72,7 +72,7 @@ function assume(spl::A,
 
     # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
-    value.(var), sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 
 end
 

@@ -97,7 +97,7 @@ pg, hmc = g.info[:samplers]
 
 vi = Turing.VarInfo()
 g_demo_f(vi, nothing)
-vi, _ = Turing.step(g_demo_f, pg, vi)
+vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 
 g_demo_f(vi, hmc)
