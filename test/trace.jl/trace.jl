@@ -1,8 +1,10 @@
 # Test Trace
 
 using Turing
-
-import Turing: Trace, current_trace, fork, VarName, Sampler
+using Turing.Core.Container: Trace, current_trace, fork
+using Turing.Core.VarReplay: VarName
+using Turing.Samplers: Sampler
+using Libtask: produce, consume
 
 if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
   n[] = 0
@@ -11,7 +13,7 @@ else
 end
 
 alg = PG(5, 1)
-spl = Turing.Sampler(alg)
+spl = Sampler(alg)
 dist = Normal(0, 1)
 
 function f2()
@@ -20,10 +22,10 @@ function f2()
   while true
     ct = current_trace()
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
+    Turing.Inference.assume(spl, dist, vn, ct.vi); n[] += 1;
     produce(t[1]);
     vn = VarName(gensym(), :x, "[$n]", 1)
-    Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
+    Turing.Inference.assume(spl, dist, vn, ct.vi); n[] += 1;
     t[1] = 1 + t[1]
   end
 end

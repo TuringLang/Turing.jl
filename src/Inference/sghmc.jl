@@ -1,4 +1,4 @@
-function step(model, spl::Sampler{<:SGHMC}, vi::UntypedVarInfo, is_first::Val{true})
+function step(model, spl::Sampler{<:SGHMC}, vi::AbstractVarInfo, is_first::Val{true})
     spl.alg.gid != 0 && link!(vi, spl)
 
     # Initialize velocity
@@ -9,7 +9,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::UntypedVarInfo, is_first::Val{tr
     return vi, true
 end
 
-function step(model, spl::Sampler{<:SGHMC}, vi::UntypedVarInfo, is_first::Val{false})
+function step(model, spl::Sampler{<:SGHMC}, vi::AbstractVarInfo, is_first::Val{false})
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 

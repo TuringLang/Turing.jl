@@ -11,7 +11,9 @@ export  UnitPreConditioner,
         NaiveCompAdapter,
         FixedStepSize,
         getss,
-        adapt!
+        adapt!,
+        MSSState,
+        ManualSSAdapter
 
 abstract type AbstractAdapter end
 

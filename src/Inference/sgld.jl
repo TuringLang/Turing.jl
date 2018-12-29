@@ -1,4 +1,4 @@
-function step(model, spl::Sampler{<:SGLD}, vi::UntypedVarInfo, is_first::Val{true})
+function step(model, spl::Sampler{<:SGLD}, vi::AbstractVarInfo, is_first::Val{true})
     spl.alg.gid != 0 && link!(vi, spl)
 
     spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
@@ -10,7 +10,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::UntypedVarInfo, is_first::Val{tru
     return vi, true
 end
 
-function step(model, spl::Sampler{<:SGLD}, vi::UntypedVarInfo, is_first::Val{false})
+function step(model, spl::Sampler{<:SGLD}, vi::AbstractVarInfo, is_first::Val{false})
     # Update iteration counter
     spl.info[:t] += 1
 
