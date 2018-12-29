@@ -34,7 +34,7 @@ function MH(n_iters::Int, space...)
     proposals = Dict{Symbol,Any}(get_mh_proposals(space)...)
     MH{new_space}(n_iters, proposals, 0)
 end
-MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, getspace(alg), new_gid)
+MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, new_gid)
 
 @inline function build_mh_space(s::Tuple)
     if length(s) == 0
