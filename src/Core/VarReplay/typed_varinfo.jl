@@ -71,16 +71,13 @@ function TypedVarInfo(vi::UntypedVarInfo)
         _inds = findall(vn -> vn.sym == s, vi.vns)
         sym_inds = collect(1:length(_inds))
         sym_vns = getindex.((vi.vns,), _inds)
-        _ranges = getindex.((vi.ranges,), _inds)
-        offsets = _inds .- sym_inds
-        sym_ranges = [_ranges[i].start - offsets[i] : _ranges[i].stop - offsets[i] 
-            for i in sym_inds]
         sym_idcs = Dict(a => i for (i, a) in enumerate(sym_vns))
         sym_dists = getindex.((vi.dists,), _inds)
         sym_gids = getindex.((vi.gids,), _inds)
         sym_orders = getindex.((vi.orders,), _inds)
         sym_flags = Dict(a => vi.flags[a][_inds] for a in keys(vi.flags))
 
+        _ranges = getindex.((vi.ranges,), _inds)
         _vals = [vi.vals[_ranges[i]] for i in sym_inds]
         sym_ranges = Vector{eltype(_ranges)}(undef, length(sym_inds))
         start = 0
