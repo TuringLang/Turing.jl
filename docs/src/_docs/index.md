@@ -5,7 +5,7 @@ toc: true
 toc_sticky: true
 ---
 
-Welcome to the documentation for Turing 0.5.
+Welcome to the documentation for Turing 0.6.4.
 
 ## Introduction
 
