@@ -249,6 +249,8 @@ end
 
 In this case, the model compiler can now determine that `x` is a `Vector{Float64,1}` of length 10, and the model will work as intended. It doesn't matter what the values in the vector are — at current, `x` will be treated as a parameter if it assumes its default value, i.e. no value was provided in the function call for that variable.
 
+The element type of the vector (or matrix) should match the type of the random variable, `<: Integer` for discrete random variables and `<: AbstractFloat` for continuous random variables. Moreover, if the continuous random variable is to be sampled using a Hamiltonian sampler, the vector's element type needs to be `Real` to enable auto-differentiation through the model which uses special number types that are sub-types of `Real`. Finally, when using a particle sampler, a `TArray` should be used.
+
 ## Beyond the Basics
 
 ### Compositional Sampling Using Gibbs
