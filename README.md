@@ -14,50 +14,11 @@
 
 ## Getting Started
 
-To use Turing, you need to first install Julia. You will need to Julia 1.0 or greater, which you can get from [the official Julia website](http://julialang.org/downloads/). Once you have installing Julia, you need to add Turing to your Julia environment. Turing is an officially registered Julia package, so the following will install a stable version of Turing while inside Julia's package manager (press `]` from the REPL):
+Turing's home page, with links to everything you'll need to use Turing is:
 
-```julia
-add Turing
-```
+http://turing.ml/docs/get-started/
 
-If you want to use the latest version of Turing with some experimental features, you can try the following instead:
 
-```julia
-add Turing#master
-test Turing
-```
-
-## Example
-
-Here's a simple example showing the package in action:
-```julia
-using Turing
-using Plots
-
-# Define a simple Normal model with unknown mean and variance.
-@model gdemo(x, y) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
-  return s, m
-end
-
-#  Run sampler, collect results
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
-
-# Summarise results (currently requires the master branch from MCMCChain)
-describe(c3)
-
-# Plot and save results
-p = plot(c3)
-savefig("gdemo-plot.png")
-```
 ## Contributing
 
 Turing was originally created and is now managed by Hong Ge. Current and past Turing team members include [Hong Ge](http://mlg.eng.cam.ac.uk/hong/), [Adam Scibior](http://mlg.eng.cam.ac.uk/?portfolio=adam-scibior), [Matej Balog](http://mlg.eng.cam.ac.uk/?portfolio=matej-balog), [Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), [Kai Xu](http://mlg.eng.cam.ac.uk/?portfolio=kai-xu), [Emma Smith](https://github.com/evsmithx), [Emile Mathieu](http://emilemathieu.fr), [Martin Trapp](http://martint.blog).
