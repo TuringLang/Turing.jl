@@ -56,7 +56,7 @@ Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
 
 ## Model Internals
 
-The `@model` macro accepts a function definition and generates a `Turing.CallableModel` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
+The `@model` macro accepts a function definition and generates a `Turing.Model` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
 
 ```julia
 using Turing

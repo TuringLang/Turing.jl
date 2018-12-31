@@ -152,7 +152,7 @@ Output:
 
 #### Generating Vectors of Quantities
 
-More broadly, Turing models can be treated as generative by providing default values in the model declaration, and then calling that model without parameters.
+More broadly, Turing models can be treated as generative by providing default values in the model declaration, and then calling that model without arguments.
 
 Suppose we wish to generate data according to the model
 
@@ -216,6 +216,38 @@ Output:
  1.198359051797093
  1.7438714106828728
 ```
+
+#### What to Use as a Default Value
+
+Currently, the actual _value_ of the default argument does not matter. Only the dimensions and type of a non-atomic value are relevant. Turing uses default values to pre-allocate vectors when they are treated as parameters, because if the value is not provided, the model will not know the size or type of a vector. Consider the following model:
+
+```julia
+@model generator(x) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  for i in 1:length(x)
+      x[i] ~ Normal(m, sqrt(s))
+  end
+  return s, m
+end
+```
+
+If we are trying to generate random random values from the `generator` model and we call `sample(generator(), HMC(1000, 0.01, 5))`, we will receive an error. This is because there is no way to determine `length(x)`, whether `x` is a vector, and the type of the values in `x`.
+
+A sensible default value might be:
+
+```julia
+@model generator(x = zeros(10)) = begin
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
+  for i in 1:length(x)
+      x[i] ~ Normal(m, sqrt(s))
+  end
+  return s, m
+end
+```
+
+In this case, the model compiler can now determine that `x` is a `Vector{Float64,1}` of length 10, and the model will work as intended. It doesn't matter what the values in the vector are — at current, `x` will be treated as a parameter if it assumes its default value, i.e. no value was provided in the function call for that variable.
 
 ## Beyond the Basics
 
