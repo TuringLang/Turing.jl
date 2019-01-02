@@ -62,3 +62,5 @@ tutorials:
         url: /tutorials/2-logisticregression/
       - title: "Bayesian Neural Networks"
         url: /tutorials/3-bayesnn/
+      - title: "Linear Regression"
+        url: /tutorials/5-linearregression/
