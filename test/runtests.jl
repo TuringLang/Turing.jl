@@ -15,7 +15,7 @@ if get(ENV, "TRAVIS", "false") == "true"
     # If Travis is testing, separate the tests.
     numerical_tests = [joinpath("hmc.jl", "matrix_support.jl"),
                        joinpath("mh.jl", "mh_cons.jl"),
-                       joinpath("models.jl", "single_dist_correctness.jl")
+                       joinpath("models.jl", "single_dist_correctness.jl")]
 
     if ENV["STAGE"] == "test"
         runtests(exclude = numerical_tests)
