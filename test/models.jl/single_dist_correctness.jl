@@ -27,7 +27,8 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1])]
 @testset "Correctness test for single distributions" begin
     for (dist_set, dist_list) ∈ [("UnivariateDistribution",   dist_uni),
                                  ("MultivariateDistribution", dist_multi),
-                                 ("MatrixDistribution",       dist_matrix)]
+                                 ("MatrixDistribution",       dist_matrix)
+                                 ]
         @testset "$(string(dist_set))" begin
             for dist in dist_list
                 @testset "$(string(typeof(dist)))" begin
