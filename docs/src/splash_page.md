@@ -63,7 +63,7 @@ flux:
 
 
 samplers:
-  - image_path: /assets/sampler2.svg
+  - image_path: /assets/sampler.svg
     title: "Large Sampling Library"
     excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
     url: "http://turing.ml/docs/library/#samplers"
