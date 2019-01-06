@@ -141,6 +141,7 @@ function sample(model::Model, alg::Hamiltonian;
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
+    spl.info[:a] = []
 
     # HMC steps
     total_lf_num = 0
@@ -170,6 +171,7 @@ function sample(model::Model, alg::Hamiltonian;
     end
 
     println("[$alg_str] Finished with")
+    println("  Mean alpha         = $(mean(spl.info[:a]));")
     println("  Running time        = $time_total;")
     if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
         accept_rate = sum(accept_his) / n  # calculate the accept rate
@@ -244,6 +246,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         vi[spl] = θ
         setlogp!(vi, lj)
     end
+    push!(spl.info[:a], α)
 
     if PROGRESS[] && spl.alg.gid == 0
         std_str = string(spl.info[:wum].pc)
@@ -256,7 +259,9 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     if spl.alg isa AdaptiveHamiltonian
-        adapt!(spl.info[:wum], α, vi[spl], adapt_M=false, adapt_ϵ=true)
+        vi2 = deepcopy(vi)
+        invlink!(vi2, spl)
+        adapt!(spl.info[:wum], α, vi2[spl], adapt_M=true, adapt_ϵ=true)
     end
 
     @debug "R -> X..."
