@@ -18,10 +18,12 @@ prior = Normal(mu0, sig0)
 
 # Inference
 obs = [5.0]
+po1 = compute_posterior_parameters(obs, mu0, sig0, sig_like)
 posterior_1 = Normal(compute_posterior_parameters(obs, mu0, sig0, sig_like)...)
 
 # Inference with more data
 push!(obs, 1.0)
+po2 = compute_posterior_parameters(obs, mu0, sig0, sig_like)
 posterior_2 = Normal(compute_posterior_parameters(obs, mu0, sig0, sig_like)...)
 
 julia_purple = parse(Colorant, RGBA(0.702, 0.322, 0.8))
