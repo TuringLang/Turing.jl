@@ -7,7 +7,7 @@ header:
   # overlay_color: "#000"
   # overlay_filter: "0.0"
   btn_class: "btn--primary"
-  overlay_image: /assets/turing-logo-new.svg
+  overlay_image: /assets/turing-logo-wide.svg
   actions:
     - label: "Get Started"
       btn_class: "btn--primary"
@@ -55,7 +55,7 @@ code-sample:
 
 flux:
   - image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
-    title: "Integrates With Other Deep Learning Packages"
+    title: "Integrates With Other Machine Learning Packages"
     excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
     url: "http://turing.ml/tutorials/3-bayesnn/"
     btn_label: "Bayesian Neural Network Tutorial"
