@@ -7,7 +7,7 @@ header:
   # overlay_color: "#000"
   # overlay_filter: "0.0"
   btn_class: "btn--primary"
-  overlay_image: /assets/turing-logo-wide.svg
+  overlay_image: /assets/turing-logo-new.svg
   actions:
     - label: "Get Started"
       btn_class: "btn--primary"
@@ -32,6 +32,27 @@ main-feature_row:
   - title: "Fully Hackable"
     excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
 
+code-sample:
+  - title: "A Quick Example"
+    excerpt: "Turing's modelling syntax allows you to specify a model without unnessecary overhead. The code below specifies a Gaussian model."
+    snippet: |
+      # Define a Gausssian model.
+      @model gdemo(x, y) = begin
+        # Assume that variance follows an InverseGamma distribution.
+        σ ~ InverseGamma(2,3)
+
+        # Assume that μ follows a Normal distribution.
+        μ ~ Normal(0,sqrt(σ))
+
+        # Observe our two data points, x and y.
+        x ~ Normal(m, sqrt(s))
+        y ~ Normal(m, sqrt(s))
+        return σ, μ
+      end
+    url: "http://turing.ml/docs/quick-start/"
+    btn_label: "Quick Start"
+    btn_class: "btn--inverse"
+
 flux:
   - image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
     title: "Integrates With Other Deep Learning Packages"
@@ -42,7 +63,7 @@ flux:
 
 
 samplers:
-  - image_path: /assets/mvnorm.svg
+  - image_path: /assets/sampler2.svg
     title: "Large Sampling Library"
     excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
     url: "http://turing.ml/docs/library/#samplers"
@@ -55,9 +76,8 @@ citing:
   - excerpt: '<sub>If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)</sub>'
 ---
 
-```@raw html
 {% include feature_row id="main-feature_row" %}
+{% include feature_row_code id="code-sample" type="center-code" %}
 {% include feature_row id="samplers" type="left" %}
 {% include feature_row id="flux" type="right" %}
 {% include feature_row id="citing" type = "center-left" %}
-```

@@ -30,6 +30,12 @@
   }
 }
 
+.archive__snippet {
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .archive__item-title {
   margin-bottom: 0.25em;
   font-family: $sans-serif-narrow;
@@ -333,6 +339,33 @@
     }
   }
 
+  &--center-code {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    clear: both;
+    font-size: 1.125em;
+
+    .archive__item-teaser {
+      margin-bottom: 2em;
+    }
+
+    @include breakpoint($small) {
+      text-align: center;
+
+      .archive__item-teaser {
+        margin: 0 auto;
+        width: span(5 of 12);
+      }
+
+      .archive__item-body {
+        margin: 0 auto;
+        width: span(7 of 12);
+      }
+    }
+  }
+
   &--center-left {
     float: left;
     margin-left: 0;
@@ -378,6 +411,8 @@
     font-size: 1em;
   }
 }
+
+
 
 /*
    Wide Pages
