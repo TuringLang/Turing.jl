@@ -68,7 +68,6 @@ using Turing
 
   # Observe each value of x.
   [x ~ Normal(m, sqrt(s))]
-  return s, m
 end
 
 sample(gdemo([1.5, 2.0]), HMC(1000, 0.1, 5))

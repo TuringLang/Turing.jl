@@ -33,7 +33,6 @@ using StatPlots
   m ~ Normal(0,sqrt(s))
   x ~ Normal(m, sqrt(s))
   y ~ Normal(m, sqrt(s))
-  return s, m
 end
 ```
 
@@ -324,7 +323,7 @@ Here is an example of how the `TArray` (using a `TArray` constructor function ca
         s[i] ~ Categorical(vec(T[s[i-1]]))
         y[i] ~ Normal(m[s[i]], 0.1)
     end
-    return(s, m)
+    return (s, m)
 end;
 ```
 

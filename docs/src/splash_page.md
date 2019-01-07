@@ -38,16 +38,18 @@ code-sample:
     snippet: |
       # Define a Gausssian model.
       @model gdemo(x, y) = begin
-        # Assume that variance follows an InverseGamma distribution.
+        # Assume that variance follows an
+        # InverseGamma distribution.
         σ ~ InverseGamma(2,3)
 
-        # Assume that μ follows a Normal distribution.
+        # Assume that μ follows a
+        # Normal distribution.
         μ ~ Normal(0,sqrt(σ))
 
-        # Observe our two data points, x and y.
+        # Observe our two data points,
+        # x and y.
         x ~ Normal(m, sqrt(s))
         y ~ Normal(m, sqrt(s))
-        return σ, μ
       end
     url: "http://turing.ml/docs/quick-start/"
     btn_label: "Quick Start"
