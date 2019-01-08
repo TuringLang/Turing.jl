@@ -34,22 +34,15 @@ main-feature_row:
 
 code-sample:
   - title: "A Quick Example"
-    excerpt: "Turing's modelling syntax allows you to specify a model without unnessecary overhead. The code below specifies a Gaussian model."
+    excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
     snippet: |
-      # Define a Gausssian model.
       @model gdemo(x, y) = begin
-        # Assume that variance follows an
-        # InverseGamma distribution.
+        # Assumptions
         σ ~ InverseGamma(2,3)
-
-        # Assume that μ follows a
-        # Normal distribution.
         μ ~ Normal(0,sqrt(σ))
-
-        # Observe our two data points,
-        # x and y.
-        x ~ Normal(m, sqrt(s))
-        y ~ Normal(m, sqrt(s))
+        # Observations
+        x ~ Normal(μ, sqrt(σ))
+        y ~ Normal(μ, sqrt(σ))
       end
     url: "http://turing.ml/docs/quick-start/"
     btn_label: "Quick Start"
@@ -80,7 +73,7 @@ citing:
 
 ```@raw html
 {% include feature_row id="main-feature_row" %}
-{% include feature_row_code id="code-sample" type="center-code" %}
+{% include feature_row_code id="code-sample" type="right" %}
 {% include feature_row id="samplers" type="left" %}
 {% include feature_row id="flux" type="right" %}
 {% include feature_row id="citing" type = "center-left" %}

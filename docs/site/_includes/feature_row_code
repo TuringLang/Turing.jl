@@ -38,16 +38,19 @@
             </div>
           {% endif %}
 
+          {% if f.url %}
+            <p><a href="{{ f_url }}" class="btn {{ f.btn_class }}">{{ f.btn_label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a></p>
+          {% endif %}
+        </div>
+
+        <div class="archive__item-teaser">
           {% if f.snippet %}
             <div class="archive__snippet">
               {% highlight julia %}{{f.snippet}}{% endhighlight %}
             </div>
           {% endif %}
-
-          {% if f.url %}
-            <p><a href="{{ f_url }}" class="btn {{ f.btn_class }}">{{ f.btn_label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a></p>
-          {% endif %}
         </div>
+        
       </div>
     </div>
   {% endfor %}

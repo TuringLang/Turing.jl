@@ -18,6 +18,13 @@
   }
 }
 
+.archive__item {
+
+  @include breakpoint($small) {
+    display: flex;
+  }
+}
+
 .archive__subtitle {
   margin: 1.414em 0 0;
   padding-bottom: 0.5em;
@@ -270,6 +277,8 @@
     }
 
     @include breakpoint($small) {
+      // display: flex;
+
       .archive__item-teaser {
         float: left;
         width: span(5 of 12);
@@ -280,6 +289,7 @@
         padding-left: gutter(0.5 of 12);
         padding-right: gutter(1 of 12);
         width: span(7 of 12);
+        align-self: center;
       }
     }
   }
@@ -291,6 +301,7 @@
     width: 100%;
     clear: both;
     font-size: 1.125em;
+    display: inline-block;
 
     .archive__item-teaser {
       margin-bottom: 2em;
@@ -298,10 +309,12 @@
 
     @include breakpoint($small) {
       text-align: right;
+      // display: flex;
 
       .archive__item-teaser {
         float: right;
         width: span(5 of 12);
+        order: 1;
       }
 
       .archive__item-body {
@@ -309,6 +322,7 @@
         width: span(7 of 12);
         padding-left: gutter(0.5 of 12);
         padding-right: gutter(1 of 12);
+        align-self: center;
       }
     }
   }
@@ -336,6 +350,7 @@
       .archive__item-body {
         margin: 0 auto;
         width: span(7 of 12);
+        order: 1;
       }
     }
   }
@@ -400,7 +415,7 @@
 .archive {
   .feature__wrapper {
     .archive__item-title {
-      margin-top: 0.25em;
+      margin-top: 0;
       font-size: 1em;
     }
   }

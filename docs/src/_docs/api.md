@@ -12,7 +12,6 @@ CurrentModule = Turing
 
 ```@docs
 @model
-@~
 ```
 
 ## Samplers
