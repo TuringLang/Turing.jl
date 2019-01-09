@@ -25,11 +25,11 @@ current-features:
   - title: 'Current Features'
 
 main-feature_row:
-  - title: "Intuitive Syntax"
+  - title: "Intuitive"
     excerpt: "Turing models are easy to read and write. Specify models quickly and easily."
   - title: "Universal"
     excerpt: "Turing supports models with stochastic control flow — models work the way you write them."
-  - title: "Fully Hackable"
+  - title: "Adaptable"
     excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
 
 code-sample:
