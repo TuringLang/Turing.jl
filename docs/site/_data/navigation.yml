@@ -62,5 +62,7 @@ tutorials:
         url: /tutorials/2-logisticregression/
       - title: "Bayesian Neural Networks"
         url: /tutorials/3-bayesnn/
+      - title: "Hidden Markov Models"
+        url: /tutorials/4-bayeshmm/
       - title: "Linear Regression"
         url: /tutorials/5-linearregression/
