@@ -43,7 +43,7 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1])]
 
                     # Mean
                     dist_mean = mean(dist)
-                    if !all(isnan.(collect(dist_mean))) && !all(isinf.(collect(dist_mean)))
+                    if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
                         chn_mean = mean(chn_xs)
                         @test chn_mean ≈ dist_mean atol=(mean_atol * length(chn_mean))
                     end
@@ -52,7 +52,7 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1])]
                     if !(dist isa Distributions.MatrixDistribution)
                         # Variance
                         dist_var = var(dist)
-                        if !all(isnan.(collect(dist_var))) && !all(isinf.(collect(dist_var)))
+                        if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
                             chn_var = var(chn_xs)
                             @test chn_var ≈ dist_var atol=(var_atol * length(chn_var))
                         end
