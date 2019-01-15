@@ -7,12 +7,50 @@ var_atol = 1.0
 multi_dim = 10
 
 # 1. UnivariateDistribution
-dist_uni = [Normal(0, 1),
-            TDist(2.5),
+# NOTE: Noncentral distributions are commented out because of
+#       AD imcompatibility of their logpdf functions
+dist_uni = [Arcsine(1, 3),
+            Beta(2, 1),
+            # NoncentralBeta(2, 1, 1),
+            BetaPrime(1, 1),
+            Biweight(0, 1),
+            Chi(7),
+            Chisq(7),
+            # NoncentralChisq(7, 1),
+            Cosine(0, 1),
+            Epanechnikov(0, 1),
+            Erlang(2, 3),
+            Exponential(0.1),
+            FDist(7, 7),
+            # NoncentralF(7, 7, 1),
+            Frechet(2, 0.5),
+            Normal(0, 1),
+            GeneralizedExtremeValue(0, 1, 0.5),
+            GeneralizedPareto(0, 1, 0.5),
+            Gumbel(0, 0.5),
+            InverseGaussian(1, 1),
+            Kolmogorov(),
+            # KSDist(2),  # no pdf function defined
+            # KSOneSided(2),  # no pdf function defined
+            Laplace(0, 0.5),
+            Levy(0, 1),
+            Logistic(0, 1),
+            LogNormal(0, 1),
             Gamma(2, 3),
             InverseGamma(3, 1),
-            Beta(2, 1),
-            #Cauchy(0, 1),       # mean and variance are undefined for Cauchy
+            NormalCanon(0, 1),
+            NormalInverseGaussian(0, 2, 3, 1),
+            Pareto(1, 1),
+            Rayleigh(1),
+            SymTriangularDist(0, 1),
+            TDist(2.5),
+            # NoncentralT(2.5, 1),
+            TriangularDist(1, 3, 2),
+            Triweight(0, 1),
+            Uniform(0, 1),
+            VonMises(0, 1),
+            Weibull(2, 1),
+            # Cauchy(0, 1),  # mean and variance are undefined for Cauchy
            ]
 
 # 2. MultivariateDistribution
