@@ -13,16 +13,18 @@ dist_uni = [Normal(0, 1),
             InverseGamma(3, 1),
             Beta(2, 1),
             #Cauchy(0, 1),       # mean and variance are undefined for Cauchy
-            ]
+           ]
 
 # 2. MultivariateDistribution
 dist_multi = [MvNormal(zeros(multi_dim), ones(multi_dim)),
               MvNormal(zeros(2), [2 1; 1 4]),
               Dirichlet(multi_dim, 2.0),
-              ]
+             ]
 
 # 3. MatrixDistribution
-dist_matrix = [Wishart(7, [1 0.5; 0.5 1])]
+dist_matrix = [Wishart(7, [1 0.5; 0.5 1]),
+               InverseWishart(7, [1 0.5; 0.5 1]),
+              ]
 
 @testset "Correctness test for single distributions" begin
     for (dist_set, dist_list) ∈ [("UnivariateDistribution",   dist_uni),
