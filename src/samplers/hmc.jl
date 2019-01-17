@@ -81,7 +81,7 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-@static if isdefined(Turing, :CmdStan)
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
     DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
     STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
 end
@@ -101,17 +101,12 @@ Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
 end
 
 function sample(model::Model, alg::Hamiltonian;
-                                chunk_size=CHUNKSIZE[],             # set temporary chunk size
                                 save_state=false,                   # flag for state saving
                                 resume_from=nothing,                # chain to continue
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
                 )
-    if ADBACKEND[] == :forward_diff
-        default_chunk_size = CHUNKSIZE[]  # record global chunk size
-        setchunksize(chunk_size)        # set temp chunk size
-    end
-
+    
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg, adapt_conf)
@@ -188,10 +183,6 @@ function sample(model::Model, alg::Hamiltonian;
       std_str = string(spl.info[:wum].pc)
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
       println("  pre-cond. metric    = $(std_str).")
-    end
-
-    if ADBACKEND[] == :forward_diff
-        setchunksize(default_chunk_size)      # revert global chunk size
     end
 
     if resume_from != nothing   # concat samples

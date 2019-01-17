@@ -24,30 +24,29 @@ using Markdown
 using Libtask
 using MacroTools
 
-function __init__()
-    @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-        using CmdStan
-        import CmdStan: Adapt, Hmc
-    end
-
-    @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
-        using DynamicHMC, LogDensityProblems
-        using LogDensityProblems: AbstractLogDensityProblem, ValueGradient
-
-        struct FunctionLogDensity{F} <: AbstractLogDensityProblem
-          dimension::Int
-          f::F
-        end
-
-        LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
-
-        LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
-    end
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+    using CmdStan
+    import CmdStan: Adapt, Hmc
 end
+
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
+    using .DynamicHMC: NUTS_init_tune_mcmc
+    using LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
+
+    struct FunctionLogDensity{F} <: AbstractLogDensityProblem
+      dimension::Int
+      f::F
+    end
+
+    LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
+
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+end
+
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
-import ForwardDiff: gradient
-using Flux.Tracker
+using ForwardDiff: ForwardDiff
+using Flux.Tracker: Tracker
 import MCMCChain: AbstractChains, Chains
 
 ##############################
@@ -138,7 +137,7 @@ struct SampleFromPrior <: AbstractSampler end
 const AnySampler = Union{Nothing, AbstractSampler}
 
 include("utilities/resample.jl")
-@static if isdefined(Turing, :CmdStan)
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
     include("utilities/stan-interface.jl")
 end
 include("utilities/helper.jl")

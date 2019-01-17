@@ -1,15 +1,15 @@
-@static if isdefined(Turing, :CmdStan)
-  function DualAveraging(spl::Sampler{<:AdaptiveHamiltonian}, adapt_conf::CmdStan.Adapt, ϵ::Real)
-      # Hyper parameters for dual averaging
-      γ = adapt_conf.gamma
-      t_0 = adapt_conf.t0
-      κ = adapt_conf.kappa
-      δ = adapt_conf.delta
-      return DualAveraging(γ, t_0, κ, δ, DAState(ϵ))
-  end
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+    function DualAveraging(spl::Sampler{<:AdaptiveHamiltonian}, adapt_conf::CmdStan.Adapt, ϵ::Real)
+        # Hyper parameters for dual averaging
+        γ = adapt_conf.gamma
+        t_0 = adapt_conf.t0
+        κ = adapt_conf.kappa
+        δ = adapt_conf.delta
+        return DualAveraging(γ, t_0, κ, δ, DAState(ϵ))
+    end
 end
 
-@static if isdefined(Turing, :CmdStan)
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
     function get_threephase_params(adapt_conf::CmdStan.Adapt)
         init_buffer = adapt_conf.init_buffer
         term_buffer = adapt_conf.term_buffer
