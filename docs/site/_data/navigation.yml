@@ -12,8 +12,8 @@ main:
   # - title: "About"
   #   url: /about/
   #
-  # - title: "News"
-  #   url: /news/
+  # - title: "Blog"
+  #   url: /blog/
 
   - title: "GitHub"
     url: https://github.com/TuringLang/Turing.jl

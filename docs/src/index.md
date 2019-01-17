@@ -1,6 +1,7 @@
 ---
 title: Turing.jl
 layout: splash
+hide_masthead: true
 
 header:
   # overlay_color: "#000"
@@ -10,11 +11,15 @@ header:
   actions:
     - label: "Get Started"
       btn_class: "btn--primary"
-      url: "http://turing.ml/docs/get-started/"
+      url: "/docs/get-started/"
     - label: "Documentation"
-      url: "http://turing.ml/docs/"
+      url: "/docs/"
     - label: "Tutorials"
-      url: "http://turing.ml/tutorials/"
+      url: "/tutorials/"
+    # - label: "Blog"
+    #   url: "/blog/"
+    - label: "GitHub"
+      url: https://github.com/TuringLang/Turing.jl
 excerpt: "**Turing** is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability."
 
 intro:
