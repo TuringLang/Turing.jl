@@ -31,8 +31,10 @@ end
 
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
     using .DynamicHMC: NUTS_init_tune_mcmc
-    using LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
+end
 
+@init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval begin
+    using .LogDensityProblems: AbstractLogDensityProblem, ValueGradient
     struct FunctionLogDensity{F} <: AbstractLogDensityProblem
       dimension::Int
       f::F
