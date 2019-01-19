@@ -12,7 +12,7 @@ using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
-@reexport using Distributions, MCMCChain
+@reexport using Distributions, MCMCChain, Libtask
 using Flux.Tracker: Tracker
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
@@ -116,21 +116,40 @@ end
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @VarName                       # modelling
-export MH, Gibbs                              # classic sampling
-export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
-export DynamicNUTS
-export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
-export sample, setchunksize, resume           # inference
-export auto_tune_chunk_size!, setadbackend, setadsafe # helper
-export turnprogress  # debugging
-export consume, produce
+export  @model,                 # modelling
+        @VarName, 
+        
+        MH,                     # classic sampling
+        Gibbs,
+        
+        HMC,                    # Hamiltonian-like sampling 
+        SGLD, 
+        SGHMC, 
+        HMCDA, 
+        NUTS,
+        DynamicNUTS,
+        
+        IS,                     # particle-based sampling
+        SMC, 
+        CSMC, 
+        PG, 
+        PIMH, 
+        PMMH, 
+        IPMCMC,
 
-# Turing-safe data structures and associated functions
-export TArray, tzeros, localcopy, IArray
+        sample,                 # inference 
+        setchunksize, 
+        resume,
 
-export @sym_str
+        auto_tune_chunk_size!,  # helper
+        setadbackend, 
+        setadsafe, 
 
-export Flat, FlatPos, BinomialLogit, VecBinomialLogit
+        turnprogress,           # debugging
+
+        Flat, 
+        FlatPos, 
+        BinomialLogit, 
+        VecBinomialLogit
 
 end
