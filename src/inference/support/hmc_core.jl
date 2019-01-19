@@ -120,17 +120,6 @@ function gen_H_func(pc::DensePreConditioner)
     end
 end
 
-###
-
-function runmodel!(model, vi::VarInfo, spl::Union{Nothing,Sampler})
-    setlogp!(vi, zero(Real))
-    if spl != nothing && :eval_num ∈ keys(spl.info)
-        spl.info[:eval_num] += 1
-    end
-    model(vi, spl)
-    return vi
-end
-
 function leapfrog(θ::AbstractVector{<:Real},
                   p::AbstractVector{<:Real},
                   τ::Int,

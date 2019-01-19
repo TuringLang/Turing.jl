@@ -1,0 +1,47 @@
+module Core
+
+using MacroTools, Libtask, ForwardDiff
+using ..Utilities, Reexport
+using Flux.Tracker: Tracker
+using ..Turing: Turing, Model, Sampler, runmodel!
+
+include("VarReplay.jl")
+@reexport using .VarReplay
+
+include("compiler.jl")
+include("container.jl")
+include("ad.jl")
+
+export  @model,
+        @VarName,
+        generate_observe,
+        translate_tilde!,
+        get_vars,
+        get_data,
+        ParticleContainer,
+        Particle,
+        Trace,
+        fork,
+        forkr,
+        current_trace,
+        weights,
+        effectiveSampleSize,
+        increase_logweight,
+        inrease_logevidence,
+        resample!,
+        getsample, 
+        ADBackend,
+        setadbackend, 
+        setadsafe, 
+        ForwardDiffAD, 
+        FluxTrackerAD,
+        value,
+        gradient,
+        CHUNKSIZE, 
+        ADBACKEND,
+        setchunksize,
+        verifygrad,
+        gradient_forward,
+        gradient_reverse
+
+end # module

@@ -49,34 +49,34 @@ function MH(n_iters::Int, space...)
 end
 MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, alg.space, new_gid)
 
-Sampler(alg::MH, model::Model) = begin
-  alg_str = "MH"
+function Sampler(alg::MH, model::Model)
+    alg_str = "MH"
 
-  # Sanity check for space
-  if alg.gid == 0 && !isempty(alg.space)
-    @assert issubset(Set(pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(pvars(model))))"
-    if Set(pvars(model)) != alg.space
-      warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(pvars(model))))")
+    # Sanity check for space
+    if alg.gid == 0 && !isempty(alg.space)
+        @assert issubset(Set(pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(pvars(model))))"
+        if Set(pvars(model)) != alg.space
+            warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(pvars(model))))")
+        end
     end
-  end
 
-  info = Dict{Symbol, Any}()
-  info[:proposal_ratio] = 0.0
-  info[:prior_prob] = 0.0
-  info[:violating_support] = false
+    info = Dict{Symbol, Any}()
+    info[:proposal_ratio] = 0.0
+    info[:prior_prob] = 0.0
+    info[:violating_support] = false
 
-  Sampler(alg, info)
+    return Sampler(alg, info)
 end
 
-propose(model, spl::Sampler{<:MH}, vi::VarInfo) = begin
-  spl.info[:proposal_ratio] = 0.0
-  spl.info[:prior_prob] = 0.0
-  spl.info[:violating_support] = false
-  runmodel!(model, vi ,spl)
+function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
+    spl.info[:proposal_ratio] = 0.0
+    spl.info[:prior_prob] = 0.0
+    spl.info[:violating_support] = false
+    return runmodel!(model, vi ,spl)
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
-  return vi, true
+    return vi, true
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
@@ -175,56 +175,66 @@ function sample(model::Model, alg::MH;
   c
 end
 
-assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
-      if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
-      old_val = vi[vn]
+        if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
+        old_val = vi[vn]
 
-      if vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
-        proposal = spl.alg.proposals[vn.sym](old_val)
+        if vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
+            proposal = spl.alg.proposals[vn.sym](old_val)
+            if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
+                σ = std(proposal)
+                lb = support(dist).lb
+                ub = support(dist).ub
+                stdG = Normal()
+                r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
+                # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
+                spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
+                spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
+            else # Other than Gaussian proposal
+                r = rand(proposal)
+                if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
+                    spl.info[:violating_support] = true
+                    r = old_val
+                end
+                spl.info[:proposal_ratio] -= logpdf(proposal, r) # accumulate pdf of proposal
+                reverse_proposal = spl.alg.proposals[vn.sym](r)
+                spl.info[:proposal_ratio] += logpdf(reverse_proposal, old_val)
+            end
 
-        if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
-          σ = std(proposal)
-          lb = support(dist).lb
-          ub = support(dist).ub
-          stdG = Normal()
-          r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
-          # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
-          spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
-          spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
-
-        else # Other than Gaussian proposal
-          r = rand(proposal)
-          if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
-            spl.info[:violating_support] = true
-            r = old_val
-          end
-          spl.info[:proposal_ratio] -= logpdf(proposal, r) # accumulate pdf of proposal
-          reverse_proposal = spl.alg.proposals[vn.sym](r)
-          spl.info[:proposal_ratio] += logpdf(reverse_proposal, old_val)
+        else # Prior as proposal
+            r = rand(dist)
+            spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
         end
 
-      else # Prior as proposal
-        r = rand(dist)
-        spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
-      end
-
-      spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
-      vi[vn] = vectorize(dist, r)
-      setgid!(vi, spl.alg.gid, vn)
+        spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
+        vi[vn] = vectorize(dist, r)
+        setgid!(vi, spl.alg.gid, vn)
     else
-      r = vi[vn]
+        r = vi[vn]
     end
 
     # acclogp!(vi, logpdf(dist, r)) # accumulate pdf of prior
     r, logpdf(dist, r)
 end
 
-assume(spl::Sampler{<:MH}, dists::Vector{D}, vn::VarName, var::Any, vi::VarInfo) where D<:Distribution =
-  error("[Turing] MH doesn't support vectorizing assume statement")
+function assume(  spl::Sampler{<:MH}, 
+                  dists::Vector{D}, 
+                  vn::VarName, 
+                  var::Any, 
+                  vi::VarInfo
+                ) where D<:Distribution
+    error("[Turing] MH doesn't support vectorizing assume statement")
+end
 
-observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo) =
-  observe(nothing, d, value, vi)  # accumulate pdf of likelihood
+function observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo)
+    return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
+end
 
-observe(spl::Sampler{<:MH}, ds::Vector{D}, value::Any, vi::VarInfo)  where D<:Distribution =
-  observe(nothing, ds, value, vi) # accumulate pdf of likelihood
+function observe( spl::Sampler{<:MH}, 
+                  ds::Vector{D}, 
+                  value::Any, 
+                  vi::VarInfo
+                )  where D<:Distribution
+    return observe(nothing, ds, value, vi) # accumulate pdf of likelihood
+end

@@ -8,79 +8,21 @@ module Turing
 #       to indicate that's not implemented inside Turing.jl            #
 ########################################################################
 
-using Requires
-using Reexport
-@reexport using Distributions
-import Flux
-using ForwardDiff
-using Bijectors
-@reexport using MCMCChain
-using StatsFuns
-using SpecialFunctions
-using Statistics
-using LinearAlgebra
-using ProgressMeter
-using Markdown
-using Libtask
-using MacroTools
-
-@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-    using CmdStan
-    import CmdStan: Adapt, Hmc
-end
-
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
-    using .DynamicHMC: NUTS_init_tune_mcmc
-end
-
-@init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval begin
-    using .LogDensityProblems: AbstractLogDensityProblem, ValueGradient
-    struct FunctionLogDensity{F} <: AbstractLogDensityProblem
-      dimension::Int
-      f::F
-    end
-
-    LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
-
-    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
-end
+using Requires, Reexport, ForwardDiff
+using Bijectors, StatsFuns, SpecialFunctions
+using Statistics, LinearAlgebra, ProgressMeter
+using Markdown, Libtask, MacroTools
+@reexport using Distributions, MCMCChain, Libtask
+using Flux.Tracker: Tracker
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
-using ForwardDiff: ForwardDiff
-using Flux.Tracker: Tracker
 import MCMCChain: AbstractChains, Chains
 
-##############################
-# Global variables/constants #
-##############################
-
-const ADBACKEND = Ref(:forward_diff)
-setadbackend(backend_sym) = begin
-  @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
-  backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
-  ADBACKEND[] = backend_sym
-end
-
-const ADSAFE = Ref(false)
-setadsafe(switch::Bool) = begin
-  @info("[Turing]: global ADSAFE is set as $switch")
-  ADSAFE[] = switch
-end
-
-const CHUNKSIZE = Ref(40) # default chunksize used by AD
-
-setchunksize(chunk_size::Int) = begin
-  if ~(CHUNKSIZE[] == chunk_size)
-    @info("[Turing]: AD chunk size is set as $chunk_size")
-    CHUNKSIZE[] = chunk_size
-  end
-end
-
 const PROGRESS = Ref(true)
-turnprogress(switch::Bool) = begin
-  @info("[Turing]: global PROGRESS is set as $switch")
-  PROGRESS[] = switch
+function turnprogress(switch::Bool)
+    @info("[Turing]: global PROGRESS is set as $switch")
+    PROGRESS[] = switch
 end
 
 # Constants for caching
@@ -88,14 +30,33 @@ const CACHERESET  = 0b00
 const CACHEIDCS   = 0b10
 const CACHERANGES = 0b01
 
-#######################
-# Sampler abstraction #
-#######################
-abstract type AbstractAdapter end
-abstract type InferenceAlgorithm end
-abstract type Hamiltonian{AD} <: InferenceAlgorithm end
-abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
-abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
+"""
+    struct Model{pvars, dvars, F, TD}
+        f::F
+        data::TD
+    end
+    
+A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
+function `f` and `data::NamedTuple`.
+"""
+struct Model{pvars, dvars, F, TD}
+    f::F
+    data::TD
+end
+function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
+    return Model{pvars, dvars, F, TD}(f, data)
+end
+pvars(m::Model{params}) where {params} = Tuple(params.types)
+dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
+@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
+    return sym in params.types ? :(true) : :(false)
+end
+@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
+    return sym in data.types ? :(true) : :(false)
+end
+(model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
+function runmodel! end
+
 abstract type AbstractSampler end
 """
     Sampler{T}
@@ -109,78 +70,86 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T<:InferenceAlgorithm} <: AbstractSampler
-  alg   ::  T
-  info  ::  Dict{Symbol, Any}         # sampler infomation
+mutable struct Sampler{T} <: AbstractSampler
+    alg   ::  T
+    info  ::  Dict{Symbol, Any}         # sampler infomation
 end
 Sampler(alg, model) = Sampler(alg)
 
-# mutable struct HMCState{T<:Real}
-#     epsilon  :: T
-#     std     :: Vector{T}
-#     lf_num   :: Integer
-#     eval_num :: Integer
-# end
-#
-#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
-#    alg   :: TH
-#    state :: HMCState
-#    adapt :: TA
-#  end
+include("utilities/Utilities.jl")
+using .Utilities
+include("core/Core.jl")
+using .Core
+include("inference/Inference.jl")  # inference algorithms
+using .Inference
 
-"""
-Robust initialization method for model parameters in Hamiltonian samplers.
-"""
-struct HamiltonianRobustInit <: AbstractSampler end
-struct SampleFromPrior <: AbstractSampler end
-
-# This can be removed when all `spl=nothing` is replaced with
-#   `spl=SampleFromPrior`
-const AnySampler = Union{Nothing, AbstractSampler}
-
-include("utilities/resample.jl")
 @init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-    include("utilities/stan-interface.jl")
+    @eval Utilities begin
+        using ..Turing.CmdStan: CmdStan, Adapt, Hmc
+        include("utilities/stan-interface.jl")
+    end
+    @eval Inference begin
+        using ..Turing.CmdStan: CmdStan
+        DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
+        STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
+        include("inference/adapt/stan.jl")
+    end
 end
-include("utilities/helper.jl")
-include("utilities/robustinit.jl")
-include("utilities/util.jl")         # utility functions
-include("utilities/io.jl")           # I/O
-include("models/distributions.jl")
-include("core/varinfo.jl")  # core internal variable container
-include("core/trace.jl")   # to run probabilistic programs as tasks
+@init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
+    using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
+    struct FunctionLogDensity{F} <: AbstractLogDensityProblem
+        dimension::Int
+        f::F
+    end
 
-using Turing.VarReplay
+    LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
+
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+end
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
+    using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
+    include("inference/dynamichmc.jl")
+end
 
 ###########
 # Exports #
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
-export @model, @~, @VarName                   # modelling
-export MH, Gibbs                              # classic sampling
-export HMC, SGLD, SGHMC, HMCDA, NUTS          # Hamiltonian-like sampling
-export DynamicNUTS
-export IS, SMC, CSMC, PG, PIMH, PMMH, IPMCMC  # particle-based sampling
-export sample, setchunksize, resume           # inference
-export auto_tune_chunk_size!, setadbackend, setadsafe # helper
-export turnprogress  # debugging
-export consume, produce
+export  @model,                 # modelling
+        @VarName, 
+        
+        MH,                     # classic sampling
+        Gibbs,
+        
+        HMC,                    # Hamiltonian-like sampling 
+        SGLD, 
+        SGHMC, 
+        HMCDA, 
+        NUTS,
+        DynamicNUTS,
+        
+        IS,                     # particle-based sampling
+        SMC, 
+        CSMC, 
+        PG, 
+        PIMH, 
+        PMMH, 
+        IPMCMC,
 
-# Turing-safe data structures and associated functions
-export TArray, tzeros, localcopy, IArray
+        sample,                 # inference 
+        setchunksize, 
+        resume,
 
-export @sym_str
+        auto_tune_chunk_size!,  # helper
+        setadbackend, 
+        setadsafe, 
 
-export Flat, FlatPos, BinomialLogit, VecBinomialLogit
+        turnprogress,           # debugging
 
-##################
-# Inference code #
-##################
-
-include("core/compiler.jl")     # compiler
-include("core/container.jl")    # particle container
-include("samplers/sampler.jl")  # samplers
-include("core/ad.jl")           # Automatic Differentiation
+        Flat, 
+        FlatPos, 
+        BinomialLogit, 
+        VecBinomialLogit
 
 end

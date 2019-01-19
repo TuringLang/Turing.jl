@@ -81,13 +81,8 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
-    STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
-end
-
 Sampler(alg::Hamiltonian) =  Sampler(alg, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
-Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE) = begin
+function Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE)
     info=Dict{Symbol, Any}()
 
     # For state infomation

@@ -1,5 +1,5 @@
 using Turing, Test
-using Turing: reconstruct, invlink, step, CACHERESET
+using Turing: reconstruct, invlink, CACHERESET
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!, getretain
 

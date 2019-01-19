@@ -1,11 +1,35 @@
+##############################
+# Global variables/constants #
+##############################
+
+const ADBACKEND = Ref(:forward_diff)
+function setadbackend(backend_sym)
+    @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
+    backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
+    ADBACKEND[] = backend_sym
+end
+
+const ADSAFE = Ref(false)
+function setadsafe(switch::Bool)
+    @info("[Turing]: global ADSAFE is set as $switch")
+    ADSAFE[] = switch
+end
+
+const CHUNKSIZE = Ref(40) # default chunksize used by AD
+
+function setchunksize(chunk_size::Int)
+    if ~(CHUNKSIZE[] == chunk_size)
+        @info("[Turing]: AD chunk size is set as $chunk_size")
+        CHUNKSIZE[] = chunk_size
+    end
+end
+
 abstract type ADBackend end
 struct ForwardDiffAD{chunk} <: ADBackend end
 getchunksize(::T) where {T <: ForwardDiffAD} = getchunksize(T)
 getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = chunk
-getchunksize(::T) where {T <: Hamiltonian} = getchunksize(T)
-getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getchunksize(::T) where {T <: Sampler} = getchunksize(T)
-getchunksize(::Type{<:Sampler{T}}) where {T <: Hamiltonian} = getchunksize(T)
+getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
 getchunksize(::Nothing) = getchunksize(Nothing)
 getchunksize(::Type{Nothing}) = CHUNKSIZE[]
 
@@ -31,8 +55,6 @@ getADtype(::Type{Nothing}) = getADtype()
 getADtype() = ADBackend()
 getADtype(s::Sampler) = getADtype(typeof(s))
 getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
-getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
-getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
 """
 gradient(
@@ -50,7 +72,7 @@ function gradient(
     vi::VarInfo,
     model::Model,
     sampler::TS,
-) where {TS <: Sampler{<:Hamiltonian}}
+) where {TS <: Sampler}
 
     ad_type = getADtype(TS)
     if ad_type <: ForwardDiffAD 
@@ -115,7 +137,7 @@ Computes the gradient of the log joint of `θ` for the model specified by
 """
 function gradient_reverse(
     θ::AbstractVector{<:Real},
-    vi::Turing.VarInfo,
+    vi::VarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
