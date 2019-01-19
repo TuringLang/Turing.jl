@@ -83,21 +83,20 @@ using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
 
-@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval Inference begin
-    using CmdStan
-    import CmdStan: Adapt, Hmc
-    include("stan-interface.jl")
-    
-    DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
-    STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
-    include("stan.jl")
-end
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
-    using .DynamicHMC: NUTS_init_tune_mcmc
-    include("dynamichmc.jl")
+@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+    @eval Utilities begin
+        using ..Turing.CmdStan: CmdStan, Adapt, Hmc
+        include("utilities/stan-interface.jl")
+    end
+    @eval Inference begin
+        using ..Turing.CmdStan: CmdStan
+        DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
+        STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
+        include("inference/adapt/stan.jl")
+    end
 end
 @init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
-    using .LogDensityProblems: AbstractLogDensityProblem, ValueGradient
+    using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
     struct FunctionLogDensity{F} <: AbstractLogDensityProblem
         dimension::Int
         f::F
@@ -106,6 +105,10 @@ end
     LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
 
     LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+end
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
+    using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
+    include("inference/dynamichmc.jl")
 end
 
 ###########
