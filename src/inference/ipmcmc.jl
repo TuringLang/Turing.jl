@@ -76,34 +76,34 @@ function Sampler(alg::IPMCMC)
   Sampler(alg, info)
 end
 
-step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool) = begin
-  # Initialise array for marginal likelihood estimators
-  log_zs = zeros(spl.alg.n_nodes)
+function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool)
+    # Initialise array for marginal likelihood estimators
+    log_zs = zeros(spl.alg.n_nodes)
 
-  # Run SMC & CSMC nodes
-  for j in 1:spl.alg.n_nodes
-    VarInfos[j].num_produce = 0
-    VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])
-    log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
-  end
-
-  # Resampling of CSMC nodes indices
-  conditonal_nodes_indices = collect(1:spl.alg.n_csmc_nodes)
-  unconditonal_nodes_indices = collect(spl.alg.n_csmc_nodes+1:spl.alg.n_nodes)
-  for j in 1:spl.alg.n_csmc_nodes
-    # Select a new conditional node by simulating cj
-    log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
-    ksi = exp.(log_ksi-maximum(log_ksi))
-    c_j = wsample(ksi) # sample from Categorical with unormalized weights
-
-    if c_j < length(log_ksi) # if CSMC node selects another index than itself
-      conditonal_nodes_indices[j] = unconditonal_nodes_indices[c_j]
-      unconditonal_nodes_indices[c_j] = j
+    # Run SMC & CSMC nodes
+    for j in 1:spl.alg.n_nodes
+        VarInfos[j].num_produce = 0
+        VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])
+        log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
     end
-  end
-  nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
 
-  VarInfos[nodes_permutation]
+    # Resampling of CSMC nodes indices
+    conditonal_nodes_indices = collect(1:spl.alg.n_csmc_nodes)
+    unconditonal_nodes_indices = collect(spl.alg.n_csmc_nodes+1:spl.alg.n_nodes)
+    for j in 1:spl.alg.n_csmc_nodes
+        # Select a new conditional node by simulating cj
+        log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
+        ksi = exp.(log_ksi-maximum(log_ksi))
+        c_j = wsample(ksi) # sample from Categorical with unormalized weights
+
+        if c_j < length(log_ksi) # if CSMC node selects another index than itself
+            conditonal_nodes_indices[j] = unconditonal_nodes_indices[c_j]
+            unconditonal_nodes_indices[c_j] = j
+        end
+    end
+    nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
+
+    VarInfos[nodes_permutation]
 end
 
 function sample(model::Model, alg::IPMCMC)

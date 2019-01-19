@@ -1,23 +1,24 @@
 using Turing, Test
-using Turing: reconstruct, invlink, step
+using Turing: reconstruct, invlink
 using Turing.VarReplay
-using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl!, is_flagged, unset_flag!
+using Turing.VarReplay: uid, cuid, getvals, getidcs
+using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
-randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool) = begin
-  if ~haskey(vi, vn)
-    r = rand(dist)
-    Turing.push!(vi, vn, r, dist, spl.alg.gid)
-    r
-  elseif is_flagged(vi, vn, "del")
-    unset_flag!(vi, vn, "del")
-    r = rand(dist)
-    Turing.setval!(vi, Turing.vectorize(dist, r), vn)
-    r
-  else
-    if count Turing.checkindex(vn, vi, spl) end
-    Turing.updategid!(vi, vn, spl)
-    vi[vn]
-  end
+function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool)
+    if ~haskey(vi, vn)
+        r = rand(dist)
+        Turing.push!(vi, vn, r, dist, spl.alg.gid)
+        return r
+    elseif is_flagged(vi, vn, "del")
+        unset_flag!(vi, vn, "del")
+        r = rand(dist)
+        Turing.setval!(vi, Turing.vectorize(dist, r), vn)
+        return r
+    else
+        if count Turing.checkindex(vn, vi, spl) end
+        Turing.updategid!(vi, vn, spl)
+        return vi[vn]
+    end
 end
 
 # Test for uid() (= string())
@@ -95,7 +96,7 @@ pg, hmc = g.info[:samplers]
 
 vi = Turing.VarInfo()
 g_demo_f(vi, nothing)
-vi, _ = Turing.step(g_demo_f, pg, vi)
+vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 
 g_demo_f(vi, hmc)

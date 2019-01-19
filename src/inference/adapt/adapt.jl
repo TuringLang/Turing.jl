@@ -1,6 +1,5 @@
 include("precond.jl")
 include("stepsize.jl")
-include("stan.jl")
 
 ######################
 ### Mutable states ###

@@ -1,3 +1,68 @@
+mutable struct Trace
+  task  ::  Task
+  vi    ::  VarInfo
+  spl   ::  Union{Nothing, Sampler}
+  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
+end
+
+# NOTE: this function is called by `forkr`
+function Trace(f)
+  res = Trace();
+  # Task(()->f());
+  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
+  if isa(res.task.storage, Nothing)
+    res.task.storage = IdDict()
+  end
+  res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+  res
+end
+
+function Trace(f, spl::Sampler, vi :: VarInfo)
+  res = Trace();
+  res.spl = spl
+  # Task(()->f());
+  res.vi = deepcopy(vi)
+  res.vi.num_produce = 0
+  res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
+  if isa(res.task.storage, Nothing)
+    res.task.storage = IdDict()
+  end
+  res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+  res
+end
+
+# step to the next observe statement, return log likelihood
+Libtask.consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
+
+# Task copying version of fork for Trace.
+function fork(trace :: Trace, is_ref :: Bool = false)
+  newtrace = typeof(trace)()
+  newtrace.task = Base.copy(trace.task)
+  newtrace.spl = trace.spl
+
+  newtrace.vi = deepcopy(trace.vi)
+  if is_ref
+    set_retained_vns_del_by_spl!(newtrace.vi, newtrace.spl)
+  end
+
+  newtrace.task.storage[:turing_trace] = newtrace
+  newtrace
+end
+
+# PG requires keeping all randomness for the reference particle
+# Create new task and copy randomness
+function forkr(trace :: Trace)
+  newtrace = Trace(trace.task.code)
+  newtrace.spl = trace.spl
+
+  newtrace.vi = deepcopy(trace.vi)
+  newtrace.vi.num_produce = 0
+
+  newtrace
+end
+
+current_trace() = current_task().storage[:turing_trace]
+
 const Particle = Trace
 
 """
@@ -73,7 +138,7 @@ function Base.copy(pc :: ParticleContainer)
 end
 
 # run particle filter for one step, return incremental likelihood
-function Turing.consume(pc :: ParticleContainer)
+function Libtask.consume(pc :: ParticleContainer)
   @assert pc.num_particles == length(pc)
   # normalisation factor: 1/N
   _, z1      = weights(pc)
@@ -83,7 +148,7 @@ function Turing.consume(pc :: ParticleContainer)
   num_done = 0
   for i=1:n
     p = pc.vals[i]
-    score = Turing.consume(p)
+    score = Libtask.consume(p)
     if score isa Real
       score += getlogp(p.vi)
       resetlogp!(p.vi)
@@ -132,7 +197,7 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 
 
 function resample!( pc :: ParticleContainer,
-                   randcat :: Function = Turing.resample_systematic,
+                   randcat :: Function = resample_systematic,
                    ref :: Union{Particle, Nothing} = nothing)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
@@ -180,7 +245,7 @@ function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
   return Sample(w, predicts)
 end
 
-getsample(pc :: ParticleContainer) = begin
+function getsample(pc :: ParticleContainer)
   w = pc.logE
   Ws, z = weights(pc)
   s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))

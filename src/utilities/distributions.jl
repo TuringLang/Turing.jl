@@ -10,7 +10,6 @@ Distributions.maximum(d::Flat) = +Inf
 Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
 Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 
-
 # Pos
 struct FlatPos{T<:Real} <: ContinuousUnivariateDistribution
     l::T

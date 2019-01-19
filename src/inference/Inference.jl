@@ -1,3 +1,90 @@
+module Inference
+
+using ..Core, ..Core.VarReplay, ..Utilities
+using Distributions, Libtask, Bijectors
+using ProgressMeter, LinearAlgebra
+using ..Turing: PROGRESS, CACHERESET, AbstractSampler
+using ..Turing: Sampler, Model, runmodel!, pvars, dvars
+using ..Turing: inpvars, indvars
+using StatsFuns: logsumexp
+
+import Distributions: sample
+import ..Core: getchunksize, getADtype
+import ..Utilities: Sample
+
+export  InferenceAlgorithm,
+        Hamiltonian,
+        AbstractGibbs,
+        GibbsComponent,
+        StaticHamiltonian,
+        AdaptiveHamiltonian,
+        HamiltonianRobustInit,
+        SampleFromPrior,
+        AnySampler,
+        MH, 
+        Gibbs,      # classic sampling
+        HMC, 
+        SGLD, 
+        SGHMC, 
+        HMCDA, 
+        NUTS,       # Hamiltonian-like sampling
+        DynamicNUTS,
+        IS, 
+        SMC, 
+        CSMC, 
+        PG, 
+        PIMH, 
+        PMMH, 
+        IPMCMC,  # particle-based sampling
+        getspace,
+        assume,
+        observe,
+        step,
+        WelfordVar,
+        WelfordCovar,
+        NaiveCovar,
+        get_var,
+        get_covar,
+        add_sample!,
+        reset!
+
+#######################
+# Sampler abstraction #
+#######################
+abstract type AbstractAdapter end
+abstract type InferenceAlgorithm end
+abstract type Hamiltonian{AD} <: InferenceAlgorithm end
+abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
+abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
+
+getchunksize(::T) where {T <: Hamiltonian} = getchunksize(T)
+getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
+getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
+getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
+
+# mutable struct HMCState{T<:Real}
+#     epsilon  :: T
+#     std     :: Vector{T}
+#     lf_num   :: Integer
+#     eval_num :: Integer
+# end
+#
+#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
+#    alg   :: TH
+#    state :: HMCState
+#    adapt :: TA
+#  end
+
+"""
+Robust initialization method for model parameters in Hamiltonian samplers.
+"""
+struct HamiltonianRobustInit <: AbstractSampler end
+struct SampleFromPrior <: AbstractSampler end
+
+# This can be removed when all `spl=nothing` is replaced with
+#   `spl=SampleFromPrior`
+const AnySampler = Union{Nothing, AbstractSampler}
+
 # Helper functions
 include("adapt/adapt.jl")
 include("support/hmc_core.jl")
@@ -8,9 +95,6 @@ include("nuts.jl")
 include("sghmc.jl")
 include("sgld.jl")
 include("hmc.jl")
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval begin
-    include("dynamichmc.jl")
-end
 include("mh.jl")
 include("is.jl")
 include("smc.jl")
@@ -139,50 +223,43 @@ end
 ##############
 
 # VarInfo to Sample
-@inline Sample(vi::VarInfo) = begin
-  value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
-  for vn in keys(vi)
-    value[sym(vn)] = vi[vn]
-  end
-
-  # NOTE: do we need to check if lp is 0?
-  value[:lp] = getlogp(vi)
-
-
-
-  if ~isempty(vi.pred)
-    for sym in keys(vi.pred)
-      # if ~haskey(sample.value, sym)
-        value[sym] = vi.pred[sym]
-      # end
+@inline function Sample(vi::VarInfo)
+    value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
+    for vn in keys(vi)
+        value[sym(vn)] = vi[vn]
     end
-    # TODO: check why 1. 2. cause errors
-    # TODO: which one is faster?
-    # 1. Using empty!
-    # empty!(vi.pred)
-    # 2. Reassign an enmtpy dict
-    # vi.pred = Dict{Symbol,Any}()
-    # 3. Do nothing?
-  end
-
-  Sample(0.0, value)
+    # NOTE: do we need to check if lp is 0?
+    value[:lp] = getlogp(vi)
+    if ~isempty(vi.pred)
+        for sym in keys(vi.pred)
+        # if ~haskey(sample.value, sym)
+            value[sym] = vi.pred[sym]
+        # end
+        end
+        # TODO: check why 1. 2. cause errors
+        # TODO: which one is faster?
+        # 1. Using empty!
+        # empty!(vi.pred)
+        # 2. Reassign an enmtpy dict
+        # vi.pred = Dict{Symbol,Any}()
+        # 3. Do nothing?
+    end
+    return Sample(0.0, value)
 end
 
 # VarInfo, combined with spl.info, to Sample
-@inline Sample(vi::VarInfo, spl::Sampler) = begin
-  s = Sample(vi)
-
-  if haskey(spl.info, :wum)
-    s.value[:epsilon] = getss(spl.info[:wum])
-  end
-
-  if haskey(spl.info, :lf_num)
-    s.value[:lf_num] = spl.info[:lf_num]
-  end
-
-  if haskey(spl.info, :eval_num)
-    s.value[:eval_num] = spl.info[:eval_num]
-  end
-
-  return s
+@inline function Sample(vi::VarInfo, spl::Sampler)
+    s = Sample(vi)
+    if haskey(spl.info, :wum)
+        s.value[:epsilon] = getss(spl.info[:wum])
+    end
+    if haskey(spl.info, :lf_num)
+        s.value[:lf_num] = spl.info[:lf_num]
+    end
+    if haskey(spl.info, :eval_num)
+        s.value[:eval_num] = spl.info[:eval_num]
+    end
+    return s
 end
+
+end # module
