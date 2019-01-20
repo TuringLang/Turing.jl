@@ -127,7 +127,7 @@ function _tilde(vsym, left, dist, model_info)
         end
 
         return quote 
-            if Turing.indvars($(Val(vsym)), $model_name)
+            if Turing.in_dvars($(Val(vsym)), $model_name)
                 $(generate_observe(left, dist, model_info))
             else
                 $(generate_assume(left, dist, model_info))
@@ -136,12 +136,13 @@ function _tilde(vsym, left, dist, model_info)
     else
         # Assume it is a parameter.
         if !(vsym in model_info[:tent_pvars_list])
-            msg = " Assume - `$(vsym)` is a parameter"
-            if isdefined(Main, vsym)
-                msg  *= " (ignoring `$(vsym)` found in global scope)"
+            @debug begin 
+                msg = " Assume - `$(vsym)` is a parameter"
+                if isdefined(Main, vsym)
+                    msg  *= " (ignoring `$(vsym)` found in global scope)"
+                end
+                msg
             end
-
-            @debug msg
             push!(model_info[:tent_pvars_list], vsym)
         end
 
@@ -176,6 +177,7 @@ model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
 function model_generator(x = nothing, y = nothing)
     pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
     data = Turing.get_data(dvars, (x = x, y = y))
+    defaults = Turing.get_default_values(dvars, (x = default_x, y = nothing))
     
     inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
     function inner_function(model)
@@ -190,19 +192,19 @@ function model_generator(x = nothing, y = nothing)
         if isdefined(model.data, :x)
             x = model.data.x
         else
-            x = default_x
+            x = model_defaults.x
         end
         local y
         if isdefined(model.data, :y)
             y = model.data.y
         else
-            y = nothing
+            y = model.defaults.y
         end
 
         vi.logp = zero(Real)
         ...
     end
-    model = Turing.Model{pvars, dvars}(inner_function, data)
+    model = Turing.Model{pvars, dvars}(inner_function, data, defaults)
     return model
 end
 ```
@@ -242,7 +244,8 @@ function build_model_info(input_expr)
             :pvars => gensym(:pvars),
             :dvars => gensym(:dvars),
             :data => gensym(:data),
-            :inner_function => gensym(:inner_function)
+            :inner_function => gensym(:inner_function),
+            :defaults => gensym(:defaults)
         )
     )
 
@@ -268,20 +271,25 @@ Extracts default argument values and replaces them with `nothing`.
 """
 function update_args!(model_info)
     fargs = model_info[:args]
-    fargs_default_values = Dict()
+    fargs_default_values = []
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
-            fargs_default_values[fargs[i]] = :nothing
+            push!(fargs_default_values, :($(fargs[i]) = :nothing))
             fargs[i] = Expr(:kw, fargs[i], :nothing)
         elseif isa(fargs[i], Expr) && fargs[i].head == :kw
-            fargs_default_values[fargs[i].args[1]] = fargs[i].args[2]
+            push!(fargs_default_values, :($(fargs[i].args[1]) = $(fargs[i].args[2])))
             fargs[i] = Expr(:kw, fargs[i].args[1], :nothing)
         else
             throw("Unsupported argument type $(fargs[i]).")
         end
     end
+    if length(fargs_default_values) == 0
+        tent_arg_defaults_nt = :(NamedTuple())
+    else
+        tent_arg_defaults_nt = :($(fargs_default_values...),)
+    end
     model_info[:args] = fargs
-    model_info[:arg_defaults] = fargs_default_values
+    model_info[:tent_arg_defaults_nt] = tent_arg_defaults_nt
 
     return model_info
 end
@@ -301,14 +309,22 @@ function build_output(model_info)
     pvars_name = main_body_names[:pvars]
     dvars_name = main_body_names[:dvars]
     inner_function_name = main_body_names[:inner_function]
+    defaults_name = main_body_names[:defaults]
 
+    # Arguments with default values
     args = model_info[:args]
+    # Argument symbols without default values
     arg_syms = model_info[:arg_syms]
+    # Default values of the arguments
+    tent_arg_defaults_nt = model_info[:tent_arg_defaults_nt]
+    # Model generator name
     outer_function_name = model_info[:name]
+    # Tentative list of parameter variables
     tent_pvars_list = model_info[:tent_pvars_list]
+    # Tentative list of data variables
     tent_dvars_list = model_info[:tent_dvars_list]
+    # Main body of the model
     main_body = model_info[:main_body]
-    arg_defaults = model_info[:arg_defaults]
 
     if length(tent_dvars_list) == 0
         tent_dvars_nt = :(NamedTuple())
@@ -331,23 +347,24 @@ function build_output(model_info)
             if isdefined($model_name.data, $(QuoteNode(var)))
                 $var = $model_name.data.$var
             else
-                $var = $(arg_defaults[var])
+                $var = $model_name.defaults.$var
             end
         end)
     end
-
     return esc(quote
         # Allows passing arguments as kwargs
         $outer_function_name(;$(args...)) = $outer_function_name($(arg_syms...))
         # Outer function with `nothing` as default values
         function $outer_function_name($(args...))
-            # Adds variables equal to `nothing` to pvars and the rest to dvars
+            # Adds variables equal to `nothing` or `missing` or whose `eltype` is `Missing` to pvars and the rest to dvars
             # `tent_pvars_list` is the tentative list of pvars
             # `tent_dvars_nt` is the tentative named tuple of dvars
             $pvars_name, $dvars_name = Turing.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
-            # Filter out the dvars equal to `nothing`
+            # Filter out the dvars equal to `nothing` or `missing`, or whose `eltype` is `Missing`
             $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
-            
+            # Replace default values of inputs whose values are Vector{Missing} by a Vector{Real} of the same length as the input
+            $defaults_name = Turing.get_default_values($tent_dvars_nt, $tent_arg_defaults_nt)
+
             # Define fallback inner functions
             function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
                 return $inner_function_name($model_name)
@@ -370,17 +387,36 @@ function build_output(model_info)
                 $vi_name.logp = zero(Real)
                 $main_body
             end
-            $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name)
+            $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name, $defaults_name)
             return $model_name
         end
     end)
+end
+
+# Replaces the default for `Vector{Missing}` inputs by `Vector{Real}` of the same length as the input.
+@generated function get_default_values(tent_dvars_nt::Tdvars, tent_arg_defaults_nt::Tdefaults) where {Tdvars <: NamedTuple, Tdefaults <: NamedTuple}
+    dvar_names = Tdvars.names 
+    dvar_types = Tdvars.parameters[2].types
+    defaults = []
+    for (n, t) in zip(dvar_names, dvar_types)
+        if eltype(t) == Missing
+            push!(defaults, :($n = similar(tent_dvars_nt.$n, Real)))
+        else
+            push!(defaults, :($n = tent_arg_defaults_nt.$n))
+        end
+    end
+    if length(defaults) == 0
+        return :(NamedTuple())
+    else
+        return :($(defaults...),)
+    end
 end
 
 @generated function get_vars(tent_pvars::Type{Tpvars}, tent_dvars_nt::NamedTuple) where {Tpvars <: Tuple}
     tent_pvar_syms = [Tpvars.types...]
     tent_dvar_syms = [tent_dvars_nt.names...]
     dvar_types = [tent_dvars_nt.types...]
-    append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing])
+    append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing || dvar_types[i] == Missing || eltype(dvar_types[i]) == Missing])
     setdiff!(tent_dvar_syms, tent_pvar_syms)    
     pvars_tuple = Tuple{tent_pvar_syms...}
     dvars_tuple = Tuple{tent_dvar_syms...}
