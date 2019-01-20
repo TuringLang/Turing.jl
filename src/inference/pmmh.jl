@@ -120,7 +120,7 @@ function sample(  model::Model,
                   reuse_spl_n=0             # flag for spl re-using
                 )
 
-    spl = Sampler(alg)
+    spl = Sampler(alg, model)
     alg_str = "PMMH"
 
     # Number of samples to store
