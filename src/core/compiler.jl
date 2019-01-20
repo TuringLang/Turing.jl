@@ -127,10 +127,16 @@ function _tilde(vsym, left, dist, model_info)
         end
 
         return quote 
-            if Turing.in_dvars($(Val(vsym)), $model_name)
+            if Turing.in_pvars($(Val(vsym)), $model_name)
+                $(generate_assume(left, dist, model_info))
+            elseif !(eltype($vsym) >: Missing)
                 $(generate_observe(left, dist, model_info))
             else
-                $(generate_assume(left, dist, model_info))
+                if $left isa Missing
+                    $(generate_assume(left, dist, model_info))
+                else
+                    $(generate_observe(left, dist, model_info))
+                end
             end
         end
     else
