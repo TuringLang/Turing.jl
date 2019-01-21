@@ -86,7 +86,7 @@ function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
     d = length(vi[spl])
     std = pc.std
     return function()
-        return randn(d) ./ std
+        return randn(d) .* std
     end
 end
 
@@ -106,7 +106,7 @@ function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DensePreConditioner
     A = Symmetric(pc.covar)
     C = LinearAlgebra.cholesky(A)
     return function()
-        return C.U \ randn(d)
+        return randn(d) * C.L
     end
 end
 
