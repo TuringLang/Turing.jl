@@ -35,7 +35,7 @@ mutable struct IS <: InferenceAlgorithm
     n_particles ::  Int
 end
 
-Sampler(alg::IS) = begin
+function Sampler(alg::IS)
     info = Dict{Symbol, Any}()
     Sampler(alg, info)
 end
@@ -56,13 +56,13 @@ function sample(model::Model, alg::IS)
     Chain(exp.(le), samples)
 end
 
-assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo) = begin
+function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
     r = rand(dist)
     push!(vi, vn, r, dist, 0)
     r, zero(Real)
 end
 
-observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo) = begin
+function observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo)
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)
 end

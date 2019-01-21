@@ -12,8 +12,8 @@ main:
   # - title: "About"
   #   url: /about/
   #
-  # - title: "News"
-  #   url: /news/
+  # - title: "Blog"
+  #   url: /blog/
 
   - title: "GitHub"
     url: https://github.com/TuringLang/Turing.jl
@@ -62,5 +62,7 @@ tutorials:
         url: /tutorials/2-logisticregression/
       - title: "Bayesian Neural Networks"
         url: /tutorials/3-bayesnn/
+      - title: "Hidden Markov Models"
+        url: /tutorials/4-bayeshmm/
       - title: "Linear Regression"
         url: /tutorials/5-linearregression/

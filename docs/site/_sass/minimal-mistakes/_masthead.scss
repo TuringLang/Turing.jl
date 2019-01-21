@@ -4,12 +4,17 @@
 
 .masthead {
   position: relative;
-  border-bottom: 1px solid $border-color;
+  // border: 20px solid;
+  // border-bottom: 1px solid $border-color;
   -webkit-animation: $intro-transition;
   animation: $intro-transition;
   -webkit-animation-delay: 0.15s;
   animation-delay: 0.15s;
   z-index: 20;
+  background-image: url(/assets/turing-logo-border.svg);
+  background-position: left;
+  background-size: cover;
+  background-repeat: no-repeat;
 
   &__inner-wrap {
     @include clearfix;

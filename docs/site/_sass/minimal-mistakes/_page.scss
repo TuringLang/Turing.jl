@@ -136,8 +136,8 @@
   &--overlay {
     position: relative;
     margin-bottom: 2em;
-    padding-top: 4em;
-    padding-bottom: 4em;
+    padding-top: 1%;
+    padding-bottom: 1%;
     @include clearfix;
     background-size: 130% 40%;
     background-repeat: no-repeat;
@@ -153,12 +153,22 @@
 
     @include breakpoint($large) {
       background-size: 125% 90%;
-      padding-left: 9em;
+      padding-right: 9em;
+      padding-top: 3em;
+      padding-bottom: 1em;
     }
 
     .wrapper {
       padding-left: 1em;
       padding-right: 1em;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: end;
+
+      @include breakpoint($large) {
+        padding-left: 50%;
+      }
 
       @include breakpoint($x-large) {
         max-width: $x-large;

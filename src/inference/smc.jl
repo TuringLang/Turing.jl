@@ -28,26 +28,27 @@ sample(gdemo([1.5, 2]), SMC(1000))
 ```
 """
 mutable struct SMC{T, F} <: InferenceAlgorithm
-  n_particles           ::  Int
-  resampler             ::  F
-  resampler_threshold   ::  Float64
-  space                 ::  Set{T}
-  gid                   ::  Int
+    n_particles           ::  Int
+    resampler             ::  F
+    resampler_threshold   ::  Float64
+    space                 ::  Set{T}
+    gid                   ::  Int
 end
 SMC(n) = SMC(n, resample_systematic, 0.5, Set(), 0)
 function SMC(n_particles::Int, space...)
-  _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  SMC(n_particles, resample_systematic, 0.5, _space, 0)
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
+    SMC(n_particles, resample_systematic, 0.5, _space, 0)
 end
+SMC{T, F}(alg::SMC, new_gid::Int) where {T, F} = SMC(alg, new_gid)
 SMC(alg::SMC, new_gid::Int) = SMC(alg.n_particles, alg.resampler, alg.resampler_threshold, alg.space, new_gid)
 
-Sampler(alg::SMC) = begin
-  info = Dict{Symbol, Any}()
-  info[:logevidence] = []
-  Sampler(alg, info)
+function Sampler(alg::SMC)
+    info = Dict{Symbol, Any}()
+    info[:logevidence] = []
+    return Sampler(alg, info)
 end
 
-step(model, spl::Sampler{<:SMC}, vi::VarInfo) = begin
+function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
     particles = ParticleContainer{Trace}(model)
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
     set_retained_vns_del_by_spl!(vi, spl)
@@ -67,23 +68,23 @@ step(model, spl::Sampler{<:SMC}, vi::VarInfo) = begin
     indx = randcat(Ws)
     push!(spl.info[:logevidence], particles.logE)
 
-    particles[indx].vi
+    return particles[indx].vi
 end
 
 ## wrapper for smc: run the sampler, collect results.
 function sample(model::Model, alg::SMC)
-  spl = Sampler(alg);
+    spl = Sampler(alg)
 
-  particles = ParticleContainer{Trace}(model)
-  push!(particles, spl.alg.n_particles, spl, VarInfo())
+    particles = ParticleContainer{Trace}(model)
+    push!(particles, spl.alg.n_particles, spl, VarInfo())
 
-  while consume(particles) != Val{:done}
-    ess = effectiveSampleSize(particles)
-    if ess <= spl.alg.resampler_threshold * length(particles)
-      resample!(particles,spl.alg.resampler)
+    while consume(particles) != Val{:done}
+      ess = effectiveSampleSize(particles)
+      if ess <= spl.alg.resampler_threshold * length(particles)
+        resample!(particles,spl.alg.resampler)
+      end
     end
-  end
-  w, samples = getsample(particles)
-  res = Chain(w, samples)
-
+    w, samples = getsample(particles)
+    res = Chain(w, samples)
+    return res
 end

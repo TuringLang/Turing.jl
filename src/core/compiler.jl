@@ -1,36 +1,5 @@
 using Base.Meta: parse
 
-#################
-# Overload of ~ #
-#################
-
-"""
-    struct Model{pvars, dvars, F, TD}
-        f::F
-        data::TD
-    end
-    
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
-function `f` and `data::NamedTuple`.
-"""
-struct Model{pvars, dvars, F, TD}
-    f::F
-    data::TD
-end
-function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
-    return Model{pvars, dvars, F, TD}(f, data)
-end
-pvars(m::Model{params}) where {params} = Tuple(params.types)
-dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
-@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
-    return sym in params.types ? :(true) : :(false)
-end
-@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
-    return sym in data.types ? :(true) : :(false)
-end
-
-(model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
-
 # TODO: Replace this macro, see issue #514
 """
 Usage: @VarName x[1,2][1+5][45][3]
@@ -100,14 +69,14 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     
     if var isa Symbol
         varname_expr = quote
-            $sym, $idcs, $csym = @VarName $var
+            $sym, $idcs, $csym = Turing.@VarName $var
             $csym = Symbol($(model_info[:name]), $csym)
             $syms = Symbol[$csym, $(QuoteNode(var))]
             $varname = Turing.VarName($vi, $syms, "")
         end
     else
         varname_expr = quote
-            $sym, $idcs, $csym = @VarName $var
+            $sym, $idcs, $csym = Turing.@VarName $var
             $csym_str = string($(model_info[:name]))*string($csym)
             $indexing = mapfoldl(string, *, $idcs, init = "")
             $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)

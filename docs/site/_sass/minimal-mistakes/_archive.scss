@@ -18,6 +18,13 @@
   }
 }
 
+.archive__item {
+
+  @include breakpoint($small) {
+    display: flex;
+  }
+}
+
 .archive__subtitle {
   margin: 1.414em 0 0;
   padding-bottom: 0.5em;
@@ -27,6 +34,19 @@
 
   + .list__item .archive__item-title {
     margin-top: 0.5em;
+  }
+}
+
+.archive__snippet {
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+  display: inline-block;
+
+  .highlight {
+    pre {
+      padding: 1em 3em 1em 3em;
+    }
   }
 }
 
@@ -263,6 +283,8 @@
     }
 
     @include breakpoint($small) {
+      // display: flex;
+
       .archive__item-teaser {
         float: left;
         width: span(5 of 12);
@@ -273,11 +295,45 @@
         padding-left: gutter(0.5 of 12);
         padding-right: gutter(1 of 12);
         width: span(7 of 12);
+        align-self: center;
       }
     }
   }
 
   &--right {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    clear: both;
+    font-size: 1.125em;
+    display: inline-block;
+
+    .archive__item-teaser {
+      margin-bottom: 2em;
+    }
+
+    @include breakpoint($small) {
+      text-align: right;
+      // display: flex;
+
+      .archive__item-teaser {
+        float: right;
+        width: span(5 of 12);
+        order: 1;
+      }
+
+      .archive__item-body {
+        float: left;
+        width: span(7 of 12);
+        padding-left: gutter(0.5 of 12);
+        padding-right: gutter(1 of 12);
+        align-self: center;
+      }
+    }
+  }
+
+  &--center {
     float: left;
     margin-left: 0;
     margin-right: 0;
@@ -290,23 +346,22 @@
     }
 
     @include breakpoint($small) {
-      text-align: right;
+      text-align: center;
 
       .archive__item-teaser {
-        float: right;
+        margin: 0 auto;
         width: span(5 of 12);
       }
 
       .archive__item-body {
-        float: left;
+        margin: 0 auto;
         width: span(7 of 12);
-        padding-left: gutter(0.5 of 12);
-        padding-right: gutter(1 of 12);
+        order: 1;
       }
     }
   }
 
-  &--center {
+  &--center-code {
     float: left;
     margin-left: 0;
     margin-right: 0;
@@ -366,7 +421,7 @@
 .archive {
   .feature__wrapper {
     .archive__item-title {
-      margin-top: 0.25em;
+      margin-top: 0;
       font-size: 1em;
     }
   }
@@ -378,6 +433,8 @@
     font-size: 1em;
   }
 }
+
+
 
 /*
    Wide Pages
