@@ -44,17 +44,12 @@ using StatPlots
 end
 
 #  Run sampler, collect results
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+chn = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
 
 # Summarise results (currently requires the master branch from MCMCChain)
-describe(c3)
+describe(chn)
 
 # Plot and save results
-p = plot(c3)
+p = plot(chn)
 savefig("gdemo-plot.png")
 ```
