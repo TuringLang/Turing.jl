@@ -14,11 +14,15 @@ export  resample,
         vectorize,
         reconstruct,
         reconstruct!,
-        Sample, 
+        Sample,
         Chain,
         init,
         vectorize,
-        data
+        data,
+        Flat,
+        FlatPos,
+        BinomialLogit,
+        VecBinomialLogit
 
 include("resample.jl")
 include("helper.jl")
