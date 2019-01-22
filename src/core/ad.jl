@@ -163,9 +163,6 @@ function gradient_reverse(
     return l, ∂l∂θ
 end
 
-import Base: <=
-<=(a::Tracker.TrackedReal, b::Tracker.TrackedReal) = a.data <= b.data
-
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
         @warn("Numerical error has been found in gradients.")
