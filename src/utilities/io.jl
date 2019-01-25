@@ -45,7 +45,7 @@ function getjuliatype(s::Sample, v::Symbol, cached_syms=nothing)
     # Fill sample
     for i = 1:length(syms)
         # Get indexing
-        idx = Main.eval(parse(idx_comp[i][1]))
+        idx = Main.eval(Meta.parse(idx_comp[i][1]))
         # Determine if nesting
         nested_dim = length(idx_comp[1]) # how many nested layers?
         if nested_dim == 1
@@ -97,12 +97,12 @@ mutable struct Chain{R<:AbstractRange{Int}} <: AbstractChains
 end
 
 function Chain()
-    return Chain{AbstractRange{Int}}( 0.0, 
-                                      Vector{Sample}(), 
-                                      Array{Float64, 3}(undef, 0, 0, 0), 
+    return Chain{AbstractRange{Int}}( 0.0,
+                                      Vector{Sample}(),
+                                      Array{Float64, 3}(undef, 0, 0, 0),
                                       0:0,
-                                      Vector{String}(), 
-                                      Vector{Int}(), 
+                                      Vector{String}(),
+                                      Vector{Int}(),
                                       Dict{Symbol,Any}()
                                     )
 end
@@ -172,7 +172,7 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     else
         error("Unknown var type: typeof($v)=$(typeof(v))")
     end
-    return 
+    return
 end
 
 function Base.getindex(c::Chain, v::Symbol)
