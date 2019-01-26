@@ -164,7 +164,7 @@
       text-align: right;
       display: flex;
       flex-direction: column;
-      align-items: end;
+      align-items: flex-end;
 
       @include breakpoint($large) {
         padding-left: 50%;
@@ -193,6 +193,7 @@
 
     .page__title {
       font-size: $type-size-2;
+      align-self: flex-end;
 
       @include breakpoint($small) {
         font-size: $type-size-1;
@@ -229,6 +230,14 @@
   a {
     color: #fff;
     text-decoration: none;
+  }
+}
+
+.page__buttons {
+  padding-left: 45%;
+
+  @include breakpoint($large) {
+    padding-left: 0%;
   }
 }
 
