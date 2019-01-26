@@ -92,6 +92,11 @@ using .Inference
         using ..Turing.CmdStan: CmdStan
         DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
         STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
+        
+        Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
+        function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
+            _sampler(alg::Hamiltonian, adapt_conf)
+        end
         include("inference/adapt/stan.jl")
     end
 end

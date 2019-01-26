@@ -81,8 +81,11 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, STAN_DEFAULT_ADAPT_CONF::DEFAULT_ADAPT_CONF_TYPE)
-function Sampler(alg::Hamiltonian, adapt_conf::DEFAULT_ADAPT_CONF_TYPE)
+Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
+function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
+    return _sampler(alg::Hamiltonian, adapt_conf)
+end
+function _sampler(alg::Hamiltonian, adapt_conf)
     info=Dict{Symbol, Any}()
 
     # For state infomation
