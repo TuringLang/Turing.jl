@@ -85,14 +85,6 @@ end
 ````
 
 
-````
-plot_sampler (generic function with 1 method)
-````
-
-
-
-
-
 ## Samplers
 
 ### Gibbs
@@ -133,7 +125,7 @@ c = sample(model, HMC(1000, 0.01, 10))
 
 ````
 [HMC] Finished with
-  Running time        = 1.9484492570000005;
+  Running time        = 2.4334476359999986;
   Accept rate         = 1.0;
   #lf / sample        = 9.99;
   #evals / sample     = 11.99;
@@ -162,7 +154,7 @@ c = sample(model, HMCDA(1000, 200, 0.65, 0.3))
 
 ````
 [HMCDA] Finished with
-  Running time        = 1.8612705369999996;
+  Running time        = 2.0255241690000028;
   Accept rate         = 0.679;
   #lf / sample        = 1.056;
   #evals / sample     = 3.062;
@@ -180,20 +172,6 @@ plot_sampler(c)
 
 
 
-### IS
-
-Importance Sampling (IS) attempts to identify parameters that appear more important to the posterior, and sample them more often.
-
-````julia
-c = sample(model, IS(1000))
-plot_sampler(c)
-````
-
-
-![](/assets/figures/samplers_6_1.svg)
-
-
-
 ### MH
 
 Metropolis-Hastings (MH) sampling is one of the earliest Markov Chain Monte Carlo methods. MH sampling does not "move" a lot, unlike many of the other samplers implemented in Turing. Typically a much longer chain is required to converge to an appropriate parameter estimate.
@@ -207,8 +185,8 @@ c = sample(model, MH(1000))
 
 ````
 [MH] Finished with
-  Running time        = 0.03998946300000008;
-  Accept rate         = 0.024;
+  Running time        = 0.032115146000000046;
+  Accept rate         = 0.015;
 ````
 
 
@@ -218,7 +196,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_7_1.svg)
+![](/assets/figures/samplers_6_1.svg)
 
 
 
@@ -237,9 +215,9 @@ c = sample(model, NUTS(1000, 0.65))
 
 ````
 [NUTS] Finished with
-  Running time        = 2.4343681089999993;
-  #lf / sample        = 0.003;
-  #evals / sample     = 12.647;
+  Running time        = 2.7755298859999935;
+  #lf / sample        = 0.002;
+  #evals / sample     = 12.313;
   pre-cond. metric    = [1.0, 1.0].
 ````
 
@@ -250,7 +228,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_8_1.svg)
+![](/assets/figures/samplers_7_1.svg)
 
 
 
@@ -265,9 +243,9 @@ c = sample(model, NUTS(1000, 0.95))
 
 ````
 [NUTS] Finished with
-  Running time        = 0.8846683000000005;
-  #lf / sample        = 0.002;
-  #evals / sample     = 20.377;
+  Running time        = 1.7990740579999978;
+  #lf / sample        = 0.004;
+  #evals / sample     = 23.805;
   pre-cond. metric    = [1.0, 1.0].
 ````
 
@@ -278,7 +256,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_9_1.svg)
+![](/assets/figures/samplers_8_1.svg)
 
 
 
@@ -291,9 +269,9 @@ c = sample(model, NUTS(1000, 0.2))
 
 ````
 [NUTS] Finished with
-  Running time        = 0.4329020819999999;
+  Running time        = 0.5854548800000005;
   #lf / sample        = 0.002;
-  #evals / sample     = 7.666;
+  #evals / sample     = 6.627;
   pre-cond. metric    = [1.0, 1.0].
 ````
 
@@ -304,7 +282,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_10_1.svg)
+![](/assets/figures/samplers_9_1.svg)
 
 
 
@@ -320,7 +298,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_11_1.svg)
+![](/assets/figures/samplers_10_1.svg)
 
 
 
@@ -332,7 +310,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_12_1.svg)
+![](/assets/figures/samplers_11_1.svg)
 
 
 
@@ -349,8 +327,8 @@ c = sample(model, PMMH(1000, SMC(20, :m), MH(10,:s)))
 
 ````
 [PMMH] Finished with
-  Running time    = 4.002414077999999;
-  Accept rate         = 0.077;
+  Running time    = 4.950841641000002;
+  Accept rate         = 0.09;
 ````
 
 
@@ -360,7 +338,7 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_13_1.svg)
+![](/assets/figures/samplers_12_1.svg)
 
 
 
@@ -375,8 +353,39 @@ c = sample(model, PIMH(1000, SMC(20)))
 
 ````
 [PMMH] Finished with
-  Running time    = 3.677396918000003;
-  Accept rate         = 0.234;
+  Running time    = 4.422653851000006;
+  Accept rate         = 0.232;
+````
+
+
+
+````julia
+plot_sampler(c)
+````
+
+
+![](/assets/figures/samplers_13_1.svg)
+
+
+
+### SGHMC
+
+Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper "Stochastic Gradient Hamiltonian Monte Carlo" by Chen, Fox, and Guestrin (2014). The interested reader can learn more [here](https://arxiv.org/abs/1402.4102). This sampler is very similar to the SGLD sampler below.
+
+
+The two parameters used in SGHMC are the learing rate and the momentum decay. Here is sampler with a higher momentum decay of 0.1:
+
+````julia
+c = sample(model, SGHMC(1000, 0.001, 0.1))
+````
+
+
+````
+[SGHMC] Finished with
+  Running time        = 1.2120846790000028;
+  Accept rate         = 1.0;
+  #lf / sample        = 0.0;
+  #evals / sample     = 501.5;
 ````
 
 
@@ -390,21 +399,16 @@ plot_sampler(c)
 
 
 
-### SGHMC
-
-Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper "Stochastic Gradient Hamiltonian Monte Carlo" by Chen, Fox, and Guestrin (2014). The interested reader can learn more [here](https://arxiv.org/abs/1402.4102).
-
-
-The two parameters used in SGHMC are the learing rate and the momentum decay. Here is sampler with a higher momentum decay of 0.1:
+And the same sampler with a much lower momentum decay:
 
 ````julia
-c = sample(model, SGHMC(1000, 0.001, 0.1))
+c = sample(model, SGHMC(1000, 0.001, 0.01))
 ````
 
 
 ````
 [SGHMC] Finished with
-  Running time        = 1.072824767;
+  Running time        = 0.08846964400000006;
   Accept rate         = 1.0;
   #lf / sample        = 0.0;
   #evals / sample     = 501.5;
@@ -421,35 +425,11 @@ plot_sampler(c)
 
 
 
-And the same sampler with a much lower momentum decay:
-
-````julia
-c = sample(model, SGHMC(1000, 0.001, 0.01))
-````
-
-
-````
-[SGHMC] Finished with
-  Running time        = 0.08795216800000005;
-  Accept rate         = 1.0;
-  #lf / sample        = 0.0;
-  #evals / sample     = 501.5;
-````
-
-
-
-````julia
-plot_sampler(c)
-````
-
-
-![](/assets/figures/samplers_16_1.svg)
-
-
-
 ### SGLD
 
 The Stochastic Gradient Langevin Dynamics (SGLD) is based on the paper "Bayesian learning via stochastic gradient langevin dynamics" by Welling and Teh (2011). A link to the article can be found [here](https://dl.acm.org/citation.cfm?id=3104568).
+
+SGLD is an approximation to [Langevin adjusted MH](https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm). SGLD uses stochastic gradients that are based on mini-batches of data, and it skips the MH correction step to improve scalability. Computing Metropolis-Hastings accept probabilities requires evaluation likelihoods for the full dataset, making it significantly less scalable. The resulting Gibbs sampler is no longer unbiased since SGLD is an approximate sampler.
 
 ````julia
 c = sample(model, SGLD(1000, 0.01))
@@ -458,7 +438,7 @@ c = sample(model, SGLD(1000, 0.01))
 
 ````
 [SGLD] Finished with
-  Running time        = 0.8662928139999994;
+  Running time        = 0.888668504000001;
   Accept rate         = 1.0;
   #lf / sample        = 0.0;
   #evals / sample     = 501.5;
@@ -472,18 +452,4 @@ plot_sampler(c)
 ````
 
 
-![](/assets/figures/samplers_17_1.svg)
-
-
-
-### SMC
-
-The Sequential Monte Carlo (SMC) method accepts a number of iterations to use, and tends to be less active than some of the Hamiltonian methods show in above samplers.
-
-````julia
-c = sample(model, SMC(1000))
-plot_sampler(c)
-````
-
-
-![](/assets/figures/samplers_18_1.svg)
+![](/assets/figures/samplers_16_1.svg)

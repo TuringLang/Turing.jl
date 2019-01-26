@@ -81,7 +81,7 @@ function plot_sampler(chain)
         legend=false, colorbar=false, alpha=0.5)
 
     return p
-end
+end;
 ```
 
 ## Samplers
@@ -201,7 +201,7 @@ plot_sampler(c)
 
 ### SGHMC
 
-Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper "Stochastic Gradient Hamiltonian Monte Carlo" by Chen, Fox, and Guestrin (2014). The interested reader can learn more [here](https://arxiv.org/abs/1402.4102).
+Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper "Stochastic Gradient Hamiltonian Monte Carlo" by Chen, Fox, and Guestrin (2014). The interested reader can learn more [here](https://arxiv.org/abs/1402.4102). This sampler is very similar to the SGLD sampler below.
 
 
 The two parameters used in SGHMC are the learing rate and the momentum decay. Here is sampler with a higher momentum decay of 0.1:
@@ -222,18 +222,9 @@ plot_sampler(c)
 
 The Stochastic Gradient Langevin Dynamics (SGLD) is based on the paper "Bayesian learning via stochastic gradient langevin dynamics" by Welling and Teh (2011). A link to the article can be found [here](https://dl.acm.org/citation.cfm?id=3104568).
 
-SGLD is an approximation to [Langevin adjusted MH](https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm): SGLD uses stochastic gradients that are based on mini-batches of data and skips the MH correction step to improve scalability --- computing MH accept probabilities requires evaluation likelihoods for the full dataset. So, the resulting Gibbs sampler here is no longer unbiased since SGLD is an approximate sampler.
+SGLD is an approximation to [Langevin adjusted MH](https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm). SGLD uses stochastic gradients that are based on mini-batches of data, and it skips the MH correction step to improve scalability. Computing Metropolis-Hastings accept probabilities requires evaluation likelihoods for the full dataset, making it significantly less scalable. The resulting Gibbs sampler is no longer unbiased since SGLD is an approximate sampler.
 
 ```julia
 c = sample(model, SGLD(1000, 0.01))
-plot_sampler(c)
-```
-
-### SMC
-
-The Sequential Monte Carlo (SMC) method accepts a number of iterations to use, and tends to be less active than some of the Hamiltonian methods show in above samplers.
-
-```julia
-c = sample(model, SMC(1000))
 plot_sampler(c)
 ```
