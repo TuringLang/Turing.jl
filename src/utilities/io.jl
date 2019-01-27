@@ -13,6 +13,15 @@ end
 
 Base.getindex(s::Sample, v::Symbol) = getjuliatype(s, v)
 
+function parse_inds(inds)
+    p_inds = [parse(Int, m.captures[1]) for m in eachmatch(r"(\d+)", inds)]
+    if length(p_inds) == 1
+        return p_inds[1]
+    else
+        return Tuple(p_inds)
+    end
+end
+
 function getjuliatype(s::Sample, v::Symbol, cached_syms=nothing)
     # NOTE: cached_syms is used to cache the filter entiries in svalue. This is helpful when the dimension of model is huge.
     if cached_syms == nothing
@@ -38,14 +47,14 @@ function getjuliatype(s::Sample, v::Symbol, cached_syms=nothing)
     if dim == 1
         sample = Vector(undef, length(unique(map(c -> c[1], idx_comp))))
     else
-        d = max(map(c -> eval(parse(c[1])), idx_comp)...)
+        d = max(map(c -> parse_inds(c[1]), idx_comp)...)
         sample = Array{Any, length(d)}(undef, d)
     end
 
     # Fill sample
     for i = 1:length(syms)
         # Get indexing
-        idx = Main.eval(Meta.parse(idx_comp[i][1]))
+        idx = parse_inds(idx_comp[i][1])
         # Determine if nesting
         nested_dim = length(idx_comp[1]) # how many nested layers?
         if nested_dim == 1
