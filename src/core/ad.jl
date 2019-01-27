@@ -180,6 +180,12 @@ Tracker.@grad function binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int)
         Δ->(nothing, Δ * (x / p - (n - x) / (1 - p)), nothing)
 end
 
+import StatsFuns: nbinomlogpdf
+nbinomlogpdf(n::Tracker.TrackedReal, p::Tracker.TrackedReal, x::Int) = Tracker.track(nbinomlogpdf, n, p, x)
+Tracker.@grad function nbinomlogpdf(r::Tracker.TrackedReal, p::Tracker.TrackedReal, k::Int)
+    return nbinomlogpdf(Tracker.data(r), Tracker.data(p), k),
+        Δ->(Δ * (sum(1 / (k + r - i) for i in 1:k) + log(1 - p)), Δ * (-r / (1 - p) + k / p), nothing)
+end
 
 import StatsFuns: poislogpdf
 poislogpdf(v::Tracker.TrackedReal, x::Int) = Tracker.track(poislogpdf, v, x)
@@ -193,6 +199,17 @@ function binomlogpdf(n::Int, p::ForwardDiff.Dual{T}, x::Int) where {T}
     val = ForwardDiff.value(p)
     Δ = ForwardDiff.partials(p)
     return FD(binomlogpdf(n, val, x),  Δ * (x / val - (n - x) / (1 - val)))
+end
+
+function nbinomlogpdf(r::ForwardDiff.Dual{T}, p::ForwardDiff.Dual{T}, k::Int) where {T}
+    FD = ForwardDiff.Dual{T}
+    val_p = ForwardDiff.value(p)
+    val_r = ForwardDiff.value(r)
+
+    Δ_p = ForwardDiff.partials(p) * (-val_r / (1 - val_p) + k / val_p)
+    Δ_r = ForwardDiff.partials(r) * (sum(1 / (k + val_r - i) for i in 1:k) + log(1 - val_p))
+    Δ = Δ_p + Δ_r
+    return FD(nbinomlogpdf(val_r, val_p, k),  Δ)
 end
 
 function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
