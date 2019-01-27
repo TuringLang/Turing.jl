@@ -68,7 +68,7 @@ function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
     indx = randcat(Ws)
     push!(spl.info[:logevidence], particles.logE)
 
-    return particles[indx].vi
+    return particles[indx].vi, true
 end
 
 ## wrapper for smc: run the sampler, collect results.

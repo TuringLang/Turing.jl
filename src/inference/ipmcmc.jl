@@ -83,7 +83,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
     # Run SMC & CSMC nodes
     for j in 1:spl.alg.n_nodes
         VarInfos[j].num_produce = 0
-        VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])
+        VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])[1]
         log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
     end
 
@@ -93,7 +93,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
     for j in 1:spl.alg.n_csmc_nodes
         # Select a new conditional node by simulating cj
         log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
-        ksi = exp.(log_ksi-maximum(log_ksi))
+        ksi = exp.(log_ksi .- maximum(log_ksi))
         c_j = wsample(ksi) # sample from Categorical with unormalized weights
 
         if c_j < length(log_ksi) # if CSMC node selects another index than itself
@@ -102,7 +102,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
         end
     end
     nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
-
+    
     VarInfos[nodes_permutation]
 end
 
