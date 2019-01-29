@@ -5,13 +5,13 @@ permalink: /docs/quick-start/
 
 If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing's syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.
 
-This example can be run on however you have Julia installed (see [Getting Started](get-started.md)), but you will need to install the packages `Turing`, `Distributions`, `MCMCChain`, and `StatPlots` if you have not done so already.
+This example can be run on however you have Julia installed (see [Getting Started](get-started.md)), but you will need to install the packages `Turing`, `Distributions`, `MCMCChain`, and `StatsPlots` if you have not done so already.
 
 This is an excerpt from a more formal example introducing probabalistic programming which can be found in Jupyter notebook form [here](https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb) or as part of the documentation website [here](../../tutorials/0-introduction/).
 
 ```julia
 # Import libraries.
-using Turing, StatPlots, Random
+using Turing, StatsPlots, Random
 
 # Set the true probability of heads in a coin.
 p_true = 0.5

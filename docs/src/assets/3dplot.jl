@@ -1,5 +1,5 @@
 using Plots
-using StatPlots
+using StatsPlots
 using Turing
 using Bijectors
 using Random

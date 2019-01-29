@@ -16,7 +16,7 @@ The Turing model definition used here is not especially practical, but it is des
 
 ```julia
 using Plots
-using StatPlots
+using StatsPlots
 using Turing
 using Bijectors
 using Random
