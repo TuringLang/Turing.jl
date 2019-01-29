@@ -25,7 +25,7 @@ Below is a simple Gaussian demo illustrate the basic usage of Turing.jl.
 ```julia
 # Import packages.
 using Turing
-using StatPlots
+using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x, y) = begin
