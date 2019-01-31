@@ -221,28 +221,30 @@ function _hmc_step(θ::AbstractVector{<:Real},
     τ = max(1, round(Int, λ / ϵ))
     return _hmc_step(θ, lj, lj_func, grad_func, H_func, τ, ϵ, momentum_sampler;
                      rev_func=rev_func, log_func=log_func)
+
 end
-
-
-# TODO: remove used Turing-wrapper functions
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
-    logpdf_func_float = gen_lj_func(vi, spl, model)
+    lj_func = gen_lj_func(vi, spl, model)
     momentum_sampler = gen_momentum_sampler(vi, spl)
+    grad_func = gen_grad_func(vi, spl, model)
     H_func = gen_H_func()
+    θ = vi[spl]
+    ϵ = _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
+    @info "\r[$T] found initial ϵ: $ϵ"
+    return ϵ
+end
 
+function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
     @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
     p = momentum_sampler()
+    H0 = H_func(θ, p, lj_func(θ))
 
-    θ = vi[spl]
-    H0 = H_func(θ, p, logpdf_func_float(θ))
-
-
-    θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-    h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
+    θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
+    h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
 
     delta_H = H0 - h
     direction = delta_H > log(0.8) ? 1 : -1
@@ -251,12 +253,13 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
 
     # Heuristically find optimal ϵ
     while (iter_num <= 12)
+        θ = θ_prime
 
         p = momentum_sampler()
-        H0 = H_func(vi[spl], p, logpdf_func_float(vi[spl]))
+        H0 = H_func(θ, p, lj_func(θ))
 
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
+        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
+        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
         @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
@@ -274,10 +277,9 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
 
     while h == Inf  # revert if the last change is too big
         ϵ = ϵ / 2               # safe is more important than large
-        θ_prime, p_prime, τ = leapfrog(θ, p, 1, ϵ, model, vi, spl)
-        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, logpdf_func_float(θ_prime))
+        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
+        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
     end
-    @info "\r[$T] found initial ϵ: $ϵ"
 
     return ϵ
 end
