@@ -236,7 +236,7 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
     return ϵ
 end
 
-function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
+function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_num_iters=12)
     @info "[Turing] looking for good initial eps..."
     ϵ = 0.1
 
@@ -252,7 +252,7 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
     iter_num = 1
 
     # Heuristically find optimal ϵ
-    while (iter_num <= 12)
+    while (iter_num <= max_num_iters)
         θ = θ_prime
 
         p = momentum_sampler()
