@@ -148,3 +148,13 @@ let
         atol=1e-8,
     )
 end
+
+let 
+    foo = x -> Turing.nbinomlogpdf(x[1], x[2], 1)
+    @test isapprox(
+        Tracker.gradient(foo, [3.5, 0.5])[1],
+        ForwardDiff.gradient(foo, [3.5, 0.5]);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+end
