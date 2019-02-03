@@ -181,10 +181,26 @@ Tracker.@grad function binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int)
 end
 
 import StatsFuns: nbinomlogpdf
+# Note the definition of NegativeBinomial in Julia is not the same as Wikipedia's.
+# Check the docstring of NegativeBinomial, r is the number of successes and 
+# k is the number of failures
+_nbinomlogpdf_grad_1(r, p, k) = sum(1 / (k + r - i) for i in 1:k) + log(p)
+_nbinomlogpdf_grad_2(r, p, k) = -k / (1 - p) + r / p
+
 nbinomlogpdf(n::Tracker.TrackedReal, p::Tracker.TrackedReal, x::Int) = Tracker.track(nbinomlogpdf, n, p, x)
+nbinomlogpdf(n::Real, p::Tracker.TrackedReal, x::Int) = Tracker.track(nbinomlogpdf, n, p, x)
+nbinomlogpdf(n::Tracker.TrackedReal, p::Real, x::Int) = Tracker.track(nbinomlogpdf, n, p, x)
 Tracker.@grad function nbinomlogpdf(r::Tracker.TrackedReal, p::Tracker.TrackedReal, k::Int)
     return nbinomlogpdf(Tracker.data(r), Tracker.data(p), k),
-        Δ->(Δ * (sum(1 / (k + r - i) for i in 1:k) + log(1 - p)), Δ * (-r / (1 - p) + k / p), nothing)
+        Δ->(Δ * _nbinomlogpdf_grad_1(r, p, k), Δ * _nbinomlogpdf_grad_2(r, p, k), nothing)
+end
+Tracker.@grad function nbinomlogpdf(r::Real, p::Tracker.TrackedReal, k::Int)
+    return nbinomlogpdf(Tracker.data(r), Tracker.data(p), k),
+        Δ->(Tracker._zero(r), Δ * _nbinomlogpdf_grad_2(r, p, k), nothing)
+end
+Tracker.@grad function nbinomlogpdf(r::Tracker.TrackedReal, p::Real, k::Int)
+    return nbinomlogpdf(Tracker.data(r), Tracker.data(p), k),
+        Δ->(Δ * _nbinomlogpdf_grad_1(r, p, k), Tracker._zero(p), nothing)
 end
 
 import StatsFuns: poislogpdf
@@ -206,10 +222,22 @@ function nbinomlogpdf(r::ForwardDiff.Dual{T}, p::ForwardDiff.Dual{T}, k::Int) wh
     val_p = ForwardDiff.value(p)
     val_r = ForwardDiff.value(r)
 
-    Δ_p = ForwardDiff.partials(p) * (-val_r / (1 - val_p) + k / val_p)
-    Δ_r = ForwardDiff.partials(r) * (sum(1 / (k + val_r - i) for i in 1:k) + log(1 - val_p))
+    Δ_r = ForwardDiff.partials(r) * _nbinomlogpdf_grad_1(val_r, val_p, k)
+    Δ_p = ForwardDiff.partials(p) * _nbinomlogpdf_grad_2(val_r, val_p, k)
     Δ = Δ_p + Δ_r
     return FD(nbinomlogpdf(val_r, val_p, k),  Δ)
+end
+function nbinomlogpdf(r::Real, p::ForwardDiff.Dual{T}, k::Int) where {T}
+    FD = ForwardDiff.Dual{T}
+    val_p = ForwardDiff.value(p)
+    Δ_p = ForwardDiff.partials(p) * _nbinomlogpdf_grad_2(r, val_p, k)
+    return FD(nbinomlogpdf(r, val_p, k),  Δ_p)
+end
+function nbinomlogpdf(r::ForwardDiff.Dual{T}, p::Real, k::Int) where {T}
+    FD = ForwardDiff.Dual{T}
+    val_r = ForwardDiff.value(r)
+    Δ_r = ForwardDiff.partials(r) * _nbinomlogpdf_grad_1(val_r, p, k)
+    return FD(nbinomlogpdf(val_r, p, k),  Δ_r)
 end
 
 function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
