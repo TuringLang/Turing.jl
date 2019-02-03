@@ -88,3 +88,73 @@ let
         atol=1e-8,
     )
 end
+
+let
+    foo = p->Turing.nbinomlogpdf(5, p, 1)
+    @test isapprox(
+        Tracker.gradient(foo, 0.5)[1],
+        central_fdm(5, 1)(foo, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    @test isapprox(
+        Tracker.gradient(foo, 0.5)[1],
+        ForwardDiff.derivative(foo, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+
+    bar = p->logpdf(NegativeBinomial(5, p), 3)
+    @test isapprox(
+        Tracker.gradient(bar, 0.5)[1],
+        central_fdm(5, 1)(bar, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    @test isapprox(
+        Tracker.gradient(bar, 0.5)[1],
+        ForwardDiff.derivative(bar, 0.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+end
+
+let
+    foo = r->Turing.nbinomlogpdf(r, 0.5, 1)
+    @test isapprox(
+        Tracker.gradient(foo, 3.5)[1],
+        central_fdm(5, 1)(foo, 3.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    @test isapprox(
+        Tracker.gradient(foo, 3.5)[1],
+        ForwardDiff.derivative(foo, 3.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+
+    bar = r->logpdf(NegativeBinomial(r, 0.5), 3)
+    @test isapprox(
+        Tracker.gradient(bar, 3.5)[1],
+        central_fdm(5, 1)(bar, 3.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+    @test isapprox(
+        Tracker.gradient(bar, 3.5)[1],
+        ForwardDiff.derivative(bar, 3.5);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+end
+
+let 
+    foo = x -> Turing.nbinomlogpdf(x[1], x[2], 1)
+    @test isapprox(
+        Tracker.gradient(foo, [3.5, 0.5])[1],
+        ForwardDiff.gradient(foo, [3.5, 0.5]);
+        rtol=1e-8,
+        atol=1e-8,
+    )
+end
