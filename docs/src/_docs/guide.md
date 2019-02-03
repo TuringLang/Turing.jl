@@ -149,9 +149,9 @@ Output:
 (0.685690547873451, -1.1972706455914328)
 ```
 
-#### Generating Vectors of Quantities
+### Generative Models
 
-##### Using `Missing`
+#### Using `Missing`
 
 The simplest way to treat a model as generative is to pass in an `Array{Missing}` value for the parameter(s) you wish to generate. Turing v0.6.7 supports the following syntax:
 
@@ -171,7 +171,7 @@ c = sample(model, HMC(500, 0.01, 5))
 
 The above case tells the model compiler the dimensions of the values it needs to generate. The generated values for `x` can be extracted from the `Chains` object using `c[x]`.
 
-##### Argument Defaults
+#### Using Argument Defaults
 
 Turing models can also be treated as generative by providing default values in the model declaration, and then calling that model without arguments.
 
