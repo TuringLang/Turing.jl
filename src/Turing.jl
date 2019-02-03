@@ -31,27 +31,30 @@ const CACHEIDCS   = 0b10
 const CACHERANGES = 0b01
 
 """
-    struct Model{pvars, dvars, F, TD}
+    struct Model{pvars, dvars, F, TData, TDefaults}
         f::F
-        data::TD
+        data::TData
+        defaults::TDefaults
     end
     
 A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
-function `f` and `data::NamedTuple`.
+function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
 """
-struct Model{pvars, dvars, F, TD}
+struct Model{pvars, dvars, F, TData, TDefaults}
     f::F
-    data::TD
+    data::TData
+    defaults::TDefaults
 end
-function Model{pvars, dvars}(f::F, data::TD) where {pvars, dvars, F, TD}
-    return Model{pvars, dvars, F, TD}(f, data)
+function Model{pvars, dvars}(f::F, data::TD, defaults::TDefaults) where {pvars, dvars, F, TD, TDefaults}
+    return Model{pvars, dvars, F, TD, TDefaults}(f, data, defaults)
 end
-pvars(m::Model{params}) where {params} = Tuple(params.types)
-dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
-@generated function inpvars(::Val{sym}, ::Model{params}) where {sym, params}
+get_pvars(m::Model{params}) where {params} = Tuple(params.types)
+get_dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
+get_defaults(m::Model) = m.defaults
+@generated function in_pvars(::Val{sym}, ::Model{params}) where {sym, params}
     return sym in params.types ? :(true) : :(false)
 end
-@generated function indvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
+@generated function in_dvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
     return sym in data.types ? :(true) : :(false)
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)

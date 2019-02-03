@@ -4,8 +4,8 @@ using ..Core, ..Core.VarReplay, ..Utilities
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Sampler, Model, runmodel!, pvars, dvars
-using ..Turing: inpvars, indvars
+using ..Turing: Sampler, Model, runmodel!, get_pvars, get_dvars
+using ..Turing: in_pvars, in_dvars
 using StatsFuns: logsumexp
 
 import Distributions: sample
