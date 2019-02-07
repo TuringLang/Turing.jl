@@ -2,6 +2,7 @@ module Utilities
 
 using ..Turing: Sampler
 using Distributions, Bijectors
+using StatsFuns, SpecialFunctions
 using MCMCChain: AbstractChains, Chains
 import Distributions: sample
 
@@ -18,7 +19,16 @@ export  resample,
         Chain,
         init,
         vectorize,
-        data
+        data,
+        rand,
+        logpdf,
+        minimum,
+        maximum,
+        logpdf_binomial_logit,
+        Flat,
+        FlatPos,
+        BinomialLogit,
+        VecBinomialLogit
 
 include("resample.jl")
 include("helper.jl")
