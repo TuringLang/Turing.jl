@@ -90,7 +90,7 @@ mf(vi, sampler, model) = begin
     if isdefined(model.data, :x)
         x = model.data.x
     else # x is a parameter
-        x = Vector{Real}(undef, 2)
+        x = model.defaults.x
     end
 
     # Assume s has an InverseGamma distribution.
@@ -118,8 +118,11 @@ mf(vi, sampler, model) = begin
     end
 end
 
+# Define the default value for x when missing
+defaults = (x = Vector{Real}(undef, 2),)
+
 # Instantiate a Model object.
-model = Turing.Model{Tuple{:s, :m}, Tuple{:x}}(mf, data)
+model = Turing.Model{Tuple{:s, :m}, Tuple{:x}}(mf, data, defaults)
 
 # Sample the model.
 chain = sample(model, HMC(1000, 0.1, 5))
