@@ -21,20 +21,20 @@ export  InferenceAlgorithm,
         HamiltonianRobustInit,
         SampleFromPrior,
         AnySampler,
-        MH, 
+        MH,
         Gibbs,      # classic sampling
-        HMC, 
-        SGLD, 
-        SGHMC, 
-        HMCDA, 
+        HMC,
+        SGLD,
+        SGHMC,
+        HMCDA,
         NUTS,       # Hamiltonian-like sampling
         DynamicNUTS,
-        IS, 
-        SMC, 
-        CSMC, 
-        PG, 
-        PIMH, 
-        PMMH, 
+        IS,
+        SMC,
+        CSMC,
+        PG,
+        PIMH,
+        PMMH,
         IPMCMC,  # particle-based sampling
         getspace,
         assume,
@@ -229,7 +229,7 @@ end
         value[sym(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
-    value[:lp] = getlogp(vi)
+    value[:_lp] = getlogp(vi)
     if ~isempty(vi.pred)
         for sym in keys(vi.pred)
         # if ~haskey(sample.value, sym)
@@ -248,16 +248,19 @@ end
 end
 
 # VarInfo, combined with spl.info, to Sample
-@inline function Sample(vi::VarInfo, spl::Sampler)
+@inline function Sample(vi::VarInfo, spl::Sampler; elapsed=nothing)
     s = Sample(vi)
+    if !(elapsed == nothing)
+        s.value[:_elapsed] = elapsed
+    end
     if haskey(spl.info, :wum)
-        s.value[:epsilon] = getss(spl.info[:wum])
+        s.value[:_epsilon] = getss(spl.info[:wum])
     end
     if haskey(spl.info, :lf_num)
-        s.value[:lf_num] = spl.info[:lf_num]
+        s.value[:_lf_num] = spl.info[:lf_num]
     end
     if haskey(spl.info, :eval_num)
-        s.value[:eval_num] = spl.info[:eval_num]
+        s.value[:_eval_num] = spl.info[:eval_num]
     end
     return s
 end

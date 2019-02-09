@@ -192,7 +192,7 @@ function Base.getindex(c::Chain, v::Symbol)
     elseif v==:samples
         return c.value2
     elseif v==:logweights
-        return c[:lp]
+        return c[:_lp]
     else
         return map((s)->Base.getindex(s, v), c.value2)
     end

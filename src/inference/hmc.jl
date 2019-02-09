@@ -91,6 +91,7 @@ function _sampler(alg::Hamiltonian, adapt_conf)
     # For state infomation
     info[:lf_num] = 0
     info[:eval_num] = 0
+    info[:a] = []
 
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
@@ -104,7 +105,6 @@ function sample(model::Model, alg::Hamiltonian;
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
                 )
-    
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg, adapt_conf)
@@ -141,7 +141,6 @@ function sample(model::Model, alg::Hamiltonian;
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
-    spl.info[:a] = []
 
     # HMC steps
     total_lf_num = 0
@@ -155,13 +154,9 @@ function sample(model::Model, alg::Hamiltonian;
         time_total += time_elapsed
 
         if is_accept # accepted => store the new predcits
-            samples[i].value = Sample(vi, spl).value
+            samples[i].value = Sample(vi, spl; elapsed=time_elapsed).value
         else         # rejected => store the previous predcits
             samples[i] = samples[i - 1]
-        end
-        samples[i].value[:elapsed] = time_elapsed
-        if haskey(spl.info, :wum)
-          samples[i].value[:lf_eps] = getss(spl.info[:wum])
         end
 
         total_lf_num += spl.info[:lf_num]
@@ -199,6 +194,8 @@ end
 
 function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), FixedStepSize(spl.alg.epsilon))
+    # TODO: RFC below
+    push!(spl.info[:a], 1.0)
     return vi, true
 end
 
@@ -208,6 +205,8 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     dim = length(vi[spl])
     spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
     spl.alg.gid != 0 && invlink!(vi, spl)
+    # TODO: RFC below
+    push!(spl.info[:a], 1.0)
     return vi, true
 end
 
@@ -246,6 +245,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         vi[spl] = θ
         setlogp!(vi, lj)
     end
+    # TODO: RFC below
     push!(spl.info[:a], α)
 
     if PROGRESS[] && spl.alg.gid == 0

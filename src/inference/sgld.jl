@@ -31,8 +31,8 @@ mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     gid     :: Int
 end
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-function SGLD{AD}(epsilon::Float64, space...) where AD 
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)    
+function SGLD{AD}(epsilon::Float64, space...) where AD
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
     SGLD{AD, eltype(_space)}(1, epsilon, _space, 0)
 end
 function SGLD{AD}(n_iters, epsilon) where AD
@@ -86,6 +86,8 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
     @debug "always accept..."
+    # TODO: RFC below
+    push!(spl.info[:a], 1.0)
     vi[spl] = θ
 
     @debug "R -> X..."

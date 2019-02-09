@@ -89,5 +89,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     spl.alg.gid != 0 && invlink!(vi, spl)
 
     @debug "always accept..."
+    # TODO: RFC below
+    push!(spl.info[:a], 1.0)
     return vi, true
 end
