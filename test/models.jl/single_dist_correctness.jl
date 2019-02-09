@@ -1,4 +1,4 @@
-using Test, Turing
+using Test, Turing, LinearAlgebra
 turnprogress(false)
 
 n_samples = 20_000
@@ -61,7 +61,7 @@ dist_multi = [MvNormal(zeros(multi_dim), ones(multi_dim)),
 
 # 3. MatrixDistribution
 dist_matrix = [Wishart(7, [1 0.5; 0.5 1]),
-               InverseWishart(7, [1 0.5; 0.5 1]),
+               InverseWishart(7, Symmetric([1 0.5; 0.5 1])),
               ]
 
 @testset "Correctness test for single distributions" begin
