@@ -4,6 +4,8 @@ using ..Turing: Sampler
 using Distributions, Bijectors
 using StatsFuns, SpecialFunctions
 using MCMCChain: AbstractChains, Chains
+using StatsFuns, SpecialFunctions
+using Statistics, LinearAlgebra
 import Distributions: sample
 
 export  resample,
@@ -20,7 +22,6 @@ export  resample,
         init,
         vectorize,
         data,
-        logpdf_binomial_logit,
         Flat,
         FlatPos,
         BinomialLogit,
