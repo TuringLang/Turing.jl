@@ -59,10 +59,8 @@ end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::NUTS, momentum_sampler::Function;
                   rev_func=nothing, log_func=nothing)
-    θ_new, α = _nuts_step(θ, ϵ, lj, lj_func, grad_func, H_func, momentum_sampler)
-    lj_new = lj_func(θ_new)
-    is_accept = true
-    return θ_new, lj_new, is_accept, α
+    θ_new, α, j = _nuts_step(θ, ϵ, lj, lj_func, grad_func, H_func, momentum_sampler)
+    return θ_new, lj_func(θ_new), HMCStats(α, true, ϵ, 2^j)
 end
 
 """
@@ -120,7 +118,7 @@ function _build_tree(θ::T, r::AbstractVector, logu::AbstractFloat, v::Int, j::I
         n′ = n′ + n′′
       end
 
-      θm, rm, θp, rp, θ′, n′, s′, α′, n′α
+      return θm, rm, θp, rp, θ′, n′, s′, α′, n′α
     end
   end
 
@@ -180,6 +178,6 @@ function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real,
 
   end
 
-  return θ_new, da_stat
+  return θ_new, da_stat, j
 
 end

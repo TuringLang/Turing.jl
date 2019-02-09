@@ -80,26 +80,20 @@ function compute_next_window!(tp::ThreePhaseAdapter)
     end
 end
 
-function adapt!(tp::ThreePhaseAdapter, stats::Real, θ; adapt_ϵ=false, adapt_M=false)
+function adapt!(tp::ThreePhaseAdapter, stats::Real, θ)
     if tp.state.n < tp.n_adapts
         tp.state.n += 1
         if tp.state.n == tp.n_adapts
-            if adapt_ϵ
-                ϵ = exp(tp.ssa.state.x_bar)
-                tp.ssa.state.ϵ = min(one(ϵ), ϵ)
-            end
-            @info " Adapted ϵ = $(getss(tp)), std = $(string(tp.pc)); $(tp.state.n) iterations is used for adaption."
+            finish!(tp.ssa)
+            @info "$(tp.state.n) iterations is used for adaption."
+            @info "  Adapted ϵ = $(getss(tp)), std = $(string(tp.pc))."
         else
-            if adapt_ϵ
-                is_updateμ = is_windowend(tp)# || tp.state.n == tp.n_adapts
-                adapt!(tp.ssa, stats, is_updateμ)
-            end
+            is_updateμ = is_windowend(tp)# || tp.state.n == tp.n_adapts
+            adapt!(tp.ssa, stats, is_updateμ)
 
             # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/nuts/adapt_diag_e_nuts.hpp
-            if adapt_M
-                is_addsample, is_updatestd = in_adaptation(tp), is_windowend(tp)
-                adapt!(tp.pc, θ, is_addsample, is_updatestd)
-            end
+            is_addsample, is_updatestd = in_adaptation(tp), is_windowend(tp)
+            adapt!(tp.pc, θ, is_addsample, is_updatestd)
 
             # If window ends, compute next window
             is_windowend(tp) && compute_next_window!(tp)

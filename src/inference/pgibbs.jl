@@ -79,16 +79,16 @@ function step(model, spl::Sampler{<:PG}, vi::VarInfo)
     indx = randcat(Ws)
     push!(spl.info[:logevidence], particles.logE)
 
-    return particles[indx].vi, true
+    return particles[indx].vi, NullStats()
 end
 
-function sample(  model::Model, 
+function sample(  model::Model,
                   alg::PG;
                   save_state=false,         # flag for state saving
                   resume_from=nothing,      # chain to continue
                   reuse_spl_n=0             # flag for spl re-using
                 )
-    
+
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg)
@@ -143,9 +143,9 @@ function sample(  model::Model,
     return c
 end
 
-function assume(  spl::Sampler{T}, 
-                  dist::Distribution, 
-                  vn::VarName, 
+function assume(  spl::Sampler{T},
+                  dist::Distribution,
+                  vn::VarName,
                   _::VarInfo
                 ) where T<:Union{PG,SMC}
 
@@ -177,10 +177,10 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
-function assume(  spl::Sampler{A}, 
-                  dists::Vector{D}, 
-                  vn::VarName, 
-                  var::Any, 
+function assume(  spl::Sampler{A},
+                  dists::Vector{D},
+                  vn::VarName,
+                  var::Any,
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")
@@ -191,9 +191,9 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     return zero(Real)
 end
 
-function observe( spl::Sampler{A}, 
-                  ds::Vector{D}, 
-                  value::Any, 
+function observe( spl::Sampler{A},
+                  ds::Vector{D},
+                  value::Any,
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")

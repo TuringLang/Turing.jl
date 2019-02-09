@@ -62,18 +62,23 @@ getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
-# mutable struct HMCState{T<:Real}
-#     epsilon  :: T
-#     std     :: Vector{T}
-#     lf_num   :: Integer
-#     eval_num :: Integer
-# end
-#
-#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
-#    alg   :: TH
-#    state :: HMCState
-#    adapt :: TA
-#  end
+# Sampler stats
+abstract type AbstractSamplerStats end
+struct NullStats <: AbstractSamplerStats end
+struct MHStats <: AbstractSamplerStats
+    is_accept       ::  Bool
+end
+struct HMCStats <: AbstractSamplerStats
+    accept_ratio    ::  Float64
+    is_accept       ::  Bool
+    lf_step_size    ::  Float64
+    n_lf_steps      ::  Integer
+end
+struct SGLDStats <: AbstractSamplerStats
+    is_accept       ::  Bool
+    lf_step_size    ::  Float64
+end
+
 
 """
 Robust initialization method for model parameters in Hamiltonian samplers.
@@ -261,6 +266,18 @@ end
     end
     if haskey(spl.info, :eval_num)
         s.value[:_eval_num] = spl.info[:eval_num]
+    end
+    return s
+end
+
+# VarInfo, combined with SamplingStats, to Sample
+@inline function Sample(vi::VarInfo, stats::T; elapsed=nothing) where {T<:AbstractSamplerStats}
+    s = Sample(vi)
+    if !(elapsed == nothing)
+        s.value[:_elapsed] = elapsed
+    end
+    for fn in fieldnames(T)
+        s.value[Symbol("_$fn")] = getfield(stats, fn)
     end
     return s
 end

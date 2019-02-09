@@ -110,10 +110,10 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         vi[spl] = old_θ
     end
 
-    return vi, is_accept
+    return vi, MHStats(is_accept)
 end
 
-function sample(  model::Model, 
+function sample(  model::Model,
                   alg::PMMH;
                   save_state=false,         # flag for state saving
                   resume_from=nothing,      # chain to continue
@@ -149,16 +149,16 @@ function sample(  model::Model,
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
       @debug "$alg_str stepping..."
-      time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i==1)
+      time_elapsed = @elapsed vi, stats = step(model, spl, vi, i==1)
 
-      if is_accept # accepted => store the new predcits
+      if stats.is_accept # accepted => store the new predcits
           samples[i].value = Sample(vi, spl).value
       else         # rejected => store the previous predcits
           samples[i] = samples[i - 1]
       end
 
       time_total += time_elapsed
-      push!(accept_his, is_accept)
+      push!(accept_his, stats.is_accept)
       if PROGRESS[]
         haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
       end

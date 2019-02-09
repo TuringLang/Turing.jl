@@ -90,11 +90,12 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     ϵ = exp(x)
     @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
 
+    ths = 5 * one(ϵ)
     if isnan(ϵ) || isinf(ϵ)
         @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
     else
-        ϵ > 5*one(ϵ) && @warn "$ϵ exceeds 5.0; capped to 5.0 for numerical stability"
-        da.state.ϵ = min(5*one(ϵ), ϵ)
+        ϵ > ths && @warn "$ϵ exceeds $ths; capped to $ths for numerical stability"
+        da.state.ϵ = min(ths, ϵ)
     end
     da.state.x_bar = x_bar
     da.state.H_bar = H_bar
@@ -106,4 +107,9 @@ function adapt!(da::DualAveraging, stats::Real, is_updateμ::Bool)
         da.state.μ = computeμ(da.state.ϵ)
         reset!(da.state)
     end
+end
+
+function finish!(da::DualAveraging)
+    ϵ = exp(da.state.x_bar)
+    da.state.ϵ = min(5 * one(ϵ), ϵ)
 end

@@ -58,7 +58,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.info[:t] = 0
 
     spl.alg.gid != 0 && invlink!(vi, spl)
-    return vi, true
+    return vi, SGLDStats(true, spl.alg.epsilon)
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
@@ -86,12 +86,10 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
     @debug "always accept..."
-    # TODO: RFC below
-    push!(spl.info[:a], 1.0)
     vi[spl] = θ
 
     @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
-    return vi, true
+    return vi, SGLDStats(true, ϵ_t)
 end

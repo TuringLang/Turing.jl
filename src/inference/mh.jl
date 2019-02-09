@@ -76,7 +76,7 @@ function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
-    return vi, true
+    return vi, MHStats(true)
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
@@ -101,7 +101,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
     setlogp!(vi, old_logp)  # reset logp
   end
 
-  return vi, is_accept
+  return vi, MHStats(is_accept)
 end
 
 function sample(model::Model, alg::MH;
@@ -144,17 +144,17 @@ function sample(model::Model, alg::MH;
   for i = 1:n
     @debug "$alg_str stepping..."
 
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+    time_elapsed = @elapsed vi, stats = step(model, spl, vi, Val(i == 1))
     time_total += time_elapsed
 
-    if is_accept # accepted => store the new predcits
+    if stats.is_accept # accepted => store the new predcits
         samples[i].value = Sample(vi, spl).value
     else         # rejected => store the previous predcits
         samples[i] = samples[i - 1]
     end
 
     samples[i].value[:elapsed] = time_elapsed
-    push!(accept_his, is_accept)
+    push!(accept_his, stats.is_accept)
 
     PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
   end
@@ -218,10 +218,10 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function assume(  spl::Sampler{<:MH}, 
-                  dists::Vector{D}, 
-                  vn::VarName, 
-                  var::Any, 
+function assume(  spl::Sampler{<:MH},
+                  dists::Vector{D},
+                  vn::VarName,
+                  var::Any,
                   vi::VarInfo
                 ) where D<:Distribution
     error("[Turing] MH doesn't support vectorizing assume statement")
@@ -231,9 +231,9 @@ function observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo)
     return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 end
 
-function observe( spl::Sampler{<:MH}, 
-                  ds::Vector{D}, 
-                  value::Any, 
+function observe( spl::Sampler{<:MH},
+                  ds::Vector{D},
+                  value::Any,
                   vi::VarInfo
                 )  where D<:Distribution
     return observe(nothing, ds, value, vi) # accumulate pdf of likelihood

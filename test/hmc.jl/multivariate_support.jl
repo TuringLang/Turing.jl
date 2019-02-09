@@ -1,16 +1,12 @@
 # Test the multivariate distribution support for HMC sampler
 
 using Turing
-
-# Define helper functions
-function sigmoid(t)
-  return 1 / (1 + exp.(-t))
-end
+using StatsFuns: logistic
 
 # Define NN flow
 function nn(x, b1, w11, w12, w13, bo, wo)
   h = tanh.([w11' * x + b1[1]; w12' * x + b1[2]; w13' * x + b1[3]])
-  return sigmoid((wo' * h)[1] + bo)
+  return logistic.((wo' * h)[1] + bo)
 end
 
 # Generating training data

@@ -71,9 +71,9 @@ end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
                   rev_func=nothing, log_func=nothing)
-  θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
-  return θ_new, lj_new, is_accept, α
+    θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
+        θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
+    return θ_new, lj_new, HMCStats(α, is_accept, ϵ, τ_valid)
 end
 
 # Below is a trick to remove the dependency of Stan by Requires.jl
@@ -87,11 +87,6 @@ function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
 end
 function _sampler(alg::Hamiltonian, adapt_conf)
     info=Dict{Symbol, Any}()
-
-    # For state infomation
-    info[:lf_num] = 0
-    info[:eval_num] = 0
-    info[:a] = []
 
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
@@ -131,7 +126,6 @@ function sample(model::Model, alg::Hamiltonian;
     vi = if resume_from == nothing
         vi_ = VarInfo()
         model(vi_, HamiltonianRobustInit())
-        spl.info[:eval_num] += 1
         vi_
     else
         deepcopy(resume_from.info[:vi])
@@ -143,47 +137,44 @@ function sample(model::Model, alg::Hamiltonian;
     end
 
     # HMC steps
-    total_lf_num = 0
-    total_eval_num = 0
     accept_his = Bool[]
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
+    local stats
     for i = 1:n
         @debug "$alg_str stepping..."
 
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+        time_elapsed = @elapsed vi, stats = step(model, spl, vi, Val(i == 1))
         time_total += time_elapsed
 
-        if is_accept # accepted => store the new predcits
-            samples[i].value = Sample(vi, spl; elapsed=time_elapsed).value
-        else         # rejected => store the previous predcits
+        if stats.is_accept  # accepted => store the new predcits
+            samples[i].value = Sample(vi, stats; elapsed=time_elapsed).value
+        else                # rejected => store the previous predcits
             samples[i] = samples[i - 1]
         end
 
-        total_lf_num += spl.info[:lf_num]
-        total_eval_num += spl.info[:eval_num]
-        push!(accept_his, is_accept)
+        push!(accept_his, stats.is_accept)
         PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
-    end
-
-    println("[$alg_str] Finished with")
-    println("  Mean alpha         = $(mean(spl.info[:a]));")
-    println("  Running time        = $time_total;")
-    if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
-        accept_rate = sum(accept_his) / n  # calculate the accept rate
-        println("  Accept rate         = $accept_rate;")
-    end
-    println("  #lf / sample        = $(total_lf_num / n);")
-    println("  #evals / sample     = $(total_eval_num / n);")
-    if haskey(spl.info, :wum)
-      std_str = string(spl.info[:wum].pc)
-      std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
-      println("  pre-cond. metric    = $(std_str).")
     end
 
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.value2...)
     end
     c = Chain(0, samples)       # wrap the result by Chain
+
+    println("[$alg_str] Finished with")
+    println("  Running time        = $time_total;")
+    # TODO: @Cameron we can simplify below when we have section for MCMCChain
+    fns = fieldnames(typeof(stats))
+    :_accept_ratio in fns && println("  alpha / sample      = $(mean(c[:_accept_ratio]));")
+    :_is_accept    in fns && println("  Accept rate         = $(mean(c[:_is_accept]));")
+    :_n_lf_steps   in fns && println("  #lf / sample        = $(mean(c[:_n_lf_steps]));")
+    if haskey(spl.info, :wum)
+      std_str = string(spl.info[:wum].pc)
+      std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
+      println("  pre-cond. metric    = $(std_str).")
+    end
+
+
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
@@ -194,30 +185,21 @@ end
 
 function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), FixedStepSize(spl.alg.epsilon))
-    # TODO: RFC below
-    push!(spl.info[:a], 1.0)
-    return vi, true
+    return vi, HMCStats(1.0, true, spl.alg.epsilon, 0)
 end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.alg.gid != 0 && link!(vi, spl)
-    epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
+    ϵ = find_good_eps(model, spl, vi) # heuristically find good initial step size
     dim = length(vi[spl])
-    spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
+    spl.info[:wum] = ThreePhaseAdapter(spl, ϵ, dim)
     spl.alg.gid != 0 && invlink!(vi, spl)
-    # TODO: RFC below
-    push!(spl.info[:a], 1.0)
-    return vi, true
+    return vi, HMCStats(1.0, true, ϵ, 0)
 end
 
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
-    # Get step size
-    ϵ = getss(spl.info[:wum])
     @debug "current ϵ: $ϵ"
-
-    # Reset current counters
-    spl.info[:lf_num] = 0
-    spl.info[:eval_num] = 0
+    ϵ = getss(spl.info[:wum])
 
     @debug "X-> R..."
     if spl.alg.gid != 0
@@ -228,46 +210,44 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     grad_func = gen_grad_func(vi, spl, model)
     lj_func = gen_lj_func(vi, spl, model)
     rev_func = gen_rev_func(vi, spl)
-    log_func = gen_log_func(spl)
     momentum_sampler = gen_momentum_sampler(vi, spl, spl.info[:wum].pc)
     H_func = gen_H_func(spl.info[:wum].pc)
 
     θ, lj = vi[spl], vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
-                                           rev_func=rev_func, log_func=log_func)
+    θ_new, lj_new, stats = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
+                                    rev_func=rev_func)
+    α = stats.accept_ratio
 
     @debug "decide whether to accept..."
-    if is_accept
+    if stats.is_accept
         vi[spl] = θ_new
         setlogp!(vi, lj_new)
     else
         vi[spl] = θ
         setlogp!(vi, lj)
     end
-    # TODO: RFC below
-    push!(spl.info[:a], α)
 
     if PROGRESS[] && spl.alg.gid == 0
         std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
-            spl.info[:progress],
-            spl.info[:progress].counter;
+            spl.info[:progress], spl.info[:progress].counter;
             showvalues = [(:ϵ, ϵ), (:α, α), (:pre_cond, std_str)],
         )
     end
 
     if spl.alg isa AdaptiveHamiltonian
-        vi2 = deepcopy(vi)
-        invlink!(vi2, spl)
-        adapt!(spl.info[:wum], α, vi2[spl], adapt_M=true, adapt_ϵ=true)
+        # vi2 = deepcopy(vi)
+        # invlink!(vi2, spl)
+        # adapt!(spl.info[:wum], α, vi2[spl])
+        adapt!(spl.info[:wum], α, vi[spl])
     end
 
     @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
-    return vi, is_accept
+    return vi, stats
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)

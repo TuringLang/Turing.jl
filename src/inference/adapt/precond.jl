@@ -93,6 +93,8 @@ function Base.string(::UnitPreConditioner)
     return string([1.0])
 end
 
+adapt!(upc::UnitPreConditioner, args...) = nothing
+
 struct DiagPreConditioner{TI<:Integer,TF<:Real} <: PreConditioner
     ve  :: VarEstimator{TI,TF}
     std :: Vector{TF}
