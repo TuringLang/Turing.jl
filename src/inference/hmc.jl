@@ -81,28 +81,20 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
-    return _sampler(alg::Hamiltonian, adapt_conf)
-end
-function _sampler(alg::Hamiltonian, adapt_conf)
-    info=Dict{Symbol, Any}()
-
-    # Adapt configuration
-    info[:adapt_conf] = adapt_conf
-
-    Sampler(alg, info)
-end
+Sampler(alg::Hamiltonian) =  Sampler(alg, Dict{Symbol, Any}())
 
 function sample(model::Model, alg::Hamiltonian;
-                                save_state=false,                   # flag for state saving
-                                resume_from=nothing,                # chain to continue
-                                reuse_spl_n=0,                      # flag for spl re-using
-                                adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
+                save_state=false,                   # flag for state saving
+                resume_from=nothing,                # chain to continue
+                reuse_spl_n=0,                      # flag for spl re-using
+                pc_type=UnitPreConditioner,         # pre-conditioner type
+                adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
                 )
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
-          Sampler(alg, adapt_conf)
+          Sampler(alg)
+    spl.info[:pc_type] = pc_type
+    spl.info[:adapt_conf] = adapt_conf
 
     @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
@@ -190,9 +182,24 @@ end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.alg.gid != 0 && link!(vi, spl)
-    ϵ = find_good_eps(model, spl, vi) # heuristically find good initial step size
-    dim = length(vi[spl])
-    spl.info[:wum] = ThreePhaseAdapter(spl, ϵ, dim)
+    # Pre-conditioner
+    # The condition below is to handle the imcompatibility of
+    # new adapataion interface with adaptive sampler used in Gibbs
+    # TODO: remove below when the interface is compatible with Gibbs by design
+    pc = if :pc_type in keys(spl.info)
+        spl.info[:pc_type](length(vi[spl]))
+    else
+        UnitPreConditioner()
+    end
+    # Dual averaging
+    ϵ = find_good_eps(model, spl, vi)   # heuristically find good initial step size
+    adapt_conf = if :adapt_conf in keys(spl.info)
+        spl.info[:adapt_conf]
+    else
+        nothing
+    end
+    ssa = DualAveraging(spl, adapt_conf, ϵ)
+    spl.info[:wum] = ThreePhaseAdapter(spl.alg.n_adapts, adapt_conf, pc, ssa)
     spl.alg.gid != 0 && invlink!(vi, spl)
     return vi, HMCStats(1.0, true, ϵ, 0)
 end

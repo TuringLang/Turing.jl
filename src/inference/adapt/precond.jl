@@ -89,6 +89,8 @@ abstract type PreConditioner <: AbstractAdapter end
 
 struct UnitPreConditioner <: PreConditioner end
 
+UnitPreConditioner(::Integer) = UnitPreConditioner()
+
 function Base.string(::UnitPreConditioner)
     return string([1.0])
 end

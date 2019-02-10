@@ -27,6 +27,9 @@ s = ArgParseSettings()
     "--model"
         arg_type = String
         default = "gdemo"
+    "--pc"
+        arg_type = String
+        default = "diag"
     "--describe"
         action = :store_true
 end
@@ -61,7 +64,20 @@ else
     Turing.NUTS(args[:n_iters], args[:n_adapt], args[:tar_acc_rate])
 end
 
-posterior = sample(mf, alg)
+# UnitPreConditioner is used if not matched
+pc_type = if args[:pc] == "dense"
+    Turing.Inference.DensePreConditioner
+elseif args[:pc] == "diag"
+    Turing.Inference.DiagPreConditioner
+else
+    Turing.Inference.UnitPreConditioner
+end
+
+posterior = if args[:alg] == "MH"
+    sample(mf, alg)
+else
+    sample(mf, alg; pc_type=pc_type)
+end
 
 # Compute average ESS of all modelvariables
 posterior_summary = MCMCChain.summarystats(posterior)

@@ -42,17 +42,11 @@ function get_threephase_params(::Nothing)
     return init_buffer, term_buffer, window_size, next_window
 end
 
-function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
-    # Diagonal pre-conditioner
-    # pc = UnitPreConditioner()
-    pc = DiagPreConditioner(dim)
-    # pc = DensePreConditioner(dim)
-    # Dual averaging for step size
-    ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
+function ThreePhaseAdapter(n_adapts::Integer, adapt_conf, pc::PreConditioner, ssa::StepSizeAdapter)
     # Window parameters
-    init_buffer, term_buffer, window_size, next_window = get_threephase_params(spl.info[:adapt_conf])
+    init_buffer, term_buffer, window_size, next_window = get_threephase_params(adapt_conf)
     threephasestate = ThreePhaseState(0, window_size, next_window)
-    return ThreePhaseAdapter(spl.alg.n_adapts, init_buffer, term_buffer, pc, ssa, threephasestate)
+    return ThreePhaseAdapter(n_adapts, init_buffer, term_buffer, pc, ssa, threephasestate)
 end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/windowed_adaptation.hpp

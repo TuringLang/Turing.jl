@@ -36,8 +36,8 @@ const CACHERANGES = 0b01
         data::TData
         defaults::TDefaults
     end
-    
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
+
+A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner
 function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
 """
 struct Model{pvars, dvars, F, TData, TDefaults}
@@ -74,10 +74,10 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
-    alg   ::  T
-    info  ::  Dict{Symbol, Any}         # sampler infomation
+    alg     ::  T
+    info    ::  Dict{Symbol, Any}
 end
-Sampler(alg, model) = Sampler(alg)
+Sampler(alg) = Sampler(alg, Dict{Symbol, Any}())
 
 include("utilities/Utilities.jl")
 using .Utilities
@@ -95,7 +95,6 @@ using .Inference
         using ..Turing.CmdStan: CmdStan
         DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
         STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
-        
         Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
         function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
             _sampler(alg::Hamiltonian, adapt_conf)
@@ -125,39 +124,39 @@ end
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
-        @VarName, 
-        
+        @VarName,
+
         MH,                     # classic sampling
         Gibbs,
-        
-        HMC,                    # Hamiltonian-like sampling 
-        SGLD, 
-        SGHMC, 
-        HMCDA, 
+
+        HMC,                    # Hamiltonian-like sampling
+        SGLD,
+        SGHMC,
+        HMCDA,
         NUTS,
         DynamicNUTS,
-        
+
         IS,                     # particle-based sampling
-        SMC, 
-        CSMC, 
-        PG, 
-        PIMH, 
-        PMMH, 
+        SMC,
+        CSMC,
+        PG,
+        PIMH,
+        PMMH,
         IPMCMC,
 
-        sample,                 # inference 
-        setchunksize, 
+        sample,                 # inference
+        setchunksize,
         resume,
 
         auto_tune_chunk_size!,  # helper
-        setadbackend, 
-        setadsafe, 
+        setadbackend,
+        setadsafe,
 
         turnprogress,           # debugging
 
-        Flat, 
-        FlatPos, 
-        BinomialLogit, 
+        Flat,
+        FlatPos,
+        BinomialLogit,
         VecBinomialLogit
 
 end
