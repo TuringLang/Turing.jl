@@ -133,10 +133,12 @@ function flatten!(chn::Chain)
         push!(vals, v)
         push!(names, n)
     end
+    @info names
 
     # Assuming that names[i] == names[j] for all (i,j)
     vals2 = [v[i] for v in vals, i=1:length(names[1])]
     vals2 = reshape(vals2, length(vals), length(names[1]), 1)
+
     c = Chains(vals2, names = names[1])
     chn.value = c.value
     chn.range = c.range

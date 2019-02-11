@@ -1,15 +1,29 @@
 using Turing
+using Turing.RandomMeasures
 using Test
 using Random
 
-Random.seed!(12)
+# Data
+data = [-2,2,-1.5,1.5]
 
-data = vcat(rand(Normal(0, 0.5), 10), rand(Normal(8, 0.5), 10))
+# Base distribution
+mu_0 = mean(data)
+sigma_0 = 4
+sigma_1 = 0.5
+tau0 = 1/sigma_0^2
+tau1 = 1/sigma_1^2
 
-@model crpimm(y;
-              H = Normal(mean(y), std(y) * 2),
-              rpm = DirichletProcess(0.1)
-             ) = begin
+# PYP parameters
+sigma = 0.25 # = alpha
+theta = 0.1
+
+# DP parameters
+alpha = 0.25
+
+@model crpimm(y, rpm) = begin
+
+    # Base distribution.
+    H = Normal(mu_0, sigma_0)
     # Latent assignments.
     N = length(y)
     z = tzeros(Int, N)
@@ -25,21 +39,24 @@ data = vcat(rand(Normal(0, 0.5), 10), rand(Normal(8, 0.5), 10))
         z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
         if cluster_counts[z[i]] == 0
             # Cluster is new, therefore, draw new location.
+            l ~ H
             x[z[i]] ~ H
         end
         cluster_counts[z[i]] += 1
-
         # Draw observation.
-        y[i] ~ Normal(x[z[i]], 0.5)
+        y[i] ~ Normal(x[z[i]], sigma_1)
     end
-    return z, x
 end
 
-data = shuffle(data)
-mf = crpimm(data)
-chn = sample(mf, SMC(500))
+rpm = DirichletProcess(alpha)
 
-k = map(length, map(unique, chn[:z]))
-cs = map(i -> sum(k .== i), 1:maximum(k))
+sampler = SMC(1000)
+mf = crpimm(data, rpm)
 
-@test argmax(cs) == 2
+# Compute empirical posterior distribution over partitions
+samples = sample(mf, sampler)
+
+# Check that there is no NaN value associated
+@test sum([sum(sample[:x][sample[:z]].== NaN)+sum(sample[:V][sample[:z]].== NaN) for sample in samples]) == 0
+
+
