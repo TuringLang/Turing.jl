@@ -182,7 +182,16 @@ function Base.getindex(c::Chain, v::Symbol)
     elseif v==:logweights
         return c[:lp]
     else
-        return getindex(c, string(v))
+        idx = names2inds(c, string(v))
+        if any(idx .== nothing)
+            syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), c.names))
+            sort!(syms)
+            idx = names2inds(c, syms)
+            @assert all(idx .!= nothing)
+            return c.value[:, idx, :]
+        else
+            return getindex(c, string(v))
+        end
     end
 end
 
