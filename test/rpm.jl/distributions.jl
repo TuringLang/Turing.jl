@@ -1,4 +1,5 @@
 using Turing
+using Turing.RandomMeasures
 using Test
 
 @testset "Representations" begin

@@ -119,6 +119,9 @@ end
     include("inference/dynamichmc.jl")
 end
 
+# Random probability measures.
+include("randomMeasures/RandomMeasures.jl")
+
 ###########
 # Exports #
 ###########
