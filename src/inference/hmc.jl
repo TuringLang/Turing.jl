@@ -186,7 +186,7 @@ function sample(model::Model, alg::Hamiltonian;
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.value2...)
     end
-    c = Chain(log(0.0), samples)       # wrap the result by Chain
+    c = Chain(0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
