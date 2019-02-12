@@ -95,10 +95,9 @@ mean(chain[:mu])      # find the mean of :mu
 mean(chain[:sigma])   # find the mean of :sigma
 ```
 """
-mutable struct Chain{R<:AbstractRange{Int}} <: AbstractChains
+struct Chain{R<:AbstractRange{Int}} <: AbstractChains
     weight  ::  Float64                 # log model evidence
-    value2  ::  Array{Sample}
-    value   ::  Array{Float64, 3}
+    value   ::  Array{Union{Missing, Float64}, 3}
     range   ::  R # TODO: Perhaps change to UnitRange?
     names   ::  Vector{String}
     chains  ::  Vector{Int}
@@ -107,7 +106,6 @@ end
 
 function Chain()
     return Chain{AbstractRange{Int}}( 0.0,
-                                      Vector{Sample}(),
                                       Array{Float64, 3}(undef, 0, 0, 0),
                                       0:0,
                                       Vector{String}(),
@@ -115,33 +113,24 @@ function Chain()
                                       Dict{Symbol,Any}()
                                     )
 end
-function Chain(w::Real, s::Array{Sample})
-    chn = Chain()
-    chn.weight = w
-    chn.value2 = deepcopy(s)
 
-    chn = flatten!(chn)
-    return chn
-end
+function Chain(w::Real, s::AbstractArray{Sample})
 
-function flatten!(chn::Chain)
-    ## Flatten samples into Mamba's chain type.
-    local names = Vector{Array{AbstractString}}()
-    local vals  = Vector{Array}()
-    for s in chn.value2
-        v, n = flatten(s)
-        push!(vals, v)
-        push!(names, n)
-    end
+    samples = flatten.(s)
+    names_ = collect(mapreduce(s -> keys(s), union, samples))
 
-    # Assuming that names[i] == names[j] for all (i,j)
-    vals2 = [v[i] for v in vals, i=1:length(names[1])]
-    vals2 = reshape(vals2, length(vals), length(names[1]), 1)
-    c = Chains(vals2, names = names[1])
-    chn.value = c.value
-    chn.range = c.range
-    chn.names = c.names
-    chn.chains = c.chains
+    values_ = mapreduce(v -> map(k -> haskey(v, k) ? v[k] : missing, names_), hcat, samples)
+    values_ = convert(Array{Union{Missing, Float64}, 2}, values_')
+    c = Chains(reshape(values_, size(values_, 1), size(values_, 2), 1), names = names_)
+
+    chn = Chain(
+                w,
+                c.value,
+                c.range,
+                c.names,
+                c.chains,
+                Dict{Symbol, Any}()
+               )
     return chn
 end
 
@@ -154,8 +143,9 @@ function flatten(s::Sample)
     for (k, v) in s.value
         flatten(names, vals, string(k), v)
     end
-    return vals, names
+    return Dict(names[i] => vals[i] for i in 1:length(vals))
 end
+
 function flatten(names, value :: Array{Float64}, k :: String, v)
     if isa(v, Number)
         name = k
@@ -189,14 +179,26 @@ function Base.getindex(c::Chain, v::Symbol)
     #  Needs some refactoring a better format for storing results is available.
     if v == :logevidence
         return log(c.weight)
-    elseif v==:samples
-        return c.value2
     elseif v==:logweights
         return c[:lp]
     else
-        return map((s)->Base.getindex(s, v), c.value2)
+        idx = names2inds(c, string(v))
+        if any(idx .== nothing)
+            syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), c.names))
+            sort!(syms)
+            idx = names2inds(c, syms)
+            @assert all(idx .!= nothing)
+            return c.value[:, idx, :]
+        else
+            return getindex(c, string(v))
+        end
     end
 end
+
+function Base.getindex(c::Chain, v::String)
+    return c.value[:, names2inds(c, v), :]
+end
+
 
 function Base.getindex(c::Chain, expr::Expr)
     str = replace(string(expr), r"\(|\)" => "")
@@ -213,8 +215,17 @@ function Base.vcat(c1::Chain, args::Chain...)
     all(c -> c.chains == chains, args) ||
         throw(ArgumentError("sets of chains differ"))
 
-    value2 = cat(c1.value2, map(c -> c.value2, args)..., dims=1)
-    return Chain(0, value2)
+    @assert c1.weight == c2.weight
+    @assert c1.range == c2.range
+
+    chn = Chain(c1.weight,
+                cat(c1.value, c2.value, dims=1),
+                c1.range,
+                c1.names,
+                c1.chains,
+                merge(c1.info, c2.info)
+        )
+    return chn
 end
 
 function save!(c::Chain, spl::Sampler, model, vi)
