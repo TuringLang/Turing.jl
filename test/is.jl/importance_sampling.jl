@@ -52,9 +52,9 @@ let n = 10
     Random.seed!(seed)
     tested = sample(_f, alg)
     for i = 1:n
-      @test exact[:samples][i][:a] == tested[:samples][i][:a]
-      @test exact[:samples][i][:b] == tested[:samples][i][:b]
-      @test exact[:logweights][i]  == tested[:logweights][i]
+        @test exact[:samples][i][:a] == tested[:a][i,1,1]
+        @test exact[:samples][i][:b] == tested[:b][i,1,1]
+        @test exact[:logweights][i]  == tested[:logweights][i]
     end
     @test exact[:logevidence] == tested[:logevidence]
   end

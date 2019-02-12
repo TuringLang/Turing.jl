@@ -1,23 +1,28 @@
 using Turing
+using Turing.Utilities
 using Turing: Chain, Sample
 using Test
 using MCMCChain: describe
 
-c = Chain()
-#@test string(c) == "Empty Chain, weight 0.0"
+# Test getindex function for sample.
+s = Sample(1, Dict(:m => 1.0))
+@test s[:m] == 1
 
-d = Dict{Symbol, Any}()
-d[:m] = [1,2,3]
-sp = Sample(1, d)
+s = Sample(1, Dict(:m => [1, 2, 3]))
+@test s[:m] == [1, 2, 3]
 
-c2 = Chain(1, Vector{Sample}([sp]))
+# Test conversion of multiple samples to a chain type.
+s = map(i -> i > 50 ? Sample(2, Dict(:x => rand(2))) : Sample(1, Dict(:x => rand(), :y => rand())), 1:100)
 
-string(c2)
-samples = c2[:samples]
-@test samples[1][:m] == d[:m]
+c = Chain(1.0, s)
 
-#@test mean(c2, :m, x -> x) == [1.0, 2.0, 3.0]
-
+@test c.weight == 1
+@test ismissing(c["y"][51, 1, 1])
+@test c["y"][50, 1, 1] == s[50][:y]
+@test "x" ∈ c.names
+@test "y" ∈ c.names
+@test "x[1]" ∈ c.names
+@test "x[2]" ∈ c.names
 
 # Tests for MCMC Chain
 

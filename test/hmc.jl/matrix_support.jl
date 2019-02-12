@@ -9,9 +9,11 @@ end
 model_f = hmcmatrixsup()
 vs = []
 chain = nothing
+τ = 3000
 for _ in 1:5
-  chain = sample(model_f, HMC(3000, 0.1, 3))
-  push!(vs, mean(chain[:v]))
+    chain = sample(model_f, HMC(τ, 0.1, 3))
+    r = reshape(chain[:v], τ, 2, 2)
+    push!(vs, reshape(mean(r, dims = [1]), 2, 2))
 end
 
 @test mean(vs) ≈ (7 * [1 0.5; 0.5 1]) atol=0.5

@@ -70,5 +70,5 @@ function sample(model::Model,
         samples[i].value = Sample(vi, spl).value
     end
 
-    return Chain(0, samples)
+    return Chain(0.0, samples)
 end
