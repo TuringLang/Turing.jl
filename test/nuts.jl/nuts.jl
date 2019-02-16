@@ -13,7 +13,7 @@ end
 model_f = gdemo([1.5, 2.0])
 
 alg = NUTS(5000, 1000, 0.65)
-res = sample(model_f, alg)
+res = sample(model_f, alg; pc_type=Turing.Inference.DiagPreConditioner)
 
 @info(mean(res[:s][1000:end])," ≈ ", 49/24, "?")
 @info(mean(res[:m][1000:end])," ≈ ", 7/6, "?")

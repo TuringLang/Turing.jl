@@ -17,7 +17,7 @@ s = ArgParseSettings()
         default = 10
     "--step_len"                # step length for HMCDA
         arg_type = Float64
-        default = 0.3
+        default = 0.1
     "--tar_acc_rate"
         arg_type = Float64
         default = 0.85

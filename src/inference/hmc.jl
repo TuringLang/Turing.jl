@@ -176,7 +176,16 @@ function sample(model::Model, alg::Hamiltonian;
 end
 
 function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
-    spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), FixedStepSize(spl.alg.epsilon))
+    # Pre-conditioner
+    # The condition below is to handle the imcompatibility of
+    # new adapataion interface with adaptive sampler used in Gibbs
+    # TODO: remove below when the interface is compatible with Gibbs by design
+    pc = if :pc_type in keys(spl.info)
+        spl.info[:pc_type](length(vi[spl]))
+    else
+        UnitPreConditioner()
+    end
+    spl.info[:wum] = NaiveCompAdapter(pc, FixedStepSize(spl.alg.epsilon))
     return vi, HMCStats(1.0, true, spl.alg.epsilon, 0)
 end
 
