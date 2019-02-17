@@ -8,8 +8,8 @@ end
 # NOTE: this function is called by `forkr`
 function Trace(f)
   res = Trace();
-  # Task(()->f());
-  res.task = Task( () -> begin res=f(); produce(Val{:done}); res; end )
+  # CTask(()->f());
+  res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Nothing)
     res.task.storage = IdDict()
   end
@@ -20,10 +20,10 @@ end
 function Trace(f, spl::Sampler, vi :: VarInfo)
   res = Trace();
   res.spl = spl
-  # Task(()->f());
+  # CTask(()->f());
   res.vi = deepcopy(vi)
   res.vi.num_produce = 0
-  res.task = Task( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
+  res.task = CTask( () -> begin vi_new=f(vi, spl); produce(Val{:done}); vi_new; end )
   if isa(res.task.storage, Nothing)
     res.task.storage = IdDict()
   end

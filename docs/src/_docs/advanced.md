@@ -132,7 +132,7 @@ Note that the `Turing.Model{Tuple{:s, :m}, Tuple{:x, :y}}` accepts two parameter
 
 ## Task Copying
 
-Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires building a small C program, which should be done automatically on Linux and Mac systems that have GCC and Make installed.
+Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires we use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
 
 ## Maximum a Posteriori Estimation
 
@@ -175,4 +175,3 @@ lb = [0.0, -Inf]
 ub = [Inf, Inf]
 result = optimize(nlogp, lb, ub, sm_0, Fminbox())
 ```
-
