@@ -121,7 +121,7 @@ function Chain(w::Real, s::AbstractArray{Sample})
 
     values_ = mapreduce(v -> map(k -> haskey(v, k) ? v[k] : missing, names_), hcat, samples)
     values_ = convert(Array{Union{Missing, Float64}, 2}, values_')
-    c = Chains(reshape(values_, size(values_, 1), size(values_, 2), 1), names = names_)
+    c = Chains(Array(reshape(values_, size(values_, 1), size(values_, 2), 1)), names = names_)
 
     chn = Chain(
                 w,
