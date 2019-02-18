@@ -16,4 +16,4 @@ for _ in 1:5
     push!(vs, reshape(mean(r, dims = [1]), 2, 2))
 end
 
-@test mean(vs) ≈ (7 * [1 0.5; 0.5 1]) atol=0.5
+@test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
