@@ -17,12 +17,12 @@ if get(ENV, "TRAVIS", "false") == "true"
                        joinpath("mh.jl", "mh_cons.jl"),
                        joinpath("models.jl", "single_dist_correctness.jl")]
 
-    if ENV["STAGE"] == "test"
+    if get(ENV, "STAGE", "") == "test"
         runtests(exclude = numerical_tests)
-    elseif ENV["STAGE"] == "numerical"
+    elseif get(ENV, "STAGE", "") == "numerical"
         runtests(specific_tests = numerical_tests)
     else
-        @warn "Unknown Travis stage, currently set to: $(ENV["STAGE"])"
+        @warn "Unknown Travis stage, currently set to: $(get(ENV, "STAGE", ""))"
     end
 else
     # Otherwise, test everything.
