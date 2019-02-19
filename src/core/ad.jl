@@ -113,7 +113,7 @@ function gradient_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
+    l = -vi.logp.value
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
     vi.vals, vi.logp = vals_old, logp_old
