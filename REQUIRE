@@ -5,7 +5,7 @@ Reexport 0.2.0
 Distributions 0.16.0
 ForwardDiff 0.8.0
 MCMCChain 0.1.1
-Libtask 0.1.1
+Libtask 0.2.5
 Flux 0.6.7
 MacroTools
 StatsFuns 0.7.0

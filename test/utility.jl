@@ -3,14 +3,15 @@ using Test
 # Helper function for numerical tests
 function check_numerical(
   chain,
-  symbols::Vector{Symbol},
+  symbols::Vector,
   exact_vals::Vector;
   eps=0.2,
 )
 	for (sym, val) in zip(symbols, exact_vals)
-		E = mean(chain[sym])
+        @info sym, val
+        E = val isa Real ? mean(chain[sym]) : vec(mean(chain[sym], dims=[1]))
 		print("  $sym = $E ≈ $val (eps = $eps) ?")
-		cmp = abs.(sum(mean(chain[sym]) - val)) <= eps
+		cmp = abs.(sum(E - val)) <= eps
 		if cmp
 			printstyled("./\n", color = :green)
 			printstyled("    $sym = $E, diff = $(abs.(E - val))\n", color = :green)

@@ -39,3 +39,22 @@ let
     @test θ == vi.vals
     @test logp == vi.logp
 end
+
+# Check that gradient_forward gives the same result as gradient_reverse.
+let
+    # Construct model.
+    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model(vi, sampler)
+
+    # Record initial values.
+    θ, logp = deepcopy(vi.vals), deepcopy(vi.logp)
+
+    # Compute gradient using ForwardDiff.
+    l1, d1 = gradient_forward(deepcopy(θ), vi, model, sampler)
+    # Compute gradient using Flux.Tracker.
+    l2, d2 = gradient_reverse(deepcopy(θ), vi, model, sampler)
+
+    # Check that the values are the same.
+    @test l1 == l2
+    @test d1 == d2
+end

@@ -113,7 +113,7 @@ function gradient_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
+    l = -vi.logp.value
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
     vi.vals, vi.logp = vals_old, logp_old
@@ -184,7 +184,7 @@ import StatsFuns: nbinomlogpdf
 # Note the definition of NegativeBinomial in Julia is not the same as Wikipedia's.
 # Check the docstring of NegativeBinomial, r is the number of successes and 
 # k is the number of failures
-_nbinomlogpdf_grad_1(r, p, k) = sum(1 / (k + r - i) for i in 1:k) + log(p)
+_nbinomlogpdf_grad_1(r, p, k) = k == 0 ? log(p) : sum(1 / (k + r - i) for i in 1:k) + log(p)
 _nbinomlogpdf_grad_2(r, p, k) = -k / (1 - p) + r / p
 
 nbinomlogpdf(n::Tracker.TrackedReal, p::Tracker.TrackedReal, x::Int) = Tracker.track(nbinomlogpdf, n, p, x)
