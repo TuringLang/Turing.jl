@@ -151,7 +151,7 @@ function sample(model::Model, alg::Hamiltonian;
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.value2...)
     end
-    c = Chain(0, samples)       # wrap the result by Chain
+    c = Chain(0.0, samples)       # wrap the result by Chain
 
     println("[$alg_str] Finished with")
     println("  Running time        = $time_total;")
