@@ -1,6 +1,20 @@
 ##########################
 ### Variance estimator ###
 ##########################
+
+
+# This file implements code for adapting for the pre-conditioing mass matrix.
+# Here the emperical variance / co-variance matrix `M` for θ is estimated using
+# a Welford estimator. Later, the inverse of this matrix is used as the
+# covariance of the momentum variables.
+# References:
+#
+#  1. Neal, Radford M. "MCMC using Hamiltonian Dynamics."
+#     Handbook of Markov Chain Monte Carlo (2011).
+#     https://arxiv.org/abs/1206.1901 (see Sec 5.4.1)
+#  2. Welford estimator: https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_Online_algorithm
+
+
 abstract type VarEstimator{TI,TF} end
 
 # Ref： https://github.com/stan-dev/math/blob/develop/stan/math/prim/mat/fun/welford_var_estimator.hpp
