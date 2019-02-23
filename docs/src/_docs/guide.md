@@ -50,7 +50,7 @@ c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
 c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
 ```
 
-The `MCMCChain` module (which is re-exported by Turing) provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChain](https://github.com/TuringLang/MCMCChain.jl) repository for more information on the suite of tools available for diagnosing MCMC chains.
+The `MCMCChains` module (which is re-exported by Turing) provides plotting tools for the `Chain` objects returned by a `sample` function. See the [MCMCChains](https://github.com/TuringLang/MCMCChains.jl) repository for more information on the suite of tools available for diagnosing MCMC chains.
 
 ```julia
 # Summarise results
@@ -300,18 +300,18 @@ The `Gibbs` sampler can be used to specify unique automatic differentation backe
 
 For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://xuk.ai/assets/aistats2018-turing.pdf).
 
-### Working with MCMCChain.jl
+### Working with MCMCChains.jl
 
-Turing.jl wraps its samples using `MCMCChain.Chain` so that all the functions working for `MCMCChain.Chain` can be re-used in Turing.jl. Two typical functions are `MCMCChain.describe` and `MCMCChain.plot`, which can be used as follows for an obtained chain `chn`. For more information on `MCMCChain`, please see the [GitHub repository](https://github.com/TuringLang/MCMCChain.jl).
+Turing.jl wraps its samples using `MCMCChains.Chain` so that all the functions working for `MCMCChains.Chain` can be re-used in Turing.jl. Two typical functions are `MCMCChains.describe` and `MCMCChains.plot`, which can be used as follows for an obtained chain `chn`. For more information on `MCMCChains`, please see the [GitHub repository](https://github.com/TuringLang/MCMCChains.jl).
 
 ```julia
-using MCMCChain: describe, plot
+using MCMCChains: describe, plot
 
 describe(chn) # Lists statistics of the samples.
 plot(chn) # Plots statistics of the samples.
 ```
 
-There are numerous functions in addition to `describe` and `plot` in the `MCMCChain` package, such as those used in convergence diagnostics. For more information on the package, please see the [GitHub repository](https://github.com/TuringLang/MCMCChain.jl).
+There are numerous functions in addition to `describe` and `plot` in the `MCMCChains` package, such as those used in convergence diagnostics. For more information on the package, please see the [GitHub repository](https://github.com/TuringLang/MCMCChains.jl).
 
 ### Working with Libtask.jl
 

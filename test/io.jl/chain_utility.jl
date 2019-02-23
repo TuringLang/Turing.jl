@@ -2,7 +2,7 @@ using Turing
 using Turing.Utilities
 using Turing: Chain, Sample
 using Test
-using MCMCChain: describe
+using MCMCChains: describe
 
 # Test getindex function for sample.
 s = Sample(1, Dict(:m => 1.0))
