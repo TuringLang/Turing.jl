@@ -5,7 +5,7 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Sampler, Model, runmodel!, get_pvars, get_dvars
-using ..Turing: in_pvars, in_dvars
+using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
 import Distributions: sample
@@ -191,8 +191,8 @@ function observe(spl::A,
     vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
 
     vi.num_produce += one(vi.num_produce)
-    @debug "dist = $dist"
-    @debug "value = $value"
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "value = $value"
 
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)

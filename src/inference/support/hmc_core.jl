@@ -183,20 +183,20 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    rev_func=nothing,
                    log_func=nothing,
                    )
-    @debug "sampling momentums..."
+    Turing.DEBUG && @debug "sampling momentums..."
     p = momentum_sampler()
 
-    @debug "recording old values..."
+    Turing.DEBUG && @debug "recording old values..."
     H = H_func(θ, p, lj)
 
-    @debug "leapfrog for $τ steps with step size $ϵ"
+    Turing.DEBUG && @debug "leapfrog for $τ steps with step size $ϵ"
     θ_new, p_new, τ_valid = _leapfrog(θ, p, τ, ϵ, grad_func; rev_func=rev_func, log_func=log_func)
 
-    @debug "computing new H..."
+    Turing.DEBUG && @debug "computing new H..."
     lj_new = lj_func(θ_new)
     H_new = (τ_valid == 0) ? Inf : H_func(θ_new, p_new, lj_new)
 
-    @debug "deciding wether to accept and computing accept rate α..."
+    Turing.DEBUG && @debug "deciding wether to accept and computing accept rate α..."
     is_accept, logα = mh_accept(H, H_new)
 
     if is_accept
@@ -260,7 +260,7 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
 
         θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
         h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
-        @debug "direction = $direction, h = $h"
+        Turing.DEBUG && @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
 
