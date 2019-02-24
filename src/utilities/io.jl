@@ -160,11 +160,8 @@ function Base.vcat(c1::Chains, args::Chains...)
 end
 
 function save!(c::Chains, spl::Sampler, model, vi, samples)
-    c.info[:spl] = spl
-    c.info[:model] = model
-    c.info[:vi] = deepcopy(vi)
-    c.info[:samples] = samples
-    return c
+    nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
+    return MCMCChains.setinfo(c, nt)
 end
 
 function resume(c::Chains, n_iter::Int)
