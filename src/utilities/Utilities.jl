@@ -3,7 +3,7 @@ module Utilities
 using ..Turing: Sampler
 using Distributions, Bijectors
 using StatsFuns, SpecialFunctions
-using MCMCChains: AbstractChains, Chains, names2inds
+using MCMCChains: AbstractChains, Chains
 import Distributions: sample
 
 export  resample,
