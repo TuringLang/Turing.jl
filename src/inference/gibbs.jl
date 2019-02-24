@@ -178,7 +178,7 @@ function sample(
     @info("  Running time    = $time_total;")
 
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
+        pushfirst!(samples, resume_from.info[:samples]...)
     end
     c = Chain(0.0, samples)       # wrap the result by Chain
 
