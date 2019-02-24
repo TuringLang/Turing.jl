@@ -10,7 +10,7 @@ using StatsFuns: logsumexp
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Utilities: Sample
+import ..Utilities: Sample, save!, resume
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -21,20 +21,20 @@ export  InferenceAlgorithm,
         HamiltonianRobustInit,
         SampleFromPrior,
         AnySampler,
-        MH, 
+        MH,
         Gibbs,      # classic sampling
-        HMC, 
-        SGLD, 
-        SGHMC, 
-        HMCDA, 
+        HMC,
+        SGLD,
+        SGHMC,
+        HMCDA,
         NUTS,       # Hamiltonian-like sampling
         DynamicNUTS,
-        IS, 
-        SMC, 
-        CSMC, 
-        PG, 
-        PIMH, 
-        PMMH, 
+        IS,
+        SMC,
+        CSMC,
+        PG,
+        PIMH,
+        PMMH,
         IPMCMC,  # particle-based sampling
         getspace,
         assume,
