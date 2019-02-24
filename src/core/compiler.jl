@@ -12,8 +12,9 @@ macro VarName(expr::Union{Expr, Symbol})
     inds = :(())
     while ex.head == :ref
         if length(ex.args) >= 2
-            pushfirst!(inds.args, Expr(:vect, ex.args[2:end]...))
-            end
+            strs = map(x -> :(string($x)), ex.args[2:end])
+            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ", ") * "]"))
+        end
         ex = ex.args[1]
         isa(ex, Symbol) && return var_tuple(ex, inds)
     end
@@ -78,7 +79,7 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
-            $indexing = mapfoldl(string, *, $idcs, init = "")
+            $indexing = foldl(*, $idcs, init = "")
             $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
         end
     end
