@@ -93,14 +93,6 @@ function Chain(w::Real, s::AbstractArray{Sample})
         Dict(:internals => _internal_vars),
         evidence = w
     )
-    # chn = Chain(
-    #             w,
-    #             c.value,
-    #             c.range,
-    #             c.names,
-    #             c.chains,
-    #             Dict{Symbol, Any}()
-    #            )
     return chn
 end
 
@@ -144,36 +136,6 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     return
 end
 
-function Base.getindex(c::Chains, v::Symbol)
-    # This strange implementation is mostly to keep backward compatability.
-    #  Needs some refactoring a better format for storing results is available.
-    if v == :logevidence
-        return c.logevidence
-    elseif v==:logweights
-        return c["lp"]
-    else
-        idx = indexin(string(v), names(c))
-        if any(idx .== nothing)
-            syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), names(c)))
-            sort!(syms)
-            return c.value[:, syms, :]
-        else
-            return c[string(v)]
-        end
-    end
-end
-
-# function Base.getindex(c::Chain, v::String)
-#     return c.value[:, names2inds(c, v), :]
-# end
-
-
-# function Base.getindex(c::Chains, expr::Expr)
-#     str = replace(string(expr), r"\(|\)" => "")
-#     @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
-#     return c[Symbol(str)]
-# end
-
 function Base.vcat(c1::Chains, args::Chains...)
     names = names(c1)
     all(c -> names(c) == names, args) ||
@@ -194,20 +156,14 @@ function Base.vcat(c1::Chains, args::Chains...)
         thin=range(c1).step,
         evidence = c1.logevidence
     )
-    # chn = Chain(c1.weight,
-    #             cat(c1.value, c2.value, dims=1),
-    #             c1.range,
-    #             c1.names,
-    #             c1.chains,
-    #             merge(c1.info, c2.info)
-    #     )
     return chn
 end
 
-function save!(c::Chains, spl::Sampler, model, vi)
+function save!(c::Chains, spl::Sampler, model, vi, samples)
     c.info[:spl] = spl
     c.info[:model] = model
     c.info[:vi] = deepcopy(vi)
+    c.info[:samples] = samples
     return c
 end
 
