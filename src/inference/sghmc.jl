@@ -74,13 +74,13 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
 
     Turing.DEBUG && @debug "recording old variables..."
     θ, v = vi[spl], spl.info[:v]
-    _, grad = gradient(θ, vi, model, spl)
+    _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
     # Implements the update equations from (15) of Chen et al. (2014).
     Turing.DEBUG && @debug "update latent variables and velocity..."
     θ .+= v
-    v .= (1 - α) .* v .- η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
+    v .= (1 - α) .* v .+ η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
 
     Turing.DEBUG && @debug "saving new latent variables..."
     vi[spl] = θ

@@ -7,7 +7,7 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, sampler, model)`.
 """
 function gen_grad_func(vi::VarInfo, sampler::Sampler, model)
-    return θ::AbstractVector{<:Real}->gradient(θ, vi, model, sampler)
+    return θ::AbstractVector{<:Real}->gradient_logp(θ, vi, model, sampler)
 end
 
 """
@@ -147,7 +147,7 @@ function _leapfrog(θ::AbstractVector{<:Real},
 
     p, θ, τ_valid = deepcopy(p), deepcopy(θ), 0
 
-    p .-= ϵ .* grad ./ 2
+    p .+= ϵ .* grad ./ 2
     for t in 1:τ
 
         log_func != nothing && log_func()
@@ -162,12 +162,12 @@ function _leapfrog(θ::AbstractVector{<:Real},
             break
         end
 
-        p .-= ϵ .* grad
+        p .+= ϵ .* grad
         τ_valid += 1
     end
 
     # Undo half a step in the momenta.
-    p .+= ϵ .* grad ./ 2
+    p .-= ϵ .* grad ./ 2
 
     return θ, p, τ_valid
 end

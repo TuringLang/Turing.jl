@@ -79,11 +79,11 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
 
     Turing.DEBUG && @debug "recording old variables..."
     θ = vi[spl]
-    _, grad = gradient(θ, vi, model, spl)
+    _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
     Turing.DEBUG && @debug "update latent variables..."
-    θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
+    θ .+= ϵ_t .* grad ./ 2 .- rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
     Turing.DEBUG && @debug "always accept..."
     vi[spl] = θ
