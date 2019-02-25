@@ -3,7 +3,7 @@ using Turing.Inference: _leapfrog
 
 D = 10
 
-lp_grad_func(x) = nothing, x
+lp_grad_func(x) = nothing, -x
 
 step_size = 0.1
 
@@ -18,9 +18,9 @@ step_size = 0.1
 
         theta_turing, p_turing, _ = _leapfrog(theta, p, 1, step_size, lp_grad_func)
 
-        p -= step_size .* lp_grad_func(theta)[2] / 2
+        p .+= step_size .* lp_grad_func(theta)[2] / 2
         theta += step_size .* p
-        p -= step_size .* lp_grad_func(theta)[2] / 2
+        p .+= step_size .* lp_grad_func(theta)[2] / 2
 
         @test theta ≈ theta_turing
         @test p ≈ p_turing

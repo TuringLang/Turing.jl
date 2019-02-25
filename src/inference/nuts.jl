@@ -147,7 +147,7 @@ function _nuts_step(θ::T, ϵ::AbstractFloat, lj::Real,
                     lj_func::Function, grad_func::Function, H_func::Function, momentum_sampler::Function;
                     j_max::Int=5) where {T<:Union{AbstractVector,SubArray}}
 
-  @debug "sampling momentums..."
+  Turing.DEBUG && @debug "sampling momentums..."
   θ_dim = length(θ)
   r0 = momentum_sampler()
 
