@@ -183,7 +183,7 @@ function sample(
     c = Chain(0.0, samples)       # wrap the result by Chain
 
     if save_state               # save state
-        save!(c, spl, model, varInfo)
+        c = save(c, spl, model, varInfo, samples)
     end
 
     return c

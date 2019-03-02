@@ -190,7 +190,7 @@ function sample(model::Model, alg::Hamiltonian;
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
-        save!(c, spl, model, vi, samples)
+        c = save(c, spl, model, vi, samples)
     end
     return c
 end

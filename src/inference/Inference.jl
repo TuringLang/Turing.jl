@@ -10,7 +10,7 @@ using StatsFuns: logsumexp
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Utilities: Sample, save!, resume
+import ..Utilities: Sample, save, resume
 
 export  InferenceAlgorithm,
         Hamiltonian,

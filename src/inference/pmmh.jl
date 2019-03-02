@@ -175,7 +175,7 @@ function sample(  model::Model,
     c = Chain(0.0, samples)       # wrap the result by Chain
 
     if save_state               # save state
-      save!(c, spl, model, vi, samples)
+      c = save(c, spl, model, vi, samples)
     end
 
     c
