@@ -72,7 +72,7 @@ overwrites all other function arguments.
 function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 	# test groups
 	CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
-		# "io.jl",
+		"io.jl",
 		"util.jl"]
 	SAMPLER_TESTS = ["resample.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
 		"hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",
