@@ -113,7 +113,7 @@ function sample(
     # Gibbs steps
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0))
     for i = 1:n
-        @debug "Gibbs stepping..."
+        Turing.DEBUG && @debug "Gibbs stepping..."
 
         time_elapsed = zero(Float64)
         lp = nothing; epsilon = nothing; lf_num = nothing; eval_num = nothing
@@ -122,11 +122,11 @@ function sample(
             last_spl = local_spl
       # PROGRESS[] && haskey(spl.info, :progress) && (local_spl.info[:progress] = spl.info[:progress])
 
-            @debug "$(typeof(local_spl)) stepping..."
+            Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
 
             if isa(local_spl.alg, GibbsComponent)
                 for _ = 1:local_spl.alg.n_iters
-                    @debug "recording old θ..."
+                    Turing.DEBUG && @debug "recording old θ..."
                     time_elapsed_thin = @elapsed varInfo, is_accept = step(model, local_spl, varInfo, Val(i==1))
 
                     if ~spl.alg.thin

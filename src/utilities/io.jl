@@ -116,10 +116,11 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     elseif isa(v, Array)
         for i = eachindex(v)
             if isa(v[i], Number)
-                name = k * string(ind2sub(size(v), i))
+                name = string(ind2sub(size(v), i))
                 name = replace(name, "(" => "[");
                 name = replace(name, ",)" => "]");
                 name = replace(name, ")" => "]");
+                name = k * name
                 isa(v[i], Nothing) && println(v, i, v[i])
                 push!(value, Float64(v[i]))
                 push!(names, name)

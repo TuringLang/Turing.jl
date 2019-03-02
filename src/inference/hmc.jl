@@ -148,7 +148,7 @@ function sample(model::Model, alg::Hamiltonian;
     accept_his = Bool[]
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
-        @debug "$alg_str stepping..."
+        Turing.DEBUG && @debug "$alg_str stepping..."
 
         time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
         time_total += time_elapsed
@@ -212,13 +212,13 @@ end
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
     # Get step size
     ϵ = getss(spl.info[:wum])
-    @debug "current ϵ: $ϵ"
+    Turing.DEBUG && @debug "current ϵ: $ϵ"
 
     # Reset current counters
     spl.info[:lf_num] = 0
     spl.info[:eval_num] = 0
 
-    @debug "X-> R..."
+    Turing.DEBUG && @debug "X-> R..."
     if spl.alg.gid != 0
         link!(vi, spl)
         runmodel!(model, vi, spl)
@@ -236,7 +236,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
                                            rev_func=rev_func, log_func=log_func)
 
-    @debug "decide whether to accept..."
+    Turing.DEBUG && @debug "decide whether to accept..."
     if is_accept
         vi[spl] = θ_new
         setlogp!(vi, lj_new)
@@ -259,21 +259,21 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         adapt!(spl.info[:wum], α, vi[spl], adapt_M=false, adapt_ϵ=true)
     end
 
-    @debug "R -> X..."
+    Turing.DEBUG && @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
     return vi, is_accept
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
-    @debug "assuming..."
+    Turing.DEBUG && @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    @debug "dist = $dist"
-    @debug "vn = $vn"
-    @debug "r = $r" "typeof(r)=$(typeof(r))"
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "vn = $vn"
+    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 

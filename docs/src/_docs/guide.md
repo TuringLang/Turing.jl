@@ -125,6 +125,21 @@ end
 sample(model_function(10), SMC(100))
 ```
 
+### Sampling Multiple Chains
+
+If you wish to run multiple chains, you can do so with the `mapreduce` function:
+
+```julia
+# Replace num_chains below with however many chains you wish to sample.
+chains = mapreduce(c -> sample(model_fun, sampler), vcat, 1:num_chains)
+```
+
+The `chains` variable now contains a `Turing.Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
+
+Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
+
+Please note that Turing does not have native support for chains sampled in parallel.
+
 ### Sampling from the Prior
 
 Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.

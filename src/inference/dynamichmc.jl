@@ -59,8 +59,8 @@ function sample(model::Model,
     end
 
     function _lp(x)
-        value, deriv = gradient(x, vi, model, spl)
-        return ValueGradient(-value, -deriv)
+        value, deriv = gradient_logp(x, vi, model, spl)
+        return ValueGradient(value, deriv)
     end
 
     chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters)

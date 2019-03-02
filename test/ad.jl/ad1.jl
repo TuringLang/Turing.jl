@@ -1,5 +1,5 @@
 using Turing
-using Turing: gradient_forward, invlink, link, getval
+using Turing: gradient_logp_forward, invlink, link, getval
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -23,7 +23,7 @@ mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = getval(vi, svn)[1]
 _m = getval(vi, mvn)[1]
 spl = nothing
-_, ∇E = gradient_forward(vi[spl], vi, ad_test_f)
+_, ∇E = gradient_logp_forward(vi[spl], vi, ad_test_f)
 # println(vi.vns)
 # println(∇E)
 grad_Turing = sort(∇E)
@@ -45,7 +45,7 @@ end
 g = x -> ForwardDiff.gradient(logp, x);
 # _s = link(dist_s, _s)
 _x = [_m, _s]
-grad_FWAD = sort(-g(_x))
+grad_FWAD = sort(g(_x))
 
 # Compare result
 @test grad_Turing ≈ grad_FWAD atol=1e-9

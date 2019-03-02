@@ -30,6 +30,8 @@ const CACHERESET  = 0b00
 const CACHEIDCS   = 0b10
 const CACHERANGES = 0b01
 
+const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
+
 """
     struct Model{pvars, dvars, F, TData, TDefaults}
         f::F

@@ -37,12 +37,12 @@ export  @model,
         ForwardDiffAD, 
         FluxTrackerAD,
         value,
-        gradient,
+        gradient_logp,
         CHUNKSIZE, 
         ADBACKEND,
         setchunksize,
         verifygrad,
-        gradient_forward,
-        gradient_reverse
+        gradient_logp_forward,
+        gradient_logp_reverse
 
 end # module
