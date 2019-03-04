@@ -137,29 +137,6 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     return
 end
 
-function Base.vcat(c1::Chains, args::Chains...)
-    names = names(c1)
-    all(c -> names(c) == names, args) ||
-        throw(ArgumentError("chain names differ"))
-
-    chains = chains(c1)
-    all(c -> chains(c) == chains, args) ||
-        throw(ArgumentError("sets of chains differ"))
-
-    @assert c1.logevidence == c2.logevidence
-    @assert range(c1) == range(c2)
-
-    chn = Chains(
-        cat(c1.value, c2.value, dims=1),
-        names(c1),
-        c1.name_map,
-        start=range(c1).start,
-        thin=range(c1).step,
-        evidence = c1.logevidence
-    )
-    return chn
-end
-
 function save(c::Chains, spl::Sampler, model, vi, samples)
     nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
