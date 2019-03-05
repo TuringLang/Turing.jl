@@ -57,6 +57,8 @@ mf = crpimm(data, rpm)
 samples = sample(mf, sampler)
 
 # Check that there is no NaN value associated
-@test sum([sum(sample[:x][sample[:z]].== NaN)+sum(sample[:V][sample[:z]].== NaN) for sample in samples]) == 0
+z_samples = Int.(samples[:z])
+@test all(!isnan, samples[:x][z_samples])
+@test all(!ismissing, samples[:x][z_samples])
 
 
