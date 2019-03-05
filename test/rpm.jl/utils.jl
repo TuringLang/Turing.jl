@@ -19,6 +19,14 @@ function compute_log_conditonal_observations(observations, cluster, tau0, tau1)
   prob
 end
 
-true_log_probs = [compute_log_joint(data, partition, tau0, tau1) for partition in Partitions]
-true_probs = exp.(true_log_probs)
-true_probs /= sum(true_probs)
+# Test of similarity between distributions
+function correct_posterior(empirical_probs, data, partitions, τ0, τ1)
+    true_log_probs = map(p -> compute_log_joint(data, p, τ0, τ1), partitions)
+    true_probs = exp.(true_log_probs)
+    true_probs /= sum(true_probs)
+
+    empirical_probs /= sum(empirical_probs)
+    L2 = sum((empirical_probs - true_probs).^2)
+    chisqr = length(samples)*sum((empirical_probs - true_probs).^2 ./true_probs)
+    return L2, chisqr
+end
