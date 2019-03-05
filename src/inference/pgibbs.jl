@@ -126,10 +126,10 @@ function sample(  model::Model,
     @info("[PG] Finished with")
     @info("  Running time    = $time_total;")
 
-    loge = mean(spl.info[:logevidence])
+    loge = exp.(mean(spl.info[:logevidence]))
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.info[:samples]...)
-        pre_loge = resume_from.logevidence
+        pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence
         pre_n = length(resume_from.info[:samples])
         loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
