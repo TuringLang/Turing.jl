@@ -132,4 +132,46 @@ Note that the `Turing.Model{Tuple{:s, :m}, Tuple{:x, :y}}` accepts two parameter
 
 ## Task Copying
 
-Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires building a small C program, which should be done automatically on Linux and Mac systems that have GCC and Make installed.
+Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires we use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
+
+## Maximum a Posteriori Estimation
+
+Turing does not currently have built-in methods for calculating the [maximum a posteriori](https://en.wikipedia.org/wiki/Maximum_a_posteriori_estimation) (MAP) for a model. This is a goal for Turing's implementation (see [this issue](https://github.com/TuringLang/Turing.jl/issues/605)), but for the moment, we present here a method for estimating the MAP using [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl).
+
+```julia
+using Turing
+
+# Define the simple gdemo model.
+@model gdemo(x, y) = begin
+ s ~ InverseGamma(2,3)
+ m ~ Normal(0,sqrt(s))
+ x ~ Normal(m, sqrt(s))
+ y ~ Normal(m, sqrt(s))
+ return s, m
+end
+
+# Define our data points.
+x = 1.5
+y = 2.0
+
+# Set up the model call, sample from the prior.
+model = gdemo(x, y)
+vi = Turing.VarInfo()
+model(vi, Turing.SampleFromPrior())
+
+# Define a function to optimize.
+function nlogp(sm)
+ vi.vals .= sm
+ model(vi, Turing.SampleFromPrior())
+ -vi.logp
+end
+
+# Import Optim.jl.
+using Optim
+
+# Create a starting point, call the optimizer.
+sm_0 = Float64.(vi.vals)
+lb = [0.0, -Inf]
+ub = [Inf, Inf]
+result = optimize(nlogp, lb, ub, sm_0, Fminbox())
+```

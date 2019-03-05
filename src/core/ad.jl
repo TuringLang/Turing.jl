@@ -57,17 +57,18 @@ getADtype(s::Sampler) = getADtype(typeof(s))
 getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
 
 """
-gradient(
+gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the gradient of the log joint of `θ` for the model specified by
-`(vi, sampler, model)` using whichever automatic differentation tool is currently active.
+Computes the value of the log joint of `θ` and its gradient for the model 
+specified by `(vi, sampler, model)` using whichever automatic differentation 
+tool is currently active.
 """
-function gradient(
+function gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -76,24 +77,24 @@ function gradient(
 
     ad_type = getADtype(TS)
     if ad_type <: ForwardDiffAD 
-        return gradient_forward(θ, vi, model, sampler)
+        return gradient_logp_forward(θ, vi, model, sampler)
     else ad_type <: FluxTrackerAD
-        return gradient_reverse(θ, vi, model, sampler)
+        return gradient_logp_reverse(θ, vi, model, sampler)
     end
 end
 
 """
-gradient_forward(
+gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
     spl::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the gradient of the log joint of `θ` for the model specified by `(vi, spl, model)`
-using forwards-mode AD from ForwardDiff.jl.
+Computes the value of the log joint of `θ` and its gradient for the model 
+specified by `(vi, spl, model)` using forwards-mode AD from ForwardDiff.jl.
 """
-function gradient_forward(
+function gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -105,7 +106,7 @@ function gradient_forward(
     # Define function to compute log joint.
     function f(θ)
         vi[sampler] = θ
-        return -runmodel!(model, vi, sampler).logp
+        return runmodel!(model, vi, sampler).logp
     end
 
     chunk_size = getchunksize(sampler)
@@ -125,17 +126,17 @@ function gradient_forward(
 end
 
 """
-gradient_reverse(
+gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the gradient of the log joint of `θ` for the model specified by
-`(vi, sampler, model)` using reverse-mode AD from Flux.jl.
+Computes the value of the log joint of `θ` and its gradient for the model 
+specified by `(vi, sampler, model)` using reverse-mode AD from Flux.jl.
 """
-function gradient_reverse(
+function gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -146,7 +147,7 @@ function gradient_reverse(
     # Specify objective function.
     function f(θ)
         vi[sampler] = θ
-        return -runmodel!(model, vi, sampler).logp
+        return runmodel!(model, vi, sampler).logp
     end
 
     # Compute forward and reverse passes.

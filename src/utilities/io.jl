@@ -121,7 +121,7 @@ function Chain(w::Real, s::AbstractArray{Sample})
 
     values_ = mapreduce(v -> map(k -> haskey(v, k) ? v[k] : missing, names_), hcat, samples)
     values_ = convert(Array{Union{Missing, Float64}, 2}, values_')
-    c = Chains(reshape(values_, size(values_, 1), size(values_, 2), 1), names = names_)
+    c = Chains(Array(reshape(values_, size(values_, 1), size(values_, 2), 1)), names = names_)
 
     chn = Chain(
                 w,
@@ -154,10 +154,11 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     elseif isa(v, Array)
         for i = eachindex(v)
             if isa(v[i], Number)
-                name = k * string(ind2sub(size(v), i))
+                name = string(ind2sub(size(v), i))
                 name = replace(name, "(" => "[");
                 name = replace(name, ",)" => "]");
                 name = replace(name, ")" => "]");
+                name = k * name
                 isa(v[i], Nothing) && println(v, i, v[i])
                 push!(value, Float64(v[i]))
                 push!(names, name)
@@ -206,25 +207,38 @@ function Base.getindex(c::Chain, expr::Expr)
     return c[Symbol(str)]
 end
 
-function Base.vcat(c1::Chain, args::Chain...)
+function Base.vcat(chains::Chain...)
+
+    c1 = chains[1]
+
+    weight = c1.weight
     names = c1.names
-    all(c -> c.names == names, args) ||
-        throw(ArgumentError("chain names differ"))
-
+    range = c1.range
     chains = c1.chains
-    all(c -> c.chains == chains, args) ||
-        throw(ArgumentError("sets of chains differ"))
 
-    @assert c1.weight == c2.weight
-    @assert c1.range == c2.range
+    value = c1.value
+    info = c1.info
 
-    chn = Chain(c1.weight,
-                cat(c1.value, c2.value, dims=1),
-                c1.range,
-                c1.names,
-                c1.chains,
-                merge(c1.info, c2.info)
-        )
+    for c in chains[2:end]
+        all(c -> c.names == names, args) ||
+            throw(ArgumentError("chain names differ"))
+
+        all(c -> c.chains == chains, args) ||
+            throw(ArgumentError("sets of chains differ"))
+
+        @assert c1.weight == c.weight
+        @assert c1.range == c.range
+
+        value = cat(value, c.value, dims=1)
+        info = merge(info, c.info)
+    end
+
+    chn = Chain(weight,
+                value,
+                range,
+                names,
+                chains,
+                info)
     return chn
 end
 

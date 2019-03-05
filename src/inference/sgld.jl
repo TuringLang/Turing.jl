@@ -65,30 +65,30 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     # Update iteration counter
     spl.info[:t] += 1
 
-    @debug "compute current step size..."
+    Turing.DEBUG && @debug "compute current step size..."
     γ = .35
     ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
     mssa = spl.info[:wum].ssa
     mssa.state.ϵ = ϵ_t
 
-    @debug "X-> R..."
+    Turing.DEBUG && @debug "X-> R..."
     if spl.alg.gid != 0
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
 
-    @debug "recording old variables..."
+    Turing.DEBUG && @debug "recording old variables..."
     θ = vi[spl]
-    _, grad = gradient(θ, vi, model, spl)
+    _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
-    @debug "update latent variables..."
-    θ .-= ϵ_t .* grad ./ 2 .+ rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
+    Turing.DEBUG && @debug "update latent variables..."
+    θ .+= ϵ_t .* grad ./ 2 .- rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
-    @debug "always accept..."
+    Turing.DEBUG && @debug "always accept..."
     vi[spl] = θ
 
-    @debug "R -> X..."
+    Turing.DEBUG && @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
     return vi, true
