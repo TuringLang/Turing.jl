@@ -18,12 +18,12 @@ pg  = PG(100,10)
 res = sample(test(), is)
 
 @test all(res[:x] .== 1)  #c heck that x is always 1
-@test res[:logevidence] ≈ 2 * log(0.5)
+@test res.logevidence ≈ 2 * log(0.5)
 
 res = sample(test(), smc)
 
 @test all(res[:x] .== 1)  #c heck that x is always 1
-@test res[:logevidence] ≈ 2 * log(0.5)
+@test res.logevidence ≈ 2 * log(0.5)
 
 
 res = sample(test(), pg)

@@ -71,66 +71,28 @@ end
 # Chain #
 #########
 
-"""
-    Chain(weight::Float64, value::Array{Sample})
+# Variables to put in the Chains :internal section.
+const _internal_vars = ["elapsed",
+ "epsilon",
+ "eval_num",
+ "lf_eps",
+ "lf_num",
+ "lp"]
 
-A wrapper of output trajactory of samplers.
-
-Example:
-
-```julia
-# Define a model
-@model xxx begin
-  ...
-  return(mu,sigma)
-end
-
-# Run the inference engine
-chain = sample(xxx, SMC(1000))
-
-chain[:logevidence]   # show the log model evidence
-chain[:mu]            # show the weighted trajactory for :mu
-chain[:sigma]         # show the weighted trajactory for :sigma
-mean(chain[:mu])      # find the mean of :mu
-mean(chain[:sigma])   # find the mean of :sigma
-```
-"""
-struct Chain{R<:AbstractRange{Int}} <: AbstractChains
-    weight  ::  Float64                 # log model evidence
-    value   ::  Array{Union{Missing, Float64}, 3}
-    range   ::  R # TODO: Perhaps change to UnitRange?
-    names   ::  Vector{String}
-    chains  ::  Vector{Int}
-    info    ::  Dict{Symbol,Any}
-end
-
-function Chain()
-    return Chain{AbstractRange{Int}}( 0.0,
-                                      Array{Float64, 3}(undef, 0, 0, 0),
-                                      0:0,
-                                      Vector{String}(),
-                                      Vector{Int}(),
-                                      Dict{Symbol,Any}()
-                                    )
-end
 
 function Chain(w::Real, s::AbstractArray{Sample})
-
     samples = flatten.(s)
     names_ = collect(mapreduce(s -> keys(s), union, samples))
 
     values_ = mapreduce(v -> map(k -> haskey(v, k) ? v[k] : missing, names_), hcat, samples)
     values_ = convert(Array{Union{Missing, Float64}, 2}, values_')
-    c = Chains(Array(reshape(values_, size(values_, 1), size(values_, 2), 1)), names = names_)
 
-    chn = Chain(
-                w,
-                c.value,
-                c.range,
-                c.names,
-                c.chains,
-                Dict{Symbol, Any}()
-               )
+    chn = Chains(
+        reshape(values_, size(values_, 1), size(values_, 2), 1),
+        names_,
+        Dict(:internals => _internal_vars),
+        evidence = w
+    )
     return chn
 end
 
@@ -175,81 +137,12 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     return
 end
 
-function Base.getindex(c::Chain, v::Symbol)
-    # This strange implementation is mostly to keep backward compatability.
-    #  Needs some refactoring a better format for storing results is available.
-    if v == :logevidence
-        return log(c.weight)
-    elseif v==:logweights
-        return c[:lp]
-    else
-        idx = names2inds(c, string(v))
-        if any(idx .== nothing)
-            syms = collect(Iterators.filter(k -> occursin(string(v)*"[", string(k)), c.names))
-            sort!(syms)
-            idx = names2inds(c, syms)
-            @assert all(idx .!= nothing)
-            return c.value[:, idx, :]
-        else
-            return getindex(c, string(v))
-        end
-    end
+function save(c::Chains, spl::Sampler, model, vi, samples)
+    nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
+    return setinfo(c, merge(nt, c.info))
 end
 
-function Base.getindex(c::Chain, v::String)
-    return c.value[:, names2inds(c, v), :]
-end
-
-
-function Base.getindex(c::Chain, expr::Expr)
-    str = replace(string(expr), r"\(|\)" => "")
-    @assert match(r"^\w+(\[(\d\,?)*\])+$", str) != nothing "[Turing.jl] $expr invalid for getindex(::Chain, ::Expr)"
-    return c[Symbol(str)]
-end
-
-function Base.vcat(chains::Chain...)
-
-    c1 = chains[1]
-
-    weight = c1.weight
-    names = c1.names
-    range = c1.range
-    chains = c1.chains
-
-    value = c1.value
-    info = c1.info
-
-    for c in chains[2:end]
-        all(c -> c.names == names, args) ||
-            throw(ArgumentError("chain names differ"))
-
-        all(c -> c.chains == chains, args) ||
-            throw(ArgumentError("sets of chains differ"))
-
-        @assert c1.weight == c.weight
-        @assert c1.range == c.range
-
-        value = cat(value, c.value, dims=1)
-        info = merge(info, c.info)
-    end
-
-    chn = Chain(weight,
-                value,
-                range,
-                names,
-                chains,
-                info)
-    return chn
-end
-
-function save!(c::Chain, spl::Sampler, model, vi)
-    c.info[:spl] = spl
-    c.info[:model] = model
-    c.info[:vi] = deepcopy(vi)
-    return c
-end
-
-function resume(c::Chain, n_iter::Int)
+function resume(c::Chains, n_iter::Int)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
     return sample(  c.info[:model],
                     c.info[:spl].alg;    # this is actually not used
