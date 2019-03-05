@@ -113,7 +113,7 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     return vi, is_accept
 end
 
-function sample(  model::Model, 
+function sample(  model::Model,
                   alg::PMMH;
                   save_state=false,         # flag for state saving
                   resume_from=nothing,      # chain to continue
@@ -172,7 +172,7 @@ function sample(  model::Model,
     if resume_from != nothing   # concat samples
       pushfirst!(samples, resume_from.info[:samples]...)
     end
-    c = Chain(0.0, samples)       # wrap the result by Chain
+    c = Chain(-Inf, samples)       # wrap the result by Chain
 
     if save_state               # save state
       c = save(c, spl, model, vi, samples)
