@@ -104,7 +104,7 @@ function sample(model::Model, alg::Hamiltonian;
                                 reuse_spl_n=0,                      # flag for spl re-using
                                 adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
                 )
-    
+
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg, adapt_conf)
@@ -184,13 +184,13 @@ function sample(model::Model, alg::Hamiltonian;
     end
 
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
+        pushfirst!(samples, resume_from.info[:samples]...)
     end
     c = Chain(0.0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
-        save!(c, spl, model, vi)
+        c = save(c, spl, model, vi, samples)
     end
     return c
 end

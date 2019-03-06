@@ -82,13 +82,13 @@ function step(model, spl::Sampler{<:PG}, vi::VarInfo)
     return particles[indx].vi, true
 end
 
-function sample(  model::Model, 
+function sample(  model::Model,
                   alg::PG;
                   save_state=false,         # flag for state saving
                   resume_from=nothing,      # chain to continue
                   reuse_spl_n=0             # flag for spl re-using
                 )
-    
+
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg)
@@ -128,24 +128,24 @@ function sample(  model::Model,
 
     loge = exp.(mean(spl.info[:logevidence]))
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
-        pre_loge = resume_from.weight
+        pushfirst!(samples, resume_from.info[:samples]...)
+        pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence
-        pre_n = length(resume_from.value2)
-        loge = exp.((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
+        pre_n = length(resume_from.info[:samples])
+        loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
     end
     c = Chain(loge, samples)       # wrap the result by Chain
 
     if save_state               # save state
-        save!(c, spl, model, vi)
+        c = save(c, spl, model, vi, samples)
     end
 
     return c
 end
 
-function assume(  spl::Sampler{T}, 
-                  dist::Distribution, 
-                  vn::VarName, 
+function assume(  spl::Sampler{T},
+                  dist::Distribution,
+                  vn::VarName,
                   _::VarInfo
                 ) where T<:Union{PG,SMC}
 
@@ -177,10 +177,10 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
-function assume(  spl::Sampler{A}, 
-                  dists::Vector{D}, 
-                  vn::VarName, 
-                  var::Any, 
+function assume(  spl::Sampler{A},
+                  dists::Vector{D},
+                  vn::VarName,
+                  var::Any,
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")
@@ -191,9 +191,9 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     return zero(Real)
 end
 
-function observe( spl::Sampler{A}, 
-                  ds::Vector{D}, 
-                  value::Any, 
+function observe( spl::Sampler{A},
+                  ds::Vector{D},
+                  value::Any,
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
