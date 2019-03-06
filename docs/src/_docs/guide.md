@@ -131,10 +131,10 @@ If you wish to run multiple chains, you can do so with the `mapreduce` function:
 
 ```julia
 # Replace num_chains below with however many chains you wish to sample.
-chains = mapreduce(c -> sample(model_fun, sampler), vcat, 1:num_chains)
+chains = mapreduce(c -> sample(model_fun, sampler), chainscat, 1:num_chains)
 ```
 
-The `chains` variable now contains a `Turing.Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
+The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
 
 Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
 
@@ -320,8 +320,6 @@ For more details of compositional sampling in Turing.jl, please check the corres
 Turing.jl wraps its samples using `MCMCChains.Chain` so that all the functions working for `MCMCChains.Chain` can be re-used in Turing.jl. Two typical functions are `MCMCChains.describe` and `MCMCChains.plot`, which can be used as follows for an obtained chain `chn`. For more information on `MCMCChains`, please see the [GitHub repository](https://github.com/TuringLang/MCMCChains.jl).
 
 ```julia
-using MCMCChains: describe, plot
-
 describe(chn) # Lists statistics of the samples.
 plot(chn) # Plots statistics of the samples.
 ```
