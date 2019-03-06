@@ -1,3 +1,5 @@
+using SpecialFunctions
+
 ### Compute theoretical posterior distribution over partitions
 # cf Maria Lomeli's thesis, Section 2.7.4, page 46.
 
