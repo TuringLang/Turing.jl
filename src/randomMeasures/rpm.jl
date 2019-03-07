@@ -13,7 +13,7 @@ struct SizeBiasedSamplingProcess <: ContinuousUnivariateDistribution
     surplus::Float64
 end
 
-logpdf(d::SizeBiasedSamplingProcess, x::Real) = logpdf_stickbreaking(d.rpm, x/surplus)
+logpdf(d::SizeBiasedSamplingProcess, x::T) where {T<:Real} = logpdf_stickbreaking(d.rpm, x/surplus)
 rand(d::SizeBiasedSamplingProcess) = d.surplus*stickbreaking(d.rpm)
 minimum(d::SizeBiasedSamplingProcess) = 0.0
 maximum(d::SizeBiasedSamplingProcess) = d.surplus
@@ -27,7 +27,7 @@ struct StickBreakingProcess <: ContinuousUnivariateDistribution
     rpm::AbstractRandomProbabilityMeasure
 end
 
-logpdf(d::StickBreakingProcess, x::Real) = logpdf_stickbreaking(d.rpm, x)
+logpdf(d::StickBreakingProcess, x::T) where {T<:Real} = logpdf_stickbreaking(d.rpm, x)
 rand(d::StickBreakingProcess) = stickbreaking(d.rpm)
 minimum(d::StickBreakingProcess) = 0.0
 maximum(d::StickBreakingProcess) = 1.0
@@ -94,22 +94,26 @@ p(z_n = k | z_{1:n-1}) \\propto \\begin{cases}
 
 For more details see: https://www.stats.ox.ac.uk/~teh/research/npbayes/Teh2010a.pdf
 """
-struct DirichletProcess <: AbstractRandomProbabilityMeasure
-    α::Float64
+struct DirichletProcess{T<:Real} <: AbstractRandomProbabilityMeasure
+    α::T
 end
 
-stickbreaking(d::DirichletProcess) = rand(Beta(1., d.α))
-logpdf_stickbreaking(d::DirichletProcess, x::T) where T<:Real = logpdf(Beta(1., d.α), x)
+DirichletProcess(α::T) where {T<:Real} = DirichletProcess{T}(α)
 
-function crp(d::DirichletProcess, m::Vector{Int})
+stickbreaking(d::DirichletProcess{T}) where {T<:Real} = rand(Beta(one(T), d.α))
+function logpdf_stickbreaking(d::DirichletProcess{T}, x::T) where {T<:Real}
+    return logpdf(Beta(one(T), d.α), x)
+end
+
+function crp(d::DirichletProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
-        return [0.0]
+        return zeros(V,1)
     elseif sum(m .== 0) > 0
         z = log(sum(m) - 1 + d.α)
         K = length(m)
         zidx = findall(m .== 0)
         zid = rand(zidx)
-        lpt(k) = k ∈ zidx ? (k == zid ? log(d.α) - z : -Inf) : log(m[k]) - z
+        lpt(k) = k ∈ zidx ? (k == zid ? log(d.α) - z : map(V,-Inf)) : log(m[k]) - z
         return map(k -> lpt(k), 1:K)
     else
         z = log(sum(m) - 1 + d.α)
@@ -145,24 +149,33 @@ p(z_n = k | z_{1:n-1}) \\propto \\begin{cases}
 
 For more details see: https://en.wikipedia.org/wiki/Pitman–Yor_process
 """
-struct PitmanYorProcess <: AbstractRandomProbabilityMeasure
-    d::Float64
-    θ::Float64
+struct PitmanYorProcess{T<:Real} <: AbstractRandomProbabilityMeasure
+    d::T
+    θ::T
     t::Int
 end
 
-stickbreaking(d::PitmanYorProcess) = rand(Beta(1. - d.d, d.θ + d.t*d.d))
-logpdf_stickbreaking(d::PitmanYorProcess, x::Real) = logpdf(Beta(1-d.d, d.θ + d.t*d.d), x)
+function PitmanYorProcess(d::T, θ::T, t::Int) where {T<:Real}
+    return PitmanYorProcess{T}(d, θ, t)
+end
 
-function crp(d::PitmanYorProcess, m::Vector{Int})
+function stickbreaking(d::PitmanYorProcess{T}) where {T<:Real}
+    return rand(Beta(one(T)-d.d, d.θ + d.t*d.d))
+end
+
+function logpdf_stickbreaking(d::PitmanYorProcess{V}, x::T) where {T<:Real,V<:Real}
+    return logpdf(Beta(one(V)-d.d, d.θ + d.t*d.d), x)
+end
+
+function crp(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
-        return [0.0]
+        return zeros(V,1)
     elseif sum(m .== 0) > 0
         z = log(sum(m) + d.θ)
         K = length(m)
         zidx = findall(m .== 0)
         zid = rand(zidx)
-        lpt(k) = k ∈ zidx ? (k == zid ? log(d.θ+d.d*d.t) - z : -Inf) : log(m[k]-d.d) - z
+        lpt(k) = k ∈ zidx ? (k == zid ? log(d.θ+d.d*d.t) - z : map(V,-Inf)) : log(m[k]-d.d) - z
         return map(k -> lpt(k), 1:K)
     else
         z = log(sum(m) + d.θ)

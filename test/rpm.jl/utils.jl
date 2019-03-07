@@ -3,7 +3,7 @@ using SpecialFunctions
 ### Compute theoretical posterior distribution over partitions
 # cf Maria Lomeli's thesis, Section 2.7.4, page 46.
 
-function compute_log_joint(observations, partition, tau0, tau1)
+function compute_log_joint(observations, partition, tau0, tau1, sigma, theta)
   n = length(observations)
   k = length(partition)
   prob = k*log(sigma) + lgamma(theta) + lgamma(theta/sigma + k) - lgamma(theta/sigma) - lgamma(theta + n)
@@ -22,13 +22,18 @@ function compute_log_conditonal_observations(observations, cluster, tau0, tau1)
 end
 
 # Test of similarity between distributions
-function correct_posterior(empirical_probs, data, partitions, τ0, τ1)
-    true_log_probs = map(p -> compute_log_joint(data, p, τ0, τ1), partitions)
+function correct_posterior(empirical_probs, data, partitions, τ0, τ1, σ, θ)
+    true_log_probs = map(p -> compute_log_joint(data, p, τ0, τ1, σ, θ), partitions)
     true_probs = exp.(true_log_probs)
     true_probs /= sum(true_probs)
 
     empirical_probs /= sum(empirical_probs)
+
+    # compare distribitions
+    # L2
     L2 = sum((empirical_probs - true_probs).^2)
-    chisqr = length(samples)*sum((empirical_probs - true_probs).^2 ./true_probs)
-    return L2, chisqr
+
+    # Discrepancy
+    discr = maximum(abs.(empirical_probs - true_probs))
+    return L2, discr
 end
