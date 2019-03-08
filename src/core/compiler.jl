@@ -26,7 +26,7 @@ end
 
 
 function wrong_dist_errormsg(l)
-    return "Right-hand side of a ~ must be subtype of Distribution or a vector of" * 
+    return "Right-hand side of a ~ must be subtype of Distribution or a vector of " *
         "Distributions on line $(l)."
 end
 
@@ -180,7 +180,7 @@ function model_generator(x = nothing, y = nothing)
     data = Turing.get_data(dvars, (x = x, y = y))
     defaults = Turing.get_default_values(dvars, (x = default_x, y = nothing))
     
-    inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
+    inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
     function inner_function(model)
         return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
     end
@@ -188,7 +188,7 @@ function model_generator(x = nothing, y = nothing)
         return inner_function(vi, Turing.SampleFromPrior(), model)
     end
     # Define the main inner function
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
         local x
         if isdefined(model.data, :x)
             x = model.data.x
@@ -291,7 +291,6 @@ function update_args!(model_info)
     end
     model_info[:args] = fargs
     model_info[:tent_arg_defaults_nt] = tent_arg_defaults_nt
-
     return model_info
 end
 
@@ -367,7 +366,7 @@ function build_output(model_info)
             $defaults_name = Turing.get_default_values($tent_dvars_nt, $tent_arg_defaults_nt)
 
             # Define fallback inner functions
-            function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
+            function $inner_function_name($sampler_name::Turing.AbstractSampler, $model_name)
                 return $inner_function_name($model_name)
             end
             function $inner_function_name($model_name)
@@ -380,7 +379,7 @@ function build_output(model_info)
             # Define the main inner function
             function $inner_function_name(
                 $vi_name::Turing.VarInfo, 
-                $sampler_name::Turing.AnySampler, 
+                $sampler_name::Turing.AbstractSampler,
                 $model_name
                 )
                 

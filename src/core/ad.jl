@@ -30,7 +30,7 @@ getchunksize(::T) where {T <: ForwardDiffAD} = getchunksize(T)
 getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = chunk
 getchunksize(::T) where {T <: Sampler} = getchunksize(T)
 getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
-getchunksize(::Nothing) = getchunksize(Nothing)
+getchunksize(::SampleFromPrior) = getchunksize(Nothing)
 getchunksize(::Type{Nothing}) = CHUNKSIZE[]
 
 struct FluxTrackerAD <: ADBackend end
@@ -61,7 +61,7 @@ gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Union{Nothing, Sampler}=nothing,
+    sampler::AbstractSampler=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model 
@@ -88,7 +88,7 @@ gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    spl::Union{Nothing, Sampler}=nothing,
+    spl::AbstractSampler=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model 
@@ -98,7 +98,7 @@ function gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Union{Nothing, Sampler}=nothing,
+    sampler::AbstractSampler=SampleFromPrior(),
 )
     # Record old parameters.
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)
@@ -130,7 +130,7 @@ gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Union{Nothing, Sampler}=nothing,
+    sampler::AbstractSampler=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model 
@@ -140,7 +140,7 @@ function gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Union{Nothing, Sampler}=nothing,
+    sampler::AbstractSampler=SampleFromPrior(),
 )
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)
 
