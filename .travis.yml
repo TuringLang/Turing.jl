@@ -1,9 +1,5 @@
 language: julia
 
-julia:
-- 1.0
-- 1.1
-
 matrix:
   fast_finish: true
 
