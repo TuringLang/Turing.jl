@@ -64,8 +64,8 @@ gradient_logp(
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the value of the log joint of `θ` and its gradient for the model 
-specified by `(vi, sampler, model)` using whichever automatic differentation 
+Computes the value of the log joint of `θ` and its gradient for the model
+specified by `(vi, sampler, model)` using whichever automatic differentation
 tool is currently active.
 """
 function gradient_logp(
@@ -76,7 +76,7 @@ function gradient_logp(
 ) where {TS <: Sampler}
 
     ad_type = getADtype(TS)
-    if ad_type <: ForwardDiffAD 
+    if ad_type <: ForwardDiffAD
         return gradient_logp_forward(θ, vi, model, sampler)
     else ad_type <: FluxTrackerAD
         return gradient_logp_reverse(θ, vi, model, sampler)
@@ -91,7 +91,7 @@ gradient_logp_forward(
     spl::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the value of the log joint of `θ` and its gradient for the model 
+Computes the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, spl, model)` using forwards-mode AD from ForwardDiff.jl.
 """
 function gradient_logp_forward(
@@ -133,7 +133,7 @@ gradient_logp_reverse(
     sampler::Union{Nothing, Sampler}=nothing,
 )
 
-Computes the value of the log joint of `θ` and its gradient for the model 
+Computes the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using reverse-mode AD from Flux.jl.
 """
 function gradient_logp_reverse(
@@ -166,7 +166,7 @@ end
 
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
-        @warn("Numerical error has been found in gradients.")
+        @warn("Numerical error in gradients. Rejectting current proposal...")
         @warn("grad = $(grad)")
         return false
     else
@@ -183,7 +183,7 @@ end
 
 import StatsFuns: nbinomlogpdf
 # Note the definition of NegativeBinomial in Julia is not the same as Wikipedia's.
-# Check the docstring of NegativeBinomial, r is the number of successes and 
+# Check the docstring of NegativeBinomial, r is the number of successes and
 # k is the number of failures
 _nbinomlogpdf_grad_1(r, p, k) = k == 0 ? log(p) : sum(1 / (k + r - i) for i in 1:k) + log(p)
 _nbinomlogpdf_grad_2(r, p, k) = -k / (1 - p) + r / p
