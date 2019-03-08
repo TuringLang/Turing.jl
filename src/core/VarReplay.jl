@@ -103,13 +103,15 @@ mutable struct VarInfo
     end
 end
 
-function Turing.runmodel!(model::Model, vi::VarInfo, spl::AbstractSampler)
-    setlogp!(vi, zero(Real))
-    if isa(spl, Sampler) && :eval_num ∈ keys(spl.info)
-        spl.info[:eval_num] += 1
+@generated function Turing.runmodel!(model::Model, vi::VarInfo, spl::AbstractSampler)
+    expr_eval_num = spl <: Sampler ?
+        :(if :eval_num ∈ keys(spl.info) spl.info[:eval_num] += 1 end) : :()
+    return quote
+        setlogp!(vi, zero(Real))
+        $(expr_eval_num)
+        model(vi, spl)
+        return vi
     end
-    model(vi, spl)
-    return vi
 end
 Turing.runmodel!(model::Model, vi::VarInfo) = Turing.runmodel!(model, vi, SampleFromPrior())
 
@@ -297,7 +299,6 @@ end
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
 getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
-# getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)

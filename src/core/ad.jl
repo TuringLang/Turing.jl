@@ -31,7 +31,6 @@ getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = chunk
 getchunksize(::T) where {T <: Sampler} = getchunksize(T)
 getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
 getchunksize(::SampleFromPrior) = getchunksize(Nothing)
-getchunksize(::Nothing) = getchunksize(Nothing)
 getchunksize(::Type{Nothing}) = CHUNKSIZE[]
 
 struct FluxTrackerAD <: ADBackend end
