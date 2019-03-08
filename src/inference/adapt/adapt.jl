@@ -86,7 +86,6 @@ function adapt!(tp::ThreePhaseAdapter, stats::Real, θ; adapt_ϵ=false, adapt_M=
         if tp.state.n == tp.n_adapts
             if adapt_ϵ
                 ϵ = exp(tp.ssa.state.x_bar)
-                tp.ssa.state.ϵ = min(one(ϵ), ϵ)
             end
             @info " Adapted ϵ = $(getss(tp)), std = $(string(tp.pc)); $(tp.state.n) iterations is used for adaption."
         else
