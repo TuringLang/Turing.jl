@@ -72,6 +72,8 @@ jobs:
                    Pkg.build("Turing");
                    Pkg.test("Turing"; coverage=true)'
     - stage: documentation
+      julia: 1.1
+      os: linux
       if: branch = master
       env: STAGE=documentation
       script:
