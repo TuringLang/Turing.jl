@@ -111,6 +111,7 @@ function Turing.runmodel!(model::Model, vi::VarInfo, spl::AbstractSampler)
     model(vi, spl)
     return vi
 end
+Turing.runmodel!(model::Model, vi::VarInfo) = Turing.runmodel!(model, vi, SampleFromPrior())
 
 const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 
