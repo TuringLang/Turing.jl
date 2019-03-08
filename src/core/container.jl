@@ -1,8 +1,8 @@
 mutable struct Trace
   task  ::  Task
   vi    ::  VarInfo
-  spl   ::  Union{Nothing, Sampler}
-  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
+  spl   ::  AbstractSampler
+  Trace() = (res = new(); res.vi = VarInfo(); res.spl = SampleFromPrior(); res)
 end
 
 # NOTE: this function is called by `forkr`

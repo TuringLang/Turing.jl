@@ -1,5 +1,5 @@
 using Turing
-using Turing: gradient_logp_reverse, invlink, link, getval
+using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -17,13 +17,13 @@ end
 # The result out is the gradient information on R
 ad_test_f = ad_test()
 vi = Turing.VarInfo()
-ad_test_f(vi, nothing)
+ad_test_f(vi, SampleFromPrior())
 svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
 mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
 _s = getval(vi, svn)[1]
 _m = getval(vi, mvn)[1]
 
-x = map(x->Float64(x), vi[nothing])
+x = map(x->Float64(x), vi[SampleFromPrior()])
 ∇E = gradient_logp_reverse(x, vi, ad_test_f)[2]
 # println(vi.vns)
 # println(∇E)

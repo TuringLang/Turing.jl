@@ -63,6 +63,13 @@ end
 function runmodel! end
 
 abstract type AbstractSampler end
+
+"""
+Robust initialization method for model parameters in Hamiltonian samplers.
+"""
+struct HamiltonianRobustInit <: AbstractSampler end
+struct SampleFromPrior <: AbstractSampler end
+
 """
     Sampler{T}
 

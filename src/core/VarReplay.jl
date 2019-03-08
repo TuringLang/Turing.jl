@@ -1,6 +1,7 @@
 module VarReplay
 
-using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Sampler, Model
+using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
+    AbstractSampler, Sampler, SampleFromPrior
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
 using Distributions
@@ -102,9 +103,9 @@ mutable struct VarInfo
     end
 end
 
-function Turing.runmodel!(model::Model, vi::VarInfo, spl::Union{Nothing,Sampler})
+function Turing.runmodel!(model::Model, vi::VarInfo, spl::AbstractSampler)
     setlogp!(vi, zero(Real))
-    if spl != nothing && :eval_num ∈ keys(spl.info)
+    if isa(spl, Sampler) && :eval_num ∈ keys(spl.info)
         spl.info[:eval_num] += 1
     end
     model(vi, spl)
@@ -206,8 +207,8 @@ Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 Base.getindex(vi::VarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
 Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
-Base.getindex(vi::VarInfo, spl::Nothing) = copy(getall(vi))
-Base.setindex!(vi::VarInfo, val::Any, spl::Nothing) = setall!(vi, val)
+Base.getindex(vi::VarInfo, ::SampleFromPrior) = copy(getall(vi))
+Base.setindex!(vi::VarInfo, val::Any, ::SampleFromPrior) = setall!(vi, val)
 
 Base.keys(vi::VarInfo) = keys(vi.idcs)
 
@@ -294,7 +295,8 @@ end
 
 # Get all indices of variables belonging to gid or 0
 getidcs(vi::VarInfo) = getidcs(vi, nothing)
-getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
+getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
+# getidcs(vi::VarInfo, spl::Nothing) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
@@ -325,11 +327,11 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::VarInfo) = getvals(vi, nothing)
-getvals(vi::VarInfo, spl::Union{Nothing, Sampler}) = view(vi.vals, getidcs(vi, spl))
+getvals(vi::VarInfo, spl::AbstractSampler) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::VarInfo) = getvns(vi, nothing)
-getvns(vi::VarInfo, spl::Union{Nothing, Sampler}) = view(vi.vns, getidcs(vi, spl))
+getvns(vi::VarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 function getranges(vi::VarInfo, spl::Sampler)
@@ -344,7 +346,7 @@ end
 
 # NOTE: this function below is not used anywhere but test files.
 #       we can safely remove it if we want.
-function getretain(vi::VarInfo, spl::Union{Nothing, Sampler})
+function getretain(vi::VarInfo, spl::AbstractSampler)
     gidcs = getidcs(vi, spl)
     if vi.num_produce == 0 # called at begening of CSMC sweep for non reference particles
         UnitRange[map(i -> vi.ranges[gidcs[i]], length(gidcs):-1:1)...]
