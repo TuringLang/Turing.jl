@@ -260,7 +260,7 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
 
         delta_H = H0 - h
 
-        @info "[Turing] eps = $ϵ, accept ratio a = $(exp(delta_H))"
+        @debug "[Turing] eps = $ϵ, accept ratio a = $(exp(delta_H))"
         if ((direction == 1) && !(delta_H > log(a)))
             break
         elseif ((direction == -1) && !(delta_H < log(a)))
@@ -272,12 +272,6 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
         iter_num += 1
     end
 
-    # Is this necessary, since if h == Inf ==> delta_H < log(a)?
-    # while h == Inf  # revert if the last change is too big
-    #     ϵ = ϵ / 2               # safe is more important than large
-    #     θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
-    #     h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
-    # end
     return ϵ
 end
 
