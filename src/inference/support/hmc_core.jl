@@ -1,5 +1,7 @@
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
 
+using Statistics: middle
+
 """
     gen_grad_func(vi::VarInfo, sampler::Sampler, model)
 
@@ -238,8 +240,9 @@ end
 
 function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_num_iters=100)
     @info "[Turing] looking for good initial eps..."
-    ϵ = 0.1
-    a = 0.5
+    ϵ_prime = ϵ = 0.1
+    a_min, a_cross, a_max = 0.25, 0.5, 0.75
+    d = 2.0
 
     p = momentum_sampler()
     H0 = H_func(θ, p, lj_func(θ))
@@ -248,28 +251,43 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
     h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
 
     delta_H = H0 - h # logp(θ`) - logp(θ)
-    direction = delta_H > log(a) ? 1 : -1
-
-    iter_num = 1
+    direction = delta_H > log(a_cross) ? 1 : -1
 
     # Heuristically find optimal ϵ
-    while (iter_num <= max_num_iters)
-        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
+    for _ = 1:max_num_iters
+        ϵ_prime = direction == 1 ? d * ϵ : 1/d * ϵ
+        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ_prime, grad_func)
         h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
         Turing.DEBUG && @debug "direction = $direction, h = $h"
 
         delta_H = H0 - h
 
-        @debug "[Turing] eps = $ϵ, accept ratio a = $(exp(delta_H))"
-        if ((direction == 1) && !(delta_H > log(a)))
+        Turing.DEBUG && @debug "[Turing] ϵ = $ϵ_prime, accept ratio a = $(min(1,(exp(delta_H))))"
+        if ((direction == 1) && !(delta_H > log(a_cross)))
             break
-        elseif ((direction == -1) && !(delta_H < log(a)))
+        elseif ((direction == -1) && !(delta_H < log(a_cross)))
             break
         else
-            ϵ = direction == 1 ? 1.1 * ϵ : 0.5 * ϵ
+            ϵ = ϵ_prime
         end
+    end
 
-        iter_num += 1
+    ϵ, ϵ_prime = ϵ < ϵ_prime ? (ϵ, ϵ_prime) : (ϵ_prime, ϵ) # Ensure ϵ < ϵ_prime
+    for _ = 1:max_num_iters
+        ϵ_mid = middle(ϵ, ϵ_prime)
+        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ_mid, grad_func)
+        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
+
+        delta_H = H0 - h
+
+        Turing.DEBUG && @debug "[Turing] ϵ = $ϵ_mid, accept ratio a = $(min(1,(exp(delta_H))))"
+        if (exp(delta_H) > a_max)
+            ϵ = ϵ_mid
+        elseif (exp(delta_H) < a_min)
+            ϵ_prime = ϵ_mid
+        else
+            ϵ = ϵ_mid; break
+        end
     end
 
     return ϵ
