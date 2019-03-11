@@ -9,27 +9,27 @@ using Distributions
 import Base: string, isequal, ==, hash, getindex, setindex!, push!, show, isempty
 import Turing: link, invlink
 
-export  VarName, 
-        VarInfo, 
-        uid, 
-        sym, 
-        getlogp, 
-        set_retained_vns_del_by_spl!, 
-        resetlogp!, 
-        is_flagged, 
-        unset_flag!, 
-        setgid!, 
-        copybyindex, 
-        setorder!, 
-        updategid!, 
-        acclogp!, 
-        istrans, 
-        link!, 
-        invlink!, 
-        setlogp!, 
-        getranges, 
-        getrange, 
-        getvns, 
+export  VarName,
+        VarInfo,
+        uid,
+        sym,
+        getlogp,
+        set_retained_vns_del_by_spl!,
+        resetlogp!,
+        is_flagged,
+        unset_flag!,
+        setgid!,
+        copybyindex,
+        setorder!,
+        updategid!,
+        acclogp!,
+        istrans,
+        link!,
+        invlink!,
+        setlogp!,
+        getranges,
+        getrange,
+        getvns,
         getval
 
 ###########
@@ -103,17 +103,29 @@ mutable struct VarInfo
     end
 end
 
-@generated function Turing.runmodel!(model::Model, vi::VarInfo, spl::AbstractSampler)
+@generated function Turing.logp!(model::Model, vi::VarInfo, spl::AbstractSampler)
     expr_eval_num = spl <: Sampler ?
         :(if :eval_num ∈ keys(spl.info) spl.info[:eval_num] += 1 end) : :()
     return quote
         setlogp!(vi, zero(Real))
         $(expr_eval_num)
-        model(vi, spl)
+        vi.flags["divergent"] = [false]
+        try
+           model(vi, spl)
+           #log(-1)
+        catch e
+           if e isa DomainError
+               @warn "Numerical error has been detected: $(typeof(e))"
+               vi.flags["divergent"] = [true]
+               setlogp!(vi, log(0)*vi.logp)
+           else
+               throw(e)
+           end
+        end
         return vi
     end
 end
-Turing.runmodel!(model::Model, vi::VarInfo) = Turing.runmodel!(model, vi, SampleFromPrior())
+Turing.logp!(model::Model, vi::VarInfo) = Turing.logp!(model, vi, SampleFromPrior())
 
 const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
 

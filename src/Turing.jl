@@ -60,7 +60,7 @@ end
     return sym in data.types ? :(true) : :(false)
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
-function runmodel! end
+function logp! end
 
 abstract type AbstractSampler end
 

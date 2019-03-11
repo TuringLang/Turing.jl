@@ -55,7 +55,7 @@ function sample(model::Model,
 
     if spl.alg.gid == 0
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logp!(model, vi, spl)
     end
 
     function _lp(x)

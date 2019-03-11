@@ -72,7 +72,7 @@ function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
     spl.info[:proposal_ratio] = 0.0
     spl.info[:prior_prob] = 0.0
     spl.info[:violating_support] = false
-    return runmodel!(model, vi ,spl)
+    return logp!(model, vi ,spl)
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
@@ -81,7 +81,7 @@ end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   if spl.alg.gid != 0 # Recompute joint in logp
-    runmodel!(model, vi)
+    logp!(model, vi)
   end
   old_θ = copy(vi[spl])
   old_logp = getlogp(vi)
@@ -135,7 +135,7 @@ function sample(model::Model, alg::MH;
     end
 
   if spl.alg.gid == 0
-    runmodel!(model, vi, spl)
+    logp!(model, vi, spl)
   end
 
   # MH steps

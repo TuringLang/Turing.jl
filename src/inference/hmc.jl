@@ -139,7 +139,7 @@ function sample(model::Model, alg::Hamiltonian;
 
     if spl.alg.gid == 0
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logp!(model, vi, spl)
     end
 
     # HMC steps
@@ -221,7 +221,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     Turing.DEBUG && @debug "X-> R..."
     if spl.alg.gid != 0
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logp!(model, vi, spl)
     end
 
     grad_func = gen_grad_func(vi, spl, model)

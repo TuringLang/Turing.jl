@@ -3,7 +3,7 @@ module Core
 using MacroTools, Libtask, ForwardDiff
 using ..Utilities, Reexport
 using Flux.Tracker: Tracker
-using ..Turing: Turing, Model, runmodel!,
+using ..Turing: Turing, Model, logp!,
     AbstractSampler, Sampler, SampleFromPrior
 
 include("VarReplay.jl")

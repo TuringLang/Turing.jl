@@ -4,7 +4,7 @@ using ..Core, ..Core.VarReplay, ..Utilities
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Model, runmodel!, get_pvars, get_dvars,
+using ..Turing: Model, logp!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, HamiltonianRobustInit
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp

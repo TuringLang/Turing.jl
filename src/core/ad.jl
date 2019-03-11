@@ -106,7 +106,7 @@ function gradient_logp_forward(
     # Define function to compute log joint.
     function f(θ)
         vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        return logp!(model, vi, sampler).logp
     end
 
     chunk_size = getchunksize(sampler)
@@ -147,7 +147,7 @@ function gradient_logp_reverse(
     # Specify objective function.
     function f(θ)
         vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        return logp!(model, vi, sampler).logp
     end
 
     # Compute forward and reverse passes.
@@ -167,7 +167,7 @@ end
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
         @warn("Numerical error in gradients. Rejecting current proposal...")
-        @warn("grad = $(grad)")
+        Turing.DEBUG && @debug("grad = $(grad)")
         return false
     else
         return true

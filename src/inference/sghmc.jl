@@ -69,7 +69,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     Turing.DEBUG && @debug "X-> R..."
     if spl.alg.gid != 0
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logp!(model, vi, spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."
