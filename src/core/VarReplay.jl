@@ -115,7 +115,8 @@ end
            #log(-1)
         catch e
            if e isa DomainError
-               @warn "Numerical error has been detected: $(typeof(e))"
+               @warn "Numerical error has been detected: $(typeof(e))." *
+                                        " Rejecting current proposal..."
                vi.flags["divergent"] = [true]
                setlogp!(vi, log(0)*vi.logp)
            else
