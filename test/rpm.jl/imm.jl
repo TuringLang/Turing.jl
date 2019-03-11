@@ -90,6 +90,7 @@ l2, discr = correct_posterior(empirical_probs, data, partitions, tau0, tau1, alp
     # Latent assignments.
     N = length(y)
     z = tzeros(Int, N)
+    u = tzeros(Float64, N)
 
     # Infinite collection of stick pieces and weights.
     v = tzeros(Float64, trunc)
@@ -101,17 +102,22 @@ l2, discr = correct_posterior(empirical_probs, data, partitions, tau0, tau1, alp
 
     for i in 1:N
 
-        # Draw a slice ∈ [0,1]
-        u ~ Beta(1, 1)
+        # Draw a slice ∈ [0,1].
+        u[i] ~ Beta(1, 1)
 
-        while (sum(w) < u) && (K < trunc)
+        # Instantiate new cluster.
+        while (sum(w) < u[i]) && (K < trunc)
             K += 1
             v[K] ~ StickBreakingProcess(rpm)
             x[K] ~ H
             w[K] = v[K] * prod(1 .- v[1:(K-1)])
         end
 
-        w_ = w[1:K] / sum(w[1:K])
+        # Find truncation point
+        K_ = findfirst(u[i] .< cumsum(w))
+
+        # Sample assignments.
+        w_ = w[1:K_] / sum(w[1:K_])
         z[i] ~ Categorical(w_)
 
         # Draw observation.
