@@ -238,10 +238,13 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
     return ϵ
 end
 
+##
+## Heuristically find optimal ϵ
+##
 function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_num_iters=100)
     @info "[Turing] looking for good initial eps..."
     ϵ_prime = ϵ = 0.1
-    a_min, a_cross, a_max = 0.25, 0.5, 0.75
+    a_min, a_cross, a_max = 0.25, 0.5, 0.75 # minimal, crossing, maximal accept ratio
     d = 2.0
 
     p = momentum_sampler()
@@ -253,7 +256,7 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
     delta_H = H0 - h # logp(θ`) - logp(θ)
     direction = delta_H > log(a_cross) ? 1 : -1
 
-    # Heuristically find optimal ϵ
+    # Crossing step: increase/decrease ϵ until accept ratio cross a_cross.
     for _ = 1:max_num_iters
         ϵ_prime = direction == 1 ? d * ϵ : 1/d * ϵ
         θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ_prime, grad_func)
@@ -272,6 +275,8 @@ function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_nu
         end
     end
 
+    # Bisection step: ensure final accept ratio:  a_min < a < a_max.
+    #  See https://en.wikipedia.org/wiki/Bisection_method
     ϵ, ϵ_prime = ϵ < ϵ_prime ? (ϵ, ϵ_prime) : (ϵ_prime, ϵ) # Ensure ϵ < ϵ_prime
     for _ = 1:max_num_iters
         ϵ_mid = middle(ϵ, ϵ_prime)
