@@ -87,7 +87,7 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     η_x = m^(-κ)
     x_bar = (1.0 - η_x) * x_bar + η_x * x
 
-    ϵ = exp(x_bar)
+    ϵ = exp(x)
     Turing.DEBUG && @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
 
     if isnan(ϵ) || isinf(ϵ)
