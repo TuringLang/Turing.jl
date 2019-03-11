@@ -79,7 +79,7 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1]),
                     end
                     chn = sample(m(), NUTS(n_samples, 0.8))
 
-                    chn_xs = chn[:x][1:2:end] # thining by halving
+                    chn_xs = chn[1:2:end, :x, :].value # thining by halving
 
                     # Mean
                     dist_mean = mean(dist)

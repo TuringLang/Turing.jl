@@ -14,5 +14,5 @@ end
 
 chain = sample(gdemo([1.5, 2.0]), alg)
 
-@test mean(chain[:s]) ≈ 49/24 atol=0.1
-@test mean(chain[:m]) ≈ 7/6 atol=0.1
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
+@test mean(chain[:m].value) ≈ 7/6 atol=0.1

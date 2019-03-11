@@ -8,8 +8,8 @@ include("gdemo.jl")
 mf = gdemo()
 chn = sample(mf, HMC(2000, 0.05, 5))
 
-println("mean of s: $(mean(chn[:s][1000:end]))")
-println("mean of m: $(mean(chn[:m][1000:end]))")
+println("mean of s: $(mean(chn[1000:end, :s, :].value))")
+println("mean of m: $(mean(chn[1000:end, :m, :].value))")
 
 # Plain Julia
 

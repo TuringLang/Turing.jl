@@ -28,7 +28,7 @@ for c in [c1, c2, c3 ,c4, c5]
   check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
 end
 
-@test length(c4[:s]) == N * (3 + 2)
+@test length(c4[:s].value) == N * (3 + 2)
 
 # Test gid of each samplers
 g = Turing.Sampler(s3, gdemo())

@@ -71,7 +71,7 @@ v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
 end
 chain = sample(mat_name_test(), HMC(1000, 0.2, 4))
 
-@test mean(chain[Symbol("p[1, 1]")]) ≈ 0 atol=0.25
+@test mean(chain["p[1, 1]"].value) ≈ 0 atol=0.25
 
 # Multi array
 i, j = 1, 2
@@ -88,5 +88,4 @@ v_arrarr = eval(varname(:(x[i][j]))[1])
   p
 end
 chain = sample(marr_name_test(), HMC(1000, 0.2, 4))
-@test mean(chain[Symbol("p[1][1]")]) ≈ 0 atol=0.25
-
+@test mean(chain["p[1][1]"].value) ≈ 0 atol=0.25

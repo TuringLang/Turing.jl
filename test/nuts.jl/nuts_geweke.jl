@@ -40,37 +40,37 @@ s = sample(gdemo_fw(), fw);
 
 N = div(NSamples, bk_sample_n)
 
-x = [s[:y][1]...]
-s_bk = Array{Turing.Chain}(undef, N)
+x = [s[1, :y, :].value...]
+s_bk = Array{MCMCChains.Chains}(undef, N)
 
 simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
 with_logger(simple_logger) do
   i = 1
   while i <= N
     s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][:y][end]...];
+    x = [s_bk[i][end, :y, :].value...];
     i += 1
   end
 end
 
-s2 = vcat(s_bk...);
+s2 = chainscat(s_bk...);
 # describe(s2)
 
 
 # qqplot(s[:m], s2[:m])
 # qqplot(s[:s], s2[:s])
 
-qqm = qqbuild(s[:m], s2[:m])
+qqm = qqbuild(s[:m].value, s2[:m].value)
 
 using UnicodePlots
 
-qqm = qqbuild(s[:m], s2[:m])
+qqm = qqbuild(s[:m].value, s2[:m].value)
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m", canvas = DotCanvas))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):", canvas = DotCanvas))
 show(scatterplot(qqm.qx, qqm.qy, title = "QQ plot for m"))
 show(scatterplot(qqm.qx[51:end-50], qqm.qy[51:end-50], title = "QQ plot for m (removing first and last 50 quantiles):"))
 
-qqs = qqbuild(s[:s], s2[:s])
+qqs = qqbuild(s[:s].value, s2[:s].value)
 show(scatterplot(qqs.qx, qqs.qy, title = "QQ plot for s"))
 show(scatterplot(qqs.qx[51:end-50], qqs.qy[51:end-50], title = "QQ plot for s (removing first and last 50 quantiles):"))
 

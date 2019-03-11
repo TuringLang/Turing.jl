@@ -53,9 +53,10 @@ end
 
 function plot_sampler(chain)
     # Extract values from chain.
-    ss = link.(Ref(InverseGamma(2,3)), chain[:s])
-    ms = chain[:m]
-    lps = chain[:lp]
+    val = get(chain, [:s, :m, :lp])
+    ss = link.(Ref(InverseGamma(2,3)), val.s)
+    ms = val.m
+    lps = val.lp
 
     # How many surface points to sample.
     granularity = 500
@@ -81,7 +82,7 @@ function plot_sampler(chain)
         legend=false, colorbar=false, alpha=0.5)
 
     return p
-end
+end;
 ````
 
 
