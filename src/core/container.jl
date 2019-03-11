@@ -1,13 +1,14 @@
-mutable struct Trace
+mutable struct Trace{T <: AbstractSampler}
   task  ::  Task
   vi    ::  VarInfo
-  spl   ::  Union{Nothing, Sampler}
-  Trace() = (res = new(); res.vi = VarInfo(); res.spl = nothing; res)
+  spl   ::  T
+  Trace{T}() where T <: SampleFromPrior = (res = new(); res.vi = VarInfo(); res.spl = SampleFromPrior(); res)
+  Trace{T}() where T <: Sampler = (res = new(); res.vi = VarInfo(); res)
 end
 
 # NOTE: this function is called by `forkr`
-function Trace(f)
-  res = Trace();
+function Trace{T}(f) where T <: AbstractSampler
+  res = Trace{T}();
   # CTask(()->f());
   res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
   if isa(res.task.storage, Nothing)
@@ -16,9 +17,10 @@ function Trace(f)
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
 end
+Trace(f) = Trace{SampleFromPrior}(f)
 
-function Trace(f, spl::Sampler, vi :: VarInfo)
-  res = Trace();
+function Trace{T}(f, spl::Sampler, vi::VarInfo) where T <: Sampler
+  res = Trace{T}();
   res.spl = spl
   # CTask(()->f());
   res.vi = deepcopy(vi)
@@ -30,6 +32,7 @@ function Trace(f, spl::Sampler, vi :: VarInfo)
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
 end
+Trace(f, spl::Sampler, vi::VarInfo) = Trace{typeof(spl)}(f, spl, vi)
 
 # step to the next observe statement, return log likelihood
 Libtask.consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
@@ -52,7 +55,7 @@ end
 # PG requires keeping all randomness for the reference particle
 # Create new task and copy randomness
 function forkr(trace :: Trace)
-  newtrace = Trace(trace.task.code)
+  newtrace = typeof(trace)(trace.task.code)
   newtrace.spl = trace.spl
 
   newtrace.vi = deepcopy(trace.vi)

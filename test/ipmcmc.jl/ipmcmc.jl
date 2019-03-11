@@ -17,5 +17,5 @@ end
 
 alg = IPMCMC(30, 500, 4)
 chain = sample(gdemo(x), alg)
-@test mean(chain[:s]) ≈ 49/24 atol=0.1
-@test mean(chain[:m]) ≈ 7/6 atol=0.1
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
+@test mean(chain[:m].value) ≈ 7/6 atol=0.1

@@ -37,10 +37,10 @@ function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}())
 end
 
-function sample(model::Model, 
-                alg::DynamicNUTS{AD}, 
+function sample(model::Model,
+                alg::DynamicNUTS{AD},
                 ) where AD
-    
+
     spl = Sampler(alg)
 
     n = alg.n_iters
@@ -51,7 +51,7 @@ function sample(model::Model,
     end
 
     vi = VarInfo()
-    model(vi, HamiltonianRobustInit())
+    model(vi, SampleFromUniform())
 
     if spl.alg.gid == 0
         link!(vi, spl)

@@ -81,7 +81,7 @@ end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   if spl.alg.gid != 0 # Recompute joint in logp
-    runmodel!(model, vi, nothing)
+    runmodel!(model, vi)
   end
   old_θ = copy(vi[spl])
   old_logp = getlogp(vi)
@@ -128,7 +128,7 @@ function sample(model::Model, alg::MH;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         vi_
     else
         resume_from.info[:vi]

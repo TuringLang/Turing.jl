@@ -1,5 +1,5 @@
 using Turing, Test
-using Turing: reconstruct, invlink
+using Turing: reconstruct, invlink, SampleFromPrior
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs
 using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
@@ -95,7 +95,7 @@ g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g
 pg, hmc = g.info[:samplers]
 
 vi = Turing.VarInfo()
-g_demo_f(vi, nothing)
+g_demo_f(vi, SampleFromPrior())
 vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
 @test vi.gids == [1,1,1,0,0]
 

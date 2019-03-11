@@ -12,7 +12,7 @@ chain = nothing
 τ = 3000
 for _ in 1:5
     chain = sample(model_f, HMC(τ, 0.1, 3))
-    r = reshape(chain[:v], τ, 2, 2)
+    r = reshape(chain[:v].value, τ, 2, 2)
     push!(vs, reshape(mean(r, dims = [1]), 2, 2))
 end
 

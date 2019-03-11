@@ -1,9 +1,5 @@
 language: julia
 
-julia:
-- 1.0
-- 1.1
-
 matrix:
   fast_finish: true
 
@@ -76,6 +72,8 @@ jobs:
                    Pkg.build("Turing");
                    Pkg.test("Turing"; coverage=true)'
     - stage: documentation
+      julia: 1.1
+      os: linux
       if: branch = master
       env: STAGE=documentation
       script:
