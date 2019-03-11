@@ -16,7 +16,7 @@ alg = HMC(3000, 0.15, 10)
 
 res = sample(gdemo([1.5, 2.0]), alg)
 
-println(mean(res[:s])," ≈ ", 49/24, "?")
-println(mean(res[:m])," ≈ ", 7/6, "?")
-@test mean(res[:s]) ≈ 49/24 atol=0.2
-@test mean(res[:m]) ≈ 7/6 atol=0.2
+println(mean(res[:s].value)," ≈ ", 49/24, "?")
+println(mean(res[:m].value)," ≈ ", 7/6, "?")
+@test mean(res[:s].value) ≈ 49/24 atol=0.2
+@test mean(res[:m].value) ≈ 7/6 atol=0.2

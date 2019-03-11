@@ -39,9 +39,9 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 gibbs = Gibbs(1000, CSMC(10, 1, :z1, :z2, :z3, :z4), MH(10, (:mu1,GKernel(1)), (:mu2,GKernel(1))))
 chain = sample(MoGtest(D), gibbs)
 
-@test mean(chain[:z1]) ≈ 1.0 atol=0.1
-@test mean(chain[:z2]) ≈ 1.0 atol=0.1
-@test mean(chain[:z3]) ≈ 2.0 atol=0.1
-@test mean(chain[:z4]) ≈ 2.0 atol=0.1
-@test mean(chain[:mu1]) ≈ 1.0 atol=0.1
-@test mean(chain[:mu2]) ≈ 4.0 atol=0.25
+@test mean(chain[:z1].value) ≈ 1.0 atol=0.1
+@test mean(chain[:z2].value) ≈ 1.0 atol=0.1
+@test mean(chain[:z3].value) ≈ 2.0 atol=0.1
+@test mean(chain[:z4].value) ≈ 2.0 atol=0.1
+@test mean(chain[:mu1].value) ≈ 1.0 atol=0.1
+@test mean(chain[:mu2].value) ≈ 4.0 atol=0.25
