@@ -12,5 +12,5 @@ mf = gdemo(1.5, 2.0)
 
 chn = sample(mf, DynamicNUTS(2000));
 
-@test mean(chn[:s]) ≈ 49/24 atol=0.2
-@test mean(chn[:m]) ≈ 7/6 atol=0.2
+@test mean(chn[:s].value) ≈ 49/24 atol=0.2
+@test mean(chn[:m].value) ≈ 7/6 atol=0.2

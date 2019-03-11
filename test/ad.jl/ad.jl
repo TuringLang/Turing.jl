@@ -1,5 +1,5 @@
 using Test, Turing, Distributions
-using Turing: VarInfo, gradient_logp_forward, gradient_logp_reverse
+using Turing: VarInfo, gradient_logp_forward, gradient_logp_reverse, SampleFromPrior
 
 @model foo_ad() = begin
     x ~ Normal(3, 1)
@@ -9,7 +9,7 @@ end
 # Check that gradient_logp_forward doesn't change the RV values or logp of a VarInfo.
 let
     # Construct model.
-    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model, sampler, vi = foo_ad(), SampleFromPrior(), VarInfo()
     model(vi, sampler)
 
     # Record initial values.
@@ -26,7 +26,7 @@ end
 # Check that gradient_logp_reverse doesn't change the RV values or logp of a VarInfo.
 let
     # Construct model
-    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model, sampler, vi = foo_ad(), SampleFromPrior(), VarInfo()
     model(vi, sampler)
 
     # Record initial values.
@@ -43,7 +43,7 @@ end
 # Check that gradient_logp_forward gives the same result as gradient_logp_reverse.
 let
     # Construct model.
-    model, sampler, vi = foo_ad(), nothing, VarInfo()
+    model, sampler, vi = foo_ad(), SampleFromPrior(), VarInfo()
     model(vi, sampler)
 
     # Record initial values.

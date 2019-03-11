@@ -21,6 +21,6 @@ c2 = sample(gdemo(), s2)
 
 # Very loose bound, only for testing constructor.
 for c in [c1, c2]
-  @test mean(c[:s]) ≈ 49/24 atol=1.0
-  @test mean(c[:m]) ≈ 7/6 atol=1.0
+  @test mean(c[:s].value) ≈ 49/24 atol=1.0
+  @test mean(c[:m].value) ≈ 7/6 atol=1.0
 end

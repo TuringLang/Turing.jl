@@ -9,7 +9,7 @@ function check_numerical(
 )
 	for (sym, val) in zip(symbols, exact_vals)
         @info sym, val
-        E = val isa Real ? mean(chain[sym]) : vec(mean(chain[sym], dims=[1]))
+        E = val isa Real ? mean(chain[sym].value) : vec(mean(chain[sym].value, dims=[1]))
 		print("  $sym = $E ≈ $val (eps = $eps) ?")
 		cmp = abs.(sum(E - val)) <= eps
 		if cmp
