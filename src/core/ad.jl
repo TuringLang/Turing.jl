@@ -166,7 +166,7 @@ end
 
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
-        @warn("Numerical error in gradients. Rejectting current proposal...")
+        @warn("Numerical error in gradients. Rejecting current proposal...")
         @warn("grad = $(grad)")
         return false
     else
