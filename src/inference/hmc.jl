@@ -130,7 +130,7 @@ function sample(model::Model, alg::Hamiltonian;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         spl.info[:eval_num] += 1
         vi_
     else

@@ -128,7 +128,7 @@ function sample(model::Model, alg::MH;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         vi_
     else
         resume_from.info[:vi]

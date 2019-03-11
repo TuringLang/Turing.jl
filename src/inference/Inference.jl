@@ -5,7 +5,7 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, logp!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, HamiltonianRobustInit
+    Sampler, SampleFromPrior, SampleFromUniform
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
@@ -19,7 +19,7 @@ export  InferenceAlgorithm,
         GibbsComponent,
         StaticHamiltonian,
         AdaptiveHamiltonian,
-        HamiltonianRobustInit,
+        SampleFromUniform,
         SampleFromPrior,
         MH,
         Gibbs,      # classic sampling
@@ -109,12 +109,12 @@ error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 function assume(spl::A,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
 
     if haskey(vi, vn)
         r = vi[vn]
     else
-        r = isa(spl, HamiltonianRobustInit) ? init(dist) : rand(dist)
+        r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
         push!(vi, vn, r, dist, 0)
     end
     # NOTE: The importance weight is not correctly computed here because
@@ -129,7 +129,7 @@ function assume(spl::A,
     dists::Vector{T},
     vn::VarName,
     var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -140,7 +140,7 @@ function assume(spl::A,
     if haskey(vi, vns[1])
         rs = vi[vns]
     else
-        rs = isa(spl, HamiltonianRobustInit) ? init(dist, n) : rand(dist, n)
+        rs = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
@@ -181,7 +181,7 @@ observe(::Nothing,
 function observe(spl::A,
     dist::Distribution,
     value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
 
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
@@ -195,7 +195,7 @@ end
 function observe(spl::A,
     dists::Vector{T},
     value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]

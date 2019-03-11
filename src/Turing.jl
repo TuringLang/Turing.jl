@@ -67,7 +67,7 @@ abstract type AbstractSampler end
 """
 Robust initialization method for model parameters in Hamiltonian samplers.
 """
-struct HamiltonianRobustInit <: AbstractSampler end
+struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
 
 """
