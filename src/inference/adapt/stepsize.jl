@@ -92,10 +92,11 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
 
     if isnan(ϵ) || isinf(ϵ)
         @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
-    else
-        ϵ > 5*one(ϵ) && @warn "$ϵ exceeds 5.0; capped to 5.0 for numerical stability"
-        da.state.ϵ = min(5*one(ϵ), ϵ)
+        ϵ = da.state.ϵ
+        x_bar = da.state.x_bar
+        H_bar = da.state.H_bar
     end
+    da.state.ϵ = ϵ
     da.state.x_bar = x_bar
     da.state.H_bar = H_bar
 end
