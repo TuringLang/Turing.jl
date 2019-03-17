@@ -31,19 +31,43 @@ end
 sample(gdemo([1.5, 2]), IS(1000))
 ```
 """
-mutable struct IS <: InferenceAlgorithm
+mutable struct IS{space} <: InferenceAlgorithm
     n_particles ::  Int
 end
+IS(n_particles) = IS{()}(n_particles)
 
-function Sampler(alg::IS)
-    info = Dict{Symbol, Any}()
-    Sampler(alg, info)
+function init_samples(alg::IS, sample::Tsample; kwargs...) where {Tsample <: Sample}
+    return Array{Tsample}(undef, alg.n_particles)
 end
 
-function sample(model::Model, alg::IS)
-    spl = Sampler(alg);
-    samples = Array{Sample}(undef, alg.n_particles)
+function init_spl(model, alg::IS; stable = true, kwargs...)
+    vi = VarInfo(model)
+    spl = Sampler(alg, nothing)
+    return spl, vi
+end
 
+function _sample(args...; stable = true, kwargs...)
+    if stable
+        return _sample_stable(args...)
+    else
+        return _sample_unstable(args...)
+    end
+end
+
+function _sample_stable(vi, samples, spl, model, alg::IS)
+    n = spl.alg.n_particles
+    for i = 1:n
+        vi = empty!(deepcopy(vi))
+        model(vi, spl)
+        samples[i] = Sample(vi)
+    end
+
+    le = logsumexp(map(x->x[:lp], samples)) - log(n)
+
+    return Chain(exp(le), samples)
+end
+
+function _sample_unstable(vi, samples, spl, model, alg::IS)
     n = spl.alg.n_particles
     for i = 1:n
         vi = VarInfo()
@@ -53,16 +77,16 @@ function sample(model::Model, alg::IS)
 
     le = logsumexp(map(x->x[:lp], samples)) - log(n)
 
-    Chain(le, samples)
+    return Chain(le, samples)
 end
 
-function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::AbstractVarInfo)
     r = rand(dist)
     push!(vi, vn, r, dist, 0)
-    r, zero(Real)
+    return r, 0.0
 end
 
-function observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo)
+function observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::AbstractVarInfo)
     # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
+    return logpdf(dist, value)
 end

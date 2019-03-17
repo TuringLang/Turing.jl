@@ -17,7 +17,7 @@ using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
 
 θ_dim = 1
 function lj_func(θ)
-  _lj = zero(Real)
+  _lj = 0.0
 
   s = 1
 

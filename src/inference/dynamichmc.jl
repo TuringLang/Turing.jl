@@ -1,6 +1,5 @@
-struct DynamicNUTS{AD, T} <: Hamiltonian{AD}
+struct DynamicNUTS{AD, space} <: Hamiltonian{AD, space}
     n_iters   ::  Integer   # number of samples
-    space     ::  Set{T}    # sampling space, emtpy means all
     gid       ::  Integer   # group ID
 end
 
@@ -29,30 +28,15 @@ chn = sample(gdemo(1.5, 2.0), DynamicNUTS(2000))
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
 function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    DynamicNUTS{AD, eltype(_space)}(n_iters, _space, 0)
+    DynamicNUTS{AD, space}(n_iters, 0)
 end
 
-function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
-  return Sampler(alg, Dict{Symbol,Any}())
-end
-
-function sample(model::Model,
-                alg::DynamicNUTS{AD},
-                ) where AD
-
-    spl = Sampler(alg)
-
-    n = alg.n_iters
-    samples = Array{Sample}(undef, n)
-    weight = 1 / n
-    for i = 1:n
-        samples[i] = Sample(weight, Dict{Symbol, Any}())
+function _sample(vi, samples, spl, model, alg::DynamicNUTS, chunk_size=CHUNKSIZE[])
+    if ADBACKEND[] == :forward_diff
+        default_chunk_size = CHUNKSIZE[]  # record global chunk size
+        setchunksize(chunk_size)        # set temp chunk size
     end
-
-    vi = VarInfo()
-    model(vi, SampleFromUniform())
-
+    
     if spl.alg.gid == 0
         link!(vi, spl)
         runmodel!(model, vi, spl)

@@ -33,6 +33,10 @@ getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
 getchunksize(::SampleFromPrior) = getchunksize(Nothing)
 getchunksize(::Type{Nothing}) = CHUNKSIZE[]
 
+value(n::ForwardDiff.Dual) = ForwardDiff.value(n)
+value(n::Union{Tracker.TrackedReal, Tracker.TrackedArray}) = n.data
+value(n) = n
+
 struct FluxTrackerAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
@@ -59,7 +63,7 @@ getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
 """
 gradient_logp(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
@@ -70,7 +74,7 @@ tool is currently active.
 """
 function gradient_logp(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::TS,
 ) where {TS <: Sampler}
@@ -86,7 +90,7 @@ end
 """
 gradient_logp_forward(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     spl::AbstractSampler=SampleFromPrior(),
 )
@@ -96,17 +100,21 @@ specified by `(vi, spl, model)` using forwards-mode AD from ForwardDiff.jl.
 """
 function gradient_logp_forward(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
     # Record old parameters.
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Define function to compute log joint.
     function f(θ)
-        vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        new_vi = NewVarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = value.(θ)
+        vi.logp = value(logp)
+        return logp
     end
 
     chunk_size = getchunksize(sampler)
@@ -114,10 +122,10 @@ function gradient_logp_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
+    l = vi.logp
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
-    vi.vals, vi.logp = vals_old, logp_old
+    vi[sampler], vi.logp = vals_old, logp_old
 
     # Strip tracking info from θ to avoid mutating it.
     θ .= ForwardDiff.value.(θ)
@@ -128,7 +136,7 @@ end
 """
 gradient_logp_reverse(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
@@ -138,16 +146,20 @@ specified by `(vi, sampler, model)` using reverse-mode AD from Flux.jl.
 """
 function gradient_logp_reverse(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Specify objective function.
     function f(θ)
-        vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        new_vi = NewVarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = value(θ)
+        vi.logp = value(logp)
+        return logp
     end
 
     # Compute forward and reverse passes.
@@ -155,7 +167,7 @@ function gradient_logp_reverse(
     l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     # Remove tracking info from variables in model (because mutable state).
-    vi.vals, vi.logp = vals_old, logp_old
+    vi[sampler], vi.logp = vals_old, logp_old
 
     # Strip tracking info from θ to avoid mutating it.
     θ .= Tracker.data.(θ)

@@ -17,9 +17,9 @@ end
 
 abstract type CompositeAdapter <: AbstractAdapter end
 
-struct NaiveCompAdapter <: CompositeAdapter
-    pc  :: PreConditioner
-    ssa :: StepSizeAdapter
+struct NaiveCompAdapter{Tpc <: PreConditioner, Tssa <: StepSizeAdapter} <: CompositeAdapter
+    pc  :: Tpc
+    ssa :: Tssa
 end
 
 function getss(tp::CompositeAdapter)
@@ -27,12 +27,12 @@ function getss(tp::CompositeAdapter)
 end
 
 # Acknowledgement: this adaption settings is mimicing Stan's 3-phase adaptation.
-struct ThreePhaseAdapter{T<:Integer} <: CompositeAdapter
+struct ThreePhaseAdapter{T<:Integer, Tpc <: PreConditioner, Tssa <: StepSizeAdapter} <: CompositeAdapter
     n_adapts    :: T
     init_buffer :: T
     term_buffer :: T
-    pc          :: PreConditioner
-    ssa         :: StepSizeAdapter
+    pc          :: Tpc
+    ssa         :: Tssa
     state       :: ThreePhaseState{T}
 end
 
@@ -42,15 +42,15 @@ function get_threephase_params(::Nothing)
     return init_buffer, term_buffer, window_size, next_window
 end
 
-function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer)
+function ThreePhaseAdapter(spl::Sampler{<:AdaptiveHamiltonian}, ϵ::Real, dim::Integer, adapt_conf)
     # Diagonal pre-conditioner
     # pc = UnitPreConditioner()
     pc = DiagPreConditioner(dim)
     # pc = DensePreConditioner(dim)
     # Dual averaging for step size
-    ssa = DualAveraging(spl, spl.info[:adapt_conf], ϵ)
+    ssa = DualAveraging(spl, adapt_conf, ϵ)
     # Window parameters
-    init_buffer, term_buffer, window_size, next_window = get_threephase_params(spl.info[:adapt_conf])
+    init_buffer, term_buffer, window_size, next_window = get_threephase_params(adapt_conf)
     threephasestate = ThreePhaseState(0, window_size, next_window)
     return ThreePhaseAdapter(spl.alg.n_adapts, init_buffer, term_buffer, pc, ssa, threephasestate)
 end

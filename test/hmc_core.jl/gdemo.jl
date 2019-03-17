@@ -19,7 +19,7 @@ using Turing: invlink, logpdf
 
 θ_dim = 2
 function lj_func(θ)
-  _lj = zero(Real)
+  _lj = 0.0
 
   d_s = InverseGamma(2, 3)
   s = invlink(d_s, θ[1])

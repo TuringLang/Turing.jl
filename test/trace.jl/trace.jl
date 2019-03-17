@@ -11,7 +11,7 @@ else
 end
 
 alg = PG(5, 1)
-spl = Turing.Sampler(alg)
+spl = Turing.Sampler(alg, Turing.VarInfo())
 dist = Normal(0, 1)
 
 function f2()
@@ -29,7 +29,7 @@ function f2()
 end
 
 # Test task copy version of trace
-t = Trace(f2)
+t = Trace(f2, Turing.VarInfo())
 
 consume(t); consume(t)
 a = fork(t);

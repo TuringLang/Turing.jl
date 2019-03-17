@@ -1,6 +1,4 @@
-using Turing: VarName
-using Turing.VarReplay: is_inside
-
+using Turing.Core.VarReplay: VarName, is_inside
 using Test
 
 include("../utility.jl")
@@ -46,12 +44,12 @@ end
 genvn(sym::Symbol) = VarName(gensym(), sym, "", 1)
 function genvn(expr::Expr)
     ex, sym = varname(expr)
-    VarName(gensym(), sym, eval(ex), 1)
+    return VarName(gensym(), sym, eval(ex), 1)
 end
 
 
 
-space = Set([:x, :y, :(z[1])])
+space = (:x, :y, :(z[1]))
 vn1 = genvn(:x)
 vn2 = genvn(:y)
 vn3 = genvn(:(x[1]))

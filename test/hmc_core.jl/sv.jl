@@ -35,7 +35,7 @@ println("mean of m: $(mean(chn[1000:end, :μ, :].value))")
 
 # θ_dim = 1
 # function lj_func(θ)
-#   _lj = zero(Real)
+#   _lj = 0.0
 
 #   s = 1
 

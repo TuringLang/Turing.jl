@@ -59,6 +59,11 @@ end
 @generated function in_dvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
     return sym in data.types ? :(true) : :(false)
 end
+function Base.getproperty(m::Model, f::Symbol)
+    f === :pvars && return get_pvars(m)
+    return getfield(m, f)
+end
+
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
 
@@ -68,7 +73,6 @@ abstract type AbstractSampler end
 Robust initialization method for model parameters in Hamiltonian samplers.
 """
 struct SampleFromUniform <: AbstractSampler end
-struct SampleFromPrior <: AbstractSampler end
 
 """
     Sampler{T}
@@ -82,11 +86,14 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T} <: AbstractSampler
+mutable struct Sampler{T, Tinfo} <: AbstractSampler
     alg   ::  T
-    info  ::  Dict{Symbol, Any}         # sampler infomation
+    info  ::  Tinfo         # sampler infomation
 end
-Sampler(alg, model) = Sampler(alg)
+struct SampleFromPrior <: AbstractSampler end
+
+getspace(spl::Sampler) = getspace(typeof(spl))
+getspace(::Type{<:Sampler{A}}) where A = getspace(A)
 
 include("utilities/Utilities.jl")
 using .Utilities
@@ -105,10 +112,7 @@ using .Inference
         DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
         STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
         
-        Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
-        function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
-            _sampler(alg::Hamiltonian, adapt_conf)
-        end
+        Sampler(alg::Hamiltonian, vi::AbstractVarInfo) =  Sampler(alg, vi, CmdStan.Adapt())
         include("inference/adapt/stan.jl")
     end
 end
@@ -121,7 +125,7 @@ end
 
     LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
 
-    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x::AbstractVector{T}) where T = ℓ.f(x)::ValueGradient
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc

@@ -6,7 +6,7 @@ using Flux.Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 
-include("VarReplay.jl")
+include("varreplay/VarReplay.jl")
 @reexport using .VarReplay
 
 include("compiler.jl")

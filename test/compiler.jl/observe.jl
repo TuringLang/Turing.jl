@@ -22,7 +22,7 @@ res = sample(test(), is)
 
 res = sample(test(), smc)
 
-@test all(res[:x].value .== 1)  #c heck that x is always 1
+@test all(res[:x].value .== 1)  #check that x is always 1
 @test res.logevidence ≈ 2 * log(0.5)
 
 

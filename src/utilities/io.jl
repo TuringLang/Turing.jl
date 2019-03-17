@@ -6,10 +6,22 @@
 # Sample #
 ##########
 
-mutable struct Sample
-    weight :: Float64     # particle weight
-    value :: Dict{Symbol,Any}
+mutable struct SampleInfo
+    lf_num::Int
+    elapsed::Float64
+    epsilon::Float64
+    eval_num::Int
+    lf_eps::Float64
+    le::Float64
 end
+SampleInfo() = SampleInfo(0, NaN, NaN, 0, NaN, NaN)
+
+mutable struct Sample{Tvalue}
+    weight :: Float64     # particle weight
+    info   :: SampleInfo
+    value  :: Tvalue
+end
+Sample(weight, value::Union{NamedTuple, Dict}) = Sample(weight, SampleInfo(), value)
 
 Base.getindex(s::Sample, v::Symbol) = getjuliatype(s, v)
 
@@ -79,8 +91,48 @@ const _internal_vars = ["elapsed",
  "lf_num",
  "lp"]
 
+"""
+A wrapper of output trajactory of samplers.
 
-function Chain(w::Real, s::AbstractArray{Sample})
+Example:
+
+```julia
+# Define a model
+@model xxx begin
+  ...
+  return(mu,sigma)
+end
+
+# Run the inference engine
+chain = sample(xxx, SMC(1000))
+
+chain[:logevidence]   # show the log model evidence
+chain[:mu]            # show the weighted trajactory for :mu
+chain[:sigma]         # show the weighted trajactory for :sigma
+mean(chain[:mu])      # find the mean of :mu
+mean(chain[:sigma])   # find the mean of :sigma
+```
+"""
+struct Chain{R<:AbstractRange{Int}} <: AbstractChains
+    weight  ::  Float64                 # log model evidence
+    value   ::  Array{Union{Missing, Float64}, 3}
+    range   ::  R # TODO: Perhaps change to UnitRange?
+    names   ::  Vector{String}
+    chains  ::  Vector{Int}
+    info    ::  Dict{Symbol,Any}
+end
+
+function Chain()
+    return Chain{StepRange{Int, Int}}( 0.0,
+                                      Array{Float64, 3}(undef, 0, 0, 0),
+                                      0:0,
+                                      Vector{String}(),
+                                      Vector{Int}(),
+                                      Dict{Symbol,Any}()
+                                    )
+end
+
+function Chain(w::Real, s::AbstractArray{<:Sample})
     samples = flatten.(s)
     names_ = collect(mapreduce(s -> keys(s), union, samples))
 
@@ -99,11 +151,26 @@ end
 # ind2sub is deprecated in Julia 1.0
 ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
 
-function flatten(s::Sample)
+function flatten(s::Sample{<:Dict})
     vals  = Vector{Float64}()
-    names = Vector{AbstractString}()
+    names = Vector{String}()
     for (k, v) in s.value
         flatten(names, vals, string(k), v)
+    end
+    return Dict(names[i] => vals[i] for i in 1:length(vals))
+end
+function flatten(s::Sample{<:NamedTuple})
+    vals  = Vector{Float64}()
+    names = Vector{String}()
+    for f in fieldnames(typeof(s.value))
+        field = getfield(s.value, f)
+        if field isa Dict
+            for (k, v) in field
+                flatten(names, vals, string(k), v)
+            end
+        else
+            flatten(names, vals, string(f), field)
+        end
     end
     return Dict(names[i] => vals[i] for i in 1:length(vals))
 end

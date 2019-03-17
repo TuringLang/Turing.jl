@@ -67,13 +67,15 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     varname = gensym(:varname)
     sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
     csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
-    
+
+    varname_expr = quote
+        $sym, $idcs, $csym = Turing.@VarName $var
+    end
     if var isa Symbol
         varname_expr = quote
-            $sym, $idcs, $csym = Turing.@VarName $var
+            $varname_expr
             $csym = Symbol($(QuoteNode(model_info[:name])), $csym)
-            $syms = Symbol[$csym, $(QuoteNode(var))]
-            $varname = Turing.VarName($vi, $syms, "")
+            $indexing = ""
         end
     else
         varname_expr = quote
@@ -83,7 +85,11 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
             $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
         end
     end
-    
+    varname_expr = quote
+        $varname_expr
+        $varname = Turing.VarName{$sym}($csym, $indexing, 1)
+    end
+        
     lp = gensym(:lp)
     return quote
         $varname_expr
@@ -202,7 +208,7 @@ function model_generator(x = nothing, y = nothing)
             y = model.defaults.y
         end
 
-        vi.logp = zero(Real)
+        vi.logp = 0.0
         ...
     end
     model = Turing.Model{pvars, dvars}(inner_function, data, defaults)
@@ -372,20 +378,21 @@ function build_output(model_info)
             function $inner_function_name($model_name)
                 return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
             end
-            function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
+            function $inner_function_name($vi_name::Turing.Core.VarReplay.AbstractVarInfo, $model_name)
                 return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
             end
 
             # Define the main inner function
             function $inner_function_name(
-                $vi_name::Turing.VarInfo, 
-                $sampler_name::Turing.AbstractSampler,
+                $vi_name::Turing.Core.VarReplay.AbstractVarInfo, 
+                $sampler_name::Turing.AbstractSampler, 
                 $model_name
                 )
                 
                 $unwrap_data_expr
-                $vi_name.logp = zero(Real)
+                $vi_name.logp = 0.0
                 $main_body
+                $vi_name
             end
             $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name, $defaults_name)
             return $model_name

@@ -4,7 +4,7 @@ using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs
 using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 
-function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool)
+function randr(vi::AbstractVarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool)
     if ~haskey(vi, vn)
         r = rand(dist)
         Turing.push!(vi, vn, r, dist, spl.alg.gid)
@@ -38,7 +38,7 @@ vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
 alg = PG(PG(5,5),2)
-spl2 = Turing.Sampler(alg)
+spl2 = Turing.Sampler(alg, vi)
 vn_w = VarName(gensym(), :w, "", 1)
 randr(vi, vn_w, dists[1], spl2, true)
 
@@ -48,7 +48,7 @@ vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
 alg = PG(PG(5,5),1)
-spl1 = Turing.Sampler(alg)
+spl1 = Turing.Sampler(alg, vi)
 for i = 1:3
   r = randr(vi, vns[i], dists[i], spl1, false)
   val = vi[vns[i]]
@@ -92,12 +92,20 @@ end
 g_demo_f = gdemo()
 g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g_demo_f)
 
-pg, hmc = g.info[:samplers]
+pg, hmc = g.info.samplers
 
-vi = Turing.VarInfo()
+vi = Turing.VarInfo(g_demo_f)
 g_demo_f(vi, SampleFromPrior())
 vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
-@test vi.gids == [1,1,1,0,0]
+@test vi.vis.x.gids == [1]
+@test vi.vis.y.gids == [1]
+@test vi.vis.z.gids == [1]
+@test vi.vis.w.gids == [0]
+@test vi.vis.u.gids == [0]
 
 g_demo_f(vi, hmc)
-@test vi.gids == [1,1,1,2,2]
+@test vi.vis.x.gids == [1]
+@test vi.vis.y.gids == [1]
+@test vi.vis.z.gids == [1]
+@test vi.vis.w.gids == [2]
+@test vi.vis.u.gids == [2]

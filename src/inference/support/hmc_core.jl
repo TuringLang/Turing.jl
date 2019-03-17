@@ -8,7 +8,7 @@ using Statistics: middle
 Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, sampler, model)`.
 """
-function gen_grad_func(vi::VarInfo, sampler::Sampler, model)
+function gen_grad_func(vi::AbstractVarInfo, sampler::Sampler, model)
     return θ::AbstractVector{<:Real}->gradient_logp(θ, vi, model, sampler)
 end
 
@@ -18,7 +18,7 @@ end
 Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
 `(vi, sampler, model)`.
 """
-function gen_lj_func(vi::VarInfo, sampler::Sampler, model)
+function gen_lj_func(vi::AbstractVarInfo, sampler::Sampler, model)
     return function(θ::AbstractVector{<:Real})
         vi[sampler] = θ
         return runmodel!(model, vi, sampler).logp
@@ -31,7 +31,7 @@ end
 Generate a function on `(θ, logp)` that sets the variables referenced by `sampler` to `θ`
 and the current `vi.logp` to `logp`.
 """
-function gen_rev_func(vi::VarInfo, sampler::Sampler)
+function gen_rev_func(vi::AbstractVarInfo, sampler::Sampler)
     return function(θ::AbstractVector{<:Real}, logp::Real)
         vi[sampler] = θ
         setlogp!(vi, logp)
@@ -46,13 +46,13 @@ steps used in `sampler`.
 """
 function gen_log_func(sampler::Sampler)
     return function()
-        sampler.info[:lf_num] += 1
+        sampler.info.lf_num += 1
     end
 end
 
 # TODO: improve typing for all generator functions
 
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler)
+function gen_momentum_sampler(vi::AbstractVarInfo, spl::Sampler)
     d = length(vi[spl])
     return function()
         return randn(d)
@@ -68,7 +68,7 @@ function gen_H_func()
     end
 end
 
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
+function gen_momentum_sampler(vi::AbstractVarInfo, spl::Sampler, ::UnitPreConditioner)
     d = length(vi[spl])
     return function()
         return randn(d)
@@ -84,7 +84,7 @@ function gen_H_func(::UnitPreConditioner)
     end
 end
 
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
+function gen_momentum_sampler(vi::AbstractVarInfo, spl::Sampler, pc::DiagPreConditioner)
     d = length(vi[spl])
     std = pc.std
     return function()
@@ -103,7 +103,7 @@ function gen_H_func(pc::DiagPreConditioner)
 end
 
 # NOTE: related Hamiltonian change: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/dense_e_metric.hpp
-function gen_momentum_sampler(vi::VarInfo, spl::Sampler, pc::DensePreConditioner)
+function gen_momentum_sampler(vi::AbstractVarInfo, spl::Sampler, pc::DensePreConditioner)
     d = length(vi[spl])
     A = Symmetric(pc.covar)
     C = LinearAlgebra.cholesky(A)
@@ -127,7 +127,7 @@ function leapfrog(θ::AbstractVector{<:Real},
                   τ::Int,
                   ϵ::Real,
                   model,
-                  vi::VarInfo,
+                  vi::AbstractVarInfo,
                   sampler::Sampler,
                   )
     lp_grad = gen_grad_func(vi, sampler, model)
@@ -206,7 +206,7 @@ function _hmc_step(θ::AbstractVector{<:Real},
         lj = lj_new
     end
 
-    return θ, lj, is_accept, τ_valid, exp(logα)
+    return θ, lj, is_accept::Bool, τ_valid, exp(logα)
 end
 
 function _hmc_step(θ::AbstractVector{<:Real},

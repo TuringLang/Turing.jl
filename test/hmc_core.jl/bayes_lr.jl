@@ -42,7 +42,7 @@ println("mean of β: $(mean(chn[1000:end, :β, :].value))")
 θ_dim = 1
 function lj_func(θ)
   N = length(xs)
-  _lj = zero(Real)
+  _lj = 0.0
 
   s = 1
 
