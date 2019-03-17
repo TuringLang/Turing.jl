@@ -82,5 +82,5 @@ end
 
 l2, discr = correct_posterior(empirical_probs, data, partitions, tau0, tau1, alpha, 1e-7)
 
-@test l2 < 0.1 # FIXME: Should be lower, i.e. < 0.05
-@test discr < 0.3 # FIXME: Should be lower, i.e. < 0.2
+@test l2 < 0.05
+@test discr < 0.2
