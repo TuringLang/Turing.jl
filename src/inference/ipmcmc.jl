@@ -52,7 +52,7 @@ function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
   IPMCMC(n1, n2, n3, n4, resample_systematic, _space)
 end
 
-function Sampler(alg::IPMCMC)
+function Sampler(alg::IPMCMC, new_selector=false)
   # Create SMC and CSMC nodes
   samplers = Array{Sampler}(undef, alg.n_nodes)
   # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
@@ -69,7 +69,7 @@ function Sampler(alg::IPMCMC)
   info = Dict{Symbol, Any}()
   info[:samplers] = samplers
 
-  Sampler(alg, info)
+  Sampler(alg, info, new_selector)
 end
 
 function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool)

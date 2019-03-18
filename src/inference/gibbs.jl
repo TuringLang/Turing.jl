@@ -71,8 +71,17 @@ function sample(
                 )
 
     # Init the (master) Gibbs sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
-    if reuse_spl_n > 0 spl.selector = resume_from.info[:spl].selector end
+    if reuse_spl_n > 0
+        spl = resume_from.info[:spl]
+    else
+        spl = Sampler(alg, model)
+        if resume_from != nothing
+            spl.selector = resume_from.info[:spl].selector
+            for i in 1:length(spl.info[:samplers])
+                spl.info[:samplers][i].selector = resume_from.info[:spl].info[:samplers][i].selector
+            end
+        end
+    end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     # Initialize samples

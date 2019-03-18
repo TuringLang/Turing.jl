@@ -32,7 +32,7 @@ end
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
 
-function Sampler(alg::PMMH, model::Model)
+function Sampler(alg::PMMH, model::Model, new_selector=false)
     alg_str = "PMMH"
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -66,7 +66,7 @@ function Sampler(alg::PMMH, model::Model)
     info[:old_prior_prob] = 0.0
     info[:samplers] = samplers
 
-    return Sampler(alg, info)
+    return Sampler(alg, info, new_selector)
 end
 
 function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)

@@ -63,14 +63,14 @@ end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
 
-mutable struct Selector
-    uuid :: UUID
+struct Selector
+    gid :: UUID
 end
 Selector() = Selector(uuid1())
-const DEFAULT_SELECTOR = Selector()
+const DEFAULT_SELECTOR = Selector(UUID("00000000-0000-0000-0000-000000000000"))
+const INVALID_SELECTOR = Selector(UUID("00000000-0000-0000-0000-000000000001"))
 const DEFAULT_GID = DEFAULT_SELECTOR
-const INVALID_SELECTOR = Selector()
-==(s1::Selector, s2::Selector) = s1.uuid == s2.uuid
+==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
 
 abstract type AbstractSampler end
