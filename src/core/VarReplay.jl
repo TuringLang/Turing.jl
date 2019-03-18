@@ -300,7 +300,7 @@ end
 #   vi.logp = vi.logp[end:end]
 # end
 
-# Get all indices of variables belonging to gid or 0
+# Get all indices of variables belonging to spl.selector or DEFAULT_SELECTOR
 getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == DEFAULT_GID, 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
@@ -318,8 +318,9 @@ function getidcs(vi::VarInfo, spl::Sampler)
     end
 end
 
-function getidcs(vi::VarInfo, s::Selector)
-    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_GID),
+# Get all indices of variables belonging to a given selector or DEFAULT_SELECTOR
+function getidcs(vi::VarInfo, s::Selector, space::Set=Set())
+    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_GID) && (isempty(space) || is_inside(vi.vns[i], space)),
            1:length(vi.gids))
 end
 
@@ -335,13 +336,13 @@ function is_inside(vn::VarName, space::Set)::Bool
     end
 end
 
-# Get all values of variables belonging to gid or 0
+# Get all values of variables belonging to spl.selector or DEFAULT_SELECTOR
 getvals(vi::VarInfo, spl::AbstractSampler) = view(vi.vals, getidcs(vi, spl))
 
-# Get all vns of variables belonging to gid or 0
+# Get all vns of variables belonging to spl.selector or DEFAULT_SELECTOR
 getvns(vi::VarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
 
-# Get all vns of variables belonging to gid or 0
+# Get all vns of variables belonging to spl.selector or DEFAULT_SELECTOR
 function getranges(vi::VarInfo, spl::Sampler)
     if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
     if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0

@@ -95,7 +95,7 @@ pg, hmc = g.info[:samplers]
 vi = Turing.VarInfo()
 g_demo_f(vi, SampleFromPrior())
 vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
-@test all(i -> vi.gids[i] == [pg.selector, pg.selector, pg.selector, DEFAULT_GID, DEFAULT_GID][i], 1:length(vi.gids))
+@test vi.gids == [pg.selector, pg.selector, pg.selector, DEFAULT_GID, DEFAULT_GID]
 
 g_demo_f(vi, hmc)
-@test all(i -> vi.gids[i] == [pg.selector, pg.selector, pg.selector, hmc.selector, hmc.selector][i], 1:length(vi.gids))
+@test vi.gids == [pg.selector, pg.selector, pg.selector, hmc.selector, hmc.selector]
