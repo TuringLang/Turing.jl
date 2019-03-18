@@ -28,8 +28,8 @@ mutable struct MH{T} <: InferenceAlgorithm
   n_iters   ::  Int       # number of iterations
   proposals ::  Dict{Symbol,Any}  # Proposals for paramters
   space     ::  Set{T}    # sampling space, emtpy means all
-  gid       ::  Int       # group ID
 end
+
 function MH(n_iters::Int, space...)
   new_space = Set()
   proposals = Dict{Symbol,Any}()
@@ -45,15 +45,14 @@ function MH(n_iters::Int, space...)
       end
   end
   set = Set(new_space)
-  MH{eltype(set)}(n_iters, proposals, set, 0)
+  MH{eltype(set)}(n_iters, proposals, set)
 end
-MH{T}(alg::MH, new_gid::Int) where T = MH{T}(alg.n_iters, alg.proposals, alg.space, new_gid)
 
-function Sampler(alg::MH, model::Model)
+function Sampler(alg::MH, model::Model, new_selector=false)
     alg_str = "MH"
 
     # Sanity check for space
-    if alg.gid == 0 && !isempty(alg.space)
+    if !new_selector && !isempty(alg.space)
         @assert issubset(Set(get_pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
         if Set(get_pvars(model)) != alg.space
             warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(get_pvars(model))))")
@@ -65,7 +64,7 @@ function Sampler(alg::MH, model::Model)
     info[:prior_prob] = 0.0
     info[:violating_support] = false
 
-    return Sampler(alg, info)
+    return Sampler(alg, info, new_selector)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
@@ -80,7 +79,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.alg.gid != 0 # Recompute joint in logp
+  if spl.selector != DEFAULT_SELECTOR # Recompute joint in logp
     runmodel!(model, vi)
   end
   old_θ = copy(vi[spl])
@@ -113,6 +112,7 @@ function sample(model::Model, alg::MH;
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg, model)
+  if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
   alg_str = "MH"
 
   # Initialization
@@ -134,7 +134,7 @@ function sample(model::Model, alg::MH;
         resume_from.info[:vi]
     end
 
-  if spl.alg.gid == 0
+  if spl.selector == DEFAULT_SELECTOR
     runmodel!(model, vi, spl)
   end
 
@@ -209,7 +209,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
 
         spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
         vi[vn] = vectorize(dist, r)
-        setgid!(vi, spl.alg.gid, vn)
+        setgid!(vi, spl.selector, vn)
     else
         r = vi[vn]
     end

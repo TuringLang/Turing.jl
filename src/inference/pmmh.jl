@@ -25,14 +25,12 @@ mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
     n_iters               ::    Int               # number of iterations
     algs                  ::    A                 # Proposals for state & parameters
     space                 ::    Set{T}            # sampling space, emtpy means all
-    gid                   ::    Int               # group ID
 end
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
-    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set(), 0)
+    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set())
 end
-PMMH(alg::PMMH, new_gid) = PMMH(alg.n_iters, alg.algs, alg.space, new_gid)
 
-PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set(), 0)
+PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
 
 function Sampler(alg::PMMH, model::Model)
     alg_str = "PMMH"
@@ -44,7 +42,7 @@ function Sampler(alg::PMMH, model::Model)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, Union{SMC, MH})
-            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i), model)
+            samplers[i] = Sampler(sub_alg, model, true)
         else
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end
@@ -121,6 +119,7 @@ function sample(  model::Model,
                 )
 
     spl = Sampler(alg, model)
+    if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
     alg_str = "PMMH"
 
     # Number of samples to store

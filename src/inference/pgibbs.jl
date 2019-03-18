@@ -32,22 +32,19 @@ mutable struct PG{T, F} <: InferenceAlgorithm
   n_iters               ::    Int         # number of iterations
   resampler             ::    F           # function to resample
   space                 ::    Set{T}      # sampling space, emtpy means all
-  gid                   ::    Int         # group ID
 end
-PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, Set(), 0)
+PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, Set())
 function PG(n1::Int, n2::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  PG(n1, n2, resample_systematic, _space, 0)
+  PG(n1, n2, resample_systematic, _space)
 end
-PG(alg::PG, new_gid::Int) = PG(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
-PG{T, F}(alg::PG, new_gid::Int) where {T, F} = PG{T, F}(alg.n_particles, alg.n_iters, alg.resampler, alg.space, new_gid)
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG)
+function Sampler(alg::PG, new_selector=false)
     info = Dict{Symbol, Any}()
     info[:logevidence] = []
-    Sampler(alg, info)
+    Sampler(alg, info, new_selector)
 end
 
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
@@ -92,7 +89,7 @@ function sample(  model::Model,
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg)
-
+    if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     n = reuse_spl_n > 0 ?
@@ -118,7 +115,7 @@ function sample(  model::Model,
 
         time_total += time_elapsed
 
-        if PROGRESS[]  && spl.alg.gid == 0
+        if PROGRESS[]  && spl.selector == DEFAULT_SELECTOR
             ProgressMeter.next!(spl.info[:progress])
         end
     end
@@ -153,13 +150,13 @@ function assume(  spl::Sampler{T},
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
         if ~haskey(vi, vn)
             r = rand(dist)
-            push!(vi, vn, r, dist, spl.alg.gid)
+            push!(vi, vn, r, dist, spl.selector)
             spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(dist)
             vi[vn] = vectorize(dist, r)
-            setgid!(vi, spl.alg.gid, vn)
+            setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, vi.num_produce)
         else
             updategid!(vi, vn, spl)
@@ -170,7 +167,7 @@ function assume(  spl::Sampler{T},
             r = vi[vn]
         else
             r = rand(dist)
-            push!(vi, vn, r, dist, -1)
+            push!(vi, vn, r, dist, INVALID_SELECTOR)
         end
         acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     end

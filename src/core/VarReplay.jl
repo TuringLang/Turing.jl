@@ -1,7 +1,8 @@
 module VarReplay
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
-    AbstractSampler, Sampler, SampleFromPrior
+    AbstractSampler, Sampler, SampleFromPrior,
+    Selector, DEFAULT_GID
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
 using Distributions
@@ -70,7 +71,7 @@ mutable struct VarInfo
     vals        ::    Vector{Real}
     rvs         ::    Dict{Union{VarName,Vector{VarName}},Any}
     dists       ::    Vector{Distributions.Distribution}
-    gids        ::    Vector{Int}
+    gids        ::    Vector{Selector}
     logp        ::    Real
     pred        ::    Dict{Symbol,Any}
     num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -140,7 +141,7 @@ getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 
-setgid!(vi::VarInfo, gid::Int, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
+setgid!(vi::VarInfo, gid::Selector, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
 
 istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
 settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
@@ -207,6 +208,9 @@ end
 Base.getindex(vi::VarInfo, vview::VarView) = copy(getval(vi, vview))
 Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 
+Base.getindex(vi::VarInfo, s::Selector) = copy(getval(vi, getranges(vi, s)))
+Base.setindex!(vi::VarInfo, val::Any, s::Selector) = setval!(vi, val, getranges(vi, s))
+
 Base.getindex(vi::VarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
 Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
@@ -237,7 +241,7 @@ function Base.show(io::IO, vi::VarInfo)
 end
 
 # Add a new entry to VarInfo
-function push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Int)
+function push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Selector)
 
     @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
@@ -297,8 +301,7 @@ end
 # end
 
 # Get all indices of variables belonging to gid or 0
-getidcs(vi::VarInfo) = getidcs(vi, nothing)
-getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == 0, 1:length(vi.gids))
+getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == DEFAULT_GID, 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
@@ -309,10 +312,15 @@ function getidcs(vi::VarInfo, spl::Sampler)
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
         spl.info[:idcs] = filter(i ->
-          (vi.gids[i] == spl.alg.gid || vi.gids[i] == 0) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
+          (vi.gids[i] == spl.selector || vi.gids[i] == DEFAULT_GID) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
           1:length(vi.gids)
         )
     end
+end
+
+function getidcs(vi::VarInfo, s::Selector)
+    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_GID),
+           1:length(vi.gids))
 end
 
 function is_inside(vn::VarName, space::Set)::Bool
@@ -328,11 +336,9 @@ function is_inside(vn::VarName, space::Set)::Bool
 end
 
 # Get all values of variables belonging to gid or 0
-getvals(vi::VarInfo) = getvals(vi, nothing)
 getvals(vi::VarInfo, spl::AbstractSampler) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
-getvns(vi::VarInfo) = getvns(vi, nothing)
 getvns(vi::VarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
@@ -344,6 +350,10 @@ function getranges(vi::VarInfo, spl::Sampler)
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
         spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
     end
+end
+
+function getranges(vi::VarInfo, s::Selector)
+    union(map(i -> vi.ranges[i], getidcs(vi, s))...)
 end
 
 # NOTE: this function below is not used anywhere but test files.
@@ -381,8 +391,8 @@ function set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler)
 end
 
 function updategid!(vi::VarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && getgid(vi, vn) == 0 && getsym(vi, vn) in spl.alg.space
-        setgid!(vi, spl.alg.gid, vn)
+    if ~isempty(spl.alg.space) && getgid(vi, vn) == DEFAULT_GID && getsym(vi, vn) in spl.alg.space
+        setgid!(vi, spl.selector, vn)
     end
 end
 

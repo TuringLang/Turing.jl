@@ -8,6 +8,7 @@ module Turing
 #       to indicate that's not implemented inside Turing.jl            #
 ########################################################################
 
+using UUIDs
 using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
@@ -15,7 +16,7 @@ using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
 using Flux.Tracker: Tracker
 
-import Base: ~, convert, promote_rule, rand, getindex, setindex!
+import Base: ~, ==, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import MCMCChains: AbstractChains, Chains
 
@@ -62,6 +63,16 @@ end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
 
+mutable struct Selector
+    uuid :: UUID
+end
+Selector() = Selector(uuid1())
+const DEFAULT_SELECTOR = Selector()
+const DEFAULT_GID = DEFAULT_SELECTOR
+const INVALID_SELECTOR = Selector()
+==(s1::Selector, s2::Selector) = s1.uuid == s2.uuid
+
+
 abstract type AbstractSampler end
 
 """
@@ -83,10 +94,13 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
-    alg   ::  T
-    info  ::  Dict{Symbol, Any}         # sampler infomation
+    alg      ::  T
+    info     ::  Dict{Symbol, Any} # sampler infomation
+    selector ::  Selector
 end
-Sampler(alg, model) = Sampler(alg)
+Sampler(alg, model::Model, new_selector=false) = Sampler(alg, new_selector)
+Sampler(alg, info::Dict{Symbol, Any}, new_selector=false) =
+    Sampler(alg, info, new_selector ? Selector() : DEFAULT_SELECTOR)
 
 include("utilities/Utilities.jl")
 using .Utilities

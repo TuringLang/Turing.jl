@@ -1,3 +1,4 @@
+using Turing: DEFAULT_SELECTOR
 using Turing.VarReplay
 using Turing.VarReplay: set_flag!, unset_flag!
 using Distributions
@@ -8,7 +9,7 @@ vi = VarInfo()
 vn_x = VarName(gensym(), :x, "", 1)
 dist = Normal(0, 1)
 r = rand(dist)
-gid = 0
+gid = DEFAULT_SELECTOR
 
 push!(vi, vn_x, r, dist, gid)
 

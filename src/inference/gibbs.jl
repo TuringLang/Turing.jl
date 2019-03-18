@@ -28,14 +28,12 @@ mutable struct Gibbs{A} <: InferenceAlgorithm
     n_iters   ::  Int     # number of Gibbs iterations
     algs      ::  A   # component sampling algorithms
     thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
-    gid       ::  Int
 end
-Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin, 0)
-Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
+Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs, model::Model)
+function Sampler(alg::Gibbs, model::Model, new_selector=false)
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
 
@@ -44,7 +42,7 @@ function Sampler(alg::Gibbs, model::Model)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i), model)
+            samplers[i] = Sampler(sub_alg, model, true)
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
@@ -61,7 +59,7 @@ function Sampler(alg::Gibbs, model::Model)
     info = Dict{Symbol, Any}()
     info[:samplers] = samplers
 
-    Sampler(alg, info)
+    Sampler(alg, info, new_selector)
 end
 
 function sample(
@@ -74,7 +72,7 @@ function sample(
 
     # Init the (master) Gibbs sampler
     spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
-
+    if reuse_spl_n > 0 spl.selector = resume_from.info[:spl].selector end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     # Initialize samples

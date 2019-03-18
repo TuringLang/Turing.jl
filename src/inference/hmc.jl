@@ -48,25 +48,18 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     epsilon   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
     space     ::  Set{T}    # sampling space, emtpy means all
-    gid       ::  Int       # group ID
 end
 HMC(args...) = HMC{ADBackend()}(args...)
 function HMC{AD}(epsilon::Float64, tau::Int, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(1, epsilon, tau, _space, 0)
+    return HMC{AD, eltype(_space)}(1, epsilon, tau, _space)
 end
 function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int) where AD
-    return HMC{AD, Any}(n_iters, epsilon, tau, Set(), 0)
+    return HMC{AD, Any}(n_iters, epsilon, tau, Set())
 end
 function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, 0)
-end
-function HMC{AD1}(alg::HMC{AD2, T}, new_gid::Int) where {AD1, AD2, T}
-    return HMC{AD1, T}(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
-end
-function HMC{AD, T}(alg::HMC, new_gid::Int) where {AD, T}
-    return HMC{AD, T}(alg.n_iters, alg.epsilon, alg.tau, alg.space, new_gid)
+    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space)
 end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
@@ -81,11 +74,11 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
-    return _sampler(alg::Hamiltonian, adapt_conf)
+Sampler(alg::Hamiltonian, new_selector=false) =  Sampler(alg, nothing, new_selector)
+function Sampler(alg::Hamiltonian, adapt_conf::Nothing, new_selector=false)
+    return _sampler(alg::Hamiltonian, adapt_conf, new_selector)
 end
-function _sampler(alg::Hamiltonian, adapt_conf)
+function _sampler(alg::Hamiltonian, adapt_conf, new_selector=false)
     info=Dict{Symbol, Any}()
 
     # For state infomation
@@ -95,7 +88,7 @@ function _sampler(alg::Hamiltonian, adapt_conf)
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
 
-    Sampler(alg, info)
+    Sampler(alg, info, new_selector)
 end
 
 function sample(model::Model, alg::Hamiltonian;
@@ -108,6 +101,7 @@ function sample(model::Model, alg::Hamiltonian;
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg, adapt_conf)
+    if resume_from != nothing  spl.selector = resume_from.info[:spl].selector end
 
     @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
@@ -137,7 +131,7 @@ function sample(model::Model, alg::Hamiltonian;
         deepcopy(resume_from.info[:vi])
     end
 
-    if spl.alg.gid == 0
+    if spl.selector == DEFAULT_SELECTOR
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -189,7 +183,7 @@ function sample(model::Model, alg::Hamiltonian;
     c = Chain(0.0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
-        if spl.alg.gid == 0 invlink!(vi, spl) end
+        if spl.selector == DEFAULT_SELECTOR invlink!(vi, spl) end
         c = save(c, spl, model, vi, samples)
     end
     return c
@@ -201,11 +195,11 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
 end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
-    spl.alg.gid != 0 && link!(vi, spl)
+    spl.selector != DEFAULT_SELECTOR && link!(vi, spl)
     epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
     dim = length(vi[spl])
     spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector != DEFAULT_SELECTOR && invlink!(vi, spl)
     return vi, true
 end
 
@@ -219,7 +213,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     spl.info[:eval_num] = 0
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.alg.gid != 0
+    if spl.selector != DEFAULT_SELECTOR
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -245,7 +239,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         setlogp!(vi, lj)
     end
 
-    if PROGRESS[] && spl.alg.gid == 0
+    if PROGRESS[] && spl.selector == DEFAULT_SELECTOR
         std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
@@ -260,7 +254,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector != DEFAULT_SELECTOR && invlink!(vi, spl)
 
     return vi, is_accept
 end
