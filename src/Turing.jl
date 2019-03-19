@@ -63,11 +63,11 @@ end
 function runmodel! end
 
 struct Selector
-    gid :: Float64
+    gid :: Tuple{Float64, Int32}
 end
-Selector() = Selector(time())
-const DEFAULT_SELECTOR = Selector(0.0)
-const INVALID_SELECTOR = Selector(-1.0)
+Selector() = Selector((time(), rand(Int32)))
+const DEFAULT_SELECTOR = Selector((0.0, 0))
+const INVALID_SELECTOR = Selector((0.0, 1))
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
 
