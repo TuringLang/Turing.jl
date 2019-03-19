@@ -71,7 +71,7 @@ mutable struct VarInfo
     vals        ::    Vector{Real}
     rvs         ::    Dict{Union{VarName,Vector{VarName}},Any}
     dists       ::    Vector{Distributions.Distribution}
-    gids        ::    Vector{Selector}
+    gids        ::    Vector{Set{Selector}}
     logp        ::    Real
     pred        ::    Dict{Symbol,Any}
     num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
@@ -140,8 +140,13 @@ getsym(vi::VarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
 getdist(vi::VarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
 
 getgid(vi::VarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
-
-setgid!(vi::VarInfo, gid::Selector, vn::VarName) = vi.gids[getidx(vi, vn)] = gid
+function setgid!(vi::VarInfo, gid::Selector, vn::VarName, shared=false)
+    if shared
+        push!(vi.gids[getidx(vi, vn)], gid)
+    else
+        vi.gids[getidx(vi, vn)] = Set([gid])
+    end
+end
 
 istrans(vi::VarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
 settrans!(vi::VarInfo, trans::Bool, vn::VarName) = trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
@@ -253,7 +258,7 @@ function push!(vi::VarInfo, vn::VarName, r::Any, dist::Distributions.Distributio
     push!(vi.ranges, l+1:l+n)
     append!(vi.vals, val)
     push!(vi.dists, dist)
-    push!(vi.gids, gid)
+    push!(vi.gids, Set([gid]))
     push!(vi.orders, vi.num_produce)
     push!(vi.flags["del"], false)
     push!(vi.flags["trans"], false)
@@ -301,7 +306,7 @@ end
 # end
 
 # Get all indices of variables belonging to spl.selector or DEFAULT_SELECTOR
-getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == DEFAULT_SELECTOR, 1:length(vi.gids))
+getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> DEFAULT_SELECTOR in vi.gids[i] , 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
@@ -312,7 +317,7 @@ function getidcs(vi::VarInfo, spl::Sampler)
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
         spl.info[:idcs] = filter(i ->
-          (vi.gids[i] == spl.selector || vi.gids[i] == DEFAULT_SELECTOR) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
+          (spl.selector in vi.gids[i] || DEFAULT_SELECTOR in vi.gids[i]) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
           1:length(vi.gids)
         )
     end
@@ -320,7 +325,7 @@ end
 
 # Get all indices of variables belonging to a given selector or DEFAULT_SELECTOR
 function getidcs(vi::VarInfo, s::Selector, space::Set=Set())
-    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_SELECTOR) && (isempty(space) || is_inside(vi.vns[i], space)),
+    filter(i -> (s in vi.gids[i] || DEFAULT_SELECTOR in vi.gids[i]) && (isempty(space) || is_inside(vi.vns[i], space)),
            1:length(vi.gids))
 end
 
@@ -391,9 +396,9 @@ function set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler)
     end
 end
 
-function updategid!(vi::VarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && getgid(vi, vn) == DEFAULT_SELECTOR && getsym(vi, vn) in spl.alg.space
-        setgid!(vi, spl.selector, vn)
+function updategid!(vi::VarInfo, vn::VarName, spl::Sampler, shared=false)
+    if ~isempty(spl.alg.space) && DEFAULT_SELECTOR in getgid(vi, vn) && getsym(vi, vn) in spl.alg.space
+        setgid!(vi, spl.selector, vn, shared)
     end
 end
 
