@@ -2,7 +2,7 @@ module VarReplay
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
     AbstractSampler, Sampler, SampleFromPrior,
-    Selector, DEFAULT_GID
+    Selector, DEFAULT_SELECTOR
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
 using Distributions
@@ -301,7 +301,7 @@ end
 # end
 
 # Get all indices of variables belonging to spl.selector or DEFAULT_SELECTOR
-getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == DEFAULT_GID, 1:length(vi.gids))
+getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> vi.gids[i] == DEFAULT_SELECTOR, 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
@@ -312,7 +312,7 @@ function getidcs(vi::VarInfo, spl::Sampler)
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
         spl.info[:idcs] = filter(i ->
-          (vi.gids[i] == spl.selector || vi.gids[i] == DEFAULT_GID) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
+          (vi.gids[i] == spl.selector || vi.gids[i] == DEFAULT_SELECTOR) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
           1:length(vi.gids)
         )
     end
@@ -320,7 +320,7 @@ end
 
 # Get all indices of variables belonging to a given selector or DEFAULT_SELECTOR
 function getidcs(vi::VarInfo, s::Selector, space::Set=Set())
-    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_GID) && (isempty(space) || is_inside(vi.vns[i], space)),
+    filter(i -> (vi.gids[i] == s || vi.gids[i] == DEFAULT_SELECTOR) && (isempty(space) || is_inside(vi.vns[i], space)),
            1:length(vi.gids))
 end
 
@@ -392,7 +392,7 @@ function set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler)
 end
 
 function updategid!(vi::VarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && getgid(vi, vn) == DEFAULT_GID && getsym(vi, vn) in spl.alg.space
+    if ~isempty(spl.alg.space) && getgid(vi, vn) == DEFAULT_SELECTOR && getsym(vi, vn) in spl.alg.space
         setgid!(vi, spl.selector, vn)
     end
 end

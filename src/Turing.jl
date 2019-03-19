@@ -8,7 +8,6 @@ module Turing
 #       to indicate that's not implemented inside Turing.jl            #
 ########################################################################
 
-using UUIDs
 using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
@@ -64,12 +63,11 @@ end
 function runmodel! end
 
 struct Selector
-    gid :: UUID
+    gid :: Float64
 end
-Selector() = Selector(uuid1())
-const DEFAULT_SELECTOR = Selector(UUID("00000000-0000-0000-0000-000000000000"))
-const INVALID_SELECTOR = Selector(UUID("00000000-0000-0000-0000-000000000001"))
-const DEFAULT_GID = DEFAULT_SELECTOR
+Selector() = Selector(time())
+const DEFAULT_SELECTOR = Selector(0.0)
+const INVALID_SELECTOR = Selector(-1.0)
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
 

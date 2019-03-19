@@ -1,5 +1,5 @@
 using Turing, Test
-using Turing: reconstruct, invlink, SampleFromPrior, DEFAULT_GID, DEFAULT_SELECTOR, INVALID_SELECTOR
+using Turing: reconstruct, invlink, SampleFromPrior, DEFAULT_SELECTOR, INVALID_SELECTOR
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs
 using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
@@ -95,7 +95,7 @@ pg, hmc = g.info[:samplers]
 vi = Turing.VarInfo()
 g_demo_f(vi, SampleFromPrior())
 vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
-@test vi.gids == [pg.selector, pg.selector, pg.selector, DEFAULT_GID, DEFAULT_GID]
+@test vi.gids == [pg.selector, pg.selector, pg.selector, DEFAULT_SELECTOR, DEFAULT_SELECTOR]
 
 g_demo_f(vi, hmc)
 @test vi.gids == [pg.selector, pg.selector, pg.selector, hmc.selector, hmc.selector]
