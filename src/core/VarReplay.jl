@@ -301,7 +301,9 @@ end
 #   vi.logp = vi.logp[end:end]
 # end
 
-# Get all indices of variables belonging to SampleFromPrior
+# Get all indices of variables belonging to SampleFromPrior:
+#   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
+#   the SampleFromPrior sampler
 getidcs(vi::VarInfo, ::SampleFromPrior) = filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 function getidcs(vi::VarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
