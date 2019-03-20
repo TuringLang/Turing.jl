@@ -22,7 +22,7 @@ partitions = [[[1, 2, 3, 4]], [[1, 2, 3], [4]], [[1, 2, 4], [3]], [[1, 2], [3, 4
 [[1, 3, 4], [2]], [[1, 3], [2, 4]], [[1, 3], [2], [4]], [[1, 4], [2, 3]], [[1], [2, 3, 4]],
 [[1], [2, 3], [4]], [[1, 4], [2], [3]], [[1], [2, 4], [3]], [[1], [2], [3, 4]], [[1], [2], [3], [4]]]
 
-# truncated stick-breaking
+# stick-breaking process based on Papaspiliopoulos and Roberts (2008).
 @model sbimm(y, rpm, trunc) = begin
     # Base distribution.
     H = Normal(mu_0, sigma_0)
@@ -30,35 +30,29 @@ partitions = [[[1, 2, 3, 4]], [[1, 2, 3], [4]], [[1, 2, 4], [3]], [[1, 2], [3, 4
     # Latent assignments.
     N = length(y)
     z = tzeros(Int, N)
-    u = tzeros(Float64, N)
 
-    # Infinite collection of stick pieces and weights.
+    # Infinite (truncated) collection of breaking points on unit stick.
     v = tzeros(Float64, trunc)
-    w = tzeros(Float64, trunc)
-    K = 0
 
     # Cluster locations.
     x = tzeros(Float64, trunc)
 
+    # Draw weights and locations.
+    for k in 1:trunc
+        v[k] ~ StickBreakingProcess(rpm)
+        x[k] ~ H
+    end
+
+    # Weights.
+    w = vcat(v[1], v[2:end] .* cumprod(1 .- v[1:end-1]))
+
+    # Normalize weights to ensure they sum exactly to one.
+    # This is required by the Categorical distribution in Distributions.
+    w ./= sum(w)
+
     for i in 1:N
-
-        # Draw a slice ∈ [0,1].
-        u[i] ~ Beta(1, 1)
-
-        # Instantiate new cluster.
-        while (sum(w) < u[i]) && (K < trunc)
-            K += 1
-            v[K] ~ StickBreakingProcess(rpm)
-            x[K] ~ H
-            w[K] = v[K] * prod(1 .- v[1:(K-1)])
-        end
-
-        # Find truncation point
-        K_ = findfirst(u[i] .< cumsum(w))
-
-        # Sample assignments.
-        w_ = w[1:K_] / sum(w[1:K_])
-        z[i] ~ Categorical(w_)
+        # Draw location
+        z[i] ~ Categorical(w)
 
         # Draw observation.
         y[i] ~ Normal(x[z[i]], sigma_1)
@@ -68,7 +62,7 @@ end
 rpm = DirichletProcess(alpha)
 
 sampler = SMC(1000)
-mf = sbimm(data, rpm, 100)
+mf = sbimm(data, rpm, 10)
 
 # Compute empirical posterior distribution over partitions
 samples = sample(mf, sampler)
@@ -96,5 +90,5 @@ end
 
 l2, discr = correct_posterior(empirical_probs, data, partitions, tau0, tau1, alpha, 1e-7)
 
-@test l2 < 0.1 # FIXME: Should be lower, i.e. < 0.05
-@test discr < 0.3 # FIXME: Should be lower, i.e. < 0.2
+@test l2 < 0.05
+@test discr < 0.2
