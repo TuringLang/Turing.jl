@@ -33,9 +33,9 @@ Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs, model::Model)
+function Sampler(alg::Gibbs, model::Model, parent=SampleFromPrior())
     info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info)
+    spl = Sampler(alg, info, parent)
 
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -44,8 +44,7 @@ function Sampler(alg::Gibbs, model::Model)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(sub_alg, model)
-            samplers[i].parent = spl
+            samplers[i] = Sampler(sub_alg, model, spl)
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end

@@ -74,11 +74,11 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
-    return _sampler(alg::Hamiltonian, adapt_conf)
+Sampler(alg::Hamiltonian, parent=SampleFromPrior()) =  Sampler(alg, nothing, parent)
+function Sampler(alg::Hamiltonian, adapt_conf::Nothing, parent=SampleFromPrior())
+    return _sampler(alg::Hamiltonian, adapt_conf, parent)
 end
-function _sampler(alg::Hamiltonian, adapt_conf)
+function _sampler(alg::Hamiltonian, adapt_conf, parent=SampleFromPrior())
     info=Dict{Symbol, Any}()
 
     # For state infomation
@@ -88,7 +88,7 @@ function _sampler(alg::Hamiltonian, adapt_conf)
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
 
-    Sampler(alg, info)
+    Sampler(alg, info, parent)
 end
 
 function sample(model::Model, alg::Hamiltonian;

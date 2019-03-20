@@ -91,13 +91,13 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
-    parent   ::  AbstractSampler
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
+    parent   ::  AbstractSampler
 end
-Sampler(alg, model::Model) = Sampler(alg)
-Sampler(alg, info::Dict{Symbol, Any}) = Sampler(SampleFromPrior(), alg, info, Selector())
+Sampler(alg, model::Model, parent=SampleFromPrior()) = Sampler(alg, parent)
+Sampler(alg, info::Dict{Symbol, Any}, parent=SampleFromPrior()) = Sampler(alg, info, Selector(), parent)
 
 include("utilities/Utilities.jl")
 using .Utilities

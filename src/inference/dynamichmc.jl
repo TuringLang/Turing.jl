@@ -32,8 +32,8 @@ function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
     DynamicNUTS{AD, eltype(_space)}(n_iters, _space)
 end
 
-function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
-  return Sampler(alg, Dict{Symbol,Any}())
+function Sampler(alg::DynamicNUTS{T}, parent=SampleFromPrior()) where T <: Hamiltonian
+  return Sampler(alg, Dict{Symbol,Any}(), parent)
 end
 
 function sample(model::Model,

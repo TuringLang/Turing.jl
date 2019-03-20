@@ -48,12 +48,11 @@ function MH(n_iters::Int, space...)
   MH{eltype(set)}(n_iters, proposals, set)
 end
 
-function Sampler(alg::MH, model::Model)
+function Sampler(alg::MH, model::Model, parent=SampleFromPrior())
     alg_str = "MH"
 
     # Sanity check for space
-    # TODO if (we are going to create a top-level Sampler) && !isempty(alg.space)
-    if false && !isempty(alg.space)
+    if parent == SampleFromPrior() && !isempty(alg.space)
         @assert issubset(Set(get_pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
         if Set(get_pvars(model)) != alg.space
             warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(get_pvars(model))))")
@@ -65,7 +64,7 @@ function Sampler(alg::MH, model::Model)
     info[:prior_prob] = 0.0
     info[:violating_support] = false
 
-    return Sampler(alg, info)
+    return Sampler(alg, info, parent)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
