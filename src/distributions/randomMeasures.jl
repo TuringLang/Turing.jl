@@ -1,5 +1,16 @@
-export DirichletProcess, PitmanYorProcess
-export SizeBiasedSamplingProcess, StickBreakingProcess, ChineseRestaurantProcess
+module RandomMeasures
+
+using ..Core, ..Core.VarReplay, ..Utilities
+using Distributions
+using LinearAlgebra
+using StatsFuns: logsumexp
+
+import Distributions: sample, logpdf
+import Base: maximum, minimum, rand
+
+## ############### ##
+## Representations ##
+## ############### ##
 
 abstract type AbstractRandomProbabilityMeasure end
 
@@ -42,6 +53,20 @@ struct ChineseRestaurantProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractV
     m::V
 end
 
+
+"""
+    _logpdf_table(d<:AbstractRandomProbabilityMeasure, m<:AbstractVector{Int})
+
+Parameters:
+
+* `d`: Random probability measure, e.g. DirichletProcess
+* `m`: Cluster counts
+
+"""
+function _logpdf_table(d::AbstractRandomProbabilityMeasure, m::T) where {T<:AbstractVector{Int}}
+    throw(MethodError(_logpdf_table(), (d, m)))
+end
+
 function logpdf(d::ChineseRestaurantProcess, x::Int)
     if insupport(d, x)
         lp = _logpdf_table(d.rpm, d.m)
@@ -60,9 +85,9 @@ end
 minimum(d::ChineseRestaurantProcess) = 1
 maximum(d::ChineseRestaurantProcess) = length(d.m) + 1
 
-########################
-# Priors on Partitions #
-########################
+## ################# ##
+## Random partitions ##
+## ################# ##
 
 """
     DirichletProcess(α)
@@ -191,3 +216,13 @@ function _logpdf_table(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{In
         return map(k -> lp(k), 1:(K+1))
     end
 end
+
+## ####### ##
+## Exports ##
+## ####### ##
+
+export DirichletProcess, PitmanYorProcess
+export SizeBiasedSamplingProcess, StickBreakingProcess, ChineseRestaurantProcess
+
+
+end # end module

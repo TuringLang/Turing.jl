@@ -129,7 +129,7 @@ end
 end
 
 # Random probability measures.
-include("randomMeasures/RandomMeasures.jl")
+include("distributions/randomMeasures.jl")
 
 ###########
 # Exports #

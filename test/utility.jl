@@ -80,7 +80,9 @@ function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 		# "pmmh.jl", "ipmcmc.jl", "pgibbs.jl", "smc.jl"
 		]
 	TRACE_TESTS = ["trace.jl"]
-	ALL = union(CORE_TESTS, SAMPLER_TESTS, TRACE_TESTS)
+    DISTR_TESTS = ["randomMeasures.jl"]
+
+	ALL = union(CORE_TESTS, SAMPLER_TESTS, TRACE_TESTS, DISTR_TESTS)
 
 	# test groups that should be executed
 	TEST_GROUPS = "all" ∈ test_folders ? ALL : test_folders
