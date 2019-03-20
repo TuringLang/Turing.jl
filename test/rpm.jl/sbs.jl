@@ -36,7 +36,7 @@ partitions = [[[1, 2, 3, 4]], [[1, 2, 3], [4]], [[1, 2, 4], [3]], [[1, 2], [3, 4
     z = tzeros(Int, N)
 
     k = 0
-    surplus = 1
+    surplus = 1.0
 
     for i in 1:N
         ps = vcat(J[1:k], surplus)

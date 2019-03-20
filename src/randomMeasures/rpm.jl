@@ -8,14 +8,14 @@ abstract type AbstractRandomProbabilityMeasure end
 
 The *Size-Biased Sampling Process* for random probability measures `rpm` with a surplus mass of `surplus`.
 """
-struct SizeBiasedSamplingProcess <: ContinuousUnivariateDistribution
-    rpm::AbstractRandomProbabilityMeasure
-    surplus::Float64
+struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractFloat} <: ContinuousUnivariateDistribution
+    rpm::T
+    surplus::V
 end
 
-logpdf(d::SizeBiasedSamplingProcess, x::T) where {T<:Real} = logpdf_stickbreaking(d.rpm, x/surplus)
-rand(d::SizeBiasedSamplingProcess) = d.surplus*stickbreaking(d.rpm)
-minimum(d::SizeBiasedSamplingProcess) = 0.0
+logpdf(d::SizeBiasedSamplingProcess, x) = _logpdf(d, x)
+rand(d::SizeBiasedSamplingProcess) = _rand(d)
+minimum(d::SizeBiasedSamplingProcess) = zero(d.surplus)
 maximum(d::SizeBiasedSamplingProcess) = d.surplus
 
 """
@@ -23,12 +23,12 @@ maximum(d::SizeBiasedSamplingProcess) = d.surplus
 
 The *Stick-Breaking Process* for random probability measures `rpm`.
 """
-struct StickBreakingProcess <: ContinuousUnivariateDistribution
-    rpm::AbstractRandomProbabilityMeasure
+struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <: ContinuousUnivariateDistribution
+    rpm::T
 end
 
-logpdf(d::StickBreakingProcess, x::T) where {T<:Real} = logpdf_stickbreaking(d.rpm, x)
-rand(d::StickBreakingProcess) = stickbreaking(d.rpm)
+logpdf(d::StickBreakingProcess, x) = _logpdf(d, x)
+rand(d::StickBreakingProcess) = _rand(d)
 minimum(d::StickBreakingProcess) = 0.0
 maximum(d::StickBreakingProcess) = 1.0
 
@@ -37,14 +37,14 @@ maximum(d::StickBreakingProcess) = 1.0
 
 The *Chinese Restaurant Process* for random probability measures `rpm` with counts `m`.
 """
-struct ChineseRestaurantProcess <: DiscreteUnivariateDistribution
-    rpm::AbstractRandomProbabilityMeasure
-    m::Vector{Int}
+struct ChineseRestaurantProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractVector{Int}} <: DiscreteUnivariateDistribution
+    rpm::T
+    m::V
 end
 
 function logpdf(d::ChineseRestaurantProcess, x::Int)
     if insupport(d, x)
-        lp = crp(d.rpm, d.m)
+        lp = _logpdf_table(d.rpm, d.m)
         return lp[x] - logsumexp(lp)
     else
         return -Inf
@@ -52,17 +52,13 @@ function logpdf(d::ChineseRestaurantProcess, x::Int)
 end
 
 function rand(d::ChineseRestaurantProcess)
-    lp = crp(d.rpm, d.m)
+    lp = _logpdf_table(d.rpm, d.m)
     p = exp.(lp)
     return rand(Categorical(p ./ sum(p)))
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
 maximum(d::ChineseRestaurantProcess) = length(d.m) + 1
-
-#abstract type TotalMassDistribution <: ContinuousUnivariateDistribution end
-#Distributions.minimum(d::TotalMassDistribution) = 0.0
-#Distributions.maximum(d::TotalMassDistribution) = Inf
 
 ########################
 # Priors on Partitions #
@@ -98,14 +94,21 @@ struct DirichletProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     α::T
 end
 
-DirichletProcess(α::T) where {T<:Real} = DirichletProcess{T}(α)
+_rand(d::StickBreakingProcess{DirichletProcess{T}}) where {T<:Real} = rand(Beta(one(T), d.rpm.α))
 
-stickbreaking(d::DirichletProcess{T}) where {T<:Real} = rand(Beta(one(T), d.α))
-function logpdf_stickbreaking(d::DirichletProcess{T}, x::T) where {T<:Real}
-    return logpdf(Beta(one(T), d.α), x)
+function _rand(d::SizeBiasedSamplingProcess{DirichletProcess{T}}) where {T<:Real}
+    return d.surplus*rand(Beta(one(T), d.rpm.α))
 end
 
-function crp(d::DirichletProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
+function _logpdf(d::StickBreakingProcess{DirichletProcess{T}}, x::T) where {T<:Real}
+    return logpdf(Beta(one(T), d.rpm.α), x)
+end
+
+function _logpdf(d::SizeBiasedSamplingProcess{DirichletProcess{T}}, x::T) where {T<:Real}
+    return logpdf(Beta(one(T), d.rpm.α), x/d.surplus)
+end
+
+function _logpdf_table(d::DirichletProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
         return zeros(V,1)
     elseif sum(m .== 0) > 0
@@ -155,19 +158,23 @@ struct PitmanYorProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     t::Int
 end
 
-function PitmanYorProcess(d::T, θ::T, t::Int) where {T<:Real}
-    return PitmanYorProcess{T}(d, θ, t)
+function _rand(d::StickBreakingProcess{PitmanYorProcess{T}}) where {T<:Real}
+    return rand(Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
 end
 
-function stickbreaking(d::PitmanYorProcess{T}) where {T<:Real}
-    return rand(Beta(one(T)-d.d, d.θ + d.t*d.d))
+function _rand(d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}) where {T<:Real}
+    return d.surplus*rand(Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
 end
 
-function logpdf_stickbreaking(d::PitmanYorProcess{V}, x::T) where {T<:Real,V<:Real}
-    return logpdf(Beta(one(V)-d.d, d.θ + d.t*d.d), x)
+function _logpdf(d::StickBreakingProcess{PitmanYorProcess{T}}, x::T) where {T<:Real}
+    return logpdf(Beta(one(V)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d), x)
 end
 
-function crp(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
+function _logpdf(d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}, x::T) where {T<:Real}
+    return logpdf(Beta(one(V)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d), x/d.surplus)
+end
+
+function _logpdf_table(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
         return zeros(V,1)
     elseif sum(m .== 0) > 0
