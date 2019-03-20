@@ -5,8 +5,7 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, DEFAULT_SELECTOR
+    Sampler, SampleFromPrior, SampleFromUniform
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
@@ -116,7 +115,7 @@ function assume(spl::A,
         r = vi[vn]
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        push!(vi, vn, r, dist, DEFAULT_SELECTOR)
+        push!(vi, vn, r, dist)
     end
     # NOTE: The importance weight is not correctly computed here because
     #       r is genereated from some uniform distribution which is different from the prior
@@ -145,13 +144,13 @@ function assume(spl::A,
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[i], dist, DEFAULT_SELECTOR)
+                push!(vi, vns[i], rs[i], dist)
             end
             @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
             var = rs
         elseif isa(dist, MultivariateDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist, DEFAULT_SELECTOR)
+                push!(vi, vns[i], rs[:,i], dist)
             end
             if isa(var, Vector)
                 @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"

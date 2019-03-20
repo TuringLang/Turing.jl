@@ -41,10 +41,10 @@ end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG, new_selector=false)
+function Sampler(alg::PG)
     info = Dict{Symbol, Any}()
     info[:logevidence] = []
-    Sampler(alg, info, new_selector)
+    Sampler(alg, info)
 end
 
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
@@ -89,7 +89,10 @@ function sample(  model::Model,
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg)
-    if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
+    if resume_from != nothing
+        spl.selector = resume_from.info[:spl].selector
+        spl.parent = resume_from.info[:spl].parent
+    end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     n = reuse_spl_n > 0 ?
@@ -115,7 +118,7 @@ function sample(  model::Model,
 
         time_total += time_elapsed
 
-        if PROGRESS[]  && spl.selector == DEFAULT_SELECTOR
+        if PROGRESS[] && spl.parent == SampleFromPrior()
             ProgressMeter.next!(spl.info[:progress])
         end
     end

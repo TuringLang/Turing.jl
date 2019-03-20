@@ -32,7 +32,10 @@ end
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
 
-function Sampler(alg::PMMH, model::Model, new_selector=false)
+function Sampler(alg::PMMH, model::Model)
+    info = Dict{Symbol, Any}()
+    spl = Sampler(alg, info)
+
     alg_str = "PMMH"
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -42,7 +45,8 @@ function Sampler(alg::PMMH, model::Model, new_selector=false)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, Union{SMC, MH})
-            samplers[i] = Sampler(sub_alg, model, true)
+            samplers[i] = Sampler(sub_alg, model)
+            samplers[i].parent = spl
         else
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end
@@ -61,12 +65,11 @@ function Sampler(alg::PMMH, model::Model, new_selector=false)
         end
     end
 
-    info = Dict{Symbol, Any}()
     info[:old_likelihood_estimate] = -Inf # Force to accept first proposal
     info[:old_prior_prob] = 0.0
     info[:samplers] = samplers
 
-    return Sampler(alg, info, new_selector)
+    return spl
 end
 
 function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
@@ -119,7 +122,10 @@ function sample(  model::Model,
                 )
 
     spl = Sampler(alg, model)
-    if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
+    if resume_from != nothing
+        spl.selector = resume_from.info[:spl].selector
+        spl.parent = resume_from.info[:spl].parent
+    end
     alg_str = "PMMH"
 
     # Number of samples to store

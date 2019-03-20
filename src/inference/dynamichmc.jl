@@ -52,7 +52,7 @@ function sample(model::Model,
     vi = VarInfo()
     model(vi, SampleFromUniform())
 
-    if spl.selector == DEFAULT_SELECTOR
+    if spl.parent == SampleFromPrior()
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end

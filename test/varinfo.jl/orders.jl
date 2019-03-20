@@ -35,8 +35,8 @@ vn_b = VarName(csym, :b, "", 1)
 vi = VarInfo()
 dists = [Categorical([0.7, 0.3]), Normal()]
 
-spl1 = Turing.Sampler(PG(5,5), true)
-spl2 = Turing.Sampler(PG(5,5), true)
+spl1 = Turing.Sampler(PG(5,5))
+spl2 = Turing.Sampler(PG(5,5))
 
 # First iteration, variables are added to vi
 # variables samples in order: z1,a1,z2,a2,z3

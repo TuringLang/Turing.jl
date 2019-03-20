@@ -48,11 +48,12 @@ function MH(n_iters::Int, space...)
   MH{eltype(set)}(n_iters, proposals, set)
 end
 
-function Sampler(alg::MH, model::Model, new_selector=false)
+function Sampler(alg::MH, model::Model)
     alg_str = "MH"
 
     # Sanity check for space
-    if !new_selector && !isempty(alg.space)
+    # TODO if (we are going to create a top-level Sampler) && !isempty(alg.space)
+    if false && !isempty(alg.space)
         @assert issubset(Set(get_pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
         if Set(get_pvars(model)) != alg.space
             warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(get_pvars(model))))")
@@ -64,7 +65,7 @@ function Sampler(alg::MH, model::Model, new_selector=false)
     info[:prior_prob] = 0.0
     info[:violating_support] = false
 
-    return Sampler(alg, info, new_selector)
+    return Sampler(alg, info)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
@@ -79,7 +80,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector != DEFAULT_SELECTOR # Recompute joint in logp
+  if spl.parent != SampleFromPrior() # Recompute joint in logp
     runmodel!(model, vi)
   end
   old_θ = copy(vi[spl])
@@ -112,7 +113,10 @@ function sample(model::Model, alg::MH;
   spl = reuse_spl_n > 0 ?
         resume_from.info[:spl] :
         Sampler(alg, model)
-  if resume_from != nothing spl.selector = resume_from.info[:spl].selector end
+    if resume_from != nothing
+        spl.selector = resume_from.info[:spl].selector
+        spl.parent = resume_from.info[:spl].parent
+    end
   alg_str = "MH"
 
   # Initialization
@@ -134,7 +138,7 @@ function sample(model::Model, alg::MH;
         resume_from.info[:vi]
     end
 
-  if spl.selector == DEFAULT_SELECTOR
+  if spl.parent == SampleFromPrior()
     runmodel!(model, vi, spl)
   end
 

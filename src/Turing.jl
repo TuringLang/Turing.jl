@@ -63,11 +63,10 @@ end
 function runmodel! end
 
 struct Selector
-    gid :: Tuple{Float64, Int32}
+    gid :: UInt64
 end
-Selector() = Selector((time(), rand(Int32)))
-const DEFAULT_SELECTOR = Selector((0.0, 0))
-const INVALID_SELECTOR = Selector((0.0, 1))
+Selector() = Selector(time_ns())
+const INVALID_SELECTOR = Selector(UInt64(1))
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
 
@@ -92,13 +91,13 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
+    parent   ::  AbstractSampler
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
 end
-Sampler(alg, model::Model, new_selector=false) = Sampler(alg, new_selector)
-Sampler(alg, info::Dict{Symbol, Any}, new_selector=false) =
-    Sampler(alg, info, new_selector ? Selector() : DEFAULT_SELECTOR)
+Sampler(alg, model::Model) = Sampler(alg)
+Sampler(alg, info::Dict{Symbol, Any}) = Sampler(SampleFromPrior(), alg, info, Selector())
 
 include("utilities/Utilities.jl")
 using .Utilities

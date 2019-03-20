@@ -45,13 +45,13 @@ function SGHMC{AD}(n_iters, learning_rate, momentum_decay, space...) where AD
 end
 
 function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{true})
-    spl.selector != DEFAULT_SELECTOR && link!(vi, spl)
+    spl.parent != SampleFromPrior() && link!(vi, spl)
 
     # Initialize velocity
     v = zeros(Float64, size(vi[spl]))
     spl.info[:v] = v
 
-    spl.selector != DEFAULT_SELECTOR && invlink!(vi, spl)
+    spl.parent != SampleFromPrior() && invlink!(vi, spl)
     return vi, true
 end
 
@@ -60,7 +60,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.selector != DEFAULT_SELECTOR
+    if spl.parent != SampleFromPrior()
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -79,7 +79,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     vi[spl] = θ
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector != DEFAULT_SELECTOR && invlink!(vi, spl)
+    spl.parent != SampleFromPrior() && invlink!(vi, spl)
 
     Turing.DEBUG && @debug "always accept..."
     return vi, true
