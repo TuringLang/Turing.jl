@@ -74,11 +74,11 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian, parent=SampleFromPrior()) =  Sampler(alg, nothing, parent)
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing, parent=SampleFromPrior())
-    return _sampler(alg::Hamiltonian, adapt_conf, parent)
+Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
+function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
+    return _sampler(alg::Hamiltonian, adapt_conf)
 end
-function _sampler(alg::Hamiltonian, adapt_conf, parent=SampleFromPrior())
+function _sampler(alg::Hamiltonian, adapt_conf)
     info=Dict{Symbol, Any}()
 
     # For state infomation
@@ -88,7 +88,7 @@ function _sampler(alg::Hamiltonian, adapt_conf, parent=SampleFromPrior())
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
 
-    Sampler(alg, info, parent)
+    Sampler(alg, info)
 end
 
 function sample(model::Model, alg::Hamiltonian;
@@ -103,7 +103,6 @@ function sample(model::Model, alg::Hamiltonian;
           Sampler(alg, adapt_conf)
     if resume_from != nothing
         spl.selector = resume_from.info[:spl].selector
-        spl.parent = resume_from.info[:spl].parent
     end
 
     @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
@@ -134,7 +133,7 @@ function sample(model::Model, alg::Hamiltonian;
         deepcopy(resume_from.info[:vi])
     end
 
-    if spl.parent == SampleFromPrior()
+    if spl.selector.tag[] == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -186,7 +185,7 @@ function sample(model::Model, alg::Hamiltonian;
     c = Chain(0.0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
-        spl.parent == SampleFromPrior() && invlink!(vi, spl)
+        spl.selector.tag[] == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
     end
     return c
@@ -198,11 +197,11 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
 end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
-    spl.parent != SampleFromPrior() && link!(vi, spl)
+    spl.selector.tag[] != :default && link!(vi, spl)
     epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
     dim = length(vi[spl])
     spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
-    spl.parent != SampleFromPrior() && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -216,7 +215,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     spl.info[:eval_num] = 0
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.parent != SampleFromPrior()
+    if spl.selector.tag[] != :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -242,7 +241,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         setlogp!(vi, lj)
     end
 
-    if PROGRESS[] && spl.parent == SampleFromPrior()
+    if PROGRESS[] && spl.selector.tag[] == :default
         std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
@@ -257,7 +256,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.parent != SampleFromPrior() && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
 
     return vi, is_accept
 end

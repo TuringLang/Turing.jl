@@ -43,14 +43,14 @@ function SGLD{AD}(n_iters, epsilon, space...) where AD
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
-    spl.parent != SampleFromPrior() && link!(vi, spl)
+    spl.selector.tag[] != :default && link!(vi, spl)
 
     spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
 
     # Initialize iteration counter
     spl.info[:t] = 0
 
-    spl.parent != SampleFromPrior() && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -65,7 +65,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     mssa.state.ϵ = ϵ_t
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.parent != SampleFromPrior()
+    if spl.selector.tag[] != :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -82,7 +82,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     vi[spl] = θ
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.parent != SampleFromPrior() && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
 
     return vi, true
 end

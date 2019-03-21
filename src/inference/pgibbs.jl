@@ -41,10 +41,10 @@ end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG, parent=SampleFromPrior())
+function Sampler(alg::PG)
     info = Dict{Symbol, Any}()
     info[:logevidence] = []
-    Sampler(alg, info, parent)
+    Sampler(alg, info)
 end
 
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
@@ -91,7 +91,6 @@ function sample(  model::Model,
           Sampler(alg)
     if resume_from != nothing
         spl.selector = resume_from.info[:spl].selector
-        spl.parent = resume_from.info[:spl].parent
     end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
@@ -118,7 +117,7 @@ function sample(  model::Model,
 
         time_total += time_elapsed
 
-        if PROGRESS[] && spl.parent == SampleFromPrior()
+        if PROGRESS[] && spl.selector.tag[] == :default
             ProgressMeter.next!(spl.info[:progress])
         end
     end
@@ -170,7 +169,7 @@ function assume(  spl::Sampler{T},
             r = vi[vn]
         else
             r = rand(dist)
-            push!(vi, vn, r, dist, INVALID_SELECTOR)
+            push!(vi, vn, r, dist, Selector(:invalid))
         end
         acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     end
