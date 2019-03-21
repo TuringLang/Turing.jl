@@ -14,6 +14,7 @@ alg = PG(5, 1)
 spl = Turing.Sampler(alg, Turing.VarInfo())
 dist = Normal(0, 1)
 
+f2(vi, spl, m) = f2()
 function f2()
   t = TArray(Int, 1);
   t[1] = 0;
@@ -29,7 +30,8 @@ function f2()
 end
 
 # Test task copy version of trace
-t = Trace(f2, Turing.VarInfo())
+model = Turing.Model{(:x,),()}(f2, NamedTuple(), NamedTuple())
+t = Trace(f2, model, spl, Turing.VarInfo())
 
 consume(t); consume(t)
 a = fork(t);
