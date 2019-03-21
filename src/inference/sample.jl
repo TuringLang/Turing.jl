@@ -12,11 +12,10 @@ end
     expr = Expr(:block)
     for f in fieldnames(Tvis)
         push!(expr.args, quote
-            $(Symbol(:value_, f)) = Dict{Symbol, typeof(vi.vis.$f.vals)}()
+            $(Symbol(:value_, f)) = Dict{Symbol, Union{eltype(vi.vis.$f.vals), typeof(vi.vis.$f.vals)}}()
             for vn in keys(vi.vis.$f.idcs)
                 $(Symbol(:v_, f)) = vi[vn]
-                $(Symbol(:v__, f)) = $(Symbol(:v_, f)) isa Array ? $(Symbol(:v_, f)) : [$(Symbol(:v_, f))]
-                $(Symbol(:value_, f))[VarReplay.sym_idx(vn)] = $(Symbol(:v__, f))
+                $(Symbol(:value_, f))[VarReplay.sym_idx(vn)] = $(Symbol(:v_, f))
             end
         end)
         push!(nt_args, :($f = $(Symbol(:value_, f))))
