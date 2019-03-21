@@ -11,9 +11,11 @@ else
 end
 
 alg = PG(5, 1)
-spl = Turing.Sampler(alg)
+vi = Turing.VarInfo()
+spl = Turing.Sampler(alg, vi)
 dist = Normal(0, 1)
 
+fpc(vi, spl, m) = fpc()
 function fpc()
   t = TArray(Float64, 1);
   t[1] = 0;
@@ -28,11 +30,12 @@ function fpc()
   end
 end
 
-pc = ParticleContainer{Trace}(fpc)
+model = Turing.Model{(:x,),()}(fpc, NamedTuple(), NamedTuple())
+pc = ParticleContainer{Trace}(model)
 
-push!(pc, Trace(pc.model))
-push!(pc, Trace(pc.model))
-push!(pc, Trace(pc.model))
+push!(pc, Trace(pc.model, spl, Turing.VarInfo()))
+push!(pc, Trace(pc.model, spl, Turing.VarInfo()))
+push!(pc, Trace(pc.model, spl, Turing.VarInfo()))
 
 Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
 Base.@assert weights(pc)[2] ≈ log(3)
