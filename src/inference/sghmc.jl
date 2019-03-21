@@ -30,35 +30,28 @@ mutable struct SGHMC{AD, T} <: StaticHamiltonian{AD}
     learning_rate::Float64   # learning rate
     momentum_decay::Float64   # momentum decay
     space::Set{T}    # sampling space, emtpy means all
-    gid::Int
 end
 SGHMC(args...) = SGHMC{ADBackend()}(args...)
 function SGHMC{AD}(learning_rate::Float64, momentum_decay::Float64, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGHMC{AD, eltype(_space)}(1, learning_rate, momentum_decay, _space, 0)
+    return SGHMC{AD, eltype(_space)}(1, learning_rate, momentum_decay, _space)
 end
 function SGHMC{AD}(n_iters, learning_rate, momentum_decay) where AD
-    return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set(), 0)
+    return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set())
 end
 function SGHMC{AD}(n_iters, learning_rate, momentum_decay, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGHMC{AD, eltype(_space)}(n_iters, learning_rate, momentum_decay, _space, 0)
-end
-function SGHMC{AD1}(alg::SGHMC{AD2, T}, new_gid::Int) where {AD1, AD2, T}
-    return SGHMC{AD1, T}(alg.n_iters, alg.learning_rate, alg.momentum_decay, alg.space, new_gid)
-end
-function SGHMC{AD, T}(alg::SGHMC, new_gid::Int) where {AD, T}
-    return SGHMC{AD, T}(alg.n_iters, alg.learning_rate, alg.momentum_decay, alg.space, new_gid)
+    return SGHMC{AD, eltype(_space)}(n_iters, learning_rate, momentum_decay, _space)
 end
 
 function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{true})
-    spl.alg.gid != 0 && link!(vi, spl)
+    spl.selector.tag[] != :default && link!(vi, spl)
 
     # Initialize velocity
     v = zeros(Float64, size(vi[spl]))
     spl.info[:v] = v
 
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -67,7 +60,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.alg.gid != 0
+    if spl.selector.tag[] != :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -86,7 +79,7 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     vi[spl] = θ
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
 
     Turing.DEBUG && @debug "always accept..."
     return vi, true

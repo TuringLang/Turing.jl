@@ -1,7 +1,6 @@
 struct DynamicNUTS{AD, T} <: Hamiltonian{AD}
     n_iters   ::  Integer   # number of samples
     space     ::  Set{T}    # sampling space, emtpy means all
-    gid       ::  Integer   # group ID
 end
 
 """
@@ -30,7 +29,7 @@ chn = sample(gdemo(1.5, 2.0), DynamicNUTS(2000))
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
 function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    DynamicNUTS{AD, eltype(_space)}(n_iters, _space, 0)
+    DynamicNUTS{AD, eltype(_space)}(n_iters, _space)
 end
 
 function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
@@ -53,7 +52,7 @@ function sample(model::Model,
     vi = VarInfo()
     model(vi, SampleFromUniform())
 
-    if spl.alg.gid == 0
+    if spl.selector.tag[] == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end

@@ -28,36 +28,29 @@ mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     n_iters :: Int       # number of samples
     epsilon :: Float64   # constant scale factor of learning rate
     space   :: Set{T}    # sampling space, emtpy means all
-    gid     :: Int
 end
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
 function SGLD{AD}(epsilon::Float64, space...) where AD 
     _space = isa(space, Symbol) ? Set([space]) : Set(space)    
-    SGLD{AD, eltype(_space)}(1, epsilon, _space, 0)
+    SGLD{AD, eltype(_space)}(1, epsilon, _space)
 end
 function SGLD{AD}(n_iters, epsilon) where AD
-    SGLD{AD, Any}(n_iters, epsilon, Set(), 0)
+    SGLD{AD, Any}(n_iters, epsilon, Set())
 end
 function SGLD{AD}(n_iters, epsilon, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGLD{AD, eltype(_space)}(n_iters, epsilon, _space, 0)
-end
-function SGLD{AD1}(alg::SGLD{AD2, T}, new_gid::Int) where {AD1, AD2, T}
-    SGLD{AD1, T}(alg.n_iters, alg.epsilon, alg.space, new_gid)
-end
-function SGLD{AD, T}(alg::SGLD, new_gid::Int) where {AD, T}
-    SGLD{AD, T}(alg.n_iters, alg.epsilon, alg.space, new_gid)
+    return SGLD{AD, eltype(_space)}(n_iters, epsilon, _space)
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
-    spl.alg.gid != 0 && link!(vi, spl)
+    spl.selector.tag[] != :default && link!(vi, spl)
 
     spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
 
     # Initialize iteration counter
     spl.info[:t] = 0
 
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -72,7 +65,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     mssa.state.ϵ = ϵ_t
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.alg.gid != 0
+    if spl.selector.tag[] != :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -89,7 +82,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     vi[spl] = θ
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.alg.gid != 0 && invlink!(vi, spl)
+    spl.selector.tag[] != :default && invlink!(vi, spl)
 
     return vi, true
 end
