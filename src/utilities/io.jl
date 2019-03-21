@@ -172,6 +172,10 @@ function flatten(s::Sample{<:NamedTuple})
             flatten(names, vals, string(f), field)
         end
     end
+    for f in fieldnames(typeof(s.info))
+        field = getfield(s.info, f)
+        flatten(names, vals, string(f), field)
+    end
     return Dict(names[i] => vals[i] for i in 1:length(vals))
 end
 
