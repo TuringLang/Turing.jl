@@ -3,6 +3,7 @@
 ##########################################
 using Turing; turnprogress(false)
 using Pkg
+using Random
 using Test
 
 # add packages
@@ -16,46 +17,47 @@ Pkg.add(to_add)
 # Import utility functions and reused models.
 include("test_utils/utility.jl")
 include("test_utils/models.jl")
+include("test_utils/random_measure_utils.jl")
 
 @testset "Turing" begin
     @testset "core" begin
-        include_dir("core/ad.jl")
-        include_dir("core/compiler.jl")
-        include_dir("core/container.jl")
-        include_dir("core/VarReplay.jl")
+        include("core/ad.jl")
+        include("core/compiler.jl")
+        include("core/container.jl")
+        include("core/VarReplay.jl")
     end
 
     @testset "inference" begin
         @testset "adapt" begin
-            include_dir("inference/adapt/adapt.jl")
-            include_dir("inference/adapt/precond.jl")
-            include_dir("inference/adapt/stan.jl")
-            include_dir("inference/adapt/stepsize.jl")
+            include("inference/adapt/adapt.jl")
+            include("inference/adapt/precond.jl")
+            include("inference/adapt/stan.jl")
+            include("inference/adapt/stepsize.jl")
         end
         @testset "support" begin
-            include_dir("inference/support/hmc_core.jl")
+            include("inference/support/hmc_core.jl")
         end
         @testset "samplers" begin
-            include_dir("inference/dynamichmc.jl")
-            include_dir("inference/gibbs.jl")
-            include_dir("inference/hmc.jl")
-            include_dir("inference/hmcda.jl")
-            include_dir("inference/ipmcmc.jl")
-            include_dir("inference/is.jl")
-            include_dir("inference/mh.jl")
-            include_dir("inference/nuts.jl")
-            include_dir("inference/pmmh.jl")
-            include_dir("inference/sghmc.jl")
-            include_dir("inference/sgld.jl")
-            include_dir("inference/smc.jl")
+            include("inference/dynamichmc.jl")
+            include("inference/gibbs.jl")
+            include("inference/hmc.jl")
+            include("inference/hmcda.jl")
+            include("inference/ipmcmc.jl")
+            include("inference/is.jl")
+            include("inference/mh.jl")
+            include("inference/nuts.jl")
+            include("inference/pmmh.jl")
+            include("inference/sghmc.jl")
+            include("inference/sgld.jl")
+            include("inference/smc.jl")
         end
     end
 
     @testset "utilities" begin
-        include_dir("utilities/distributions.jl")
-        include_dir("utilities/io.jl")
-        include_dir("utilities/resample.jl")
-        include_dir("utilities/stan-interface.jl")
-        include_dir("utilities/util.jl")
+        include("utilities/distributions.jl")
+        include("utilities/io.jl")
+        include("utilities/resample.jl")
+        include("utilities/stan-interface.jl")
+        include("utilities/util.jl")
     end
 end
