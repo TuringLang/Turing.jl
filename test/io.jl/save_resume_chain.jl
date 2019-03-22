@@ -21,7 +21,7 @@ end
 chn1 = sample(gdemo([1.5, 2.0]), alg1; save_state=true)
 check_numerical(chn1, [:s, :m], [49/24, 7/6])
 
-chn1_resumed = Turing.Inference.resume(chn1, 1000)
+chn1_resumed = sample(gdemo([1.5, 2.0]), alg1; resume_from=chn1, reuse_spl_n=1000)
 check_numerical(chn1_resumed, [:s, :m], [49/24, 7/6])
 
 chn1_contd = sample(gdemo([1.5, 2.0]), alg1; resume_from=chn1)
