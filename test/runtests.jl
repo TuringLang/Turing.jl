@@ -2,31 +2,60 @@
 # Master file for running all test cases #
 ##########################################
 using Turing; turnprogress(false)
+using Pkg
 using Test
 
-@debug("[runtests.jl] runtests.jl loaded")
+# add packages
+to_add = [
+    PackageSpec(name="DynamicHMC"),
+    PackageSpec(name="LogDensityProblems"),
+]
 
-path = dirname(@__FILE__)
-cd(path); include("utility.jl")
-@debug("[runtests.jl] utility.jl loaded")
-@debug("[runtests.jl] testing starts")
+Pkg.add(to_add)
 
-if get(ENV, "TRAVIS", "false") == "true"
-    # If Travis is testing, separate the tests.
-    numerical_tests = [joinpath("hmc.jl", "matrix_support.jl"),
-                       joinpath("mh.jl", "mh_cons.jl"),
-                       joinpath("models.jl", "single_dist_correctness.jl")]
+# Import utility functions and reused models.
+include("test_utils/utility.jl")
+include("test_utils/models.jl")
 
-    if get(ENV, "STAGE", "") == "test"
-        runtests(exclude = numerical_tests)
-    elseif get(ENV, "STAGE", "") == "numerical"
-        runtests(specific_tests = numerical_tests)
-    else
-        @warn "Unknown Travis stage, currently set to: $(get(ENV, "STAGE", ""))"
+@testset "Turing" begin
+    @testset "core" begin
+        include_dir("core/ad.jl")
+        include_dir("core/compiler.jl")
+        include_dir("core/container.jl")
+        include_dir("core/VarReplay.jl")
     end
-else
-    # Otherwise, test everything.
-    runtests()
-end
 
-@debug("[runtests.jl] all tests finished")
+    @testset "inference" begin
+        @testset "adapt" begin
+            include_dir("inference/adapt/adapt.jl")
+            include_dir("inference/adapt/precond.jl")
+            include_dir("inference/adapt/stan.jl")
+            include_dir("inference/adapt/stepsize.jl")
+        end
+        @testset "support" begin
+            include_dir("inference/support/hmc_core.jl")
+        end
+        @testset "samplers" begin
+            include_dir("inference/dynamichmc.jl")
+            include_dir("inference/gibbs.jl")
+            include_dir("inference/hmc.jl")
+            include_dir("inference/hmcda.jl")
+            include_dir("inference/ipmcmc.jl")
+            include_dir("inference/is.jl")
+            include_dir("inference/mh.jl")
+            include_dir("inference/nuts.jl")
+            include_dir("inference/pmmh.jl")
+            include_dir("inference/sghmc.jl")
+            include_dir("inference/sgld.jl")
+            include_dir("inference/smc.jl")
+        end
+    end
+
+    @testset "utilities" begin
+        include_dir("utilities/distributions.jl")
+        include_dir("utilities/io.jl")
+        include_dir("utilities/resample.jl")
+        include_dir("utilities/stan-interface.jl")
+        include_dir("utilities/util.jl")
+    end
+end
