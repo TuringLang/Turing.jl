@@ -1,4 +1,6 @@
-using Test, Turing
+using Test, Turing, Random
+
+Random.seed!(123)
 turnprogress(false)
 
 n_samples = 20_000

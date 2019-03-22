@@ -73,6 +73,9 @@ STAN_DEFAULT_ADAPT_CONF = nothing
 
 function Sampler(model, alg::Hamiltonian, vi::AbstractVarInfo, adapt_conf, eval_num)
     spl = Sampler(alg, nothing)
+    if spl.alg.gid == 0
+        link!(vi, spl)
+    end
     idcs = VarReplay._getidcs(vi, spl)
     ranges = VarReplay._getranges(vi, spl, idcs)
     info = HamiltonianInfo(model, spl, vi, adapt_conf, idcs, ranges, eval_num)
@@ -191,11 +194,6 @@ function _sample(vi, samples, spl, model, alg::Hamiltonian,
 
     # Initialization
     time_total = zero(Float64)
-
-    if spl.alg.gid == 0
-        link!(vi, spl)
-        runmodel!(model, vi, spl)
-    end
 
     # HMC steps
     total_lf_num = 0
