@@ -12,7 +12,7 @@ end
     expr = Expr(:block)
     for f in fieldnames(Tvis)
         push!(expr.args, quote
-            $(Symbol(:value_, f)) = Dict{Symbol, Union{eltype(vi.vis.$f.vals), typeof(vi.vis.$f.vals)}}()
+            $(Symbol(:value_, f)) = Dict{Symbol, Any}()
             for vn in keys(vi.vis.$f.idcs)
                 $(Symbol(:v_, f)) = vi[vn]
                 $(Symbol(:value_, f))[VarReplay.sym_idx(vn)] = $(Symbol(:v_, f))
