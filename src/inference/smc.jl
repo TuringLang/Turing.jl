@@ -39,10 +39,10 @@ function SMC(n_particles::Int, space...)
     SMC(n_particles, resample_systematic, 0.5, _space)
 end
 
-function Sampler(alg::SMC)
+function Sampler(alg::SMC, s::Selector)
     info = Dict{Symbol, Any}()
     info[:logevidence] = []
-    return Sampler(alg, info)
+    return Sampler(alg, info, s)
 end
 
 function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
