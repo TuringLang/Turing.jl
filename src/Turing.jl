@@ -15,7 +15,7 @@ using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
 using Flux.Tracker: Tracker
 
-import Base: ~, convert, promote_rule, rand, getindex, setindex!
+import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
 import Distributions: sample
 import MCMCChains: AbstractChains, Chains
 
@@ -62,6 +62,15 @@ end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
 
+struct Selector
+    gid :: UInt64
+    tag :: Symbol # :default, :invalid, :Gibbs, :HMC, etc.
+end
+Selector() = Selector(time_ns(), :default)
+Selector(tag::Symbol) = Selector(time_ns(), tag)
+hash(s::Selector) = hash(s.gid)
+==(s1::Selector, s2::Selector) = s1.gid == s2.gid
+
 abstract type AbstractSampler end
 
 """
@@ -83,10 +92,13 @@ Turing translates models to chunks that call the modelling functions at specifie
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
-    alg     ::  T
-    info    ::  Dict{Symbol, Any}
+    alg      ::  T
+    info     ::  Dict{Symbol, Any} # sampler infomation
+    selector ::  Selector
 end
-Sampler(alg) = Sampler(alg, Dict{Symbol, Any}())
+Sampler(alg) = Sampler(alg, Selector())
+Sampler(alg, model::Model) = Sampler(alg, model, Selector())
+Sampler(alg, model::Model, s::Selector) = Sampler(alg, s)
 
 include("utilities/Utilities.jl")
 using .Utilities
@@ -126,6 +138,9 @@ end
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
     include("inference/dynamichmc.jl")
 end
+
+# Random probability measures.
+include("distributions/RandomMeasures.jl")
 
 ###########
 # Exports #

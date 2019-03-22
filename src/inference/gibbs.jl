@@ -28,23 +28,23 @@ mutable struct Gibbs{A} <: InferenceAlgorithm
     n_iters   ::  Int     # number of Gibbs iterations
     algs      ::  A   # component sampling algorithms
     thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
-    gid       ::  Int
 end
-Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin, 0)
-Gibbs(alg::Gibbs, new_gid) = Gibbs(alg.n_iters, alg.algs, alg.thin, new_gid)
+Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
-function Sampler(alg::Gibbs, model::Model)
+function Sampler(alg::Gibbs, model::Model, s::Selector)
+    info = Dict{Symbol, Any}()
+    spl = Sampler(alg, info, s)
+
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
-
     space = Set{Symbol}()
 
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, GibbsComponent)
-            samplers[i] = Sampler(typeof(sub_alg)(sub_alg, i))
+            samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
@@ -58,10 +58,9 @@ function Sampler(alg::Gibbs, model::Model)
         @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(get_pvars(model))))")
     end
 
-    info = Dict{Symbol, Any}()
     info[:samplers] = samplers
 
-    Sampler(alg, info)
+    return spl
 end
 
 function sample(
@@ -73,8 +72,17 @@ function sample(
                 )
 
     # Init the (master) Gibbs sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
-
+    if reuse_spl_n > 0
+        spl = resume_from.info[:spl]
+    else
+        spl = Sampler(alg, model)
+        if resume_from != nothing
+            spl.selector = resume_from.info[:spl].selector
+            for i in 1:length(spl.info[:samplers])
+                spl.info[:samplers][i].selector = resume_from.info[:spl].info[:samplers][i].selector
+            end
+        end
+    end
     @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     # Initialize samples

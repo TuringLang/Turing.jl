@@ -5,7 +5,8 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, SampleFromUniform
+    Sampler, SampleFromPrior, SampleFromUniform,
+    Selector
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
@@ -120,7 +121,7 @@ function assume(spl::A,
         r = vi[vn]
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        push!(vi, vn, r, dist, 0)
+        push!(vi, vn, r, dist)
     end
     # NOTE: The importance weight is not correctly computed here because
     #       r is genereated from some uniform distribution which is different from the prior
@@ -149,13 +150,13 @@ function assume(spl::A,
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[i], dist, 0)
+                push!(vi, vns[i], rs[i], dist)
             end
             @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
             var = rs
         elseif isa(dist, MultivariateDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist, 0)
+                push!(vi, vns[i], rs[:,i], dist)
             end
             if isa(var, Vector)
                 @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
@@ -228,20 +229,6 @@ end
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
-    if ~isempty(vi.pred)
-        for sym in keys(vi.pred)
-        # if ~haskey(sample.value, sym)
-            value[sym] = vi.pred[sym]
-        # end
-        end
-        # TODO: check why 1. 2. cause errors
-        # TODO: which one is faster?
-        # 1. Using empty!
-        # empty!(vi.pred)
-        # 2. Reassign an enmtpy dict
-        # vi.pred = Dict{Symbol,Any}()
-        # 3. Do nothing?
-    end
     return Sample(0.0, value)
 end
 

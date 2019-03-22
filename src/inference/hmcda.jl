@@ -41,30 +41,23 @@ mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     delta     ::  Float64   # target accept rate
     lambda    ::  Float64   # target leapfrog length
     space     ::  Set{T}    # sampling space, emtpy means all
-    gid       ::  Int       # group ID
 end
 HMCDA(args...) = HMCDA{ADBackend()}(args...)
 function HMCDA{AD}(n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(1, n_adapts, delta, lambda, _space, 0)
+    return HMCDA{AD, eltype(_space)}(1, n_adapts, delta, lambda, _space)
 end
 function HMCDA{AD}(n_iters::Int, delta::Float64, lambda::Float64) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set(), 0)
+    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set())
 end
 function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64) where AD
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set(), 0)
+    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set())
 end
 function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, delta, lambda, _space, 0)
-end
-function HMCDA{AD1}(alg::HMCDA{AD2, T}, new_gid::Int) where {AD1, AD2, T}
-    return HMCDA{AD1, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, alg.space, new_gid)
-end
-function HMCDA{AD, T}(alg::HMCDA, new_gid::Int) where {AD, T}
-    return HMCDA{AD, T}(alg.n_iters, alg.n_adapts, alg.delta, alg.lambda, alg.space, new_gid)
+    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, delta, lambda, _space)
 end
 
 function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMCDA, momentum_sampler::Function;

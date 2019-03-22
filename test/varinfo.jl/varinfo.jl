@@ -1,5 +1,5 @@
 using Turing, Test
-using Turing: reconstruct, invlink, SampleFromPrior
+using Turing: reconstruct, invlink, SampleFromPrior, Selector
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs
 using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
@@ -7,7 +7,7 @@ using Turing.VarReplay: set_retained_vns_del_by_spl!, is_flagged, unset_flag!
 function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler, count::Bool)
     if ~haskey(vi, vn)
         r = rand(dist)
-        Turing.push!(vi, vn, r, dist, spl.alg.gid)
+        Turing.push!(vi, vn, r, dist, spl.selector)
         return r
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del")
@@ -37,8 +37,7 @@ vn11 = VarName(csym, :x, "[1]", 1)
 vi = VarInfo()
 dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
 
-alg = PG(PG(5,5),2)
-spl2 = Turing.Sampler(alg)
+spl2 = Turing.Sampler(PG(5,5))
 vn_w = VarName(gensym(), :w, "", 1)
 randr(vi, vn_w, dists[1], spl2, true)
 
@@ -47,8 +46,7 @@ vn_y = VarName(gensym(), :y, "", 1)
 vn_z = VarName(gensym(), :z, "", 1)
 vns = [vn_x, vn_y, vn_z]
 
-alg = PG(PG(5,5),1)
-spl1 = Turing.Sampler(alg)
+spl1 = Turing.Sampler(PG(5,5))
 for i = 1:3
   r = randr(vi, vns[i], dists[i], spl1, false)
   val = vi[vns[i]]
@@ -97,7 +95,9 @@ pg, hmc = g.info[:samplers]
 vi = Turing.VarInfo()
 g_demo_f(vi, SampleFromPrior())
 vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
-@test vi.gids == [1,1,1,0,0]
+@test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
+                  Set{Selector}(), Set{Selector}()]
 
 g_demo_f(vi, hmc)
-@test vi.gids == [1,1,1,2,2]
+@test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
+                  Set([hmc.selector]), Set([hmc.selector])]

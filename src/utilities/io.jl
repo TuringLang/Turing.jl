@@ -91,7 +91,8 @@ function Chain(w::Real, s::AbstractArray{Sample})
         reshape(values_, size(values_, 1), size(values_, 2), 1),
         names_,
         Dict(:internals => _internal_vars),
-        evidence = w
+        evidence = w,
+        info = (samples = s,)
     )
     return chn
 end

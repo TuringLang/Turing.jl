@@ -8,7 +8,7 @@ using Turing.VarReplay: uid, cuid, getvals, getidcs, set_retained_vns_del_by_spl
 randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
   if ~haskey(vi, vn)
     r = rand(dist)
-    Turing.push!(vi, vn, r, dist, spl.alg.gid)
+    Turing.push!(vi, vn, r, dist, spl.selector)
     spl.info[:cache_updated] = CACHERESET
     r
   elseif is_flagged(vi, vn, "del")
@@ -35,10 +35,8 @@ vn_b = VarName(csym, :b, "", 1)
 vi = VarInfo()
 dists = [Categorical([0.7, 0.3]), Normal()]
 
-alg1 = PG(PG(5,5),1)
-spl1 = Turing.Sampler(alg1)
-alg2 = PG(PG(5,5),2)
-spl2 = Turing.Sampler(alg2)
+spl1 = Turing.Sampler(PG(5,5))
+spl2 = Turing.Sampler(PG(5,5))
 
 # First iteration, variables are added to vi
 # variables samples in order: z1,a1,z2,a2,z3
