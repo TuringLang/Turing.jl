@@ -207,11 +207,8 @@ end
 Base.getindex(vi::VarInfo, vview::VarView) = copy(getval(vi, vview))
 Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 
-Base.getindex(vi::VarInfo, s::Selector) = copy(getval(vi, getranges(vi, s)))
-Base.setindex!(vi::VarInfo, val::Any, s::Selector) = setval!(vi, val, getranges(vi, s))
-
-Base.getindex(vi::VarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
-Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
+Base.getindex(vi::VarInfo, s::Union{Selector, Sampler}) = copy(getval(vi, getranges(vi, s)))
+Base.setindex!(vi::VarInfo, val::Any, s::Union{Selector, Sampler}) = setval!(vi, val, getranges(vi, s))
 
 Base.getindex(vi::VarInfo, ::SampleFromPrior) = copy(getall(vi))
 Base.setindex!(vi::VarInfo, val::Any, ::SampleFromPrior) = setall!(vi, val)
@@ -314,10 +311,7 @@ function getidcs(vi::VarInfo, spl::Sampler)
         spl.info[:idcs]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = filter(i ->
-          (spl.selector in vi.gids[i] || isempty(vi.gids[i])) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
-          1:length(vi.gids)
-        )
+        spl.info[:idcs] = getidcs(vi, spl.selector, spl.alg.space)
     end
 end
 
@@ -352,12 +346,12 @@ function getranges(vi::VarInfo, spl::Sampler)
         spl.info[:ranges]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
+        spl.info[:ranges] = getranges(vi, spl.selector, spl.alg.space)
     end
 end
 
-function getranges(vi::VarInfo, s::Selector)
-    union(map(i -> vi.ranges[i], getidcs(vi, s))...)
+function getranges(vi::VarInfo, s::Selector, space::Set=Set())
+    union(map(i -> vi.ranges[i], getidcs(vi, s, space))...)
 end
 
 # NOTE: this function below is not used anywhere but test files.

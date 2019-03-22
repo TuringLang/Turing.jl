@@ -41,10 +41,10 @@ end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG)
+function Sampler(alg::PG, s::Selector)
     info = Dict{Symbol, Any}()
     info[:logevidence] = []
-    Sampler(alg, info)
+    Sampler(alg, info, s)
 end
 
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
@@ -117,7 +117,7 @@ function sample(  model::Model,
 
         time_total += time_elapsed
 
-        if PROGRESS[] && spl.selector.tag[] == :default
+        if PROGRESS[] && spl.selector.tag == :default
             ProgressMeter.next!(spl.info[:progress])
         end
     end

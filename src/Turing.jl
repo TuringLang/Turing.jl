@@ -64,10 +64,10 @@ function runmodel! end
 
 struct Selector
     gid :: UInt64
-    tag :: Ref{Symbol} # :default, :invalid, :Gibbs, :HMC, etc.
+    tag :: Symbol # :default, :invalid, :Gibbs, :HMC, etc.
 end
-Selector() = Selector(time_ns(), Ref(:default))
-Selector(tag::Symbol) = Selector(time_ns(), Ref(tag))
+Selector() = Selector(time_ns(), :default)
+Selector(tag::Symbol) = Selector(time_ns(), tag)
 hash(s::Selector) = hash(s.gid)
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
@@ -96,8 +96,9 @@ mutable struct Sampler{T} <: AbstractSampler
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
 end
-Sampler(alg, model::Model) = Sampler(alg)
-Sampler(alg, info::Dict{Symbol, Any}) = Sampler(alg, info, Selector())
+Sampler(alg) = Sampler(alg, Selector())
+Sampler(alg, model::Model) = Sampler(alg, model, Selector())
+Sampler(alg, model::Model, s::Selector) = Sampler(alg, s)
 
 include("utilities/Utilities.jl")
 using .Utilities
