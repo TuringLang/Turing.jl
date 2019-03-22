@@ -5,7 +5,8 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, SampleFromUniform
+    Sampler, SampleFromPrior, SampleFromUniform,
+    Selector
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
