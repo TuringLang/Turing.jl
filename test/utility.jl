@@ -9,7 +9,7 @@ function check_numerical(
 )
 	for (sym, val) in zip(symbols, exact_vals)
         @info sym, val
-        E = val isa Real ? mean(chain[sym]) : vec(mean(chain[sym], dims=[1]))
+        E = val isa Real ? mean(chain[sym].value) : vec(mean(chain[sym].value, dims=[1]))
 		print("  $sym = $E ≈ $val (eps = $eps) ?")
 		cmp = abs.(sum(E - val)) <= eps
 		if cmp
@@ -72,7 +72,7 @@ overwrites all other function arguments.
 function runtests(; test_folders = ["all"], exclude = [], specific_tests = [])
 	# test groups
 	CORE_TESTS = ["ad.jl", "compiler.jl", "container.jl", "varinfo.jl",
-		# "io.jl",
+		"io.jl",
 		"util.jl"]
 	SAMPLER_TESTS = ["resample.jl", "adapt.jl", "vectorisation.jl", "gibbs.jl", "nuts.jl",
 		"hmcda.jl", "hmc_core.jl", "hmc.jl", "sghmc.jl", "sgld.jl", "is.jl",

@@ -17,11 +17,11 @@ end
 
 alg = Gibbs(3000, CSMC(15, 1, :s), HMC(1, 0.2, 4, :m))
 chain = sample(gibbstest(x), alg)
-@test mean(chain[:s]) ≈ 49/24 atol=0.1
-println("mean(chain[:m]) = $(mean(chain[:m]))")
-@test mean(chain[:m]) ≈ 7/6 atol=0.1
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
+println("mean(chain[:m]) = $(mean(chain[:m].value))")
+@test mean(chain[:m].value) ≈ 7/6 atol=0.1
 
 alg = CSMC(15, 5000)
 chain = sample(gibbstest(x), alg)
-@test mean(chain[:s]) ≈ 49/24 atol=0.1
-@test mean(chain[:m]) ≈ 7/6 atol=0.1
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
+@test mean(chain[:m].value) ≈ 7/6 atol=0.1

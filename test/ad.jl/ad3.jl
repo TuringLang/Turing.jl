@@ -1,5 +1,5 @@
 using Turing
-using Turing: gradient_forward, invlink, link
+using Turing: gradient_logp_forward, invlink, link, SampleFromPrior
 using ForwardDiff
 using ForwardDiff: Dual
 using Test
@@ -20,7 +20,7 @@ ad_test_3_f(vi)
 
 vvn = collect(Iterators.filter(vn -> vn.sym == :v, keys(vi)))[1]
 _v = vi[vvn]
-_, grad_Turing = gradient_forward(vi[nothing], vi, ad_test_3_f)
+_, grad_Turing = gradient_logp_forward(vi[SampleFromPrior()], vi, ad_test_3_f)
 
 dist_v = Wishart(7, [1 0.5; 0.5 1])
 
@@ -34,7 +34,7 @@ end
 # Call ForwardDiff's AD
 g = x -> ForwardDiff.gradient(logp3, vec(x));
 # _s = link(dist_v, _s)
-grad_FWAD = -g(_v)
+grad_FWAD = g(_v)
 
 # Compare result
 @test grad_Turing ≈ grad_FWAD atol=1e-9

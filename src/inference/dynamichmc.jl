@@ -37,10 +37,10 @@ function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}())
 end
 
-function sample(model::Model, 
-                alg::DynamicNUTS{AD}, 
+function sample(model::Model,
+                alg::DynamicNUTS{AD},
                 ) where AD
-    
+
     spl = Sampler(alg)
 
     n = alg.n_iters
@@ -51,7 +51,7 @@ function sample(model::Model,
     end
 
     vi = VarInfo()
-    model(vi, HamiltonianRobustInit())
+    model(vi, SampleFromUniform())
 
     if spl.alg.gid == 0
         link!(vi, spl)
@@ -59,8 +59,8 @@ function sample(model::Model,
     end
 
     function _lp(x)
-        value, deriv = gradient(x, vi, model, spl)
-        return ValueGradient(-value, -deriv)
+        value, deriv = gradient_logp(x, vi, model, spl)
+        return ValueGradient(value, deriv)
     end
 
     chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters)

@@ -17,16 +17,16 @@ pg  = PG(100,10)
 
 res = sample(test(), is)
 
-@test all(res[:x] .== 1)  #c heck that x is always 1
-@test res[:logevidence] ≈ 2 * log(0.5)
+@test all(res[:x].value .== 1)  #c heck that x is always 1
+@test res.logevidence ≈ 2 * log(0.5)
 
 res = sample(test(), smc)
 
-@test all(res[:x] .== 1)  #c heck that x is always 1
-@test res[:logevidence] ≈ 2 * log(0.5)
+@test all(res[:x].value .== 1)  #c heck that x is always 1
+@test res.logevidence ≈ 2 * log(0.5)
 
 
 res = sample(test(), pg)
 
-@test all(res[:x] .== 1)  # check that x is always 1
+@test all(res[:x].value .== 1)  # check that x is always 1
 # PG does not provide logevidence estimate

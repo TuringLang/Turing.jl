@@ -12,12 +12,12 @@ using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
-@reexport using Distributions, MCMCChain, Libtask
+@reexport using Distributions, MCMCChains, Libtask
 using Flux.Tracker: Tracker
 
 import Base: ~, convert, promote_rule, rand, getindex, setindex!
 import Distributions: sample
-import MCMCChain: AbstractChains, Chains
+import MCMCChains: AbstractChains, Chains
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
@@ -29,6 +29,8 @@ end
 const CACHERESET  = 0b00
 const CACHEIDCS   = 0b10
 const CACHERANGES = 0b01
+
+const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 
 """
     struct Model{pvars, dvars, F, TData, TDefaults}
@@ -61,6 +63,13 @@ end
 function runmodel! end
 
 abstract type AbstractSampler end
+
+"""
+Robust initialization method for model parameters in Hamiltonian samplers.
+"""
+struct SampleFromUniform <: AbstractSampler end
+struct SampleFromPrior <: AbstractSampler end
+
 """
     Sampler{T}
 

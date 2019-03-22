@@ -4,13 +4,14 @@ using ..Core, ..Core.VarReplay, ..Utilities
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Sampler, Model, runmodel!, get_pvars, get_dvars
-using ..Turing: in_pvars, in_dvars
+using ..Turing: Model, runmodel!, get_pvars, get_dvars,
+    Sampler, SampleFromPrior, SampleFromUniform
+using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Utilities: Sample
+import ..Utilities: Sample, save, resume
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -18,9 +19,8 @@ export  InferenceAlgorithm,
         GibbsComponent,
         StaticHamiltonian,
         AdaptiveHamiltonian,
-        HamiltonianRobustInit,
+        SampleFromUniform,
         SampleFromPrior,
-        AnySampler,
         MH,
         Gibbs,      # classic sampling
         HMC,
@@ -80,16 +80,6 @@ struct SGLDStats <: AbstractSamplerStats
 end
 
 
-"""
-Robust initialization method for model parameters in Hamiltonian samplers.
-"""
-struct HamiltonianRobustInit <: AbstractSampler end
-struct SampleFromPrior <: AbstractSampler end
-
-# This can be removed when all `spl=nothing` is replaced with
-#   `spl=SampleFromPrior`
-const AnySampler = Union{Nothing, AbstractSampler}
-
 # Helper functions
 include("adapt/adapt.jl")
 include("support/hmc_core.jl")
@@ -121,18 +111,15 @@ observe(spl::Sampler, weight::Float64) =
 error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
-##  Note: `A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}` can be
-##   simplified into `A<:Union{SampleFromPrior, HamiltonianRobustInit}` when
-##   all `spl=nothing` is replaced with `spl=SampleFromPrior`.
 function assume(spl::A,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
 
     if haskey(vi, vn)
         r = vi[vn]
     else
-        r = isa(spl, HamiltonianRobustInit) ? init(dist) : rand(dist)
+        r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
         push!(vi, vn, r, dist, 0)
     end
     # NOTE: The importance weight is not correctly computed here because
@@ -147,7 +134,7 @@ function assume(spl::A,
     dists::Vector{T},
     vn::VarName,
     var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -158,7 +145,7 @@ function assume(spl::A,
     if haskey(vi, vns[1])
         rs = vi[vns]
     else
-        rs = isa(spl, HamiltonianRobustInit) ? init(dist, n) : rand(dist, n)
+        rs = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
@@ -190,14 +177,20 @@ function assume(spl::A,
 
 end
 
+
+observe(::Nothing,
+        dist::T,
+        value::Any,
+        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
+
 function observe(spl::A,
     dist::Distribution,
     value::Any,
-    vi::VarInfo) where {A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
 
     vi.num_produce += one(vi.num_produce)
-    @debug "dist = $dist"
-    @debug "value = $value"
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "value = $value"
 
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)
@@ -207,7 +200,7 @@ end
 function observe(spl::A,
     dists::Vector{T},
     value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{Nothing, SampleFromPrior, HamiltonianRobustInit}}
+    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -234,7 +227,7 @@ end
         value[sym(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
-    value[:_lp] = getlogp(vi)
+    value[:lp] = getlogp(vi)
     if ~isempty(vi.pred)
         for sym in keys(vi.pred)
         # if ~haskey(sample.value, sym)
@@ -256,16 +249,16 @@ end
 @inline function Sample(vi::VarInfo, spl::Sampler; elapsed=nothing)
     s = Sample(vi)
     if !(elapsed == nothing)
-        s.value[:_elapsed] = elapsed
+        s.value[:elapsed] = elapsed
     end
     if haskey(spl.info, :wum)
-        s.value[:_epsilon] = getss(spl.info[:wum])
+        s.value[:lf_eps] = getss(spl.info[:wum])
     end
     if haskey(spl.info, :lf_num)
-        s.value[:_lf_num] = spl.info[:lf_num]
+        s.value[:lf_num] = spl.info[:lf_num]
     end
     if haskey(spl.info, :eval_num)
-        s.value[:_eval_num] = spl.info[:eval_num]
+        s.value[:eval_num] = spl.info[:eval_num]
     end
     return s
 end
@@ -274,10 +267,10 @@ end
 @inline function Sample(vi::VarInfo, stats::T; elapsed=nothing) where {T<:AbstractSamplerStats}
     s = Sample(vi)
     if !(elapsed == nothing)
-        s.value[:_elapsed] = elapsed
+        s.value[:elapsed] = elapsed
     end
     for fn in fieldnames(T)
-        s.value[Symbol("_$fn")] = getfield(stats, fn)
+        s.value[Symbol("$fn")] = getfield(stats, fn)
     end
     return s
 end

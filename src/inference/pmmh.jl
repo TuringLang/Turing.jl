@@ -78,9 +78,9 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     new_likelihood_estimate = 0.0
     old_θ = copy(vi[spl])
 
-    @debug "Propose new parameters from proposals..."
+    Turing.DEBUG && @debug "Propose new parameters from proposals..."
     for local_spl in spl.info[:samplers][1:end-1]
-        @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
+        Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
         propose(model, local_spl, vi)
         if local_spl.info[:violating_support] violating_support=true; break end
         new_prior_prob += local_spl.info[:prior_prob]
@@ -88,11 +88,11 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     end
 
     if !violating_support # do not run SMC if going to refuse anyway
-        @debug "Propose new state with SMC..."
+        Turing.DEBUG && @debug "Propose new state with SMC..."
         vi, _ = step(model, spl.info[:samplers][end], vi)
         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
-        @debug "computing accept rate α..."
+        Turing.DEBUG && @debug "computing accept rate α..."
         is_accept, logα = mh_accept(
           -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
           -(new_likelihood_estimate + new_prior_prob),
@@ -100,7 +100,7 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         )
     end
 
-    @debug "decide whether to accept..."
+    Turing.DEBUG && @debug "decide whether to accept..."
     if !violating_support && is_accept # accepted
         is_accept = true
         spl.info[:old_likelihood_estimate] = new_likelihood_estimate
@@ -137,7 +137,7 @@ function sample(  model::Model,
     # Init parameters
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         vi_
     else
         resume_from.info[:vi]
@@ -149,6 +149,8 @@ function sample(  model::Model,
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
       @debug "$alg_str stepping..."
+      time_elapsed = @elapsed vi, stats = step(model, spl, vi, i==1)
+      Turing.DEBUG && @debug "$alg_str stepping..."
       time_elapsed = @elapsed vi, stats = step(model, spl, vi, i==1)
 
       if stats.is_accept # accepted => store the new predcits
@@ -170,12 +172,12 @@ function sample(  model::Model,
     println("  Accept rate         = $accept_rate;")
 
     if resume_from != nothing   # concat samples
-      pushfirst!(samples, resume_from.value2...)
+      pushfirst!(samples, resume_from.info[:samples]...)
     end
-    c = Chain(0.0, samples)       # wrap the result by Chain
+    c = Chain(-Inf, samples)       # wrap the result by Chain
 
     if save_state               # save state
-      save!(c, spl, model, vi)
+      c = save(c, spl, model, vi, samples)
     end
 
     c

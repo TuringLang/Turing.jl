@@ -78,9 +78,8 @@ function adapt!(tp::ThreePhaseAdapter, stats::Real, θ)
     if tp.state.n < tp.n_adapts
         tp.state.n += 1
         if tp.state.n == tp.n_adapts
-            finish!(tp.ssa)
-            @info "$(tp.state.n) iterations is used for adaption."
-            @info "  Adapted ϵ = $(getss(tp)), std = $(string(tp.pc))."
+            ϵ = exp(tp.ssa.state.x_bar)
+            @info " Adapted ϵ = $(getss(tp)), std = $(string(tp.pc)); $(tp.state.n) iterations is used for adaption."
         else
             is_updateμ = is_windowend(tp)# || tp.state.n == tp.n_adapts
             adapt!(tp.ssa, stats, is_updateμ)

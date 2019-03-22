@@ -15,7 +15,8 @@ model_f = gdemo([1.5, 2.0])
 alg = NUTS(5000, 1000, 0.65)
 res = sample(model_f, alg; pc_type=Turing.Inference.DiagPreConditioner)
 
-@info(mean(res[:s][1000:end])," ≈ ", 49/24, "?")
-@info(mean(res[:m][1000:end])," ≈ ", 7/6, "?")
-@test mean(res[:s][1000:end]) ≈ 49/24 atol=0.2
-@test mean(res[:m][1000:end]) ≈ 7/6 atol=0.2
+v = get(res, [:s, :m])
+@info(mean(v.s[1000:end])," ≈ ", 49/24, "?")
+@info(mean(v.m[1000:end])," ≈ ", 7/6, "?")
+@test mean(v.s[1000:end]) ≈ 49/24 atol=0.2
+@test mean(v.m[1000:end]) ≈ 7/6 atol=0.2

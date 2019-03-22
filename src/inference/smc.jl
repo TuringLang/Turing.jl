@@ -85,6 +85,6 @@ function sample(model::Model, alg::SMC)
       end
     end
     w, samples = getsample(particles)
-    res = Chain(w, samples)
+    res = Chain(log(w), samples)
     return res
 end

@@ -13,7 +13,8 @@ end
 chain = sample(gdemo([1.5, 2.0]), SGLD(10000, 0.5))
 
 # Note: samples are weigthed by step sizes cf 4.2 in paper
-s_res1weightedMean = sum(chain[:_lf_step_size] .* chain[:s]) / sum(chain[:_lf_step_size])
-m_res1weightedMean = sum(chain[:_lf_step_size] .* chain[:m]) / sum(chain[:_lf_step_size])
+v = get(chain, [:lf_step_size, :s, :m])
+s_res1weightedMean = sum(v.lf_step_size .* v.s) / sum(v.lf_step_size)
+m_res1weightedMean = sum(v.lf_step_size .* v.m) / sum(v.lf_step_size)
 @test s_res1weightedMean ≈ 49/24 atol=0.2
 @test m_res1weightedMean ≈ 7/6 atol=0.2

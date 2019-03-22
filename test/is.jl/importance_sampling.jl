@@ -16,8 +16,8 @@ function reference(n :: Int)
   end
   logevidence = logsumexp(logweights) - log(n)
   results = Dict{Symbol,Any}()
-  results[:logevidence] = logevidence
-  results[:logweights] = logweights
+  results[:lp] = logevidence
+  results[:lp] = logweights
   results[:samples] = samples
   return results
 end
@@ -51,11 +51,12 @@ let n = 10
     exact = reference(n)
     Random.seed!(seed)
     tested = sample(_f, alg)
+    t_vals = get(tested, [:a, :b, :lp])
     for i = 1:n
-        @test exact[:samples][i][:a] == tested[:a][i,1,1]
-        @test exact[:samples][i][:b] == tested[:b][i,1,1]
-        @test exact[:logweights][i]  == tested[:logweights][i]
+        @test exact[:samples][i][:a] == t_vals.a[i]
+        @test exact[:samples][i][:b] == t_vals.b[i]
+        @test exact[:lp][i] == t_vals.lp[i]
     end
-    @test exact[:logevidence] == tested[:logevidence]
+    @test all(exact[:lp] .== t_vals.lp)
   end
 end

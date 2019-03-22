@@ -12,8 +12,9 @@ macro VarName(expr::Union{Expr, Symbol})
     inds = :(())
     while ex.head == :ref
         if length(ex.args) >= 2
-            pushfirst!(inds.args, Expr(:vect, ex.args[2:end]...))
-            end
+            strs = map(x -> :(string($x)), ex.args[2:end])
+            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ", ") * "]"))
+        end
         ex = ex.args[1]
         isa(ex, Symbol) && return var_tuple(ex, inds)
     end
@@ -25,7 +26,7 @@ end
 
 
 function wrong_dist_errormsg(l)
-    return "Right-hand side of a ~ must be subtype of Distribution or a vector of" * 
+    return "Right-hand side of a ~ must be subtype of Distribution or a vector of " *
         "Distributions on line $(l)."
 end
 
@@ -78,7 +79,7 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
-            $indexing = mapfoldl(string, *, $idcs, init = "")
+            $indexing = foldl(*, $idcs, init = "")
             $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
         end
     end
@@ -122,7 +123,7 @@ function _tilde(vsym, left, dist, model_info)
 
     if vsym in model_info[:arg_syms]
         if !(vsym in model_info[:tent_dvars_list])
-            @debug " Observe - `$(vsym)` is an observation"
+            Turing.DEBUG && @debug " Observe - `$(vsym)` is an observation"
             push!(model_info[:tent_dvars_list], vsym)
         end
 
@@ -136,7 +137,7 @@ function _tilde(vsym, left, dist, model_info)
     else
         # Assume it is a parameter.
         if !(vsym in model_info[:tent_pvars_list])
-            @debug begin 
+            Turing.DEBUG && @debug begin 
                 msg = " Assume - `$(vsym)` is a parameter"
                 if isdefined(Main, vsym)
                     msg  *= " (ignoring `$(vsym)` found in global scope)"
@@ -179,7 +180,7 @@ function model_generator(x = nothing, y = nothing)
     data = Turing.get_data(dvars, (x = x, y = y))
     defaults = Turing.get_default_values(dvars, (x = default_x, y = nothing))
     
-    inner_function(sampler::Turing.AnySampler, model) = inner_function(model)
+    inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
     function inner_function(model)
         return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
     end
@@ -187,7 +188,7 @@ function model_generator(x = nothing, y = nothing)
         return inner_function(vi, Turing.SampleFromPrior(), model)
     end
     # Define the main inner function
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AnySampler, model)
+    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
         local x
         if isdefined(model.data, :x)
             x = model.data.x
@@ -290,7 +291,6 @@ function update_args!(model_info)
     end
     model_info[:args] = fargs
     model_info[:tent_arg_defaults_nt] = tent_arg_defaults_nt
-
     return model_info
 end
 
@@ -366,7 +366,7 @@ function build_output(model_info)
             $defaults_name = Turing.get_default_values($tent_dvars_nt, $tent_arg_defaults_nt)
 
             # Define fallback inner functions
-            function $inner_function_name($sampler_name::Turing.AnySampler, $model_name)
+            function $inner_function_name($sampler_name::Turing.AbstractSampler, $model_name)
                 return $inner_function_name($model_name)
             end
             function $inner_function_name($model_name)
@@ -379,7 +379,7 @@ function build_output(model_info)
             # Define the main inner function
             function $inner_function_name(
                 $vi_name::Turing.VarInfo, 
-                $sampler_name::Turing.AnySampler, 
+                $sampler_name::Turing.AbstractSampler,
                 $model_name
                 )
                 

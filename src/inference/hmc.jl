@@ -117,7 +117,7 @@ function sample(model::Model, alg::Hamiltonian;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         vi_
     else
         deepcopy(resume_from.info[:vi])
@@ -133,7 +133,7 @@ function sample(model::Model, alg::Hamiltonian;
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     local stats
     for i = 1:n
-        @debug "$alg_str stepping..."
+        Turing.DEBUG && @debug "$alg_str stepping..."
 
         time_elapsed = @elapsed vi, stats = step(model, spl, vi, Val(i == 1))
         time_total += time_elapsed
@@ -148,32 +148,30 @@ function sample(model::Model, alg::Hamiltonian;
         PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
     end
 
+    println("[$alg_str] Finished with")
+    println("  Running time        = $time_total;")
+
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
+        pushfirst!(samples, resume_from.info[:samples]...)
     end
     c = Chain(0.0, samples)       # wrap the result by Chain
 
-    println("[$alg_str] Finished with")
-    println("  Running time        = $time_total;")
     # TODO: @Cameron we can simplify below when we have section for MCMCChain
     fns = fieldnames(typeof(stats))
-    :_accept_ratio in fns && println("  alpha / sample      = $(mean(c[:_accept_ratio]));")
-    :_is_accept    in fns && println("  Accept rate         = $(mean(c[:_is_accept]));")
-    :_n_lf_steps   in fns && println("  #lf / sample        = $(mean(c[:_n_lf_steps]));")
+    v = get(c, [:accept_ratio, :is_accept, :n_lf_steps])
+    :accept_ratio in fns && println("  alpha / sample      = $(mean(v.accept_ratio));")
+    :is_accept    in fns && println("  Accept rate         = $(mean(v.is_accept));")
+    :n_lf_steps   in fns && println("  #lf / sample        = $(mean(v.n_lf_steps));")
     if haskey(spl.info, :wum)
       std_str = string(spl.info[:wum].pc)
       std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str   # only show part of pre-cond
       println("  pre-cond. metric    = $(std_str).")
     end
 
-    if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
-    end
-    c = Chain(0.0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         if spl.alg.gid == 0 invlink!(vi, spl) end
-        save!(c, spl, model, vi)
+        c = save(c, spl, model, vi, samples)
     end
     return c
 end
@@ -217,10 +215,11 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
 end
 
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
-    @debug "current ϵ: $ϵ"
+    # Get step size
     ϵ = getss(spl.info[:wum])
+    Turing.DEBUG && @debug "current ϵ: $ϵ"
 
-    @debug "X-> R..."
+    Turing.DEBUG && @debug "X-> R..."
     if spl.alg.gid != 0
         link!(vi, spl)
         runmodel!(model, vi, spl)
@@ -238,7 +237,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
                                     rev_func=rev_func)
     α = stats.accept_ratio
 
-    @debug "decide whether to accept..."
+    Turing.DEBUG && @debug "decide whether to accept..."
     if stats.is_accept
         vi[spl] = θ_new
         setlogp!(vi, lj_new)
@@ -263,21 +262,21 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         adapt!(spl.info[:wum], α, vi[spl])
     end
 
-    @debug "R -> X..."
+    Turing.DEBUG && @debug "R -> X..."
     spl.alg.gid != 0 && invlink!(vi, spl)
 
     return vi, stats
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
-    @debug "assuming..."
+    Turing.DEBUG && @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    @debug "dist = $dist"
-    @debug "vn = $vn"
-    @debug "r = $r" "typeof(r)=$(typeof(r))"
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "vn = $vn"
+    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 

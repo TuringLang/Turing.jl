@@ -2,7 +2,7 @@
 
 using Turing
 
-import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, Trace, current_trace, VarName, Sampler, consume, produce
+import Turing: ParticleContainer, weights, resample!, effectiveSampleSize, Trace, current_trace, VarName, Sampler, consume, produce
 
 if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
   n[] = 0

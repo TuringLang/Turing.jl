@@ -69,8 +69,8 @@ end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/stepsize_adaptation.hpp
 function adapt_stepsize!(da::DualAveraging, stats::Real)
-    @debug "adapting step size ϵ..."
-    @debug "current α = $(stats)"
+    Turing.DEBUG && @debug "adapting step size ϵ..."
+    Turing.DEBUG && @debug "current α = $(stats)"
     da.state.m += 1
     m = da.state.m
 
@@ -88,15 +88,16 @@ function adapt_stepsize!(da::DualAveraging, stats::Real)
     x_bar = (1.0 - η_x) * x_bar + η_x * x
 
     ϵ = exp(x)
-    @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
+    Turing.DEBUG && @debug "new ϵ = $(ϵ), old ϵ = $(da.state.ϵ)"
 
     ths = 5 * one(ϵ)
     if isnan(ϵ) || isinf(ϵ)
         @warn "Incorrect ϵ = $ϵ; ϵ_previous = $(da.state.ϵ) is used instead."
-    else
-        ϵ > ths && @warn "$ϵ exceeds $ths; capped to $ths for numerical stability"
-        da.state.ϵ = min(ths, ϵ)
+        ϵ = da.state.ϵ
+        x_bar = da.state.x_bar
+        H_bar = da.state.H_bar
     end
+    da.state.ϵ = ϵ
     da.state.x_bar = x_bar
     da.state.H_bar = H_bar
 end

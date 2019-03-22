@@ -51,9 +51,9 @@ function sample(model::Model, alg::IS)
         samples[i] = Sample(vi)
     end
 
-    le = logsumexp(map(x->x[:_lp], samples)) - log(n)
+    le = logsumexp(map(x->x[:lp], samples)) - log(n)
 
-    Chain(exp.(le), samples)
+    Chain(le, samples)
 end
 
 function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)

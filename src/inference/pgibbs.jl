@@ -128,16 +128,16 @@ function sample(  model::Model,
 
     loge = exp.(mean(spl.info[:logevidence]))
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.value2...)
-        pre_loge = resume_from.weight
+        pushfirst!(samples, resume_from.info[:samples]...)
+        pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence
-        pre_n = length(resume_from.value2)
-        loge = exp.((log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n))
+        pre_n = length(resume_from.info[:samples])
+        loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
     end
     c = Chain(loge, samples)       # wrap the result by Chain
 
     if save_state               # save state
-        save!(c, spl, model, vi)
+        c = save(c, spl, model, vi, samples)
     end
 
     return c

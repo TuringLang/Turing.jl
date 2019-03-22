@@ -81,18 +81,18 @@ end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   if spl.alg.gid != 0 # Recompute joint in logp
-    runmodel!(model, vi, nothing)
+    runmodel!(model, vi)
   end
   old_θ = copy(vi[spl])
   old_logp = getlogp(vi)
 
-  @debug "Propose new parameters from proposals..."
+  Turing.DEBUG && @debug "Propose new parameters from proposals..."
   propose(model, spl, vi)
 
-  @debug "computing accept rate α..."
+  Turing.DEBUG && @debug "computing accept rate α..."
   is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
 
-  @debug "decide wether to accept..."
+  Turing.DEBUG && @debug "decide wether to accept..."
   if is_accept && !spl.info[:violating_support]  # accepted
     is_accept = true
   else                      # rejected
@@ -128,7 +128,7 @@ function sample(model::Model, alg::MH;
 
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, HamiltonianRobustInit())
+        model(vi_, SampleFromUniform())
         vi_
     else
         resume_from.info[:vi]
@@ -142,7 +142,7 @@ function sample(model::Model, alg::MH;
   accept_his = Bool[]
   PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
   for i = 1:n
-    @debug "$alg_str stepping..."
+    Turing.DEBUG && @debug "$alg_str stepping..."
 
     time_elapsed = @elapsed vi, stats = step(model, spl, vi, Val(i == 1))
     time_total += time_elapsed
@@ -165,11 +165,11 @@ function sample(model::Model, alg::MH;
   println("  Accept rate         = $accept_rate;")
 
   if resume_from != nothing   # concat samples
-    pushfirst!(samples, resume_from.value2...)
+    pushfirst!(samples, resume_from.info[:samples]...)
   end
   c = Chain(0.0, samples)       # wrap the result by Chain
   if save_state               # save state
-    save!(c, spl, model, vi)
+    c = save(c, spl, model, vi, samples)
   end
 
   c

@@ -3,7 +3,8 @@ module Core
 using MacroTools, Libtask, ForwardDiff
 using ..Utilities, Reexport
 using Flux.Tracker: Tracker
-using ..Turing: Turing, Model, Sampler, runmodel!
+using ..Turing: Turing, Model, runmodel!,
+    AbstractSampler, Sampler, SampleFromPrior
 
 include("VarReplay.jl")
 @reexport using .VarReplay
@@ -37,12 +38,12 @@ export  @model,
         ForwardDiffAD, 
         FluxTrackerAD,
         value,
-        gradient,
+        gradient_logp,
         CHUNKSIZE, 
         ADBACKEND,
         setchunksize,
         verifygrad,
-        gradient_forward,
-        gradient_reverse
+        gradient_logp_forward,
+        gradient_logp_reverse
 
 end # module
