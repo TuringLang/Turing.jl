@@ -224,20 +224,6 @@ end
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
-    if ~isempty(vi.pred)
-        for sym in keys(vi.pred)
-        # if ~haskey(sample.value, sym)
-            value[sym] = vi.pred[sym]
-        # end
-        end
-        # TODO: check why 1. 2. cause errors
-        # TODO: which one is faster?
-        # 1. Using empty!
-        # empty!(vi.pred)
-        # 2. Reassign an enmtpy dict
-        # vi.pred = Dict{Symbol,Any}()
-        # 3. Do nothing?
-    end
     return Sample(0.0, value)
 end
 
