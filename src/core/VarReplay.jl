@@ -73,7 +73,6 @@ mutable struct VarInfo
     dists       ::    Vector{Distributions.Distribution}
     gids        ::    Vector{Set{Selector}}
     logp        ::    Real
-    pred        ::    Dict{Symbol,Any}
     num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
     orders      ::    Vector{Int}   # observe statements number associated with random variables
     flags       ::    Dict{String,Vector{Bool}}
@@ -82,7 +81,6 @@ mutable struct VarInfo
         vals  = Vector{Real}()
         rvs   = Dict{Union{VarName,Vector{VarName}},Any}()
         logp  = zero(Real)
-        pred  = Dict{Symbol,Any}()
         flags = Dict{String,Vector{Bool}}()
         flags["del"] = Vector{Bool}()
         flags["trans"] = Vector{Bool}()
@@ -96,7 +94,6 @@ mutable struct VarInfo
             Vector{Distributions.Distribution}(),
             Vector{Int}(),
             logp,
-            pred,
             0,
             Vector{Int}(),
             flags
