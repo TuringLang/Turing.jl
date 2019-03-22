@@ -202,11 +202,26 @@ end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
-    epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
-    dim = length(vi[spl])
-    spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
+    # Pre-conditioner
+    # The condition below is to handle the imcompatibility of
+    # new adapataion interface with adaptive sampler used in Gibbs
+    # TODO: remove below when the interface is compatible with Gibbs by design
+    pc = if :pc_type in keys(spl.info)
+        spl.info[:pc_type](length(vi[spl]))
+    else
+        UnitPreConditioner()
+    end
+    # Dual averaging
+    ϵ = find_good_eps(model, spl, vi)   # heuristically find good initial step size
+    adapt_conf = if :adapt_conf in keys(spl.info)
+        spl.info[:adapt_conf]
+    else
+        nothing
+    end
+    ssa = DualAveraging(spl, adapt_conf, ϵ)
+    spl.info[:wum] = ThreePhaseAdapter(spl.alg.n_adapts, adapt_conf, pc, ssa)
     spl.selector.tag != :default && invlink!(vi, spl)
-    return vi, true
+    return vi, HMCStats(1.0, true, ϵ, 0)
 end
 
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
