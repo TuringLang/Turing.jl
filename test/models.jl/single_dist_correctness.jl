@@ -1,11 +1,11 @@
 using Test, Turing, Random
 
-Random.seed!(123)
+Random.seed!(12321)
 turnprogress(false)
 
 n_samples = 20_000
-mean_atol = 0.25
-var_atol = 1.0
+mean_tol = 0.1
+var_tol = 0.5
 multi_dim = 10
 
 # 1. UnivariateDistribution
@@ -87,7 +87,7 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1]),
                     dist_mean = mean(dist)
                     if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
                         chn_mean = mean(chn_xs)
-                        @test chn_mean ≈ dist_mean atol=(mean_atol * length(chn_mean))
+                        @test chn_mean ≈ dist_mean atol=(max(mean_tol * length(chn_mean), mean_tol * chn_mean))
                     end
 
                     # var() for Distributions.MatrixDistribution is not defined
@@ -96,7 +96,7 @@ dist_matrix = [Wishart(7, [1 0.5; 0.5 1]),
                         dist_var = var(dist)
                         if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
                             chn_var = var(chn_xs)
-                            @test chn_var ≈ dist_var atol=(var_atol * length(chn_var))
+                            @test chn_var ≈ dist_var atol=(max(var_tol * length(chn_var), var_tol * chn_var))
                         end
                     end
                 end
