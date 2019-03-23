@@ -64,7 +64,7 @@ function _sample_stable(vi, samples, spl, model, alg::IS)
 
     le = logsumexp(map(x->x[:lp], samples)) - log(n)
 
-    return Chain(exp(le), samples)
+    return Chain(le, samples)
 end
 
 function _sample_unstable(vi, samples, spl, model, alg::IS)
