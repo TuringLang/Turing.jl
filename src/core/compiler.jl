@@ -392,7 +392,6 @@ function build_output(model_info)
                 $unwrap_data_expr
                 $vi_name.logp = 0.0
                 $main_body
-                $vi_name
             end
             $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name, $defaults_name)
             return $model_name

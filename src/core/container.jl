@@ -31,8 +31,8 @@ function Base.copy(trace::Trace)
 end
 
 # NOTE: this function is called by `forkr`
-function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo=VarInfo(m)) where {T <: AbstractSampler}
-    res = Trace{T}(m, spl, vi);
+function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSampler}
+    res = Trace{T}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
     if isa(res.task.storage, Nothing)
@@ -41,8 +41,8 @@ function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo=VarInfo(m)) wh
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
     return res
 end
-function Trace(m::Model, spl::T, vi::AbstractVarInfo=VarInfo(m)) where {T <: AbstractSampler}
-    res = Trace{T}(m, spl, vi);
+function Trace(m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSampler}
+    res = Trace{T}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.vi.num_produce = 0
     res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )
@@ -59,9 +59,7 @@ Libtask.consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)
     newtrace = copy(trace)
-    if is_ref
-        set_retained_vns_del_by_spl!(newtrace.vi, newtrace.spl)
-    end
+    is_ref && set_retained_vns_del_by_spl!(newtrace.vi, newtrace.spl)
     newtrace.task.storage[:turing_trace] = newtrace
     return newtrace
 end
@@ -117,7 +115,7 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: AbstractVarInfo)
-    vals  = Vector{eltype(pc.vals)}(undef,n)
+    vals  = Vector{eltype(pc.vals)}(undef, n)
     logWs = zeros(eltype(pc.logWs), n)
     for i=1:n
         vals[i]  = Trace(pc.model, spl, varInfo)
