@@ -1,6 +1,6 @@
 module VarReplay
 
-using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Sampler, Model, getspace, SampleFromPrior
+using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Sampler, Model, getspace, SampleFromPrior, AbstractSampler
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
 using Distributions

@@ -332,7 +332,7 @@ function setorder!(mvi::TypedVarInfo, vn::VarName{sym}, index::Int) where {sym}
     mvi
 end
 
-@generated function getidcs(vi::TypedVarInfo{Tvis}, spl::Nothing) where Tvis
+@generated function getidcs(vi::TypedVarInfo{Tvis}, spl::SampleFromPrior) where Tvis
     args = []
     for f in fieldnames(Tvis)
         push!(args, :($f = _filter_gids_1(vi, $(QuoteNode(f)))))
@@ -380,7 +380,7 @@ end
     return nt
 end
 
-@generated function getvns(vi::TypedVarInfo{Tvis}, spl::Union{Nothing, Sampler}) where Tvis
+@generated function getvns(vi::TypedVarInfo{Tvis}, spl::AbstractSampler) where Tvis
     args = []
     for f in fieldnames(Tvis)
         push!(args, :($f = vi.vis.$f.vns[idcs.$f]))

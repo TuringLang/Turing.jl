@@ -5,7 +5,7 @@
 abstract type AbstractVarInfo end
 const VarInfo = AbstractVarInfo
 
-function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::Union{SampleFromPrior, Sampler} = SampleFromPrior())
+function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
     setlogp!(vi, zero(Float64))
     if spl isa Sampler && isdefined(spl.info, :eval_num)
         spl.info.eval_num += 1
@@ -146,8 +146,8 @@ Base.setindex!(vi::UntypedVarInfo, val::Any, vview::VarView) = setval!(vi, val, 
 Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
 Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
-Base.getindex(vi::UntypedVarInfo, spl::Nothing) = copy(getall(vi))
-Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Nothing) = setall!(vi, val)
+Base.getindex(vi::UntypedVarInfo, spl::SampleFromPrior) = copy(getall(vi))
+Base.setindex!(vi::UntypedVarInfo, val::Any, spl::SampleFromPrior) = setall!(vi, val)
 
 Base.keys(vi::UntypedVarInfo) = keys(vi.idcs)
 
@@ -262,11 +262,11 @@ end
 
 # Get all values of variables belonging to gid or 0
 getvals(vi::UntypedVarInfo) = getvals(vi, nothing)
-getvals(vi::UntypedVarInfo, spl::Union{Nothing, Sampler}) = view(vi.vals, getidcs(vi, spl))
+getvals(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 getvns(vi::UntypedVarInfo) = getvns(vi, nothing)
-getvns(vi::UntypedVarInfo, spl::Union{Nothing, Sampler}) = view(vi.vns, getidcs(vi, spl))
+getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to gid or 0
 function getranges(vi::UntypedVarInfo, spl::Sampler)
