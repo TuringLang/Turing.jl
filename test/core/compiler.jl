@@ -39,13 +39,13 @@ Random.seed!(129)
             p, x
         end
 
-        s = SMC(10000)
-        p = PG(100,1000)
-        g = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
+        smc = SMC(10000)
+        pg = PG(100,1000)
+        gibbs = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
 
-        chn_s = sample(testbb(obs), s)
-        chn_p = sample(testbb(obs), p)
-        chn_g = sample(testbb(obs), g)
+        chn_s = sample(testbb(obs), smc)
+        chn_p = sample(testbb(obs), pg)
+        chn_g = sample(testbb(obs), gibbs)
 
         check_numerical(chn_s, [:p], [meanp], eps=0.05)
         check_numerical(chn_p, [:x], [meanp], eps=0.1)
@@ -185,13 +185,13 @@ Random.seed!(129)
         priors = 0
 
         @model gauss(x) = begin
-          priors = TArray{Float64}(2)
-          priors[1] ~ InverseGamma(2,3)         # s
-          priors[2] ~ Normal(0, sqrt(priors[1])) # m
-          for i in 1:length(x)
-            x[i] ~ Normal(priors[2], sqrt(priors[1]))
-          end
-          priors
+            priors = TArray{Float64}(2)
+            priors[1] ~ InverseGamma(2,3)         # s
+            priors[2] ~ Normal(0, sqrt(priors[1])) # m
+            for i in 1:length(x)
+                x[i] ~ Normal(priors[2], sqrt(priors[1]))
+            end
+            priors
         end
 
         chain = sample(gauss(x), PG(10, 10))
@@ -334,7 +334,7 @@ Random.seed!(129)
             y = rand()
             y ~ Normal(0,1)
         end
-        
+
         model_info[:main_body] = ex
         translate_tilde!(model_info)
         res = model_info[:main_body]

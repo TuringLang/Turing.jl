@@ -6,11 +6,12 @@ using Test
 
 @testset "ad.jl" begin
     @testset "AD compatibility" begin
+
         # Real
         x_real = randn(5)
         dists = [Normal(0, 1)]
         for dist in dists
-            @assert f(x::Vector) = sum(logpdf.(Ref(dist), x))
+            f(x::Vector) = sum(logpdf.(Ref(dist), x))
             ForwardDiff.gradient(f, x_real)
         end
 
@@ -29,9 +30,9 @@ using Test
         test_ad(p->logpdf(Poisson(p), 3))
         test_ad(p->Turing.nbinomlogpdf(5, p, 1))
         test_ad(p->logpdf(NegativeBinomial(5, p), 3))
-        test_ad(p->Turing.nbinomlogpdf(r, 0.5, 1), 3.5)
+        test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
         test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
-        test_ad(x -> Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
+        test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
     end
     @testset "adr" begin
         ad_test_f = gdemo_default
@@ -103,8 +104,7 @@ using Test
         end
 
         # Hand-written logp
-        function logp3(xs)
-            x = vec(x)
+        function logp3(x)
             dist_v = Wishart(7, [1 0.5; 0.5 1])
             v = [x[1] x[3]; x[2] x[4]]
             lp = Turing.logpdf_with_trans(dist_v, v, false)
