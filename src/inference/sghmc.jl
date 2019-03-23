@@ -71,6 +71,7 @@ function init_spl(model, alg::SGHMC; kwargs...)
     v = zeros(Float64, size(vi[_spl]))
     info = SGHMCInfo(v, CACHERESET, idcs, ranges, progress, 0, 1)
     spl = Sampler(alg, info)
+    spl.alg.gid == 0 && link!(vi, spl)
     return spl, vi
 end
 

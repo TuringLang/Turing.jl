@@ -73,9 +73,7 @@ STAN_DEFAULT_ADAPT_CONF = nothing
 
 function Sampler(model, alg::Hamiltonian, vi::AbstractVarInfo, adapt_conf, eval_num)
     spl = Sampler(alg, nothing)
-    if spl.alg.gid == 0
-        link!(vi, spl)
-    end
+    spl.alg.gid == 0 && link!(vi, spl)
     idcs = VarReplay._getidcs(vi, spl)
     ranges = VarReplay._getranges(vi, spl, idcs)
     info = HamiltonianInfo(model, spl, vi, adapt_conf, idcs, ranges, eval_num)

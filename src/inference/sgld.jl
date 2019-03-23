@@ -71,6 +71,7 @@ function init_spl(model, alg::SGLD; kwargs...)
     vi = VarInfo(model)
     info = SGLDInfo(0, wum, CACHERESET, idcs, ranges, progress, 0, 1)
     spl = Sampler(alg, info)
+    spl.alg.gid == 0 && link!(vi, spl)
     return spl, vi
 end
 
