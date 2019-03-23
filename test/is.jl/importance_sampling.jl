@@ -8,6 +8,10 @@ using Random
 using StatsFuns
 
 function reference(n :: Int)
+  # Equivalent to calling the model to setup TypedVarInfo
+  x = rand(Normal(4,5))
+  y = rand(Normal(x,1))
+  
   logweights = zeros(Float64, n)
   samples = Array{Dict{Symbol,Any}}(undef, n)
   for i = 1:n
