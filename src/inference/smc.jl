@@ -91,6 +91,7 @@ VarInfo(model::Model) = TypedVarInfo(default_varinfo(model))
 ## wrapper for smc: run the sampler, collect results.
 function sample(model::Model, alg::SMC)
     spl, vi = init_spl(model, alg)
+    empty!(vi)
     particles = ParticleContainer{Trace{typeof(spl), typeof(vi), typeof(model)}}(model)
     push!(particles, spl.alg.n_particles, spl, vi)
 
