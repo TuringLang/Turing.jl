@@ -87,9 +87,15 @@ function Sampler(alg::PMMH, model::Model)
     return Sampler(alg, info)
 end
 
-function init_spl(model, alg::PMMH; kwargs...)
+function init_spl(model, alg::PMMH; resume_from = nothing, kwargs...)
     spl = Sampler(alg, model)
-    vi = VarInfo(model)
+    vi = if resume_from == nothing
+        vi = VarInfo(model)
+        model(vi, SampleFromUniform())
+        vi
+    else
+        resume_from.info.vi
+    end
     return spl, vi
 end
 
@@ -160,7 +166,6 @@ function _sample(vi, samples, spl, model, alg::PMMH;
     # Init parameters
     n = spl.alg.n_iters
 
-    vi = resume_from == nothing ? VarInfo(model) : resume_from.info[:vi]
     # PMMH steps
     accept_his = Bool[]
     PROGRESS[] && (spl.info.progress = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
