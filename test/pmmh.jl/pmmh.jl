@@ -19,7 +19,7 @@ end
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
 alg = PMMH(1000, SMC(20, :m), MH(1,(:s, GKernel(1))))
 chain = sample(pmmhtest(x), alg)
-@test mean(chain[:s].value) ≈ 49/24 atol=0.2
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
 @test mean(chain[:m].value) ≈ 7/6 atol=0.1
 
 # PMMH with prior as proposal
@@ -31,5 +31,5 @@ chain = sample(pmmhtest(x), alg)
 # PIMH
 alg = PIMH(1000, SMC(20))
 chain = sample(pmmhtest(x), alg)
-@test mean(chain[:s].value) ≈ 49/24 atol=0.15
+@test mean(chain[:s].value) ≈ 49/24 atol=0.1
 @test mean(chain[:m].value) ≈ 7/6 atol=0.1

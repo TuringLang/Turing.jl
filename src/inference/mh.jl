@@ -85,13 +85,19 @@ function Sampler(alg::MH, vi::AbstractVarInfo)
     return Sampler(alg, info)
 end
 
-function init_spl(model, alg::MH; kwargs...)
+function init_spl(model, alg::MH; resume_from = nothing, kwargs...)
     alg_str = "MH"
     # Sanity check for space
     if alg.gid == 0 && !isempty(getspace(alg))
         verifyspace(getspace(alg), model.pvars, alg_str)
     end
-    vi = VarInfo(model)
+    vi = if resume_from == nothing
+        vi_ = empty!(VarInfo(model))
+        model(vi_, SampleFromUniform())
+        vi_
+    else
+        resume_from.info.vi
+    end
     spl = Sampler(alg, vi)
     return spl, vi
 end
