@@ -58,8 +58,9 @@ function Sampler(alg::SMC, vi::AbstractVarInfo)
 end
 
 function init_spl(model::Model, alg::SMC)
-    vi = empty!(VarInfo(model))
+    vi = VarInfo(model)
     spl = Sampler(alg, vi)
+    empty!(vi)
     return spl, vi
 end
 
