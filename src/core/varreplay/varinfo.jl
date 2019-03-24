@@ -280,7 +280,8 @@ function getranges(vi::UntypedVarInfo, spl::Sampler)
         spl.info.ranges = _getranges(vi, spl)
     end
 end
-_getranges(vi::UntypedVarInfo, spl::Sampler) = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
+_getranges(vi::UntypedVarInfo, spl::Sampler) = _getranges(vi, spl, getidcs(vi, spl))
+_getranges(vi::UntypedVarInfo, spl::Sampler, idcs) = union(map(i -> vi.ranges[i], idcs)...)
 
 #######################################
 # Rand & replaying method for VarInfo #

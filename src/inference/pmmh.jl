@@ -40,7 +40,7 @@ end
 
 @inline function get_pmmh_samplers(subalgs, model, n, alg, alg_str)
     if length(subalgs) == 0
-        return (), ()
+        return ()
     else
         subalg = subalgs[1]
         if typeof(subalg) == MH && subalg.n_iters != 1
@@ -48,10 +48,9 @@ end
         end
         if isa(subalg, Union{SMC, MH})
             spl, vi = init_spl(model, typeof(subalg)(subalg, n + 1 - length(subalgs)))
-            _spls, _vis = get_pmmh_samplers(Base.tail(subalgs), model, n, alg, alg_str)
+            _spls = get_pmmh_samplers(Base.tail(subalgs), model, n, alg, alg_str)
             spls = (spl, _spls...)
-            vis = (vi, _vis...)
-            return spls, vis
+            return spls
         else
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end
@@ -78,24 +77,20 @@ function PMMHInfo(samplers, alg::PMMH, vi)
     return PMMHInfo(samplers, false, 0.0, 0.0, -Inf, 0.0, ProgressMeter.Progress(n, 1, "[PMMH] Sampling...", 0), CACHERESET, idcs, ranges)
 end
 
-function Sampler(alg::PMMH, model::Model)
+function init_spl(model, alg::PMMH; resume_from = nothing, kwargs...)
     alg_str = "PMMH"
     n_samplers = length(alg.algs)
-    samplers, vis = get_pmmh_samplers(alg.algs, model, n_samplers, alg, alg_str)
+    samplers = get_pmmh_samplers(alg.algs, model, n_samplers, alg, alg_str)
     verifyspace(alg.algs, model.pvars, alg_str)
-    info = PMMHInfo(samplers, alg, vis[1])
-    return Sampler(alg, info)
-end
-
-function init_spl(model, alg::PMMH; resume_from = nothing, kwargs...)
-    spl = Sampler(alg, model)
     vi = if resume_from == nothing
-        vi = VarInfo(model)
+        vi = empty!(VarInfo(model))
         model(vi, SampleFromUniform())
         vi
     else
         resume_from.info.vi
     end
+    info = PMMHInfo(samplers, alg, vi)
+    spl = Sampler(alg, info)
     return spl, vi
 end
 
