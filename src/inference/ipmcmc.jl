@@ -92,10 +92,11 @@ end
 function init_spl(model::Model, alg::IPMCMC; kwargs...)
     vi = [VarInfo(model) for i in 1:alg.n_nodes]
     spl = Sampler(alg, vi)
+    empty!.(vi)
     return spl, vi
 end
 
-function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{<:VarInfo}, is_first::Bool)
+function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{<:VarInfo})
     # Initialise array for marginal likelihood estimators
     log_zs = zeros(spl.alg.n_nodes)
 
@@ -139,7 +140,7 @@ function _sample(VarInfos, samples, spl, model, alg::IPMCMC)
     end
     for i = 1:n
         Turing.DEBUG && @debug "IPMCMC stepping..."
-        time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
+        time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos)
 
         # Save each CSMS retained path as a sample
         for j in 1:spl.alg.n_csmc_nodes
