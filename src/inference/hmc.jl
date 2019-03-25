@@ -74,11 +74,12 @@ end
 DEFAULT_ADAPT_CONF_TYPE = Nothing
 STAN_DEFAULT_ADAPT_CONF = nothing
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, nothing)
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing)
-    return _sampler(alg::Hamiltonian, adapt_conf)
+Sampler(alg::Hamiltonian, s::Selector) =  Sampler(alg, nothing, s)
+Sampler(alg::Hamiltonian, adapt_conf::Nothing) = Sampler(alg, adapt_conf, Selector())
+function Sampler(alg::Hamiltonian, adapt_conf::Nothing, s::Selector)
+    return _sampler(alg::Hamiltonian, adapt_conf, s)
 end
-function _sampler(alg::Hamiltonian, adapt_conf)
+function _sampler(alg::Hamiltonian, adapt_conf, s::Selector)
     info=Dict{Symbol, Any}()
 
     # For state infomation
@@ -88,7 +89,7 @@ function _sampler(alg::Hamiltonian, adapt_conf)
     # Adapt configuration
     info[:adapt_conf] = adapt_conf
 
-    Sampler(alg, info)
+    Sampler(alg, info, s)
 end
 
 function sample(model::Model, alg::Hamiltonian;
@@ -133,7 +134,7 @@ function sample(model::Model, alg::Hamiltonian;
         deepcopy(resume_from.info[:vi])
     end
 
-    if spl.selector.tag[] == :default
+    if spl.selector.tag == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -185,7 +186,7 @@ function sample(model::Model, alg::Hamiltonian;
     c = Chain(0.0, samples)       # wrap the result by Chain
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
-        spl.selector.tag[] == :default && invlink!(vi, spl)
+        spl.selector.tag == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
     end
     return c
@@ -197,11 +198,11 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
 end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
-    spl.selector.tag[] != :default && link!(vi, spl)
+    spl.selector.tag != :default && link!(vi, spl)
     epsilon = find_good_eps(model, spl, vi) # heuristically find good initial epsilon
     dim = length(vi[spl])
     spl.info[:wum] = ThreePhaseAdapter(spl, epsilon, dim)
-    spl.selector.tag[] != :default && invlink!(vi, spl)
+    spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -215,7 +216,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     spl.info[:eval_num] = 0
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.selector.tag[] != :default
+    if spl.selector.tag != :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
@@ -241,7 +242,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         setlogp!(vi, lj)
     end
 
-    if PROGRESS[] && spl.selector.tag[] == :default
+    if PROGRESS[] && spl.selector.tag == :default
         std_str = string(spl.info[:wum].pc)
         std_str = length(std_str) >= 32 ? std_str[1:30]*"..." : std_str
         haskey(spl.info, :progress) && ProgressMeter.update!(
@@ -256,7 +257,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector.tag[] != :default && invlink!(vi, spl)
+    spl.selector.tag != :default && invlink!(vi, spl)
 
     return vi, is_accept
 end

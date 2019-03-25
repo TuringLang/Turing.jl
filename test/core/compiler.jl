@@ -3,6 +3,8 @@ import Turing.translate_tilde!
 
 Random.seed!(129)
 
+priors = 0 # See "new grammar" test.
+
 @testset "compiler.jl" begin
     @testset "assume" begin
         @model test_assume() = begin
@@ -182,7 +184,6 @@ Random.seed!(129)
     end
     @testset "new grammar" begin
         x = Float64[1 2]
-        priors = 0
 
         @model gauss(x) = begin
             priors = TArray{Float64}(2)
