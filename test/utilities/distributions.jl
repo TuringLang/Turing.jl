@@ -1,5 +1,5 @@
 using Turing
-using Turing: BinomialLogit
+using Turing: BinomialLogit, NUTS
 using Distributions: Binomial, logpdf
 using StatsFuns: logistic
 
@@ -96,40 +96,15 @@ using StatsFuns: logistic
 							@model m() = begin
 								x ~ dist
 							end
+
 							chn = sample(m(), NUTS(n_samples, 0.8))
 
-							chn_xs = chn[1:2:end, :x, :].value # thinning by halving
-
-							# Mean
-							dist_mean = mean(dist)
-							mean_shape = size(dist_mean)
-							if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
-								chn_mean = Array(mean(chn_xs, dims=1))
-								chn_mean = length(chn_mean) == 1 ?
-									chn_mean[1] :
-									reshape(chn_mean, mean_shape)
-                                atol_m = length(chn_mean) > 1 ?
-                                    mean_tol * length(chn_mean) :
-                                    max(mean_tol, mean_tol * chn_mean)
-								@test chn_mean ≈ dist_mean atol=atol_m
-							end
-
-							# var() for Distributions.MatrixDistribution is not defined
-							if !(dist isa Distributions.MatrixDistribution)
-								# Variance
-								dist_var = var(dist)
-								var_shape = size(dist_var)
-								if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
-									chn_var = Array(var(chn_xs, dims=1))
-									chn_var = length(chn_var) == 1 ?
-										chn_var[1] :
-										reshape(chn_var, var_shape)
-                                    atol_v = length(chn_mean) > 1 ?
-                                        mean_tol * length(chn_mean) :
-                                        max(mean_tol, mean_tol * chn_mean)
-									@test chn_mean ≈ dist_mean atol=atol_v
-								end
-							end
+                            # Numerical tests.
+							check_dist_numerical(dist,
+                                chn,
+                                mean_tol=mean_tol,
+                                var_atol=var_atol,
+                                var_tol=var_tol)
 						end
 					end
 				end

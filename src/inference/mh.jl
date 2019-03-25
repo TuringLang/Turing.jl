@@ -48,11 +48,12 @@ function MH(n_iters::Int, space...)
   MH{eltype(set)}(n_iters, proposals, set)
 end
 
-function Sampler(alg::MH, model::Model, s::Selector)
+function Sampler(alg::MH, model::Model)
     alg_str = "MH"
 
     # Sanity check for space
-    if (s.tag == :default) && !isempty(alg.space)
+    # TODO: if (this_sampler.selector.tag[] == :default) && !isempty(alg.space)
+    if false && !isempty(alg.space)
         @assert issubset(Set(get_pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
         if Set(get_pvars(model)) != alg.space
             warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(get_pvars(model))))")
@@ -64,7 +65,7 @@ function Sampler(alg::MH, model::Model, s::Selector)
     info[:prior_prob] = 0.0
     info[:violating_support] = false
 
-    return Sampler(alg, info, s)
+    return Sampler(alg, info)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
@@ -79,7 +80,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector.tag != :default # Recompute joint in logp
+  if spl.selector.tag[] != :default # Recompute joint in logp
     runmodel!(model, vi)
   end
   old_θ = copy(vi[spl])
@@ -136,7 +137,7 @@ function sample(model::Model, alg::MH;
         resume_from.info[:vi]
     end
 
-  if spl.selector.tag == :default
+  if spl.selector.tag[] == :default
     runmodel!(model, vi, spl)
   end
 

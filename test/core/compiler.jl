@@ -128,6 +128,8 @@ priors = 0 # See "new grammar" test.
         f1_mm = testmodel1(1., 10.)
         @test f1_mm() == (1, 10)
 
+        @info "Testing the compiler's ability to catch bad models..."
+
         # Test for assertions in observe statements.
         @model brokentestmodel_observe1(x1, x2) = begin
             s ~ InverseGamma(2,3)

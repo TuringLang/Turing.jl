@@ -1,4 +1,4 @@
-using Turing: Selector
+using Turing
 
 @testset "ipmcmc.jl" begin
     @testset "ipmcmc constructor" begin
@@ -23,6 +23,6 @@ using Turing: Selector
 
         alg2 = IPMCMC(15, 100, 10)
         chain2 = sample(MoGtest_default, alg2)
-        check_MoGtest_default(chain2, eps=0.1)
+        check_MoGtest_default(chain2, eps=0.2)
     end
 end

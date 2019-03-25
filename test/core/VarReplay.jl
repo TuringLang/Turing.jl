@@ -46,6 +46,24 @@ i, j, k = 1, 2, 3
         @test ~is_inside(vn6, space)
     end
     @testset "orders" begin
+        randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
+            if ~haskey(vi, vn)
+                r = rand(dist)
+                Turing.push!(vi, vn, r, dist, spl.selector)
+                spl.info[:cache_updated] = CACHERESET
+                r
+            elseif is_flagged(vi, vn, "del")
+                unset_flag!(vi, vn, "del")
+                r = rand(dist)
+                vi[vn] = Turing.vectorize(dist, r)
+                Turing.setorder!(vi, vn, vi.num_produce)
+                r
+            else
+                Turing.updategid!(vi, vn, spl)
+                vi[vn]
+            end
+        end
+
         csym = gensym() # unique per model
         vn_z1 = VarName(csym, :z, "[1]", 1)
         vn_z2 = VarName(csym, :z, "[2]", 1)

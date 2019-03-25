@@ -14,22 +14,22 @@
 function sample(mf::T, ss::CmdStan.Sample) where {T<:Function}
     return sample(mf, ss.num_samples, ss.num_warmup, ss.save_warmup, ss.thin, ss.adapt, ss.alg)
 end
-function sample(  mf::T, 
-                  num_samples::Int, 
-                  num_warmup::Int, 
-                  save_warmup::Bool, 
-                  thin::Int, 
+function sample(  mf::T,
+                  num_samples::Int,
+                  num_warmup::Int,
+                  save_warmup::Bool,
+                  thin::Int,
                   ss::CmdStan.Sample
                 ) where{T<:Function}
     return sample(mf, num_samples, num_warmup, save_warmup, thin, ss.adapt, ss.alg)
 end
 
-function sample(  mf::T, 
-                  num_samples::Int, 
-                  num_warmup::Int, 
-                  save_warmup::Bool, 
-                  thin::Int, 
-                  adapt::CmdStan.Adapt, 
+function sample(  mf::T,
+                  num_samples::Int,
+                  num_warmup::Int,
+                  save_warmup::Bool,
+                  thin::Int,
+                  adapt::CmdStan.Adapt,
                   alg::CmdStan.Hmc
                 ) where {T<:Function}
     if alg.stepsize_jitter != 0

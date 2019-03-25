@@ -1,41 +1,6 @@
 using Turing: gradient_logp_forward, gradient_logp_reverse
 using Test
 
-# Helper function for numerical tests
-function check_numerical(
-  chain,
-  symbols::Vector,
-  exact_vals::Vector;
-  eps=0.2,
-)
-	for (sym, val) in zip(symbols, exact_vals)
-        @info sym, val
-        E = val isa Real ? mean(chain[sym].value) : vec(mean(chain[sym].value, dims=[1]))
-		print("  $sym = $E ≈ $val (eps = $eps) ?")
-		cmp = abs.(sum(E - val)) <= eps
-		if cmp
-			printstyled("./\n", color = :green)
-			printstyled("    $sym = $E, diff = $(abs.(E - val))\n", color = :green)
-		else
-		printstyled(" X\n", color = :red)
-		printstyled("    $sym = $E, diff = $(abs.(E - val))\n", color = :red)
-	end
-  end
-end
-
-# Wrapper function to quickly check gdemo accuracy.
-function check_gdemo(chain; eps = 0.2)
-    check_numerical(chain, [:s, :m], [49/24, 7/6], eps=eps)
-end
-
-# Wrapper function to check MoGtest.
-function check_MoGtest_default(chain; eps = 0.2)
-    check_numerical(chain,
-        [:z1, :z2, :z3, :z4, :mu1, :mu2],
-        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
-        eps=eps)
-end
-
 function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
     isarr = isa(at, AbstractArray)
     reverse = Tracker.gradient(f, at)[1]

@@ -35,9 +35,9 @@ mutable struct IS <: InferenceAlgorithm
     n_particles ::  Int
 end
 
-function Sampler(alg::IS, s::Selector)
+function Sampler(alg::IS)
     info = Dict{Symbol, Any}()
-    Sampler(alg, info, s)
+    Sampler(alg, info)
 end
 
 function sample(model::Model, alg::IS)

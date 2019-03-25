@@ -73,6 +73,7 @@ mutable struct VarInfo
     dists       ::    Vector{Distributions.Distribution}
     gids        ::    Vector{Set{Selector}}
     logp        ::    Real
+    pred        ::    Dict{Symbol,Any}
     num_produce ::    Int           # num of produce calls from trace, each produce corresponds to an observe.
     orders      ::    Vector{Int}   # observe statements number associated with random variables
     flags       ::    Dict{String,Vector{Bool}}
@@ -81,6 +82,7 @@ mutable struct VarInfo
         vals  = Vector{Real}()
         rvs   = Dict{Union{VarName,Vector{VarName}},Any}()
         logp  = zero(Real)
+        pred  = Dict{Symbol,Any}()
         flags = Dict{String,Vector{Bool}}()
         flags["del"] = Vector{Bool}()
         flags["trans"] = Vector{Bool}()
@@ -94,6 +96,7 @@ mutable struct VarInfo
             Vector{Distributions.Distribution}(),
             Vector{Int}(),
             logp,
+            pred,
             0,
             Vector{Int}(),
             flags
@@ -204,8 +207,11 @@ end
 Base.getindex(vi::VarInfo, vview::VarView) = copy(getval(vi, vview))
 Base.setindex!(vi::VarInfo, val::Any, vview::VarView) = setval!(vi, val, vview)
 
-Base.getindex(vi::VarInfo, s::Union{Selector, Sampler}) = copy(getval(vi, getranges(vi, s)))
-Base.setindex!(vi::VarInfo, val::Any, s::Union{Selector, Sampler}) = setval!(vi, val, getranges(vi, s))
+Base.getindex(vi::VarInfo, s::Selector) = copy(getval(vi, getranges(vi, s)))
+Base.setindex!(vi::VarInfo, val::Any, s::Selector) = setval!(vi, val, getranges(vi, s))
+
+Base.getindex(vi::VarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
+Base.setindex!(vi::VarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
 Base.getindex(vi::VarInfo, ::SampleFromPrior) = copy(getall(vi))
 Base.setindex!(vi::VarInfo, val::Any, ::SampleFromPrior) = setall!(vi, val)
@@ -308,7 +314,10 @@ function getidcs(vi::VarInfo, spl::Sampler)
         spl.info[:idcs]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = getidcs(vi, spl.selector, spl.alg.space)
+        spl.info[:idcs] = filter(i ->
+          (spl.selector in vi.gids[i] || isempty(vi.gids[i])) && (isempty(spl.alg.space) || is_inside(vi.vns[i], spl.alg.space)),
+          1:length(vi.gids)
+        )
     end
 end
 
@@ -343,12 +352,12 @@ function getranges(vi::VarInfo, spl::Sampler)
         spl.info[:ranges]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        spl.info[:ranges] = getranges(vi, spl.selector, spl.alg.space)
+        spl.info[:ranges] = union(map(i -> vi.ranges[i], getidcs(vi, spl))...)
     end
 end
 
-function getranges(vi::VarInfo, s::Selector, space::Set=Set())
-    union(map(i -> vi.ranges[i], getidcs(vi, s, space))...)
+function getranges(vi::VarInfo, s::Selector)
+    union(map(i -> vi.ranges[i], getidcs(vi, s))...)
 end
 
 # NOTE: this function below is not used anywhere but test files.

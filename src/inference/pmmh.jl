@@ -32,9 +32,9 @@ end
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
 
-function Sampler(alg::PMMH, model::Model, s::Selector)
+function Sampler(alg::PMMH, model::Model)
     info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s)
+    spl = Sampler(alg, info)
 
     alg_str = "PMMH"
     n_samplers = length(alg.algs)
@@ -45,7 +45,8 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
     for i in 1:n_samplers
         sub_alg = alg.algs[i]
         if isa(sub_alg, Union{SMC, MH})
-            samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
+            samplers[i] = Sampler(sub_alg, model)
+            samplers[i].selector.tag[] = Symbol(typeof(sub_alg))
         else
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end

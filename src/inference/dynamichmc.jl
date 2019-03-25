@@ -32,8 +32,8 @@ function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
     DynamicNUTS{AD, eltype(_space)}(n_iters, _space)
 end
 
-function Sampler(alg::DynamicNUTS{T}, s::Selector) where T <: Hamiltonian
-  return Sampler(alg, Dict{Symbol,Any}(), s)
+function Sampler(alg::DynamicNUTS{T}) where T <: Hamiltonian
+  return Sampler(alg, Dict{Symbol,Any}())
 end
 
 function sample(model::Model,
@@ -52,7 +52,7 @@ function sample(model::Model,
     vi = VarInfo()
     model(vi, SampleFromUniform())
 
-    if spl.selector.tag == :default
+    if spl.selector.tag[] == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end

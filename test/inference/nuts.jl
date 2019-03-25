@@ -1,4 +1,5 @@
-using Turing: Sampler
+using Turing
+using Turing: NUTS
 
 @testset "nuts.jl" begin
     @testset "nuts inference" begin

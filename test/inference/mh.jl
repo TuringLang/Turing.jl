@@ -30,7 +30,7 @@
             (:s, GKernel(5)),
             (:m, GKernel(1.0)))
         chain = sample(gdemo_default, alg)
-        check_gdemo(chain, eps = 0.1)
+        check_gdemo(chain, eps = 0.2)
 
         # MH within Gibbs
         alg = Gibbs(1000, MH(5, :m), MH(5, :s))
