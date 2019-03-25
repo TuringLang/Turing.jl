@@ -25,6 +25,12 @@ jobs:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
+    - stage: test
+      os: windows
+      language: c
+      env: STAGE=test
+      script:
+        - ./test/windows-travis.sh
     - stage: numerical
       allow_failures: true
       julia: 1.0
