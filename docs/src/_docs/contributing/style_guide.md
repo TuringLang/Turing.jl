@@ -568,6 +568,8 @@ It is recommended that the "runtests.jl" file contains the root test set which c
 end
 ```
 
+The file structure of the `test` folder should mirror that of the `src` folder. Every file in `src` should have a complementary file in the `test` folder, containing tests relevant to that file's contents.
+
 ### Comparisons
 
 Most tests are written in the form `@test x == y`.
@@ -580,4 +582,19 @@ Avoid adding visual noise into test comparisons:
 
 # No:
 @test value == 0.0
+```
+
+In cases where you are checking the numerical validity of a model's parameter estimates, please use the `check_numerical` function found in `test/test_utils/numerical_tests.jl`. This function will evaluate a model's parameter estimates using a given tolerance level, and test will only be performed if you are running the test suite locally or if Travis is executing the "Numerical" testing stage.
+
+Here is an example of usage:
+
+```julia
+# Check that m and s are plus or minus one from 1.5 and 2.2, respectively.
+check_numerical(chain, [:m, :s], [1.5, 2.2], eps = 1.0)
+
+# Checks the estimates for a default gdemo model using values 1.5 and 2.0.
+check_gdemo(chain, eps = 0.1)
+
+# Checks the estimates for a default MoG model.
+check_MoGtest_default(chain, eps = 0.1)
 ```
