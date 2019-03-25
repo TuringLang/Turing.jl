@@ -2,7 +2,7 @@ using Turing: @VarName, randcat
 using Distributions: Normal
 using Test, StatsFuns
 
-@teset "util.jl" begin
+@testset "util.jl" begin
     i = 1
     @test @VarName(s)[1:end-1] == (:s,())
     @test @VarName(x[1,2][1+5][45][3][i])[1:end-1] ==

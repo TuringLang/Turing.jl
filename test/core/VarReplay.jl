@@ -8,6 +8,7 @@ using Distributions
 using ForwardDiff: Dual
 using Test
 
+i, j, k = 1, 2, 3
 
 @testset "VarReplay.jl" begin
     @testset "flags" begin
@@ -160,12 +161,10 @@ using Test
         @test v_sym == "x"
 
         # Array
-        i = 1
         v_arr = eval(varname(:(x[i]))[1])
         @test v_arr == "[1]"
 
         # Matrix
-        i, j, k = 1, 2, 3
         v_mat = eval(varname(:(x[i,j]))[1])
         @test v_mat== "[1,2]"
 
@@ -174,7 +173,6 @@ using Test
 
         v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
         @test v_mat == "[1,2][6][45][3][1]"
-
 
         @model mat_name_test() = begin
             p = Array{Any}(undef, 2, 2)
@@ -187,7 +185,6 @@ using Test
         check_numerical(chain, ["p[1, 1]"], [0], eps = 0.25)
 
         # Multi array
-        i, j = 1, 2
         v_arrarr = eval(varname(:(x[i][j]))[1])
         @test v_arrarr == "[1][2]"
 
@@ -204,7 +201,7 @@ using Test
         chain = sample(marr_name_test(), HMC(1000, 0.2, 4))
         check_numerical(chain, ["p[1][1]"], [0], eps = 0.25)
     end
-    @test "varinfo" begin
+    @testset "varinfo" begin
         # Test for uid() (= string())
         csym = gensym()
         vn1 = VarName(csym, :x, "[1]", 1)

@@ -1,3 +1,5 @@
+using Turing: Selector
+
 @testset "ipmcmc.jl" begin
     @testset "ipmcmc constructor" begin
         Random.seed!(125)

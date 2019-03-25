@@ -108,10 +108,10 @@ using StatsFuns: logistic
 								chn_mean = length(chn_mean) == 1 ?
 									chn_mean[1] :
 									reshape(chn_mean, mean_shape)
-								@test chn_mean ≈ dist_mean
-									atol=(max(
-										mean_tol * length(chn_mean),
-										mean_tol * chn_mean))
+                                atol_m = length(chn_mean) > 1 ?
+                                    mean_tol * length(chn_mean) :
+                                    max(mean_tol, mean_tol * chn_mean)
+								@test chn_mean ≈ dist_mean atol=atol_m
 							end
 
 							# var() for Distributions.MatrixDistribution is not defined
@@ -124,10 +124,10 @@ using StatsFuns: logistic
 									chn_var = length(chn_var) == 1 ?
 										chn_var[1] :
 										reshape(chn_var, var_shape)
-									@test chn_var ≈ dist_var
-										atol=(max(
-											var_tol * length(chn_var),
-											var_tol * chn_var))
+                                    atol_v = length(chn_mean) > 1 ?
+                                        mean_tol * length(chn_mean) :
+                                        max(mean_tol, mean_tol * chn_mean)
+									@test chn_mean ≈ dist_mean atol=atol_v
 								end
 							end
 						end

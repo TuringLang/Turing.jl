@@ -1,15 +1,10 @@
+using Turing
 using Turing: ParticleContainer, weights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
 using Test
 
 @testset "container.jl" begin
-    if isdefined((@static VERSION < v"0.7.0-DEV.484" ? current_module() : @__MODULE__), :n)
-        n[] = 0
-    else
-        const n = Ref(0)
-    end
-
     @testset "copy particle container" begin
         pc = ParticleContainer{Trace}(x -> x * x)
         newpc = copy(pc)
@@ -20,6 +15,8 @@ using Test
         @test newpc.n_consume   == pc.n_consume
     end
     @testset "particle container" begin
+        n = Ref(0)
+
         alg = PG(5, 1)
         spl = Turing.Sampler(alg)
         dist = Normal(0, 1)
@@ -62,10 +59,11 @@ using Test
         Base.@assert consume(pc) ≈ log(1)
     end
     @testset "trace" begin
+        n = Ref(0)
+
         alg = PG(5, 1)
         spl = Turing.Sampler(alg)
         dist = Normal(0, 1)
-
         function f2()
             t = TArray(Int, 1);
             t[1] = 0;
@@ -81,13 +79,13 @@ using Test
         end
 
         # Test task copy version of trace
-        t = Trace(f2)
+        tr = Trace(f2)
 
-        consume(t); consume(t)
-        a = fork(t);
+        consume(tr); consume(tr)
+        a = fork(tr);
         consume(a); consume(a)
 
-        Base.@assert consume(t) == 2
+        Base.@assert consume(tr) == 2
         Base.@assert consume(a) == 4
     end
 end

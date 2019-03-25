@@ -1,3 +1,5 @@
+using Turing
+
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
 varname(s::Symbol) = nothing, s
@@ -49,17 +51,21 @@ randr(vi::Turing.VarInfo,
     spl::Turing.Sampler) = begin
     if ~haskey(vi, vn)
         r = rand(dist)
-        Turing.push!(vi, vn, r, dist, spl.selector)
+        Turing.VarReplay.push!(vi, vn, r, dist, spl.selector)
         spl.info[:cache_updated] = CACHERESET
         r
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del")
         r = rand(dist)
         vi[vn] = Turing.vectorize(dist, r)
-        Turing.setorder!(vi, vn, vi.num_produce)
+        Turing.VarReplay.setorder!(vi, vn, vi.num_produce)
         r
     else
-        Turing.updategid!(vi, vn, spl)
+        Turing.VarReplay.updategid!(vi, vn, spl)
         vi[vn]
     end
+end
+
+function insdelim(c, deli=",")
+	return reduce((e, res) -> append!(e, [res, deli]), c; init = [])[1:end-1]
 end

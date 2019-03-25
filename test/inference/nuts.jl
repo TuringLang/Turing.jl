@@ -1,3 +1,5 @@
+using Turing: Sampler
+
 @testset "nuts.jl" begin
     @testset "nuts inference" begin
         alg = NUTS(5000, 1000, 0.65)

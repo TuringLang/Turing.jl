@@ -1,5 +1,5 @@
 @testset "io.jl" begin
-    @test "chain save/resume" begin
+    @testset "chain save/resume" begin
         Random.seed!(123)
 
         alg1 = HMCDA(3000, 1000, 0.65, 0.15)

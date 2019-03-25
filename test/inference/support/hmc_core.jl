@@ -1,3 +1,5 @@
+using Turing.Inference: _leapfrog
+
 @testset "hmc_core.jl" begin
     Random.seed!(150)
     D = 10

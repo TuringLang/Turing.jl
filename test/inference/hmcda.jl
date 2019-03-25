@@ -41,7 +41,7 @@ using Turing: Sampler
         println(alg)
         sampler = Sampler(alg)
 
-        @test isa(alg, HMCDA))
+        @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
 end

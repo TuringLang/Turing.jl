@@ -1,4 +1,4 @@
-using Turing: WelfordCovar, NaiveCovar, add_sample!,
+using Turing: WelfordCovar, WelfordVar, NaiveCovar, add_sample!,
     get_covar, get_var, reset!
 using Test, LinearAlgebra
 

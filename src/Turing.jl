@@ -38,8 +38,8 @@ const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
         data::TData
         defaults::TDefaults
     end
-    
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner 
+
+A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner
 function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
 """
 struct Model{pvars, dvars, F, TData, TDefaults}
@@ -115,7 +115,7 @@ using .Inference
         using ..Turing.CmdStan: CmdStan
         DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
         STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
-        
+
         Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
         function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
             _sampler(alg::Hamiltonian, adapt_conf)
@@ -132,7 +132,8 @@ end
 
     LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
 
-    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) =
+        ℓ.f(x)::ValueGradient
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
@@ -148,39 +149,39 @@ include("distributions/RandomMeasures.jl")
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
-        @VarName, 
-        
+        @VarName,
+
         MH,                     # classic sampling
         Gibbs,
-        
-        HMC,                    # Hamiltonian-like sampling 
-        SGLD, 
-        SGHMC, 
-        HMCDA, 
+
+        HMC,                    # Hamiltonian-like sampling
+        SGLD,
+        SGHMC,
+        HMCDA,
         NUTS,
         DynamicNUTS,
-        
+
         IS,                     # particle-based sampling
-        SMC, 
-        CSMC, 
-        PG, 
-        PIMH, 
-        PMMH, 
+        SMC,
+        CSMC,
+        PG,
+        PIMH,
+        PMMH,
         IPMCMC,
 
-        sample,                 # inference 
-        setchunksize, 
+        sample,                 # inference
+        setchunksize,
         resume,
 
         auto_tune_chunk_size!,  # helper
-        setadbackend, 
-        setadsafe, 
+        setadbackend,
+        setadsafe,
 
         turnprogress,           # debugging
 
-        Flat, 
-        FlatPos, 
-        BinomialLogit, 
+        Flat,
+        FlatPos,
+        BinomialLogit,
         VecBinomialLogit
 
 end

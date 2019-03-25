@@ -3,8 +3,8 @@
         Random.seed!(0)
         N = 2000
         s1 = MH(N,
-            (:s, GaussianKernel(3.0)),
-            (:m, GaussianKernel(3.0)))
+            (:s, GKernel(3.0)),
+            (:m, GKernel(3.0)))
         s2 = MH(N, :s, :m)
         s3 = MH(N)
         s4 = Gibbs(N, MH(5, :m), MH(5, :s))
