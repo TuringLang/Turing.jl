@@ -132,7 +132,7 @@ end
 
     LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
 
-    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x) = ℓ.f(x)::ValueGradient
+    LogDensityProblems.logdensity(::Type{ValueGradient}, ℓ::FunctionLogDensity, x::AbstractArray{T,1}) where T = ℓ.f(x)::ValueGradient
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
