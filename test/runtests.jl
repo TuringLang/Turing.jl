@@ -8,12 +8,12 @@ using Test
 
 # add packages
 to_add = [
-    PackageSpec(name="DynamicHMC"),
-    PackageSpec(name="LogDensityProblems"),
-    PackageSpec(name="CmdStan"),
+    #PackageSpec(name="DynamicHMC"),
+    #PackageSpec(name="LogDensityProblems"),
+    #PackageSpec(name="CmdStan"),
 ]
 
-Pkg.add(to_add)
+# Pkg.add(to_add)
 
 # Import utility functions and reused models.
 include("test_utils/numerical_tests.jl")
