@@ -157,7 +157,8 @@ end
 Assign the function without inputs to a variable, and Turing will produce a sample from the prior distribution.
 
 ```julia
-g = gdemo()
+g_prior_sampler = gdemo()
+g_prior_sampler()
 ```
 Output:
 ```
