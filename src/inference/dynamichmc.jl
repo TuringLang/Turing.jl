@@ -62,7 +62,7 @@ function sample(model::Model,
         return ValueGradient(value, deriv)
     end
 
-    chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters)
+    @time chn_dynamic, _ = NUTS_init_tune_mcmc(FunctionLogDensity(length(vi[spl]), _lp), alg.n_iters)
 
     for i = 1:alg.n_iters
         vi[spl] = chn_dynamic[i].q
