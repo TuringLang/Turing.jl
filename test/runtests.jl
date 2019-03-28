@@ -61,7 +61,7 @@ include("test_utils/testing_functions.jl")
         include("utilities/distributions.jl")
         include("utilities/io.jl")
         include("utilities/resample.jl")
-        include("utilities/stan-interface.jl")# Stan interface currently broken, 3/25/2019
+        include("utilities/stan-interface.jl")
         include("utilities/util.jl")
     end
 end
