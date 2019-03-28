@@ -110,6 +110,7 @@ using .Inference
 @init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
     @eval Utilities begin
         using ..Turing.CmdStan: CmdStan, Adapt, Hmc
+        using ..Turing: HMC, HMCDA, NUTS
         include("utilities/stan-interface.jl")
     end
     @eval Inference begin

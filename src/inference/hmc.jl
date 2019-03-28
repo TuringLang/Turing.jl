@@ -79,7 +79,7 @@ Sampler(alg::Hamiltonian, adapt_conf::Nothing) = Sampler(alg, adapt_conf, Select
 function Sampler(alg::Hamiltonian, adapt_conf::Nothing, s::Selector)
     return _sampler(alg::Hamiltonian, adapt_conf, s)
 end
-function _sampler(alg::Hamiltonian, adapt_conf, s::Selector)
+function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
     info=Dict{Symbol, Any}()
 
     # For state infomation

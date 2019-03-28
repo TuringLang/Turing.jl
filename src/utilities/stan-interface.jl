@@ -32,7 +32,7 @@ function sample(  mf::T,
                   adapt::CmdStan.Adapt,
                   alg::CmdStan.Hmc
                 ) where T
-    if alg.stepsize_jitter != 0
+    if alg.stepsize_jitter != 0.0
         @warn("[Turing.sample] Turing does not support adding noise to stepsize yet.")
     end
     if adapt.engaged == false
@@ -46,7 +46,7 @@ function sample(  mf::T,
         if isa(alg.engine, CmdStan.Static)   # hmcda
             sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time); adapt_conf=adapt)
         elseif isa(alg.engine, CmdStan.Nuts) # nuts
-            if alg.metric == CmdStan.dense_e
+            if isa(alg.metric, CmdStan.diag_e)
                 sample(mf, NUTS(num_samples, num_warmup, adapt.delta); adapt_conf=adapt)
             else # TODO: reove the following since Turing support this feature now.
                 @warn("[Turing.sample] Turing does not support full covariance matrix for pre-conditioning yet.")
