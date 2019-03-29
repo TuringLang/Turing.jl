@@ -65,7 +65,7 @@ function Sampler(alg::IPMCMC, s::Selector)
     samplers[i] = Sampler(default_CSMC, Selector(Symbol(typeof(default_CSMC))))
   end
   for i in (alg.n_csmc_nodes+1):alg.n_nodes
-    samplers[i] = Sampler(default_SMC, Symbol(typeof(default_SMC)))
+    samplers[i] = Sampler(default_SMC, Selector(Symbol(typeof(default_CSMC))))
   end
 
   info[:samplers] = samplers
@@ -99,7 +99,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
         end
     end
     nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
-    
+
     VarInfos[nodes_permutation]
 end
 

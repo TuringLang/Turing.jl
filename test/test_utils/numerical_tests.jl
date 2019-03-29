@@ -1,0 +1,65 @@
+function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
+    @testset "numerical" begin
+        # Extract values.
+        chn_xs = chn[1:2:end, :x, :].value
+
+        # Check means.
+        dist_mean = mean(dist)
+        mean_shape = size(dist_mean)
+        if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
+            chn_mean = Array(mean(chn_xs, dims=1))
+            chn_mean = length(chn_mean) == 1 ?
+                chn_mean[1] :
+                reshape(chn_mean, mean_shape)
+            atol_m = length(chn_mean) > 1 ?
+                mean_tol * length(chn_mean) :
+                max(mean_tol, mean_tol * chn_mean)
+            @test chn_mean ≈ dist_mean atol=atol_m
+        end
+
+        # Check variances.
+        # var() for Distributions.MatrixDistribution is not defined
+        if !(dist isa Distributions.MatrixDistribution)
+            # Variance
+            dist_var = var(dist)
+            var_shape = size(dist_var)
+            if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
+                chn_var = Array(var(chn_xs, dims=1))
+                chn_var = length(chn_var) == 1 ?
+                    chn_var[1] :
+                    reshape(chn_var, var_shape)
+                atol_v = length(chn_mean) > 1 ?
+                    mean_tol * length(chn_mean) :
+                    max(mean_tol, mean_tol * chn_mean)
+                @test chn_mean ≈ dist_mean atol=atol_v
+            end
+        end
+    end
+end
+
+# Helper function for numerical tests
+function check_numerical(chain,
+                        symbols::Vector,
+                        exact_vals::Vector;
+                        eps=0.2)
+    for (sym, val) in zip(symbols, exact_vals)
+        E = val isa Real ?
+            mean(chain[sym].value) :
+            vec(mean(chain[sym].value, dims=[1]))
+        @info (symbol=sym, exact=val, evaluated=E)
+        @test E ≈ val atol=eps
+    end
+end
+
+# Wrapper function to quickly check gdemo accuracy.
+function check_gdemo(chain; eps = 0.2)
+    check_numerical(chain, [:s, :m], [49/24, 7/6], eps=eps)
+end
+
+# Wrapper function to check MoGtest.
+function check_MoGtest_default(chain; eps = 0.2)
+    check_numerical(chain,
+        [:z1, :z2, :z3, :z4, :mu1, :mu2],
+        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
+        eps=eps)
+end

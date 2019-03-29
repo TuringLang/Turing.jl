@@ -6,6 +6,8 @@ matrix:
 jobs:
   allow_failures:
     - env: STAGE=numerical
+    - env: STAGE=stan
+    - env: STAGE=dynamichmc
   include:
     - stage: test
       os: linux
@@ -71,6 +73,50 @@ jobs:
                    Pkg.clone(pwd(), "Turing");
                    Pkg.build("Turing");
                    Pkg.test("Turing"; coverage=true)'
+    - stage: stan
+      allow_failures: true
+      os: linux
+      julia: 1.0
+      env: STAGE=stan
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                   Pkg.clone(pwd(), "Turing");
+                   Pkg.build("Turing");
+                   Pkg.test("Turing"; coverage=true)'
+    - stage: stan
+      allow_failures: true
+      os: linux
+      julia: 1.1
+      env: STAGE=stan
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                   Pkg.clone(pwd(), "Turing");
+                   Pkg.build("Turing");
+                   Pkg.test("Turing"; coverage=true)'
+    - stage: dynamichmc
+      allow_failures: true
+      os: linux
+      julia: 1.0
+      env: STAGE=dynamichmc
+      script:
+         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                    Pkg.clone(pwd(), "Turing");
+                    Pkg.build("Turing");
+                    Pkg.test("Turing"; coverage=true)'
+    - stage: dynamichmc
+      allow_failures: true
+      os: linux
+      julia: 1.1
+      env: STAGE=dynamichmc
+      script:
+         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
+                    Pkg.clone(pwd(), "Turing");
+                    Pkg.build("Turing");
+                    Pkg.test("Turing"; coverage=true)'
     - stage: documentation
       julia: 1.1
       os: linux
