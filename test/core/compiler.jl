@@ -1,11 +1,13 @@
 using Turing, Random, MacroTools, Distributions, Test
 import Turing.translate_tilde!
 
+include("../test_utils/AllUtils.jl")
+
 Random.seed!(129)
 
 priors = 0 # See "new grammar" test.
 
-@testset "compiler.jl" begin
+@turing_testset "compiler.jl" begin
     @testset "assume" begin
         @model test_assume() = begin
             x ~ Bernoulli(1)

@@ -1,10 +1,10 @@
-using Random
+using Turing, Random, Test
 using Turing: Sampler
 
-@testset "hmcda.jl" begin
-    @testset "hmcda basic" begin
-        Random.seed!(128)
+include("../test_utils/AllUtils.jl")
 
+@testset "hmcda.jl" begin
+    @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(3000, 1000, 0.65, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.65, 0.35, :m), HMC(1, 0.25, 3, :s))
         alg3 = Gibbs(1500,
@@ -24,7 +24,7 @@ using Turing: Sampler
         res3 = sample(gdemo_default, alg3)
         check_gdemo(res3)
     end
-    @testset "hmcda constructor" begin
+    @turing_testset "hmcda constructor" begin
         alg = HMCDA(1000, 0.65, 0.75)
         println(alg)
         sampler = Sampler(alg)

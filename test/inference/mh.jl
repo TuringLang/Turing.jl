@@ -1,7 +1,11 @@
+using Turing, Random, Test
+
+include("../test_utils/AllUtils.jl")
+
 @testset "mh.jl" begin
-    @testset "mh constructor" begin
+    @turing_testset "mh constructor" begin
         Random.seed!(0)
-        N = 2000
+        N = 500
         s1 = MH(N,
             (:s, GKernel(3.0)),
             (:m, GKernel(3.0)))
@@ -13,13 +17,8 @@
         c2 = sample(gdemo_default, s2)
         c3 = sample(gdemo_default, s3)
         c4 = sample(gdemo_default, s4)
-
-        # Very loose bound, only for testing constructor.
-        for c in [c1, c2, c3, c4]
-            check_gdemo(c, eps = 1.0)
-        end
     end
-    @testset "mh inference" begin
+    @numerical_testset "mh inference" begin
         Random.seed!(125)
         alg = MH(2000)
         chain = sample(gdemo_default, alg)

@@ -1,3 +1,7 @@
+using Turing, Random, Test
+
+include("../test_utils/AllUtils.jl")
+
 @testset "io.jl" begin
     @testset "chain save/resume" begin
         Random.seed!(123)

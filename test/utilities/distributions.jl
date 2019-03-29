@@ -1,10 +1,12 @@
-using Turing
+using Turing, Random, Test
 using Turing: BinomialLogit, NUTS
 using Distributions: Binomial, logpdf
 using StatsFuns: logistic
 
+include("../test_utils/AllUtils.jl")
+
 @testset "distributions.jl" begin
-    @testset "distributions functions" begin
+    @turing_testset "distributions functions" begin
         ns = 10
         logitp = randn()
         d1 = BinomialLogit(ns, logitp)
@@ -12,7 +14,7 @@ using StatsFuns: logistic
         k = 3
         @test logpdf(d1, k) ≈ logpdf(d2, k)
     end
-    @testset "single distribution correctness" begin
+    @numerical_testset "single distribution correctness" begin
         Random.seed!(12321)
 
         n_samples = 20_000
@@ -82,7 +84,7 @@ using StatsFuns: logistic
             InverseWishart(7, [1.0 0.5; 0.5 1.0]),
         ]
 
-        @testset "Correctness test for single distributions" begin
+        @numerical_testset "Correctness test for single distributions" begin
             for (dist_set, dist_list) ∈ [
                 ("UnivariateDistribution",   dist_uni),
                 ("MultivariateDistribution", dist_multi),

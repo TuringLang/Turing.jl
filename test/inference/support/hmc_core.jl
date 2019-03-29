@@ -1,11 +1,14 @@
+using Turing, Random, Test
 using Turing.Inference: _leapfrog
+
+include("../../test_utils/AllUtils.jl")
 
 @testset "hmc_core.jl" begin
     Random.seed!(150)
     D = 10
     lp_grad_func(x) = nothing, -x
     step_size = 0.1
-    @testset "1. single mutiple-step call v.s. plain Julia" begin
+    @turing_testset "1. single mutiple-step call v.s. plain Julia" begin
         for _ = 1:100
             theta = rand(D)
             p = rand(D)
@@ -23,7 +26,7 @@ using Turing.Inference: _leapfrog
             @test p ≈ p_turing
         end
     end
-    @testset "2. multiple single-step call v.s. single mutiple-step call" begin
+    @turing_testset "2. multiple single-step call v.s. single mutiple-step call" begin
         for _ = 1:100
             theta_0 = rand(2)
             p_0 = rand(2)

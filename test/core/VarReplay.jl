@@ -1,4 +1,4 @@
-using Turing
+using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, SampleFromPrior
 using Turing.VarReplay
 using Turing.VarReplay: uid, cuid, getvals, getidcs,
@@ -10,8 +10,10 @@ using Test
 
 i, j, k = 1, 2, 3
 
+include("../test_utils/AllUtils.jl")
+
 @testset "VarReplay.jl" begin
-    @testset "flags" begin
+    @turing_testset "flags" begin
         vi = VarInfo()
         vn_x = VarName(gensym(), :x, "", 1)
         dist = Normal(0, 1)
@@ -29,7 +31,7 @@ i, j, k = 1, 2, 3
         unset_flag!(vi, vn_x, "del")
         @test is_flagged(vi, vn_x, "del") == false
     end
-    @testset "is_inside" begin
+    @turing_testset "is_inside" begin
         space = Set([:x, :y, :(z[1])])
         vn1 = genvn(:x)
         vn2 = genvn(:y)
@@ -155,7 +157,7 @@ i, j, k = 1, 2, 3
         randr(vi_ref, vn_z3, dists[1], spl1)
         @test getretain(vi_ref, spl1) == UnitRange[7:7]
     end
-    @testset "replay" begin
+    @turing_testset "replay" begin
         # Generate synthesised data
         xs = rand(Normal(0.5, 1), 100)
 
@@ -173,7 +175,7 @@ i, j, k = 1, 2, 3
         # Sampling
         chain = sample(priorsinarray(xs), HMC(10, 0.01, 10))
     end
-    @testset "test_varname" begin
+    @turing_testset "test_varname" begin
         # Symbol
         v_sym = string(:x)
         @test v_sym == "x"
@@ -219,7 +221,7 @@ i, j, k = 1, 2, 3
         chain = sample(marr_name_test(), HMC(1000, 0.2, 4))
         check_numerical(chain, ["p[1][1]"], [0], eps = 0.25)
     end
-    @testset "varinfo" begin
+    @turing_testset "varinfo" begin
         # Test for uid() (= string())
         csym = gensym()
         vn1 = VarName(csym, :x, "[1]", 1)

@@ -1,6 +1,9 @@
+using Turing, Random, Test
 using StatsFuns
 
-@testset "is.jl" begin
+include("../test_utils/AllUtils.jl")
+
+@turing_testset "is.jl" begin
     function reference(n :: Int)
         logweights = zeros(Float64, n)
         samples = Array{Dict{Symbol,Any}}(undef, n)

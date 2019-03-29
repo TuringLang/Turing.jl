@@ -1,4 +1,8 @@
-@testset "resample.jl" begin
+using Turing, Random, Test
+
+include("../test_utils/AllUtils.jl")
+
+@turing_testset "resample.jl" begin
     D = [0.3, 0.4, 0.3]
     num_samples = Int(1e6)
     resSystematic = Turing.resample_systematic(D, num_samples )

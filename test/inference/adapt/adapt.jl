@@ -1,9 +1,12 @@
+using Turing
 using Turing: WelfordCovar, WelfordVar, NaiveCovar, add_sample!,
     get_covar, get_var, reset!
-using Test, LinearAlgebra
+using Test, LinearAlgebra, Random
+
+include("../../test_utils/AllUtils.jl")
 
 @testset "adapt.jl" begin
-    @testset "covariance estimator" begin
+    @turing_testset "covariance estimator" begin
         let
             D = 1000
             wc = WelfordCovar(0, zeros(D), zeros(D,D))
@@ -39,7 +42,7 @@ using Test, LinearAlgebra
             @test covar ≈ LinearAlgebra.diagm(0 => ones(D)) atol=0.2
         end
     end
-    @testset "variance estimator" begin
+    @turing_testset "variance estimator" begin
         let
             D = 1000
             wv = WelfordVar(0, zeros(D), zeros(D))

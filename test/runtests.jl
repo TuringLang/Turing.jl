@@ -6,21 +6,7 @@ using Pkg
 using Random
 using Test
 
-# add packages
-to_add = [
-    #PackageSpec(name="DynamicHMC"),
-    #PackageSpec(name="LogDensityProblems"),
-    #PackageSpec(name="CmdStan"),
-]
-
-# Pkg.add(to_add)
-
-# Import utility functions and reused models.
-include("test_utils/numerical_tests.jl")
-include("test_utils/ad_utils.jl")
-include("test_utils/models.jl")
-include("test_utils/random_measure_utils.jl")
-include("test_utils/testing_functions.jl")
+include("test_utils/AllUtils.jl")
 
 # Begin testing.
 @testset "Turing" begin
@@ -42,7 +28,7 @@ include("test_utils/testing_functions.jl")
             include("inference/support/hmc_core.jl")
         end
         @testset "samplers" begin
-            include("inference/dynamichmc.jl") # Fix LogDensityProblems
+            include("inference/dynamichmc.jl")
             include("inference/gibbs.jl")
             include("inference/hmc.jl")
             include("inference/hmcda.jl")

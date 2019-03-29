@@ -1,5 +1,9 @@
+using Turing, Random, Test
+
+include("../test_utils/AllUtils.jl")
+
 @testset "pmmh.jl" begin
-    @testset "pmmh constructor" begin
+    @turing_testset "pmmh constructor" begin
         N = 500
         s1 = PMMH(N,
             SMC(10, :s),
@@ -10,13 +14,8 @@
         c1 = sample(gdemo_default, s1)
         c2 = sample(gdemo_default, s2)
         c3 = sample(gdemo_default, s3)
-
-        # Very loose bound, only for testing constructor.
-        for c in [c1, c2, c3]
-            check_gdemo(c, eps=1.0)
-        end
     end
-    @testset "pmmh inference" begin
+    @numerical_testset "pmmh inference" begin
         alg = PMMH(1000, SMC(20, :m), MH(1,(:s, GKernel(1))))
         chain = sample(gdemo_default, alg)
         check_gdemo(chain, eps=0.1)

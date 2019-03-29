@@ -1,7 +1,9 @@
-using Random
+using Random, Turing, Test
+
+include("../test_utils/AllUtils.jl")
 
 @testset "gibbs.jl" begin
-    @testset "gibbs constructor" begin
+    @turing_testset "gibbs constructor" begin
         N = 500
         s1 = Gibbs(N, HMC(10, 0.1, 5, :s, :m))
         s2 = Gibbs(N, PG(10, 10, :s, :m))
@@ -16,11 +18,6 @@ using Random
         c4 = sample(gdemo_default, s4)
         c5 = sample(gdemo_default, s5)
 
-        # Very loose bound, only for testing constructor.
-        for c in [c1, c2, c3 ,c4, c5]
-          check_numerical(c, [:s, :m], [49/24, 7/6], eps=1.0)
-        end
-
         @test length(c4[:s].value) == N * (3 + 2)
 
         # Test gid of each samplers
@@ -30,7 +27,7 @@ using Random
         @test g.info[:samplers][2].selector != g.selector
         @test g.info[:samplers][1].selector != g.info[:samplers][2].selector
     end
-    @testset "gibbs" begin
+    @numerical_testset "gibbs inference" begin
         alg = Gibbs(3000,
             CSMC(15, 1, :s),
             HMC(1, 0.2, 4, :m))
@@ -40,15 +37,16 @@ using Random
         alg = CSMC(15, 5000)
         chain = sample(gdemo(1.5, 2.0), alg)
         check_numerical(chain, [:s, :m], [49/24, 7/6], eps=0.1)
-    end
-    @testset "gibbs 2" begin
+
         setadsafe(true)
+
         Random.seed!(100)
         gibbs = Gibbs(500,
             PG(10, 1, :z1, :z2, :z3, :z4),
             HMC(3, 0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs)
         check_MoGtest_default(chain, eps = 0.1)
+        
         setadsafe(false)
     end
 end

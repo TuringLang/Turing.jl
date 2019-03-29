@@ -1,51 +1,37 @@
-function do_numerical_test()
-    if get(ENV, "TRAVIS", "") == "true"
-        if get(ENV, "STAGE", "") == "numerical"
-            return true
-        else
-            return false
-        end
-    else
-        return true
-    end
-end
-
 function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
-    if do_numerical_test()
-        @testset "numerical" begin
-            # Extract values.
-            chn_xs = chn[1:2:end, :x, :].value
+    @testset "numerical" begin
+        # Extract values.
+        chn_xs = chn[1:2:end, :x, :].value
 
-            # Check means.
-            dist_mean = mean(dist)
-            mean_shape = size(dist_mean)
-            if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
-                chn_mean = Array(mean(chn_xs, dims=1))
-                chn_mean = length(chn_mean) == 1 ?
-                    chn_mean[1] :
-                    reshape(chn_mean, mean_shape)
-                atol_m = length(chn_mean) > 1 ?
+        # Check means.
+        dist_mean = mean(dist)
+        mean_shape = size(dist_mean)
+        if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
+            chn_mean = Array(mean(chn_xs, dims=1))
+            chn_mean = length(chn_mean) == 1 ?
+                chn_mean[1] :
+                reshape(chn_mean, mean_shape)
+            atol_m = length(chn_mean) > 1 ?
+                mean_tol * length(chn_mean) :
+                max(mean_tol, mean_tol * chn_mean)
+            @test chn_mean ≈ dist_mean atol=atol_m
+        end
+
+        # Check variances.
+        # var() for Distributions.MatrixDistribution is not defined
+        if !(dist isa Distributions.MatrixDistribution)
+            # Variance
+            dist_var = var(dist)
+            var_shape = size(dist_var)
+            if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
+                chn_var = Array(var(chn_xs, dims=1))
+                chn_var = length(chn_var) == 1 ?
+                    chn_var[1] :
+                    reshape(chn_var, var_shape)
+                atol_v = length(chn_mean) > 1 ?
                     mean_tol * length(chn_mean) :
                     max(mean_tol, mean_tol * chn_mean)
-                @test chn_mean ≈ dist_mean atol=atol_m
-            end
-
-            # Check variances.
-            # var() for Distributions.MatrixDistribution is not defined
-            if !(dist isa Distributions.MatrixDistribution)
-                # Variance
-                dist_var = var(dist)
-                var_shape = size(dist_var)
-                if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
-                    chn_var = Array(var(chn_xs, dims=1))
-                    chn_var = length(chn_var) == 1 ?
-                        chn_var[1] :
-                        reshape(chn_var, var_shape)
-                    atol_v = length(chn_mean) > 1 ?
-                        mean_tol * length(chn_mean) :
-                        max(mean_tol, mean_tol * chn_mean)
-                    @test chn_mean ≈ dist_mean atol=atol_v
-                end
+                @test chn_mean ≈ dist_mean atol=atol_v
             end
         end
     end
@@ -56,14 +42,12 @@ function check_numerical(chain,
                         symbols::Vector,
                         exact_vals::Vector;
                         eps=0.2)
-    if do_numerical_test()
-        for (sym, val) in zip(symbols, exact_vals)
-            E = val isa Real ?
-                mean(chain[sym].value) :
-                vec(mean(chain[sym].value, dims=[1]))
-            @info (symbol=sym, exact=val, evaluated=E)
-            @test E ≈ val atol=eps
-        end
+    for (sym, val) in zip(symbols, exact_vals)
+        E = val isa Real ?
+            mean(chain[sym].value) :
+            vec(mean(chain[sym].value, dims=[1]))
+        @info (symbol=sym, exact=val, evaluated=E)
+        @test E ≈ val atol=eps
     end
 end
 

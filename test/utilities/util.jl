@@ -1,8 +1,11 @@
+using Turing, Random, Test
 using Turing: @VarName, randcat
 using Distributions: Normal
-using Test, StatsFuns
+using StatsFuns
 
-@testset "util.jl" begin
+include("../test_utils/AllUtils.jl")
+
+@turing_testset "util.jl" begin
     i = 1
     @test @VarName(s)[1:end-1] == (:s,())
     @test @VarName(x[1,2][1+5][45][3][i])[1:end-1] ==

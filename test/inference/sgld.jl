@@ -1,7 +1,10 @@
+using Turing, Random, Test
 using Turing: Sampler
 
+include("../test_utils/AllUtils.jl")
+
 @testset "sgld.jl" begin
-    @testset "sgld constructor" begin
+    @turing_testset "sgld constructor" begin
         alg = SGLD(1000, 0.25)
         sampler = Sampler(alg)
         @test isa(alg, SGLD)
@@ -17,7 +20,7 @@ using Turing: Sampler
         @test isa(alg, SGLD)
         @test isa(sampler, Sampler{<:Turing.SGLD})
     end
-    @testset "sgld inference" begin
+    @numerical_testset "sgld inference" begin
         Random.seed!(125)
 
         chain = sample(gdemo_default, SGLD(10000, 0.5))

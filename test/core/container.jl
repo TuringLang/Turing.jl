@@ -1,11 +1,13 @@
-using Turing
+using Turing, Random
 using Turing: ParticleContainer, weights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
 using Test
 
+include("../test_utils/AllUtils.jl")
+
 @testset "container.jl" begin
-    @testset "copy particle container" begin
+    @turing_testset "copy particle container" begin
         pc = ParticleContainer{Trace}(x -> x * x)
         newpc = copy(pc)
 
@@ -14,7 +16,7 @@ using Test
         @test newpc.conditional == pc.conditional
         @test newpc.n_consume   == pc.n_consume
     end
-    @testset "particle container" begin
+    @turing_testset "particle container" begin
         n = Ref(0)
 
         alg = PG(5, 1)
@@ -58,7 +60,7 @@ using Test
         resample!(pc)
         Base.@assert consume(pc) ≈ log(1)
     end
-    @testset "trace" begin
+    @turing_testset "trace" begin
         n = Ref(0)
 
         alg = PG(5, 1)

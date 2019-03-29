@@ -1,5 +1,9 @@
+using Turing, Random, Test
+
+include("../test_utils/AllUtils.jl")
+
 @testset "hmc.jl" begin
-    @testset "constrained bounded" begin
+    @numerical_testset "constrained bounded" begin
         obs = [0,1,0,1,1,1,1,1,1,1]
 
         @model constrained_test(obs) = begin
@@ -16,7 +20,7 @@
 
         check_numerical(chain, [:p], [10/14], eps=0.1)
     end
-    @testset "contrained simplex" begin
+    @numerical_testset "contrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model constrained_simplex_test(obs12) = begin
@@ -33,12 +37,12 @@
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], eps=0.015)
     end
-    @testset "hmc reverse diff" begin
+    @numerical_testset "hmc reverse diff" begin
         alg = HMC(3000, 0.15, 10)
         res = sample(gdemo_default, alg)
         check_gdemo(res, eps=0.1)
     end
-    @testset "matrix support" begin
+    @turing_testset "matrix support" begin
         @model hmcmatrixsup() = begin
             v ~ Wishart(7, [1 0.5; 0.5 1])
             v
@@ -56,7 +60,7 @@
 
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
     end
-    @testset "multivariate support" begin
+    @turing_testset "multivariate support" begin
         function sigmoid(t)
             return 1 / (1 + exp.(-t))
         end

@@ -1,11 +1,13 @@
-using ForwardDiff, Distributions, FDM, Flux.Tracker
+using ForwardDiff, Distributions, FDM, Flux.Tracker, Random
 using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf
 using Test
 
+include("../test_utils/AllUtils.jl")
+
 @testset "ad.jl" begin
-    @testset "AD compatibility" begin
+    @turing_testset "AD compatibility" begin
 
         # Real
         x_real = randn(5)
@@ -34,7 +36,7 @@ using Test
         test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
         test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
     end
-    @testset "adr" begin
+    @turing_testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
@@ -69,7 +71,7 @@ using Test
         # Compare result
         @test grad_Turing ≈ grad_FWAD atol=1e-9
     end
-    @testset "passing duals to distributions" begin
+    @turing_testset "passing duals to distributions" begin
         float1 = 1.1
         float2 = 2.3
         d1 = Dual(1.1)
@@ -83,7 +85,7 @@ using Test
         @test pdf(Gamma(2, 3), d2).value ≈ pdf(Gamma(2, 3), float2) atol=0.001
         @test pdf(Beta(2, 3), (d2 - d1) / 2).value ≈ pdf(Beta(2, 3), (float2 - float1) / 2) atol=0.001
     end
-    @testset "general AD tests" begin
+    @numerical_testset "general AD tests" begin
         # Tests gdemo gradient.
         function logp1(x::Vector)
             dist_s = InverseGamma(2, 3)

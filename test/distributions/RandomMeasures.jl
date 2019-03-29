@@ -3,6 +3,8 @@ using Turing.RandomMeasures
 using Test
 using Random
 
+include("../test_utils/AllUtils.jl")
+
 @testset "RandomMeasures.jl" begin
     partitions = [
         [[1, 2, 3, 4]],
@@ -21,7 +23,7 @@ using Random
         [[1], [2], [3, 4]],
         [[1], [2], [3], [4]]]
 
-    @testset "chinese restaurant processes" begin
+    @turing_testset "chinese restaurant processes" begin
         # Data
         data = [-2,2,-1.5,1.5]
 
@@ -95,7 +97,7 @@ using Random
         @test discr < 0.2
     end
     @testset "distributions" begin
-        @testset "Representations" begin
+        @turing_testset "Representations" begin
             d = StickBreakingProcess(DirichletProcess(1.0))
             @test minimum(d) == 0
             @test maximum(d) == 1
@@ -108,7 +110,7 @@ using Random
             @test minimum(d) == 1
             @test maximum(d) == 3
         end
-        @testset "Dirichlet Process" begin
+        @turing_testset "Dirichlet Process" begin
 
             α = 0.1
             N = 10_000
@@ -136,7 +138,7 @@ using Random
             @test p[2] ≈ q[2] atol=0.1
             @test p[3] ≈ q[3] atol=0.1
         end
-        @testset "Pitman-Yor Process" begin
+        @turing_testset "Pitman-Yor Process" begin
 
             a = 0.5
             θ = 0.1
@@ -167,7 +169,7 @@ using Random
             @test p[3] ≈ q[3] atol=0.1
         end
     end
-    @testset "stick breaking" begin
+    @turing_testset "stick breaking" begin
         # Data
         data = [-2,2,-1.5,1.5]
 
@@ -253,7 +255,7 @@ using Random
         @test l2 < 0.1
         @test discr < 0.3
     end
-    @testset "size-based sampling" begin
+    @turing_testset "size-based sampling" begin
         # Data
         data = [-2,2,-1.5,1.5]
 

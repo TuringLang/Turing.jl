@@ -1,6 +1,9 @@
-using DynamicHMC, Turing, Test
+using Turing, Test
 
-@testset "dynamichmc.jl" begin
+include("../test_utils/AllUtils.jl")
+
+@stage_testset "dynamichmc" "dynamichmc.jl" begin
+    using DynamicHMC
     chn = sample(gdemo_default, DynamicNUTS(2000));
     check_numerical(chn, [:s, :m], [49/24, 7/6], eps=0.2)
 end
