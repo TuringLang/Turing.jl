@@ -7,12 +7,11 @@ end
 """
     ANUTS(n_iters::Integer)
 
-Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package.
-To use it, make sure you have the DynamicHMC package installed.
+Dynamic No U-Turn Sampling algorithm provided by the AdvancedHMC package.
+To use it, make sure you have the AdvancedHMC package installed.
 
 ```julia
-# Import Turing and DynamicHMC.
-using DynamicHMC, Turing
+using Turing
 
 # Model definition.
 @model gdemo(x, y) = begin
@@ -24,7 +23,7 @@ using DynamicHMC, Turing
 end
 
 # Pull 2,000 samples using ANUTS.
-chn = sample(gdemo(1.5, 2.0), ANUTS(2000))
+chn = sample(gdemo(1.5, 2.0), ANUTS(2_000))
 ```
 """
 ANUTS(args...) = ANUTS{ADBackend()}(args...)
