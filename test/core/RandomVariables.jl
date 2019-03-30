@@ -1,7 +1,7 @@
 using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, SampleFromPrior
-using Turing.VarReplay
-using Turing.VarReplay: uid, cuid, getvals, getidcs,
+using Turing.RandomVariables
+using Turing.RandomVariables: uid, cuid, getvals, getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
     set_flag!, unset_flag!, is_inside
 using Distributions
@@ -12,7 +12,7 @@ i, j, k = 1, 2, 3
 
 include("../test_utils/AllUtils.jl")
 
-@testset "VarReplay.jl" begin
+@testset "RandomVariables.jl" begin
     @turing_testset "flags" begin
         vi = VarInfo()
         vn_x = VarName(gensym(), :x, "", 1)

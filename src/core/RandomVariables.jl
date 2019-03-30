@@ -1,4 +1,4 @@
-module VarReplay
+module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
     AbstractSampler, Sampler, SampleFromPrior,

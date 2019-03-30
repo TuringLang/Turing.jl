@@ -1,6 +1,6 @@
 module Inference
 
-using ..Core, ..Core.VarReplay, ..Utilities
+using ..Core, ..Core.RandomVariables, ..Utilities
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -220,7 +220,7 @@ end
 function Sample(vi::UntypedVarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(vi)
-        value[VarReplay.sym_idx(vn)] = vi[vn]
+        value[RandomVariables.sym_idx(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
