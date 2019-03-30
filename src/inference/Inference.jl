@@ -217,10 +217,10 @@ end
 ##############
 
 # VarInfo to Sample
-@inline function Sample(vi::VarInfo)
+function Sample(vi::UntypedVarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(vi)
-        value[sym(vn)] = vi[vn]
+        value[VarReplay.getsym(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
@@ -228,7 +228,7 @@ end
 end
 
 # VarInfo, combined with spl.info, to Sample
-@inline function Sample(vi::VarInfo, spl::Sampler)
+function Sample(vi::AbstractVarInfo, spl::Sampler)
     s = Sample(vi)
     if haskey(spl.info, :wum)
         s.value[:epsilon] = getss(spl.info[:wum])
