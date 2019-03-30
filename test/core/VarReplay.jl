@@ -97,6 +97,11 @@ include("../test_utils/AllUtils.jl")
 
         vi.num_produce = 0
         set_retained_vns_del_by_spl!(vi, spl1)
+        @test is_flagged(vi, vn_z1, "del")
+        @test is_flagged(vi, vn_a1, "del")
+        @test is_flagged(vi, vn_z2, "del")
+        @test is_flagged(vi, vn_a2, "del")
+        @test is_flagged(vi, vn_z3, "del")
 
         vi.num_produce += 1
         randr(vi, vn_z1, dists[1], spl1)
