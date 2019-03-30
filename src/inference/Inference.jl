@@ -220,7 +220,7 @@ end
 function Sample(vi::UntypedVarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(vi)
-        value[VarReplay.getsym(vn)] = vi[vn]
+        value[VarReplay.sym_idx(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
