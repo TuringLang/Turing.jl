@@ -8,7 +8,6 @@ end
     ANUTS(n_iters::Integer)
 
 Dynamic No U-Turn Sampling algorithm provided by the AdvancedHMC package.
-To use it, make sure you have the AdvancedHMC package installed.
 
 ```julia
 using Turing
