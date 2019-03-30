@@ -9,6 +9,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Selector
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
+import AdvancedHMC
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
@@ -30,6 +31,7 @@ export  InferenceAlgorithm,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
         DynamicNUTS,
+        ANUTS,
         IS,
         SMC,
         CSMC,
@@ -81,6 +83,7 @@ include("adapt/adapt.jl")
 include("support/hmc_core.jl")
 
 # Concrete algorithm implementations.
+include("ahmc.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")

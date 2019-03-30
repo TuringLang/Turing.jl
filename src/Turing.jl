@@ -167,6 +167,7 @@ export  @model,                 # modelling
         HMCDA,
         NUTS,
         DynamicNUTS,
+        ANUTS,
 
         IS,                     # particle-based sampling
         SMC,

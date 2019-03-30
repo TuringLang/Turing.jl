@@ -29,6 +29,7 @@ include("test_utils/AllUtils.jl")
         end
         @testset "samplers" begin
             include("inference/dynamichmc.jl")
+            include("inference/ahmc.jl")
             include("inference/gibbs.jl")
             include("inference/hmc.jl")
             include("inference/hmcda.jl")
