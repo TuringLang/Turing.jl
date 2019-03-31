@@ -21,7 +21,7 @@ http://turing.ml/docs/get-started/
 
 ## What's changed recently?
 
-See [NEWS](RELEASE.md) and [releases](https://github.com/TuringLang/Turing.jl/releases).
+See [releases](https://github.com/TuringLang/Turing.jl/releases).
 
 ## Want to contribute?
 
