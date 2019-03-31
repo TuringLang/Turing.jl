@@ -2,9 +2,9 @@ using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, 
     SampleFromPrior, Sampler, runmodel!
 using Turing.RandomVariables
-using Turing.RandomVariables: uid, cuid, getvals, getidcs,
+using Turing.RandomVariables: uid, cuid, getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
-    set_flag!, unset_flag!, is_inside
+    set_flag!, unset_flag!, is_inside, VarInfo, TypedVarInfo
 using Distributions
 using ForwardDiff: Dual
 using Test
@@ -29,22 +29,26 @@ include("../test_utils/AllUtils.jl")
         @test spl.info[:eval_num] == 2
     end
     @turing_testset "flags" begin
+        function test_varinfo!(vi)
+            vn_x = VarName(gensym(), :x, "", 1)
+            dist = Normal(0, 1)
+            r = rand(dist)
+            gid = Selector()
+
+            push!(vi, vn_x, r, dist, gid)
+
+            # del is set by default
+            @test is_flagged(vi, vn_x, "del") == false
+
+            set_flag!(vi, vn_x, "del")
+            @test is_flagged(vi, vn_x, "del") == true
+
+            unset_flag!(vi, vn_x, "del")
+            @test is_flagged(vi, vn_x, "del") == false
+        end
         vi = VarInfo()
-        vn_x = VarName(gensym(), :x, "", 1)
-        dist = Normal(0, 1)
-        r = rand(dist)
-        gid = Selector()
-
-        push!(vi, vn_x, r, dist, gid)
-
-        # del is set by default
-        @test is_flagged(vi, vn_x, "del") == false
-
-        set_flag!(vi, vn_x, "del")
-        @test is_flagged(vi, vn_x, "del") == true
-
-        unset_flag!(vi, vn_x, "del")
-        @test is_flagged(vi, vn_x, "del") == false
+        test_varinfo!(vi)
+        test_varinfo!(empty!(TypedVarInfo(vi)))
     end
     @turing_testset "is_inside" begin
         space = Set([:x, :y, :(z[1])])
@@ -66,8 +70,7 @@ include("../test_utils/AllUtils.jl")
         randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
             if ~haskey(vi, vn)
                 r = rand(dist)
-                Turing.push!(vi, vn, r, dist, spl.selector)
-                spl.info[:cache_updated] = CACHERESET
+                Turing.push!(vi, vn, r, dist, spl)
                 r
             elseif is_flagged(vi, vn, "del")
                 unset_flag!(vi, vn, "del")
@@ -127,6 +130,44 @@ include("../test_utils/AllUtils.jl")
         randr(vi, vn_z3, dists[1], spl1)
         randr(vi, vn_a2, dists[2], spl1)
         @test vi.orders == [1, 1, 2, 2, 3, 3]
+        @test vi.num_produce == 3
+
+        vi = empty!(TypedVarInfo(vi))
+        # First iteration, variables are added to vi
+        # variables samples in order: z1,a1,z2,a2,z3
+        vi.num_produce += 1
+        randr(vi, vn_z1, dists[1], spl1)
+        randr(vi, vn_a1, dists[2], spl1)
+        vi.num_produce += 1
+        randr(vi, vn_b, dists[2], spl2)
+        randr(vi, vn_z2, dists[1], spl1)
+        randr(vi, vn_a2, dists[2], spl1)
+        vi.num_produce += 1
+        randr(vi, vn_z3, dists[1], spl1)
+        @test vi.vis.z.orders == [1, 2, 3]
+        @test vi.vis.a.orders == [1, 2]
+        @test vi.vis.b.orders == [2]
+        @test vi.num_produce == 3
+
+        vi.num_produce = 0
+        set_retained_vns_del_by_spl!(vi, spl1)
+        @test is_flagged(vi, vn_z1, "del")
+        @test is_flagged(vi, vn_a1, "del")
+        @test is_flagged(vi, vn_z2, "del")
+        @test is_flagged(vi, vn_a2, "del")
+        @test is_flagged(vi, vn_z3, "del")
+
+        vi.num_produce += 1
+        randr(vi, vn_z1, dists[1], spl1)
+        randr(vi, vn_a1, dists[2], spl1)
+        vi.num_produce += 1
+        randr(vi, vn_z2, dists[1], spl1)
+        vi.num_produce += 1
+        randr(vi, vn_z3, dists[1], spl1)
+        randr(vi, vn_a2, dists[2], spl1)
+        @test vi.vis.z.orders == [1, 2, 3]
+        @test vi.vis.a.orders == [1, 3]
+        @test vi.vis.b.orders == [2]
         @test vi.num_produce == 3
     end
     @turing_testset "replay" begin
@@ -205,41 +246,54 @@ include("../test_utils/AllUtils.jl")
         @test cuid(vn1) == cuid(vn2)
         @test vn11 == vn1
 
-        vi = VarInfo()
         dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
+        function test_varinfo!(vi)
+            spl2 = Turing.Sampler(PG(5,5))
+            vn_w = VarName(gensym(), :w, "", 1)
+            randr(vi, vn_w, dists[1], spl2, true)
 
-        spl2 = Turing.Sampler(PG(5,5))
-        vn_w = VarName(gensym(), :w, "", 1)
-        randr(vi, vn_w, dists[1], spl2, true)
+            vn_x = VarName(gensym(), :x, "", 1)
+            vn_y = VarName(gensym(), :y, "", 1)
+            vn_z = VarName(gensym(), :z, "", 1)
+            vns = [vn_x, vn_y, vn_z]
 
-        vn_x = VarName(gensym(), :x, "", 1)
-        vn_y = VarName(gensym(), :y, "", 1)
-        vn_z = VarName(gensym(), :z, "", 1)
-        vns = [vn_x, vn_y, vn_z]
+            spl1 = Turing.Sampler(PG(5,5))
+            for i = 1:3
+                r = randr(vi, vns[i], dists[i], spl1, false)
+                val = vi[vns[i]]
+                @test sum(val - r) <= 1e-9
+            end
 
-        spl1 = Turing.Sampler(PG(5,5))
-        for i = 1:3
-          r = randr(vi, vns[i], dists[i], spl1, false)
-          val = vi[vns[i]]
-          @test sum(val - r) <= 1e-9
+            idcs = getidcs(vi, spl1)
+            if idcs isa NamedTuple
+                @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 3
+            else
+                @test length(idcs) == 3
+            end
+            @test length(vi[spl1]) == 7
+
+            idcs = getidcs(vi, spl2)
+            if idcs isa NamedTuple
+                @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 1
+            else
+                @test length(idcs) == 1
+            end
+            @test length(vi[spl2]) == 1
+
+            vn_u = VarName(gensym(), :u, "", 1)
+            randr(vi, vn_u, dists[1], spl2, true)
+
+            idcs = getidcs(vi, spl2)
+            if idcs isa NamedTuple
+                @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 2
+            else
+                @test length(idcs) == 2
+            end
+            @test length(vi[spl2]) == 2
         end
-
-        @test length(getvals(vi, spl1)) == 3
-        @test length(getvals(vi, spl2)) == 1
-
-        vn_u = VarName(gensym(), :u, "", 1)
-        randr(vi, vn_u, dists[1], spl2, true)
-
-        vi.num_produce = 1
-        set_retained_vns_del_by_spl!(vi, spl2)
-
-        vals_of_1 = collect(getvals(vi, spl1))
-        filter!(v -> ~any(map(x -> isnan.(x), v)), vals_of_1)
-        @test length(vals_of_1) == 3
-
-        vals_of_2 = collect(getvals(vi, spl2))
-        filter!(v -> ~any(map(x -> isnan.(x), v)), vals_of_2)
-        @test length(vals_of_2) == 1
+        vi = VarInfo()
+        test_varinfo!(vi)
+        test_varinfo!(empty!(TypedVarInfo(vi)))
 
         @model igtest() = begin
           x ~ InverseGamma(2,3)
@@ -251,18 +305,29 @@ include("../test_utils/AllUtils.jl")
 
         # Test the update of group IDs
         g_demo_f = igtest()
+
         g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g_demo_f)
-
         pg, hmc = g.info[:samplers]
-
-        vi = Turing.VarInfo()
+        vi = VarInfo()
         g_demo_f(vi, SampleFromPrior())
         vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
         @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                          Set{Selector}(), Set{Selector}()]
+                        Set{Selector}(), Set{Selector}()]
 
         g_demo_f(vi, hmc)
         @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                          Set([hmc.selector]), Set([hmc.selector])]
+                        Set([hmc.selector]), Set([hmc.selector])]
+
+        g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g_demo_f)
+        pg, hmc = g.info[:samplers]
+        vi = empty!(TypedVarInfo(vi))
+        g_demo_f(vi, SampleFromPrior())
+        vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
+        g_demo_f(vi, hmc)
+        @test vi.vis.x.gids[1] == Set([pg.selector])
+        @test vi.vis.y.gids[1] == Set([pg.selector])
+        @test vi.vis.z.gids[1] == Set([pg.selector])
+        @test vi.vis.w.gids[1] == Set([hmc.selector])
+        @test vi.vis.u.gids[1] == Set([hmc.selector])
     end
 end

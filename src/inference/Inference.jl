@@ -106,7 +106,7 @@ function assume(spl::A,
         r = vi[vn]
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        push!(vi, vn, r, dist)
+        push!(vi, vn, r, dist, spl)
     end
     # NOTE: The importance weight is not correctly computed here because
     #       r is genereated from some uniform distribution which is different from the prior
@@ -135,13 +135,13 @@ function assume(spl::A,
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[i], dist)
+                push!(vi, vns[i], rs[i], dist, spl)
             end
             @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
             var = rs
         elseif isa(dist, MultivariateDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist)
+                push!(vi, vns[i], rs[:,i], dist, spl)
             end
             if isa(var, Vector)
                 @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"

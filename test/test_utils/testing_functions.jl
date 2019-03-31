@@ -52,7 +52,7 @@ function randr(vi::Turing.VarInfo,
                count::Bool = false)
     if ~haskey(vi, vn)
         r = rand(dist)
-        Turing.push!(vi, vn, r, dist, spl.selector)
+        Turing.push!(vi, vn, r, dist, spl)
         return r
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del")
