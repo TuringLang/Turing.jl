@@ -1,4 +1,4 @@
-using ForwardDiff, Distributions, FDM, Flux.Tracker, Random
+using ForwardDiff, Distributions, FDM, Tracker, Random
 using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf

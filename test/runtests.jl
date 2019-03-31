@@ -12,6 +12,7 @@ include("test_utils/AllUtils.jl")
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
+        include("core/ad_ext.jl")
         include("core/compiler.jl")
         include("core/container.jl")
         include("core/VarReplay.jl")

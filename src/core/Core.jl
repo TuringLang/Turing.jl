@@ -2,7 +2,7 @@ module Core
 
 using MacroTools, Libtask, ForwardDiff
 using ..Utilities, Reexport
-using Flux.Tracker: Tracker
+using Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 
@@ -12,6 +12,7 @@ include("VarReplay.jl")
 include("compiler.jl")
 include("container.jl")
 include("ad.jl")
+include("ad_ext.jl")
 
 export  @model,
         @VarName,

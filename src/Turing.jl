@@ -13,7 +13,7 @@ using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
-using Flux.Tracker: Tracker
+using Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
 import Distributions: sample
