@@ -269,9 +269,23 @@ end
     return expr
 end
 
-####################
-# Utility function #
-####################
+#####################
+# Utility functions #
+#####################
+
+# Functions defined only for UntypedVarInfo
+vns(vi::UntypedVarInfo) = Set(keys(vi.idcs)) # get all vns
+Base.keys(vi::UntypedVarInfo) = keys(vi.idcs)
+const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
+getval(vi::UntypedVarInfo, vview::VarView) = view(vi.vals, vview)
+setval!(vi::UntypedVarInfo, val, vview::VarView) = vi.vals[vview] = val
+function setval!(vi::UntypedVarInfo, val, vview::Vector{UnitRange})
+    if length(vview) > 0
+        return (vi.vals[[i for arr in vview for i in arr]] = val)
+    else
+        return nothing
+    end
+end
 
 getidx(vi::UntypedVarInfo, vn::VarName) = vi.idcs[vn]
 function getidx(vi::TypedVarInfo, vn::VarName{sym}) where sym
@@ -510,13 +524,15 @@ function Base.show(io::IO, vi::UntypedVarInfo)
     print(io, vi_str)
 end
 
-vns(vi::UntypedVarInfo) = Set(keys(vi.idcs)) # get all vns
-
 # Add a new entry to VarInfo
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution) = push!(vi, vn, r, dist, Set{Selector}([]))
+function push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, spl::Sampler)
+    spl.info[:cache_updated] = CACHERESET
+    push!(vi, vn, r, dist, spl.selector)
+end
+push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, spl::AbstractSampler) = push!(vi, vn, r, dist)
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Selector) = push!(vi, vn, r, dist, Set([gid]))
 function push!(vi::UntypedVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gidset::Set{Selector})
-
     @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
 
     val = vectorize(dist, r)
@@ -588,10 +604,6 @@ function VarName{sym}(vi::AbstractVarInfo, csym::Symbol, indexing::String) where
     # TODO: update this method when implementing the sanity check
     VarName{sym}(csym, indexing, 1)
 end
-
-#################################
-# Utility functions for VarInfo #
-#################################
 
 # function expand!(vi::VarInfo)
 #   push!(vi.vals, vi.vals[end]); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
