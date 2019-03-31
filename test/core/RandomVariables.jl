@@ -1,8 +1,8 @@
 using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, SampleFromPrior
-using Turing.VarReplay
-using Turing.VarReplay: uid, cuid, getvals, getidcs,
-    set_retained_vns_del_by_spl!, is_flagged, getretain,
+using Turing.RandomVariables
+using Turing.RandomVariables: uid, cuid, getvals, getidcs,
+    set_retained_vns_del_by_spl!, is_flagged, 
     set_flag!, unset_flag!, is_inside
 using Distributions
 using ForwardDiff: Dual
@@ -12,7 +12,7 @@ i, j, k = 1, 2, 3
 
 include("../test_utils/AllUtils.jl")
 
-@testset "VarReplay.jl" begin
+@testset "RandomVariables.jl" begin
     @turing_testset "flags" begin
         vi = VarInfo()
         vn_x = VarName(gensym(), :x, "", 1)
@@ -94,68 +94,25 @@ include("../test_utils/AllUtils.jl")
         randr(vi, vn_z3, dists[1], spl1)
         @test vi.orders == [1, 1, 2, 2, 2, 3]
         @test vi.num_produce == 3
-        @test getretain(vi, spl1) == UnitRange[]
 
-        # Check getretain at different stages
-        # variables samples in different order: z1,a1,z2,z3,a2
         vi.num_produce = 0
-        @test getretain(vi, spl1) == UnitRange[6:6,5:5,4:4,2:2,1:1]
-        @test getretain(vi, spl2) == UnitRange[3:3]
         set_retained_vns_del_by_spl!(vi, spl1)
+        @test is_flagged(vi, vn_z1, "del")
+        @test is_flagged(vi, vn_a1, "del")
+        @test is_flagged(vi, vn_z2, "del")
+        @test is_flagged(vi, vn_a2, "del")
+        @test is_flagged(vi, vn_z3, "del")
 
         vi.num_produce += 1
         randr(vi, vn_z1, dists[1], spl1)
         randr(vi, vn_a1, dists[2], spl1)
-        @test getretain(vi, spl1) == UnitRange[4:4,5:5,6:6]
         vi.num_produce += 1
         randr(vi, vn_z2, dists[1], spl1)
-        @test getretain(vi, spl1) == UnitRange[6:6]
         vi.num_produce += 1
         randr(vi, vn_z3, dists[1], spl1)
         randr(vi, vn_a2, dists[2], spl1)
         @test vi.orders == [1, 1, 2, 2, 3, 3]
         @test vi.num_produce == 3
-
-        # Reference particle replays in same order
-        # Check getretain at same stage, and should get different result
-        vi_ref = deepcopy(vi)
-        vi_ref.num_produce = 0
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z1, dists[1], spl1)
-        randr(vi_ref, vn_a1, dists[2], spl1)
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z2, dists[1], spl1)
-        @test getretain(vi_ref, spl1) == UnitRange[5:5,6:6]
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z3, dists[1], spl1)
-        randr(vi_ref, vn_a2, dists[2], spl1)
-
-        # Change order of samples: z1,a1,z2,z3 (no a2 anymore)
-        vi = deepcopy(vi_ref)
-        vi.num_produce = 0
-        set_retained_vns_del_by_spl!(vi, spl1)
-        vi.num_produce += 1
-        randr(vi, vn_z1, dists[1], spl1)
-        randr(vi, vn_a1, dists[2], spl1)
-        vi.num_produce += 1
-        randr(vi, vn_z2, dists[1], spl1)
-        vi.num_produce += 1
-        randr(vi, vn_z3, dists[1], spl1)
-        vi.num_produce += 1
-        randr(vi, vn_z4, dists[1], spl1)
-
-        # Reference particle replay
-        # Check that a2 - not being sampled - does not mess with getretain
-        vi_ref = deepcopy(vi)
-        vi_ref.num_produce = 0
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z1, dists[1], spl1)
-        randr(vi_ref, vn_a1, dists[2], spl1)
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z2, dists[1], spl1)
-        vi_ref.num_produce += 1
-        randr(vi_ref, vn_z3, dists[1], spl1)
-        @test getretain(vi_ref, spl1) == UnitRange[7:7]
     end
     @turing_testset "replay" begin
         # Generate synthesised data
