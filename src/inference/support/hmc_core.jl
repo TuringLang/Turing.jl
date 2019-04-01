@@ -234,6 +234,7 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
     H_func = gen_H_func()
     θ = vi[spl]
     ϵ = _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
+    vi[spl] = θ
     @info "[Turing] found initial ϵ: $ϵ"
     return ϵ
 end
