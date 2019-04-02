@@ -1,11 +1,13 @@
 struct ANUTS{AD, T} <: Hamiltonian{AD}
-    n_iters   ::  Integer   # number of samples
+    n_iters   ::  Int   # number of samples
     δ         ::  Float64   # target accept ratio
+    max_depth ::  Int
+    Δ_max     ::  Float64
     space     ::  Set{T}    # sampling space, emtpy means all
 end
 
 """
-    ANUTS(n_iters::Integer)
+    ANUTS(n_iters::Int)
 
 Dynamic No U-Turn Sampling algorithm provided by the AdvancedHMC package.
 
@@ -26,9 +28,9 @@ chn = sample(gdemo(1.5, 2.0), ANUTS(2_000))
 ```
 """
 ANUTS(args...) = ANUTS{ADBackend()}(args...)
-function ANUTS{AD}(n_iters::Integer, δ::Float64=0.8, space...) where AD
+function ANUTS{AD}(n_iters::Int, δ::Float64=0.8, max_depth::Int=10, Δ_max::Float64=1_000.0, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    ANUTS{AD, eltype(_space)}(n_iters, δ, _space)
+    ANUTS{AD, eltype(_space)}(n_iters, δ, max_depth, Δ_max, _space)
 end
 
 function Sampler(alg::ANUTS{T}, s::Selector) where T <: Hamiltonian
@@ -37,7 +39,11 @@ end
 
 function sample(model::Model,
                 alg::ANUTS{AD},
-                n_adapt::Int=1_000,
+                n_adapt::Int=1_000;
+                rng::AbstractRNG=GLOBAL_RNG,
+                metric_type=AdvancedHMC.DenseEuclideanMetric,
+                init_theta::Union{Nothing,Array{<:Union{Missing, Float64},1}}=nothing,
+                init_eps::Union{Nothing,Float64}=nothing,
                 ) where AD
 
     spl = Sampler(alg)
@@ -51,6 +57,10 @@ function sample(model::Model,
 
     vi = VarInfo()
     model(vi, SampleFromUniform())
+    if init_theta != nothing
+        theta_mask = map(x -> !ismissing(x), init_theta)
+        vi[spl][theta_mask] .= init_theta[theta_mask]
+    end
 
     if spl.selector.tag == :default
         link!(vi, spl)
@@ -67,7 +77,6 @@ function sample(model::Model,
         return lj
     end
 
-
     function ∂logπ∂θ(x)::Vector{Float64}
         x_old, lj_old = vi[spl], vi.logp
         _, deriv = gradient_logp(x, vi, model, spl)
@@ -78,15 +87,19 @@ function sample(model::Model,
 
     θ_init = Vector{Float64}(vi[spl])
     # Define metric space, Hamiltonian and sampling method
-    metric = AdvancedHMC.DenseEuclideanMetric(θ_init)
+    metric = metric_type(θ_init)
     h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    prop = AdvancedHMC.NUTS(AdvancedHMC.Leapfrog(AdvancedHMC.find_good_eps(h, θ_init)))
+    if init_eps == nothing
+        init_eps = AdvancedHMC.find_good_eps(h, θ_init)
+        @info "Found initial step size" init_eps
+    end
+    prop = AdvancedHMC.NUTS(AdvancedHMC.Leapfrog(init_eps), spl.alg.max_depth, spl.alg.Δ_max)
     adaptor = AdvancedHMC.StanNUTSAdaptor(n_adapt,
                                           AdvancedHMC.PreConditioner(metric),
                                           AdvancedHMC.NesterovDualAveraging(spl.alg.δ, prop.integrator.ϵ))
 
     # Sampling
-    ahmc_samples = AdvancedHMC.sample(h, prop, θ_init, spl.alg.n_iters, adaptor, n_adapt)
+    ahmc_samples = AdvancedHMC.sample(rng, h, prop, θ_init, spl.alg.n_iters, adaptor, n_adapt)
 
     for i = 1:alg.n_iters
         vi[spl] = ahmc_samples[i]

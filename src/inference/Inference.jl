@@ -9,6 +9,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Selector
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
+using Random: GLOBAL_RNG, AbstractRNG
 import AdvancedHMC
 
 import Distributions: sample
