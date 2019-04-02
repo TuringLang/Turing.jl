@@ -7,3 +7,4 @@ StatsFuns
 DynamicHMC
 LogDensityProblems
 CmdStan
+AdvancedHMC

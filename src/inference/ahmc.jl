@@ -58,13 +58,21 @@ function sample(model::Model,
     end
 
     function logπ(x)::Float64
+        x_old, lj_old = vi[spl], vi.logp
         vi[spl] = x
-        return runmodel!(model, vi, spl).logp
+        runmodel!(model, vi, spl).logp
+        lj = vi.logp
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return lj
     end
 
 
     function ∂logπ∂θ(x)::Vector{Float64}
+        x_old, lj_old = vi[spl], vi.logp
         _, deriv = gradient_logp(x, vi, model, spl)
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
         return deriv
     end
 
