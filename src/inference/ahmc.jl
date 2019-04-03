@@ -42,7 +42,7 @@ function sample(model::Model,
                 n_adapt::Int=1_000;
                 rng::AbstractRNG=GLOBAL_RNG,
                 metric_type=AdvancedHMC.DenseEuclideanMetric,
-                init_theta::Union{Nothing,Array{Any,1}}=nothing,
+                init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
                 init_eps::Union{Nothing,Float64}=nothing,
                 ) where AD
 
