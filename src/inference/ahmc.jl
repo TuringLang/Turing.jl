@@ -42,7 +42,7 @@ function sample(model::Model,
                 n_adapt::Int=1_000;
                 rng::AbstractRNG=GLOBAL_RNG,
                 metric_type=AdvancedHMC.DenseEuclideanMetric,
-                init_theta::Union{Nothing,Array{<:Union{Missing, Float64},1}}=nothing,
+                init_theta::Union{Nothing,Array{<:Union{Missing,Float64},1}}=nothing,
                 init_eps::Union{Nothing,Float64}=nothing,
                 ) where AD
 
@@ -58,8 +58,11 @@ function sample(model::Model,
     vi = VarInfo()
     model(vi, SampleFromUniform())
     if init_theta != nothing
+        println("Using init_theta=$init_theta")
         theta_mask = map(x -> !ismissing(x), init_theta)
-        vi[spl][theta_mask] .= init_theta[theta_mask]
+        theta = vi[spl]
+        theta[theta_mask] .= init_theta[theta_mask]
+        vi[spl] = theta
     end
 
     if spl.selector.tag == :default
