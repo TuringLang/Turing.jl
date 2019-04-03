@@ -42,7 +42,7 @@ function sample(model::Model,
                 n_adapt::Int=1_000;
                 rng::AbstractRNG=GLOBAL_RNG,
                 metric_type=AdvancedHMC.DenseEuclideanMetric,
-                init_theta::Union{Nothing,Array{<:Union{Missing,Float64},1}}=nothing,
+                init_theta::Union{Nothing,Array{Any,1}}=nothing,
                 init_eps::Union{Nothing,Float64}=nothing,
                 ) where AD
 
@@ -59,9 +59,10 @@ function sample(model::Model,
     model(vi, SampleFromUniform())
     if init_theta != nothing
         println("Using init_theta=$init_theta")
-        theta_mask = map(x -> !ismissing(x), init_theta)
+        init_theta_flat = foldl(vcat, init_theta)
+        theta_mask = map(x -> !ismissing(x), init_theta_flat)
         theta = vi[spl]
-        theta[theta_mask] .= init_theta[theta_mask]
+        theta[theta_mask] .= init_theta_flat[theta_mask]
         vi[spl] = theta
     end
 
@@ -90,7 +91,7 @@ function sample(model::Model,
 
     θ_init = Vector{Float64}(vi[spl])
     # Define metric space, Hamiltonian and sampling method
-    metric = metric_type(θ_init)
+    metric = metric_type(length(θ_init))
     h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     if init_eps == nothing
         init_eps = AdvancedHMC.find_good_eps(h, θ_init)
