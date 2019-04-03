@@ -68,3 +68,5 @@ tutorials:
         url: /tutorials/4-bayeshmm/
       - title: "Linear Regression"
         url: /tutorials/5-linearregression/
+      - title: "Infinite Mixture Models"
+        url: /tutorials/6-infinitemixturemodel/
