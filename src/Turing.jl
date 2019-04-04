@@ -71,13 +71,14 @@ Selector(tag::Symbol) = Selector(time_ns(), tag)
 hash(s::Selector) = hash(s.gid)
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
 
-abstract type AbstractSampler end
+abstract type AbstractRunner end
+#abstract type AbstractSampler end
 
-"""
-Robust initialization method for model parameters in Hamiltonian samplers.
-"""
-struct SampleFromUniform <: AbstractSampler end
-struct SampleFromPrior <: AbstractSampler end
+struct SampleFromUniform <: AbstractRunner end
+struct SampleFromPrior <: AbstractRunner end
+struct ComputeLogJointDensity <: AbstractRunner end
+struct ComputeLogDensity <: AbstractRunner end
+struct ParticleFiltering <: AbstractRunner end
 
 """
     Sampler{T}
@@ -91,7 +92,7 @@ An implementation of an algorithm should include the following:
 Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T} <: AbstractSampler
+mutable struct Sampler{T} <: AbstractRunner
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
