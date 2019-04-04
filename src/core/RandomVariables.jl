@@ -1,7 +1,7 @@
 module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
-    AbstractSampler, Sampler, SampleFromPrior,
+    AbstractRunner, Sampler, SampleFromPrior,
     Selector
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
@@ -74,7 +74,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 abstract type AbstractVarInfo end
 const VarInfo = AbstractVarInfo
 
-function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
+function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractRunner = SampleFromPrior())
     setlogp!(vi, zero(Float64))
     if spl isa Sampler && isdefined(spl.info, :eval_num)
         spl.info.eval_num += 1
@@ -342,10 +342,10 @@ function is_inside(vn::VarName, space::Set)::Bool
 end
 
 # Get all values of variables belonging to spl.selector
-getvals(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vals, getidcs(vi, spl))
+getvals(vi::UntypedVarInfo, spl::AbstractRunner) = view(vi.vals, getidcs(vi, spl))
 
 # Get all vns of variables belonging to spl.selector
-getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
+getvns(vi::UntypedVarInfo, spl::AbstractRunner) = view(vi.vns, getidcs(vi, spl))
 
 # Get all vns of variables belonging to spl.selector
 function getranges(vi::AbstractVarInfo, spl::Sampler)

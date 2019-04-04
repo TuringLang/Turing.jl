@@ -3,7 +3,7 @@ module Inference
 using ..Core, ..Core.RandomVariables, ..Utilities
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
-using ..Turing: PROGRESS, CACHERESET, AbstractSampler
+using ..Turing: PROGRESS, CACHERESET, AbstractRunner
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, SampleFromUniform,
     Selector
@@ -70,7 +70,7 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 #     eval_num :: Integer
 # end
 #
-#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
+#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractRunner
 #    alg   :: TH
 #    state :: HMCState
 #    adapt :: TA

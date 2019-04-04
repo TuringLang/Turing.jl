@@ -4,7 +4,7 @@ using MacroTools, Libtask, ForwardDiff
 using ..Utilities, Reexport
 using Flux.Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
-    AbstractSampler, Sampler, SampleFromPrior
+    AbstractRunner, Sampler, SampleFromPrior
 
 include("RandomVariables.jl")
 @reexport using .RandomVariables
@@ -31,15 +31,15 @@ export  @model,
         increase_logweight,
         inrease_logevidence,
         resample!,
-        getsample, 
+        getsample,
         ADBackend,
-        setadbackend, 
-        setadsafe, 
-        ForwardDiffAD, 
+        setadbackend,
+        setadsafe,
+        ForwardDiffAD,
         FluxTrackerAD,
         value,
         gradient_logp,
-        CHUNKSIZE, 
+        CHUNKSIZE,
         ADBACKEND,
         setchunksize,
         verifygrad,

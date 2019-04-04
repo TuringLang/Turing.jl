@@ -61,7 +61,7 @@ gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractRunner=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model
@@ -88,7 +88,7 @@ gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    spl::AbstractSampler=SampleFromPrior(),
+    spl::AbstractRunner=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model
@@ -98,7 +98,7 @@ function gradient_logp_forward(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractRunner=SampleFromPrior(),
 )
     # Record old parameters.
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)
@@ -130,7 +130,7 @@ gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractRunner=SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model
@@ -140,7 +140,7 @@ function gradient_logp_reverse(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractRunner=SampleFromPrior(),
 )
     vals_old, logp_old = copy(vi.vals), copy(vi.logp)
 

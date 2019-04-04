@@ -33,7 +33,7 @@ end
 """
     generate_observe(observation, dist, model_info)
 
-Generate an observe expression for observation `observation` drawn from 
+Generate an observe expression for observation `observation` drawn from
 a distribution or a vector of distributions (`dist`).
 """
 function generate_observe(observation, dist, model_info)
@@ -56,18 +56,18 @@ end
 """
     generate_assume(var, dist, model_info)
 
-Generate an assume expression for parameters `var` drawn from 
+Generate an assume expression for parameters `var` drawn from
 a distribution or a vector of distributions (`dist`).
 """
 function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     main_body_names = model_info[:main_body_names]
     vi = main_body_names[:vi]
     sampler = main_body_names[:sampler]
-    
+
     varname = gensym(:varname)
     sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
     csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
-    
+
     if var isa Symbol
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
@@ -83,7 +83,7 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
             $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
         end
     end
-    
+
     lp = gensym(:lp)
     return quote
         $varname_expr
@@ -127,7 +127,7 @@ function _tilde(vsym, left, dist, model_info)
             push!(model_info[:tent_dvars_list], vsym)
         end
 
-        return quote 
+        return quote
             if Turing.in_pvars($(Val(vsym)), $model_name)
                 $(generate_assume(left, dist, model_info))
             else
@@ -137,7 +137,7 @@ function _tilde(vsym, left, dist, model_info)
     else
         # Assume it is a parameter.
         if !(vsym in model_info[:tent_pvars_list])
-            Turing.DEBUG && @debug begin 
+            Turing.DEBUG && @debug begin
                 msg = " Assume - `$(vsym)` is a parameter"
                 if isdefined(Main, vsym)
                     msg  *= " (ignoring `$(vsym)` found in global scope)"
@@ -179,8 +179,8 @@ function model_generator(x = nothing, y = nothing)
     pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
     data = Turing.get_data(dvars, (x = x, y = y))
     defaults = Turing.get_default_values(dvars, (x = default_x, y = nothing))
-    
-    inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
+
+    inner_function(sampler::Turing.AbstractRunner, model) = inner_function(model)
     function inner_function(model)
         return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
     end
@@ -188,7 +188,7 @@ function model_generator(x = nothing, y = nothing)
         return inner_function(vi, Turing.SampleFromPrior(), model)
     end
     # Define the main inner function
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
+    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractRunner, model)
         local x
         if isdefined(model.data, :x)
             x = model.data.x
@@ -227,7 +227,7 @@ function build_model_info(input_expr)
     # Function body of the model is empty
     warn_empty(modeldef[:body])
     # Construct model_info dictionary
-    
+
     arg_syms = [(arg isa Symbol) ? arg : arg.args[1] for arg in modeldef[:args]]
     model_info = Dict(
         :name => modeldef[:name],
@@ -239,7 +239,7 @@ function build_model_info(input_expr)
         :tent_dvars_list => Symbol[],
         :tent_pvars_list => Symbol[],
         :main_body_names => Dict(
-            :vi => gensym(:vi), 
+            :vi => gensym(:vi),
             :sampler => gensym(:sampler),
             :model => gensym(:model),
             :pvars => gensym(:pvars),
@@ -366,7 +366,7 @@ function build_output(model_info)
             $defaults_name = Turing.get_default_values($tent_dvars_nt, $tent_arg_defaults_nt)
 
             # Define fallback inner functions
-            function $inner_function_name($sampler_name::Turing.AbstractSampler, $model_name)
+            function $inner_function_name($sampler_name::Turing.AbstractRunner, $model_name)
                 return $inner_function_name($model_name)
             end
             function $inner_function_name($model_name)
@@ -378,11 +378,11 @@ function build_output(model_info)
 
             # Define the main inner function
             function $inner_function_name(
-                $vi_name::Turing.VarInfo, 
-                $sampler_name::Turing.AbstractSampler,
+                $vi_name::Turing.VarInfo,
+                $sampler_name::Turing.AbstractRunner,
                 $model_name
                 )
-                
+
                 $unwrap_data_expr
                 $vi_name.logp = zero(Real)
                 $main_body
@@ -395,7 +395,7 @@ end
 
 # Replaces the default for `Vector{Missing}` inputs by `Vector{Real}` of the same length as the input.
 @generated function get_default_values(tent_dvars_nt::Tdvars, tent_arg_defaults_nt::Tdefaults) where {Tdvars <: NamedTuple, Tdefaults <: NamedTuple}
-    dvar_names = Tdvars.names 
+    dvar_names = Tdvars.names
     dvar_types = Tdvars.parameters[2].types
     defaults = []
     for (n, t) in zip(dvar_names, dvar_types)
@@ -417,7 +417,7 @@ end
     tent_dvar_syms = [tent_dvars_nt.names...]
     dvar_types = [tent_dvars_nt.types...]
     append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing || dvar_types[i] == Missing || eltype(dvar_types[i]) == Missing])
-    setdiff!(tent_dvar_syms, tent_pvar_syms)    
+    setdiff!(tent_dvar_syms, tent_pvar_syms)
     pvars_tuple = Tuple{tent_pvar_syms...}
     dvars_tuple = Tuple{tent_dvar_syms...}
 
@@ -441,7 +441,7 @@ function warn_empty(body)
     if all(l -> isa(l, LineNumberNode), body.args)
         @warn("Model definition seems empty, still continue.")
     end
-    return 
+    return
 end
 
 ####################

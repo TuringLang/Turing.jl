@@ -1,4 +1,4 @@
-mutable struct Trace{T <: AbstractSampler}
+mutable struct Trace{T <: AbstractRunner}
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  T
@@ -7,7 +7,7 @@ mutable struct Trace{T <: AbstractSampler}
 end
 
 # NOTE: this function is called by `forkr`
-function Trace{T}(f) where T <: AbstractSampler
+function Trace{T}(f) where T <: AbstractRunner
   res = Trace{T}();
   # CTask(()->f());
   res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
