@@ -4,7 +4,7 @@ include("../test_utils/AllUtils.jl")
 
 @testset "io.jl" begin
     @testset "chain save/resume" begin
-        Random.seed!(123)
+        Random.seed!(1234)
 
         alg1 = HMCDA(3000, 1000, 0.65, 0.15)
         alg2 = PG(20, 500)
