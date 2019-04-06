@@ -187,20 +187,6 @@ struct TypedVarInfo{Tvis, Tlogp} <: AbstractVarInfo
     logp::Base.RefValue{Tlogp}
     num_produce::Base.RefValue{Int}
 end
-@generated function TypedVarInfo(vis::Tvis) where {Tvis <: Tuple}
-    syms = []
-    Ts = []
-    args = []
-    for (i, T) in enumerate(Tvis.types)
-        push!(Ts, T)
-        sym = T.parameters[1]
-        push!(syms, sym)
-        push!(args, :($sym = vis[$i]))
-    end
-    nt = length(args) == 0 ? :(NamedTuple()) : :(($(args...),))
-
-    return :(TypedVarInfo{NamedTuple{$(Tuple(syms)), $(Tuple{Ts...})}, Float64}($nt, Ref(0.0), Ref(0)))
-end
 function TypedVarInfo(vi::UntypedVarInfo)
     vis = SingleVarInfo[]
     syms_tuple = Tuple(syms(vi))
@@ -256,18 +242,25 @@ function Base.setproperty!(vi::TypedVarInfo, f::Symbol, x)
     return setfield!(vi, f, x)
 end
 
-@generated function Base.empty!(vi::TypedVarInfo{Tvis}) where Tvis
-    expr = Expr(:block)
-    for f in fieldnames(Tvis)
-        push!(expr.args, :(empty!(vi.vis.$f)))
-    end
-    push!(expr.args, quote
-        vi.logp = 0
-        vi.num_produce = 0
-        return vi
-    end)
-    return expr
+if VERSION < v"1.1"
+    _tail(nt::NamedTuple{names}) where names = NamedTuple{Base.tail(names)}(nt)
+else
+    _tail(nt::NamedTuple) = Base.tail(nt)
 end
+
+function Base.empty!(vi::TypedVarInfo)
+    _empty!(vi.vis)
+    vi.logp = 0
+    vi.num_produce = 0
+    return vi
+end
+@inline function _empty!(vis::NamedTuple{names}) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    empty!(getfield(vis, f))
+    return _empty!(_tail(vis))
+end
+
 
 #####################
 # Utility functions #
@@ -315,20 +308,21 @@ function getval(vi::TypedVarInfo, vns::Vector{VarName{sym}}) where sym
 end
 
 getall(vi::UntypedVarInfo) = vi.vals
-@generated function getall(vi::TypedVarInfo{Tvis}) where Tvis
-    vals = [:(vi.vis.$f.vals) for f in fieldnames(Tvis)]
-    return Expr(:call, :append, vals...)
+getall(vi::TypedVarInfo) = vcat(_getall(vi.vis)...)
+@inline function _getall(vis::NamedTuple{names}) where {names}
+    length(names) === 0 && return ()
+    f = names[1]
+    return (getfield(vis, f).vals, _getall(_tail(vis))...)
 end
+
 setall!(vi::UntypedVarInfo, val) = vi.vals = val
-@generated function setall!(vi::TypedVarInfo{Tvis}, val) where Tvis
-    expr = Expr(:block)
-    ranges = Dict{Symbol, Expr}
-    start = 0
-    for f in fieldnames(Tvis)
-        push!(ranges, :($start + 1 : $start + length(vi.vis.$f.vals)))
-        start = :($start + length(vi.vis.$f.vals))
-    end
-    return [:(vi.vis.$f.vals .= @view val[$(ranges[f])]) for f in fieldnames(Tvis)]
+setall!(vi::TypedVarInfo, val) = _setall!(vi.vis, val)
+@inline function _setall!(vis::NamedTuple{names}, val, start = 0) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    vals = getfield(vis, f).vals
+    @views vals .= val[start + 1 : start + length(vals)]
+    return _setall(_tail(vis), val, start + length(vals))
 end
 
 getsym(vi::UntypedVarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
@@ -366,12 +360,11 @@ acclogp!(vi::AbstractVarInfo, logp::Any) = vi.logp += logp
 resetlogp!(vi::AbstractVarInfo) = setlogp!(vi, 0.0)
 
 isempty(vi::UntypedVarInfo) = isempty(vi.idcs)
-@generated function isempty(vi::TypedVarInfo{Tvis}) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :(isempty(vi.vis.$f.idcs)))
-    end
-    return Expr(:&&, args...)
+isempty(vi::TypedVarInfo) = _isempty(vi.vis)
+@inline function _isempty(vis::NamedTuple{names}) where {names}
+    length(names) === 0 && return true
+    f = names[1]
+    return isempty(getfield(vis, f).idcs) && _isempty(_tail(vis))
 end
 
 # X -> R for all variables associated with given sampler
@@ -387,25 +380,26 @@ function link!(vi::UntypedVarInfo, spl::Sampler)
         @warn("[Turing] attempt to link a linked vi")
     end
 end
-@generated function link!(vi::TypedVarInfo{Tvis}, spl::Sampler) where Tvis
-    expr = Expr(:block, :(vns = getvns(vi, spl)))
+function link!(vi::TypedVarInfo, spl::Sampler)
+    vns = getvns(vi, spl)
     space = getspace(spl)
-    for f in fieldnames(Tvis)
-        if f ∈ space || length(space) == 0
-            push!(expr.args, quote
-                if ~istrans(vi, vns.$f[1])
-                    for vn in vns.$f
-                        dist = getdist(vi, vn)
-                        setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
-                        settrans!(vi, true, vn)
-                    end
-                else
-                    @warn("[Turing] attempt to link a linked vi")
-                end
-            end)
+    return _link!(vi.vis, vi, vns, space)
+end
+@inline function _link!(vis::NamedTuple{names}, vi, vns, space) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    if f ∈ space || length(space) == 0
+        if ~istrans(vi, getfield(vns, f)[1])
+            for vn in getfield(vns, f)
+                dist = getdist(vi, vn)
+                setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
+                settrans!(vi, true, vn)
+            end
+        else
+            @warn("[Turing] attempt to link a linked vi")
         end
     end
-    return expr
+    return _link!(_tail(vis), vi, vns, space)
 end
 
 # R -> X for all variables associated with given sampler
@@ -421,25 +415,26 @@ function invlink!(vi::UntypedVarInfo, spl::Sampler)
         @warn("[Turing] attempt to invlink an invlinked vi")
     end
 end
-@generated function invlink!(vi::TypedVarInfo{Tvis}, spl::Sampler) where Tvis
-    expr = Expr(:block, :(vns = getvns(vi, spl)))
+function invlink!(vi::TypedVarInfo, spl::Sampler)
+    vns = getvns(vi, spl)
     space = getspace(spl)
-    for f in fieldnames(Tvis)
-        if f ∈ space || length(space) == 0
-            push!(expr.args, quote
-                if istrans(vi, vns.$f[1])
-                    for vn in vns.$f
-                        dist = getdist(vi, vn)
-                        setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
-                        settrans!(vi, false, vn)
-                    end
-                else
-                    @warn("[Turing] attempt to invlink an invlinked vi")
-                end
-            end)
+    return _invlink!(vi.vis, vi, vns, space)
+end
+@inline function _invlink!(vis::NamedTuple{names}, vi, vns, space) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    if f ∈ space || length(space) == 0
+        if istrans(vi, getfield(vns, f)[1])
+            for vn in getfield(vns, f)
+                dist = getdist(vi, vn)
+                setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
+                settrans!(vi, false, vn)
+            end
+        else
+            @warn("[Turing] attempt to invlink an invlinked vi")
         end
     end
-    return expr
+    return _invlink!(_tail(vis), vi, vns, space)
 end
 
 syms(vi::UntypedVarInfo) = unique!(map(vn -> vn.sym, vi.vns))  # get all symbols
@@ -465,37 +460,32 @@ function Base.getindex(vi::AbstractVarInfo, vns::Vector{<:VarName})
 end
 
 Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
-@generated function Base.getindex(vi::TypedVarInfo{Tvis}, spl::Sampler) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :(vi.vis.$f.vals[ranges.$f]))
-    end
-
-    return quote
-        ranges = getranges(vi, spl)
-        return vcat($(args...))
-    end
+function Base.getindex(vi::TypedVarInfo, spl::Sampler)
+    ranges = getranges(vi, spl)
+    return vcat(_get(vi.vis, ranges)...)
+end
+@inline function _get(vis::NamedTuple{names}, ranges) where {names}
+    length(names) === 0 && return ()
+    f = names[1]
+    v = getfield(vis, f).vals[getfield(ranges, f)]
+    return (v, _get(_tail(vis), ranges)...)
 end
 
 Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
-@generated function Base.setindex!(vi::TypedVarInfo{Tvis}, val::Any, spl::Sampler) where Tvis
-    expr = Expr(:block)
-    push!(expr.args, :(start = 0))
-    for f in fieldnames(Tvis)
-        push!(expr.args, quote
-            r = @views vi.vis.$f.vals[ranges.$f]
-            v = @views val[start + 1 : start + length(r)]
-            n = length(v)
-            vi.vis.$f.vals[ranges.$f] .= v
-            start += length(r)
-        end)
-    end
-
-    return quote
-        ranges = getranges(vi, spl)
-        $expr
-        return val
-    end
+function Base.setindex!(vi::TypedVarInfo, val, spl::Sampler)
+    ranges = getranges(vi, spl)
+    _setindex!(vi.vis, val, ranges)
+    return val
+end
+@inline function _setindex!(vis::NamedTuple{names}, val, ranges, start = 0) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    r = @views getfield(vis, f).vals[getfield(ranges, f)]
+    v = @views val[start + 1 : start + length(r)]
+    n = length(v)
+    getfield(vis, f).vals[getfield(ranges, f)] .= v
+    start += length(r)
+    return _setindex!(_tail(vis), val, ranges, start)
 end
 
 Base.getindex(vi::AbstractVarInfo, spl::SampleFromPrior) = copy(getall(vi))
@@ -626,22 +616,20 @@ end
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
 #   the SampleFromPrior sampler
-getidcs(vi::UntypedVarInfo, ::SampleFromPrior) = filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
-@generated function getidcs(vi::TypedVarInfo{Tvis}, spl::SampleFromPrior) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :($f = _filter_gids(vi, $(QuoteNode(f)))))
-    end
-    if length(args) == 0
-        nt = :(NamedTuple())
-    else
-        nt = :(($(args...),))
-    end
-    return nt
+function getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
+    return filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 end
-function _filter_gids(vi, f::Symbol)
-    filter(i -> getfield(vi.vis, f).gids[i] == 0, 1:length(getfield(vi.vis, f).gids))
+function getidcs(vi::TypedVarInfo, ::SampleFromPrior)
+    return _getidcs(vi.vis)
 end
+@inline function _getidcs(vis::NamedTuple{names}) where {names}
+    length(names) === 0 && return NamedTuple()
+    f = names[1]
+    v = filter(i -> getfield(vis, f).gids[i] == 0, 1:length(getfield(vis, f).gids))
+    nt = NamedTuple{(f,)}((v,))
+    return merge(nt, _getidcs(_tail(vis)))
+end
+
 function getidcs(vi::AbstractVarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         | \___ getidcs   (mask = 0b10)
@@ -654,46 +642,36 @@ function getidcs(vi::AbstractVarInfo, spl::Sampler)
         spl.info[:idcs] = getidcs(vi, spl.selector, spl.alg.space)
     end
 end
-
 # Get all indices of variables belonging to a given selector
 function getidcs(vi::UntypedVarInfo, s::Selector, space)
-    filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) && (isempty(space) || is_inside(vi.vns[i], space)),
-           1:length(vi.gids))
+    filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) && 
+        (isempty(space) || is_inside(vi.vns[i], space)), 1:length(vi.gids))
 end
-@generated function getidcs(vi::TypedVarInfo{Tvis}, s::Selector, space) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :($f = _filter_gids(vi, s, $(QuoteNode(f)), space)))
-    end
-    if length(args) == 0
-        nt = :(NamedTuple())
-    else
-        nt = :(($(args...),))
-    end
-    return nt
+function getidcs(vi::TypedVarInfo, s::Selector, space)
+    return _getidcs(vi.vis, s, space)
 end
-function _filter_gids(mvi, s::Selector, f::Symbol, space)
-    vi = getfield(mvi.vis, f)
-    function func(i)
-        return (s in vi.gids[i] || isempty(vi.gids[i])) && 
-            (isempty(space) || is_inside(vi.vns[i], space))
-    end
-    return filter(func, 1:length(vi.gids))
+@inline function _getidcs(vis::NamedTuple{names}, s::Selector, space) where {names}
+    length(names) === 0 && return NamedTuple()
+    f = names[1]
+    vi = getfield(vis, f)
+    v = filter((i) -> (s in vi.gids[i] || isempty(vi.gids[i])) && 
+        (isempty(space) || is_inside(vi.vns[i], space)), 1:length(vi.gids))
+    nt = NamedTuple{(f,)}((v,))
+    return merge(nt, _getidcs(_tail(vis), s, space))
 end
 
 # Get all vns of variables belonging to spl.selector
 getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
-@generated function getvns(vi::TypedVarInfo{Tvis}, spl::AbstractSampler) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :($f = vi.vis.$f.vns[idcs.$f]))
-    end
-    nt = length(args) == 0 ? :(NamedTuple()) : :(($(args...),))
-
-    return quote
-        idcs = getidcs(vi, spl)
-        return $nt
-    end
+function getvns(vi::TypedVarInfo, spl::AbstractSampler) 
+    idcs = getidcs(vi, spl)
+    return _getvns(vi.vis, idcs)
+end
+@inline function _getvns(vis::NamedTuple{names}, idcs) where {names}
+    length(names) === 0 && return NamedTuple()
+    f = names[1]
+    v = getfield(vis, f).vns[getfield(idcs, f)]
+    nt = NamedTuple{(f,)}((v,))
+    return merge(nt, _getvns(_tail(vis), idcs))
 end
 
 # Get all vns of variables belonging to spl.selector
@@ -712,19 +690,14 @@ end
 function _getranges(vi::UntypedVarInfo, idcs)
     union(map(i -> vi.ranges[i], idcs)...)
 end
-@generated function _getranges(vi::TypedVarInfo{Tvis}, idcs) where Tvis
-    args = []
-    for f in fieldnames(Tvis)
-        push!(args, :($f = _map(vi, $(QuoteNode(f)), idcs.$f)))
-    end
-    if length(args) == 0
-        nt = :(NamedTuple())
-    else
-        nt = :(($(args...),))
-    end
-    return nt
+_getranges(vi::TypedVarInfo, idcs) = _getranges(vi.vis, idcs)
+@inline function _getranges(vis::NamedTuple{names}, idcs) where {names}
+    length(names) === 0 && return NamedTuple()
+    f = names[1]
+    v = union(map(i -> getfield(vis, f).ranges[i], getfield(idcs, f))..., Int[])
+    nt = NamedTuple{(f,)}((v,))
+    return merge(nt, _getranges(_tail(vis), idcs))
 end
-_map(vi, f, idcs) = union(map(i -> getfield(vi.vis, f).ranges[i], idcs)..., Int[])
 
 #######################################
 # Rand & replaying method for VarInfo #
@@ -764,34 +737,27 @@ function set_retained_vns_del_by_spl!(vi::UntypedVarInfo, spl::Sampler)
         end
     end
 end
-@generated function set_retained_vns_del_by_spl!(vi::TypedVarInfo{Tvis}, spl::Sampler) where Tvis
-    branch1_expr = Expr(:block)
-    branch2_expr = Expr(:block)
-    for f in fieldnames(Tvis)
-        push!(branch1_expr.args, quote
-            for i = length(gidcs.$f):-1:1
-                vi.vis.$f.flags["del"][gidcs.$f[i]] = true
-            end
-        end)
-        push!(branch2_expr.args, quote
-            retained = get_retained(vi.vis.$f.orders, gidcs.$f, vi.num_produce)
-            for i in retained
-                vi.vis.$f.flags["del"][i] = true
-            end
-        end)
-    end
-
-    return quote
-        gidcs = getidcs(vi, spl)
-        if vi.num_produce == 0
-            $branch1_expr
-        else
-            $branch2_expr
+function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
+    gidcs = getidcs(vi, spl)
+    return _set_retained_vns_del_by_spl!(vi.vis, gidcs, vi.num_produce)
+end
+@inline function _set_retained_vns_del_by_spl!(vis::NamedTuple{names}, gidcs, num_produce) where {names}
+    length(names) === 0 && return nothing
+    f = names[1]
+    f_gidcs = getfield(gidcs, f)
+    f_orders = getfield(vis, f).orders
+    f_flags = getfield(vis, f).flags
+    if num_produce == 0
+        for i = length(f_gidcs):-1:1
+            f_flags["del"][f_gidcs[i]] = true
+        end
+    else
+        retained = [idx for idx in 1:length(f_orders) if idx in f_gidcs && f_orders[idx] > num_produce]
+        for i in retained
+            f_flags["del"][i] = true
         end
     end
-end
-function get_retained(orders, gidcs, num_produce)
-    [idx for idx in 1:length(orders) if idx in gidcs && orders[idx] > num_produce]
+    return _set_retained_vns_del_by_spl!(_tail(vis), gidcs, num_produce)
 end
 
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
