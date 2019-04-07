@@ -144,9 +144,9 @@ include("../test_utils/AllUtils.jl")
         randr(vi, vn_a2, dists[2], spl1)
         vi.num_produce += 1
         randr(vi, vn_z3, dists[1], spl1)
-        @test vi.vis.z.orders == [1, 2, 3]
-        @test vi.vis.a.orders == [1, 2]
-        @test vi.vis.b.orders == [2]
+        @test vi.metadata.z.orders == [1, 2, 3]
+        @test vi.metadata.a.orders == [1, 2]
+        @test vi.metadata.b.orders == [2]
         @test vi.num_produce == 3
 
         vi.num_produce = 0
@@ -165,9 +165,9 @@ include("../test_utils/AllUtils.jl")
         vi.num_produce += 1
         randr(vi, vn_z3, dists[1], spl1)
         randr(vi, vn_a2, dists[2], spl1)
-        @test vi.vis.z.orders == [1, 2, 3]
-        @test vi.vis.a.orders == [1, 3]
-        @test vi.vis.b.orders == [2]
+        @test vi.metadata.z.orders == [1, 2, 3]
+        @test vi.metadata.a.orders == [1, 3]
+        @test vi.metadata.b.orders == [2]
         @test vi.num_produce == 3
     end
     @turing_testset "replay" begin
@@ -324,10 +324,10 @@ include("../test_utils/AllUtils.jl")
         g_demo_f(vi, SampleFromPrior())
         vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
         g_demo_f(vi, hmc)
-        @test vi.vis.x.gids[1] == Set([pg.selector])
-        @test vi.vis.y.gids[1] == Set([pg.selector])
-        @test vi.vis.z.gids[1] == Set([pg.selector])
-        @test vi.vis.w.gids[1] == Set([hmc.selector])
-        @test vi.vis.u.gids[1] == Set([hmc.selector])
+        @test vi.metadata.x.gids[1] == Set([pg.selector])
+        @test vi.metadata.y.gids[1] == Set([pg.selector])
+        @test vi.metadata.z.gids[1] == Set([pg.selector])
+        @test vi.metadata.w.gids[1] == Set([hmc.selector])
+        @test vi.metadata.u.gids[1] == Set([hmc.selector])
     end
 end
