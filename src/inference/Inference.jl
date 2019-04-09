@@ -6,7 +6,7 @@ using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractRunner
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector
+    Selector, ComputeLogJointDensity
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
@@ -79,6 +79,8 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 # Helper functions
 include("adapt/adapt.jl")
 include("support/hmc_core.jl")
+
+include("runners.jl")
 
 # Concrete algorithm implementations.
 include("hmcda.jl")
@@ -174,10 +176,7 @@ function assume(spl::A,
 end
 
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
+@inline observe(::Nothing, dist, value, vi) = observe(SampleFromPrior(), dist, value, vi)
 
 function observe(spl::A,
     dist::Distribution,
@@ -189,8 +188,7 @@ function observe(spl::A,
     Turing.DEBUG && @debug "value = $value"
 
     # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
-
+    return logpdf(dist, value)
 end
 
 function observe(spl::A,
