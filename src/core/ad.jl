@@ -270,3 +270,11 @@ function LinearAlgebra.:\(chol::Cholesky{<:Any, <:Tracker.TrackedMatrix}, x::Uni
 	y = chol.L \ x
 	return chol.U \ y
 end
+
+function Distributions.MvNormal(u::AbstractVector, M::Tracker.TrackedMatrix)
+    # Should check for failure and throw if not posdef
+    chol = cholesky(M)
+	T = eltype(Tracker.data(M))
+	S = typeof(chol.factors)
+    return MvNormal(u, PDMat{T, S}(size(M, 1), M, chol))
+end
