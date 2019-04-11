@@ -247,3 +247,26 @@ function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
     Δ = ForwardDiff.partials(v)
     return FD(poislogpdf(val, x), Δ * (x/val - 1))
 end
+
+phi(x, i, j) = i < j ? zero(x) : (i > j ? x : x/2)  
+Phi(M) = phi.(M, 1:size(M,1), (1:size(M,2))')
+lowerchol(M::Matrix) = cholesky(M).L
+lowerchol(M::Tracker.TrackedMatrix) = Tracker.track(lowerchol, M)
+Tracker.@grad function lowerchol(M::AbstractMatrix)
+	L = cholesky(Tracker.data(M)).L.data
+	invL = inv(L)
+	grad = delta -> (LowerTriangular(L*Phi(invL*delta*invL')),)
+	return L, grad
+end
+
+for T in (:LowerTriangular, :UpperTriangular)
+    @eval begin
+        LinearAlgebra.$T(M::Tracker.TrackedMatrix) = Tracker.track(LowerTriangular, M)
+        Tracker.@grad LinearAlgebra.$T(M::AbstractMatrix) = $T(Tracker.data(M)), delta -> ($T(delta),)
+    end
+end
+LinearAlgebra.cholesky(M::Tracker.TrackedMatrix) = Cholesky(lowerchol(M), 'L', 0)
+function LinearAlgebra.:\(chol::Cholesky{<:Any, <:Tracker.TrackedMatrix}, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
+	y = chol.L \ x
+	return chol.U \ y
+end
