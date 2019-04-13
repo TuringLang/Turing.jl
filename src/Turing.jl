@@ -73,9 +73,16 @@ hash(s::Selector) = hash(s.gid)
 
 abstract type AbstractRunner end
 #abstract type AbstractSampler end
+abstract type SampleFromDistribution end
 
-struct SampleFromUniform <: AbstractRunner end
-struct SampleFromPrior <: AbstractRunner end
+struct SampleFromPrior <: SampleFromDistribution end
+_rand(dist::Distribution) = rand(dist)
+_rand(dist::distribution, n::Int) = rand(dist, n)
+
+struct SampleFromUniform <: SampleFromDistribution end
+_rand(dist::Distribution) = init(dist)
+_rand(dist::Distributionm, n::Int) = init(dist, n)
+
 struct ComputeLogJointDensity <: AbstractRunner end
 struct ComputeLogDensity <: AbstractRunner end
 struct ParticleFiltering <: AbstractRunner end

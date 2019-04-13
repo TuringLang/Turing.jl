@@ -263,50 +263,14 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
-    Turing.DEBUG && @debug "assuming..."
+    # Why do we need this here and not if dist is a vector of dists?
     updategid!(vi, vn, spl)
-    r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    # r
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "vn = $vn"
-    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return assume(ComputeLogJointDensity(), dist, vn, vi)
 end
 
 function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::VarInfo)
-    @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
-
-    vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
-
-    rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
-
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-        @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-        var = rs
-    elseif isa(dist, MultivariateDistribution)
-        if isa(var, Vector)
-            @assert length(var) == size(rs)[2] "Turing.assume variable and random number dimension unmatched"
-            for i = 1:n
-                var[i] = rs[:,i]
-            end
-        elseif isa(var, Matrix)
-            @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-            var = rs
-        else
-            error("[Turing] unsupported variable container")
-        end
-    end
-
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    return assume(ComputeLogJointDensity(), dists, vn, var, vi)
 end
 
-observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value::Any, vi::VarInfo) =
-    observe(nothing, d, value, vi)
-
-observe(spl::Sampler{<:Hamiltonian}, ds::Vector{<:Distribution}, value::Any, vi::VarInfo) =
-    observe(nothing, ds, value, vi)
+observe(spl::Sampler{<:Hamiltonian}, d, value, vi::VarInfo) = 
+    observe(ComputeLogJointDensity(), d, value, vi)
