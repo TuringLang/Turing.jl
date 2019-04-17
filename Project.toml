@@ -1,0 +1,18 @@
+name = "Turing"
+uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
+version = "0.6.15"
+
+[deps]
+Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
+BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Libtask = "6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f"
+MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
