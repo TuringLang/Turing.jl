@@ -1,6 +1,6 @@
 module RandomMeasures
 
-using ..Core, ..Core.VarReplay, ..Utilities
+using ..Core, ..Core.RandomVariables, ..Utilities
 using Distributions
 using LinearAlgebra
 using StatsFuns: logsumexp

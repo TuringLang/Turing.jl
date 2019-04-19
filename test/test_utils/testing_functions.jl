@@ -57,7 +57,7 @@ function randr(vi::Turing.VarInfo,
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del")
         r = rand(dist)
-        Turing.VarReplay.setval!(vi, Turing.vectorize(dist, r), vn)
+        Turing.RandomVariables.setval!(vi, Turing.vectorize(dist, r), vn)
         return r
     else
         if count Turing.checkindex(vn, vi, spl) end

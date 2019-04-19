@@ -14,7 +14,7 @@ include("test_utils/AllUtils.jl")
         include("core/ad.jl")
         include("core/compiler.jl")
         include("core/container.jl")
-        include("core/VarReplay.jl")
+        include("core/RandomVariables.jl")
     end
 
     @testset "inference" begin

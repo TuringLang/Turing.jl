@@ -4,7 +4,7 @@ Requires 0.5.0
 Reexport 0.2.0
 Distributions 0.16.0
 ForwardDiff 0.8.0
-MCMCChains 0.3.4
+MCMCChains 0.3.7
 Libtask 0.2.5
 Flux 0.6.7
 MacroTools
