@@ -228,76 +228,24 @@ end
 
 # Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
 function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
-    lj_func = gen_lj_func(vi, spl, model)
+    logπ = gen_lj_func(vi, spl, model)
     momentum_sampler = gen_momentum_sampler(vi, spl)
-    grad_func = gen_grad_func(vi, spl, model)
+
+    # AHMC only takes the gradient
+    # TODO: unify two functions below
+    _∂logπ∂θ = gen_grad_func(vi, spl, model)
+    ∂logπ∂θ = x -> _∂logπ∂θ(x)[2]
     H_func = gen_H_func()
-    θ, lj = vi[spl], vi.logp
-    ϵ = _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler)
+    θ, lj = Vector{Float64}(vi[spl]), vi.logp
+
+    metric = AdvancedHMC.UnitEuclideanMetric(length(θ))
+    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    init_eps = AdvancedHMC.find_good_eps(h, θ)
+
     vi[spl] = θ
     setlogp!(vi, lj)
-    @info "[Turing] found initial ϵ: $ϵ"
-    return ϵ
-end
-
-##
-## Heuristically find optimal ϵ
-##
-function _find_good_eps(θ, lj_func, grad_func, H_func, momentum_sampler; max_num_iters=100)
-    @info "[Turing] looking for good initial eps..."
-    ϵ_prime = ϵ = 0.1
-    a_min, a_cross, a_max = 0.25, 0.5, 0.75 # minimal, crossing, maximal accept ratio
-    d = 2.0
-
-    p = momentum_sampler()
-    H0 = H_func(θ, p, lj_func(θ))
-
-    θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ, grad_func)
-    h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
-
-    delta_H = H0 - h # logp(θ`) - logp(θ)
-    direction = delta_H > log(a_cross) ? 1 : -1
-
-    # Crossing step: increase/decrease ϵ until accept ratio cross a_cross.
-    for _ = 1:max_num_iters
-        ϵ_prime = direction == 1 ? d * ϵ : 1/d * ϵ
-        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ_prime, grad_func)
-        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
-        Turing.DEBUG && @debug "direction = $direction, h = $h"
-
-        delta_H = H0 - h
-
-        Turing.DEBUG && @debug "[Turing] ϵ = $ϵ_prime, accept ratio a = $(min(1,(exp(delta_H))))"
-        if ((direction == 1) && !(delta_H > log(a_cross)))
-            break
-        elseif ((direction == -1) && !(delta_H < log(a_cross)))
-            break
-        else
-            ϵ = ϵ_prime
-        end
-    end
-
-    # Bisection step: ensure final accept ratio:  a_min < a < a_max.
-    #  See https://en.wikipedia.org/wiki/Bisection_method
-    ϵ, ϵ_prime = ϵ < ϵ_prime ? (ϵ, ϵ_prime) : (ϵ_prime, ϵ) # Ensure ϵ < ϵ_prime
-    for _ = 1:max_num_iters
-        ϵ_mid = middle(ϵ, ϵ_prime)
-        θ_prime, p_prime, τ = _leapfrog(θ, p, 1, ϵ_mid, grad_func)
-        h = τ == 0 ? Inf : H_func(θ_prime, p_prime, lj_func(θ_prime))
-
-        delta_H = H0 - h
-
-        Turing.DEBUG && @debug "[Turing] ϵ = $ϵ_mid, accept ratio a = $(min(1,(exp(delta_H))))"
-        if (exp(delta_H) > a_max)
-            ϵ = ϵ_mid
-        elseif (exp(delta_H) < a_min)
-            ϵ_prime = ϵ_mid
-        else
-            ϵ = ϵ_mid; break
-        end
-    end
-
-    return ϵ
+    @info "[Turing] found initial ϵ: $init_eps"
+    return init_eps
 end
 
 """
