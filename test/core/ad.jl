@@ -35,6 +35,10 @@ include("../test_utils/AllUtils.jl")
         test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
         test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
         test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
+        test_ad(m->logpdf(MvNormal(m, 1.0), [1.0, 1.0]), [1.0, 1.0])
+        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), [1.0, 1.0])
+        S = rand(2,2); S = S' * S
+        test_ad(S->logpdf(MvNormal(zeros(2), S), [1.0, 1.0]), S)
     end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
