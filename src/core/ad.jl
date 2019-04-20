@@ -248,47 +248,25 @@ function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
     return FD(poislogpdf(val, x), Δ * (x/val - 1))
 end
 
-upper(x, i, j) = i > j ? zero(x) : x
-upper(M) = upper.(M, 1:size(M,1), (1:size(M,2))')
-phi(x, i, j) = i < j ? zero(x) : (i > j ? x : x/2)
-phi(M) = phi.(M, 1:size(M,1), (1:size(M,2))')
-upperchol(M::Matrix) = cholesky(M).U
-upperchol(M::Tracker.TrackedMatrix) = Tracker.track(upperchol, M)
-Tracker.@grad function upperchol(M::AbstractMatrix)
-    U = upper(cholesky(Tracker.data(M)).U.data)
-    invU = inv(U)
-    grad = delta -> (phi(invU'*delta*invU)' * U,)
-    return U, grad
-end
+fleshout(M::AbstractMatrix) = [M[i,j] for i in 1:size(M,1), j in 1:size(M,2)]
+fleshout(v::AbstractVector) = [v[i] for i in 1:length(v)]
 
-for T in (:LowerTriangular, :UpperTriangular)
+function Distributions.MvNormal(u::AbstractVector, M::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
+    return MvNormal(u, fleshout(M))
+end
+for T in (:(Tracker.TrackedVector{T}), :(Tracker.TrackedMatrix{T}))
     @eval begin
-        LinearAlgebra.$T(M::Tracker.TrackedMatrix) = Tracker.track($T, M)
-        Tracker.@grad LinearAlgebra.$T(M::AbstractMatrix) = $T(Tracker.data(M)), delta -> ($T(delta),)
+        function Distributions.MvNormal(u::Tracker.TrackedVector{T}, M::$T) where {T <: Real}
+            return MvNormal(fleshout(u), fleshout(M))
+        end
     end
 end
-LinearAlgebra.cholesky(M::Tracker.TrackedMatrix) = Cholesky(upperchol(M), 'U', 0)
-function LinearAlgebra.:\(chol::Cholesky{T, <:Tracker.TrackedMatrix{T}}, x::Vector{T}) where {T <: Union{Complex{Float32}, Complex{Float64}, Float32, Float64}}
-    y = chol.L \ x
-    return chol.U \ y
-end
-function LinearAlgebra.:\(chol::Cholesky{T, Tracker.TrackedMatrix{T, Matrix{T}}}, x::Tracker.TrackedVector{T, Vector{T}}) where {T <: Union{Complex{Float32}, Complex{Float64}, Float32, Float64}}
-    y = chol.L \ x
-    return chol.U \ y
+for T in (:(Vector{T}), :(Matrix{T}), :(AbstractVector{T}), :(AbstractMatrix{T}))
+    @eval begin
+        function Distributions.MvNormal(u::Tracker.TrackedVector{T}, M::$T) where {T <: Real}
+            return MvNormal(fleshout(u), M)
+        end
+    end
 end
 
-function Distributions.MvNormal(u::AbstractVector, M::Tracker.TrackedMatrix)
-    # Should check for failure and throw if not posdef
-    chol = cholesky(M)
-	T = eltype(Tracker.data(M))
-	S = typeof(chol.factors)
-    return MvNormal(u, PDMat{T, S}(size(M, 1), M, chol))
-end
-function Distributions.MvNormal(u::AbstractVector, M::Tracker.TrackedVector)
-    # Should check for failure and throw if not posdef
-	T = eltype(Tracker.data(M))
-	S = typeof(M)
-    invM = inv.(M)
-    pd = PDiagMat{T, S}(size(M, 1), M, invM)
-    return MvNormal(u, pd)
-end
+LinearAlgebra.cholesky(M::Tracker.TrackedMatrix) = cholesky(fleshout(M))
