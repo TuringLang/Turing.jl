@@ -50,8 +50,7 @@ function NUTS{AD}(n_iters::Int, delta::Float64) where AD
     NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, delta, Set())
 end
 
-function hmc_step(θ, lj, logπ, _∂logπ∂θ, ϵ, alg::NUTS, metric; rev_func=nothing, log_func=nothing)
-
+function hmc_step(θ, lj, logπ, _∂logπ∂θ, ϵ, alg::NUTS, metric)
     h = AdvancedHMC.Hamiltonian(metric, logπ, x->_∂logπ∂θ(x)[2])
     max_depth = 5
     Δ_max = 1000.0

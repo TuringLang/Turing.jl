@@ -26,31 +26,6 @@ function gen_lj_func(vi::VarInfo, sampler::Sampler, model)
     return _f
 end
 
-"""
-  gen_rev_func(vi::VarInfo, sampler::Sampler)
-
-Generate a function on `(θ, logp)` that sets the variables referenced by `sampler` to `θ`
-and the current `vi.logp` to `logp`.
-"""
-function gen_rev_func(vi::VarInfo, sampler::Sampler)
-    return function(θ::AbstractVector{<:Real}, logp::Real)
-        vi[sampler] = θ
-        setlogp!(vi, logp)
-    end
-end
-
-"""
-    gen_log_func(sampler::Sampler)
-
-Generate a function that takes no argument and performs logging for the number of leapfrog
-steps used in `sampler`.
-"""
-function gen_log_func(sampler::Sampler)
-    return function()
-        sampler.info[:lf_num] += 1
-    end
-end
-
 function gen_metric(vi::VarInfo, spl::Sampler)
     return AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
 end
@@ -73,10 +48,7 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    _∂logπ∂θ::Function,
                    ϵ::Real,
                    λ::Real,
-                   metric;
-                   rev_func=nothing,
-                   log_func=nothing,
-                   )
+                   metric)
     τ = max(1, round(Int, λ / ϵ))
     θ = Vector{Float64}(θ)
 
@@ -123,13 +95,10 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
 end
 
 """
-    mh_accept(H::Real, H_new::Real)
     mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria. Returns a boolean for whether or not accept and the
-acceptance ratio in log space.
+Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
 """
-mh_accept(H::Real, H_new::Real) = log(rand()) + H_new < min(H_new, H), min(0, -(H_new - H))
 function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
