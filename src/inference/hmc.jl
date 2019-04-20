@@ -50,10 +50,6 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     space     ::  Set{T}    # sampling space, emtpy means all
 end
 HMC(args...) = HMC{ADBackend()}(args...)
-function HMC{AD}(epsilon::Float64, tau::Int, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(1, epsilon, tau, _space)
-end
 function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int) where AD
     return HMC{AD, Any}(n_iters, epsilon, tau, Set())
 end
@@ -92,10 +88,10 @@ function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
 end
 
 function sample(model::Model, alg::Hamiltonian;
-                                save_state=false,                   # flag for state saving
-                                resume_from=nothing,                # chain to continue
-                                reuse_spl_n=0,                      # flag for spl re-using
-                                adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
+                save_state=false,                   # flag for state saving
+                resume_from=nothing,                # chain to continue
+                reuse_spl_n=0,                      # flag for spl re-using
+                adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
                 )
 
     spl = reuse_spl_n > 0 ?
@@ -181,7 +177,9 @@ function sample(model::Model, alg::Hamiltonian;
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.info[:samples]...)
     end
+
     c = Chain(0.0, samples)       # wrap the result by Chain
+
     if save_state               # save state
         # Convert vi back to X if vi is required to be saved
         spl.selector.tag == :default && invlink!(vi, spl)

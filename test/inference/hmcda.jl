@@ -5,7 +5,7 @@ include("../test_utils/AllUtils.jl")
 
 @testset "hmcda.jl" begin
     Random.seed!(1234)
-    
+
     @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(3000, 1000, 0.65, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.65, 0.35, :m), HMC(1, 0.25, 3, :s))
@@ -28,10 +28,6 @@ include("../test_utils/AllUtils.jl")
     end
     @turing_testset "hmcda constructor" begin
         alg = HMCDA(1000, 0.65, 0.75)
-        println(alg)
-        sampler = Sampler(alg)
-
-        alg = HMCDA(200, 0.65, 0.75, :m)
         println(alg)
         sampler = Sampler(alg)
 

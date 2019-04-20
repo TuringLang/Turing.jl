@@ -43,10 +43,6 @@ mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     space     ::  Set{T}    # sampling space, emtpy means all
 end
 HMCDA(args...) = HMCDA{ADBackend()}(args...)
-function HMCDA{AD}(n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(1, n_adapts, delta, lambda, _space)
-end
 function HMCDA{AD}(n_iters::Int, delta::Float64, lambda::Float64) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default

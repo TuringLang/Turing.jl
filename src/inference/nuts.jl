@@ -37,10 +37,6 @@ mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
     space     ::  Set{T}    # sampling space, emtpy means all
 end
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
-function NUTS{AD}(n_adapts::Int, delta::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    NUTS{AD, eltype(_space)}(1, n_adapts, delta, _space)
-end
 function NUTS{AD}(n_iters::Int, n_adapts::Int, delta::Float64, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     NUTS{AD, eltype(_space)}(n_iters, n_adapts, delta, _space)

@@ -32,10 +32,6 @@ mutable struct SGHMC{AD, T} <: StaticHamiltonian{AD}
     space::Set{T}    # sampling space, emtpy means all
 end
 SGHMC(args...) = SGHMC{ADBackend()}(args...)
-function SGHMC{AD}(learning_rate::Float64, momentum_decay::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGHMC{AD, eltype(_space)}(1, learning_rate, momentum_decay, _space)
-end
 function SGHMC{AD}(n_iters, learning_rate, momentum_decay) where AD
     return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set())
 end

@@ -30,10 +30,6 @@ mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     space   :: Set{T}    # sampling space, emtpy means all
 end
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-function SGLD{AD}(epsilon::Float64, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    SGLD{AD, eltype(_space)}(1, epsilon, _space)
-end
 function SGLD{AD}(n_iters, epsilon) where AD
     SGLD{AD, Any}(n_iters, epsilon, Set())
 end
