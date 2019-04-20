@@ -1,7 +1,7 @@
 module Core
 
 using MacroTools, Libtask, ForwardDiff
-using Distributions, PDMats, LinearAlgebra
+using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
