@@ -30,8 +30,8 @@ mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     space   :: Set{T}    # sampling space, emtpy means all
 end
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-function SGLD{AD}(epsilon::Float64, space...) where AD 
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)    
+function SGLD{AD}(epsilon::Float64, space...) where AD
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
     SGLD{AD, eltype(_space)}(1, epsilon, _space)
 end
 function SGLD{AD}(n_iters, epsilon) where AD
@@ -45,7 +45,8 @@ end
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
-    spl.info[:wum] = NaiveCompAdapter(UnitPreConditioner(), ManualSSAdapter(MSSState(spl.alg.epsilon)))
+    mssa = AdvancedHMC.Adaptation.ManualSSAdaptor(AdvancedHMC.Adaptation.MSSState(spl.alg.epsilon))
+    spl.info[:adaptor] = AdvancedHMC.NaiveCompAdaptor(AdvancedHMC.UnitPreConditioner(), mssa)
 
     # Initialize iteration counter
     spl.info[:t] = 0
@@ -61,7 +62,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     Turing.DEBUG && @debug "compute current step size..."
     γ = .35
     ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
-    mssa = spl.info[:wum].ssa
+    mssa = spl.info[:adaptor].ssa
     mssa.state.ϵ = ϵ_t
 
     Turing.DEBUG && @debug "X-> R..."

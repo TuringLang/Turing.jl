@@ -38,16 +38,16 @@ function gen_metric(vi::VarInfo, spl::Sampler)
     return AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, ::UnitPreConditioner)
+function gen_metric(vi::VarInfo, spl::Sampler, ::AdvancedHMC.UnitPreConditioner)
     return AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, pc::DiagPreConditioner)
-    return AdvancedHMC.DiagEuclideanMetric(pc.std.^2)
+function gen_metric(vi::VarInfo, spl::Sampler, pc::AdvancedHMC.DiagPreConditioner)
+    return AdvancedHMC.DiagEuclideanMetric(AdvancedHMC.getM⁻¹(pc))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, pc::DensePreConditioner)
-    return AdvancedHMC.DenseEuclideanMetric(pc.covar)
+function gen_metric(vi::VarInfo, spl::Sampler, pc::AdvancedHMC.DensePreConditioner)
+    return AdvancedHMC.DenseEuclideanMetric(AdvancedHMC.getM⁻¹(pc))
 end
 
 function _hmc_step(θ::AbstractVector{<:Real},

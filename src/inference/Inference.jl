@@ -243,8 +243,8 @@ end
 # VarInfo, combined with spl.info, to Sample
 function Sample(vi::AbstractVarInfo, spl::Sampler)
     s = Sample(vi)
-    if haskey(spl.info, :wum)
-        s.value[:epsilon] = getss(spl.info[:wum])
+    if haskey(spl.info, :adaptor)
+        s.value[:epsilon] = AdvancedHMC.getϵ(spl.info[:adaptor])
     end
     if haskey(spl.info, :lf_num)
         s.value[:lf_num] = spl.info[:lf_num]
