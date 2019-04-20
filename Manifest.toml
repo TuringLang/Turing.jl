@@ -6,12 +6,6 @@ git-tree-sha1 = "dfaf23dba016254bb0eed6de326510caea2889bf"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.4.0"
 
-[[AbstractTrees]]
-deps = ["Markdown", "Test"]
-git-tree-sha1 = "6621d9645702c1c4e6970cc6a3eae440c768000b"
-uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-version = "0.2.1"
-
 [[Adapt]]
 deps = ["LinearAlgebra", "Test"]
 git-tree-sha1 = "53d8fec4f662088c1202530e338a11a919407f3b"
@@ -183,12 +177,6 @@ git-tree-sha1 = "b8045033701c3b10bf2324d7203404be7aef88ba"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.5.3"
 
-[[Flux]]
-deps = ["AbstractTrees", "Adapt", "CodecZlib", "Colors", "DelimitedFiles", "Juno", "LinearAlgebra", "MacroTools", "NNlib", "Pkg", "Random", "Reexport", "Requires", "SHA", "Statistics", "StatsBase", "Test", "Tracker", "ZipFile"]
-git-tree-sha1 = "75e5a6850ad9d6129773171d9ba66be899a515ec"
-uuid = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-version = "0.8.2"
-
 [[ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "InteractiveUtils", "LinearAlgebra", "NaNMath", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Test"]
 git-tree-sha1 = "4c4d727f1b7e0092134fabfab6396b8945c1ea5b"
@@ -238,12 +226,6 @@ deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
 git-tree-sha1 = "1f7a25b53ec67f5e9422f1f551ee216503f4a0fa"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.20.0"
-
-[[Juno]]
-deps = ["Base64", "Logging", "Media", "Profile", "Test"]
-git-tree-sha1 = "4e4a8d43aa7ecec66cadaf311fbd1e5c9d7b9175"
-uuid = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
-version = "0.7.0"
 
 [[KernelDensity]]
 deps = ["Distributions", "FFTW", "Interpolations", "Optim", "StatsBase", "Test"]
@@ -303,12 +285,6 @@ deps = ["Test"]
 git-tree-sha1 = "ddfd6d13e330beacdde2c80de27c1c671945e7d9"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.0"
-
-[[Media]]
-deps = ["MacroTools", "Test"]
-git-tree-sha1 = "75a54abd10709c01f1b86b84ec225d26e840ed58"
-uuid = "e89f7d12-3494-54d1-8411-f7d8b9ae1f27"
-version = "0.5.0"
 
 [[Missings]]
 deps = ["Dates", "InteractiveUtils", "SparseArrays", "Test"]
@@ -398,10 +374,6 @@ version = "0.2.1"
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-
-[[Profile]]
-deps = ["Printf"]
-uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
 [[ProgressMeter]]
 deps = ["Distributed", "Printf", "Random", "Test"]
@@ -584,9 +556,3 @@ deps = ["LinearAlgebra", "Random", "SparseArrays", "Test"]
 git-tree-sha1 = "21772c33b447757ec7d3e61fcdfb9ea5c47eedcf"
 uuid = "efce3f68-66dc-5838-9240-27a6d6f5f9b6"
 version = "0.4.1"
-
-[[ZipFile]]
-deps = ["BinaryProvider", "Libdl", "Printf", "Test"]
-git-tree-sha1 = "5f6f663890dfb9bad6af75a86a43f67904e5050e"
-uuid = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
-version = "0.8.1"
