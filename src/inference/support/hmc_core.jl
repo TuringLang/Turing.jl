@@ -1,7 +1,3 @@
-# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/hamiltonians/diag_e_metric.hpp
-
-using Statistics: middle
-
 """
     gen_grad_func(vi::VarInfo, sampler::Sampler, model)
 
