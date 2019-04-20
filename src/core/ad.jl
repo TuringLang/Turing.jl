@@ -33,7 +33,7 @@ getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
 getchunksize(::SampleFromPrior) = getchunksize(Nothing)
 getchunksize(::Type{Nothing}) = CHUNKSIZE[]
 
-struct FluxTrackerAD <: ADBackend end
+struct TrackerAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
@@ -41,7 +41,7 @@ function ADBackend(::Val{T}) where {T}
     if T === :forward_diff
         return ForwardDiffAD{CHUNKSIZE[]}
     else
-        return FluxTrackerAD
+        return TrackerAD
     end
 end
 
@@ -78,7 +78,7 @@ function gradient_logp(
     ad_type = getADtype(TS)
     if ad_type <: ForwardDiffAD
         return gradient_logp_forward(θ, vi, model, sampler)
-    else ad_type <: FluxTrackerAD
+    else ad_type <: TrackerAD
         return gradient_logp_reverse(θ, vi, model, sampler)
     end
 end
@@ -134,7 +134,7 @@ gradient_logp_reverse(
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, sampler, model)` using reverse-mode AD from Flux.jl.
+specified by `(vi, sampler, model)` using reverse-mode AD from Tracker.jl.
 """
 function gradient_logp_reverse(
     θ::AbstractVector{<:Real},
