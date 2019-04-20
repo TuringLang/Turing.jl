@@ -18,12 +18,6 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "inference" begin
-        @testset "adapt" begin
-            include("inference/adapt/adapt.jl")
-            include("inference/adapt/precond.jl")
-            include("inference/adapt/stan.jl")
-            include("inference/adapt/stepsize.jl")
-        end
         @testset "support" begin
         end
         @testset "samplers" begin

@@ -80,7 +80,6 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 #  end
 
 # Helper functions
-include("adapt/adapt.jl")
 include("support/hmc_core.jl")
 
 """
