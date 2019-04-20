@@ -93,7 +93,7 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
         Turing.DEBUG && @debug "computing accept rate α..."
-        is_accept, logα = mh_accept(
+        is_accept, _ = mh_accept(
           -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
           -(new_likelihood_estimate + new_prior_prob),
           proposal_ratio,

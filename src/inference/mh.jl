@@ -89,7 +89,7 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
   propose(model, spl, vi)
 
   Turing.DEBUG && @debug "computing accept rate α..."
-  is_accept, logα = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
+  is_accept, _ = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
 
   Turing.DEBUG && @debug "decide wether to accept..."
   if is_accept && !spl.info[:violating_support]  # accepted
@@ -220,10 +220,10 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function assume(  spl::Sampler{<:MH}, 
-                  dists::Vector{D}, 
-                  vn::VarName, 
-                  var::Any, 
+function assume(  spl::Sampler{<:MH},
+                  dists::Vector{D},
+                  vn::VarName,
+                  var::Any,
                   vi::VarInfo
                 ) where D<:Distribution
     error("[Turing] MH doesn't support vectorizing assume statement")
@@ -233,9 +233,9 @@ function observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo)
     return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 end
 
-function observe( spl::Sampler{<:MH}, 
-                  ds::Vector{D}, 
-                  value::Any, 
+function observe( spl::Sampler{<:MH},
+                  ds::Vector{D},
+                  value::Any,
                   vi::VarInfo
                 )  where D<:Distribution
     return observe(nothing, ds, value, vi) # accumulate pdf of likelihood

@@ -71,23 +71,8 @@ function sample(model::Model,
         runmodel!(model, vi, spl)
     end
 
-    function logπ(x)::Float64
-        x_old, lj_old = vi[spl], vi.logp
-        vi[spl] = x
-        runmodel!(model, vi, spl).logp
-        lj = vi.logp
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return lj
-    end
-
-    function ∂logπ∂θ(x)::Vector{Float64}
-        x_old, lj_old = vi[spl], vi.logp
-        _, deriv = gradient_logp(x, vi, model, spl)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return deriv
-    end
+    logπ = gen_lj_func(vi, spl, model)
+    ∂logπ∂θ = gen_grad_func(vi, spl, model)
 
     θ_init = Vector{Float64}(vi[spl])
     # Define metric space, Hamiltonian and sampling method

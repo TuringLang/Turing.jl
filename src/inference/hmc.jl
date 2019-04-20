@@ -246,6 +246,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         )
     end
 
+    # NOTE: here is the adaptation place
     if spl.alg isa AdaptiveHamiltonian
         adapt!(spl.info[:wum], α, vi[spl], adapt_M=false, adapt_ϵ=true)
     end

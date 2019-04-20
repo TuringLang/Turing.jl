@@ -1,29 +1,37 @@
 """
-    gen_grad_func(vi::VarInfo, sampler::Sampler, model)
+    gen_grad_func(vi::VarInfo, spl::Sampler, model)
 
 Generate a function that takes a vector of reals `θ` and compute the logpdf and
-gradient at `θ` for the model specified by `(vi, sampler, model)`.
+gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
-function gen_grad_func(vi::VarInfo, sampler::Sampler, model)
-    function _f(θ::AbstractVector{<:Real})::Tuple{Float64,Vector{Float64}}
-        return gradient_logp(θ, vi, model, sampler)
+function gen_grad_func(vi::VarInfo, spl::Sampler, model)
+    function ∂logπ∂θ(x)::Vector{Float64}
+        x_old, lj_old = vi[spl], vi.logp
+        _, deriv = gradient_logp(x, vi, model, spl)
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return deriv
     end
-    return _f
+    return ∂logπ∂θ
 end
 
 """
-    gen_lj_func(vi::VarInfo, sampler::Sampler, model)
+    gen_lj_func(vi::VarInfo, spl::Sampler, model)
 
 Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
-`(vi, sampler, model)`.
+`(vi, spl, model)`.
 """
-function gen_lj_func(vi::VarInfo, sampler::Sampler, model)
-    function _f(θ::AbstractVector{<:Real})::Float64
-        vi[sampler] = θ
-        logp = runmodel!(model, vi, sampler).logp
-        return logp
+function gen_lj_func(vi::VarInfo, spl::Sampler, model)
+    function logπ(x)::Float64
+        x_old, lj_old = vi[spl], vi.logp
+        vi[spl] = x
+        runmodel!(model, vi, spl).logp
+        lj = vi.logp
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return lj
     end
-    return _f
+    return logπ
 end
 
 function gen_metric(vi::VarInfo, spl::Sampler)
@@ -45,14 +53,14 @@ end
 function _hmc_step(θ::AbstractVector{<:Real},
                    lj::Real,
                    logπ::Function,
-                   _∂logπ∂θ::Function,
+                   ∂logπ∂θ::Function,
                    ϵ::Real,
                    λ::Real,
                    metric)
     τ = max(1, round(Int, λ / ϵ))
     θ = Vector{Float64}(θ)
 
-    h = AdvancedHMC.Hamiltonian(metric, logπ, x->_∂logπ∂θ(x)[2])
+    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     prop = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), τ)
 
     r = AdvancedHMC.rand_momentum(h)
@@ -78,8 +86,7 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
 
     # AHMC only takes the gradient
     # TODO: unify two functions below
-    _∂logπ∂θ = gen_grad_func(vi, spl, model)
-    ∂logπ∂θ = x -> _∂logπ∂θ(x)[2]
+    ∂logπ∂θ = gen_grad_func(vi, spl, model)
     θ, lj = Vector{Float64}(vi[spl]), vi.logp
 
     # NOTE: currently force to use `UnitEuclideanMetric` - should be fine as
@@ -92,13 +99,4 @@ function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
     setlogp!(vi, lj)
     @info "[Turing] found initial ϵ: $init_eps"
     return init_eps
-end
-
-"""
-    mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
-
-Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
-"""
-function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
-    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end

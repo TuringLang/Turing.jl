@@ -83,6 +83,15 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 include("adapt/adapt.jl")
 include("support/hmc_core.jl")
 
+"""
+    mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
+
+Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
+"""
+function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
+    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+end
+
 # Concrete algorithm implementations.
 include("ahmc.jl")
 include("hmcda.jl")
