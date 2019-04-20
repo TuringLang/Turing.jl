@@ -62,10 +62,9 @@ function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...) where AD
     return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space)
 end
 
-function hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, alg::HMC, momentum_sampler::Function;
-                  rev_func=nothing, log_func=nothing)
+function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMC, metric; rev_func=nothing, log_func=nothing)
   θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(
-            θ, lj, lj_func, grad_func, H_func, alg.tau, ϵ, momentum_sampler; rev_func=rev_func, log_func=log_func)
+            θ, lj, lj_func, grad_func, ϵ, alg.tau, metric; rev_func=rev_func, log_func=log_func)
   return θ_new, lj_new, is_accept, α
 end
 
@@ -225,12 +224,11 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     lj_func = gen_lj_func(vi, spl, model)
     rev_func = gen_rev_func(vi, spl)
     log_func = gen_log_func(spl)
-    momentum_sampler = gen_momentum_sampler(vi, spl, spl.info[:wum].pc)
-    H_func = gen_H_func(spl.info[:wum].pc)
+    metric = gen_metric(vi, spl, spl.info[:wum].pc)
 
     θ, lj = vi[spl], vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, H_func, ϵ, spl.alg, momentum_sampler;
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj, lj_func, grad_func, ϵ, spl.alg, metric;
                                            rev_func=rev_func, log_func=log_func)
 
     Turing.DEBUG && @debug "decide whether to accept..."

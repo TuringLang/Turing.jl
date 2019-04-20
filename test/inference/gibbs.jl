@@ -28,6 +28,7 @@ include("../test_utils/AllUtils.jl")
         @test g.info[:samplers][1].selector != g.info[:samplers][2].selector
     end
     @numerical_testset "gibbs inference" begin
+        Random.seed!(100)
         alg = Gibbs(3000,
             CSMC(15, 1, :s),
             HMC(1, 0.2, 4, :m))
@@ -40,13 +41,13 @@ include("../test_utils/AllUtils.jl")
 
         setadsafe(true)
 
-        Random.seed!(100)
-        gibbs = Gibbs(500,
+        Random.seed!(200)
+        gibbs = Gibbs(1500,
             PG(10, 1, :z1, :z2, :z3, :z4),
             HMC(3, 0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs)
         check_MoGtest_default(chain, eps = 0.1)
-        
+
         setadsafe(false)
     end
 end

@@ -25,7 +25,6 @@ include("test_utils/AllUtils.jl")
             include("inference/adapt/stepsize.jl")
         end
         @testset "support" begin
-            include("inference/support/hmc_core.jl")
         end
         @testset "samplers" begin
             include("inference/dynamichmc.jl")
