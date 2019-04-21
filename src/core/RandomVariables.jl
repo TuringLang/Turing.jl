@@ -325,13 +325,18 @@ function Base.setproperty!(vi::VarInfo, f::Symbol, x)
     return setfield!(vi, f, x)
 end
 
-# Removes the first element of a NamedTuple
+# Removes the first element of a NamedTuple. The pairs in a NamedTuple are ordered, so this is well-defined.
 if VERSION < v"1.1"
     _tail(nt::NamedTuple{names}) where names = NamedTuple{Base.tail(names)}(nt)
 else
     _tail(nt::NamedTuple) = Base.tail(nt)
 end
 
+"""
+`empty!(vi::TypedVarInfo)`
+
+Empties all the fields of `vi.metadata` and resets `vi.logp` and `vi.num_produce` to zeros. This is useful when using a sampling algorithm that assumes an empty `vi::VarInfo`, e.g. `SMC`. 
+"""
 function Base.empty!(vi::TypedVarInfo)
     _empty!(vi.metadata)
     vi.logp = 0
@@ -339,9 +344,13 @@ function Base.empty!(vi::TypedVarInfo)
     return vi
 end
 @inline function _empty!(metadata::NamedTuple{names}) where {names}
+    # Check if the named tuple is empty and end the recursion
     length(names) === 0 && return nothing
+    # Take the first key in the NamedTuple
     f = names[1]
+    # Empty the first instance of `Metadata`
     empty!(getfield(metadata, f))
+    # Recurse using the remaining pairs of the NamedTuple
     return _empty!(_tail(metadata))
 end
 
@@ -350,89 +359,192 @@ end
 #####################
 
 # Functions defined only for UntypedVarInfo
+"""
+`vns(vi::UntypedVarInfo)`
+
+Returns the set of all the instances of `VarName` stored in `vi`.
+"""
 vns(vi::UntypedVarInfo) = Set(keys(vi.idcs)) # get all vns
 Base.keys(vi::UntypedVarInfo) = keys(vi.idcs)
-const VarView = Union{Int,UnitRange,Vector{Int},Vector{UnitRange}}
+
+const VarView = Union{Int, UnitRange, Vector{Int}}
+
+"""
+`getval(vi::UntypedVarInfo, vview::Union{Int, UnitRange, Vector{Int}})`
+
+Returns a view `vi.vals[vview]`.
+"""
 getval(vi::UntypedVarInfo, vview::VarView) = view(vi.vals, vview)
+
+"""
+`setval!(vi::UntypedVarInfo, val, vview::Union{Int, UnitRange, Vector{Int}})`
+
+Sets the value of `vi.vals[vview]` to `val`.
+"""
 setval!(vi::UntypedVarInfo, val, vview::VarView) = vi.vals[vview] = val
 function setval!(vi::UntypedVarInfo, val, vview::Vector{UnitRange})
     if length(vview) > 0
-        return (vi.vals[[i for arr in vview for i in arr]] = val)
-    else
-        return nothing
+        vi.vals[[i for arr in vview for i in arr]] = val
     end
+    return val
 end
 
+"""
+`getidx(vi::UntypedVarInfo, vn::VarName)`
+
+Returns the index of `vn` in `vi.metadata.vns`.
+"""
 getidx(vi::UntypedVarInfo, vn::VarName) = vi.idcs[vn]
+
+"""
+`getidx(vi::TypedVarInfo, vn::VarName{sym})`
+
+Returns the index of `vn` in `getfield(vi.metadata, sym).vns`.
+"""
 function getidx(vi::TypedVarInfo, vn::VarName{sym}) where sym
     getfield(vi.metadata, sym).idcs[vn]
 end
 
+"""
+`getrange(vi::UntypedVarInfo, vn::VarName)`
+
+Returns the index range of `vn` in `vi.metadata.vals`.
+"""
 getrange(vi::UntypedVarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
+
+"""
+`getrange(vi::TypedVarInfo, vn::VarName{sym})`
+
+Returns the index range of `vn` in `getfield(vi.metadata, sym).vals`.
+"""
 function getrange(vi::TypedVarInfo, vn::VarName{sym}) where sym
     getfield(vi.metadata, sym).ranges[getidx(vi, vn)]
 end
+
+"""
+`getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})`
+
+Returns all the indices of `vns` in `vi.metadata.vals`.
+"""
 function getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})
     return union(map(vn -> getrange(vi, vn), vns)...)
 end
 
+"""
+`getval(vi::VarInfo, vn::VarName)`
+
+Returns the value(s) of `vn`. The values may or may not be transformed.
+"""
 getval(vi::UntypedVarInfo, vn::VarName) = view(vi.vals, getrange(vi, vn))
 function getval(vi::TypedVarInfo, vn::VarName{sym}) where sym
     view(getfield(vi.metadata, sym).vals, getrange(vi, vn))
 end
+
+"""
+`setval!(vi::VarInfo, val, vn::VarName)`
+
+Sets the value(s) of `vn` in `vi.metadata` to `val`. The values may or may not be transformed.
+"""
 setval!(vi::UntypedVarInfo, val, vn::VarName) = vi.vals[getrange(vi, vn)] = val
 function setval!(vi::TypedVarInfo, val, vn::VarName{sym}) where sym
     getfield(vi.metadata, sym).vals[getrange(vi, vn)] = val
 end
 
+"""
+`getval(vi::VarInfo, vns::Vector{<:VarName})`
+
+Returns all the value(s) of `vns`. The values may or may not be transformed.
+"""
 getval(vi::UntypedVarInfo, vns::Vector{<:VarName}) = view(vi.vals, getranges(vi, vns))
 function getval(vi::TypedVarInfo, vns::Vector{VarName{sym}}) where sym
     view(getfield(vi.metadata, sym).vals, getranges(vi, vns))
 end
 
+"""
+`getall(vi::VarInfo)`
+
+Returns the values of all the variables in `vi`. The values may or may not be transformed.
+"""
 getall(vi::UntypedVarInfo) = vi.vals
 getall(vi::TypedVarInfo) = vcat(_getall(vi.metadata)...)
 @inline function _getall(metadata::NamedTuple{names}) where {names}
+    # Check if NamedTuple is empty and end recursion
     length(names) === 0 && return ()
+    # Take the first key of the NamedTuple
     f = names[1]
+    # Recurse using the remaining of `metadata`
     return (getfield(metadata, f).vals, _getall(_tail(metadata))...)
 end
 
+"""
+`setall!(vi::VarInfo, val)`
+
+Sets the values of all the variables in `vi` to `val`. The values may or may not be transformed.
+"""
 setall!(vi::UntypedVarInfo, val) = vi.vals .= val
 setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
 @inline function _setall!(metadata::NamedTuple{names}, val, start = 0) where {names}
+    # Check if `metadata` is empty and end recursion
     length(names) === 0 && return nothing
+    # Take the first key of `metadata`
     f = names[1]
+    # Set the `vals` of the current symbol, i.e. f, to the relevant portion in `val`
     vals = getfield(metadata, f).vals
     @views vals .= val[start + 1 : start + length(vals)]
+    # Recurse using the remaining of `metadata` and the remaining of `val`
     return _setall(_tail(metadata), val, start + length(vals))
 end
 
-getsym(vi::UntypedVarInfo, vn::VarName) = vi.vns[getidx(vi, vn)].sym
-function getsym(vi::TypedVarInfo, vn::VarName{sym}) where sym
-    if isdefined(vi.metadata, sym)
-        return sym
-    else
-        error("$sym not defined in the TypedVarInfo instance.")
-    end
-end
+"""
+`getsym(vn::VarName)`
 
+Returns the symbol of the Julia variable used to generate `vn`.
+"""
+getsym(vn::VarName) = vi.vns[getidx(vi, vn)].sym
+getsym(vn::VarName{sym}) where sym = sym
+
+"""
+`getdist(vi::VarInfo, vn::VarName)`
+
+Returns the distribution from which `vn` was sampled in `vi`.
+"""
 getdist(vi::UntypedVarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
 function getdist(vi::TypedVarInfo, vn::VarName{sym}) where sym
     getfield(vi.metadata, sym).dists[getidx(vi, vn)]
 end
 
+"""
+`getgid(vi::VarInfo, vn::VarName)`
+
+Returns the set of inference algorithm selectors/ids from which `vn` was sampled in `vi`.
+"""
 getgid(vi::UntypedVarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 function getgid(vi::TypedVarInfo, vn::VarName{sym}) where sym
     getfield(vi.metadata, sym).gids[getidx(vi, vn)]
 end
 
+"""
+`setgid!(vi::VarInfo, gid::Selector, vn::VarName)`
+
+Adds `gid` to the set of inference algorithm selectors/ids from which `vn` was sampled in `vi`.
+"""
 setgid!(vi::UntypedVarInfo, gid::Selector, vn::VarName) = push!(vi.gids[getidx(vi, vn)], gid)
 function setgid!(vi::TypedVarInfo, gid::Selector, vn::VarName{sym}) where sym
     push!(getfield(vi.metadata, sym).gids[getidx(vi, vn)], gid)
 end
 
+"""
+`istrans(vi::VarInfo, vn::VarName)`
+
+Returns true if `vn`'s values in `vi` are transformed to Eucledian space, and false if they are in the support of `vn`'s distribution.
+"""
 istrans(vi::AbstractVarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
+
+"""
+`settrans!(vi::VarInfo, trans::Bool, vn::VarName)`
+
+Sets the `trans` flag value of `vn` in `vi`.
+"""
 function settrans!(vi::AbstractVarInfo, trans::Bool, vn::VarName)
     trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
 end
@@ -864,7 +976,7 @@ end
 end
 
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vi, vn) in spl.alg.space
+    if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vn) in spl.alg.space
         setgid!(vi, spl.selector, vn)
     end
 end
