@@ -3,6 +3,7 @@ uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 version = "0.6.16"
 
 [deps]
+AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
