@@ -11,7 +11,7 @@ MacroTools
 StatsFuns 0.7.0
 SpecialFunctions
 Bijectors
-AdvancedHMC
+AHMC
 
 ProgressMeter 0.6.0
 BinaryProvider 0.4.0

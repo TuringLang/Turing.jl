@@ -10,7 +10,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
-import AdvancedHMC
+import AdvancedHMC; const AHMC = AdvancedHMC
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
@@ -241,7 +241,7 @@ end
 function Sample(vi::AbstractVarInfo, spl::Sampler)
     s = Sample(vi)
     if haskey(spl.info, :adaptor)
-        s.value[:epsilon] = AdvancedHMC.getϵ(spl.info[:adaptor])
+        s.value[:epsilon] = AHMC.getϵ(spl.info[:adaptor])
     end
     if haskey(spl.info, :lf_num)
         s.value[:lf_num] = spl.info[:lf_num]

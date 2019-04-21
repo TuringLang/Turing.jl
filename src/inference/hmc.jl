@@ -51,10 +51,10 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     metricT
 end
 HMC(args...) = HMC{ADBackend()}(args...)
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int; metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int; metricT=AHMC.UnitEuclideanMetric) where AD
     return HMC{AD, Any}(n_iters, epsilon, tau, Set(), metricT)
 end
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...; metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...; metricT=AHMC.UnitEuclideanMetric) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, metricT)
 end
@@ -155,13 +155,13 @@ function sample(model::Model, alg::Hamiltonian;
 
     # Sampling using AHMC
     if spl.alg isa AdaptiveHamiltonian
-        ahmc_samples = AdvancedHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
+        ahmc_samples = AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
         for i = 1:n
             vi[spl] = ahmc_samples[i]
             samples[i].value = Sample(vi, spl).value
         end
     elseif spl.alg isa HMC
-        ahmc_samples = AdvancedHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters)
+        ahmc_samples = AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters)
         for i = 1:n
             vi[spl] = ahmc_samples[i]
             samples[i].value = Sample(vi, spl).value
@@ -176,7 +176,7 @@ function sample(model::Model, alg::Hamiltonian;
             end
             samples[i].value[:elapsed] = time_elapsed
             if haskey(spl.info, :adaptor)
-                samples[i].value[:lf_eps] = AdvancedHMC.getϵ(spl.info[:adaptor])
+                samples[i].value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
             end
         end
     end
@@ -201,9 +201,9 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
     logπ = gen_lj_func(vi, spl, model)
 
     metric = spl.alg.metricT(length(vi[spl]))
-    spl.info[:h] = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    spl.info[:h] = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     ϵ = spl.alg.epsilon
-    spl.info[:prop] = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), spl.alg.tau)
+    spl.info[:prop] = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), spl.alg.tau)
     return vi, true
 end
 
@@ -216,22 +216,22 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     θ_init = Vector{Float64}(vi[spl])
     metric = spl.alg.metricT(length(θ_init))
 
-    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     init_ϵ = spl.alg.init_ϵ
     if init_ϵ == 0.0
         # @info h θ_init
-        init_ϵ = AdvancedHMC.find_good_eps(h, θ_init)
+        init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
     end
     if spl.alg isa NUTS
-        prop = AdvancedHMC.NUTS(AdvancedHMC.Leapfrog(init_ϵ), spl.alg.max_depth, spl.alg.Δ_max)
+        prop = AHMC.NUTS(AHMC.Leapfrog(init_ϵ), spl.alg.max_depth, spl.alg.Δ_max)
     elseif spl.alg isa HMCDA
-        prop = AdvancedHMC.HMCDA(AdvancedHMC.Leapfrog(init_ϵ), spl.alg.λ)
+        prop = AHMC.HMCDA(AHMC.Leapfrog(init_ϵ), spl.alg.λ)
     else
         @error "Unsupported adaptive algorithm" spl.alg
     end
-    adaptor = AdvancedHMC.StanNUTSAdaptor(spl.alg.n_adapts, AdvancedHMC.PreConditioner(metric),
-                                          AdvancedHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
+    adaptor = AHMC.StanNUTSAdaptor(spl.alg.n_adapts, AHMC.PreConditioner(metric),
+                                          AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
 
     spl.info[:h] = h
     spl.info[:prop] = prop
@@ -244,7 +244,7 @@ end
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
     # Get step size
     if :adaptor in keys(spl.info)
-        ϵ = AdvancedHMC.getϵ(spl.info[:adaptor])
+        ϵ = AHMC.getϵ(spl.info[:adaptor])
     else
         ϵ = spl.alg.epsilon
     end
@@ -293,7 +293,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 
     if spl.alg isa AdaptiveHamiltonian
         if spl.info[:i] <= spl.alg.n_adapts
-            # AdvancedHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
+            # AHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
         end
     end
 

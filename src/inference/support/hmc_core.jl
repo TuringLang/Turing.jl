@@ -38,16 +38,16 @@ function gen_metric(vi::VarInfo, spl::Sampler)
     return spl.alg.metricT(length(vi[spl]))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, ::AdvancedHMC.UnitPreConditioner)
-    return AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
+function gen_metric(vi::VarInfo, spl::Sampler, ::AHMC.UnitPreConditioner)
+    return AHMC.UnitEuclideanMetric(length(vi[spl]))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, pc::AdvancedHMC.DiagPreConditioner)
-    return AdvancedHMC.DiagEuclideanMetric(AdvancedHMC.getM⁻¹(pc))
+function gen_metric(vi::VarInfo, spl::Sampler, pc::AHMC.DiagPreConditioner)
+    return AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
 end
 
-function gen_metric(vi::VarInfo, spl::Sampler, pc::AdvancedHMC.DensePreConditioner)
-    return AdvancedHMC.DenseEuclideanMetric(AdvancedHMC.getM⁻¹(pc))
+function gen_metric(vi::VarInfo, spl::Sampler, pc::AHMC.DensePreConditioner)
+    return AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
 end
 
 function _hmc_step(θ::AbstractVector{<:Real},
@@ -60,19 +60,19 @@ function _hmc_step(θ::AbstractVector{<:Real},
     τ = max(1, round(Int, λ / ϵ))
     θ = Vector{Float64}(θ)
 
-    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    prop = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), τ)
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    prop = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), τ)
 
-    r = AdvancedHMC.rand_momentum(h)
-    H = AdvancedHMC.hamiltonian_energy(h, θ, r)
+    r = AHMC.rand_momentum(h)
+    H = AHMC.hamiltonian_energy(h, θ, r)
 
-    # I have to copy https://github.com/TuringLang/AdvancedHMC.jl/blob/master/src/trajectory.jl#L24
+    # I have to copy https://github.com/TuringLang/AHMC.jl/blob/master/src/trajectory.jl#L24
     # as the current interface doesn't return is_accept
-    H = AdvancedHMC.hamiltonian_energy(h, θ, r)
-    θ_new, r_new, is_valid = AdvancedHMC.step(prop.integrator, h, θ, r, prop.n_steps)
-    H_new = AdvancedHMC.hamiltonian_energy(h, θ_new, r_new)
+    H = AHMC.hamiltonian_energy(h, θ, r)
+    θ_new, r_new, is_valid = AHMC.step(prop.integrator, h, θ, r, prop.n_steps)
+    H_new = AHMC.hamiltonian_energy(h, θ_new, r_new)
     # Accept via MH criteria
-    is_accept, α = AdvancedHMC.mh_accept(H, H_new)
+    is_accept, α = AHMC.mh_accept(H, H_new)
     if is_accept
         θ, r = θ_new, -r_new
     end
@@ -92,13 +92,13 @@ end
 #     τ = max(1, round(Int, λ / ϵ))
 #     θ = Vector{Float64}(θ)
 #
-#     h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-#     prop = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), τ)
+#     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+#     prop = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), τ)
 #
-#     r = AdvancedHMC.rand_momentum(h)
-#     H = AdvancedHMC.hamiltonian_energy(h, θ, r)
+#     r = AHMC.rand_momentum(h)
+#     H = AHMC.hamiltonian_energy(h, θ, r)
 #
-#     θ_new, r_new, α, H_new = AdvancedHMC.transition(prop, h, Vector{Float64}(θ), r)
+#     θ_new, r_new, α, H_new = AHMC.transition(prop, h, Vector{Float64}(θ), r)
 #     # NOTE: as `transition` doesn't return `is_accept`, I use `H == H_new` as a check
 #     is_accept = H == H_new
 #     lj_new = logπ(θ_new)

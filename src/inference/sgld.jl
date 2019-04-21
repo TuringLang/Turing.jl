@@ -41,8 +41,8 @@ end
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
-    mssa = AdvancedHMC.Adaptation.ManualSSAdaptor(AdvancedHMC.Adaptation.MSSState(spl.alg.epsilon))
-    spl.info[:adaptor] = AdvancedHMC.NaiveCompAdaptor(AdvancedHMC.UnitPreConditioner(), mssa)
+    mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.epsilon))
+    spl.info[:adaptor] = AHMC.NaiveCompAdaptor(AHMC.UnitPreConditioner(), mssa)
 
     # Initialize iteration counter
     spl.info[:t] = 0

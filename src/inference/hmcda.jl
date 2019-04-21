@@ -1,5 +1,5 @@
 """
-    HMCDA(n_iters::Int, n_adapts::Int, delta::Float64, λ::Float64)
+    HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0)
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
@@ -13,8 +13,9 @@ Arguments:
 
 - `n_iters::Int` : Number of samples to pull.
 - `n_adapts::Int` : Numbers of samples to use for adaptation.
-- `delta::Float64` : Target acceptance rate. 65% is often recommended.
+- `δ::Float64` : Target acceptance rate. 65% is often recommended.
 - `λ::Float64` : Target leapfrop length.
+- `init_ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
 
 Example:
 
@@ -45,15 +46,15 @@ mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     metricT
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
-function HMCDA{AD}(n_iters::Int, δ::Float64, λ::Float64; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+function HMCDA{AD}(n_iters::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, space...; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, space...; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, δ, λ, _space, init_ϵ, metricT)
 end
