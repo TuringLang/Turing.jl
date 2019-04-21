@@ -54,6 +54,7 @@ end
 function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
+    spl.info[:eval_num] = 0
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default

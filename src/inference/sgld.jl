@@ -44,20 +44,18 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.epsilon))
     spl.info[:adaptor] = AHMC.NaiveCompAdaptor(AHMC.UnitPreConditioner(), mssa)
 
-    # Initialize iteration counter
-    spl.info[:t] = 0
-
     spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
     # Update iteration counter
-    spl.info[:t] += 1
+    spl.info[:i] += 1
+    spl.info[:eval_num] = 0
 
     Turing.DEBUG && @debug "compute current step size..."
     γ = .35
-    ϵ_t = spl.alg.epsilon / spl.info[:t]^γ # NOTE: Choose γ=.55 in paper
+    ϵ_t = spl.alg.epsilon / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
     mssa = spl.info[:adaptor].ssa
     mssa.state.ϵ = ϵ_t
 

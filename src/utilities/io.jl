@@ -72,13 +72,7 @@ end
 #########
 
 # Variables to put in the Chains :internal section.
-const _internal_vars = ["elapsed",
- "epsilon",
- "eval_num",
- "lf_eps",
- "lf_num",
- "lp"]
-
+const _internal_vars = ["elapsed", "eval_num", "lf_eps", "lp"]
 
 function Chain(w::Real, s::AbstractArray{Sample})
     samples = flatten.(s)

@@ -124,7 +124,7 @@ function sample(
         Turing.DEBUG && @debug "Gibbs stepping..."
 
         time_elapsed = zero(Float64)
-        lp = nothing; epsilon = nothing; lf_num = nothing; eval_num = nothing
+        lp = nothing; epsilon = nothing; eval_num = nothing
 
         for local_spl in spl.info[:samplers]
             last_spl = local_spl
@@ -144,7 +144,6 @@ function sample(
                             # If statement below is true if there is a HMC component which provides lp and epsilon
                             if lp != nothing samples[i_thin].value[:lp] = lp end
                             if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
-                            if lf_num != nothing samples[i_thin].value[:lf_num] = lf_num end
                             if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
                         end
                         i_thin += 1
@@ -159,7 +158,6 @@ function sample(
                     else
                         epsilon = local_spl.alg.epsilon
                     end
-                    lf_num = local_spl.info[:lf_num]
                     eval_num = local_spl.info[:eval_num]
                 end
             else
@@ -175,7 +173,6 @@ function sample(
             # If statement below is true if there is a HMC component which provides lp and epsilon
             if lp != nothing samples[i].value[:lp] = lp end
             if epsilon != nothing samples[i].value[:epsilon] = epsilon end
-            if lf_num != nothing samples[i].value[:lf_num] = lf_num end
             if eval_num != nothing samples[i].value[:eval_num] = eval_num end
         end
 

@@ -77,12 +77,8 @@ end
 function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
     info = Dict{Symbol, Any}()
 
-    # For state infomation
-    info[:lf_num] = 0
-    info[:eval_num] = 0
-
-    # Adapt configuration
     info[:adapt_conf] = adapt_conf
+    info[:eval_num] = 0
     info[:i] = 0
 
     Sampler(alg, info, s)
@@ -128,8 +124,7 @@ function sample(model::Model, alg::Hamiltonian;
     # Create VarInfo
     vi = if resume_from == nothing
         vi_ = VarInfo()
-        model(vi_, SampleFromUniform())
-        spl.info[:eval_num] += 1
+        runmodel!(model, vi_, SampleFromUniform())
         vi_
     else
         deepcopy(resume_from.info[:vi])
@@ -248,12 +243,11 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     else
         ϵ = spl.alg.epsilon
     end
-    spl.info[:i] += 1
-    Turing.DEBUG && @debug "current ϵ: $ϵ"
 
-    # Reset current counters
-    spl.info[:lf_num] = 0
+    spl.info[:i] += 1
     spl.info[:eval_num] = 0
+
+    Turing.DEBUG && @debug "current ϵ: $ϵ"
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default

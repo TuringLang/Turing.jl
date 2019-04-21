@@ -241,13 +241,7 @@ end
 function Sample(vi::AbstractVarInfo, spl::Sampler)
     s = Sample(vi)
     if haskey(spl.info, :adaptor)
-        s.value[:epsilon] = AHMC.getϵ(spl.info[:adaptor])
-    end
-    if haskey(spl.info, :lf_num)
-        s.value[:lf_num] = spl.info[:lf_num]
-    end
-    if haskey(spl.info, :eval_num)
-        s.value[:eval_num] = spl.info[:eval_num]
+        s.value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
     end
     return s
 end

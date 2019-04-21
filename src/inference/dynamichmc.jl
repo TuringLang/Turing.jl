@@ -50,7 +50,7 @@ function sample(model::Model,
     end
 
     vi = VarInfo()
-    model(vi, SampleFromUniform())
+    runmodel!(model, vi, SampleFromUniform())
 
     if spl.selector.tag == :default
         link!(vi, spl)
