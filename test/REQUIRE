@@ -7,4 +7,4 @@ StatsFuns
 DynamicHMC
 LogDensityProblems
 CmdStan
-AdvancedHMC master
+AdvancedHMC 0.1.4
