@@ -5,7 +5,7 @@ include("../test_utils/AllUtils.jl")
 
 @testset "nuts.jl" begin
     @numerical_testset "nuts inference" begin
-        alg = NUTS(5000, 1000, 0.65)
+        alg = NUTS(5000, 1000, 0.8)
         res = sample(gdemo_default, alg)
         check_gdemo(res[1000:end, :, :])
     end

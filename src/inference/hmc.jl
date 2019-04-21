@@ -48,18 +48,19 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     epsilon   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
     space     ::  Set{T}    # sampling space, emtpy means all
+    metricT
 end
 HMC(args...) = HMC{ADBackend()}(args...)
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int) where AD
-    return HMC{AD, Any}(n_iters, epsilon, tau, Set())
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int; metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+    return HMC{AD, Any}(n_iters, epsilon, tau, Set(), metricT)
 end
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...) where AD
+function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...; metricT=AdvancedHMC.UnitEuclideanMetric) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space)
+    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, metricT)
 end
 
 function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMC, metric)
-  θ_new, lj_new, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.tau, metric)
+  θ_new, lj_new, is_accept, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.tau, metric)
   return θ_new, lj_new, is_accept, α
 end
 
@@ -74,7 +75,7 @@ function Sampler(alg::Hamiltonian, adapt_conf::Nothing, s::Selector)
     return _sampler(alg::Hamiltonian, adapt_conf, s)
 end
 function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
-    info=Dict{Symbol, Any}()
+    info = Dict{Symbol, Any}()
 
     # For state infomation
     info[:lf_num] = 0
@@ -88,12 +89,15 @@ function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
 end
 
 function sample(model::Model, alg::Hamiltonian;
-                save_state=false,                   # flag for state saving
-                resume_from=nothing,                # chain to continue
-                reuse_spl_n=0,                      # flag for spl re-using
-                adapt_conf=STAN_DEFAULT_ADAPT_CONF, # adapt configuration
+                save_state=false,                                   # flag for state saving
+                resume_from=nothing,                                # chain to continue
+                reuse_spl_n=0,                                      # flag for spl re-using
+                adapt_conf=STAN_DEFAULT_ADAPT_CONF,                 # adapt configuration
+                init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+                rng::AbstractRNG=GLOBAL_RNG,
                 )
 
+    # Create sampler
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
           Sampler(alg, adapt_conf)
@@ -109,17 +113,19 @@ function sample(model::Model, alg::Hamiltonian;
               isa(alg, SGLD)  ? "SGLD"  :
               isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
-    # Initialization
-    time_total = zero(Float64)
+    # TODO: figure out what does this line do
     n = reuse_spl_n > 0 ?
         reuse_spl_n :
         alg.n_iters
+
+    # Init samples
     samples = Array{Sample}(undef, n)
     weight = 1 / n
     for i = 1:n
         samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
 
+    # Create VarInfo
     vi = if resume_from == nothing
         vi_ = VarInfo()
         model(vi_, SampleFromUniform())
@@ -129,49 +135,50 @@ function sample(model::Model, alg::Hamiltonian;
         deepcopy(resume_from.info[:vi])
     end
 
+    if init_theta != nothing
+        println("Using init_theta=$init_theta")
+        init_theta_flat = foldl(vcat, init_theta)
+        theta_mask = map(x -> !ismissing(x), init_theta_flat)
+        theta = vi[spl]
+        theta[theta_mask] .= init_theta_flat[theta_mask]
+        vi[spl] = theta
+    end
+
+    # Convert to transformed sapce
     if spl.selector.tag == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
     end
 
-    # HMC steps
-    total_lf_num = 0
-    total_eval_num = 0
-    accept_his = Bool[]
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-    for i = 1:n
-        Turing.DEBUG && @debug "$alg_str stepping..."
+    # Init h, prop and adaptor
+    step(model, spl, vi, Val(true))
 
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
-        time_total += time_elapsed
-
-        if is_accept # accepted => store the new predcits
+    # Sampling using AHMC
+    if spl.alg isa AdaptiveHamiltonian
+        ahmc_samples = AdvancedHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
+        for i = 1:n
+            vi[spl] = ahmc_samples[i]
             samples[i].value = Sample(vi, spl).value
-        else         # rejected => store the previous predcits
-            samples[i] = samples[i - 1]
         end
-        samples[i].value[:elapsed] = time_elapsed
-        if haskey(spl.info, :adaptor)
-          samples[i].value[:lf_eps] = AdvancedHMC.getϵ(spl.info[:adaptor])
+    elseif spl.alg isa HMC
+        ahmc_samples = AdvancedHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters)
+        for i = 1:n
+            vi[spl] = ahmc_samples[i]
+            samples[i].value = Sample(vi, spl).value
         end
-
-        total_lf_num += spl.info[:lf_num]
-        total_eval_num += spl.info[:eval_num]
-        push!(accept_his, is_accept)
-        PROGRESS[] && ProgressMeter.next!(spl.info[:progress])
-    end
-
-    println("[$alg_str] Finished with")
-    println("  Running time        = $time_total;")
-    if ~isa(alg, NUTS)  # accept rate for NUTS is meaningless - so no printing
-        accept_rate = sum(accept_his) / n  # calculate the accept rate
-        println("  Accept rate         = $accept_rate;")
-    end
-    println("  #lf / sample        = $(total_lf_num / n);")
-    println("  #evals / sample     = $(total_eval_num / n);")
-    if haskey(spl.info, :adaptor)
-        metric = gen_metric(vi, spl, spl.info[:adaptor].pc)
-        println("  pre-cond. metric    = $(metric).")
+    else
+        for i = 1:n
+            time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+            if is_accept # accepted => store the new predcits
+                samples[i].value = Sample(vi, spl).value
+            else         # rejected => store the previous predcits
+                samples[i] = samples[i - 1]
+            end
+            samples[i].value[:elapsed] = time_elapsed
+            if haskey(spl.info, :adaptor)
+                samples[i].value[:lf_eps] = AdvancedHMC.getϵ(spl.info[:adaptor])
+            end
+        end
     end
 
     if resume_from != nothing   # concat samples
@@ -185,35 +192,62 @@ function sample(model::Model, alg::Hamiltonian;
         spl.selector.tag == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
     end
+
     return c
 end
 
 function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
-    spl.info[:adaptor] = AdvancedHMC.NaiveCompAdaptor(AdvancedHMC.UnitPreConditioner(),
-                                                      AdvancedHMC.Adaptation.FixedStepSize(spl.alg.epsilon))
+    ∂logπ∂θ = gen_grad_func(vi, spl, model)
+    logπ = gen_lj_func(vi, spl, model)
+
+    metric = spl.alg.metricT(length(vi[spl]))
+    spl.info[:h] = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    ϵ = spl.alg.epsilon
+    spl.info[:prop] = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), spl.alg.tau)
     return vi, true
 end
 
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
-    θ_init = Vector{Float64}(vi[spl])
-    metric = AdvancedHMC.DenseEuclideanMetric(length(θ_init))
     ∂logπ∂θ = gen_grad_func(vi, spl, model)
     logπ = gen_lj_func(vi, spl, model)
-    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    ϵ = AdvancedHMC.find_good_eps(h, θ_init)
-    adaptor = AdvancedHMC.StanNUTSAdaptor(spl.alg.n_adapts, AdvancedHMC.PreConditioner(metric),
-                                          AdvancedHMC.NesterovDualAveraging(spl.alg.delta, ϵ))
 
+    θ_init = Vector{Float64}(vi[spl])
+    metric = spl.alg.metricT(length(θ_init))
+
+    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    init_ϵ = spl.alg.init_ϵ
+    if init_ϵ == 0.0
+        # @info h θ_init
+        init_ϵ = AdvancedHMC.find_good_eps(h, θ_init)
+        @info "Found initial step size" init_ϵ
+    end
+    if spl.alg isa NUTS
+        prop = AdvancedHMC.NUTS(AdvancedHMC.Leapfrog(init_ϵ), spl.alg.max_depth, spl.alg.Δ_max)
+    elseif spl.alg isa HMCDA
+        prop = AdvancedHMC.HMCDA(AdvancedHMC.Leapfrog(init_ϵ), spl.alg.λ)
+    else
+        @error "Unsupported adaptive algorithm" spl.alg
+    end
+    adaptor = AdvancedHMC.StanNUTSAdaptor(spl.alg.n_adapts, AdvancedHMC.PreConditioner(metric),
+                                          AdvancedHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
+
+    spl.info[:h] = h
+    spl.info[:prop] = prop
     spl.info[:adaptor] = adaptor
+
     spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
 end
 
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
     # Get step size
-    ϵ = AdvancedHMC.getϵ(spl.info[:adaptor])
+    if :adaptor in keys(spl.info)
+        ϵ = AdvancedHMC.getϵ(spl.info[:adaptor])
+    else
+        ϵ = spl.alg.epsilon
+    end
     spl.info[:i] += 1
     Turing.DEBUG && @debug "current ϵ: $ϵ"
 
@@ -229,7 +263,11 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 
     grad_func = gen_grad_func(vi, spl, model)
     lj_func = gen_lj_func(vi, spl, model)
-    metric = gen_metric(vi, spl, spl.info[:adaptor].pc)
+    if :adaptor in keys(spl.info)
+        metric = gen_metric(vi, spl, spl.info[:adaptor].pc)
+    else
+        metric = gen_metric(vi, spl)
+    end
 
     θ, lj = vi[spl], vi.logp
 
@@ -253,10 +291,9 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
         )
     end
 
-    # TODO: somehow stop adaptation
     if spl.alg isa AdaptiveHamiltonian
         if spl.info[:i] <= spl.alg.n_adapts
-            AdvancedHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
+            # AdvancedHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
         end
     end
 

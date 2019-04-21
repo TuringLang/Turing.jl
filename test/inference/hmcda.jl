@@ -7,11 +7,11 @@ include("../test_utils/AllUtils.jl")
     Random.seed!(1234)
 
     @numerical_testset "hmcda inference" begin
-        alg1 = HMCDA(3000, 1000, 0.65, 0.015)
-        # alg2 = Gibbs(3000, HMCDA(1, 200, 0.65, 0.35, :m), HMC(1, 0.25, 3, :s))
+        alg1 = HMCDA(3000, 1000, 0.8, 0.015)
+        # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
         alg3 = Gibbs(1500,
             PG(30, 10, :s),
-            HMCDA(1, 500, 0.65, 0.005, :m))
+            HMCDA(1, 500, 0.8, 0.005, :m))
         # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
@@ -27,15 +27,15 @@ include("../test_utils/AllUtils.jl")
         check_gdemo(res3)
     end
     @turing_testset "hmcda constructor" begin
-        alg = HMCDA(1000, 0.65, 0.75)
+        alg = HMCDA(1000, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg)
 
-        alg = HMCDA(1000, 200, 0.65, 0.75)
+        alg = HMCDA(1000, 200, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg)
 
-        alg = HMCDA(1000, 200, 0.65, 0.75, :s)
+        alg = HMCDA(1000, 200, 0.8, 0.75, :s)
         println(alg)
         sampler = Sampler(alg)
 

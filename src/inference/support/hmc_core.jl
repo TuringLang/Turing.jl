@@ -35,7 +35,7 @@ function gen_lj_func(vi::VarInfo, spl::Sampler, model)
 end
 
 function gen_metric(vi::VarInfo, spl::Sampler)
-    return AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
+    return spl.alg.metricT(length(vi[spl]))
 end
 
 function gen_metric(vi::VarInfo, spl::Sampler, ::AdvancedHMC.UnitPreConditioner)
@@ -64,6 +64,7 @@ function _hmc_step(θ::AbstractVector{<:Real},
     prop = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), τ)
 
     r = AdvancedHMC.rand_momentum(h)
+    H = AdvancedHMC.hamiltonian_energy(h, θ, r)
 
     # I have to copy https://github.com/TuringLang/AdvancedHMC.jl/blob/master/src/trajectory.jl#L24
     # as the current interface doesn't return is_accept
@@ -77,26 +78,30 @@ function _hmc_step(θ::AbstractVector{<:Real},
     end
     lj_new = logπ(θ_new)
 
-    return θ, lj_new, is_accept, is_valid, α
+    return θ, lj_new, is_accept, α
 end
 
-# Ref: https://github.com/stan-dev/stan/blob/develop/src/stan/mcmc/hmc/base_hmc.hpp
-function find_good_eps(model, spl::Sampler{T}, vi::VarInfo) where T
-    logπ = gen_lj_func(vi, spl, model)
-
-    # AHMC only takes the gradient
-    # TODO: unify two functions below
-    ∂logπ∂θ = gen_grad_func(vi, spl, model)
-    θ, lj = Vector{Float64}(vi[spl]), vi.logp
-
-    # NOTE: currently force to use `UnitEuclideanMetric` - should be fine as
-    #       this function shall be called before any sampling
-    metric = AdvancedHMC.UnitEuclideanMetric(length(vi[spl]))
-    h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    init_eps = AdvancedHMC.find_good_eps(h, θ)
-
-    vi[spl] = θ
-    setlogp!(vi, lj)
-    @info "[Turing] found initial ϵ: $init_eps"
-    return init_eps
-end
+# TODO: figure out why below doesn't work
+# function _hmc_step(θ::AbstractVector{<:Real},
+#                    lj::Real,
+#                    logπ::Function,
+#                    ∂logπ∂θ::Function,
+#                    ϵ::Real,
+#                    λ::Real,
+#                    metric)
+#     τ = max(1, round(Int, λ / ϵ))
+#     θ = Vector{Float64}(θ)
+#
+#     h = AdvancedHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+#     prop = AdvancedHMC.StaticTrajectory(AdvancedHMC.Leapfrog(ϵ), τ)
+#
+#     r = AdvancedHMC.rand_momentum(h)
+#     H = AdvancedHMC.hamiltonian_energy(h, θ, r)
+#
+#     θ_new, r_new, α, H_new = AdvancedHMC.transition(prop, h, Vector{Float64}(θ), r)
+#     # NOTE: as `transition` doesn't return `is_accept`, I use `H == H_new` as a check
+#     is_accept = H == H_new
+#     lj_new = logπ(θ_new)
+#
+#     return θ_new, lj_new, is_accept, α
+# end

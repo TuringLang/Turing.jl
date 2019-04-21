@@ -1,5 +1,5 @@
 """
-    HMCDA(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64)
+    HMCDA(n_iters::Int, n_adapts::Int, delta::Float64, λ::Float64)
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
@@ -14,7 +14,7 @@ Arguments:
 - `n_iters::Int` : Number of samples to pull.
 - `n_adapts::Int` : Numbers of samples to use for adaptation.
 - `delta::Float64` : Target acceptance rate. 65% is often recommended.
-- `lambda::Float64` : Target leapfrop length.
+- `λ::Float64` : Target leapfrop length.
 
 Example:
 
@@ -38,25 +38,27 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively setti
 mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
     n_adapts  ::  Int       # number of samples with adaption for epsilon
-    delta     ::  Float64   # target accept rate
-    lambda    ::  Float64   # target leapfrog length
+    δ         ::  Float64   # target accept rate
+    λ         ::  Float64   # target leapfrog length
     space     ::  Set{T}    # sampling space, emtpy means all
+    init_ϵ    ::  Float64
+    metricT
 end
-HMCDA(args...) = HMCDA{ADBackend()}(args...)
-function HMCDA{AD}(n_iters::Int, delta::Float64, lambda::Float64) where AD
+HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
+function HMCDA{AD}(n_iters::Int, δ::Float64, λ::Float64; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set())
+    return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64) where AD
-    return HMCDA{AD, Any}(n_iters, n_adapts, delta, lambda, Set())
+function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
+    return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, delta::Float64, lambda::Float64, space...) where AD
+function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, space...; init_ϵ=0.0, metricT=AdvancedHMC.UnitEuclideanMetric) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, delta, lambda, _space)
+    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, δ, λ, _space, init_ϵ, metricT)
 end
 
 function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMCDA, metric)
-    θ_new, lj_new, is_accept, _, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.lambda, metric)
+    θ_new, lj_new, is_accept, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.λ, metric)
     return θ_new, lj_new, is_accept, α
 end
