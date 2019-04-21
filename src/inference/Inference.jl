@@ -32,7 +32,6 @@ export  InferenceAlgorithm,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
         DynamicNUTS,
-        ANUTS,
         IS,
         SMC,
         CSMC,
@@ -92,7 +91,6 @@ function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
 end
 
 # Concrete algorithm implementations.
-include("ahmc.jl")
 include("hmcda.jl")
 include("nuts.jl")
 include("sghmc.jl")
