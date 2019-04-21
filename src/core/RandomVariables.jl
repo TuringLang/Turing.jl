@@ -433,7 +433,7 @@ end
 """
 `getval(vi::VarInfo, vn::VarName)`
 
-Returns the value(s) of `vn`. The values may or may not be transformed.
+Returns the value(s) of `vn`. The values may or may not be transformed to Eucledian space.
 """
 getval(vi::UntypedVarInfo, vn::VarName) = view(vi.vals, getrange(vi, vn))
 function getval(vi::TypedVarInfo, vn::VarName{sym}) where sym
@@ -443,7 +443,7 @@ end
 """
 `setval!(vi::VarInfo, val, vn::VarName)`
 
-Sets the value(s) of `vn` in `vi.metadata` to `val`. The values may or may not be transformed.
+Sets the value(s) of `vn` in `vi.metadata` to `val`. The values may or may not be transformed to Eucledian space.
 """
 setval!(vi::UntypedVarInfo, val, vn::VarName) = vi.vals[getrange(vi, vn)] = val
 function setval!(vi::TypedVarInfo, val, vn::VarName{sym}) where sym
@@ -453,7 +453,7 @@ end
 """
 `getval(vi::VarInfo, vns::Vector{<:VarName})`
 
-Returns all the value(s) of `vns`. The values may or may not be transformed.
+Returns all the value(s) of `vns`. The values may or may not be transformed to Eucledian space.
 """
 getval(vi::UntypedVarInfo, vns::Vector{<:VarName}) = view(vi.vals, getranges(vi, vns))
 function getval(vi::TypedVarInfo, vns::Vector{VarName{sym}}) where sym
@@ -463,7 +463,7 @@ end
 """
 `getall(vi::VarInfo)`
 
-Returns the values of all the variables in `vi`. The values may or may not be transformed.
+Returns the values of all the variables in `vi`. The values may or may not be transformed to Eucledian space.
 """
 getall(vi::UntypedVarInfo) = vi.vals
 getall(vi::TypedVarInfo) = vcat(_getall(vi.metadata)...)
@@ -479,7 +479,7 @@ end
 """
 `setall!(vi::VarInfo, val)`
 
-Sets the values of all the variables in `vi` to `val`. The values may or may not be transformed.
+Sets the values of all the variables in `vi` to `val`. The values may or may not be transformed to Eucledian space.
 """
 setall!(vi::UntypedVarInfo, val) = vi.vals .= val
 setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
@@ -549,20 +549,57 @@ function settrans!(vi::AbstractVarInfo, trans::Bool, vn::VarName)
     trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
 end
 
+"""
+`getlogp(vi::VarInfo)`
+
+Returns the log of the joint probability of the observed data and parameters sampled in `vi`.
+"""
 getlogp(vi::AbstractVarInfo) = vi.logp
+
+"""
+`setlogp!(vi::VarInfo, logp::Real)`
+
+Sets the log of the joint probability of the observed data and parameters sampled in `vi` to `logp`.
+"""
 setlogp!(vi::AbstractVarInfo, logp::Real) = vi.logp = logp
+
+
+"""
+`acclogp!(vi::VarInfo, logp::Real)`
+
+Adds `logp` to the value of the log of the joint probability of the observed data and parameters sampled in `vi`.
+"""
 acclogp!(vi::AbstractVarInfo, logp::Real) = vi.logp += logp
+
+"""
+`resetlogp!(vi::VarInfo)`
+
+Resets the value of the log of the joint probability of the observed data and parameters sampled in `vi` to 0.
+"""
 resetlogp!(vi::AbstractVarInfo) = setlogp!(vi, 0.0)
 
+"""
+`isempty(vi::VarInfo)`
+
+Returns true if `vi` is empty and false otherwise.
+"""
 isempty(vi::UntypedVarInfo) = isempty(vi.idcs)
 isempty(vi::TypedVarInfo) = _isempty(vi.metadata)
 @inline function _isempty(metadata::NamedTuple{names}) where {names}
+    # Checks if `metadata` is empty to end the recursion
     length(names) === 0 && return true
+    # Take the first key of `metadata`
     f = names[1]
+    # If not empty, return false and end the recursion. Otherwise, recurse using the remaining of `metadata`.
     return isempty(getfield(metadata, f).idcs) && _isempty(_tail(metadata))
 end
 
 # X -> R for all variables associated with given sampler
+"""
+`link!(vi::VarInfo, spl::Sampler)`
+
+Transforms the values of the random variables sampled by `spl` in `vi` from the support of their distributions to the Eucledian space and sets their corresponding ``"trans"` flag values to `true`.
+"""
 function link!(vi::UntypedVarInfo, spl::Sampler)
     # TODO: Change to a lazy iterator over `vns`
     vns = getvns(vi, spl)
@@ -583,11 +620,16 @@ function link!(vi::TypedVarInfo, spl::Sampler)
     return _link!(vi.metadata, vi, vns, space)
 end
 @inline function _link!(metadata::NamedTuple{names}, vi, vns, space) where {names}
+    # Check if the `metadata` is empty to end the recursion
     length(names) === 0 && return nothing
+    # Take the first key/symbol of `metadata`
     f = names[1]
+    # Extract the list of `vns` with symbol `f`
     f_vns = getfield(vns, f)
+    # Transform only if `f` is in the space of the sampler or the space is void
     if f ∈ space || length(space) == 0
         if ~istrans(vi, f_vns[1])
+            # Iterate over all `f_vns` and transform
             for vn in f_vns
                 dist = getdist(vi, vn)
                 setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
@@ -597,10 +639,16 @@ end
             @warn("[Turing] attempt to link a linked vi")
         end
     end
+    # Recurse using the remaining of `metadata`
     return _link!(_tail(metadata), vi, vns, space)
 end
 
 # R -> X for all variables associated with given sampler
+"""
+`invlink!(vi::VarInfo, spl::Sampler)`
+
+Transforms the values of the random variables sampled by `spl` in `vi` from the Eucledian space back to the support of their distributions and sets their corresponding ``"trans"` flag values to `false`.
+"""
 function invlink!(vi::UntypedVarInfo, spl::Sampler)
     vns = getvns(vi, spl)
     if istrans(vi, vns[1])
@@ -619,11 +667,16 @@ function invlink!(vi::TypedVarInfo, spl::Sampler)
     return _invlink!(vi.metadata, vi, vns, space)
 end
 @inline function _invlink!(metadata::NamedTuple{names}, vi, vns, space) where {names}
+    # Check if the `metadata` is empty to end the recursion
     length(names) === 0 && return nothing
+    # Take the first key/symbol of `metadata`
     f = names[1]
+    # Extract the list of `vns` with symbol `f`
     f_vns = getfield(vns, f)
+    # Transform only if `f` is in the space of the sampler or the space is void
     if f ∈ space || length(space) == 0
         if istrans(vi, f_vns[1])
+            # Iterate over all `f_vns` and transform
             for vn in f_vns
                 dist = getdist(vi, vn)
                 setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
@@ -636,11 +689,22 @@ end
     return _invlink!(_tail(metadata), vi, vns, space)
 end
 
-syms(vi::UntypedVarInfo) = unique!(map(vn -> vn.sym, vi.vns))  # get all symbols
+"""
+`syms(vi::VarInfo)`
+
+Returns a tuple of the unique symbols of random variables sampled in `vi`.
+"""
+syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
 syms(vi::TypedVarInfo) = fieldnames(vi.metadata)
 
 # The default getindex & setindex!() for get & set values
 # NOTE: vi[vn] will always transform the variable to its original space and Julia type
+"""
+`getindex(vi::VarInfo, vn::VarName)`
+`getindex(vi::VarInfo, vns::Vector{<:VarName})`
+
+Returns the current value(s) of `vn` (`vns`) in `vi` in the support of its (their) distribution(s). If the value(s) is (are) transformed to the Eucledian space, it is (they are) transformed back.
+"""
 function Base.getindex(vi::AbstractVarInfo, vn::VarName)
     @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
     dist = getdist(vi, vn)
@@ -648,8 +712,6 @@ function Base.getindex(vi::AbstractVarInfo, vn::VarName)
         invlink(dist, reconstruct(dist, getval(vi, vn))) :
         reconstruct(dist, getval(vi, vn)))
 end
-
-Base.setindex!(vi::AbstractVarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)
 function Base.getindex(vi::AbstractVarInfo, vns::Vector{<:VarName})
     @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
     dist = getdist(vi, vns[1])
@@ -658,20 +720,45 @@ function Base.getindex(vi::AbstractVarInfo, vns::Vector{<:VarName})
         reconstruct(dist, getval(vi, vns), length(vns)))
 end
 
+"""
+`getindex(vi::VarInfo, spl::Union{SampleFromPrior, Sampler})`
+
+Returns the current value(s) of the random variables sampled by `spl` in `vi`. The value(s) may or may not be transformed to Eucledian space.
+"""
+Base.getindex(vi::AbstractVarInfo, spl::SampleFromPrior) = copy(getall(vi))
 Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
 function Base.getindex(vi::TypedVarInfo, spl::Sampler)
+    # Gets the ranges as a NamedTuple
+    # getfield(ranges, f) is all the indices in `vals` of the `vn`s with symbol `f` sampled by `spl` in `vi`
     ranges = getranges(vi, spl)
     return vcat(_get(vi.metadata, ranges)...)
 end
 # Recursively builds a tuple of the `vals` of all the symbols
 @inline function _get(metadata::NamedTuple{names}, ranges) where {names}
+    # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return ()
+    # Take the first key of `metadata`
     f = names[1]
+    # Get the `vals` and `ranges` of symbol `f`
     f_vals = getfield(metadata, f).vals
     f_range = getfield(ranges, f)
+    # Get the values from `f_vals` that were sampled by `spl` and recurse using the remaining of `metadata` 
     return (f_vals[f_range], _get(_tail(metadata), ranges)...)
 end
 
+"""
+`setindex!(vi::VarInfo, val, vn::VarName)`
+
+Sets the current value(s) of the random variable `vn` in `vi` to `val`. The value(s) may or may not be transformed to Eucledian space.
+"""
+Base.setindex!(vi::AbstractVarInfo, val::Any, vn::VarName) = setval!(vi, val, vn)
+
+"""
+`setindex!(vi::VarInfo, val, spl::Union{SampleFromPrior, Sampler})`
+
+Sets the current value(s) of the random variables sampled by `spl` in `vi` to `val`. The value(s) may or may not be transformed to Eucledian space.
+"""
+Base.setindex!(vi::AbstractVarInfo, val::Any, spl::SampleFromPrior) = setall!(vi, val)
 Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 function Base.setindex!(vi::TypedVarInfo, val, spl::Sampler)
     # Gets a `NamedTuple` mapping each symbol to the indices in the symbol's `vals` field sampled from the sampler `spl`
@@ -694,9 +781,6 @@ end
     start += n
     return _setindex!(_tail(metadata), val, ranges, start)
 end
-
-Base.getindex(vi::AbstractVarInfo, spl::SampleFromPrior) = copy(getall(vi))
-Base.setindex!(vi::AbstractVarInfo, val::Any, spl::SampleFromPrior) = setall!(vi, val)
 
 Base.haskey(vi::UntypedVarInfo, vn::VarName) = haskey(vi.idcs, vn)
 function Base.haskey(vi::TypedVarInfo, vn::VarName{sym}) where {sym}
