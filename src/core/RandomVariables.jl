@@ -68,7 +68,13 @@ end
 
 # NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
 
+"""
+`uid(vn::VarName)`
+
+Returns a unique tuple identifier for `vn`.
+"""
 uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
+
 Base.hash(vn::VarName) = hash(uid(vn))
 
 isequal(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
@@ -91,10 +97,20 @@ Returns the variable's symbol `sym`.
 """
 getsym(vn::VarName{sym}) where sym = sym
 
-cuid(vn::VarName) = (vn.csym, vn.sym, vn.indexing)    # the uid which is only available at compile time
+"""
+`copybyindex(vn::VarName, indexing::String)`
 
-copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, vn.counter)
+Returns a new `VarName` with a new index `indexing`.
+"""
+function copybyindex(vn::VarName, indexing::String)
+    return VarName(vn.csym, vn.sym, indexing, vn.counter)
+end
 
+"""
+`is_inside(vn::VarName, space::Set)`
+
+Returns `true` if `vn`'s symbol is in `space` and `false` otherwise.
+"""
 function is_inside(vn::VarName, space::Set)::Bool
     if vn.sym in space
         return true
@@ -131,6 +147,22 @@ end
 # VarInfo metadata #
 ####################
 
+"""
+The `Metadata` struct stores some metadata about the parameters of the model. This helps query certain information about a variable, such as its distribution, which samplers sample this variable, its value and whether this value is transformed to real space or not.
+
+Let `md` be an instance of `Metadata`:
+- `md.vns` is the vector of all `VarName` instances.
+- `md.idcs` is the dictionary that maps each `VarName` instance to its index in `md.vns`, `md.ranges` `md.dists`, `md.orders` and `md.flags`.
+- `md.vns[md.idcs[vn]] == vn`.
+- `md.dists[md.idcs[vn]]` is the distribution of `vn`.
+- `md.gids[md.idcs[vn]]` is the set of algorithms used to sample `vn`. This is used in the Gibbs sampling process.
+- `md.orders[md.idcs[vn]]` is the number of `observe` statements before `vn` is sampled.
+- `md.ranges[md.idcs[vn]]` is the index range of `vn` in `md.vals`.
+- `md.vals[md.ranges[md.idcs[vn]]]` is the vector of values of corresponding to `vn`.
+- `md.flags` is a dictionary of true/false flags. `md.flags[flag][md.idcs[vn]]` is the value of `flag` corresponding to `vn`. 
+
+To make `md::Metadata` type stable, all the `md.vns` must have the same symbol and distribution type. However, one can have a Julia variable, say `x`, that is a matrix or a hierarchical array sampled in partitions, e.g. `x[1][:] ~ MvNormal(zeros(2), 1.0); x[2][:] ~ MvNormal(ones(2), 1.0)` and is managed by a single `md::Metadata` so long as all the distributions on the RHS of `~` are of the same type. Type unstable `Metadata` will still work but will have inferior performance. When sampling, the first iteration uses a type unstable `Metadata` for all the variables then a specialized `Metadata` is used for each symbol along with a function barrier to make the rest of the sampling type stable.
+"""
 struct Metadata{TIdcs <: Dict{<:VarName,Int}, TDists <: AbstractVector{<:Distribution}, TVN <: AbstractVector{<:VarName}, TVal <: AbstractVector{<:Real}, TGIds <: AbstractVector{Set{Selector}}}
     # Mapping from the `VarName` to its integer index in `vns`, `ranges` and `dists`
     idcs        ::    TIdcs # Dict{<:VarName,Int}
@@ -159,6 +191,12 @@ struct Metadata{TIdcs <: Dict{<:VarName,Int}, TDists <: AbstractVector{<:Distrib
     # Each `flag` has a `BitVector` `flags[flag]`, where `flags[flag][i]` is the true/false flag value corresonding to `vns[i]`
     flags       ::    Dict{String, BitVector}
 end
+
+"""
+`Metadata()`
+
+Constructs an empty type unstable instance of `Metadata`.
+"""
 function Metadata()
     vals  = Vector{Real}()
     flags = Dict{String, BitVector}()
@@ -177,6 +215,11 @@ function Metadata()
     )
 end
 
+"""
+`empty!(meta::Metadata)`
+
+Empties all the fields of `meta`. This is useful when using a sampling algorithm that assumes an empty `meta`, e.g. `SMC`. 
+"""
 function Base.empty!(meta::Metadata)
     empty!(meta.idcs)
     empty!(meta.vns)
@@ -196,6 +239,19 @@ end
 # VarInfo #
 ###########
 
+"""
+```
+struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
+    metadata::Tmeta
+    logp::Base.RefValue{Tlogp}
+    num_produce::Base.RefValue{Int}
+end
+```
+
+A light wrapper over one or more instances of `Metadata`. Let `vi` be an instance of `Metadata`. If `vi isa VarInfo{<:Metadata}`, then only `Metadata` instance is used for all the sybmols. `VarInfo{<:Metadata}` is aliased `UntypedVarInfo`. If `vi isa VarInfo{<:NamedTuple}`, then `vi.metadata` is a `NamedTuple` that maps each symbol used on the LHS of `~` in the model to its `Metadata` instance. The latter allows for the type specialization of `vi` after the first sampling iteration when all the symbols have been observed. `VarInfo{<:NamedTuple}` is aliased `TypedVarInfo`.
+
+Note: It is the user's responsibility to ensure that each symbol is visited at least once whenever the model is called, regardless of any stochastic branching.
+"""
 struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
     metadata::Tmeta
     logp::Base.RefValue{Tlogp}

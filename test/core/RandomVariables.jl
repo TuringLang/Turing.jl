@@ -2,7 +2,7 @@ using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, 
     SampleFromPrior, Sampler, runmodel!
 using Turing.RandomVariables
-using Turing.RandomVariables: uid, cuid, getidcs,
+using Turing.RandomVariables: uid, getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
     set_flag!, unset_flag!, is_inside, VarInfo, TypedVarInfo
 using Distributions
@@ -243,7 +243,6 @@ include("../test_utils/AllUtils.jl")
         vn2 = VarName(csym, :x, "[1]", 2)
         vn11 = VarName(csym, :x, "[1]", 1)
 
-        @test cuid(vn1) == cuid(vn2)
         @test vn11 == vn1
 
         dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
