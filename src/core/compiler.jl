@@ -73,14 +73,14 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym = Symbol($(QuoteNode(model_info[:name])), $csym)
             $syms = Symbol[$csym, $(QuoteNode(var))]
-            $varname = Turing.VarName($vi, $syms, "")
+            $varname = Turing.VarName($syms, "")
         end
     else
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
             $indexing = foldl(*, $idcs, init = "")
-            $varname = Turing.VarName($vi, Symbol($csym_str), $sym, $indexing)
+            $varname = Turing.VarName(Symbol($csym_str), $sym, $indexing)
         end
     end
 
