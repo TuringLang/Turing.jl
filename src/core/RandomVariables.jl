@@ -60,7 +60,32 @@ struct VarName{sym}
     indexing  ::    String        # indexing
     counter   ::    Int           # counter of same {csym, uid}
 end
+
+"""
+`VarName(csym, sym, indexing, counter)`
+`VarName{sym}(csym::Symbol, indexing::String)`
+
+Constructs a new instance of `VarName{sym}``
+"""
 VarName(csym, sym, indexing, counter) = VarName{sym}(csym, indexing, counter)
+function VarName(csym::Symbol, sym::Symbol, indexing::String)
+    # TODO: update this method when implementing the sanity check
+    VarName{sym}(csym, indexing, 1)
+end
+function VarName{sym}(csym::Symbol, indexing::String) where {sym}
+    # TODO: update this method when implementing the sanity check
+    VarName{sym}(csym, indexing, 1)
+end
+
+"""
+`VarName(syms::Vector{Symbol}, indexing::String)`
+
+Constructs a new instance of `VarName{syms[2]}`
+"""
+function VarName(syms::Vector{Symbol}, indexing::String) where {sym}
+    # TODO: update this method when implementing the sanity check
+      VarName{syms[2]}(syms[1], indexing, 1)
+end
 
 function Base.getproperty(vn::VarName{sym}, f::Symbol) where {sym}
     return f === :sym ? sym : getfield(vn, f)
@@ -726,11 +751,11 @@ end
 Returns the current value(s) of the random variables sampled by `spl` in `vi`. The value(s) may or may not be transformed to Eucledian space.
 """
 Base.getindex(vi::AbstractVarInfo, spl::SampleFromPrior) = copy(getall(vi))
-Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
+Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, _getranges(vi, spl)))
 function Base.getindex(vi::TypedVarInfo, spl::Sampler)
     # Gets the ranges as a NamedTuple
     # getfield(ranges, f) is all the indices in `vals` of the `vn`s with symbol `f` sampled by `spl` in `vi`
-    ranges = getranges(vi, spl)
+    ranges = _getranges(vi, spl)
     return vcat(_get(vi.metadata, ranges)...)
 end
 # Recursively builds a tuple of the `vals` of all the symbols
@@ -759,10 +784,10 @@ Base.setindex!(vi::AbstractVarInfo, val::Any, vn::VarName) = setval!(vi, val, vn
 Sets the current value(s) of the random variables sampled by `spl` in `vi` to `val`. The value(s) may or may not be transformed to Eucledian space.
 """
 Base.setindex!(vi::AbstractVarInfo, val::Any, spl::SampleFromPrior) = setall!(vi, val)
-Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
+Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, _getranges(vi, spl))
 function Base.setindex!(vi::TypedVarInfo, val, spl::Sampler)
     # Gets a `NamedTuple` mapping each symbol to the indices in the symbol's `vals` field sampled from the sampler `spl`
-    ranges = getranges(vi, spl)
+    ranges = _getranges(vi, spl)
     _setindex!(vi.metadata, val, ranges)
     return val
 end
@@ -772,7 +797,7 @@ end
     f = names[1]
     # The `vals` field of symbol `f`
     f_vals = getfield(metadata, f).vals
-    # The `range` in `vals` corresponding to sampler `spl`
+    # The indices in `f_vals` corresponding to sampler `spl`
     f_range = getfield(ranges, f)
     n = length(f_range)
     # Writes the portion of `val` corresponding to the symbol `f`
@@ -782,6 +807,11 @@ end
     return _setindex!(_tail(metadata), val, ranges, start)
 end
 
+"""
+`haskey(vi::VarInfo, vn::VarName)`
+
+Returns `true` if `vn` has been sampled in `vi` and `false` otherwise.
+"""
 Base.haskey(vi::UntypedVarInfo, vn::VarName) = haskey(vi.idcs, vn)
 function Base.haskey(vi::TypedVarInfo, vn::VarName{sym}) where {sym}
     metadata = vi.metadata
@@ -808,12 +838,29 @@ function Base.show(io::IO, vi::UntypedVarInfo)
 end
 
 # Add a new entry to VarInfo
+"""
+`push!(vi::VarInfo, vn::VarName, r, dist::Distribution)`
+
+Pushes a new random variable `vn` with a sampled value `r` from a distribution `dist` to the `VarInfo` `vi`.
+"""
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution) = push!(vi, vn, r, dist, Set{Selector}([]))
+
+"""
+`push!(vi::VarInfo, vn::VarName, r, dist::Distribution, spl::AbstractSampler)`
+
+Pushes a new random variable `vn` with a sampled value `r` sampled with a sampler `spl` from a distribution `dist` to `VarInfo` `vi`. The sampler is passed here to invalidate its cache where defined.
+"""
 function push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, spl::Sampler)
     spl.info[:cache_updated] = CACHERESET
     push!(vi, vn, r, dist, spl.selector)
 end
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, spl::AbstractSampler) = push!(vi, vn, r, dist)
+
+"""
+`push!(vi::VarInfo, vn::VarName, r, dist::Distribution, gid::Selector)`
+
+Pushes a new random variable `vn` with a sampled value `r` sampled with an inference algorithm of id `gid` from a distribution `dist` to `VarInfo` `vi`.
+"""
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Selector) = push!(vi, vn, r, dist, Set([gid]))
 function push!(vi::UntypedVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gidset::Set{Selector})
     @assert ~(vn in vns(vi)) "[push!] attempt to add an exisitng variable $(sym(vn)) ($(vn)) to VarInfo (keys=$(keys(vi))) with dist=$dist, gid=$gid"
@@ -860,6 +907,11 @@ function push!(
     return meta
 end
 
+"""
+`setorder!(vi::VarInfo, vn::VarName, index::Int)`
+
+Sets the `order` of `vn` in `vi` to `index`, where `order` is the number of `observe statements run before sampling `vn`.
+"""
 function setorder!(vi::UntypedVarInfo, vn::VarName, index::Int)
     if vi.orders[vi.idcs[vn]] != index
         vi.orders[vi.idcs[vn]] = index
@@ -874,58 +926,33 @@ function setorder!(mvi::TypedVarInfo, vn::VarName{sym}, index::Int) where {sym}
     return mvi
 end
 
-# This method is use to generate a new VarName with the right count
-function VarName(vi::AbstractVarInfo, csym::Symbol, sym::Symbol, indexing::String)
-    # TODO: update this method when implementing the sanity check
-    VarName{sym}(csym, indexing, 1)
-end
-function VarName(vi::AbstractVarInfo, syms::Vector{Symbol}, indexing::String) where {sym}
-    # TODO: update this method when implementing the sanity check
-      VarName{syms[2]}(syms[1], indexing, 1)
-end
-function VarName{sym}(vi::AbstractVarInfo, csym::Symbol, indexing::String) where {sym}
-    # TODO: update this method when implementing the sanity check
-    VarName{sym}(csym, indexing, 1)
-end
-
-# function expand!(vi::VarInfo)
-#   push!(vi.vals, vi.vals[end]); vi.vals[end], vi.vals[end-1] = vi.vals[end-1], vi.vals[end]
-#   push!(vi.trans, deepcopy(vi.trans[end]))
-#   push!(vi.logp, zero(Real))
-# end
-#
-# function shrink!(vi::VarInfo)
-#   pop!(vi.vals)
-#   pop!(vi.trans)
-#   pop!(vi.logp)
-# end
-#
-# function last!(vi::VarInfo)
-#   vi.vals = vi.vals[end:end]
-#   vi.trans = vi.trans[end:end]
-#   vi.logp = vi.logp[end:end]
-# end
-
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
 #   the SampleFromPrior sampler
-function getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
+function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
     return filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 end
-# Gets a NamedTuple of of the indices belonging to SampleFromPrior for each symbol
-function getidcs(vi::TypedVarInfo, ::SampleFromPrior)
-    return _getidcs(vi.metadata)
+# Get a NamedTuple of all the indices belonging to SampleFromPrior, one for each symbol
+function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
+    return __getidcs(vi.metadata)
 end
-@inline function _getidcs(metadata::NamedTuple{names}) where {names}
+@inline function __getidcs(metadata::NamedTuple{names}) where {names}
+    # Check if the `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
+    # Take the first key/symbol
     f = names[1]
+    # Get the first symbol's metadata
     meta = getfield(metadata, f)
-    v = filter(i -> meta.gids[i] == 0, 1:length(meta.gids))
+    # Get all the idcs of vns with empty gid
+    v = filter(i -> isempty(meta.gids[i]), 1:length(meta.gids))
+    # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
-    return merge(nt, _getidcs(_tail(metadata)))
+    # Recurse using the remaining of metadata
+    return merge(nt, __getidcs(_tail(metadata)))
 end
 
-function getidcs(vi::AbstractVarInfo, spl::Sampler)
+# Get all indices of variables belonging to a given sampler
+function _getidcs(vi::AbstractVarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         | \___ getidcs   (mask = 0b10)
     #         \_____ getranges (mask = 0b01)
@@ -936,66 +963,77 @@ function getidcs(vi::AbstractVarInfo, spl::Sampler)
         spl.info[:idcs]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = getidcs(vi, spl.selector, spl.alg.space)
+        spl.info[:idcs] = _getidcs(vi, spl.selector, spl.alg.space)
     end
 end
-# Get all indices of variables belonging to a given selector
-function getidcs(vi::UntypedVarInfo, s::Selector, space)
+function _getidcs(vi::UntypedVarInfo, s::Selector, space)
     filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) && 
         (isempty(space) || is_inside(vi.vns[i], space)), 1:length(vi.gids))
 end
-function getidcs(vi::TypedVarInfo, s::Selector, space)
-    return _getidcs(vi.metadata, s, space)
+function _getidcs(vi::TypedVarInfo, s::Selector, space)
+    return __getidcs(vi.metadata, s, space)
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
-@inline function _getidcs(metadata::NamedTuple{names}, s::Selector, space) where {names}
+@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space) where {names}
+    # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
+    # Take the first sybmol
     f = names[1]
+    # Get the first symbol's metadata
     f_meta = getfield(metadata, f)
+    # Get all the idcs of the vns in `space` and that belong to the selector `s`
     v = filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) && 
         (isempty(space) || is_inside(f_meta.vns[i], space)), 1:length(f_meta.gids))
+    # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
-    return merge(nt, _getidcs(_tail(metadata), s, space))
+    # Recurse using the remaining of metadata
+    return merge(nt, __getidcs(_tail(metadata), s, space))
 end
 
-# Get all vns of variables belonging to spl.selector
-getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, getidcs(vi, spl))
-function getvns(vi::TypedVarInfo, spl::AbstractSampler) 
-    idcs = getidcs(vi, spl)
-    return _getvns(vi.metadata, idcs)
+# Get all vns of variables belonging to spl
+_getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, spl))
+function _getvns(vi::TypedVarInfo, spl::AbstractSampler) 
+    # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
+    idcs = _getidcs(vi, spl)
+    return __getvns(vi.metadata, idcs)
 end
-# Get a NamedTuple for all the `vns` belonging to a given sampler for each symbol
-@inline function _getvns(metadata::NamedTuple{names}, idcs) where {names}
+# Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
+@inline function __getvns(metadata::NamedTuple{names}, idcs) where {names}
+    # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
+    # Take the first symbol
     f = names[1]
+    # Get the vector of `vns` with symbol `f`
     v = getfield(metadata, f).vns[getfield(idcs, f)]
+    # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
-    return merge(nt, _getvns(_tail(metadata), idcs))
+    # Recurse using the remaining of `metadata`
+    return merge(nt, __getvns(_tail(metadata), idcs))
 end
 
 # Get all vns of variables belonging to spl.selector
-function getranges(vi::AbstractVarInfo, spl::Sampler)
+function _getranges(vi::AbstractVarInfo, spl::Sampler)
     if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
     if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
         spl.info[:ranges]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        spl.info[:ranges] = getranges(vi, spl.selector, spl.alg.space)
+        spl.info[:ranges] = _getranges(vi, spl.selector, spl.alg.space)
     end
 end
-function getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
-    _getranges(vi, getidcs(vi, s, space))
+function _getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
+    __getranges(vi, _getidcs(vi, s, space))
 end
-function _getranges(vi::UntypedVarInfo, idcs)
+function __getranges(vi::UntypedVarInfo, idcs)
     union(map(i -> vi.ranges[i], idcs)...)
 end
-_getranges(vi::TypedVarInfo, idcs) = _getranges(vi.metadata, idcs)
-@inline function _getranges(metadata::NamedTuple{names}, idcs) where {names}
+__getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
+@inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
     length(names) === 0 && return NamedTuple()
     f = names[1]
     v = union(map(i -> getfield(metadata, f).ranges[i], getfield(idcs, f))..., Int[])
     nt = NamedTuple{(f,)}((v,))
-    return merge(nt, _getranges(_tail(metadata), idcs))
+    return merge(nt, __getranges(_tail(metadata), idcs))
 end
 
 #######################################
@@ -1024,7 +1062,7 @@ function unset_flag!(vi::TypedVarInfo, vn::VarName{sym}, flag::String) where {sy
 end
 
 function set_retained_vns_del_by_spl!(vi::UntypedVarInfo, spl::Sampler)
-    gidcs = getidcs(vi, spl)
+    gidcs = _getidcs(vi, spl)
     if vi.num_produce == 0
         for i = length(gidcs):-1:1
           vi.flags["del"][gidcs[i]] = true
@@ -1037,7 +1075,7 @@ function set_retained_vns_del_by_spl!(vi::UntypedVarInfo, spl::Sampler)
     end
 end
 function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
-    gidcs = getidcs(vi, spl)
+    gidcs = _getidcs(vi, spl)
     return _set_retained_vns_del_by_spl!(vi.metadata, gidcs, vi.num_produce)
 end
 @inline function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
