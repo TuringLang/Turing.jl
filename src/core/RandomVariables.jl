@@ -541,7 +541,7 @@ end
 """
 `getgid(vi::VarInfo, vn::VarName)`
 
-Returns the set of inference algorithm selectors/ids from which `vn` was sampled in `vi`.
+Returns the set of sampler selectors associated with `vn` in `vi`.
 """
 getgid(vi::UntypedVarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
 function getgid(vi::TypedVarInfo, vn::VarName{sym}) where sym
@@ -551,7 +551,7 @@ end
 """
 `setgid!(vi::VarInfo, gid::Selector, vn::VarName)`
 
-Adds `gid` to the set of inference algorithm selectors/ids from which `vn` was sampled in `vi`.
+Adds `gid` to the set of sampler selectors associated with `vn` in `vi`.
 """
 setgid!(vi::UntypedVarInfo, gid::Selector, vn::VarName) = push!(vi.gids[getidx(vi, vn)], gid)
 function setgid!(vi::TypedVarInfo, gid::Selector, vn::VarName{sym}) where sym
@@ -859,7 +859,7 @@ push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution
 """
 `push!(vi::VarInfo, vn::VarName, r, dist::Distribution, gid::Selector)`
 
-Pushes a new random variable `vn` with a sampled value `r` sampled with an inference algorithm of id `gid` from a distribution `dist` to `VarInfo` `vi`.
+Pushes a new random variable `vn` with a sampled value `r` sampled with a sampler of selector `gid` from a distribution `dist` to `VarInfo` `vi`.
 """
 push!(vi::AbstractVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gid::Selector) = push!(vi, vn, r, dist, Set([gid]))
 function push!(vi::UntypedVarInfo, vn::VarName, r::Any, dist::Distributions.Distribution, gidset::Set{Selector})
@@ -1011,7 +1011,7 @@ end
     return merge(nt, __getvns(_tail(metadata), idcs))
 end
 
-# Get all vns of variables belonging to spl.selector
+# Get the index (in vals) ranges of all the vns of variables belonging to spl
 function _getranges(vi::AbstractVarInfo, spl::Sampler)
     if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
     if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
@@ -1021,6 +1021,7 @@ function _getranges(vi::AbstractVarInfo, spl::Sampler)
         spl.info[:ranges] = _getranges(vi, spl.selector, spl.alg.space)
     end
 end
+# Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
 function _getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
     __getranges(vi, _getidcs(vi, s, space))
 end
@@ -1029,10 +1030,15 @@ function __getranges(vi::UntypedVarInfo, idcs)
 end
 __getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
 @inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
+    # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
+    # Take the first symbol
     f = names[1]
+    # Collect the index ranges of all the vns with symbol `f` 
     v = union(map(i -> getfield(metadata, f).ranges[i], getfield(idcs, f))..., Int[])
+    # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
+    # Recurse using the remaining of `metadata`
     return merge(nt, __getranges(_tail(metadata), idcs))
 end
 
@@ -1040,6 +1046,11 @@ end
 # Rand & replaying method for VarInfo #
 #######################################
 
+"""
+`is_flagged(vi::VarInfo, vn::VarName, flag::String)`
+
+Returns `true` if `vn` has a true value for `flag` in `vi`, and `false` otherwise.
+"""
 function is_flagged(vi::UntypedVarInfo, vn::VarName, flag::String)
     return vi.flags[flag][getidx(vi, vn)]
 end
@@ -1047,6 +1058,11 @@ function is_flagged(vi::TypedVarInfo, vn::VarName{sym}, flag::String) where {sym
     return getfield(vi.metadata, sym).flags[flag][getidx(vi, vn)]
 end
 
+"""
+`set_flag!(vi::VarInfo, vn::VarName, flag::String)`
+
+Sets `vn`'s value for `flag` to `true` in `vi`.
+"""
 function set_flag!(vi::UntypedVarInfo, vn::VarName, flag::String)
     return vi.flags[flag][getidx(vi, vn)] = true
 end
@@ -1054,6 +1070,11 @@ function set_flag!(vi::TypedVarInfo, vn::VarName{sym}, flag::String) where {sym}
     return getfield(vi.metadata, sym).flags[flag][getidx(vi, vn)] = true
 end
 
+"""
+`unset_flag!(vi::VarInfo, vn::VarName, flag::String)`
+
+Sets `vn`'s value for `flag` to `false` in `vi`.
+"""
 function unset_flag!(vi::UntypedVarInfo, vn::VarName, flag::String)
     return vi.flags[flag][getidx(vi, vn)] = false
 end
@@ -1061,42 +1082,61 @@ function unset_flag!(vi::TypedVarInfo, vn::VarName{sym}, flag::String) where {sy
     return getfield(vi.metadata, sym).flags[flag][getidx(vi, vn)] = false
 end
 
+"""
+`set_retained_vns_del_by_spl!(vi::VarInfo, spl::Sampler)`
+
+Sets the `"del"` flag of variables in `vi` with `order > vi.num_produce` to `true`.
+"""
 function set_retained_vns_del_by_spl!(vi::UntypedVarInfo, spl::Sampler)
+    # Get the indices of `vns` that belong to `spl` as a vector
     gidcs = _getidcs(vi, spl)
     if vi.num_produce == 0
         for i = length(gidcs):-1:1
           vi.flags["del"][gidcs[i]] = true
         end
     else
-        retained = [idx for idx in 1:length(vi.orders) if idx in gidcs && vi.orders[idx] > vi.num_produce]
-        for i = retained
-            vi.flags["del"][i] = true
+        for i in 1:length(vi.orders)
+            if i in gidcs && vi.orders[i] > vi.num_produce
+                vi.flags["del"][i] = true
+            end
         end
     end
 end
 function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
+    # Get the indices of `vns` that belong to `spl` as a NamedTuple, one entry for each symbol
     gidcs = _getidcs(vi, spl)
     return _set_retained_vns_del_by_spl!(vi.metadata, gidcs, vi.num_produce)
 end
 @inline function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
+    # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return nothing
+    # Take the first symbol
     f = names[1]
+    # Get the idcs, orders and flags with symbol `f`
     f_gidcs = getfield(gidcs, f)
     f_orders = getfield(metadata, f).orders
     f_flags = getfield(metadata, f).flags
+    # Set the flag for variables with symbol `f`
     if num_produce == 0
         for i = length(f_gidcs):-1:1
             f_flags["del"][f_gidcs[i]] = true
         end
     else
-        retained = [idx for idx in 1:length(f_orders) if idx in f_gidcs && f_orders[idx] > num_produce]
-        for i in retained
-            f_flags["del"][i] = true
+        for i in 1:length(f_orders)
+            if i in f_gidcs && f_orders[i] > num_produce
+                f_flags["del"][i] = true
+            end
         end
     end
+    # Recurse using the remaining of `metadata`
     return _set_retained_vns_del_by_spl!(_tail(metadata), gidcs, num_produce)
 end
 
+"""
+`updategid!(vi::VarInfo, vn::VarName, spl::Sampler)`
+
+If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space of `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
+"""
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
     if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vn) in spl.alg.space
         setgid!(vi, spl.selector, vn)
