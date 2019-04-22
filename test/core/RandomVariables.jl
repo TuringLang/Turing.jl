@@ -2,7 +2,7 @@ using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, 
     SampleFromPrior, Sampler, runmodel!
 using Turing.RandomVariables
-using Turing.RandomVariables: uid, getidcs,
+using Turing.RandomVariables: uid, _getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
     set_flag!, unset_flag!, is_inside, VarInfo, TypedVarInfo
 using Distributions
@@ -263,7 +263,7 @@ include("../test_utils/AllUtils.jl")
                 @test sum(val - r) <= 1e-9
             end
 
-            idcs = getidcs(vi, spl1)
+            idcs = _getidcs(vi, spl1)
             if idcs isa NamedTuple
                 @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 3
             else
@@ -271,7 +271,7 @@ include("../test_utils/AllUtils.jl")
             end
             @test length(vi[spl1]) == 7
 
-            idcs = getidcs(vi, spl2)
+            idcs = _getidcs(vi, spl2)
             if idcs isa NamedTuple
                 @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 1
             else
@@ -282,7 +282,7 @@ include("../test_utils/AllUtils.jl")
             vn_u = VarName(gensym(), :u, "", 1)
             randr(vi, vn_u, dists[1], spl2, true)
 
-            idcs = getidcs(vi, spl2)
+            idcs = _getidcs(vi, spl2)
             if idcs isa NamedTuple
                 @test sum(length(getfield(idcs, f)) for f in fieldnames(typeof(idcs))) == 2
             else

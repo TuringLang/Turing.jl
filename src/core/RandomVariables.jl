@@ -627,7 +627,7 @@ Transforms the values of the random variables sampled by `spl` in `vi` from the 
 """
 function link!(vi::UntypedVarInfo, spl::Sampler)
     # TODO: Change to a lazy iterator over `vns`
-    vns = getvns(vi, spl)
+    vns = _getvns(vi, spl)
     if ~istrans(vi, vns[1])
         for vn in vns
             dist = getdist(vi, vn)
@@ -640,7 +640,7 @@ function link!(vi::UntypedVarInfo, spl::Sampler)
     end
 end
 function link!(vi::TypedVarInfo, spl::Sampler)
-    vns = getvns(vi, spl)
+    vns = _getvns(vi, spl)
     space = getspace(spl)
     return _link!(vi.metadata, vi, vns, space)
 end
@@ -675,7 +675,7 @@ end
 Transforms the values of the random variables sampled by `spl` in `vi` from the Eucledian space back to the support of their distributions and sets their corresponding ``"trans"` flag values to `false`.
 """
 function invlink!(vi::UntypedVarInfo, spl::Sampler)
-    vns = getvns(vi, spl)
+    vns = _getvns(vi, spl)
     if istrans(vi, vns[1])
         for vn in vns
             dist = getdist(vi, vn)
@@ -687,7 +687,7 @@ function invlink!(vi::UntypedVarInfo, spl::Sampler)
     end
 end
 function invlink!(vi::TypedVarInfo, spl::Sampler)
-    vns = getvns(vi, spl)
+    vns = _getvns(vi, spl)
     space = getspace(spl)
     return _invlink!(vi.metadata, vi, vns, space)
 end
