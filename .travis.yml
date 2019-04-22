@@ -15,9 +15,7 @@ jobs:
       env: STAGE=test
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: test
       os: linux
@@ -25,9 +23,7 @@ jobs:
       env: STAGE=test
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: numerical
       allow_failures: true
@@ -36,9 +32,7 @@ jobs:
       env: STAGE=numerical
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: numerical
       allow_failures: true
@@ -48,8 +42,7 @@ jobs:
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+                   Pkg.add("Turing");
                    Pkg.test("Turing"; coverage=true)'
     - stage: test
       julia: 1.0
@@ -58,9 +51,7 @@ jobs:
       env: STAGE=test
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: test
       julia: 1.1
@@ -69,9 +60,7 @@ jobs:
       env: STAGE=test
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: stan
       allow_failures: true
@@ -80,9 +69,7 @@ jobs:
       env: STAGE=stan
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: stan
       allow_failures: true
@@ -91,9 +78,7 @@ jobs:
       env: STAGE=stan
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.clone(pwd(), "Turing");
-                   Pkg.build("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: dynamichmc
       allow_failures: true
@@ -102,9 +87,7 @@ jobs:
       env: STAGE=dynamichmc
       script:
          - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                    Pkg.clone(pwd(), "Turing");
-                    Pkg.build("Turing");
+         - julia --check-bounds=yes -e 'using Pkg;
                     Pkg.test("Turing"; coverage=true)'
     - stage: dynamichmc
       allow_failures: true
@@ -113,9 +96,7 @@ jobs:
       env: STAGE=dynamichmc
       script:
          - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-         - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                    Pkg.clone(pwd(), "Turing");
-                    Pkg.build("Turing");
+         - julia --check-bounds=yes -e 'using Pkg;
                     Pkg.test("Turing"; coverage=true)'
     - stage: documentation
       julia: 1.1
@@ -123,7 +104,7 @@ jobs:
       if: branch = master
       env: STAGE=documentation
       script:
-        - julia -e 'using Pkg; Pkg.update(); Pkg.clone(pwd(), "Turing"); Pkg.build("Turing");'
+        - julia -e 'using Pkg; Pkg.update();'
         - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
         - julia -e 'using Pkg, Turing;
                     cd(joinpath(dirname(pathof(Turing)), ".."));
