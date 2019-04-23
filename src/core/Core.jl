@@ -4,7 +4,7 @@ using MacroTools, Libtask, ForwardDiff
 using ..Utilities, Reexport
 using Flux.Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
-    AbstractRunner, Sampler, SampleFromPrior
+    AbstractRunner, Sampler, SampleFromDistribution
 
 include("RandomVariables.jl")
 @reexport using .RandomVariables

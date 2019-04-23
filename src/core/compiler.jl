@@ -182,10 +182,10 @@ function model_generator(x = nothing, y = nothing)
 
     inner_function(sampler::Turing.AbstractRunner, model) = inner_function(model)
     function inner_function(model)
-        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+        return inner_function(Turing.VarInfo(), nothing, model)
     end
     function inner_function(vi::Turing.VarInfo, model)
-        return inner_function(vi, Turing.SampleFromPrior(), model)
+        return inner_function(vi, nothing, model)
     end
     # Define the main inner function
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractRunner, model)
@@ -370,16 +370,16 @@ function build_output(model_info)
                 return $inner_function_name($model_name)
             end
             function $inner_function_name($model_name)
-                return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
+                return $inner_function_name(Turing.VarInfo(), nothing, $model_name)
             end
             function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
-                return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
+                return $inner_function_name($vi_name, nothing, $model_name)
             end
 
             # Define the main inner function
             function $inner_function_name(
                 $vi_name::Turing.VarInfo,
-                $sampler_name::Turing.AbstractRunner,
+                $sampler_name::Union{Nothing,<:Turing.AbstractRunner},
                 $model_name
                 )
 

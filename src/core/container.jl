@@ -2,7 +2,7 @@ mutable struct Trace{T <: AbstractRunner}
   task  ::  Task
   vi    ::  VarInfo
   spl   ::  T
-  Trace{T}() where T <: SampleFromPrior = (res = new(); res.vi = VarInfo(); res.spl = SampleFromPrior(); res)
+  Trace{T}() where T <: SampleFromDistribution = (res = new(); res.vi = VarInfo(); res.spl = T(); res)
   Trace{T}() where T <: Sampler = (res = new(); res.vi = VarInfo(); res)
 end
 
@@ -17,7 +17,9 @@ function Trace{T}(f) where T <: AbstractRunner
   res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
   res
 end
-Trace(f) = Trace{SampleFromPrior}(f)
+
+#TODO: Do we need this?
+#Trace(f) = Trace{SampleFromPrior}(f)
 
 function Trace{T}(f, spl::Sampler, vi::VarInfo) where T <: Sampler
   res = Trace{T}();

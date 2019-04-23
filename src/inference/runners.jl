@@ -8,19 +8,16 @@ end
 ####################
 
 function observe(::Nothing, dist::Distribution, value, vi::VarInfo)
-    vi.num_produce += one(vi.num_produce)
     return logpdf(dist, value)
 end
 
 function observe(::Nothing, dists::Vector{<:UnivariateDistribution}, values, vi::VarInfo)
-    # TODO: We should probably increase num_produce here.
     dist = _getdist(dists)
     return sum(logpdf.(dist, values))
 end
 
 # NOTE: this is necessary as we cannot use broadcasting for MV dists.
 function observe(::Nothing, dists::Vector{<:MultivariateDistribution}, values, vi::VarInfo)
-    # TODO: We should probably increase num_produce here.
     dist = _getdist(dists)
     return sum(logpdf(dist, values))
 end
@@ -30,11 +27,9 @@ end
 ###############################
 
 function assume(spl::SampleFromDistribution, dist::Distribution, vn::VarName, vi::VarInfo)
-
     if !haskey(vi, vn)
-        push!(vi, vn, _rand(dist), dist)
+        push!(vi, vn, _rand(spl, dist), dist)
     end
-
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
@@ -53,7 +48,7 @@ function assume(spl::SampleFromDistribution,
     if haskey(vi, first(vns))
         rs = vi[vns]
     else
-        rs = _rand(dist, n)
+        rs = _rand(spl, dist, n)
         @assert size(var) == size(rs) "[assume]: Variable and random number dimension unmatched"
 
         for i = 1:n
@@ -84,7 +79,7 @@ function assume(spl::SampleFromDistribution,
     if haskey(vi, first(vns))
         rs = vi[vns]
     else
-        rs = _rand(dist, n)
+        rs = _rand(spl, dist, n)
         @assert size(var) == size(rs) "[assume]: Variable and random number dimension unmatched"
 
         @inbounds begin
@@ -93,12 +88,12 @@ function assume(spl::SampleFromDistribution,
             end
 
             if var isa Vector
-                @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
+                @assert length(var) == size(rs)[2] "[assume]: variable and random number dimension unmatched"
                 for i = 1:n
                     var[i] = rs[:,i]
                 end
             else
-                @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
+                @assert size(var) == size(rs) "[assume]: variable and random number dimension unmatched"
                 var[:] .= rs[:]
             end
         end
@@ -137,7 +132,7 @@ function assume(spl::ComputeLogJointDensity,
         if (dist isa MultivariateDistribution) && (var isa AbstractVector)
             @assert length(var) == last(size(rs))
             for i in 1:n
-                inbounds var[i][:] .= rs[:,i]
+                var[i][:] .= rs[:,i]
             end
         elseif dist isa UnivariateDistribution
             var = rs
@@ -151,3 +146,7 @@ function assume(spl::ComputeLogJointDensity,
 end
 
 @inline observe(spl::ComputeLogJointDensity, dist, value, vi) = observe(nothing, dist, value, vi)
+
+#################################
+# Compute the log joint Runner. #
+#################################

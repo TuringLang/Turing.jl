@@ -5,8 +5,7 @@ using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractRunner
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, ComputeLogJointDensity
+    Sampler, Selector, SampleFromDistribution
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
@@ -22,6 +21,8 @@ export  InferenceAlgorithm,
         AdaptiveHamiltonian,
         SampleFromUniform,
         SampleFromPrior,
+        ComputeLogJointDensity,
+        ComputeLogDensity,
         MH,
         Gibbs,      # classic sampling
         HMC,
@@ -48,6 +49,21 @@ export  InferenceAlgorithm,
         get_covar,
         add_sample!,
         reset!
+
+###########
+# Runners #
+###########
+struct SampleFromPrior <: SampleFromDistribution end
+_rand(::SampleFromPrior, dist::Distribution) = rand(dist)
+_rand(::SampleFromPrior, dist::Distribution, n::Int) = rand(dist, n)
+
+struct SampleFromUniform <: SampleFromDistribution end
+_rand(::SampleFromUniform, dist::Distribution) = init(dist)
+_rand(::SampleFromUniform, dist::Distribution, n::Int) = init(dist, n)
+
+struct ComputeLogJointDensity <: AbstractRunner end
+struct ComputeLogDensity <: AbstractRunner end
+struct ParticleFiltering <: AbstractRunner end
 
 #######################
 # Sampler abstraction #

@@ -1,7 +1,7 @@
 module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
-    AbstractRunner, Sampler, SampleFromPrior,
+    AbstractRunner, Sampler, SampleFromDistribution,
     Selector
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution
@@ -74,7 +74,7 @@ copybyindex(vn::VarName, indexing::String) = VarName(vn.csym, vn.sym, indexing, 
 abstract type AbstractVarInfo end
 const VarInfo = AbstractVarInfo
 
-function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractRunner = SampleFromPrior())
+function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractRunner)
     setlogp!(vi, zero(Float64))
     if spl isa Sampler && isdefined(spl.info, :eval_num)
         spl.info.eval_num += 1
@@ -215,8 +215,8 @@ Base.setindex!(vi::UntypedVarInfo, val::Any, vview::VarView) = setval!(vi, val, 
 Base.getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, getranges(vi, spl)))
 Base.setindex!(vi::UntypedVarInfo, val::Any, spl::Sampler) = setval!(vi, val, getranges(vi, spl))
 
-Base.getindex(vi::UntypedVarInfo, spl::SampleFromPrior) = copy(getall(vi))
-Base.setindex!(vi::UntypedVarInfo, val::Any, spl::SampleFromPrior) = setall!(vi, val)
+Base.getindex(vi::UntypedVarInfo, spl::SampleFromDistribution) = copy(getall(vi))
+Base.setindex!(vi::UntypedVarInfo, val::Any, spl::SampleFromDistribution) = setall!(vi, val)
 
 Base.keys(vi::UntypedVarInfo) = keys(vi.idcs)
 
@@ -306,10 +306,10 @@ end
 #   vi.logp = vi.logp[end:end]
 # end
 
-# Get all indices of variables belonging to SampleFromPrior:
+# Get all indices of variables belonging to SampleFromDistribution:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
-#   the SampleFromPrior sampler
-getidcs(vi::UntypedVarInfo, ::SampleFromPrior) = filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
+#   the SampleFromDistribution sampler
+getidcs(vi::UntypedVarInfo, ::SampleFromDistribution) = filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 function getidcs(vi::AbstractVarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
