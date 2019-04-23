@@ -3,24 +3,6 @@ function _getdist(dists::Vector{<:Distribution})
     return first(dists)
 end
 
-####################
-# runner = nothing #
-####################
-
-function observe(::Nothing, dist::Distribution, value, vi::VarInfo)
-    return logpdf(dist, value)
-end
-
-function observe(::Nothing, dists::Vector{<:UnivariateDistribution}, values, vi::VarInfo)
-    dist = _getdist(dists)
-    return sum(logpdf.(dist, values))
-end
-
-# NOTE: this is necessary as we cannot use broadcasting for MV dists.
-function observe(::Nothing, dists::Vector{<:MultivariateDistribution}, values, vi::VarInfo)
-    dist = _getdist(dists)
-    return sum(logpdf(dist, values))
-end
 
 ###############################
 # Sample from prior / uniform #
@@ -102,7 +84,13 @@ function assume(spl::SampleFromDistribution,
     return var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-@inline observe(spl::SampleFromDistribution, dist, value, vi) = observe(nothing, dist, value, vi)
+function observe(spl::SampleFromDistribution, dist::Distribution, value, vi::VarInfo)
+    observe(ComputeLogJointDensity(), dist, value, vi)
+end
+
+function observe(spl::SampleFromDistribution, dists::Vector{<:Distribution}, values, vi::VarInfo)
+    observe(ComputeLogJointDensity(), dists, values, vi)
+end
 
 #################################
 # Compute the log joint Runner. #
@@ -145,8 +133,40 @@ function assume(spl::ComputeLogJointDensity,
     return var, sum(logpdf_with_trans(dist, rs, istrans(vi, first(vns))))
 end
 
-@inline observe(spl::ComputeLogJointDensity, dist, value, vi) = observe(nothing, dist, value, vi)
+function observe(::ComputeLogJointDensity, dist::Distribution, value, vi::VarInfo)
+    return logpdf(dist, value)
+end
+
+function observe(::ComputeLogJointDensity, dists::Vector{<:UnivariateDistribution}, values, vi::VarInfo)
+    dist = _getdist(dists)
+    return sum(logpdf.(dist, values))
+end
+
+# NOTE: this is necessary as we cannot use broadcasting for MV dists.
+function observe(::ComputeLogJointDensity, dists::Vector{<:MultivariateDistribution}, values, vi::VarInfo)
+    dist = _getdist(dists)
+    return sum(logpdf(dist, values))
+end
 
 #################################
 # Compute the log joint Runner. #
 #################################
+
+####################
+# runner = nothing #
+####################
+function assume(::Nothing, dist::Distribution, vn::VarName, vi::VarInfo)
+    return assume(SampleFromPrior(), dist, vn, vi)
+end
+
+function assume(::Nothing, dists::Vector{<:Distribution}, vn::VarName, var, vi::VarInfo)
+    return assume(SampleFromPrior(), dists, vn, var, vi)
+end
+
+function observe(::Nothing, dist::Distribution, value, vi::VarInfo)
+    return observe(ComputeLogJointDensity(), dist, value, vi)
+end
+
+function observe(::Nothing, dists::Vector{<:Distribution}, values, vi::VarInfo)
+    return observe(ComputeLogJointDensity(), dists, values, vi)
+end
