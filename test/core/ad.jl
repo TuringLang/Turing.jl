@@ -46,7 +46,7 @@ include("../test_utils/AllUtils.jl")
         _m = getval(vi, mvn)[1]
 
         x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E = gradient_logp_reverse(x, vi, ad_test_f)[2]
+        ∇E = gradient_logp_reverse(x, vi, ad_test_f, SampleFromPrior())[2]
         grad_Turing = sort(∇E)
 
         dist_s = InverseGamma(2,3)

@@ -18,7 +18,6 @@ include("../test_utils/AllUtils.jl")
     end
     @turing_testset "particle container" begin
         n = Ref(0)
-
         alg = PG(5, 1)
         spl = Turing.Sampler(alg)
         dist = Normal(0, 1)
@@ -39,9 +38,9 @@ include("../test_utils/AllUtils.jl")
 
         pc = ParticleContainer{Trace}(fpc)
 
-        push!(pc, Trace(pc.model))
-        push!(pc, Trace(pc.model))
-        push!(pc, Trace(pc.model))
+        push!(pc, Trace{SampleFromPrior}(pc.model))
+        push!(pc, Trace{SampleFromPrior}(pc.model))
+        push!(pc, Trace{SampleFromPrior}(pc.model))
 
         Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
         Base.@assert weights(pc)[2] ≈ log(3)
@@ -81,7 +80,7 @@ include("../test_utils/AllUtils.jl")
         end
 
         # Test task copy version of trace
-        tr = Trace(f2)
+        tr = Trace{SampleFromPrior}(f2)
 
         consume(tr); consume(tr)
         a = fork(tr);

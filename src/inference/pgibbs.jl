@@ -185,7 +185,7 @@ function assume(  spl::Sampler{A},
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 end
 
-function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PG,SMC}
+function observe(spl::Sampler{T}, dist::Distribution, value, vi::VarInfo) where T<:Union{PG,SMC}
     produce(logpdf(dist, value))
     return zero(Real)
 end

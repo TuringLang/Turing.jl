@@ -272,5 +272,10 @@ function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::
     return assume(ComputeLogJointDensity(), dists, vn, var, vi)
 end
 
-observe(spl::Sampler{<:Hamiltonian}, d, value, vi::VarInfo) = 
-    observe(ComputeLogJointDensity(), d, value, vi)
+function observe(spl::Sampler{<:Hamiltonian}, dist::Distribution, value, vi::VarInfo)
+    return observe(ComputeLogJointDensity(), dist, value, vi)
+end
+
+function observe(spl::Sampler{<:Hamiltonian}, dists::Vector{Distribution}, values, vi::VarInfo)
+    return observe(ComputeLogJointDensity(), dists, value, vi)
+end
