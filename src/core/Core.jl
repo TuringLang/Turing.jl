@@ -1,8 +1,9 @@
 module Core
 
 using MacroTools, Libtask, ForwardDiff
+using Distributions, LinearAlgebra
 using ..Utilities, Reexport
-using Flux.Tracker: Tracker
+using Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 
@@ -36,7 +37,7 @@ export  @model,
         setadbackend, 
         setadsafe, 
         ForwardDiffAD, 
-        FluxTrackerAD,
+        TrackerAD,
         value,
         gradient_logp,
         CHUNKSIZE, 
