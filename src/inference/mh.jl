@@ -79,9 +79,9 @@ function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
 end
 
 function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector.tag != :default # Recompute joint in logp
-    runmodel!(model, vi)
-  end
+    if spl.selector.tag != :default # Recompute joint in logp
+        runmodel!(model, vi, ComputeLogJointDensity())
+    end
   old_θ = copy(vi[spl])
   old_logp = getlogp(vi)
 

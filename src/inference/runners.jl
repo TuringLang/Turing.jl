@@ -97,7 +97,6 @@ end
 #################################
 
 function assume(spl::ComputeLogJointDensity, dist::Distribution, vn::VarName, vi::VarInfo)
-    @assert haskey(vi, vn)
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
@@ -112,11 +111,9 @@ function assume(spl::ComputeLogJointDensity,
     n = size(var)[end]
 
     vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
-    @assert all(haskey.(vi, vn))
+    rs = vi[vns]
 
     @inbounds begin
-        rs = vi[vns]
-
         if (dist isa MultivariateDistribution) && (var isa AbstractVector)
             @assert length(var) == last(size(rs))
             for i in 1:n

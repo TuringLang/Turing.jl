@@ -276,6 +276,6 @@ function observe(spl::Sampler{<:Hamiltonian}, dist::Distribution, value, vi::Var
     return observe(ComputeLogJointDensity(), dist, value, vi)
 end
 
-function observe(spl::Sampler{<:Hamiltonian}, dists::Vector{Distribution}, values, vi::VarInfo)
-    return observe(ComputeLogJointDensity(), dists, value, vi)
+function observe(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, values, vi::VarInfo)
+    return observe(ComputeLogJointDensity(), dists, values, vi)
 end
