@@ -84,15 +84,15 @@ function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
     Sampler(alg, info, s)
 end
 
-function sample(model::Model, alg::Hamiltonian;
-                save_state=false,                                   # flag for state saving
-                resume_from=nothing,                                # chain to continue
-                reuse_spl_n=0,                                      # flag for spl re-using
-                adapt_conf=STAN_DEFAULT_ADAPT_CONF,                 # adapt configuration
-                init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
-                rng::AbstractRNG=GLOBAL_RNG,
-                )
-
+function sample(
+    model::Model, alg::Hamiltonian;
+    save_state=false,                                   # flag for state saving
+    resume_from=nothing,                                # chain to continue
+    reuse_spl_n=0,                                      # flag for spl re-using
+    adapt_conf=STAN_DEFAULT_ADAPT_CONF,                 # adapt configuration
+    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+    rng::AbstractRNG=GLOBAL_RNG,
+)
     # Create sampler
     spl = reuse_spl_n > 0 ?
           resume_from.info[:spl] :
