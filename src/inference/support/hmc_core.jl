@@ -55,9 +55,8 @@ function _hmc_step(θ::AbstractVector{<:Real},
                    logπ::Function,
                    ∂logπ∂θ::Function,
                    ϵ::Real,
-                   λ::Real,
+                   τ::Real,
                    metric)
-    τ = max(1, round(Int, λ / ϵ))
     θ = Vector{Float64}(θ)
 
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
@@ -66,42 +65,11 @@ function _hmc_step(θ::AbstractVector{<:Real},
     r = AHMC.rand_momentum(h)
     H = AHMC.hamiltonian_energy(h, θ, r)
 
-    # I have to copy https://github.com/TuringLang/AHMC.jl/blob/master/src/trajectory.jl#L24
-    # as the current interface doesn't return is_accept
-    H = AHMC.hamiltonian_energy(h, θ, r)
-    θ_new, r_new, is_valid = AHMC.step(prop.integrator, h, θ, r, prop.n_steps)
-    H_new = AHMC.hamiltonian_energy(h, θ_new, r_new)
-    # Accept via MH criteria
-    is_accept, α = AHMC.mh_accept(H, H_new)
-    if is_accept
-        θ, r = θ_new, -r_new
-    end
+    θ_new, r_new, α, H_new = AHMC.transition(prop, h, Vector{Float64}(θ), r)
+    # NOTE: as `transition` doesn't return `is_accept`, I use `H == H_new` as a check
+    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
+                            # from the old one, the sample was accepted.
     lj_new = logπ(θ_new)
 
-    return θ, lj_new, is_accept, α
+    return θ_new, lj_new, is_accept, α
 end
-
-# TODO: figure out why below doesn't work
-# function _hmc_step(θ::AbstractVector{<:Real},
-#                    lj::Real,
-#                    logπ::Function,
-#                    ∂logπ∂θ::Function,
-#                    ϵ::Real,
-#                    λ::Real,
-#                    metric)
-#     τ = max(1, round(Int, λ / ϵ))
-#     θ = Vector{Float64}(θ)
-#
-#     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-#     prop = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), τ)
-#
-#     r = AHMC.rand_momentum(h)
-#     H = AHMC.hamiltonian_energy(h, θ, r)
-#
-#     θ_new, r_new, α, H_new = AHMC.transition(prop, h, Vector{Float64}(θ), r)
-#     # NOTE: as `transition` doesn't return `is_accept`, I use `H == H_new` as a check
-#     is_accept = H == H_new
-#     lj_new = logπ(θ_new)
-#
-#     return θ_new, lj_new, is_accept, α
-# end

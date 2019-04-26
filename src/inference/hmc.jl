@@ -385,7 +385,7 @@ function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, space.
 end
 
 function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMCDA, metric)
-    θ_new, lj_new, is_accept, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.λ, metric)
+    θ_new, lj_new, is_accept, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, max(1, round(Int, alg.λ / ϵ)), metric)
     return θ_new, lj_new, is_accept, α
 end
 
