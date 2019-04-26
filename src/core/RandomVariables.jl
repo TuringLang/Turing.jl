@@ -312,7 +312,7 @@ end
 getidcs(vi::UntypedVarInfo, ::SampleFromPrior) = filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 function getidcs(vi::AbstractVarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
-    #         |\____ getidcs   (mask = 0b10)
+    #         | \___ getidcs   (mask = 0b10)
     #         \_____ getranges (mask = 0b01)
     if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
     if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
