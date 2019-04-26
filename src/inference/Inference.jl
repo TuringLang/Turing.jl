@@ -82,11 +82,13 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 include("support/hmc_core.jl")
 
 """
-    mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
+    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 
 Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
+
+This function is only used in PMMH.
 """
-function mh_accept(H::Real, H_new::Real, log_proposal_ratio::Real)
+function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
 
