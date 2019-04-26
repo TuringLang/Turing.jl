@@ -94,9 +94,7 @@ function sample(
     rng::AbstractRNG=GLOBAL_RNG,
 )
     # Create sampler
-    spl = reuse_spl_n > 0 ?
-          resume_from.info[:spl] :
-          Sampler(alg, adapt_conf)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, adapt_conf)
     if resume_from != nothing
         spl.selector = resume_from.info[:spl].selector
     end
@@ -110,9 +108,7 @@ function sample(
               isa(alg, NUTS)  ? "NUTS"  : "Hamiltonian"
 
     # TODO: figure out what does this line do
-    n = reuse_spl_n > 0 ?
-        reuse_spl_n :
-        alg.n_iters
+    n = reuse_spl_n > 0 ? reuse_spl_n : alg.n_iters
 
     # Init samples
     samples = Array{Sample}(undef, n)
@@ -148,33 +144,8 @@ function sample(
     # Init h, prop and adaptor
     step(model, spl, vi, Val(true))
 
-    # Sampling using AHMC
-    if spl.alg isa AdaptiveHamiltonian
-        ahmc_samples = AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
-        for i = 1:n
-            vi[spl] = ahmc_samples[i]
-            samples[i].value = Sample(vi, spl).value
-        end
-    elseif spl.alg isa HMC
-        ahmc_samples = AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters)
-        for i = 1:n
-            vi[spl] = ahmc_samples[i]
-            samples[i].value = Sample(vi, spl).value
-        end
-    else
-        for i = 1:n
-            time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
-            if is_accept # accepted => store the new predcits
-                samples[i].value = Sample(vi, spl).value
-            else         # rejected => store the previous predcits
-                samples[i] = samples[i - 1]
-            end
-            samples[i].value[:elapsed] = time_elapsed
-            if haskey(spl.info, :adaptor)
-                samples[i].value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
-            end
-        end
-    end
+    # Sampling using AHMC and store samples in `samples`
+    steps!(model, spl, vi, samples; rng=rng)
 
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.info[:samples]...)
@@ -191,6 +162,7 @@ function sample(
     return c
 end
 
+# Init for StaticHamiltonian
 function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
     ∂logπ∂θ = gen_grad_func(vi, spl, model)
     logπ = gen_lj_func(vi, spl, model)
@@ -202,6 +174,7 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
     return vi, true
 end
 
+# Init for AdaptiveHamiltonian
 function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
@@ -214,7 +187,6 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     init_ϵ = spl.alg.init_ϵ
     if init_ϵ == 0.0
-        # @info h θ_init
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
     end
@@ -226,7 +198,7 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
         @error "Unsupported adaptive algorithm" spl.alg
     end
     adaptor = AHMC.StanNUTSAdaptor(spl.alg.n_adapts, AHMC.PreConditioner(metric),
-                                          AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
+                                   AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
 
     spl.info[:h] = h
     spl.info[:prop] = prop
@@ -236,6 +208,7 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     return vi, true
 end
 
+# Single step for Gibbs compatible Hamiltonian
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
     # Get step size
     if :adaptor in keys(spl.info)
@@ -277,7 +250,11 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     end
 
     if PROGRESS[] && spl.selector.tag == :default
-        metric = gen_metric(vi, spl, spl.info[:adaptor].pc)
+        if :adaptor in keys(spl.info)
+            metric = gen_metric(vi, spl, spl.info[:adaptor].pc)
+        else
+            metric = gen_metric(vi, spl)
+        end
         haskey(spl.info, :progress) && ProgressMeter.update!(
             spl.info[:progress],
             spl.info[:progress].counter;
@@ -287,7 +264,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 
     if spl.alg isa AdaptiveHamiltonian
         if spl.info[:i] <= spl.alg.n_adapts
-            # AHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
+            AHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
         end
     end
 
@@ -296,6 +273,40 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 
     return vi, is_accept
 end
+
+
+# Function for multiple steps
+function steps!(model, spl::Sampler{<:AdaptiveHamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
+    for i = 1:length(samples)
+        vi[spl] = ahmc_samples[i]
+        samples[i].value = Sample(vi, spl).value
+    end
+end
+
+function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:prop], Vector{Float64}(vi[spl]), spl.alg.n_iters)
+    for i = 1:length(samples)
+        vi[spl] = ahmc_samples[i]
+        samples[i].value = Sample(vi, spl).value
+    end
+end
+
+function steps!(model, spl::Sampler{<:Hamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+    for i = 1:length(samples)
+        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+        if is_accept # accepted => store the new predcits
+            samples[i].value = Sample(vi, spl).value
+        else         # rejected => store the previous predcits
+            samples[i] = samples[i - 1]
+        end
+        samples[i].value[:elapsed] = time_elapsed
+        if haskey(spl.info, :adaptor)
+            samples[i].value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
+        end
+    end
+end
+
 
 ### HMCDA
 
@@ -364,7 +375,6 @@ function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMCDA, metric)
     θ_new, lj_new, is_accept, α = _hmc_step(θ, lj, lj_func, grad_func, ϵ, alg.λ, metric)
     return θ_new, lj_new, is_accept, α
 end
-
 
 ### NUTS
 
@@ -436,8 +446,6 @@ function hmc_step(θ, lj, logπ, ∂logπ∂θ, ϵ, alg::NUTS, metric)
     is_accept = true
     return θ_new, lj_new, is_accept, α
 end
-
-
 
 ### Tilde operators
 
