@@ -18,8 +18,6 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "inference" begin
-        @testset "support" begin
-        end
         @testset "samplers" begin
             include("inference/dynamichmc.jl")
             include("inference/gibbs.jl")

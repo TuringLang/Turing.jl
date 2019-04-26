@@ -78,9 +78,6 @@ getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 #    adapt :: TA
 #  end
 
-# Helper functions
-include("support/hmc_core.jl")
-
 """
     mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 
