@@ -64,25 +64,16 @@ function hmc_step(θ, lj, lj_func, grad_func, ϵ, alg::HMC, metric)
   return θ_new, lj_new, is_accept, α
 end
 
-# Below is a trick to remove the dependency of Stan by Requires.jl
-# Please see https://github.com/TuringLang/Turing.jl/pull/459 for explanations
-DEFAULT_ADAPT_CONF_TYPE = Nothing
-STAN_DEFAULT_ADAPT_CONF = nothing
-
-Sampler(alg::Hamiltonian, s::Selector) =  Sampler(alg, nothing, s)
-Sampler(alg::Hamiltonian, adapt_conf::Nothing) = Sampler(alg, adapt_conf, Selector())
-function Sampler(alg::Hamiltonian, adapt_conf::Nothing, s::Selector)
-    return _sampler(alg::Hamiltonian, adapt_conf, s)
-end
-function _sampler(alg::Hamiltonian, adapt_conf, s::Selector=Selector())
+function Sampler(alg::Hamiltonian, s::Selector=Selector())
     info = Dict{Symbol, Any}()
 
-    info[:adapt_conf] = adapt_conf
     info[:eval_num] = 0
     info[:i] = 0
 
     Sampler(alg, info, s)
 end
+
+STAN_DEFAULT_ADAPT_CONF = nothing   # this would be overwritten if `CmdStan` is available
 
 function sample(
     model::Model, alg::Hamiltonian;
@@ -94,7 +85,7 @@ function sample(
     rng::AbstractRNG=GLOBAL_RNG,
 )
     # Create sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, adapt_conf)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg)
     if resume_from != nothing
         spl.selector = resume_from.info[:spl].selector
     end
@@ -163,7 +154,7 @@ function sample(
 end
 
 # Init for StaticHamiltonian
-function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true})
+function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::Val{true}; kwargs...)
     ∂logπ∂θ = gen_grad_func(vi, spl, model)
     logπ = gen_lj_func(vi, spl, model)
 
@@ -175,7 +166,14 @@ function step(model, spl::Sampler{<:StaticHamiltonian}, vi::VarInfo, is_first::V
 end
 
 # Init for AdaptiveHamiltonian
-function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first::Val{true})
+function step(
+    model, 
+    spl::Sampler{<:AdaptiveHamiltonian}, 
+    vi::VarInfo, 
+    is_first::Val{true}; 
+    adapt_conf=nothing, 
+    kwargs...
+)
     spl.selector.tag != :default && link!(vi, spl)
 
     ∂logπ∂θ = gen_grad_func(vi, spl, model)
@@ -190,6 +188,7 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
     end
+
     if spl.alg isa NUTS
         prop = AHMC.NUTS(AHMC.Leapfrog(init_ϵ), spl.alg.max_depth, spl.alg.Δ_max)
     elseif spl.alg isa HMCDA
@@ -197,8 +196,22 @@ function step(model, spl::Sampler{<:AdaptiveHamiltonian}, vi::VarInfo, is_first:
     else
         @error "Unsupported adaptive algorithm" spl.alg
     end
-    adaptor = AHMC.StanNUTSAdaptor(spl.alg.n_adapts, AHMC.PreConditioner(metric),
-                                   AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ))
+    
+    if adapt_conf == nothing
+        adaptor = AHMC.StanNUTSAdaptor(
+            spl.alg.n_adapts, AHMC.PreConditioner(metric),
+            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
+        )
+    else
+        adaptor = AHMC.StanNUTSAdaptor(
+            adapt_conf.engaged ? spl.alg.n_adapts : 0,
+            AHMC.PreConditioner(metric),
+            AHMC.NesterovDualAveraging(adapt_conf.gamma, adapt_conf.t0, adapt_conf.kappa, adapt_conf.δ, init_ϵ),
+            adapt_conf.init_buffer, 
+            adapt_conf.term_buffer,
+            adapt_conf.window
+        )
+    end
 
     spl.info[:h] = h
     spl.info[:prop] = prop

@@ -1,5 +1,5 @@
 using Turing, Random, Test
-using Turing: Sampler
+using Turing: Sampler, NUTS
 
 include("../test_utils/AllUtils.jl")
 
