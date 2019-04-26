@@ -1,4 +1,4 @@
-using ForwardDiff, Distributions, FDM, Flux.Tracker, Random
+using ForwardDiff, Distributions, FDM, Tracker, Random
 using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf
@@ -35,6 +35,15 @@ include("../test_utils/AllUtils.jl")
         test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
         test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
         test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
+        test_ad(m->logpdf(MvNormal(m, 1.0), [1.0, 1.0]), [1.0, 1.0])
+        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3]), [1.0, 1.0]), [1.0, 1.0, 1.0])
+        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), [1.0, 1.0])
+        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3:4]), [1.0, 1.0]), [1.0, 1.0, 1.0, 1.0])
+        s = rand(2,2); s = s' * s
+        test_ad(m->logpdf(MvNormal(m, s), [1.0, 1.0]), [1.0, 1.0])
+        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
+        ms = [[0.0, 0.0]; s[:]]
+        test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
     end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default

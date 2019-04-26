@@ -6,7 +6,7 @@ Distributions 0.16.0
 ForwardDiff 0.8.0
 MCMCChains 0.3.7
 Libtask 0.2.5
-Flux 0.6.7
+Tracker
 MacroTools
 StatsFuns 0.7.0
 SpecialFunctions

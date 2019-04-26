@@ -373,7 +373,7 @@ ForwardDiff (Turing's default AD backend) uses forward-mode chunk-wise AD. The c
 
 #### AD Backend
 
-Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Flux.Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Flux.Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
+Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
 
 For more information on Turing's automatic differentiation backend, please see the [Automatic Differentiation](/docs/autodiff/) article.
 
