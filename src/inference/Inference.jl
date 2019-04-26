@@ -93,8 +93,6 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 end
 
 # Concrete algorithm implementations.
-include("hmcda.jl")
-include("nuts.jl")
 include("sghmc.jl")
 include("sgld.jl")
 include("hmc.jl")
