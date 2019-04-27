@@ -226,10 +226,10 @@ function gen_logπ(vi::VarInfo, spl::Sampler, model)
 end
 
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim)
-gen_metric(pc::AHMC.UnitPreConditioner) = AHMC.UnitEuclideanMetric(dim)
-gen_metric(pc::AHMC.DiagPreConditioner) = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(pc::AHMC.DensePreConditioner) = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(spl.info[:adaptor].pc)
+gen_metric(dim::Int, ::AHMC.UnitPreConditioner)   = AHMC.UnitEuclideanMetric(dim)
+gen_metric(::Int, pc::AHMC.DiagPreConditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(::Int, pc::AHMC.DensePreConditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
 
 gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.tau)
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
