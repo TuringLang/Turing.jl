@@ -1,12 +1,12 @@
 """
-    HMC(n_iters::Int, epsilon::Float64, tau::Int)
+    HMC(n_iters::Int, ϵ::Float64, tau::Int)
 
 Hamiltonian Monte Carlo sampler.
 
 Arguments:
 
 - `n_iters::Int` : The number of samples to pull.
-- `epsilon::Float64` : The leapfrog step size to use.
+- `ϵ::Float64` : The leapfrog step size to use.
 - `tau::Int` : The number of leapfrop steps to use.
 
 Usage:
@@ -30,7 +30,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 """
 mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     n_iters   ::  Int       # number of samples
-    epsilon   ::  Float64   # leapfrog step size
+    ϵ   ::  Float64   # leapfrog step size
     tau       ::  Int       # leapfrog step number
     space     ::  Set{T}    # sampling space, emtpy means all
     metricT
@@ -39,22 +39,22 @@ end
 HMC(args...) = HMC{ADBackend()}(args...)
 
 function HMC{AD}(n_iters::Int,
-    epsilon::Float64,
+    ϵ::Float64,
     tau::Int;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMC{AD, Any}(n_iters, epsilon, tau, Set(), metricT)
+    return HMC{AD, Any}(n_iters, ϵ, tau, Set(), metricT)
 end
 
 function HMC{AD}(
     n_iters::Int,
-    epsilon::Float64,
+    ϵ::Float64,
     tau::Int,
     space...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, metricT)
+    return HMC{AD, eltype(_space)}(n_iters, ϵ, tau, _space, metricT)
 end
 
 """
@@ -84,7 +84,7 @@ For more information, please view the following paper ([arXiv link](https://arxi
 """
 mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for epsilon
+    n_adapts  ::  Int       # number of samples with adaption for ϵ
     δ         ::  Float64   # target accept rate
     λ         ::  Float64   # target leapfrog length
     space     ::  Set{T}    # sampling space, emtpy means all
@@ -149,7 +149,7 @@ Arguments:
 """
 mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for epsilon
+    n_adapts  ::  Int       # number of samples with adaption for ϵ
     δ         ::  Float64   # target accept rate
     space     ::  Set{T}    # sampling space, emtpy means all
     max_depth ::  Int
@@ -369,7 +369,7 @@ function step(
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
     spl.info[:h] = AHMC.Hamiltonian(spl.alg.metricT(length(vi[spl])), logπ, ∂logπ∂θ)
-    spl.info[:traj] = gen_traj(spl.alg, spl.alg.epsilon)
+    spl.info[:traj] = gen_traj(spl.alg, spl.alg.ϵ)
     return vi, true
 end
 
@@ -427,7 +427,7 @@ end
 # Single step for Gibbs compatible Hamiltonian
 function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
     # Get step size
-    ϵ = :adaptor in keys(spl.info) ? AHMC.getϵ(spl.info[:adaptor]) : spl.alg.epsilon
+    ϵ = :adaptor in keys(spl.info) ? AHMC.getϵ(spl.info[:adaptor]) : spl.alg.ϵ
 
     spl.info[:i] += 1
     spl.info[:eval_num] = 0
