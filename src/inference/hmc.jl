@@ -35,11 +35,24 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     space     ::  Set{T}    # sampling space, emtpy means all
     metricT
 end
+
 HMC(args...) = HMC{ADBackend()}(args...)
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int; metricT=AHMC.UnitEuclideanMetric) where AD
+
+function HMC{AD}(n_iters::Int,
+    epsilon::Float64,
+    tau::Int;
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     return HMC{AD, Any}(n_iters, epsilon, tau, Set(), metricT)
 end
-function HMC{AD}(n_iters::Int, epsilon::Float64, tau::Int, space...; metricT=AHMC.UnitEuclideanMetric) where AD
+
+function HMC{AD}(
+    n_iters::Int,
+    epsilon::Float64,
+    tau::Int,
+    space...;
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMC{AD, eltype(_space)}(n_iters, epsilon, tau, _space, metricT)
 end
@@ -79,15 +92,36 @@ mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     metricT
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
-function HMCDA{AD}(n_iters::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
+
+function HMCDA{AD}(n_iters::Int,
+    δ::Float64,
+    λ::Float64;
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
+
+function HMCDA{AD}(n_iters::Int,
+    n_adapts::Int,
+    δ::Float64,
+    λ::Float64;
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, space...; init_ϵ::Float64=0.0, metricT=AHMC.UnitEuclideanMetric) where AD
+
+function HMCDA{AD}(n_iters::Int,
+    n_adapts::Int,
+    δ::Float64,
+    λ::Float64,
+    space...;
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, δ, λ, _space, init_ϵ, metricT)
 end
@@ -123,14 +157,32 @@ mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
     init_ϵ    ::  Float64
     metricT
 end
+
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
-function NUTS{AD}(n_iters::Int, n_adapts::Int, δ::Float64, space...; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0, metricT=AHMC.DenseEuclideanMetric) where AD
+
+function NUTS{AD}(n_iters::Int,
+    n_adapts::Int,
+    δ::Float64,
+    space...;
+    max_depth::Int=5,
+    Δ_max::Float64=1000.0,
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.DenseEuclideanMetric
+) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     NUTS{AD, eltype(_space)}(n_iters, n_adapts, δ, _space, max_depth, Δ_max, init_ϵ, metricT)
 end
-function NUTS{AD}(n_iters::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0, metricT=AHMC.DenseEuclideanMetric) where AD
+
+function NUTS{AD}(n_iters::Int,
+    δ::Float64;
+    max_depth::Int=5,
+    Δ_max::Float64=1000.0,
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.DenseEuclideanMetric
+) where AD
     n_adapts_default = Int(round(n_iters / 2))
-    NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ? 1000 : n_adapts_default, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
+    NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ?
+        1000 : n_adapts_default, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
 end
 
 # Sampler construction
@@ -356,7 +408,8 @@ function step(
         adaptor = AHMC.StanNUTSAdaptor(
             adapt_conf.engaged ? spl.alg.n_adapts : 0,
             AHMC.PreConditioner(metric),
-            AHMC.NesterovDualAveraging(adapt_conf.gamma, adapt_conf.t0, adapt_conf.kappa, adapt_conf.δ, init_ϵ),
+            AHMC.NesterovDualAveraging(adapt_conf.gamma,
+                adapt_conf.t0, adapt_conf.kappa, adapt_conf.δ, init_ϵ),
             adapt_conf.init_buffer,
             adapt_conf.term_buffer,
             adapt_conf.window
@@ -427,7 +480,8 @@ end
 
 # Function for multiple steps
 function steps!(model, spl::Sampler{<:AdaptiveHamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
-    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj], Vector{Float64}(vi[spl]), spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
+    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj], Vector{Float64}(vi[spl]),
+        spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
@@ -435,7 +489,8 @@ function steps!(model, spl::Sampler{<:AdaptiveHamiltonian}, vi, samples; rng::Ab
 end
 
 function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
-    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj], Vector{Float64}(vi[spl]), spl.alg.n_iters)
+    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj],
+        Vector{Float64}(vi[spl]), spl.alg.n_iters)
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
@@ -459,7 +514,11 @@ end
 
 ### Tilde operators
 
-function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::Sampler{<:Hamiltonian},
+    dist::Distribution,
+    vn::VarName,
+    vi::VarInfo
+)
     Turing.DEBUG && @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
@@ -471,7 +530,12 @@ function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::VarInfo)
+function assume(spl::Sampler{<:Hamiltonian},
+    dists::Vector{<:Distribution},
+    vn::VarName,
+    var::Any,
+    vi::VarInfo
+)
     @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
     dist = dists[1]
     n = size(var)[end]
@@ -502,8 +566,12 @@ function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value::Any, vi::VarInfo) =
-    observe(nothing, d, value, vi)
+observe(spl::Sampler{<:Hamiltonian},
+    d::Distribution,
+    value::Any,
+    vi::VarInfo) = observe(nothing, d, value, vi)
 
-observe(spl::Sampler{<:Hamiltonian}, ds::Vector{<:Distribution}, value::Any, vi::VarInfo) =
-    observe(nothing, ds, value, vi)
+observe(spl::Sampler{<:Hamiltonian},
+    ds::Vector{<:Distribution},
+    value::Any,
+    vi::VarInfo) = observe(nothing, ds, value, vi)
