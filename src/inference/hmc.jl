@@ -1,5 +1,5 @@
 """
-    HMC(n_iters::Int, ϵ::Float64, tau::Int)
+    HMC(n_iters::Int, ϵ::Float64, n_leapfrog::Int)
 
 Hamiltonian Monte Carlo sampler.
 
@@ -7,7 +7,7 @@ Arguments:
 
 - `n_iters::Int` : The number of samples to pull.
 - `ϵ::Float64` : The leapfrog step size to use.
-- `tau::Int` : The number of leapfrop steps to use.
+- `n_leapfrog::Int` : The number of leapfrop steps to use.
 
 Usage:
 
@@ -31,7 +31,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
     n_iters   ::  Int       # number of samples
     ϵ   ::  Float64   # leapfrog step size
-    tau       ::  Int       # leapfrog step number
+    n_leapfrog       ::  Int       # leapfrog step number
     space     ::  Set{T}    # sampling space, emtpy means all
     metricT
 end
@@ -40,21 +40,21 @@ HMC(args...) = HMC{ADBackend()}(args...)
 
 function HMC{AD}(n_iters::Int,
     ϵ::Float64,
-    tau::Int;
+    n_leapfrog::Int;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMC{AD, Any}(n_iters, ϵ, tau, Set(), metricT)
+    return HMC{AD, Any}(n_iters, ϵ, n_leapfrog, Set(), metricT)
 end
 
 function HMC{AD}(
     n_iters::Int,
     ϵ::Float64,
-    tau::Int,
+    n_leapfrog::Int,
     space...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, ϵ, tau, _space, metricT)
+    return HMC{AD, eltype(_space)}(n_iters, ϵ, n_leapfrog, _space, metricT)
 end
 
 """
@@ -241,7 +241,7 @@ gen_metric(::Int, pc::AHMC.DiagPreConditioner)    = AHMC.DiagEuclideanMetric(AHM
 gen_metric(::Int, pc::AHMC.DensePreConditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
 gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
 
-gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.tau)
+gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
 gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
