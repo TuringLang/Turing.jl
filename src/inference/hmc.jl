@@ -15,21 +15,6 @@ Usage:
 HMC(1000, 0.05, 10)
 ```
 
-Example:
-
-```julia
-# Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x[1] ~ Normal(m, sqrt(s))
-    x[2] ~ Normal(m, sqrt(s))
-    return s, m
-end
-
-sample(gdemo([1.5, 2]), HMC(1000, 0.05, 10))
-```
-
 Tips:
 
 - If you are receiving gradient errors when using `HMC`, try reducing the
@@ -78,24 +63,11 @@ Arguments:
 - `λ::Float64` : Target leapfrop length.
 - `init_ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
 
-Example:
-
-```julia
-# Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0, sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
-  return s, m
-end
-
-sample(gdemo([1.5, 2]), HMCDA(1000, 200, 0.65, 0.3))
-```
-
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
-Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning Research 15, no. 1 (2014): 1593-1623.
+- Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
+  setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
+  Research 15, no. 1 (2014): 1593-1623.
 """
 mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
@@ -140,20 +112,6 @@ Arguments:
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
 - `init_ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
 
-Example:
-
-```julia
-# Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0, sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
-  return s, m
-end
-
-sample(gdemo([1.j_max, 2]), NUTS(1000, 200, 0.6j_max))
-```
 """
 mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
     n_iters   ::  Int       # number of samples
@@ -236,7 +194,7 @@ gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
 gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
 function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{HMC,HMCDA,NUTS}}
-    # Make sure the code in AHMC is type stable  
+    # Make sure the code in AHMC is type stable
     θ = Vector{Float64}(θ)
 
     # Build Hamiltonian type and trajectory
@@ -247,12 +205,12 @@ function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{
     r = AHMC.rand_momentum(h)
 
     # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation                                         
+    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation
 
     # Call AHMC to make one MCMC transition
     θ_new, _, α, H_new = AHMC.transition(traj, h, Vector{Float64}(θ), r)
 
-    # NOTE: as `transition` doesn't return `is_accept`, 
+    # NOTE: as `transition` doesn't return `is_accept`,
     #       I use `H == H_new` to check if the sample is accepted.
     is_accept = H != H_new  # If the new Hamiltonian enerygy is different
                             # from the old one, the sample was accepted.
@@ -331,15 +289,15 @@ function sample(
     steps!(model, spl, vi, samples; rng=rng)
 
     # Concatenate samples
-    if resume_from != nothing   
+    if resume_from != nothing
         pushfirst!(samples, resume_from.info[:samples]...)
     end
 
     # Wrap the result by Chain
-    c = Chain(0.0, samples)       
+    c = Chain(0.0, samples)
 
     # Save state
-    if save_state               
+    if save_state
         # Convert vi back to X if vi is required to be saved.
         spl.selector.tag == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
@@ -350,10 +308,10 @@ end
 
 # Init for StaticHamiltonian
 function step(
-    model, 
-    spl::Sampler{<:StaticHamiltonian}, 
-    vi::VarInfo, 
-    is_first::Val{true}; 
+    model,
+    spl::Sampler{<:StaticHamiltonian},
+    vi::VarInfo,
+    is_first::Val{true};
     kwargs...
 )
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
@@ -365,11 +323,11 @@ end
 
 # Init for AdaptiveHamiltonian
 function step(
-    model, 
-    spl::Sampler{<:AdaptiveHamiltonian}, 
-    vi::VarInfo, 
-    is_first::Val{true}; 
-    adapt_conf=nothing, 
+    model,
+    spl::Sampler{<:AdaptiveHamiltonian},
+    vi::VarInfo,
+    is_first::Val{true};
+    adapt_conf=nothing,
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -387,7 +345,7 @@ function step(
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
     end
-    
+
     # Create `adaptor`
     if adapt_conf == nothing
         adaptor = AHMC.StanNUTSAdaptor(
@@ -399,7 +357,7 @@ function step(
             adapt_conf.engaged ? spl.alg.n_adapts : 0,
             AHMC.PreConditioner(metric),
             AHMC.NesterovDualAveraging(adapt_conf.gamma, adapt_conf.t0, adapt_conf.kappa, adapt_conf.δ, init_ϵ),
-            adapt_conf.init_buffer, 
+            adapt_conf.init_buffer,
             adapt_conf.term_buffer,
             adapt_conf.window
         )
