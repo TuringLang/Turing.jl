@@ -328,7 +328,7 @@ function sample(
         vi[spl] = theta
     end
 
-    # Convert to transformed sapce
+    # Convert to transformed space
     if spl.selector.tag == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
