@@ -206,13 +206,15 @@ end
 
 
 function sample(
-    model::Model, alg::Hamiltonian;
+    model::Model,
+    alg::Hamiltonian;
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor = AHMCAdaptor(),
+    # adaptor = AHMCAdaptor(alg),
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
+    kwargs...
 )
     # Create sampler
     spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg)
@@ -308,7 +310,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor=AHMCAdaptor(),
+    # adaptor=AHMCAdaptor(),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -329,7 +331,7 @@ function step(
 
     spl.info[:h] = h
     spl.info[:traj] = gen_traj(spl.alg, init_ϵ)
-    spl.info[:adaptor] = adaptor
+    spl.info[:adaptor] = AHMCAdaptor(spl.alg, metric)
 
     spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
@@ -576,9 +578,9 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor()
+function AHMCAdaptor(alg::AdaptiveHamiltonian, metric)
         adaptor = AHMC.StanNUTSAdaptor(
-            spl.alg.n_adapts, AHMC.PreConditioner(metric),
-            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
+            alg.n_adapts, AHMC.PreConditioner(metric),
+            AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
         )
 end
