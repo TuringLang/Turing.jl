@@ -115,14 +115,6 @@ using .Inference
         using ..Turing: HMC, HMCDA, NUTS
         include("utilities/stan-interface.jl")
     end
-    @eval Inference begin
-        using ..Turing.CmdStan: CmdStan
-
-        Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
-        function Sampler(alg::Hamiltonian, adaptor::CmdStan.Adapt)
-            _sampler(alg::Hamiltonian, adaptor)
-        end
-    end
 end
 
 @init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin

@@ -186,6 +186,7 @@ function NUTS{AD}(n_iters::Int,
 end
 
 # Sampler construction
+Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(alg::Hamiltonian, s::Selector=Selector())
     info = Dict{Symbol, Any}()
 
@@ -279,7 +280,7 @@ function sample(
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor = NUTSAdaptor()
+    adaptor = AHMCAdaptor()
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
 )
@@ -377,7 +378,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor=NUTSAdaptor(),
+    adaptor=AHMCAdaptor(),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -562,7 +563,7 @@ observe(spl::Sampler{<:Hamiltonian},
 ### Default adaptor
 ###
 
-function NUTSAdaptor()
+function AHMCAdaptor()
         adaptor = AHMC.StanNUTSAdaptor(
             spl.alg.n_adapts, AHMC.PreConditioner(metric),
             AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
