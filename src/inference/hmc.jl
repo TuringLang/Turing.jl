@@ -210,7 +210,7 @@ function sample(
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor = AHMCAdaptor()
+    adaptor = AHMCAdaptor(),
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
 )
