@@ -227,6 +227,9 @@ function Sample(vi::AbstractVarInfo, spl::Sampler)
     if haskey(spl.info, :adaptor)
         s.value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
     end
+    if haskey(spl.info, :eval_num)
+        samples[i].value[:eval_num] = spl.info[:eval_num]
+    end
     return s
 end
 

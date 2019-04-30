@@ -29,11 +29,11 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
 mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    ϵ   ::  Float64   # leapfrog step size
-    n_leapfrog       ::  Int       # leapfrog step number
-    space     ::  Set{T}    # sampling space, emtpy means all
-    metricT
+    n_iters     ::  Int       # number of samples
+    ϵ           ::  Float64   # leapfrog step size
+    n_leapfrog  ::  Int       # leapfrog step number
+    space       ::  Set{T}    # sampling space, emtpy means all
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 
 HMC(args...) = HMC{ADBackend()}(args...)
@@ -83,13 +83,13 @@ For more information, please view the following paper ([arXiv link](https://arxi
   Research 15, no. 1 (2014): 1593-1623.
 """
 mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for ϵ
-    δ         ::  Float64   # target accept rate
-    λ         ::  Float64   # target leapfrog length
-    space     ::  Set{T}    # sampling space, emtpy means all
-    init_ϵ    ::  Float64
-    metricT
+    n_iters     ::  Int       # number of samples
+    n_adapts    ::  Int       # number of samples with adaption for ϵ
+    δ           ::  Float64   # target accept rate
+    λ           ::  Float64   # target leapfrog length
+    space       ::  Set{T}    # sampling space, emtpy means all
+    init_ϵ      ::  Float64
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
 
@@ -148,14 +148,14 @@ Arguments:
 
 """
 mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for ϵ
-    δ         ::  Float64   # target accept rate
-    space     ::  Set{T}    # sampling space, emtpy means all
-    max_depth ::  Int
-    Δ_max     ::  Float64
-    init_ϵ    ::  Float64
-    metricT
+    n_iters     ::  Int       # number of samples
+    n_adapts    ::  Int       # number of samples with adaption for ϵ
+    δ           ::  Float64   # target accept rate
+    space       ::  Set{T}    # sampling space, emtpy means all
+    max_depth   ::  Int
+    Δ_max       ::  Float64
+    init_ϵ      ::  Float64
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
@@ -226,7 +226,7 @@ function gen_logπ(vi::VarInfo, spl::Sampler, model)
     function logπ(x)::Float64
         x_old, lj_old = vi[spl], vi.logp
         vi[spl] = x
-        runmodel!(model, vi, spl).logp
+        runmodel!(model, vi, spl)
         lj = vi.logp
         vi[spl] = x_old
         setlogp!(vi, lj_old)
@@ -326,7 +326,7 @@ function sample(
         vi[spl] = theta
     end
 
-    # Convert to transformed sapce
+    # Convert to transformed space
     if spl.selector.tag == :default
         link!(vi, spl)
         runmodel!(model, vi, spl)
@@ -478,17 +478,19 @@ function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL
 end
 
 function steps!(model, spl::Sampler{<:Hamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
-    for i = 1:length(samples)
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+    # Init step
+    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
+    samples[1].value = Sample(vi, spl).value    # we know we always accept the init step
+    samples[1].value[:elapsed] = time_elapsed
+    # Rest steps
+    for i = 2:length(samples)
+        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(false))
         if is_accept # accepted => store the new predcits
             samples[i].value = Sample(vi, spl).value
         else         # rejected => store the previous predcits
             samples[i] = samples[i - 1]
         end
         samples[i].value[:elapsed] = time_elapsed
-        if haskey(spl.info, :adaptor)
-            samples[i].value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
-        end
     end
 end
 
