@@ -109,13 +109,15 @@ using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
 
-@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-    @eval Utilities begin
-        using ..Turing.CmdStan: CmdStan, Adapt, Hmc
-        using ..Turing: HMC, HMCDA, NUTS
-        include("utilities/stan-interface.jl")
-    end
-end
+# TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
+#   Related: https://github.com/TuringLang/Turing.jl/issues/746
+#@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+#     @eval Utilities begin
+#         using ..Turing.CmdStan: CmdStan, Adapt, Hmc
+#         using ..Turing: HMC, HMCDA, NUTS
+#         include("utilities/stan-interface.jl")
+#     end
+# end
 
 @init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
     using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
