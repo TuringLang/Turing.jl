@@ -194,7 +194,7 @@ end
 #### Sampler construction
 ####
 
-Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
+# Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(alg::Hamiltonian, s::Selector=Selector())
     info = Dict{Symbol, Any}()
 
