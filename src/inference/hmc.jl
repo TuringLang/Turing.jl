@@ -498,17 +498,19 @@ function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL
 end
 
 function steps!(model, spl::Sampler{<:Hamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
-    for i = 1:length(samples)
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
+    # Init step
+    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
+    samples[1].value = Sample(vi, spl).value    # we know we always accept the init step
+    samples[1].value[:elapsed] = time_elapsed
+    # Rest steps
+    for i = 2:length(samples)
+        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(false))
         if is_accept # accepted => store the new predcits
             samples[i].value = Sample(vi, spl).value
         else         # rejected => store the previous predcits
             samples[i] = samples[i - 1]
         end
         samples[i].value[:elapsed] = time_elapsed
-        if haskey(spl.info, :adaptor)
-            samples[i].value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
-        end
     end
 end
 
