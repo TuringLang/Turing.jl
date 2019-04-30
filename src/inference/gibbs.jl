@@ -1,3 +1,7 @@
+###
+### Gibbs samplers / compositional samplers. 
+###
+
 """
     Gibbs(n_iters, algs...)
 
