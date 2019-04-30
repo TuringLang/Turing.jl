@@ -1,3 +1,7 @@
+###
+### Hamiltonian Monte Carlo samplers.
+###
+
 """
     HMC(n_iters::Int, ϵ::Float64, n_leapfrog::Int)
 
@@ -185,7 +189,11 @@ function NUTS{AD}(n_iters::Int,
         1000 : n_adapts_default, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
 end
 
-# Sampler construction
+
+####
+#### Sampler construction
+####
+
 Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(alg::Hamiltonian, s::Selector=Selector())
     info = Dict{Symbol, Any}()
@@ -196,84 +204,6 @@ function Sampler(alg::Hamiltonian, s::Selector=Selector())
     Sampler(alg, info, s)
 end
 
-######################
-# HMC core functions #
-######################
-
-"""
-    gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-
-Generate a function that takes a vector of reals `θ` and compute the logpdf and
-gradient at `θ` for the model specified by `(vi, spl, model)`.
-"""
-function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Vector{Float64}
-        x_old, lj_old = vi[spl], vi.logp
-        _, deriv = gradient_logp(x, vi, model, spl)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return deriv
-    end
-    return ∂logπ∂θ
-end
-
-"""
-    gen_logπ(vi::VarInfo, spl::Sampler, model)
-
-Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
-`(vi, spl, model)`.
-"""
-function gen_logπ(vi::VarInfo, spl::Sampler, model)
-    function logπ(x)::Float64
-        x_old, lj_old = vi[spl], vi.logp
-        vi[spl] = x
-        runmodel!(model, vi, spl)
-        lj = vi.logp
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return lj
-    end
-    return logπ
-end
-
-gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim)
-gen_metric(dim::Int, ::AHMC.UnitPreConditioner)   = AHMC.UnitEuclideanMetric(dim)
-gen_metric(::Int, pc::AHMC.DiagPreConditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(::Int, pc::AHMC.DensePreConditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
-
-gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
-gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
-gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
-
-function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{HMC,HMCDA,NUTS}}
-    # Make sure the code in AHMC is type stable
-    θ = Vector{Float64}(θ)
-
-    # Build Hamiltonian type and trajectory
-    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    traj = gen_traj(alg, ϵ)
-
-    # Sample momentum
-    r = AHMC.rand_momentum(h)
-
-    # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation
-
-    # Call AHMC to make one MCMC transition
-    θ_new, _, α, H_new = AHMC.transition(traj, h, Vector{Float64}(θ), r)
-
-    # NOTE: as `transition` doesn't return `is_accept`,
-    #       I use `H == H_new` to check if the sample is accepted.
-    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
-                            # from the old one, the sample was accepted.
-    alg isa NUTS && (is_accept = true)  # we always accept in NUTS
-
-    # Compute updated log-joint probability
-    lj_new = logπ(θ_new)
-
-    return θ_new, lj_new, is_accept, α
-end
 
 function sample(
     model::Model, alg::Hamiltonian;
@@ -495,7 +425,89 @@ function steps!(model, spl::Sampler{<:Hamiltonian}, vi, samples; rng::AbstractRN
     end
 end
 
-### Tilde operators
+
+#####
+##### HMC core functions
+#####
+
+"""
+    gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
+
+Generate a function that takes a vector of reals `θ` and compute the logpdf and
+gradient at `θ` for the model specified by `(vi, spl, model)`.
+"""
+function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
+    function ∂logπ∂θ(x)::Vector{Float64}
+        x_old, lj_old = vi[spl], vi.logp
+        _, deriv = gradient_logp(x, vi, model, spl)
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return deriv
+    end
+    return ∂logπ∂θ
+end
+
+"""
+    gen_logπ(vi::VarInfo, spl::Sampler, model)
+
+Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
+`(vi, spl, model)`.
+"""
+function gen_logπ(vi::VarInfo, spl::Sampler, model)
+    function logπ(x)::Float64
+        x_old, lj_old = vi[spl], vi.logp
+        vi[spl] = x
+        runmodel!(model, vi, spl)
+        lj = vi.logp
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return lj
+    end
+    return logπ
+end
+
+gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim)
+gen_metric(dim::Int, ::AHMC.UnitPreConditioner)   = AHMC.UnitEuclideanMetric(dim)
+gen_metric(::Int, pc::AHMC.DiagPreConditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(::Int, pc::AHMC.DensePreConditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
+
+gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
+gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
+gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
+
+function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{HMC,HMCDA,NUTS}}
+    # Make sure the code in AHMC is type stable
+    θ = Vector{Float64}(θ)
+
+    # Build Hamiltonian type and trajectory
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    traj = gen_traj(alg, ϵ)
+
+    # Sample momentum
+    r = AHMC.rand_momentum(h)
+
+    # TODO: remove below when we can get is_accept from AHMC.transition
+    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation
+
+    # Call AHMC to make one MCMC transition
+    θ_new, _, α, H_new = AHMC.transition(traj, h, Vector{Float64}(θ), r)
+
+    # NOTE: as `transition` doesn't return `is_accept`,
+    #       I use `H == H_new` to check if the sample is accepted.
+    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
+                            # from the old one, the sample was accepted.
+    alg isa NUTS && (is_accept = true)  # we always accept in NUTS
+
+    # Compute updated log-joint probability
+    lj_new = logπ(θ_new)
+
+    return θ_new, lj_new, is_accept, α
+end
+
+####
+#### Compiler interface, i.e. tilde operators.
+####
 
 function assume(spl::Sampler{<:Hamiltonian},
     dist::Distribution,
@@ -559,9 +571,10 @@ observe(spl::Sampler{<:Hamiltonian},
     value::Any,
     vi::VarInfo) = observe(nothing, ds, value, vi)
 
-###
-### Default adaptor
-###
+
+####
+#### Default HMC stepsize and mass matrix adaptor
+####
 
 function AHMCAdaptor()
         adaptor = AHMC.StanNUTSAdaptor(
