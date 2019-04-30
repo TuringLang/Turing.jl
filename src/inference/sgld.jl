@@ -1,5 +1,5 @@
 """
-    SGLD(n_iters::Int, epsilon::Float64)
+    SGLD(n_iters::Int, ϵ::Float64)
 
  Stochastic Gradient Langevin Dynamics sampler.
 
@@ -12,7 +12,7 @@ SGLD(1000, 0.5)
 Arguments:
 
 - `n_iters::Int` : Number of samples to pull.
-- `epsilon::Float64` : The scaling factor for the learing rate.
+- `ϵ::Float64` : The scaling factor for the learing rate.
 
 Example:
 
@@ -26,22 +26,22 @@ sample(example, SGLD(1000, 0.5))
 """
 mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     n_iters :: Int       # number of samples
-    epsilon :: Float64   # constant scale factor of learning rate
+    ϵ :: Float64   # constant scale factor of learning rate
     space   :: Set{T}    # sampling space, emtpy means all
 end
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-function SGLD{AD}(n_iters, epsilon) where AD
-    SGLD{AD, Any}(n_iters, epsilon, Set())
+function SGLD{AD}(n_iters, ϵ) where AD
+    SGLD{AD, Any}(n_iters, ϵ, Set())
 end
-function SGLD{AD}(n_iters, epsilon, space...) where AD
+function SGLD{AD}(n_iters, ϵ, space...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGLD{AD, eltype(_space)}(n_iters, epsilon, _space)
+    return SGLD{AD, eltype(_space)}(n_iters, ϵ, _space)
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
-    mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.epsilon))
+    mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.ϵ))
     spl.info[:adaptor] = AHMC.NaiveCompAdaptor(AHMC.UnitPreConditioner(), mssa)
 
     spl.selector.tag != :default && invlink!(vi, spl)
@@ -55,7 +55,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
 
     Turing.DEBUG && @debug "compute current step size..."
     γ = .35
-    ϵ_t = spl.alg.epsilon / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
+    ϵ_t = spl.alg.ϵ / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
     mssa = spl.info[:adaptor].ssa
     mssa.state.ϵ = ϵ_t
 
