@@ -1,3 +1,7 @@
+####
+#### Stan interface
+####
+
 # NOTE:
 #   Type fields
 #     fieldnames(CmdStan.Sample)
@@ -44,13 +48,32 @@ function sample(  mf::T,
         end
     else
         if isa(alg.engine, CmdStan.Static)   # hmcda
-            sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time); adapt_conf=adapt)
+            sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time);
+                    adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # nuts
             if isa(alg.metric, CmdStan.diag_e)
-                sample(mf, NUTS(num_samples, num_warmup, adapt.delta); adapt_conf=adapt)
+                sample(mf, NUTS(num_samples, num_warmup, adapt.delta);  adaptor=NUTSAdaptor(adapt))
             else # TODO: reove the following since Turing support this feature now.
                 @warn("[Turing.sample] Turing does not support full covariance matrix for pre-conditioning yet.")
             end
         end
+    end
+end
+
+function NUTSAdaptor(adaptor::AdaptorType) where AdaptorType
+    if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
+        adaptor.engaged ? spl.alg.n_adapts : 0,
+        AHMC.PreConditioner(metric),
+        AHMC.NesterovDualAveraging(adaptor.gamma,
+            adaptor.t0, adaptor.kappa, adaptor.δ, init_ϵ),
+            adaptor.init_buffer,
+            adaptor.term_buffer,
+            adaptor.window
+    else # default adaptor
+        @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
+        adaptor = AHMC.StanNUTSAdaptor(
+            spl.alg.n_adapts, AHMC.PreConditioner(metric),
+            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
+        )
     end
 end

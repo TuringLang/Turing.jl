@@ -274,14 +274,12 @@ function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{
     return θ_new, lj_new, is_accept, α
 end
 
-STAN_DEFAULT_ADAPT_CONF = nothing   # this would be overwritten if `CmdStan` is available
-
 function sample(
     model::Model, alg::Hamiltonian;
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adapt_conf=STAN_DEFAULT_ADAPT_CONF,                 # adapt configuration
+    adaptor = NUTSAdaptor()
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
 )
@@ -379,7 +377,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adapt_conf=nothing,
+    adaptor=NUTSAdaptor(),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -396,24 +394,6 @@ function step(
     if init_ϵ == 0.0
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
-    end
-
-    # Create `adaptor`
-    if adapt_conf == nothing
-        adaptor = AHMC.StanNUTSAdaptor(
-            spl.alg.n_adapts, AHMC.PreConditioner(metric),
-            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
-        )
-    else
-        adaptor = AHMC.StanNUTSAdaptor(
-            adapt_conf.engaged ? spl.alg.n_adapts : 0,
-            AHMC.PreConditioner(metric),
-            AHMC.NesterovDualAveraging(adapt_conf.gamma,
-                adapt_conf.t0, adapt_conf.kappa, adapt_conf.δ, init_ϵ),
-            adapt_conf.init_buffer,
-            adapt_conf.term_buffer,
-            adapt_conf.window
-        )
     end
 
     spl.info[:h] = h
@@ -575,3 +555,14 @@ observe(spl::Sampler{<:Hamiltonian},
     ds::Vector{<:Distribution},
     value::Any,
     vi::VarInfo) = observe(nothing, ds, value, vi)
+
+###
+### Default adaptor
+###
+
+function NUTSAdaptor()
+        adaptor = AHMC.StanNUTSAdaptor(
+            spl.alg.n_adapts, AHMC.PreConditioner(metric),
+            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
+        )
+end

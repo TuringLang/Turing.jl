@@ -88,8 +88,8 @@ An implementation of an algorithm should include the following:
 1. A type specifying the algorithm and its parameters, derived from InferenceAlgorithm
 2. A method of `sample` function that produces results of inference, which is where actual inference happens.
 
-Turing translates models to chunks that call the modelling functions at specified points. 
-The dispatch is based on the value of a `sampler` variable. 
+Turing translates models to chunks that call the modelling functions at specified points.
+The dispatch is based on the value of a `sampler` variable.
 To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
@@ -117,16 +117,14 @@ using .Inference
     end
     @eval Inference begin
         using ..Turing.CmdStan: CmdStan
-        DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
-        STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
 
         Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
-        function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
-            _sampler(alg::Hamiltonian, adapt_conf)
+        function Sampler(alg::Hamiltonian, adaptor::CmdStan.Adapt)
+            _sampler(alg::Hamiltonian, adaptor)
         end
-        include("inference/adapt/stan.jl")
     end
 end
+
 @init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
     using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
     struct FunctionLogDensity{F} <: AbstractLogDensityProblem
