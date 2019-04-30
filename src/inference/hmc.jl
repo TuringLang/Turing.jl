@@ -29,11 +29,11 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
 mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    ϵ   ::  Float64   # leapfrog step size
-    n_leapfrog       ::  Int       # leapfrog step number
-    space     ::  Set{T}    # sampling space, emtpy means all
-    metricT
+    n_iters     ::  Int       # number of samples
+    ϵ           ::  Float64   # leapfrog step size
+    n_leapfrog  ::  Int       # leapfrog step number
+    space       ::  Set{T}    # sampling space, emtpy means all
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 
 HMC(args...) = HMC{ADBackend()}(args...)
@@ -83,13 +83,13 @@ For more information, please view the following paper ([arXiv link](https://arxi
   Research 15, no. 1 (2014): 1593-1623.
 """
 mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for ϵ
-    δ         ::  Float64   # target accept rate
-    λ         ::  Float64   # target leapfrog length
-    space     ::  Set{T}    # sampling space, emtpy means all
-    init_ϵ    ::  Float64
-    metricT
+    n_iters     ::  Int       # number of samples
+    n_adapts    ::  Int       # number of samples with adaption for ϵ
+    δ           ::  Float64   # target accept rate
+    λ           ::  Float64   # target leapfrog length
+    space       ::  Set{T}    # sampling space, emtpy means all
+    init_ϵ      ::  Float64
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
 
@@ -148,14 +148,14 @@ Arguments:
 
 """
 mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
-    n_iters   ::  Int       # number of samples
-    n_adapts  ::  Int       # number of samples with adaption for ϵ
-    δ         ::  Float64   # target accept rate
-    space     ::  Set{T}    # sampling space, emtpy means all
-    max_depth ::  Int
-    Δ_max     ::  Float64
-    init_ϵ    ::  Float64
-    metricT
+    n_iters     ::  Int       # number of samples
+    n_adapts    ::  Int       # number of samples with adaption for ϵ
+    δ           ::  Float64   # target accept rate
+    space       ::  Set{T}    # sampling space, emtpy means all
+    max_depth   ::  Int
+    Δ_max       ::  Float64
+    init_ϵ      ::  Float64
+    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
