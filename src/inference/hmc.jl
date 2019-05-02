@@ -266,7 +266,7 @@ function sample(
     end
 
     # Init h, prop and adaptor
-    step(model, spl, vi, Val(true))
+    step(model, spl, vi, Val(true); adaptor=adaptor)
 
     # Sampling using AHMC and store samples in `samples`
     steps!(model, spl, vi, samples; rng=rng)
@@ -310,7 +310,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor=AHMCAdaptor(spl.alg),
+    adaptor,
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -578,9 +578,11 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::Hamiltonian)
+function AHMCAdaptor(alg::AdaptiveHamiltonian)
         adaptor = AHMC.StanNUTSAdaptor(
-            alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
+            alg.n_adapts, AHMC.Preconditioner(alg.metricT),
             AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
         )
 end
+
+AHMCAdaptor(alg::Hamiltonian) = nothing
