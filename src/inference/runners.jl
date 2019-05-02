@@ -85,23 +85,24 @@ function assume(spl::SampleFromDistribution,
 end
 
 function observe(spl::SampleFromDistribution, dist::Distribution, value, vi::VarInfo)
-    observe(ComputeLogJointDensity(), dist, value, vi)
+    observe(Sampler(ComputeLogJointDensity()), dist, value, vi)
 end
 
 function observe(spl::SampleFromDistribution, dists::Vector{<:Distribution}, values, vi::VarInfo)
-    observe(ComputeLogJointDensity(), dists, values, vi)
+    observe(Sampler(ComputeLogJointDensity()), dists, values, vi)
 end
 
 #################################
 # Compute the log joint Runner. #
 #################################
 
-function assume(spl::ComputeLogJointDensity, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::Sampler{ComputeLogJointDensity}, dist::Distribution, vn::VarName, vi::VarInfo)
+    updategid!(vi, vn, spl)
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::ComputeLogJointDensity,
+function assume(spl::Sampler{ComputeLogJointDensity},
                 dists::AbstractVector{<:Distribution},
                 vn::VarName,
                 var,
@@ -111,6 +112,8 @@ function assume(spl::ComputeLogJointDensity,
     n = size(var)[end]
 
     vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+
+    updategid!.(Ref(vi), vns, Ref(spl))
     rs = vi[vns]
 
     @inbounds begin
@@ -130,17 +133,17 @@ function assume(spl::ComputeLogJointDensity,
     return var, sum(logpdf_with_trans(dist, rs, istrans(vi, first(vns))))
 end
 
-function observe(::ComputeLogJointDensity, dist::Distribution, value, vi::VarInfo)
+function observe(::Sampler{ComputeLogJointDensity}, dist::Distribution, value, ::VarInfo)
     return logpdf(dist, value)
 end
 
-function observe(::ComputeLogJointDensity, dists::Vector{<:UnivariateDistribution}, values, vi::VarInfo)
+function observe(::Sampler{ComputeLogJointDensity}, dists::Vector{<:UnivariateDistribution}, values, ::VarInfo)
     dist = _getdist(dists)
     return sum(logpdf.(dist, values))
 end
 
 # NOTE: this is necessary as we cannot use broadcasting for MV dists.
-function observe(::ComputeLogJointDensity, dists::Vector{<:MultivariateDistribution}, values, vi::VarInfo)
+function observe(::Sampler{ComputeLogJointDensity}, dists::Vector{<:MultivariateDistribution}, values, ::VarInfo)
     dist = _getdist(dists)
     return sum(logpdf(dist, values))
 end
@@ -149,7 +152,7 @@ end
 # Compute the log joint Runner. #
 #################################
 
-function assume(spl::ParticleFiltering, dist::Distribution, vn::VarName, ::VarInfo)
+function assume(spl::Sampler{ParticleFiltering}, dist::Distribution, vn::VarName, ::VarInfo)
 
     vi = current_trace().vi
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
@@ -179,17 +182,17 @@ function assume(spl::ParticleFiltering, dist::Distribution, vn::VarName, ::VarIn
     return r, zero()
 end
 
-function assume(::ParticleFiltering, ::Vector{<:Distribution}, ::VarName, var, ::VarInfo)
+function assume(::Sampler{ParticleFiltering}, ::Vector{<:Distribution}, ::VarName, var, ::VarInfo)
     @error "Particle filtering based methods do not support vectorizing observe statement"
     return -Inf
 end
 
-function observe(::ParticleFiltering, dist::Distribution, value, ::VarInfo)
+function observe(::Sampler{ParticleFiltering}, dist::Distribution, value, ::VarInfo)
     produce(logpdf(dist, value))
     return zero()
 end
 
-function observe(::ParticleFiltering, ::Vector{<:Distribution}, value, ::VarInfo)
+function observe(::Sampler{ParticleFiltering}, ::Vector{<:Distribution}, value, ::VarInfo)
     @error "Particle filtering based methods do not support vectorizing observe statement"
     return -Inf
 end
@@ -207,9 +210,9 @@ function assume(::Nothing, dists::Vector{<:Distribution}, vn::VarName, var, vi::
 end
 
 function observe(::Nothing, dist::Distribution, value, vi::VarInfo)
-    return observe(ComputeLogJointDensity(), dist, value, vi)
+    return observe(Sampler(ComputeLogJointDensity()), dist, value, vi)
 end
 
 function observe(::Nothing, dists::Vector{<:Distribution}, values, vi::VarInfo)
-    return observe(ComputeLogJointDensity(), dists, values, vi)
+    return observe(Sampler(ComputeLogJointDensity()), dists, values, vi)
 end

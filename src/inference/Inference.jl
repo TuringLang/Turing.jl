@@ -48,7 +48,9 @@ export  InferenceAlgorithm,
         get_var,
         get_covar,
         add_sample!,
-        reset!
+        reset!,
+        logjoint,
+        logpdf
 
 ###########
 # Runners #
@@ -62,8 +64,33 @@ _rand(::SampleFromUniform, dist::Distribution) = init(dist)
 _rand(::SampleFromUniform, dist::Distribution, n::Int) = init(dist, n)
 
 struct ComputeLogJointDensity <: AbstractRunner end
+
+@inline Sampler(alg::ComputeLogJointDensity) = Sampler(alg, Selector())
+@inline Sampler(alg::ComputeLogJointDensity, s::Selector) = Sampler(alg, Dict{Symbol,Any}(), s)
+
 struct ComputeLogDensity <: AbstractRunner end
+
+@inline Sampler(alg::ComputeLogDensity) = Sampler(alg, Selector())
+@inline Sampler(alg::ComputeLogDensity, s::Selector) = Sampler(alg, Dict{Symbol,Any}(), s)
+
 struct ParticleFiltering <: AbstractRunner end
+
+@inline Sampler(alg::ParticleFiltering) = Sampler(alg, Selector())
+@inline Sampler(alg::ParticleFiltering, s::Selector) = Sampler(alg, Dict{Symbol,Any}(), s)
+
+#####################
+# Utility Functions #
+#####################
+
+@inline function logjoint(model::Model, vi::AbstractVarInfo; selector::Selector=Selector())
+    runmodel!(model, vi, Sampler(ComputeLogJointDensity(), s))
+    return vi.logp
+end
+
+@inline function logpdf(model::Model, vi::AbstractVarInfo; selector::Selector=Selector())
+    runmodel!(model, vi, Sampler(ComputeLogDensity(), s))
+    return vi.logp
+end
 
 #######################
 # Sampler abstraction #

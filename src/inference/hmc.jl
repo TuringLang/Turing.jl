@@ -136,7 +136,7 @@ function sample(model::Model, alg::Hamiltonian;
 
     if spl.selector.tag == :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logjoint(model, vi; selector = spl.selector)
     end
 
     # HMC steps
@@ -218,7 +218,7 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        logjoint(model, vi; selector = spl.selector)
     end
 
     grad_func = gen_grad_func(vi, spl, model)
@@ -260,22 +260,4 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
     spl.selector.tag != :default && invlink!(vi, spl)
 
     return vi, is_accept
-end
-
-function assume(spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi::VarInfo)
-    # Why do we need this here and not if dist is a vector of dists?
-    updategid!(vi, vn, spl)
-    return assume(ComputeLogJointDensity(), dist, vn, vi)
-end
-
-function assume(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, vn::VarName, var::Any, vi::VarInfo)
-    return assume(ComputeLogJointDensity(), dists, vn, var, vi)
-end
-
-function observe(spl::Sampler{<:Hamiltonian}, dist::Distribution, value, vi::VarInfo)
-    return observe(ComputeLogJointDensity(), dist, value, vi)
-end
-
-function observe(spl::Sampler{<:Hamiltonian}, dists::Vector{<:Distribution}, values, vi::VarInfo)
-    return observe(ComputeLogJointDensity(), dists, values, vi)
 end
