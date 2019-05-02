@@ -310,7 +310,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor,
+    adaptor = AHMCAdaptor(spl.alg),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
