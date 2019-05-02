@@ -9,7 +9,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 
-import Distributions: sample
+import Distributions: sample, logpdf
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume
 
