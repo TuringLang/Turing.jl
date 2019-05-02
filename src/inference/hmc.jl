@@ -62,7 +62,7 @@ function HMC{AD}(
 end
 
 """
-    HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0)
+    HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.1)
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
@@ -78,7 +78,7 @@ Arguments:
 - `n_adapts::Int` : Numbers of samples to use for adaptation.
 - `δ::Float64` : Target acceptance rate. 65% is often recommended.
 - `λ::Float64` : Target leapfrop length.
-- `init_ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
+- `init_ϵ::Float64=0.1` : Inital step size; 0 means automatically search by Turing.
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
@@ -100,7 +100,7 @@ HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
 function HMCDA{AD}(n_iters::Int,
     δ::Float64,
     λ::Float64;
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
@@ -112,7 +112,7 @@ function HMCDA{AD}(n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     λ::Float64;
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
@@ -123,7 +123,7 @@ function HMCDA{AD}(n_iters::Int,
     δ::Float64,
     λ::Float64,
     space...;
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
@@ -170,7 +170,7 @@ function NUTS{AD}(n_iters::Int,
     space...;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
@@ -181,7 +181,7 @@ function NUTS{AD}(n_iters::Int,
     δ::Float64;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
@@ -485,6 +485,8 @@ function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{
     # Build Hamiltonian type and trajectory
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     traj = gen_traj(alg, ϵ)
+
+    h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
 
     # Sample momentum
     r = AHMC.rand_momentum(h)
