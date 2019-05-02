@@ -149,6 +149,52 @@ end
 # Compute the log joint Runner. #
 #################################
 
+function assume(spl::ParticleFiltering, dist::Distribution, vn::VarName, ::VarInfo)
+
+    vi = current_trace().vi
+    if isempty(spl.alg.space) || vn.sym in spl.alg.space
+        if ~haskey(vi, vn)
+            r = rand(dist)
+            push!(vi, vn, r, dist, spl.selector)
+            spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
+        elseif is_flagged(vi, vn, "del")
+            unset_flag!(vi, vn, "del")
+            r = rand(dist)
+            vi[vn] = vectorize(dist, r)
+            setgid!(vi, spl.selector, vn)
+            setorder!(vi, vn, vi.num_produce)
+        else
+            updategid!(vi, vn, spl)
+            r = vi[vn]
+        end
+    else # vn belongs to other sampler <=> conditionning on vn
+        if haskey(vi, vn)
+            r = vi[vn]
+        else
+            r = rand(dist)
+            push!(vi, vn, r, dist, Selector(:invalid))
+        end
+        acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+    end
+    return r, zero()
+end
+
+function assume(::ParticleFiltering, ::Vector{<:Distribution}, ::VarName, var, ::VarInfo)
+    @error "Particle filtering based methods do not support vectorizing observe statement"
+    return -Inf
+end
+
+function observe(::ParticleFiltering, dist::Distribution, value, ::VarInfo)
+    produce(logpdf(dist, value))
+    return zero()
+end
+
+function observe(::ParticleFiltering, ::Vector{<:Distribution}, value, ::VarInfo)
+    @error "Particle filtering based methods do not support vectorizing observe statement"
+    return -Inf
+end
+
+
 ####################
 # runner = nothing #
 ####################
