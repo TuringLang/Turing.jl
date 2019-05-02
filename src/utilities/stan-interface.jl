@@ -64,12 +64,6 @@ function sample(mf::T,
     end
 end
 
-function Sampler(alg::Hamiltonian,
-    adaptor::CmdStanAdaptorType
-) where {CmdStanAdaptorType}
-    _sampler(alg::Hamiltonian, AHMCAdaptor(adaptor))
-end
-
 function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
