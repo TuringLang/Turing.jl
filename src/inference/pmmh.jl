@@ -1,3 +1,7 @@
+###
+### Particle marginal Metropolis-Hastings sampler.
+###
+
 """
     PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})
 

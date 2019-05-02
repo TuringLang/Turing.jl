@@ -42,7 +42,7 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     spl.selector.tag != :default && link!(vi, spl)
 
     mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.ϵ))
-    spl.info[:adaptor] = AHMC.NaiveCompAdaptor(AHMC.UnitPreConditioner(), mssa)
+    spl.info[:adaptor] = AHMC.NaiveCompAdaptor(AHMC.UnitPreconditioner(), mssa)
 
     spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true

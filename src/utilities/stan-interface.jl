@@ -73,7 +73,7 @@ end
 function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
-        AHMC.PreConditioner(metric),
+        AHMC.Preconditioner(metric),
         AHMC.NesterovDualAveraging(adaptor.gamma,
             adaptor.t0, adaptor.kappa, adaptor.δ, init_ϵ),
             adaptor.init_buffer,
@@ -82,7 +82,7 @@ function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
     else # default adaptor
         @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
         adaptor = AHMC.StanNUTSAdaptor(
-            spl.alg.n_adapts, AHMC.PreConditioner(metric),
+            spl.alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
             AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
         )
     end

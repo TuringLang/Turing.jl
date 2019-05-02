@@ -469,9 +469,9 @@ function gen_logπ(vi::VarInfo, spl::Sampler, model)
 end
 
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim)
-gen_metric(dim::Int, ::AHMC.UnitPreConditioner)   = AHMC.UnitEuclideanMetric(dim)
-gen_metric(::Int, pc::AHMC.DiagPreConditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(::Int, pc::AHMC.DensePreConditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(dim::Int, ::AHMC.UnitPreconditioner)   = AHMC.UnitEuclideanMetric(dim)
+gen_metric(::Int, pc::AHMC.DiagPreconditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
+gen_metric(::Int, pc::AHMC.DensePreconditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
 gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
 
 gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
@@ -580,7 +580,7 @@ observe(spl::Sampler{<:Hamiltonian},
 
 function AHMCAdaptor(alg::AdaptiveHamiltonian, metric)
         adaptor = AHMC.StanNUTSAdaptor(
-            alg.n_adapts, AHMC.PreConditioner(metric),
+            alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
             AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
         )
 end
