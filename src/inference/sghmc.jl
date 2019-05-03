@@ -39,17 +39,34 @@ mutable struct SGHMC{AD, T} <: StaticHamiltonian{AD}
     learning_rate::Float64   # learning rate
     momentum_decay::Float64   # momentum decay
     space::Set{T}    # sampling space, emtpy means all
+    metricT::Type{<:AHMC.AbstractMetric}
 end
 SGHMC(args...) = SGHMC{ADBackend()}(args...)
-function SGHMC{AD}(n_iters, learning_rate, momentum_decay) where AD
+
+function SGHMC{AD}(
+    n_iters,
+    learning_rate,
+    momentum_decay
+    ) where AD
     return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set())
 end
-function SGHMC{AD}(n_iters, learning_rate, momentum_decay, space...) where AD
+function SGHMC{AD}(
+    n_iters,
+    learning_rate,
+    momentum_decay,
+    space...;
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGHMC{AD, eltype(_space)}(n_iters, learning_rate, momentum_decay, _space)
+    return SGHMC{AD, eltype(_space)}(n_iters, learning_rate, momentum_decay, _space, metricT)
 end
 
-function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{true})
+function step(
+    model,
+    spl::Sampler{<:SGHMC},
+    vi::VarInfo,
+    is_first::Val{true}
+)
     spl.selector.tag != :default && link!(vi, spl)
 
     # Initialize velocity
@@ -60,7 +77,12 @@ function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{true})
     return vi, true
 end
 
-function step(model, spl::Sampler{<:SGHMC}, vi::VarInfo, is_first::Val{false})
+function step(
+    model,
+    spl::Sampler{<:SGHMC},
+    vi::VarInfo,
+    is_first::Val{false}
+)
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
     spl.info[:eval_num] = 0
@@ -121,14 +143,23 @@ mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
     n_iters :: Int       # number of samples
     ϵ :: Float64   # constant scale factor of learning rate
     space   :: Set{T}    # sampling space, emtpy means all
+    metricT :: Type{<:AHMC.AbstractMetric}
 end
+
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
+
 function SGLD{AD}(n_iters, ϵ) where AD
     SGLD{AD, Any}(n_iters, ϵ, Set())
 end
-function SGLD{AD}(n_iters, ϵ, space...) where AD
+
+function SGLD{AD}(
+    n_iters,
+    ϵ,
+    space...;
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGLD{AD, eltype(_space)}(n_iters, ϵ, _space)
+    return SGLD{AD, eltype(_space)}(n_iters, ϵ, _space, metricT)
 end
 
 function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
