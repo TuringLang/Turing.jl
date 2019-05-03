@@ -78,7 +78,6 @@ end
 
 # Concrete algorithm implementations.
 include("sghmc.jl")
-include("sgld.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
