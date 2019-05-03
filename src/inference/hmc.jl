@@ -410,7 +410,7 @@ end
 # Efficient multiple step sampling for adaptive HMC.
 function steps!(model,
     spl::Sampler{<:AdaptiveHamiltonian},
-    vi
+    vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG
 )
