@@ -42,7 +42,8 @@ end
 
 HMC(args...) = HMC{ADBackend()}(args...)
 
-function HMC{AD}(n_iters::Int,
+function HMC{AD}(
+    n_iters::Int,
     ϵ::Float64,
     n_leapfrog::Int;
     metricT=AHMC.UnitEuclideanMetric
@@ -97,7 +98,8 @@ mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
 
-function HMCDA{AD}(n_iters::Int,
+function HMCDA{AD}(
+    n_iters::Int,
     δ::Float64,
     λ::Float64;
     init_ϵ::Float64=0.1,
@@ -108,7 +110,8 @@ function HMCDA{AD}(n_iters::Int,
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
 
-function HMCDA{AD}(n_iters::Int,
+function HMCDA{AD}(
+    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     λ::Float64;
@@ -118,7 +121,8 @@ function HMCDA{AD}(n_iters::Int,
     return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
 end
 
-function HMCDA{AD}(n_iters::Int,
+function HMCDA{AD}(
+    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     λ::Float64,
@@ -164,7 +168,8 @@ end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
 
-function NUTS{AD}(n_iters::Int,
+function NUTS{AD}(
+    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     space...;
@@ -177,7 +182,8 @@ function NUTS{AD}(n_iters::Int,
     NUTS{AD, eltype(_space)}(n_iters, n_adapts, δ, _space, max_depth, Δ_max, init_ϵ, metricT)
 end
 
-function NUTS{AD}(n_iters::Int,
+function NUTS{AD}(
+    n_iters::Int,
     δ::Float64;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
@@ -289,6 +295,11 @@ function sample(
     return c
 end
 
+
+####
+#### Transition / step functions for HMC samplers.
+####
+
 # Init for StaticHamiltonian
 function step(
     model,
@@ -337,8 +348,13 @@ function step(
     return vi, true
 end
 
-# Single step for Gibbs compatible Hamiltonian
-function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{false})
+# Single step for Gibbs compatible HMC sampling.
+function step(
+    model,
+    spl::Sampler{<:Hamiltonian},
+    vi::VarInfo,
+    is_first::Val{false}
+)
     # Get step size
     ϵ = :adaptor in keys(spl.info) ? AHMC.getϵ(spl.info[:adaptor]) : spl.alg.ϵ
 
@@ -391,8 +407,13 @@ function step(model, spl::Sampler{<:Hamiltonian}, vi::VarInfo, is_first::Val{fal
 end
 
 
-# Function for multiple steps
-function steps!(model, spl::Sampler{<:AdaptiveHamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+# Efficient multiple step sampling for adaptive HMC.
+function steps!(model,
+    spl::Sampler{<:AdaptiveHamiltonian},
+    vi
+    samples;
+    rng::AbstractRNG=GLOBAL_RNG
+)
     ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj], Vector{Float64}(vi[spl]),
         spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
     for i = 1:length(samples)
@@ -401,7 +422,14 @@ function steps!(model, spl::Sampler{<:AdaptiveHamiltonian}, vi, samples; rng::Ab
     end
 end
 
-function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+# Efficient multiple step sampling for static HMC.
+function steps!(
+    model,
+    spl::Sampler{<:HMC},
+    vi,
+    samples;
+    rng::AbstractRNG=GLOBAL_RNG
+)
     ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj],
         Vector{Float64}(vi[spl]), spl.alg.n_iters)
     for i = 1:length(samples)
@@ -410,7 +438,14 @@ function steps!(model, spl::Sampler{<:HMC}, vi, samples; rng::AbstractRNG=GLOBAL
     end
 end
 
-function steps!(model, spl::Sampler{<:Hamiltonian}, vi, samples; rng::AbstractRNG=GLOBAL_RNG)
+# Default multiple step sampling for all HMC samplers.
+function steps!(
+    model,
+    spl::Sampler{<:Hamiltonian},
+    vi,
+    samples;
+    rng::AbstractRNG=GLOBAL_RNG
+)
     # Init step
     time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
     samples[1].value = Sample(vi, spl).value    # we know we always accept the init step
@@ -478,7 +513,14 @@ gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
 gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
-function hmc_step(θ, logπ, ∂logπ∂θ, ϵ, alg::T, metric) where {T<:Union{HMC,HMCDA,NUTS}}
+function hmc_step(
+    θ,
+    logπ,
+    ∂logπ∂θ,
+    ϵ,
+    alg::T,
+    metric
+) where {T<:Union{HMC,HMCDA,NUTS}}
     # Make sure the code in AHMC is type stable
     θ = Vector{Float64}(θ)
 
