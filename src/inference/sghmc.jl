@@ -24,15 +24,6 @@ Arguments:
 - `learning_rate::Float64` : The learning rate.
 - `momentum_decay::Float64` : Momentum decay variable.
 
-Example:
-
-```julia
-@model example begin
-  ...
-end
-
-sample(example, SGHMC(1000, 0.01, 0.1))
-```
 """
 mutable struct SGHMC{AD, T} <: StaticHamiltonian{AD}
     n_iters::Int       # number of samples
@@ -46,9 +37,10 @@ SGHMC(args...) = SGHMC{ADBackend()}(args...)
 function SGHMC{AD}(
     n_iters,
     learning_rate,
-    momentum_decay
+    momentum_decay;
+    metricT=AHMC.UnitEuclideanMetric
     ) where AD
-    return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set())
+    return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set(), metricT)
 end
 function SGHMC{AD}(
     n_iters,
@@ -65,7 +57,8 @@ function step(
     model,
     spl::Sampler{<:SGHMC},
     vi::VarInfo,
-    is_first::Val{true}
+    is_first::Val{true};
+    kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
 
@@ -81,7 +74,8 @@ function step(
     model,
     spl::Sampler{<:SGHMC},
     vi::VarInfo,
-    is_first::Val{false}
+    is_first::Val{false};
+    kwargs...
 )
     # Set parameters
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
@@ -148,8 +142,12 @@ end
 
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
 
-function SGLD{AD}(n_iters, ϵ) where AD
-    SGLD{AD, Any}(n_iters, ϵ, Set())
+function SGLD{AD}(
+    n_iters,
+    ϵ;
+    metricT=AHMC.UnitEuclideanMetric
+) where AD
+    SGLD{AD, Any}(n_iters, ϵ, Set(), metricT)
 end
 
 function SGLD{AD}(
@@ -162,7 +160,13 @@ function SGLD{AD}(
     return SGLD{AD, eltype(_space)}(n_iters, ϵ, _space, metricT)
 end
 
-function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
+function step(
+    model,
+    spl::Sampler{<:SGLD},
+    vi::VarInfo,
+    is_first::Val{true};
+    kwargs...
+)
     spl.selector.tag != :default && link!(vi, spl)
 
     mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.ϵ))
@@ -172,7 +176,13 @@ function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{true})
     return vi, true
 end
 
-function step(model, spl::Sampler{<:SGLD}, vi::VarInfo, is_first::Val{false})
+function step(
+    model,
+    spl::Sampler{<:SGLD},
+    vi::VarInfo,
+    is_first::Val{false};
+    kwargs...
+)
     # Update iteration counter
     spl.info[:i] += 1
     spl.info[:eval_num] = 0
