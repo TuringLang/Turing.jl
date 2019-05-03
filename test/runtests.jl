@@ -36,7 +36,7 @@ include("test_utils/AllUtils.jl")
         include("utilities/distributions.jl")
         include("utilities/io.jl")
         include("utilities/resample.jl")
-        include("utilities/stan-interface.jl")
+      # include("utilities/stan-interface.jl")
         include("utilities/util.jl")
     end
 end
