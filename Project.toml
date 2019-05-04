@@ -23,3 +23,4 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
 julia = ">= 1.0"
+AdvancedHMC = ">= 0.1.5"
