@@ -97,8 +97,8 @@ probability in `vi`.
 """
 function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
     setlogp!(vi, zero(Float64))
-    if spl isa Sampler && isdefined(spl.info, :eval_num)
-        spl.info.eval_num += 1
+    if spl isa Sampler && haskey(spl.info, :eval_num)
+        spl.info[:eval_num] += 1
     end
     model(vi, spl)
     return vi
