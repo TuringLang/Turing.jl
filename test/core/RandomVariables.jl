@@ -14,7 +14,79 @@ i, j, k = 1, 2, 3
 include("../test_utils/AllUtils.jl")
 
 @testset "RandomVariables.jl" begin
+    @turing_test "Base" begin
+        # Test Base functions:
+        #   string, Symbol, ==, hash, in, keys, haskey, isempty, push!, empty!,
+        #   getindex, setindex!, getproperty, setproperty!
+        csym = gensym()
+        vn1 = VarName(csym, :x, "[1][2]", 1)
+        @test string(vn1) == "{$csym,x[1][2]}:1"
+        @test string(vn1, all=false) == "x[1][2]"
+        @test Symbol(vn1) == Symbol("x[1][2]")
+
+        vn2 = VarName(csym, :x, "[1, 2][2]", 1)
+        @test vn2 == vn1
+        @test hash(vn2) == hash(vn1)
+        @test in(vn1, Set([:x]))
+
+        function test_base!(vi)
+            empty!(vi)
+            @test vi.logp == 0
+            @test vi.num_produce == 0
+
+            vn = VarName(gensym(), :x, "", 1)
+            dist = Normal(0, 1)
+            r = rand(dist)
+            gid = Selector()
+
+            @test isempty(vi)
+            @test ~in(vn, keys(vi))
+            @test ~haskey(vi, vn)
+            push!(vi, vn, r, dist, gid)
+            @test ~isempty(vi)
+            @test in(vn, keys(vi))
+            @test haskey(vi, vn)
+
+            @test length(vi[vn]) == 1
+            @test length(vi[SampleFromPrior()]) == 1
+
+            @test vi[vn] == r
+            @test vi[SampleFromPrior()][1] == r
+            vi[vn] = [2*r]
+            @test vi[vn] == 2*r
+            @test vi[SampleFromPrior()][1] == 2*r
+            vi[SampleFromPrior()] = [3*r]
+            @test vi[vn] == 3*r
+            @test vi[SampleFromPrior()][1] == 3*r
+
+            empty!(vi)
+            @test isempty(vi)
+            push!(vi, vn, r, dist, gid)
+
+            function test_in()
+                space = Set([:x, :y, :(z[1])])
+                vn1 = genvn(:x)
+                vn2 = genvn(:y)
+                vn3 = genvn(:(x[1]))
+                vn4 = genvn(:(z[1][1]))
+                vn5 = genvn(:(z[2]))
+                vn6 = genvn(:z)
+    
+                @test in(vn1, space)
+                @test in(vn2, space)
+                @test in(vn3, space)
+                @test in(vn4, space)
+                @test ~in(vn5, space)
+                @test ~in(vn6, space)
+            end
+            test_in()
+        end
+        vi = VarInfo()
+        test_base!(vi)
+        test_base!(empty!(TypedVarInfo(vi)))
+    end
     @turing_testset "runmodel!" begin
+        # Test that eval_num is incremented when calling runmodel!
         @model testmodel() = begin
             x ~ Normal()
         end
@@ -29,6 +101,8 @@ include("../test_utils/AllUtils.jl")
         @test spl.info[:eval_num] == 2
     end
     @turing_testset "flags" begin
+        # Test flag setting:
+        #    is_flagged, set_flag!, unset_flag!
         function test_varinfo!(vi)
             vn_x = VarName(gensym(), :x, "", 1)
             dist = Normal(0, 1)
@@ -50,24 +124,8 @@ include("../test_utils/AllUtils.jl")
         test_varinfo!(vi)
         test_varinfo!(empty!(TypedVarInfo(vi)))
     end
-    @turing_testset "in" begin
-        space = Set([:x, :y, :(z[1])])
-        vn1 = genvn(:x)
-        vn2 = genvn(:y)
-        vn3 = genvn(:(x[1]))
-        vn4 = genvn(:(z[1][1]))
-        vn5 = genvn(:(z[2]))
-        vn6 = genvn(:z)
-
-        @test in(vn1, space)
-        @test in(vn2, space)
-        @test in(vn3, space)
-        @test in(vn4, space)
-        @test ~in(vn5, space)
-        @test ~in(vn6, space)
-    end
     @testset "orders" begin
-        randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin
+        function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler)
             if ~haskey(vi, vn)
                 r = rand(dist)
                 Turing.push!(vi, vn, r, dist, spl)
@@ -188,7 +246,15 @@ include("../test_utils/AllUtils.jl")
         # Sampling
         chain = sample(priorsinarray(xs), HMC(10, 0.01, 10))
     end
-    @turing_testset "test_varname" begin
+    @turing_testset "varname" begin
+        csym = gensym()
+        vn1 = VarName(csym, :x, "[1]", 1)
+        @test vn1 == VarName{:x}(csym, "[1]", 1)
+        @test vn1 == VarName{:x}(csym, "[1]")
+        @test vn1 == VarName([csym, :x], "[1]")
+        vn2 = VarName(csym, :x, "[2]", 1)
+        @test vn2 == VarName(vn1, "[2]")
+
         # Symbol
         v_sym = string(:x)
         @test v_sym == "x"
@@ -235,16 +301,6 @@ include("../test_utils/AllUtils.jl")
         check_numerical(chain, ["p[1][1]"], [0], eps = 0.25)
     end
     @turing_testset "varinfo" begin
-        # Test for uid() (= string())
-        csym = gensym()
-        vn1 = VarName(csym, :x, "[1]", 1)
-        @test string(vn1) == "{$csym,x[1]}:1"
-
-        vn2 = VarName(csym, :x, "[1]", 2)
-        vn11 = VarName(csym, :x, "[1]", 1)
-
-        @test vn11 == vn1
-
         dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
         function test_varinfo!(vi)
             spl2 = Turing.Sampler(PG(5,5))

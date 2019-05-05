@@ -7,6 +7,7 @@ using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution, link, invlink
 using Distributions
 
+import ...Turing: runmodel! 
 import Base:    string, 
                 Symbol, 
                 ==, 

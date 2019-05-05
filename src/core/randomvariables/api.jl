@@ -95,7 +95,7 @@ end
 Samples from `model` using the sampler `spl` storing the sample and log joint 
 probability in `vi`.
 """
-function Turing.runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
+function runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
     setlogp!(vi, zero(Float64))
     if spl isa Sampler && haskey(spl.info, :eval_num)
         spl.info[:eval_num] += 1
@@ -174,18 +174,19 @@ function setproperty!(vi::VarInfo, f::Symbol, x)
 end
 
 """
-`empty!(vi::TypedVarInfo)`
+`empty!(vi::VarInfo)`
 
 Empties all the fields of `vi.metadata` and resets `vi.logp` and `vi.num_produce` to 
 zeros. This is useful when using a sampling algorithm that assumes an empty 
 `vi::VarInfo`, e.g. `SMC`. 
 """
-function empty!(vi::TypedVarInfo)
+function empty!(vi::VarInfo)
     _empty!(vi.metadata)
     vi.logp = 0
     vi.num_produce = 0
     return vi
 end
+@inline _empty!(metadata::Metadata) = empty!(metadata)
 @inline function _empty!(metadata::NamedTuple{names}) where {names}
     # Check if the named tuple is empty and end the recursion
     length(names) === 0 && return nothing
