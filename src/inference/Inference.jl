@@ -126,7 +126,7 @@ function assume(spl::A,
     dist = dists[1]
     n = size(var)[end]
 
-    vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+    vns = map(i -> VarName(vn, "[$i]"), 1:n)
 
     if haskey(vi, vns[1])
         rs = vi[vns]
@@ -210,7 +210,7 @@ end
 function Sample(vi::UntypedVarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(vi)
-        value[RandomVariables.sym_idx(vn)] = vi[vn]
+        value[Symbol(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
