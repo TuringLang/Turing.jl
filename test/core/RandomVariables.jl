@@ -4,7 +4,8 @@ using Turing: Selector, reconstruct, invlink, CACHERESET,
 using Turing.RandomVariables
 using Turing.RandomVariables: uid, _getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
-    set_flag!, unset_flag!, VarInfo, TypedVarInfo
+    set_flag!, unset_flag!, VarInfo, TypedVarInfo,
+    getlogp, setlogp!, resetlogp!, acclogp!
 using Distributions
 using ForwardDiff: Dual
 using Test
@@ -303,6 +304,14 @@ include("../test_utils/AllUtils.jl")
     @turing_testset "varinfo" begin
         dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]
         function test_varinfo!(vi)
+            @test getlogp(vi) == 0
+            setlogp!(vi, 1)
+            @test getlogp(vi) == 1
+            acclogp!(vi, 1)
+            @test getlogp(vi) == 2
+            resetlogp!(vi)
+            @test getlogp(vi) == 0
+
             spl2 = Turing.Sampler(PG(5,5))
             vn_w = VarName(gensym(), :w, "", 1)
             randr(vi, vn_w, dists[1], spl2, true)

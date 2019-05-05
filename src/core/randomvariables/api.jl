@@ -1,3 +1,5 @@
+# VarName
+
 """
 `VarName(csym, sym, indexing, counter)`
 `VarName{sym}(csym::Symbol, indexing::String)`
@@ -88,6 +90,8 @@ function in(vn::VarName, space::Set)::Bool
         return length(valid) > 0
     end
 end
+
+# VarInfo
 
 """
 `runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler)`
@@ -239,7 +243,6 @@ Sets the log of the joint probability of the observed data and parameters sample
 `vi` to `logp`.
 """
 setlogp!(vi::AbstractVarInfo, logp::Real) = vi.logp = logp
-
 
 """
 `acclogp!(vi::VarInfo, logp::Real)`
