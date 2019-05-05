@@ -4,7 +4,7 @@ using Turing: Selector, reconstruct, invlink, CACHERESET,
 using Turing.RandomVariables
 using Turing.RandomVariables: uid, _getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
-    set_flag!, unset_flag!, is_inside, VarInfo, TypedVarInfo
+    set_flag!, unset_flag!, VarInfo, TypedVarInfo
 using Distributions
 using ForwardDiff: Dual
 using Test
@@ -50,7 +50,7 @@ include("../test_utils/AllUtils.jl")
         test_varinfo!(vi)
         test_varinfo!(empty!(TypedVarInfo(vi)))
     end
-    @turing_testset "is_inside" begin
+    @turing_testset "in" begin
         space = Set([:x, :y, :(z[1])])
         vn1 = genvn(:x)
         vn2 = genvn(:y)
@@ -59,12 +59,12 @@ include("../test_utils/AllUtils.jl")
         vn5 = genvn(:(z[2]))
         vn6 = genvn(:z)
 
-        @test is_inside(vn1, space)
-        @test is_inside(vn2, space)
-        @test is_inside(vn3, space)
-        @test is_inside(vn4, space)
-        @test ~is_inside(vn5, space)
-        @test ~is_inside(vn6, space)
+        @test in(vn1, space)
+        @test in(vn2, space)
+        @test in(vn3, space)
+        @test in(vn4, space)
+        @test ~in(vn5, space)
+        @test ~in(vn6, space)
     end
     @testset "orders" begin
         randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler) = begin

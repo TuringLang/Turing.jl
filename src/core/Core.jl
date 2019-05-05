@@ -7,7 +7,7 @@ using Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 
-include("RandomVariables.jl")
+include("randomvariables/RandomVariables.jl")
 @reexport using .RandomVariables
 
 include("compiler.jl")
