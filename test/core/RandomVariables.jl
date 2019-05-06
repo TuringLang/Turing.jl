@@ -165,6 +165,25 @@ include("../test_utils/AllUtils.jl")
         @test vi.metadata.s.vals == v_s
         @test vi.metadata.m.vals == v_m
     end
+    @turing_test "setgid!" begin
+        vi = VarInfo()
+        vn = VarName(gensym(), :x, "", 1)
+        dist = Normal(0, 1)
+        r = rand(dist)
+        gid1 = Selector()
+        gid2 = Selector(2, :HMC)
+
+        push!(vi, vn, r, dist, gid1)
+        @test vi.gids[vi.idcs[vn]] == Set([gid1])
+        setgid!(vi, gid2, vn)
+        @test vi.gids[vi.idcs[vn]] == Set([gid1, gid2])
+
+        vi = empty!(TypedVarInfo(vi))
+        push!(vi, vn, r, dist, gid1)
+        @test vi.metadata.x.gids[vi.metadata.x.idcs[vn]] == Set([gid1])
+        setgid!(vi, gid2, vn)
+        @test vi.metadata.x.gids[vi.metadata.x.idcs[vn]] == Set([gid1, gid2])
+    end
     @testset "orders" begin
         function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler)
             if ~haskey(vi, vn)
