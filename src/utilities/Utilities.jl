@@ -6,20 +6,13 @@ using StatsFuns, SpecialFunctions
 using MCMCChains: AbstractChains, Chains, setinfo
 import Distributions: sample
 
-export  resample,
-        randcat,
-        resample_multinomial,
-        resample_residual,
-        resample_stratified,
-        resample_systematic,
-        vectorize,
+export  vectorize,
         reconstruct,
         reconstruct!,
         Sample,
         Chain,
         init,
         vectorize,
-        data,
         logpdf_binomial_logit,
         Flat,
         FlatPos,
@@ -28,7 +21,6 @@ export  resample,
 
 include("helper.jl")
 include("robustinit.jl")
-include("util.jl")         # utility functions
 include("io.jl")           # I/O
 include("distributions.jl")
 
