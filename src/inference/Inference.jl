@@ -81,10 +81,7 @@ include("sghmc.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
-include("smc.jl")
-include("pgibbs.jl")
-include("pmmh.jl")
-include("ipmcmc.jl")
+include("AdvancedSMC.jl")
 include("gibbs.jl")
 
 ## Fallback functions
