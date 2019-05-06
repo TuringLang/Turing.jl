@@ -22,12 +22,10 @@ include("test_utils/AllUtils.jl")
             include("inference/dynamichmc.jl")
             include("inference/gibbs.jl")
             include("inference/hmc.jl")
-            include("inference/ipmcmc.jl")
             include("inference/is.jl")
             include("inference/mh.jl")
-            include("inference/pmmh.jl")
             include("inference/sghmc.jl")
-            include("inference/smc.jl")
+            include("inference/AdvancedSMC.jl")
         end
     end
 

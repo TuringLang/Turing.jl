@@ -26,7 +26,6 @@ export  resample,
         BinomialLogit,
         VecBinomialLogit
 
-include("resample.jl")
 include("helper.jl")
 include("robustinit.jl")
 include("util.jl")         # utility functions
