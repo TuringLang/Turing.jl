@@ -41,8 +41,7 @@ jobs:
       env: STAGE=numerical
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;Pkg.update();
-                   Pkg.add("Turing");
+        - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
     - stage: test
       julia: 1.0
