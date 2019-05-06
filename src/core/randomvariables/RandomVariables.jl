@@ -2,12 +2,12 @@ module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
     AbstractSampler, Sampler, SampleFromPrior,
-    Selector
+    Selector, getspace
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution, link, invlink
 using Distributions
 
-import ...Turing: runmodel! 
+import ...Turing: runmodel!
 import Base:    string, 
                 Symbol, 
                 ==, 

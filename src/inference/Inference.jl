@@ -12,6 +12,7 @@ using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 import AdvancedHMC; const AHMC = AdvancedHMC
 
+import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume
@@ -39,7 +40,6 @@ export  InferenceAlgorithm,
         PIMH,
         PMMH,
         IPMCMC,  # particle-based sampling
-        getspace,
         assume,
         observe,
         step,
@@ -228,5 +228,7 @@ function Sample(vi::AbstractVarInfo, spl::Sampler)
     end
     return s
 end
+
+getspace(spl::Sampler) = getspace(spl.alg)
 
 end # module
