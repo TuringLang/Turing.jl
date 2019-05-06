@@ -1,6 +1,6 @@
 using Turing, Random
 using Turing: Selector, reconstruct, invlink, CACHERESET, 
-    SampleFromPrior, Sampler, runmodel!
+    SampleFromPrior, Sampler, runmodel!, SampleFromUniform
 using Turing.RandomVariables
 using Turing.RandomVariables: uid, _getidcs,
     set_retained_vns_del_by_spl!, is_flagged, 
@@ -124,6 +124,46 @@ include("../test_utils/AllUtils.jl")
         vi = VarInfo()
         test_varinfo!(vi)
         test_varinfo!(empty!(TypedVarInfo(vi)))
+    end
+    @turing_test "link!" begin
+        # Test linking spl and vi:
+        #    link!, invlink!, istrans
+        @model gdemo(x, y) = begin
+            s ~ InverseGamma(2,3)
+            m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
+            x ~ Normal(m, sqrt(s))
+            y ~ Normal(m, sqrt(s))
+        end
+        model = gdemo(1.0, 2.0)
+
+        vi = VarInfo()
+        model(vi, SampleFromUniform())
+
+        @test all(i->~istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        alg = HMC(1000, 0.1, 5)
+        spl = Sampler(alg)
+        v = copy(vi.vals)
+        link!(vi, spl)
+        @test all(i->istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        invlink!(vi, spl)
+        @test all(i->~istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        @test vi.vals == v
+
+        vi = TypedVarInfo(vi)
+        alg = HMC(1000, 0.1, 5)
+        spl = Sampler(alg)
+        @test all(i->~istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
+        @test all(i->~istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        v_s = copy(vi.metadata.s.vals)
+        v_m = copy(vi.metadata.m.vals)
+        link!(vi, spl)
+        @test all(i->istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
+        @test all(i->istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        invlink!(vi, spl)
+        @test all(i->~istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
+        @test all(i->~istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        @test vi.metadata.s.vals == v_s
+        @test vi.metadata.m.vals == v_m
     end
     @testset "orders" begin
         function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler)
