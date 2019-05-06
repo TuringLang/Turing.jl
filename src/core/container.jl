@@ -199,9 +199,11 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
   (pc.logE += logw)
 
 
-function resample!( pc :: ParticleContainer,
-                   randcat :: Function = resample_systematic,
-                   ref :: Union{Particle, Nothing} = nothing)
+function resample!(
+    pc :: ParticleContainer,
+    randcat :: Function = Turing.Inference.resample_systematic,
+    ref :: Union{Particle, Nothing} = nothing
+)
   n1, particles = pc.num_particles, collect(pc)
   @assert n1 == length(particles)
 
