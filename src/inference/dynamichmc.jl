@@ -1,3 +1,7 @@
+###
+### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
+###
+
 struct DynamicNUTS{AD, T} <: Hamiltonian{AD}
     n_iters   ::  Integer   # number of samples
     space     ::  Set{T}    # sampling space, emtpy means all
@@ -9,22 +13,6 @@ end
 Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package.
 To use it, make sure you have the DynamicHMC package installed.
 
-```julia
-# Import Turing and DynamicHMC.
-using DynamicHMC, Turing
-
-# Model definition.
-@model gdemo(x, y) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
-  return s, m
-end
-
-# Pull 2,000 samples using DynamicNUTS.
-chn = sample(gdemo(1.5, 2.0), DynamicNUTS(2000))
-```
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
 function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
@@ -32,7 +20,7 @@ function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
     DynamicNUTS{AD, eltype(_space)}(n_iters, _space)
 end
 
-function Sampler(alg::DynamicNUTS{T}, s::Selector) where T <: Hamiltonian
+function Sampler(alg::DynamicNUTS{T}, s::Selector=Selector()) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}(), s)
 end
 
@@ -50,7 +38,7 @@ function sample(model::Model,
     end
 
     vi = VarInfo()
-    model(vi, SampleFromUniform())
+    runmodel!(model, vi, SampleFromUniform())
 
     if spl.selector.tag == :default
         link!(vi, spl)

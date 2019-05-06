@@ -3,6 +3,7 @@ uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 version = "0.6.17"
 
 [deps]
+AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
@@ -13,6 +14,7 @@ MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
@@ -21,4 +23,16 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
+AdvancedHMC = ">= 0.1.5"
 julia = ">= 1.0"
+
+[extras]
+CmdStan = "593b3428-ca2f-500c-ae53-031589ec8ddd"
+DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
+FDM = "e25cca7e-83ef-51fa-be6c-dfe2a3123128"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
+
+[targets]
+test = ["UnicodePlots", "StatsBase", "SpecialFunctions", "FDM", "DynamicHMC", "CmdStan"]

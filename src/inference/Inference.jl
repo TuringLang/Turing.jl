@@ -9,6 +9,8 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Selector
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
+using Random: GLOBAL_RNG, AbstractRNG
+import AdvancedHMC; const AHMC = AdvancedHMC
 
 import Distributions: sample
 import ..Core: getchunksize, getADtype
@@ -63,28 +65,19 @@ getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
-# mutable struct HMCState{T<:Real}
-#     epsilon  :: T
-#     std     :: Vector{T}
-#     lf_num   :: Integer
-#     eval_num :: Integer
-# end
-#
-#  struct Sampler{TH<:Hamiltonian,TA<:AbstractAdapter} <: AbstractSampler
-#    alg   :: TH
-#    state :: HMCState
-#    adapt :: TA
-#  end
+"""
+    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 
-# Helper functions
-include("adapt/adapt.jl")
-include("support/hmc_core.jl")
+Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
+
+Note: This function is only used in PMMH.
+"""
+function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
+    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+end
 
 # Concrete algorithm implementations.
-include("hmcda.jl")
-include("nuts.jl")
 include("sghmc.jl")
-include("sgld.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
@@ -230,11 +223,8 @@ end
 # VarInfo, combined with spl.info, to Sample
 function Sample(vi::AbstractVarInfo, spl::Sampler)
     s = Sample(vi)
-    if haskey(spl.info, :wum)
-        s.value[:epsilon] = getss(spl.info[:wum])
-    end
-    if haskey(spl.info, :lf_num)
-        s.value[:lf_num] = spl.info[:lf_num]
+    if haskey(spl.info, :adaptor)
+        s.value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
     end
     if haskey(spl.info, :eval_num)
         s.value[:eval_num] = spl.info[:eval_num]

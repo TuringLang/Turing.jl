@@ -88,7 +88,9 @@ An implementation of an algorithm should include the following:
 1. A type specifying the algorithm and its parameters, derived from InferenceAlgorithm
 2. A method of `sample` function that produces results of inference, which is where actual inference happens.
 
-Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a `sampler` variable. To include a new inference algorithm implements the requirements mentioned above in a separate file,
+Turing translates models to chunks that call the modelling functions at specified points.
+The dispatch is based on the value of a `sampler` variable.
+To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
 mutable struct Sampler{T} <: AbstractSampler
@@ -107,24 +109,16 @@ using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
 
-@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-    @eval Utilities begin
-        using ..Turing.CmdStan: CmdStan, Adapt, Hmc
-        using ..Turing: HMC, HMCDA, NUTS
-        include("utilities/stan-interface.jl")
-    end
-    @eval Inference begin
-        using ..Turing.CmdStan: CmdStan
-        DEFAULT_ADAPT_CONF_TYPE = Union{DEFAULT_ADAPT_CONF_TYPE, CmdStan.Adapt}
-        STAN_DEFAULT_ADAPT_CONF = CmdStan.Adapt()
+# TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
+#   Related: https://github.com/TuringLang/Turing.jl/issues/746
+#@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
+#     @eval Utilities begin
+#         using ..Turing.CmdStan: CmdStan, Adapt, Hmc
+#         using ..Turing: HMC, HMCDA, NUTS
+#         include("utilities/stan-interface.jl")
+#     end
+# end
 
-        Sampler(alg::Hamiltonian) =  Sampler(alg, CmdStan.Adapt())
-        function Sampler(alg::Hamiltonian, adapt_conf::CmdStan.Adapt)
-            _sampler(alg::Hamiltonian, adapt_conf)
-        end
-        include("inference/adapt/stan.jl")
-    end
-end
 @init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
     using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
     struct FunctionLogDensity{F} <: AbstractLogDensityProblem
@@ -167,6 +161,7 @@ export  @model,                 # modelling
         HMCDA,
         NUTS,
         DynamicNUTS,
+        ANUTS,
 
         IS,                     # particle-based sampling
         SMC,

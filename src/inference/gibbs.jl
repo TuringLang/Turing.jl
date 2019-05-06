@@ -1,3 +1,7 @@
+###
+### Gibbs samplers / compositional samplers. 
+###
+
 """
     Gibbs(n_iters, algs...)
 
@@ -124,7 +128,7 @@ function sample(
         Turing.DEBUG && @debug "Gibbs stepping..."
 
         time_elapsed = zero(Float64)
-        lp = nothing; epsilon = nothing; lf_num = nothing; eval_num = nothing
+        lp = nothing; ϵ = nothing; eval_num = nothing
 
         for local_spl in spl.info[:samplers]
             last_spl = local_spl
@@ -141,10 +145,9 @@ function sample(
                         samples[i_thin].value = Sample(varInfo).value
                         samples[i_thin].value[:elapsed] = time_elapsed_thin
                         if ~isa(local_spl.alg, Hamiltonian)
-                            # If statement below is true if there is a HMC component which provides lp and epsilon
+                            # If statement below is true if there is a HMC component which provides lp and ϵ
                             if lp != nothing samples[i_thin].value[:lp] = lp end
-                            if epsilon != nothing samples[i_thin].value[:epsilon] = epsilon end
-                            if lf_num != nothing samples[i_thin].value[:lf_num] = lf_num end
+                            if ϵ != nothing samples[i_thin].value[:ϵ] = ϵ end
                             if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
                         end
                         i_thin += 1
@@ -154,8 +157,11 @@ function sample(
 
                 if isa(local_spl.alg, Hamiltonian)
                     lp = getlogp(varInfo)
-                    epsilon = getss(local_spl.info[:wum])
-                    lf_num = local_spl.info[:lf_num]
+                    if local_spl.alg isa AdaptiveHamiltonian
+                        ϵ = AHMC.getϵ(local_spl.info[:adaptor])
+                    else
+                        ϵ = local_spl.alg.ϵ
+                    end
                     eval_num = local_spl.info[:eval_num]
                 end
             else
@@ -168,10 +174,9 @@ function sample(
         if spl.alg.thin
             samples[i].value = Sample(varInfo).value
             samples[i].value[:elapsed] = time_elapsed
-            # If statement below is true if there is a HMC component which provides lp and epsilon
+            # If statement below is true if there is a HMC component which provides lp and ϵ
             if lp != nothing samples[i].value[:lp] = lp end
-            if epsilon != nothing samples[i].value[:epsilon] = epsilon end
-            if lf_num != nothing samples[i].value[:lf_num] = lf_num end
+            if ϵ != nothing samples[i].value[:ϵ] = ϵ end
             if eval_num != nothing samples[i].value[:eval_num] = eval_num end
         end
 

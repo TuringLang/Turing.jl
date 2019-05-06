@@ -72,13 +72,7 @@ end
 #########
 
 # Variables to put in the Chains :internal section.
-const _internal_vars = ["elapsed",
- "epsilon",
- "eval_num",
- "lf_eps",
- "lf_num",
- "lp"]
-
+const _internal_vars = ["elapsed", "eval_num", "lf_eps", "lp"]
 
 function Chain(w::Real, s::AbstractArray{Sample})
     samples = flatten.(s)
@@ -138,16 +132,17 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
     return
 end
 
-function save(c::Chains, spl::Sampler, model, vi, samples)
+function save(c::Chains, spl::AbstractSampler, model, vi, samples)
     nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
 
 function resume(c::Chains, n_iter::Int)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
-    return sample(  c.info[:model],
-                    c.info[:spl].alg;    # this is actually not used
-                    resume_from=c,
-                    reuse_spl_n=n_iter
-                  )
+    return sample(
+        c.info[:model],
+        c.info[:spl].alg;    # this is actually not used
+        resume_from=c,
+        reuse_spl_n=n_iter
+    )
 end
