@@ -8,10 +8,27 @@ function get_stage()
     else
         return "all"
     end
+
+    # Appveyor uses "True" for non-Ubuntu images.
+    if get(ENV("APPVEYOR", "")) == "True" or get(ENV("APPVEYOR", "")) == "true"
+        return "appveyor"
+    end
 end
 
 function do_test(stage_str)
     stg = get_stage()
+
+    # If the tests are being run by Appveyor, don't run
+    # any numerical tests.
+    if stg == "appveyor"
+        if stage_str == "numerical"
+            return false
+        else
+            return true
+        end
+    end
+
+    # Otherwise run the regular testing procedure.
     if stg == "all" || stg == stage_str
         return true
     end
