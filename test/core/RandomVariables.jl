@@ -57,7 +57,7 @@ include("../test_utils/AllUtils.jl")
         @test string(vn1, all=false) == "x[1][2]"
         @test Symbol(vn1) == Symbol("x[1][2]")
 
-        vn2 = VarName(csym, :x, "[1, 2][2]", 1)
+        vn2 = VarName(csym, :x, "[1][2]", 1)
         @test vn2 == vn1
         @test hash(vn2) == hash(vn1)
         @test in(vn1, Set([:x]))
@@ -73,11 +73,9 @@ include("../test_utils/AllUtils.jl")
             gid = Selector()
 
             @test isempty(vi)
-            @test ~in(vn, keys(vi))
             @test ~haskey(vi, vn)
             push!(vi, vn, r, dist, gid)
             @test ~isempty(vi)
-            @test in(vn, keys(vi))
             @test haskey(vi, vn)
 
             @test length(vi[vn]) == 1

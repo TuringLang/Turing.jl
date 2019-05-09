@@ -375,7 +375,7 @@ setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
     vals = getfield(metadata, f).vals
     @views vals .= val[start + 1 : start + length(vals)]
     # Recurse using the remaining of `metadata` and the remaining of `val`
-    return _setall(_tail(metadata), val, start + length(vals))
+    return _setall!(_tail(metadata), val, start + length(vals))
 end
 
 """
