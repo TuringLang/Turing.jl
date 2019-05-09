@@ -42,7 +42,7 @@ function logpdf_binomial_logit(n, logitp, k)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
-function Distributions.logpdf(d::BinomialLogit{<:Real}, k::T) where {T<:Integer}
+function Distributions.logpdf(d::BinomialLogit{<:Real}, k::Int)
     return logpdf_binomial_logit(d.n, d.logitp, k)
 end
 
