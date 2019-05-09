@@ -1,3 +1,552 @@
+module RandomVariables
+
+using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
+    AbstractSampler, Sampler, SampleFromPrior,
+    Selector, getspace
+using ...Utilities: vectorize, reconstruct, reconstruct!
+using Bijectors: SimplexDistribution, link, invlink
+using Distributions
+
+import ...Turing: runmodel!
+import Base:    string, 
+                Symbol, 
+                ==, 
+                hash, 
+                in, 
+                getindex, 
+                setindex!, 
+                push!, 
+                show, 
+                isempty, 
+                empty!, 
+                getproperty, 
+                setproperty!, 
+                keys, 
+                haskey
+
+export  VarName, 
+        AbstractVarInfo,
+        VarInfo,
+        UntypedVarInfo,
+        getlogp, 
+        setlogp!, 
+        set_retained_vns_del_by_spl!, 
+        resetlogp!, 
+        is_flagged, 
+        unset_flag!, 
+        setgid!, 
+        setorder!, 
+        updategid!, 
+        acclogp!, 
+        istrans, 
+        link!, 
+        invlink!
+
+#########
+#########
+# Types #
+#########
+#########
+
+
+###########
+# VarName #
+###########
+"""
+```
+struct VarName{sym}
+    csym      ::    Symbol
+    indexing  ::    String
+    counter   ::    Int
+end
+```
+
+A variable identifier. Every variable has a symbol `sym`, indices `indexing`, and 
+internal fields: `csym` and `counter`. The Julia variable in the model corresponding to 
+`sym` can refer to a single value or to a hierarchical array structure of univariate, 
+multivariate or matrix variables. `indexing` stores the indices that can access the 
+random variable from the Julia variable. 
+
+Examples:
+
+- `x[1] ~ Normal()` will generate a `VarName` with `sym == :x` and `indexing == "[1]"`.
+- `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName` with `sym == :x` and 
+ `indexing == "[Colon(), 1]"`.
+- `x[:,1][2] ~ Normal()` will generate a `VarName` with `sym == :x` and 
+ `indexing == "[Colon(), 1][2]"`.
+"""
+struct VarName{sym}
+    csym      ::    Symbol        # symbol generated in compilation time
+    indexing  ::    String        # indexing
+    counter   ::    Int           # counter of same {csym, uid}
+end
+
+abstract type AbstractVarInfo end
+
+####################
+# VarInfo metadata #
+####################
+
+"""
+The `Metadata` struct stores some metadata about the parameters of the model. This helps 
+query certain information about a variable, such as its distribution, which samplers 
+sample this variable, its value and whether this value is transformed to real space or 
+not.
+
+Let `md` be an instance of `Metadata`:
+- `md.vns` is the vector of all `VarName` instances.
+- `md.idcs` is the dictionary that maps each `VarName` instance to its index in 
+ `md.vns`, `md.ranges` `md.dists`, `md.orders` and `md.flags`.
+- `md.vns[md.idcs[vn]] == vn`.
+- `md.dists[md.idcs[vn]]` is the distribution of `vn`.
+- `md.gids[md.idcs[vn]]` is the set of algorithms used to sample `vn`. This is used in 
+ the Gibbs sampling process.
+- `md.orders[md.idcs[vn]]` is the number of `observe` statements before `vn` is sampled.
+- `md.ranges[md.idcs[vn]]` is the index range of `vn` in `md.vals`.
+- `md.vals[md.ranges[md.idcs[vn]]]` is the vector of values of corresponding to `vn`.
+- `md.flags` is a dictionary of true/false flags. `md.flags[flag][md.idcs[vn]]` is the 
+ value of `flag` corresponding to `vn`. 
+
+To make `md::Metadata` type stable, all the `md.vns` must have the same symbol 
+and distribution type. However, one can have a Julia variable, say `x`, that is a 
+matrix or a hierarchical array sampled in partitions, e.g. 
+`x[1][:] ~ MvNormal(zeros(2), 1.0); x[2][:] ~ MvNormal(ones(2), 1.0)`, and is managed by 
+a single `md::Metadata` so long as all the distributions on the RHS of `~` are of the 
+same type. Type unstable `Metadata` will still work but will have inferior performance. 
+When sampling, the first iteration uses a type unstable `Metadata` for all the 
+variables then a specialized `Metadata` is used for each symbol along with a function 
+barrier to make the rest of the sampling type stable.
+"""
+struct Metadata{TIdcs <: Dict{<:VarName,Int}, TDists <: AbstractVector{<:Distribution}, TVN <: AbstractVector{<:VarName}, TVal <: AbstractVector{<:Real}, TGIds <: AbstractVector{Set{Selector}}}
+    # Mapping from the `VarName` to its integer index in `vns`, `ranges` and `dists`
+    idcs        ::    TIdcs # Dict{<:VarName,Int}
+
+    # Vector of identifiers for the random variables, where `vns[idcs[vn]] == vn`
+    vns         ::    TVN # AbstractVector{<:VarName}
+
+    # Vector of index ranges in `vals` corresponding to `vns`
+    # Each `VarName` `vn` has a single index or a set of contiguous indices in `vals`
+    ranges      ::    Vector{UnitRange{Int}}
+
+    # Vector of values of all the univariate, multivariate and matrix variables
+    # The value(s) of `vn` is/are `vals[ranges[idcs[vn]]]`
+    vals        ::    TVal # AbstractVector{<:Real}
+
+    # Vector of distributions correpsonding to `vns`
+    dists       ::    TDists # AbstractVector{<:Distribution}
+
+    # Vector of sampler ids corresponding to `vns`
+    # Each random variable can be sampled using multiple samplers, e.g. in Gibbs, hence the `Set`
+    gids        ::    TGIds # AbstractVector{Set{Selector}}
+
+    # Number of `observe` statements before each random variable is sampled
+    orders      ::    Vector{Int}
+
+    # Each `flag` has a `BitVector` `flags[flag]`, where `flags[flag][i]` is the true/false flag value corresonding to `vns[i]`
+    flags       ::    Dict{String, BitVector}
+end
+
+###########
+# VarInfo #
+###########
+
+"""
+```
+struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
+    metadata::Tmeta
+    logp::Base.RefValue{Tlogp}
+    num_produce::Base.RefValue{Int}
+end
+```
+
+A light wrapper over one or more instances of `Metadata`. Let `vi` be an instance of 
+`VarInfo`. If `vi isa VarInfo{<:Metadata}`, then only one `Metadata` instance is used 
+for all the sybmols. `VarInfo{<:Metadata}` is aliased `UntypedVarInfo`. If 
+`vi isa VarInfo{<:NamedTuple}`, then `vi.metadata` is a `NamedTuple` that maps each 
+symbol used on the LHS of `~` in the model to its `Metadata` instance. The latter allows 
+for the type specialization of `vi` after the first sampling iteration when all the 
+symbols have been observed. `VarInfo{<:NamedTuple}` is aliased `TypedVarInfo`.
+
+Note: It is the user's responsibility to ensure that each "symbol" is visited at least 
+once whenever the model is called, regardless of any stochastic branching. Each symbol 
+refers to a Julia variable and can be a hierarchical array of many random variables, e.g. `x[1] ~ ...` and `x[2] ~ ...` both have the same symbol `x`.
+"""
+struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
+    metadata::Tmeta
+    logp::Base.RefValue{Tlogp}
+    num_produce::Base.RefValue{Int}
+end
+const UntypedVarInfo = VarInfo{<:Metadata}
+const TypedVarInfo = VarInfo{<:NamedTuple}
+
+############
+############
+# Internal #
+############
+############
+
+"""
+`Metadata()`
+
+Constructs an empty type unstable instance of `Metadata`.
+"""
+function Metadata()
+    vals  = Vector{Real}()
+    flags = Dict{String, BitVector}()
+    flags["del"] = BitVector()
+    flags["trans"] = BitVector()
+
+    return Metadata(
+        Dict{VarName, Int}(),
+        Vector{VarName}(),
+        Vector{UnitRange{Int}}(),
+        vals,
+        Vector{Distributions.Distribution}(),
+        Vector{Set{Selector}}(),
+        Vector{Int}(),
+        flags
+    )
+end
+
+"""
+`empty!(meta::Metadata)`
+
+Empties all the fields of `meta`. This is useful when using a sampling algorithm that 
+assumes an empty `meta`, e.g. `SMC`. 
+"""
+function empty!(meta::Metadata)
+    empty!(meta.idcs)
+    empty!(meta.vns)
+    empty!(meta.ranges)
+    empty!(meta.vals)
+    empty!(meta.dists)
+    empty!(meta.gids)
+    empty!(meta.orders)
+    for k in keys(meta.flags)
+        empty!(meta.flags[k])
+    end
+
+    return meta
+end
+
+# Removes the first element of a NamedTuple. The pairs in a NamedTuple are ordered, so this is well-defined.
+if VERSION < v"1.1"
+    _tail(nt::NamedTuple{names}) where names = NamedTuple{Base.tail(names)}(nt)
+else
+    _tail(nt::NamedTuple) = Base.tail(nt)
+end
+
+const VarView = Union{Int, UnitRange, Vector{Int}}
+
+"""
+`getval(vi::UntypedVarInfo, vview::Union{Int, UnitRange, Vector{Int}})`
+
+Returns a view `vi.vals[vview]`.
+"""
+getval(vi::UntypedVarInfo, vview::VarView) = view(vi.vals, vview)
+
+"""
+`setval!(vi::UntypedVarInfo, val, vview::Union{Int, UnitRange, Vector{Int}})`
+
+Sets the value of `vi.vals[vview]` to `val`.
+"""
+setval!(vi::UntypedVarInfo, val, vview::VarView) = vi.vals[vview] = val
+function setval!(vi::UntypedVarInfo, val, vview::Vector{UnitRange})
+    if length(vview) > 0
+        vi.vals[[i for arr in vview for i in arr]] = val
+    end
+    return val
+end
+
+"""
+`getidx(vi::UntypedVarInfo, vn::VarName)`
+
+Returns the index of `vn` in `vi.metadata.vns`.
+"""
+getidx(vi::UntypedVarInfo, vn::VarName) = vi.idcs[vn]
+
+"""
+`getidx(vi::TypedVarInfo, vn::VarName{sym})`
+
+Returns the index of `vn` in `getfield(vi.metadata, sym).vns`.
+"""
+function getidx(vi::TypedVarInfo, vn::VarName{sym}) where sym
+    getfield(vi.metadata, sym).idcs[vn]
+end
+
+"""
+`getrange(vi::UntypedVarInfo, vn::VarName)`
+
+Returns the index range of `vn` in `vi.metadata.vals`.
+"""
+getrange(vi::UntypedVarInfo, vn::VarName) = vi.ranges[getidx(vi, vn)]
+
+"""
+`getrange(vi::TypedVarInfo, vn::VarName{sym})`
+
+Returns the index range of `vn` in `getfield(vi.metadata, sym).vals`.
+"""
+function getrange(vi::TypedVarInfo, vn::VarName{sym}) where sym
+    getfield(vi.metadata, sym).ranges[getidx(vi, vn)]
+end
+
+"""
+`getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})`
+
+Returns all the indices of `vns` in `vi.metadata.vals`.
+"""
+function getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})
+    return union(map(vn -> getrange(vi, vn), vns)...)
+end
+
+"""
+`getdist(vi::VarInfo, vn::VarName)`
+
+Returns the distribution from which `vn` was sampled in `vi`.
+"""
+getdist(vi::UntypedVarInfo, vn::VarName) = vi.dists[getidx(vi, vn)]
+function getdist(vi::TypedVarInfo, vn::VarName{sym}) where sym
+    getfield(vi.metadata, sym).dists[getidx(vi, vn)]
+end
+
+"""
+`getval(vi::VarInfo, vn::VarName)`
+
+Returns the value(s) of `vn`. The values may or may not be transformed to Eucledian space.
+"""
+getval(vi::UntypedVarInfo, vn::VarName) = view(vi.vals, getrange(vi, vn))
+function getval(vi::TypedVarInfo, vn::VarName{sym}) where sym
+    view(getfield(vi.metadata, sym).vals, getrange(vi, vn))
+end
+
+"""
+`setval!(vi::VarInfo, val, vn::VarName)`
+
+Sets the value(s) of `vn` in `vi.metadata` to `val`. The values may or may not be 
+transformed to Eucledian space.
+"""
+setval!(vi::UntypedVarInfo, val, vn::VarName) = vi.vals[getrange(vi, vn)] = val
+function setval!(vi::TypedVarInfo, val, vn::VarName{sym}) where sym
+    getfield(vi.metadata, sym).vals[getrange(vi, vn)] = val
+end
+
+"""
+`getval(vi::VarInfo, vns::Vector{<:VarName})`
+
+Returns all the value(s) of `vns`. The values may or may not be transformed to Eucledian 
+space.
+"""
+getval(vi::UntypedVarInfo, vns::Vector{<:VarName}) = view(vi.vals, getranges(vi, vns))
+function getval(vi::TypedVarInfo, vns::Vector{VarName{sym}}) where sym
+    view(getfield(vi.metadata, sym).vals, getranges(vi, vns))
+end
+
+"""
+`getall(vi::VarInfo)`
+
+Returns the values of all the variables in `vi`. The values may or may not be 
+transformed to Eucledian space.
+"""
+getall(vi::UntypedVarInfo) = vi.vals
+getall(vi::TypedVarInfo) = vcat(_getall(vi.metadata)...)
+@inline function _getall(metadata::NamedTuple{names}) where {names}
+    # Check if NamedTuple is empty and end recursion
+    length(names) === 0 && return ()
+    # Take the first key of the NamedTuple
+    f = names[1]
+    # Recurse using the remaining of `metadata`
+    return (getfield(metadata, f).vals, _getall(_tail(metadata))...)
+end
+
+"""
+`setall!(vi::VarInfo, val)`
+
+Sets the values of all the variables in `vi` to `val`. The values may or may not be 
+transformed to Eucledian space.
+"""
+setall!(vi::UntypedVarInfo, val) = vi.vals .= val
+setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
+@inline function _setall!(metadata::NamedTuple{names}, val, start = 0) where {names}
+    # Check if `metadata` is empty and end recursion
+    length(names) === 0 && return nothing
+    # Take the first key of `metadata`
+    f = names[1]
+    # Set the `vals` of the current symbol, i.e. f, to the relevant portion in `val`
+    vals = getfield(metadata, f).vals
+    @views vals .= val[start + 1 : start + length(vals)]
+    # Recurse using the remaining of `metadata` and the remaining of `val`
+    return _setall(_tail(metadata), val, start + length(vals))
+end
+
+"""
+`getsym(vn::VarName)`
+
+Returns the symbol of the Julia variable used to generate `vn`.
+"""
+getsym(vn::VarName{sym}) where sym = sym
+
+"""
+`getgid(vi::VarInfo, vn::VarName)`
+
+Returns the set of sampler selectors associated with `vn` in `vi`.
+"""
+getgid(vi::UntypedVarInfo, vn::VarName) = vi.gids[getidx(vi, vn)]
+function getgid(vi::TypedVarInfo, vn::VarName{sym}) where sym
+    getfield(vi.metadata, sym).gids[getidx(vi, vn)]
+end
+
+"""
+`settrans!(vi::VarInfo, trans::Bool, vn::VarName)`
+
+Sets the `trans` flag value of `vn` in `vi`.
+"""
+function settrans!(vi::AbstractVarInfo, trans::Bool, vn::VarName)
+    trans ? set_flag!(vi, vn, "trans") : unset_flag!(vi, vn, "trans")
+end
+
+"""
+`syms(vi::VarInfo)`
+
+Returns a tuple of the unique symbols of random variables sampled in `vi`.
+"""
+syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
+syms(vi::TypedVarInfo) = fieldnames(vi.metadata)
+
+# Get all indices of variables belonging to SampleFromPrior:
+#   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
+#   the SampleFromPrior sampler
+function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
+    return filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
+end
+# Get a NamedTuple of all the indices belonging to SampleFromPrior, one for each symbol
+function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
+    return __getidcs(vi.metadata)
+end
+@inline function __getidcs(metadata::NamedTuple{names}) where {names}
+    # Check if the `metadata` is empty to end the recursion
+    length(names) === 0 && return NamedTuple()
+    # Take the first key/symbol
+    f = names[1]
+    # Get the first symbol's metadata
+    meta = getfield(metadata, f)
+    # Get all the idcs of vns with empty gid
+    v = filter(i -> isempty(meta.gids[i]), 1:length(meta.gids))
+    # Make a single-pair NamedTuple to merge with the result of the recursion
+    nt = NamedTuple{(f,)}((v,))
+    # Recurse using the remaining of metadata
+    return merge(nt, __getidcs(_tail(metadata)))
+end
+
+# Get all indices of variables belonging to a given sampler
+function _getidcs(vi::AbstractVarInfo, spl::Sampler)
+    # NOTE: 0b00 is the sanity flag for
+    #         |\____ getidcs   (mask = 0b10)
+    #         \_____ getranges (mask = 0b01)
+    if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+    # Checks if cache is valid, i.e. no new pushes were made, to return the cached idcs
+    # Otherwise, it recomputes the idcs and caches it
+    if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
+        spl.info[:idcs]
+    else
+        spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
+        spl.info[:idcs] = _getidcs(vi, spl.selector, spl.alg.space)
+    end
+end
+function _getidcs(vi::UntypedVarInfo, s::Selector, space)
+    filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) && 
+        (isempty(space) || in(vi.vns[i], space)), 1:length(vi.gids))
+end
+function _getidcs(vi::TypedVarInfo, s::Selector, space)
+    return __getidcs(vi.metadata, s, space)
+end
+# Get a NamedTuple for all the indices belonging to a given selector for each symbol
+@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space) where {names}
+    # Check if `metadata` is empty to end the recursion
+    length(names) === 0 && return NamedTuple()
+    # Take the first sybmol
+    f = names[1]
+    # Get the first symbol's metadata
+    f_meta = getfield(metadata, f)
+    # Get all the idcs of the vns in `space` and that belong to the selector `s`
+    v = filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) && 
+        (isempty(space) || in(f_meta.vns[i], space)), 1:length(f_meta.gids))
+    # Make a single-pair NamedTuple to merge with the result of the recursion
+    nt = NamedTuple{(f,)}((v,))
+    # Recurse using the remaining of metadata
+    return merge(nt, __getidcs(_tail(metadata), s, space))
+end
+
+# Get all vns of variables belonging to spl
+_getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, spl))
+function _getvns(vi::TypedVarInfo, spl::AbstractSampler) 
+    # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
+    idcs = _getidcs(vi, spl)
+    return __getvns(vi.metadata, idcs)
+end
+# Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
+@inline function __getvns(metadata::NamedTuple{names}, idcs) where {names}
+    # Check if `metadata` is empty to end the recursion
+    length(names) === 0 && return NamedTuple()
+    # Take the first symbol
+    f = names[1]
+    # Get the vector of `vns` with symbol `f`
+    v = getfield(metadata, f).vns[getfield(idcs, f)]
+    # Make a single-pair NamedTuple to merge with the result of the recursion
+    nt = NamedTuple{(f,)}((v,))
+    # Recurse using the remaining of `metadata`
+    return merge(nt, __getvns(_tail(metadata), idcs))
+end
+
+# Get the index (in vals) ranges of all the vns of variables belonging to spl
+function _getranges(vi::AbstractVarInfo, spl::Sampler)
+    if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+    if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
+        spl.info[:ranges]
+    else
+        spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
+        spl.info[:ranges] = _getranges(vi, spl.selector, spl.alg.space)
+    end
+end
+# Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
+function _getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
+    __getranges(vi, _getidcs(vi, s, space))
+end
+function __getranges(vi::UntypedVarInfo, idcs)
+    union(map(i -> vi.ranges[i], idcs)...)
+end
+__getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
+@inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
+    # Check if `metadata` is empty to end the recursion
+    length(names) === 0 && return NamedTuple()
+    # Take the first symbol
+    f = names[1]
+    # Collect the index ranges of all the vns with symbol `f` 
+    v = union(map(i -> getfield(metadata, f).ranges[i], getfield(idcs, f))..., Int[])
+    # Make a single-pair NamedTuple to merge with the result of the recursion
+    nt = NamedTuple{(f,)}((v,))
+    # Recurse using the remaining of `metadata`
+    return merge(nt, __getranges(_tail(metadata), idcs))
+end
+
+"""
+`set_flag!(vi::VarInfo, vn::VarName, flag::String)`
+
+Sets `vn`'s value for `flag` to `true` in `vi`.
+"""
+function set_flag!(vi::UntypedVarInfo, vn::VarName, flag::String)
+    return vi.flags[flag][getidx(vi, vn)] = true
+end
+function set_flag!(vi::TypedVarInfo, vn::VarName{sym}, flag::String) where {sym}
+    return getfield(vi.metadata, sym).flags[flag][getidx(vi, vn)] = true
+end
+
+
+#######
+#######
+# API #
+#######
+#######
+
 # VarName
 
 """
@@ -683,4 +1232,6 @@ function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
     if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vn) in spl.alg.space
         setgid!(vi, spl.selector, vn)
     end
+end
+
 end
