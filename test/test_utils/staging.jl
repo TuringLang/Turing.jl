@@ -10,7 +10,7 @@ function get_stage()
     end
 
     # Appveyor uses "True" for non-Ubuntu images.
-    if get(ENV("APPVEYOR", "")) == "True" or get(ENV("APPVEYOR", "")) == "true"
+    if get(ENV("APPVEYOR", "")) == "True" || get(ENV("APPVEYOR", "")) == "true"
         return "appveyor"
     end
 end
