@@ -27,13 +27,13 @@ function Distributions.logpdf(d::FlatPos, x::AbstractVector{<:Real})
 end
 
 # Binomial with logit
-struct BinomialLogit{T<:Real} <: DiscreteUnivariateDistribution
-    n::Int64
+struct BinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
+    n::I
     logitp::T
 end
 
-struct VecBinomialLogit{T<:Real} <: DiscreteUnivariateDistribution
-    n::Vector{Int64}
+struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
+    n::Vector{I}
     logitp::Vector{T}
 end
 
@@ -42,10 +42,10 @@ function logpdf_binomial_logit(n, logitp, k)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
-function Distributions.logpdf(d::BinomialLogit{<:Real}, k::Int64)
+function Distributions.logpdf(d::BinomialLogit{<:Real}, k::T) where {T<:Integer}
     return logpdf_binomial_logit(d.n, d.logitp, k)
 end
 
-function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{Int64})
+function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer})
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
 end

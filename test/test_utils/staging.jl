@@ -1,17 +1,35 @@
 function get_stage()
+    # Appveyor uses "True" for non-Ubuntu images.
+    if get(ENV, "APPVEYOR", "") == "True" || get(ENV, "APPVEYOR", "") == "true"
+        return "nonnumeric"
+    end
+
+    # Handle Travis specially.
     if get(ENV, "TRAVIS", "") == "true"
         if "STAGE" in keys(ENV)
             return ENV["STAGE"]
         else
             return "all"
         end
-    else
-        return "all"
     end
+
+    return "all"
 end
 
 function do_test(stage_str)
     stg = get_stage()
+
+    # If the tests are being run by Appveyor, don't run
+    # any numerical tests.
+    if stg == "nonnumeric"
+        if stage_str == "numerical"
+            return false
+        else
+            return true
+        end
+    end
+
+    # Otherwise run the regular testing procedure.
     if stg == "all" || stg == stage_str
         return true
     end
