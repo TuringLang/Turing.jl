@@ -15,6 +15,38 @@ i, j, k = 1, 2, 3
 include("../test_utils/AllUtils.jl")
 
 @testset "RandomVariables.jl" begin
+    @turing_test "TypedVarInfo" begin
+        @model gdemo(x, y) = begin
+            s ~ InverseGamma(2,3)
+            m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
+            x ~ Normal(m, sqrt(s))
+            y ~ Normal(m, sqrt(s))
+        end
+        model = gdemo(1.0, 2.0)
+
+        vi = VarInfo()
+        model(vi, SampleFromUniform())
+        tvi = TypedVarInfo(vi)
+
+        meta = vi.metadata
+        for f in fieldnames(typeof(tvi.metadata))
+            fmeta = getfield(tvi.metadata, f)
+            for vn in fmeta.vns
+                @test tvi[vn] == vi[vn]
+                ind = meta.idcs[vn]
+                tind = fmeta.idcs[vn]
+                @test meta.dists[ind] == fmeta.dists[tind]
+                @test meta.orders[ind] == fmeta.orders[tind]
+                @test meta.gids[ind] == fmeta.gids[tind]
+                for flag in keys(meta.flags)
+                    @test meta.flags[flag][ind] == fmeta.flags[flag][tind]
+                end
+                range = meta.ranges[ind]
+                trange = fmeta.ranges[tind]
+                @test all(meta.vals[range] .== fmeta.vals[trange])
+            end
+        end
+    end
     @turing_test "Base" begin
         # Test Base functions:
         #   string, Symbol, ==, hash, in, keys, haskey, isempty, push!, empty!,
