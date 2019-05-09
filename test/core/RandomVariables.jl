@@ -15,7 +15,7 @@ i, j, k = 1, 2, 3
 include("../test_utils/AllUtils.jl")
 
 @testset "RandomVariables.jl" begin
-    @turing_test "TypedVarInfo" begin
+    @turing_testset "TypedVarInfo" begin
         @model gdemo(x, y) = begin
             s ~ InverseGamma(2,3)
             m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
@@ -47,7 +47,7 @@ include("../test_utils/AllUtils.jl")
             end
         end
     end
-    @turing_test "Base" begin
+    @turing_testset "Base" begin
         # Test Base functions:
         #   string, Symbol, ==, hash, in, keys, haskey, isempty, push!, empty!,
         #   getindex, setindex!, getproperty, setproperty!
@@ -157,7 +157,7 @@ include("../test_utils/AllUtils.jl")
         test_varinfo!(vi)
         test_varinfo!(empty!(TypedVarInfo(vi)))
     end
-    @turing_test "link!" begin
+    @turing_testset "link!" begin
         # Test linking spl and vi:
         #    link!, invlink!, istrans
         @model gdemo(x, y) = begin
@@ -197,7 +197,7 @@ include("../test_utils/AllUtils.jl")
         @test vi.metadata.s.vals == v_s
         @test vi.metadata.m.vals == v_m
     end
-    @turing_test "setgid!" begin
+    @turing_testset "setgid!" begin
         vi = VarInfo()
         vn = VarName(gensym(), :x, "", 1)
         dist = Normal(0, 1)
