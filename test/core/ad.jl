@@ -1,7 +1,7 @@
 using ForwardDiff, Distributions, FDM, Tracker, Random
 using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
 using ForwardDiff: Dual
-using StatsFuns: binomlogpdf
+using StatsFuns: binomlogpdf, logsumexp
 using Test
 
 include("../test_utils/AllUtils.jl")
@@ -44,6 +44,7 @@ include("../test_utils/AllUtils.jl")
         test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
         ms = [[0.0, 0.0]; s[:]]
         test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
+        test_ad(logsumexp, [1.0, 1.0])
     end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
