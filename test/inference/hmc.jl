@@ -165,8 +165,8 @@ include("../test_utils/AllUtils.jl")
     @turing_testset "check discard" begin
         alg = NUTS(500, 100, 0.8)
 
-        c1 = sample(gdemo_default, alg1, discard_adapt = true)
-        c2 = sample(gdemo_default, alg1, discard_adapt = false)
+        c1 = sample(gdemo_default, alg, discard_adapt = true)
+        c2 = sample(gdemo_default, alg, discard_adapt = false)
 
         @test size(c1, 1) == 400
         @test size(c2, 1) == 500
