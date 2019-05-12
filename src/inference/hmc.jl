@@ -32,7 +32,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
 sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
-mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
+struct HMC{AD, T} <: StaticHamiltonian{AD}
     n_iters     ::  Int       # number of samples
     ϵ           ::  Float64   # leapfrog step size
     n_leapfrog  ::  Int       # leapfrog step number
@@ -61,6 +61,15 @@ function HMC{AD}(
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return HMC{AD, eltype(_space)}(n_iters, ϵ, n_leapfrog, _space, metricT)
 end
+
+mutable struct HMCSampler{HMC{AD, T}} <: AbstractSampler
+    alg :: HMC{AD, T}
+    selector :: Selector
+    h :: AHMC.Hamiltonian
+    traj :: AHMC.StaticTrajectory
+    adaptor :: AHMC.StanNUTSAdaptor
+end
+
 
 """
     HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.1)
