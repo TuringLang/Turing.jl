@@ -16,7 +16,7 @@ using Markdown, Libtask, MacroTools
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import Distributions: sample
+import Distributions: sample, Sampleable
 import MCMCChains: AbstractChains, Chains
 
 const PROGRESS = Ref(true)
@@ -32,6 +32,12 @@ const CACHERANGES = 0b01
 
 const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 
+# Include the interface. Temporary until the interface is moved
+# to MCMCChains. CSP 2019-05-12
+include("interface/Interface.jl")
+using .Interface
+import .Interface: AbstractSampler
+
 """
     struct Model{pvars, dvars, F, TData, TDefaults}
         f::F
@@ -42,7 +48,12 @@ const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner
 function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
 """
-struct Model{pvars, dvars, F, TData, TDefaults}
+struct Model{pvars,
+    dvars,
+    F,
+    TData,
+    TDefaults
+} <: Sampleable{VariateForm,ValueSupport} # May need to find better types
     f::F
     data::TData
     defaults::TDefaults
@@ -70,8 +81,6 @@ Selector() = Selector(time_ns(), :default)
 Selector(tag::Symbol) = Selector(time_ns(), tag)
 hash(s::Selector) = hash(s.gid)
 ==(s1::Selector, s2::Selector) = s1.gid == s2.gid
-
-abstract type AbstractSampler end
 
 """
 Robust initialization method for model parameters in Hamiltonian samplers.
