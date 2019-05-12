@@ -23,8 +23,6 @@ it should expect to receive.
 """
 abstract type AbstractSampler end
 
-transition_type(s::AbstractSampler) = AbstractTransition
-
 """
     AbstractTransition
 
@@ -54,7 +52,7 @@ abstract type AbstractTransition end
         s::SamplerType,
         N::Integer;
         kwargs...)
-        
+
     sample(
         rng::AbstractRNG,
         ℓ::ModelType,
@@ -84,7 +82,7 @@ function sample(
     sample_init!(rng, ℓ, s, N; kwargs...)
 
     # Preallocate the TransitionType vector.
-    t = Array{transition_type(s), 1}(undef, N)
+    t = transitions_init(rng, ℓ, s, N; kwargs...)
 
     # Step through the sampler.
     for i=1:N
@@ -131,6 +129,18 @@ function step!(
     # Do nothing.
     @warn "No step! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
+end
+
+function transitions_init(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    @warn "No transitions_init function has been implemented
+           for objects of types $(typeof(ℓ)) and $(typeof(s))"
+    return Vector(undef, N)
 end
 
 end # module Interface
