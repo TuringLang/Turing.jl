@@ -220,6 +220,7 @@ function sample(
     adaptor = AHMCAdaptor(alg),
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
+    discard_adapt::Bool=true,
     kwargs...
 )
     # Create sampler
@@ -283,7 +284,9 @@ function sample(
     end
 
     # Wrap the result by Chain
-    c = Chain(0.0, samples)
+    c = typeof(alg) <: AdaptiveHamiltonian && discard_adapt ?
+        Chain(0.0, samples[(alg.n_adapts+1):end]) :
+        Chain(0.0, samples)
 
     # Save state
     if save_state
