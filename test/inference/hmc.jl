@@ -150,7 +150,7 @@ include("../test_utils/AllUtils.jl")
     @numerical_testset "nuts inference" begin
         alg = NUTS(5000, 1000, 0.8)
         res = sample(gdemo_default, alg)
-        check_gdemo(res[1000:end, :, :])
+        check_gdemo(res)
     end
     @turing_testset "nuts constructor" begin
         alg = NUTS(1000, 200, 0.65)
@@ -161,5 +161,14 @@ include("../test_utils/AllUtils.jl")
 
         alg = NUTS(1000, 200, 0.65, :m)
         sampler = Sampler(alg)
+    end
+    @turing_testset "check discard" begin
+        alg = NUTS(500, 100, 0.8)
+
+        c1 = sample(gdemo_default, alg, discard_adapt = true)
+        c2 = sample(gdemo_default, alg, discard_adapt = false)
+
+        @test size(c1, 1) == 400
+        @test size(c2, 1) == 500
     end
 end
