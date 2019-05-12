@@ -174,6 +174,15 @@ function verifygrad(grad::AbstractVector{<:Real})
     end
 end
 
+import StatsFuns: logsumexp
+logsumexp(x::Tracker.TrackedArray) = Tracker.track(logsumexp, x)
+Tracker.@grad function logsumexp(x::Tracker.TrackedArray)
+    lse = logsumexp(Tracker.data(x)) 
+    se = exp(lse)
+    return lse,
+          Δ->(Δ .* exp.(x) ./ se,)
+end
+
 import StatsFuns: binomlogpdf
 binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int) = Tracker.track(binomlogpdf, n, p, x)
 Tracker.@grad function binomlogpdf(n::Int, p::Tracker.TrackedReal, x::Int)
