@@ -86,7 +86,7 @@ function sample(
 
     # Step through the sampler.
     for i=1:N
-        t[i] = step!(rng, ℓ, s, N; kwargs...)
+        t[i] = step!(rng, ℓ, s, N, t[1:(i-1)]; kwargs...)
     end
 
     # Wrap up the sampler, if necessary.
@@ -111,9 +111,13 @@ function sample_end!(
     rng::AbstractRNG,
     ℓ::ModelType,
     s::SamplerType,
-    N::Integer;
+    N::Integer,
+    t::TransitionType;
     kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+) where {ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    TransitionType<:AbstractTransition
+}
     # Do nothing.
     @warn "No sample_end! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
