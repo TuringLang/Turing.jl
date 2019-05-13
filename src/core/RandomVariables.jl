@@ -1185,8 +1185,7 @@ function set_retained_vns_del_by_spl!(vi::UntypedVarInfo, spl::Sampler)
             end
         end
     end
-    # Recurse using the remaining of `metadata`
-    return _set_retained_vns_del_by_spl!(_tail(metadata), gidcs, num_produce)
+    return nothing
 end
 function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
     # Get the indices of `vns` that belong to `spl` as a NamedTuple, one entry for each symbol
