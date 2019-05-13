@@ -584,7 +584,7 @@ function assume(spl::Sampler{<:Hamiltonian},
     dist = dists[1]
     n = size(var)[end]
 
-    vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+    vns = map(i -> VarName(vn, "[$i]"), 1:n)
 
     rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 

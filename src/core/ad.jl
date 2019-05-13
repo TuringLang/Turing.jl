@@ -117,7 +117,8 @@ function gradient_logp_forward(
     l = vi.logp.value
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
-    vi.vals, vi.logp = vals_old, logp_old
+    vi.vals .= vals_old
+    vi.logp = logp_old
 
     # Strip tracking info from θ to avoid mutating it.
     θ .= ForwardDiff.value.(θ)
@@ -155,8 +156,8 @@ function gradient_logp_reverse(
     l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     # Remove tracking info from variables in model (because mutable state).
-    vi.vals, vi.logp = vals_old, logp_old
-
+    vi.vals .= vals_old
+    vi.logp = logp_old
     # Strip tracking info from θ to avoid mutating it.
     θ .= Tracker.data.(θ)
 

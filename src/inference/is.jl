@@ -58,7 +58,7 @@ end
 
 function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
     r = rand(dist)
-    push!(vi, vn, r, dist, spl.selector)
+    push!(vi, vn, r, dist, spl)
     r, zero(Real)
 end
 

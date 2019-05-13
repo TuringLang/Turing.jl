@@ -61,6 +61,7 @@ end
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
+getspace(alg) = Tuple(alg.space)
 
 struct Selector
     gid :: UInt64
