@@ -35,7 +35,6 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "utilities" begin
-        include("utilities/distributions.jl")
         include("utilities/io.jl")
       # include("utilities/stan-interface.jl")
         include("utilities/util.jl")
