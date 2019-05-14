@@ -143,7 +143,8 @@ end
 end
 
 # Random probability measures.
-include("distributions/RandomMeasures.jl")
+include("stdlib/distributions.jl")
+include("stdlib/RandomMeasures.jl")
 
 ###########
 # Exports #
