@@ -150,7 +150,7 @@ function sample_end!(
     rng::AbstractRNG,
     ℓ::ModelType,
     s::SamplerType,
-    N::Integer
+    N::Integer,
     ts::Vector{TransitionType};
     kwargs...
 ) where {
