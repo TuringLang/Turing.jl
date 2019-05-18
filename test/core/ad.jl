@@ -1,5 +1,6 @@
 using ForwardDiff, Distributions, FDM, Tracker, Random
-using Turing: gradient_logp_reverse, invlink, link, getval, SampleFromPrior
+using Turing: gradient_logp_reverse, invlink, link, SampleFromPrior
+using Turing.Core.RandomVariables: getval
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test

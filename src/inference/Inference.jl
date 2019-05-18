@@ -12,6 +12,7 @@ using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 import AdvancedHMC; const AHMC = AdvancedHMC
 
+import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume
@@ -39,7 +40,6 @@ export  InferenceAlgorithm,
         PIMH,
         PMMH,
         IPMCMC,  # particle-based sampling
-        getspace,
         assume,
         observe,
         step,
@@ -106,7 +106,7 @@ function assume(spl::A,
         r = vi[vn]
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        push!(vi, vn, r, dist)
+        push!(vi, vn, r, dist, spl)
     end
     # NOTE: The importance weight is not correctly computed here because
     #       r is genereated from some uniform distribution which is different from the prior
@@ -126,7 +126,7 @@ function assume(spl::A,
     dist = dists[1]
     n = size(var)[end]
 
-    vns = map(i -> copybyindex(vn, "[$i]"), 1:n)
+    vns = map(i -> VarName(vn, "[$i]"), 1:n)
 
     if haskey(vi, vns[1])
         rs = vi[vns]
@@ -135,13 +135,13 @@ function assume(spl::A,
 
         if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[i], dist)
+                push!(vi, vns[i], rs[i], dist, spl)
             end
             @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
             var = rs
         elseif isa(dist, MultivariateDistribution)
             for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist)
+                push!(vi, vns[i], rs[:,i], dist, spl)
             end
             if isa(var, Vector)
                 @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
@@ -210,7 +210,7 @@ end
 function Sample(vi::UntypedVarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(vi)
-        value[RandomVariables.sym_idx(vn)] = vi[vn]
+        value[Symbol(vn)] = vi[vn]
     end
     # NOTE: do we need to check if lp is 0?
     value[:lp] = getlogp(vi)
@@ -228,5 +228,7 @@ function Sample(vi::AbstractVarInfo, spl::Sampler)
     end
     return s
 end
+
+getspace(spl::Sampler) = getspace(spl.alg)
 
 end # module

@@ -72,6 +72,7 @@ end
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
+getspace(alg) = Tuple(alg.space)
 
 struct Selector
     gid :: UInt64
@@ -151,7 +152,8 @@ end
 end
 
 # Random probability measures.
-include("distributions/RandomMeasures.jl")
+include("stdlib/distributions.jl")
+include("stdlib/RandomMeasures.jl")
 
 ###########
 # Exports #

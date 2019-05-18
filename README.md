@@ -5,7 +5,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/)
 
-**Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Current features include:
+**Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Turing allows the user to write models in standard Julia syntax, and provide a wide range of sampling-based inference methods for solving problems across probabilistic machine learning, Bayesian statistics and data science etc. Since Turing is implemented in pure Julia code, its compiler and inference methods are amendable for hacking: new model families and inference methods can be easily added.
+
+Current features include:
 
 - Universal probabilistic programming with an intuitive modelling interface
 - Hamiltonian Monte Carlo (HMC) sampling for differentiable posterior distributions

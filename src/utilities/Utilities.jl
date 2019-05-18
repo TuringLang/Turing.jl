@@ -12,16 +12,10 @@ export  vectorize,
         Sample,
         Chain,
         init,
-        vectorize,
-        logpdf_binomial_logit,
-        Flat,
-        FlatPos,
-        BinomialLogit,
-        VecBinomialLogit
+        vectorize
 
 include("helper.jl")
 include("robustinit.jl")
 include("io.jl")           # I/O
-include("distributions.jl")
 
 end # module

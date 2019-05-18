@@ -71,6 +71,18 @@ function sample(
     return sample(GLOBAL_RNG, ℓ, s, N)
 end
 
+"""
+    sample(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer;
+        kwargs...
+    )
+
+`sample` returns an `MCMCChains.Chains` object containing `N` samples from a given model and
+sampler.
+"""
 function sample(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -82,19 +94,34 @@ function sample(
     sample_init!(rng, ℓ, s, N; kwargs...)
 
     # Preallocate the TransitionType vector.
-    t = transitions_init(rng, ℓ, s, N; kwargs...)
+    ts = transitions_init(rng, ℓ, s, N; kwargs...)
 
     # Step through the sampler.
     for i=1:N
-        t[i] = step!(rng, ℓ, s, N; kwargs...)
+        if i == 1
+            ts[i] = step!(rng, ℓ, s, N; kwargs...)
+        else
+            ts[i] = step!(rng, ℓ, s, N, ts[i-1]; kwargs...)
+        end
     end
 
     # Wrap up the sampler, if necessary.
-    sample_end!(rng, ℓ, s, N; kwargs...)
+    sample_end!(rng, ℓ, s, N, ts; kwargs...)
 
-    return Chains(t)
+    return Chains(ts)
 end
 
+"""
+    sample_init!(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer;
+        kwargs...
+    )
+
+Performs whatever initial setup is required for your sampler.
+"""
 function sample_init!(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -107,18 +134,47 @@ function sample_init!(
            of types $(typeof(ℓ)) and $(typeof(s))"
 end
 
+"""
+    sample_end!(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer,
+        ts::Vector{TransitionType};
+        kwargs...
+    )
+
+Performs whatever finalizing the sampler requires.
+"""
 function sample_end!(
     rng::AbstractRNG,
     ℓ::ModelType,
     s::SamplerType,
-    N::Integer;
+    N::Integer,
+    ts::Vector{TransitionType};
     kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    TransitionType<:AbstractTransition
+}
     # Do nothing.
     @warn "No sample_end! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
 end
 
+"""
+    step!(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer;
+        kwargs...
+    )
+
+Returns a single `AbstractTransition` drawn using the model and sampler type.
+This is a unique step function called the first time a sampler runs.
+"""
 function step!(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -131,6 +187,45 @@ function step!(
            of types $(typeof(ℓ)) and $(typeof(s))"
 end
 
+"""
+    step!(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer,
+        t::TransitionType;
+        kwargs...
+    )
+
+Returns a single `AbstractTransition` drawn using the model and sampler type.
+"""
+function step!(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer,
+    t::TransitionType;
+    kwargs...
+) where {ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    TransitionType<:AbstractTransition
+}
+    # Do nothing.
+    @warn "No step! function has been implemented for objects
+           of types $(typeof(ℓ)) and $(typeof(s))"
+end
+
+"""
+    transitions_init(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer;
+        kwargs...
+    )
+
+Generates a vector of `AbstractTransition` types of length `N`.
+"""
 function transitions_init(
     rng::AbstractRNG,
     ℓ::ModelType,

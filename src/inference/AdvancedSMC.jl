@@ -222,8 +222,7 @@ function assume(  spl::Sampler{T},
     if isempty(spl.alg.space) || vn.sym in spl.alg.space
         if ~haskey(vi, vn)
             r = rand(dist)
-            push!(vi, vn, r, dist, spl.selector)
-            spl.info[:cache_updated] = CACHERESET # sanity flag mask for getidcs and getranges
+            push!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(dist)

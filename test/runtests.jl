@@ -29,8 +29,12 @@ include("test_utils/AllUtils.jl")
         end
     end
 
+    @testset "stdlib" begin
+        include("stdlib/distributions.jl")
+        # include("stdlib/RandomMeasures.jl")
+    end
+
     @testset "utilities" begin
-        include("utilities/distributions.jl")
         include("utilities/io.jl")
       # include("utilities/stan-interface.jl")
         include("utilities/util.jl")
