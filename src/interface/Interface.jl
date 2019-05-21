@@ -183,8 +183,7 @@ function step!(
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
     # Do nothing.
-    @warn "No step! function has been implemented for objects
-           of types $(typeof(ℓ)) and $(typeof(s))"
+    @warn "No step! function has been implemented for objects of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
 end
 
 """

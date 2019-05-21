@@ -20,7 +20,7 @@ Usage:
 SMC(1000)
 ```
 """
-mutable struct SMC{T, F} <: InferenceAlgorithm
+struct SMC{T, F} <: InferenceAlgorithm
     n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
@@ -32,10 +32,73 @@ function SMC(n_particles::Int, space...)
     SMC(n_particles, resample_systematic, 0.5, _space)
 end
 
+mutable struct SMCSampler{SMC} <: AbstractSampler
+    alg::SMC
+    logevidence::Vector{Float64}
+    selector::Selector
+    vi::VarInfo
+end
+
 function Sampler(alg::SMC, s::Selector)
-    info = Dict{Symbol, Any}()
-    info[:logevidence] = []
-    return Sampler(alg, info, s)
+    return SMCSampler{SMC}(alg, Float64[], s, VarInfo())
+end
+
+struct SMCTransition{T} <: AbstractTransition
+    θ::T
+end
+
+SMCTransition(vi::VarInfo) = SMCTransition{typeof(vi.vals)}(vi.value)
+
+#####################
+# Interface for SMC #
+#####################
+function sample_init!(
+    ::AbstractRNG,
+    ℓ::ModelType,
+    s::SMCSampler,
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable}
+    # Do nothing.
+end
+
+function transitions_init(
+    ::AbstractRNG,
+    ℓ::ModelType,
+    s::SMCSampler,
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    return Vector{SMCTransition}(undef, N)
+end
+
+function step!(
+    ::AbstractRNG, # Note: This function does not use the range argument.
+    ℓ::Turing.Model,
+    s::SMCSampler,
+    ::Integer; # Note: This function doesn't use the N argument.
+    kwargs...
+)
+    particles = ParticleContainer{Trace}(ℓ)
+    s.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    set_retained_vns_del_by_spl!(s.vi, s)
+    resetlogp!(s.vi)
+
+    push!(particles, s.alg.n_particles, s, s.vi)
+
+    while consume(particles) != Val{:done}
+      ess = effectiveSampleSize(particles)
+      if ess <= s.alg.resampler_threshold * length(particles)
+        resample!(particles,s.alg.resampler)
+      end
+    end
+
+    ## pick a particle to be retained.
+    Ws, _ = weights(particles)
+    indx = randcat(Ws)
+    push!(s.logevidence, particles.logE)
+
+    return particles[indx].vi
 end
 
 function step(model, spl::Sampler{<:SMC}, vi::VarInfo)

@@ -10,12 +10,14 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
+using ..Interface
 import AdvancedHMC; const AHMC = AdvancedHMC
 
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume
+import ..Interface: AbstractTransition, step!, sample_init!, transitions_init
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -49,7 +51,8 @@ export  InferenceAlgorithm,
         get_var,
         get_covar,
         add_sample!,
-        reset!
+        reset!,
+        step!
 
 #######################
 # Sampler abstraction #
