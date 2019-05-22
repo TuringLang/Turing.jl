@@ -252,7 +252,7 @@ function sample(
 
     # Get `init_theta`
     if init_theta != nothing
-        @info "Using passed-in initial variable values" init_theta
+        verbose && @info "Using passed-in initial variable values" init_theta
         # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
         init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
         # Flatten `init_theta`
