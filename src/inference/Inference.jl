@@ -40,6 +40,7 @@ export  InferenceAlgorithm,
         PIMH,
         PMMH,
         IPMCMC,  # particle-based sampling
+        ADVI, # Variational Inference
         assume,
         observe,
         step,
@@ -83,6 +84,7 @@ include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
+include("vi.jl")
 
 ## Fallback functions
 
