@@ -84,7 +84,7 @@ include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
-include("vi.jl")
+include("variational/VariationalInference.jl")
 
 ## Fallback functions
 

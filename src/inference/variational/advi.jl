@@ -18,32 +18,6 @@ function center_diag_gaussian_inv(η, μ, σ)
     (η .* σ) + μ
 end
 
-
-abstract type VariationalInference <: InferenceAlgorithm end
-
-"""
-    sample(vi::VariationalInference, num_samples)
-
-Produces `num_samples` samples for the given VI method using number of samples equal to `num_samples`.
-"""
-function sample(vi::VariationalInference, num_samples) end
-
-"""
-    objective(vi::VariationalInference, num_samples)
-
-Computes empirical estimates of ELBO for the given VI method using number of samples equal to `num_samples`.
-"""
-function objective(vi::VariationalInference, num_samples) end
-
-"""
-    optimize(vi::VariationalInference)
-
-Finds parameters which maximizes the ELBO for the given VI method.
-"""
-function optimize(vi::VariationalInference) end
-
-### ADVI ###
-
 """
     ADVI(model::Turing.Model)
 
@@ -52,12 +26,14 @@ Automatic Differentiation Variational Inference (ADVI) for a given model.
 mutable struct ADVI{T} <: VariationalInference
     n_iters :: Int
     space :: Set{T}
-    samples_per_step::Int
-    max_iters::Int
+    samples_per_step::Int # samples to user per optimization step
+    max_iters::Int        # maximum number of iterations used in optimization
 end
 
 # ADVI(n_vars, n_iters) = ADVI(zeros(n_vars), zeros(n_vars), n_iters, Set{Float64}())
 ADVI(n_iters; samples_per_step=5, max_iters=5000) = ADVI(n_iters, Set{Float64}(), samples_per_step, max_iters)
+
+alg_str(::ADVI) = "ADVI"
 
 function sample(model::Model, alg::ADVI, save_state=false, resume_from=nothing, reuse_spl_n=0)
     num_samples = alg.n_iters
@@ -93,14 +69,11 @@ function sample(model::Model, alg::ADVI, save_state=false, resume_from=nothing, 
     # optimize
     # TODO: optimization options needs to be part of the algorithm struct
     μ, ω = optimize(alg, model)
-    # alg.μ, alg.ω = μ, ω
 
     # buffer
     samples = zeros(num_samples, num_params)
 
     # No point in looking at the progress here since it's so quick?
-    alg_name = alg_str(alg)
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_name] Sampling...", 0))
     
     for i = 1:size(var_info.dists, 1)
         prior = var_info.dists[i]
@@ -251,30 +224,3 @@ function objective(vi::ADVI, model::Model, num_samples)
 
     elbo(vi, model, μ, ω, num_samples)
 end
-
-
-# TODO: implement `assume` and `observe`; probably just default
-alg_str(::ADVI) = "ADVI"
-
-function Sampler(alg::ADVI, s::Selector)
-    info = Dict{Symbol, Any}()
-    return Sampler(alg, info, s)
-end
-
-function assume(spl::Sampler{<:ADVI}, dist::Distribution, vn::VarName, vi::VarInfo)
-    Turing.DEBUG && @debug "assuming..."
-    updategid!(vi, vn, spl)
-    r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    # r
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "vn = $vn"
-    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
-
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
-end
-
-observe(spl::Sampler{<:ADVI},
-    d::Distribution,
-    value::Any,
-    vi::VarInfo) = observe(nothing, d, value, vi)
