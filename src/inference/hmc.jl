@@ -644,18 +644,16 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::NUTS)
-    adaptor = AHMC.StanNUTSAdaptor(
-        alg.n_adapts, AHMC.Preconditioner(alg.metricT),
-        AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
-    )
+function AHMCAdaptor(alg::AdaptiveHamiltonian)
+    p = AHMC.Preconditioner(alg.metricT)
+    nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
+    if alg.metricT == AHMC.UnitEuclideanMetric
+        adaptor = AHMC.NaiveCompositeAdaptor(p, nda)
+    else
+        adaptor = AHMC.StanNUTSAdaptor(alg.n_adapts, p, nda)
+    end
+    return adaptor
 end
 
-function AHMCAdaptor(alg::HMCDA)
-adaptor = AHMC.NaiveCompAdaptor(
-    AHMC.Preconditioner(alg.metricT),
-    AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
-)
-end
 
 AHMCAdaptor(alg::Hamiltonian) = nothing
