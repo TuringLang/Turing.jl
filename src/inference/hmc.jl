@@ -253,14 +253,15 @@ function sample(
     # Get `init_theta`
     if init_theta != nothing
         @info "Using passed-in initial variable values" init_theta
-        # Convert individual numbers to length 1 vector
-        init_theta = [size(v) == () ? [v] : v for v in init_theta]
+        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
+        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
         # Flatten `init_theta`
         init_theta_flat = foldl(vcat, map(vec, init_theta))
         # Create a mask to inidicate which values are not missing
         theta_mask = map(x -> !ismissing(x), init_theta_flat)
         # Get all values
         theta = vi[spl]
+        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
         # Update those which are provided (i.e. not missing)
         theta[theta_mask] .= init_theta_flat[theta_mask]
         # Update in `vi`
