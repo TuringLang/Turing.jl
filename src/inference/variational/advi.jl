@@ -1,5 +1,7 @@
 using ForwardDiff
 
+import Distributions: _rand!
+
 
 function jac_inv_transform(dist::Distribution, x::T where T<:Real)
     ForwardDiff.derivative(x -> invlink(dist, x), x)
@@ -19,65 +21,51 @@ function center_diag_gaussian_inv(η, μ, σ)
 end
 
 """
-    ADVI(n_iters; samples_per_step=5, max_iters=5000)
+    ADVI(model::Model)
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
-mutable struct ADVI{T} <: VariationalInference
-    n_iters :: Int
-    space :: Set{T}
-    samples_per_step::Int # samples to user per optimization step
-    max_iters::Int        # maximum number of iterations used in optimization
+struct ADVI{T <: Real, TDists <: AbstractVector{<: Distribution}} <: VariationalInference
+    μ::Vector{T}
+    ω::Vector{T}
+    dists::TDists # AbstractVector{<:Distribution}
+    ranges::Vector{UnitRange{Int}}
 end
 
-# ADVI(n_vars, n_iters) = ADVI(zeros(n_vars), zeros(n_vars), n_iters, Set{Float64}())
-ADVI(n_iters; samples_per_step=5, max_iters=5000) = ADVI(n_iters, Set{Float64}(), samples_per_step, max_iters)
+ADVI(model::Model; kwargs...) = begin
+    # setup
+    var_info = Turing.VarInfo()
+    model(var_info, Turing.SampleFromUniform())
+    num_params = size(var_info.vals, 1)
+
+    dists = var_info.dists
+    ranges = var_info.ranges
+    
+    advi = ADVI(zeros(num_params), zeros(num_params), dists, ranges)
+
+    # construct objective
+    elbo = ELBO()
+
+    Turing.DEBUG && @debug "Optimizing ADVI..."
+    μ, ω = optimize(elbo, advi, model; kwargs...)
+
+    # TODO: make mutable instead?
+    ADVI(μ, ω, dists, ranges)
+end
 
 alg_str(::ADVI) = "ADVI"
 
-function sample(model::Model, alg::ADVI, save_state=false, resume_from=nothing, reuse_spl_n=0)
-    num_samples = alg.n_iters
-    
-    # setup
-    spl = reuse_spl_n > 0 ?
-        resume_from.info[:spl] :
-        Sampler(alg, model)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-    
-    var_info = if resume_from == nothing
-        vi_ = VarInfo()
-        model(vi_, SampleFromUniform())
-        vi_
-    else
-        resume_from.info[:vi]
-    end
+# TODO: implement this following `Distribution` interface
+Base.length(advi::ADVI) = length(advi.μ)
 
-    time_total = 0.0
-    n = reuse_spl_n > 0 ?
-        reuse_spl_n :
-        num_samples
+_rand!(rng::AbstractRNG, advi::ADVI{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
+    # extract parameters for convenience
+    μ, ω = advi.μ, advi.ω
+    num_params = length(μ)
 
-    if spl.selector.tag == :default
-        runmodel!(model, var_info, spl)
-    end
-
-    # extract number of parameters for the model
-    num_params = size(var_info.vals, 1)
-
-    # optimize
-    # TODO: optimization options needs to be part of the algorithm struct
-    μ, ω = optimize(alg, model)
-
-    # buffer
-    samples = zeros(num_samples, num_params)
-
-    # No point in looking at the progress here since it's so quick?
-    
-    for i = 1:size(var_info.dists, 1)
-        prior = var_info.dists[i]
-        r = var_info.ranges[i]
+    for i = 1:size(advi.dists, 1)
+        prior = advi.dists[i]
+        r = advi.ranges[i]
 
         # initials
         μ_i = μ[r]
@@ -86,34 +74,17 @@ function sample(model::Model, alg::ADVI, save_state=false, resume_from=nothing, 
         # # sample from VI posterior
         θ_acc = zeros(length(μ_i))
 
-        for j = 1:num_samples
-            η = randn(length(μ_i))
-            ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
-            θ = invlink(prior, ζ)
+        η = randn(rng, length(μ_i))
+        ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
+        θ = invlink(prior, ζ)
 
-            samples[j, r] = θ
-        end
+        x[r] = θ
     end
 
-    # # TODO: have to construct `Sample` objects....
-    # for j = 1:num_samples
-    #     # re-iterate through and turn array into samples
-    #     for i, vn in enumerate(keys(vn))
-            
-    #     end
-    # end
-
-    # construct the sampler chain
-    # names = keys(vi)
-    # samples = Chain()
-
-    return samples
+    return x
 end
 
-function optimize(vi::ADVI, model::Model)
-    samples_per_step = vi.samples_per_step
-    max_iters = vi.max_iters
-    
+function optimize(elbo::ELBO, vi::ADVI, model::Model; samples_per_step = 10, max_iters = 5000)
     # setup
     var_info = Turing.VarInfo()
     model(var_info, Turing.SampleFromUniform())
@@ -123,7 +94,7 @@ function optimize(vi::ADVI, model::Model)
         # extract the mean-field Gaussian params
         μ, ω = x[1:num_params], x[num_params + 1: end]
         
-        - objective(vi, model, μ, ω, samples_per_step)
+        - elbo(vi, model, μ, ω, samples_per_step)
     end
 
     # for every param we need a mean μ and variance ω
@@ -169,7 +140,8 @@ function optimize(vi::ADVI, model::Model)
     return μ, ω
 end
 
-function objective(vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
+function (elbo::ELBO)(vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
+# function objective(::ELBO, vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
     # ELBO
     
     # setup
@@ -218,7 +190,8 @@ function objective(vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_sam
     elbo_acc
 end
 
-function objective(vi::ADVI, model::Model, num_samples)
+function (elbo::ELBO)(vi::ADVI, model::Model, num_samples)
+# function objective(vi::ADVI, model::Model, num_samples)
     # extract the mean-field Gaussian params
     μ, ω = vi.μ, vi.ω
 

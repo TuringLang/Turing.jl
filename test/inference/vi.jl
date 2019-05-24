@@ -6,15 +6,19 @@ include("../test_utils/AllUtils.jl")
     @turing_testset "advi constructor" begin
         Random.seed!(0)
         N = 500
-        s1 = Turing.Inference.ADVI(N)
 
-        c1 = sample(gdemo_default, s1)
+        s1 = ADVI(gdemo_default)
+        c1 = rand(s1, N)
     end
     @numerical_testset "advi inference" begin
         Random.seed!(125)
-        alg = Turing.Inference.ADVI(2000)
-        chain = sample(gdemo_default, alg)
-        # TODO: do the numerical check after using the 
-        # check_gdemo(chain, eps = 0.1)
+        N = 1000
+
+        alg = ADVI(gdemo_default)
+        samples = reshape(rand(alg, N), (N, length(alg.μ), 1))
+        chn = Chains(samples, ["s", "m"])
+
+        # TODO: uhmm, seems like a large `eps` here...
+        check_gdemo(chn, eps = 1.0)
     end
 end
