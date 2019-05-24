@@ -20,52 +20,24 @@ function center_diag_gaussian_inv(η, μ, σ)
     (η .* σ) + μ
 end
 
-"""
-    ADVI(model::Model)
-
-Automatic Differentiation Variational Inference (ADVI) for a given model.
-"""
-struct ADVI{T <: Real, TDists <: AbstractVector{<: Distribution}} <: VariationalInference
+struct MeanField{T, TDists <: AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
     μ::Vector{T}
     ω::Vector{T}
-    dists::TDists # AbstractVector{<:Distribution}
+    dists::TDists
     ranges::Vector{UnitRange{Int}}
 end
 
-ADVI(model::Model; kwargs...) = begin
-    # setup
-    var_info = Turing.VarInfo()
-    model(var_info, Turing.SampleFromUniform())
-    num_params = size(var_info.vals, 1)
-
-    dists = var_info.dists
-    ranges = var_info.ranges
-    
-    advi = ADVI(zeros(num_params), zeros(num_params), dists, ranges)
-
-    # construct objective
-    elbo = ELBO()
-
-    Turing.DEBUG && @debug "Optimizing ADVI..."
-    μ, ω = optimize(elbo, advi, model; kwargs...)
-
-    # TODO: make mutable instead?
-    ADVI(μ, ω, dists, ranges)
-end
-
-alg_str(::ADVI) = "ADVI"
-
 # TODO: implement this following `Distribution` interface
-Base.length(advi::ADVI) = length(advi.μ)
+Base.length(advi::MeanField) = length(advi.μ)
 
-_rand!(rng::AbstractRNG, advi::ADVI{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
+_rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
     # extract parameters for convenience
-    μ, ω = advi.μ, advi.ω
+    μ, ω = q.μ, q.ω
     num_params = length(μ)
 
-    for i = 1:size(advi.dists, 1)
-        prior = advi.dists[i]
-        r = advi.ranges[i]
+    for i = 1:size(q.dists, 1)
+        prior = q.dists[i]
+        r = q.ranges[i]
 
         # initials
         μ_i = μ[r]
@@ -84,7 +56,52 @@ _rand!(rng::AbstractRNG, advi::ADVI{T, TDists}, x::AbstractVector{T}) where {T<:
     return x
 end
 
-function optimize(elbo::ELBO, vi::ADVI, model::Model; samples_per_step = 10, max_iters = 5000)
+"""
+    ADVI(samplers_per_step = 10, max_iters = 5000)
+
+Automatic Differentiation Variational Inference (ADVI) for a given model.
+"""
+struct ADVI <: VariationalInference
+    samples_per_step
+    max_iters
+end
+
+ADVI() = ADVI(10, 5000)
+
+alg_str(::ADVI) = "ADVI"
+
+vi(model::Model, alg::ADVI) = begin
+    # setup
+    var_info = Turing.VarInfo()
+    model(var_info, Turing.SampleFromUniform())
+    num_params = size(var_info.vals, 1)
+
+    dists = var_info.dists
+    ranges = var_info.ranges
+    
+    q = MeanField(zeros(num_params), zeros(num_params), dists, ranges)
+
+    # construct objective
+    elbo = ELBO()
+
+    Turing.DEBUG && @debug "Optimizing ADVI..."
+    μ, ω = optimize(elbo, alg, q, model)
+
+    # TODO: make mutable instead?
+    MeanField(μ, ω, dists, ranges) 
+end
+
+# TODO: implement optimize like this?
+# (advi::ADVI)(elbo::EBLO, q::MeanField, model::Model) = begin
+# end
+
+function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
+    samples_per_step = alg.samples_per_step
+    max_iters = alg.max_iters
+
+    # number of previous gradients to use to compute `s` in adaGrad
+    stepsize_num_prev = 10
+    
     # setup
     var_info = Turing.VarInfo()
     model(var_info, Turing.SampleFromUniform())
@@ -94,7 +111,7 @@ function optimize(elbo::ELBO, vi::ADVI, model::Model; samples_per_step = 10, max
         # extract the mean-field Gaussian params
         μ, ω = x[1:num_params], x[num_params + 1: end]
         
-        - elbo(vi, model, μ, ω, samples_per_step)
+        - elbo(q, model, μ, ω, samples_per_step)
     end
 
     # for every param we need a mean μ and variance ω
@@ -107,9 +124,6 @@ function optimize(elbo::ELBO, vi::ADVI, model::Model; samples_per_step = 10, max
     ρ = zeros(2 * num_params)
     s = zeros(2 * num_params)
     g² = zeros(2 * num_params)
-
-    # number of previous gradients to use to compute `s` in adaGrad
-    stepsize_num_prev = 10
 
     i = 0
     while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
@@ -140,7 +154,7 @@ function optimize(elbo::ELBO, vi::ADVI, model::Model; samples_per_step = 10, max
     return μ, ω
 end
 
-function (elbo::ELBO)(vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
+function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
 # function objective(::ELBO, vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
     # ELBO
     
@@ -190,10 +204,10 @@ function (elbo::ELBO)(vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_
     elbo_acc
 end
 
-function (elbo::ELBO)(vi::ADVI, model::Model, num_samples)
+function (elbo::ELBO)(q::MeanField, model::Model, num_samples)
 # function objective(vi::ADVI, model::Model, num_samples)
     # extract the mean-field Gaussian params
-    μ, ω = vi.μ, vi.ω
+    μ, ω = q.μ, q.ω
 
     elbo(vi, model, μ, ω, num_samples)
 end

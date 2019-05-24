@@ -40,7 +40,8 @@ export  InferenceAlgorithm,
         PIMH,
         PMMH,
         IPMCMC,  # particle-based sampling
-        ADVI, # Variational Inference
+        vi, # Variational Inference
+        ADVI,
         assume,
         observe,
         step,

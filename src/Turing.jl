@@ -182,7 +182,8 @@ export  @model,                 # modelling
         PMMH,
         IPMCMC,
         
-        ADVI,                    # variational inference
+        vi,                    # variational inference
+        ADVI,
 
         sample,                 # inference
         setchunksize,
