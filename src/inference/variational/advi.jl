@@ -19,7 +19,7 @@ function center_diag_gaussian_inv(η, μ, σ)
 end
 
 """
-    ADVI(model::Turing.Model)
+    ADVI(n_iters; samples_per_step=5, max_iters=5000)
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
