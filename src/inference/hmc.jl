@@ -221,6 +221,7 @@ function sample(
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
     discard_adapt::Bool=true,
+    verbose::Bool=true,
     kwargs...
 )
     # Create sampler
@@ -276,7 +277,7 @@ function sample(
     step(model, spl, vi, Val(true); adaptor=adaptor)
 
     # Sampling using AHMC and store samples in `samples`
-    steps!(model, spl, vi, samples; rng=rng)
+    steps!(model, spl, vi, samples; rng=rng, verbose=verbose)
 
     # Concatenate samples
     if resume_from != nothing
@@ -415,10 +416,19 @@ function steps!(model,
     spl::Sampler{<:AdaptiveHamiltonian},
     vi,
     samples;
-    rng::AbstractRNG=GLOBAL_RNG
+    rng::AbstractRNG=GLOBAL_RNG,
+    verbose::Bool=true
 )
-    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj], Vector{Float64}(vi[spl]),
-        spl.alg.n_iters, spl.info[:adaptor], spl.alg.n_adapts)
+    ahmc_samples = AHMC.sample(
+        rng, 
+        spl.info[:h], 
+        spl.info[:traj], 
+        Vector{Float64}(vi[spl]),
+        spl.alg.n_iters, 
+        spl.info[:adaptor], 
+        spl.alg.n_adapts;
+        verbose=verbose
+    )
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
@@ -431,10 +441,17 @@ function steps!(
     spl::Sampler{<:HMC},
     vi,
     samples;
-    rng::AbstractRNG=GLOBAL_RNG
+    rng::AbstractRNG=GLOBAL_RNG,
+    verbose::Bool=true
 )
-    ahmc_samples =  AHMC.sample(rng, spl.info[:h], spl.info[:traj],
-        Vector{Float64}(vi[spl]), spl.alg.n_iters)
+    ahmc_samples = AHMC.sample(
+        rng, 
+        spl.info[:h], 
+        spl.info[:traj], 
+        Vector{Float64}(vi[spl]), 
+        spl.alg.n_iters;
+        verbose=verbose
+    )
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
@@ -447,7 +464,8 @@ function steps!(
     spl::Sampler{<:Hamiltonian},
     vi,
     samples;
-    rng::AbstractRNG=GLOBAL_RNG
+    rng::AbstractRNG=GLOBAL_RNG,
+    verbose::Bool=true
 )
     # Init step
     time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
