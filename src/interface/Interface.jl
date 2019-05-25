@@ -2,6 +2,7 @@ module Interface
 
 import Distributions: sample, Sampleable
 import Random: GLOBAL_RNG, AbstractRNG
+import ..MCMCChains: Chains
 
 export AbstractSampler,
        AbstractTransition,
@@ -108,7 +109,7 @@ function sample(
     # Wrap up the sampler, if necessary.
     sample_end!(rng, ℓ, s, N, ts; kwargs...)
 
-    return Chains(ts)
+    return Chains(ts; kwargs...)
 end
 
 """
