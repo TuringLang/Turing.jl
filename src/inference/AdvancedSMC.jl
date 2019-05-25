@@ -29,25 +29,57 @@ end
 SMC(n) = SMC(n, resample_systematic, 0.5, Set())
 function SMC(n_particles::Int, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    SMC(n_particles, resample_systematic, 0.5, _space)
+    alg = SMC(n_particles, resample_systematic, 0.5, _space)
+    return Sampler(alg)
 end
 
-mutable struct SMCSampler{SMC} <: AbstractSampler
-    alg::SMC
+# mutable struct SMCSampler{SMC} <: AbstractSampler
+#     alg::SMC
+#     logevidence::Vector{Float64}
+#     selector::Selector
+#     vi::VarInfo
+# end
+
+mutable struct SMCState <: SamplerState
     logevidence::Vector{Float64}
-    selector::Selector
     vi::VarInfo
 end
 
+SMCState() = SMCState(Float64[], VarInfo())
+
 function Sampler(alg::SMC, s::Selector)
-    return SMCSampler{SMC}(alg, Float64[], s, VarInfo())
+    dict = Dict{Symbol, Any}()
+    state = SMCState()
+    return Sampler{SMC,SMCState}(alg, dict, s, state)
 end
 
 struct SMCTransition{T} <: AbstractTransition
+    names::Vector{Symbol}
     θ::T
 end
 
-SMCTransition(vi::VarInfo) = SMCTransition{typeof(vi.vals)}(vi.value)
+vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
+SMCTransition(vi::VarInfo) = SMCTransition{typeof(vi.vals)}(vnames(vi), vi.value)
+
+# VarInfo, combined with spl.info, to Sample
+function transition(vi::AbstractVarInfo, spl::Sampler{<:SMC})
+    # Array version
+    vals = vi.vals
+    nms = vnames(vi)
+    new_trans = SMCTransition{typeof(vals)}(nms, vals)
+    return new_trans
+
+
+    ### Namedtuple version.
+    # vals = vi.vals
+    # ks = collect(keys(vi))
+    # ln = length(ks)
+    # nms = ntuple(i -> Symbol(ks[i]), ln)
+    # vs = ntuple(i -> vals[i], ln)
+    # tup = NamedTuple{nms}(vs)
+    # println(tup)
+    # return s
+end
 
 #####################
 # Interface for SMC #
@@ -55,7 +87,7 @@ SMCTransition(vi::VarInfo) = SMCTransition{typeof(vi.vals)}(vi.value)
 function sample_init!(
     ::AbstractRNG,
     ℓ::ModelType,
-    s::SMCSampler,
+    s::Sampler{SMC, SMCState},
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable}
@@ -65,7 +97,7 @@ end
 function transitions_init(
     ::AbstractRNG,
     ℓ::ModelType,
-    s::SMCSampler,
+    s::Sampler{SMC, SMCState},
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
@@ -73,18 +105,29 @@ function transitions_init(
 end
 
 function step!(
+    a::AbstractRNG, # Note: This function does not use the range argument.
+    ℓ::Turing.Model,
+    s::Sampler{SMC, SMCState},
+    N::Integer, # Note: This function doesn't use the N argument.
+    ::T; # Note: No use of the previous draw.
+    kwargs...
+) where T<:AbstractTransition
+    return step!(a, ℓ, s, N; kwargs...)
+end
+
+function step!(
     ::AbstractRNG, # Note: This function does not use the range argument.
     ℓ::Turing.Model,
-    s::SMCSampler,
+    s::Sampler{SMC, SMCState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
     particles = ParticleContainer{Trace}(ℓ)
-    s.vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(s.vi, s)
-    resetlogp!(s.vi)
+    s.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    set_retained_vns_del_by_spl!(s.state.vi, s)
+    resetlogp!(s.state.vi)
 
-    push!(particles, s.alg.n_particles, s, s.vi)
+    push!(particles, s.alg.n_particles, s, s.state.vi)
 
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
@@ -96,9 +139,13 @@ function step!(
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(s.logevidence, particles.logE)
+    push!(s.state.logevidence, particles.logE)
 
-    return particles[indx].vi
+    params = particles[indx].vi
+
+    # update the master vi.
+    s.state.vi = params
+    return transition(params, s)
 end
 
 function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
@@ -122,6 +169,26 @@ function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
     push!(spl.info[:logevidence], particles.logE)
 
     return particles[indx].vi, true
+end
+
+function sample_end!(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::Sampler{SMC, SMCState},
+    N::Integer,
+    ts::Vector{TransitionType};
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    TransitionType<:AbstractTransition
+}
+    # Do nothing.
+end
+
+function Chains(ts::Vector{SMCTransition}; kwargs...)
+    nms = first(ts).names
+    parray = vcat(map(x -> x.θ, ts)...)
+    return Chains(parray, string.(nms))
 end
 
 ## wrapper for smc: run the sampler, collect results.
