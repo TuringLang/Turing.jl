@@ -90,6 +90,11 @@ struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
 
 """
+An abstract type that mutable sampler state structs inherit from.
+"""
+abstract type SamplerState end
+
+"""
     Sampler{T}
 
 Generic interface for implementing inference algorithms.
@@ -103,10 +108,11 @@ The dispatch is based on the value of a `sampler` variable.
 To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T} <: AbstractSampler
+mutable struct Sampler{T, S<:SamplerState} <: AbstractSampler
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
+    state    ::  S
 end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
