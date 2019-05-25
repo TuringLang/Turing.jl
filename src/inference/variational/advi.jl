@@ -1,4 +1,5 @@
 using ForwardDiff
+using Flux.Optimise
 
 import Distributions: _rand!
 
@@ -20,6 +21,7 @@ function center_diag_gaussian_inv(η, μ, σ)
     (η .* σ) + μ
 end
 
+# Mean-field approximation used by ADVI
 struct MeanField{T, TDists <: AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
     μ::Vector{T}
     ω::Vector{T}
@@ -27,7 +29,6 @@ struct MeanField{T, TDists <: AbstractVector{<: Distribution}} <: VariationalPos
     ranges::Vector{UnitRange{Int}}
 end
 
-# TODO: implement this following `Distribution` interface
 Base.length(advi::MeanField) = length(advi.μ)
 
 _rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
@@ -57,16 +58,17 @@ _rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T
 end
 
 """
-    ADVI(samplers_per_step = 10, max_iters = 5000)
+    ADVI(samplers_per_step = 10, max_iters = 5000, opt = ADAGrad())
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
 struct ADVI <: VariationalInference
-    samples_per_step
-    max_iters
+    samples_per_step # number of samples used to estimate the ELBO in each optimization step
+    max_iters        # maximum number of gradient steps used in optimization
+    opt              # optimizer used to perform the updates
 end
 
-ADVI() = ADVI(10, 5000)
+ADVI() = ADVI(10, 5000, ADAGrad())
 
 alg_str(::ADVI) = "ADVI"
 
@@ -118,36 +120,29 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
     x = zeros(2 * num_params)
     diff_result = DiffResults.GradientResult(x)
 
-    # used for truncated adaGrad as suggested in (Blei et al, 2015). 
-    η = 0.1
-    τ = 1.0
-    ρ = zeros(2 * num_params)
-    s = zeros(2 * num_params)
-    g² = zeros(2 * num_params)
+    # TODO: in (Blei et al, 2015) TRUNCATED ADAGrad is suggested; this is not available in Flux.Optimise
+    # Maybe consider contributed a truncated ADAGrad to Flux.Optimise
 
     i = 0
-    while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
+    alg_name = alg_str(alg)
+    prog = PROGRESS[] ? ProgressMeter.Progress(max_iters, 1, "[$alg_name] Optimizing...", 0) : 0
+
+    time_elapsed = @elapsed while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
         # compute gradient
         ForwardDiff.gradient!(diff_result, f, x)
-        
-        # recursive implementation of updating the step-size
-        # if beyound first sequence of steps we subtract of the previous g² before adding the next
-        if i > stepsize_num_prev
-            s -= g²
-        end
 
-        # update parameters for adaGrad
-        g² .= DiffResults.gradient(diff_result).^2
-        s += g²
+        # apply update rule
+        Δ = DiffResults.gradient(diff_result)
+        Δ = Optimise.apply!(alg.opt, x, Δ)
+        @. x = x - Δ
         
-        # compute stepsize
-        @. ρ = η / (τ + sqrt(s))
-        
-        x .= x - ρ .* DiffResults.gradient(diff_result)
-        Turing.DEBUG && @debug "Step $i" ρ DiffResults.value(diff_result) norm(DiffResults.gradient(diff_result))
+        Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result) norm(DiffResults.gradient(diff_result))
+        PROGRESS[] && (ProgressMeter.next!(prog))
 
         i += 1
     end
+
+    @info time_elapsed
 
     μ, ω = x[1:num_params], x[num_params + 1: end]
 
@@ -155,9 +150,6 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
 end
 
 function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
-# function objective(::ELBO, vi::ADVI, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
-    # ELBO
-    
     # setup
     var_info = Turing.VarInfo()
 
@@ -205,7 +197,6 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
 end
 
 function (elbo::ELBO)(q::MeanField, model::Model, num_samples)
-# function objective(vi::ADVI, model::Model, num_samples)
     # extract the mean-field Gaussian params
     μ, ω = q.μ, q.ω
 
