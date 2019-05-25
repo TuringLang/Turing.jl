@@ -6,18 +6,20 @@ using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector
+    Selector, SamplerState
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Interface
+import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume
-import ..Interface: AbstractTransition, step!, sample_init!, transitions_init
+import ..Interface: AbstractTransition, step!, sample_init!, transitions_init,
+    sample_end!
 
 export  InferenceAlgorithm,
         Hamiltonian,
