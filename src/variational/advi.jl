@@ -74,8 +74,8 @@ alg_str(::ADVI) = "ADVI"
 
 vi(model::Model, alg::ADVI) = begin
     # setup
-    var_info = Turing.VarInfo()
-    model(var_info, Turing.SampleFromUniform())
+    var_info = VarInfo()
+    model(var_info, SampleFromUniform())
     num_params = size(var_info.vals, 1)
 
     dists = var_info.dists
