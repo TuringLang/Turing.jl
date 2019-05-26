@@ -138,6 +138,7 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
     prog = PROGRESS[] ? ProgressMeter.Progress(max_iters, 1, "[$alg_name] Optimizing...", 0) : 0
 
     time_elapsed = @elapsed while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
+        # TODO: separate into a `grad(...)` call; need to manually provide `diff_result` buffers
         # compute gradient
         ForwardDiff.gradient!(diff_result, f, x)
 
