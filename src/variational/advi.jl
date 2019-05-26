@@ -139,7 +139,6 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
 
     time_elapsed = @elapsed while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
         # TODO: separate into a `grad(...)` call; need to manually provide `diff_result` buffers
-        # compute gradient
         ForwardDiff.gradient!(diff_result, f, x)
 
         # apply update rule

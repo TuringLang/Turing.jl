@@ -13,6 +13,7 @@ export
     ADVI,
     ELBO
 
+
 abstract type VariationalInference end
 
 abstract type VariationalObjective end
@@ -33,8 +34,11 @@ Computes empirical estimates of ELBO for the given VI method using number of sam
 """
 function objective(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model, num_samples) end
 
+# (::VariationalObjective)(vi::VariationalInference, model::Model, num_samples, args...; kwargs...) = begin
+# end
+
 """
-    optimize(vi::VariationalInference)
+    optimize(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model)
 
 Finds parameters which maximizes the ELBO for the given VI method.
 """
@@ -59,9 +63,6 @@ function vi(model::Model, alg::VariationalInference) end
 
 # objectives
 include("objectives.jl")
-
-# (::VariationalObjective)(vi::VariationalInference, model::Model, num_samples, args...; kwargs...) = begin
-# end
 
 # VI algorithms
 include("advi.jl")
