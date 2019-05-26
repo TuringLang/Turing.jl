@@ -1,7 +1,6 @@
 using Turing, Random, Test
 
 include("../test_utils/AllUtils.jl")
-include("test/test_utils/AllUtils.jl")
 
 @testset "vi.jl" begin
     @turing_testset "advi constructor" begin
