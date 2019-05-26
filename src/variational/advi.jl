@@ -63,14 +63,13 @@ Automatic Differentiation Variational Inference (ADVI) for a given model.
 struct ADVI <: VariationalInference
     samples_per_step # number of samples used to estimate the ELBO in each optimization step
     max_iters        # maximum number of gradient steps used in optimization
-    opt              # optimizer used to perform the updates
 end
 
-ADVI() = ADVI(10, 5000, ADAGrad())
+ADVI() = ADVI(10, 5000)
 
 alg_str(::ADVI) = "ADVI"
 
-vi(model::Model, alg::ADVI) = begin
+vi(model::Model, alg::ADVI; optimizer = ADAGrad()) = begin
     # setup
     var_info = VarInfo()
     model(var_info, SampleFromUniform())
@@ -85,7 +84,7 @@ vi(model::Model, alg::ADVI) = begin
     elbo = ELBO()
 
     Turing.DEBUG && @debug "Optimizing ADVI..."
-    μ, ω = optimize(elbo, alg, q, model)
+    μ, ω = optimize(elbo, alg, q, model; optimizer = optimizer)
 
     # TODO: make mutable instead?
     MeanField(μ, ω, dists, ranges) 
@@ -95,7 +94,7 @@ end
 # (advi::ADVI)(elbo::EBLO, q::MeanField, model::Model) = begin
 # end
 
-function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
+function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer = ADAGrad())
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
@@ -120,7 +119,7 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
 
     # HACK: re-use previous gradient `acc` if equal in value
     # Can cause issues if two entries have idenitical values
-    vs = [v for v ∈ keys(alg.opt.acc)]
+    vs = [v for v ∈ keys(optimizer.acc)]
     idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
     if idx != nothing
         @info "[$alg_name] Re-using previous optimizer accumulator"
@@ -141,7 +140,7 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
 
         # apply update rule
         Δ = DiffResults.gradient(diff_result)
-        Δ = Optimise.apply!(alg.opt, x, Δ)
+        Δ = Optimise.apply!(optimizer, x, Δ)
         @. x = x - Δ
         
         Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result) norm(DiffResults.gradient(diff_result))
@@ -167,6 +166,8 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
     num_params = length(q)
     
     elbo_acc = 0.0
+
+    # TODO: instead use `rand(q, num_samples)` and iterate through?
 
     for i = 1:num_samples
         # iterate through priors, sample and update

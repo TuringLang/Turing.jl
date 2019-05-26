@@ -18,7 +18,7 @@ abstract type VariationalInference end
 
 abstract type VariationalObjective end
 
-abstract type VariationalPosterior <: Distribution{Multivariate, Continuous} end
+const VariationalPosterior = Distribution{Multivariate, Continuous}
 
 """
     rand(vi::VariationalInference, num_samples)
