@@ -34,7 +34,7 @@ Base.length(advi::MeanField) = length(advi.μ)
 _rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
     # extract parameters for convenience
     μ, ω = q.μ, q.ω
-    num_params = length(μ)
+    num_params = length(q)
 
     for i = 1:size(q.dists, 1)
         prior = q.dists[i]
@@ -98,6 +98,7 @@ end
 # end
 
 function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
+    alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
 
@@ -117,14 +118,23 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
     end
 
     # for every param we need a mean μ and variance ω
+
+    # HACK: re-use previous gradient `acc` if equal in value
     x = zeros(2 * num_params)
+
+    vs = [v for v ∈ keys(alg.opt.acc)]
+    idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
+    if idx != nothing
+        @info "[$alg_name] Re-using previous optimizer accumulator"
+        x = vs[idx]
+    end
+    
     diff_result = DiffResults.GradientResult(x)
 
     # TODO: in (Blei et al, 2015) TRUNCATED ADAGrad is suggested; this is not available in Flux.Optimise
     # Maybe consider contributed a truncated ADAGrad to Flux.Optimise
 
     i = 0
-    alg_name = alg_str(alg)
     prog = PROGRESS[] ? ProgressMeter.Progress(max_iters, 1, "[$alg_name] Optimizing...", 0) : 0
 
     time_elapsed = @elapsed while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
@@ -156,15 +166,15 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
     # initial `Var_Info` object
     model(var_info, Turing.SampleFromUniform())
 
-    num_params = size(var_info.vals, 1)
+    num_params = length(q)
     
     elbo_acc = 0.0
 
     for i = 1:num_samples
         # iterate through priors, sample and update
-        for i = 1:size(var_info.dists, 1)
-            prior = var_info.dists[i]
-            r = var_info.ranges[i]
+        for i = 1:size(q.dists, 1)
+            prior = q.dists[i]
+            r = q.ranges[i]
 
             # mean-field params for this set of model params
             μ_i = μ[r]
@@ -200,5 +210,5 @@ function (elbo::ELBO)(q::MeanField, model::Model, num_samples)
     # extract the mean-field Gaussian params
     μ, ω = q.μ, q.ω
 
-    elbo(vi, model, μ, ω, num_samples)
+    elbo(q, model, μ, ω, num_samples)
 end
