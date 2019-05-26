@@ -45,8 +45,6 @@ _rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T
         ω_i = ω[r]
 
         # # sample from VI posterior
-        θ_acc = zeros(length(μ_i))
-
         η = randn(rng, length(μ_i))
         ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
         θ = invlink(prior, ζ)
@@ -117,11 +115,11 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model)
         - elbo(q, model, μ, ω, samples_per_step)
     end
 
-    # for every param we need a mean μ and variance ω
-
-    # HACK: re-use previous gradient `acc` if equal in value
+    # buffer
     x = zeros(2 * num_params)
 
+    # HACK: re-use previous gradient `acc` if equal in value
+    # Can cause issues if two entries have idenitical values
     vs = [v for v ∈ keys(alg.opt.acc)]
     idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
     if idx != nothing
@@ -163,7 +161,7 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
     # setup
     var_info = Turing.VarInfo()
 
-    # initial `Var_Info` object
+    # initialize `VarInfo` object
     model(var_info, Turing.SampleFromUniform())
 
     num_params = length(q)
@@ -184,7 +182,7 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
             η = randn(length(μ_i))
             ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
             
-            # inverse-transform back to original param space
+            # inverse-transform back to domain of original priro
             θ = invlink(prior, ζ)
 
             # update
@@ -194,7 +192,7 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
             elbo_acc += log(abs(det(jac_inv_transform(prior, ζ)))) / num_samples
         end
 
-        # sample with updated variables
+        # compute log density
         model(var_info)
         elbo_acc += var_info.logp / num_samples
     end
