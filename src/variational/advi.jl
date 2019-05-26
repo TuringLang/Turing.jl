@@ -56,7 +56,7 @@ _rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T
 end
 
 """
-    ADVI(samplers_per_step = 10, max_iters = 5000, opt = ADAGrad())
+    ADVI(samplers_per_step = 10, max_iters = 5000)
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
