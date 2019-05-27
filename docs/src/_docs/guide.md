@@ -168,7 +168,7 @@ Output:
 (0.685690547873451, -1.1972706455914328)
 ```
 
-### Sampling from the Conditional Prior
+### Sampling from a Conditional Distribution
 
 #### Using `Missing`
 
