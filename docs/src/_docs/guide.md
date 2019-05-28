@@ -97,7 +97,7 @@ The returned chain contains samples of the variables in the model.
 var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 ```
 
-Tthe key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")` or `chn["x[1]"]`.
+The key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")` or `chn["x[1]"]`.
 
 The benefit of using a `Symbol` to index allows you to retrieve all the parameters associated with that symbol. As an example, if you have the parameters `"x[1]"`, `"x[2]"`, and `"x[3]"`, calling `chn[:x]` will return a new chain with only `"x[1]"`, `"x[2]"`, and `"x[3]"`.
 
@@ -142,7 +142,7 @@ Having multiple chains in the same object is valuable for evaluating convergence
 
 Please note that Turing does not have native support for chains sampled in parallel.
 
-### Sampling from the Unconditional Prior
+### Sampling from an Unconditional Distribution (The Prior)
 
 Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.
 
@@ -168,7 +168,7 @@ Output:
 (0.685690547873451, -1.1972706455914328)
 ```
 
-### Sampling from a Conditional Distribution
+### Sampling from a Conditional Distribution (The Posterior)
 
 #### Using `Missing`
 
