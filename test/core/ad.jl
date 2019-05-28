@@ -1,6 +1,7 @@
-using ForwardDiff, Distributions, FDM, Tracker, Random
+using ForwardDiff, Distributions, FDM, Tracker, Random, LinearAlgebra, PDMats
 using Turing: gradient_logp_reverse, invlink, link, SampleFromPrior
 using Turing.Core.RandomVariables: getval
+using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test
@@ -125,5 +126,56 @@ include("../test_utils/AllUtils.jl")
         end
 
         test_model_ad(wishart_ad(), logp3, [:v])
+    end
+    @numerical_testset "Tracker + MvNormal" begin
+        rng, N = MersenneTwister(123456), 11
+        B = randn(rng, N, N)
+        m, A = randn(rng, N), B' * B + I
+
+        # Generate from the TuringMvNormal
+        d, back = Tracker.forward(TuringMvNormal, m, A)
+        x = Tracker.data(rand(d))
+
+        # Check that the logpdf agrees with MvNormal.
+        d_ref = MvNormal(m, PDMat(A))
+        @test logpdf(d, x) ≈ logpdf(d_ref, x)
+
+        logpdf_func(m, B, x) = logpdf(MvNormal(m, B' * B + Matrix(I, N, N)), x)
+
+        # Ensure that forward-pass is correct.
+        @test Tracker.forward(logpdf_func, m, B, x)[1] ≈ logpdf_func(m, B, x)
+
+        # Check reverse-pass with finite differencing.
+        fdm_grads = FDM.j′vp(central_fdm(5, 1), logpdf_func, 1.0, m, B, x)
+        out, back = Tracker.forward(logpdf_func, m, B, x)
+        tracker_grads = back(1)
+
+        @test fdm_grads[1] ≈ tracker_grads[1]
+        @test fdm_grads[2] ≈ tracker_grads[2]
+        @test fdm_grads[3] ≈ tracker_grads[3]
+    end
+    @numerical_testset "Tracker + Diagonal Normal" begin
+        rng, N = MersenneTwister(123456), 11
+        m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
+
+        d = TuringDiagNormal(m, σ)
+        x = rand(d)
+
+        # Check that the logpdf agrees with MvNormal.
+        d_ref = MvNormal(m, σ)
+        @test logpdf(d, x) ≈ logpdf(d_ref, x)
+
+        out, _ = Tracker.forward((m, σ, x)->logpdf(MvNormal(m, σ), x), m, σ, x)
+        @test out ≈ logpdf(MvNormal(m, σ), x)
+
+        diag_logpdf_func(m, σ, x) = logpdf(MvNormal(m, σ), x)
+
+        fdm_grads = FDM.j′vp(forward_fdm(5, 1), diag_logpdf_func, 1.0, m, σ, x)
+        out, back = Tracker.forward(diag_logpdf_func, m, σ, x)
+        tracker_grads = back(1)
+
+        @test fdm_grads[1] ≈ tracker_grads[1]
+        @test fdm_grads[2] ≈ tracker_grads[2]
+        @test fdm_grads[3] ≈ tracker_grads[3]
     end
 end
