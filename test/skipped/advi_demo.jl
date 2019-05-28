@@ -1,3 +1,5 @@
+using Revise
+
 using Turing
 using Turing: Variational
 
@@ -25,7 +27,7 @@ q = vi(m, advi; optimizer = opt) # => MeanField <: VariationalPosterior
 
 elbo = Variational.ELBO()        # <: VariationalObjective
 
-history = [elbo(q, m, 1000)]     # history of objective evaluations
+history = [elbo(advi, q, m, 1000)]     # history of objective evaluations
 
 # setup for plotting
 using Plots, StatsPlots, LaTeXStrings
@@ -110,7 +112,7 @@ anim = @animate for j = 1:100
     xlims!(-0.25, 0.25);
 
     # visualize evolution of objective wrt. optimization iterations
-    obj = elbo(q, m, 1000)
+    obj = elbo(advi, q, m, 1000)
     @info "ELBO" obj
     push!(history, obj)
     p3 = plot();

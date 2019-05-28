@@ -1,60 +1,6 @@
 using ForwardDiff
 using Flux.Optimise
 
-import Distributions: _rand!
-
-
-function jac_inv_transform(dist::Distribution, x::T where T<:Real)
-    ForwardDiff.derivative(x -> invlink(dist, x), x)
-end
-
-function jac_inv_transform(dist::Distribution, x::Array{T} where T <: Real)
-    ForwardDiff.jacobian(x -> invlink(dist, x), x)
-end
-
-function center_diag_gaussian(x, μ, σ)
-    # instead of creating a diagonal matrix, we just do elementwise multiplication
-    (σ .^(-1)) .* (x - μ)
-end
-
-function center_diag_gaussian_inv(η, μ, σ)
-    (η .* σ) + μ
-end
-
-# Mean-field approximation used by ADVI
-struct MeanField{T, TDists <: AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
-    μ::Vector{T}
-    ω::Vector{T}
-    dists::TDists
-    ranges::Vector{UnitRange{Int}}
-end
-
-Base.length(advi::MeanField) = length(advi.μ)
-
-_rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
-    # extract parameters for convenience
-    μ, ω = q.μ, q.ω
-    num_params = length(q)
-
-    for i = 1:size(q.dists, 1)
-        prior = q.dists[i]
-        r = q.ranges[i]
-
-        # initials
-        μ_i = μ[r]
-        ω_i = ω[r]
-
-        # # sample from VI posterior
-        η = randn(rng, length(μ_i))
-        ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
-        θ = invlink(prior, ζ)
-
-        x[r] = θ
-    end
-
-    return x
-end
-
 """
     ADVI(samplers_per_step = 10, max_iters = 5000)
 
@@ -111,7 +57,7 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
         # extract the mean-field Gaussian params
         μ, ω = x[1:num_params], x[num_params + 1: end]
         
-        - elbo(q, model, μ, ω, samples_per_step)
+        - elbo(alg, q, model, μ, ω, samples_per_step)
     end
 
     # buffer
@@ -156,7 +102,7 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
     return μ, ω
 end
 
-function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
+function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
     # setup
     var_info = Turing.VarInfo()
 
@@ -189,8 +135,9 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
             # update
             var_info.vals[r] = θ
 
-            # add the log-det-jacobian of inverse transform
-            elbo_acc += log(abs(det(jac_inv_transform(prior, ζ)))) / num_samples
+            # add the log-det-jacobian of inverse transform;
+            # `logabsdet` returns `(log(abs(det(M))), sign(det(M)))` so return first entry
+            elbo_acc += logabsdet(jac_inv_transform(prior, ζ))[1] / num_samples
         end
 
         # compute log density
@@ -205,9 +152,9 @@ function (elbo::ELBO)(q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, 
     elbo_acc
 end
 
-function (elbo::ELBO)(q::MeanField, model::Model, num_samples)
+function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, num_samples)
     # extract the mean-field Gaussian params
     μ, ω = q.μ, q.ω
 
-    elbo(q, model, μ, ω, num_samples)
+    elbo(alg, q, model, μ, ω, num_samples)
 end

@@ -61,6 +61,9 @@ Constructs the variational posterior from the `model` using ``
 """
 function vi(model::Model, alg::VariationalInference) end
 
+# distributions
+include("distributions.jl")
+
 # objectives
 include("objectives.jl")
 
