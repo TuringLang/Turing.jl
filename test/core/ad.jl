@@ -127,6 +127,19 @@ include("../test_utils/AllUtils.jl")
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
+    @numerical_testset "Tracker + logdet" begin
+        rng, N = MersenneTwister(123456), 13
+        B = randn(rng, N, N)
+
+        logdet_func(B) = logdet(cholesky(B' * B + Matrix(I, N, N)))
+
+        f_tracker, back = Tracker.forward(logdet_func, B)
+        tracker_grad = back(1.0)[1]
+        fdm_grad = FDM.j′vp(central_fdm(5, 1), logdet_func, 1.0, B)
+
+        @test logdet_func(B) == f_tracker
+        @test fdm_grad ≈ tracker_grad
+    end
     @numerical_testset "Tracker + MvNormal" begin
         rng, N = MersenneTwister(123456), 11
         B = randn(rng, N, N)
