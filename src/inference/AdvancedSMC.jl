@@ -26,26 +26,25 @@ struct SMC{T, F} <: InferenceAlgorithm
     resampler_threshold   ::  Float64
     space                 ::  Set{T}
 end
-SMC(n) = SMC(n, resample_systematic, 0.5, Set())
+
+function SMC(n)
+    alg = SMC(n, resample_systematic, 0.5, Set())
+    return Sampler(alg)
+end
+
 function SMC(n_particles::Int, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     alg = SMC(n_particles, resample_systematic, 0.5, _space)
     return Sampler(alg)
 end
 
-# mutable struct SMCSampler{SMC} <: AbstractSampler
-#     alg::SMC
-#     logevidence::Vector{Float64}
-#     selector::Selector
-#     vi::VarInfo
-# end
-
 mutable struct SMCState <: SamplerState
     logevidence::Vector{Float64}
     vi::VarInfo
+    vnames::Vector{Symbol}
 end
 
-SMCState() = SMCState(Float64[], VarInfo())
+SMCState() = SMCState(Float64[], VarInfo(), Symbol[])
 
 function Sampler(alg::SMC, s::Selector)
     dict = Dict{Symbol, Any}()
@@ -53,47 +52,14 @@ function Sampler(alg::SMC, s::Selector)
     return Sampler{SMC,SMCState}(alg, dict, s, state)
 end
 
-struct SMCTransition{T} <: AbstractTransition
+struct ParticleTransition{T} <: AbstractTransition
     names::Vector{Symbol}
     θ::T
-end
-
-vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
-SMCTransition(vi::VarInfo) = SMCTransition{typeof(vi.vals)}(vnames(vi), vi.value)
-
-# VarInfo, combined with spl.info, to Sample
-function transition(vi::AbstractVarInfo, spl::Sampler{<:SMC})
-    # Array version
-    vals = vi.vals
-    nms = vnames(vi)
-    new_trans = SMCTransition{typeof(vals)}(nms, vals)
-    return new_trans
-
-
-    ### Namedtuple version.
-    # vals = vi.vals
-    # ks = collect(keys(vi))
-    # ln = length(ks)
-    # nms = ntuple(i -> Symbol(ks[i]), ln)
-    # vs = ntuple(i -> vals[i], ln)
-    # tup = NamedTuple{nms}(vs)
-    # println(tup)
-    # return s
 end
 
 #####################
 # Interface for SMC #
 #####################
-function sample_init!(
-    ::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler{SMC, SMCState},
-    N::Integer;
-    kwargs...
-) where {ModelType<:Sampleable}
-    # Do nothing.
-end
-
 function transitions_init(
     ::AbstractRNG,
     ℓ::ModelType,
@@ -101,7 +67,7 @@ function transitions_init(
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return Vector{SMCTransition}(undef, N)
+    return Vector{ParticleTransition}(undef, N)
 end
 
 function step!(
@@ -148,65 +114,10 @@ function step!(
     return transition(params, s)
 end
 
-function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
-    particles = ParticleContainer{Trace}(model)
-    vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
-
-    push!(particles, spl.alg.n_particles, spl, vi)
-
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
-    end
-
-    ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
-    push!(spl.info[:logevidence], particles.logE)
-
-    return particles[indx].vi, true
-end
-
-function sample_end!(
-    rng::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler{SMC, SMCState},
-    N::Integer,
-    ts::Vector{TransitionType};
-    kwargs...
-) where {
-    ModelType<:Sampleable,
-    TransitionType<:AbstractTransition
-}
-    # Do nothing.
-end
-
-function Chains(ts::Vector{SMCTransition}; kwargs...)
+function Chains(ts::Vector{ParticleTransition}; kwargs...)
     nms = first(ts).names
     parray = vcat(map(x -> x.θ, ts)...)
     return Chains(parray, string.(nms))
-end
-
-## wrapper for smc: run the sampler, collect results.
-function sample(model::Model, alg::SMC)
-    spl = Sampler(alg)
-
-    particles = ParticleContainer{Trace}(model)
-    push!(particles, spl.alg.n_particles, spl, VarInfo())
-
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
-    end
-    w, samples = getsample(particles)
-    res = Chain(log(w), samples)
-    return res
 end
 
 ####
@@ -233,51 +144,136 @@ mutable struct PG{T, F} <: InferenceAlgorithm
   resampler             ::    F           # function to resample
   space                 ::    Set{T}      # sampling space, emtpy means all
 end
-PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, Set())
+
+function PG(n1::Int, n2::Int)
+    alg = PG(n1, n2, resample_systematic, Set())
+    return Sampler(alg)
+end
+
 function PG(n1::Int, n2::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  PG(n1, n2, resample_systematic, _space)
+  alg = PG(n1, n2, resample_systematic, _space)
+  return Sampler(alg)
 end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG, s::Selector)
-    info = Dict{Symbol, Any}()
-    info[:logevidence] = []
-    Sampler(alg, info, s)
+"""
+    PGState <: SamplerState
+
+Maintains the state for the Particle Gibbs sampler.
+"""
+mutable struct PGState <: SamplerState
+    logevidence::Vector{Float64}
+    vi::VarInfo
+    vnames::Vector{Symbol}
 end
 
-step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
+"""
+    Sampler(alg::PG, s::Selector)
 
-function step(model, spl::Sampler{<:PG}, vi::VarInfo)
-    particles = ParticleContainer{Trace}(model)
+Return a `Sampler` object for the PG algorithm.
+"""
+function Sampler(alg::PG, s::Selector)
+    info = Dict{Symbol, Any}()
+    state = PGState(Float64[], VarInfo())
+    return Sampler{SMC,SMCState}(alg, info, s, state)
+end
+
+#####################
+# Interface for PG #
+#####################
+function transitions_init(
+    ::AbstractRNG,
+    ℓ::ModelType,
+    s::Sampler{PG, PGState},
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    return Vector{ParticleTransition}(undef, N)
+end
+
+function sample_init!(
+    ::AbstractRNG,
+    ℓ::ModelType,
+    s::Sampler{PG, PGState},
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable}
+    # Do nothing.
+end
+
+function step!(
+    ::AbstractRNG, # Note: This function does not use the range argument for now.
+    ℓ::Turing.Model,
+    s::Sampler{PG, PGState},
+    ::Integer; # Note: This function doesn't use the N argument.
+    kwargs...
+)
+    particles = ParticleContainer{Trace}(ℓ)
 
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    ref_particle = isempty(vi) ?
+    ref_particle = isempty(s.state.vi) ?
                   nothing :
-                  forkr(Trace(model, spl, vi))
+                  forkr(Trace(ℓ, s, s.state.vi))
 
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+    set_retained_vns_del_by_spl!(s.state.vi, s)
+    resetlogp!(s.state.vi)
 
     if ref_particle == nothing
-        push!(particles, spl.alg.n_particles, spl, vi)
+        push!(particles, s.alg.n_particles, s, s.state.vi)
     else
-        push!(particles, spl.alg.n_particles-1, spl, vi)
+        push!(particles, s.alg.n_particles-1, s, s.state.vi)
         push!(particles, ref_particle)
     end
 
     while consume(particles) != Val{:done}
-        resample!(particles, spl.alg.resampler, ref_particle)
+        resample!(particles, s.alg.resampler, ref_particle)
     end
 
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(spl.info[:logevidence], particles.logE)
+    push!(s.state.logevidence, particles.logE)
 
-    return particles[indx].vi, true
+    params = particles[indx].vi
+
+    # update the master VarInfo.
+    s.state.vi = params
+    return transition(params, s)
 end
+
+# step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
+#
+# function step(model, spl::Sampler{<:PG}, vi::VarInfo)
+#     particles = ParticleContainer{Trace}(model)
+#
+#     vi.num_produce = 0;  # Reset num_produce before new sweep\.
+#     ref_particle = isempty(vi) ?
+#                   nothing :
+#                   forkr(Trace(model, spl, vi))
+#
+#     set_retained_vns_del_by_spl!(vi, spl)
+#     resetlogp!(vi)
+#
+#     if ref_particle == nothing
+#         push!(particles, spl.alg.n_particles, spl, vi)
+#     else
+#         push!(particles, spl.alg.n_particles-1, spl, vi)
+#         push!(particles, ref_particle)
+#     end
+#
+#     while consume(particles) != Val{:done}
+#         resample!(particles, spl.alg.resampler, ref_particle)
+#     end
+#
+#     ## pick a particle to be retained.
+#     Ws, _ = weights(particles)
+#     indx = randcat(Ws)
+#     push!(spl.info[:logevidence], particles.logE)
+#
+#     return particles[indx].vi, true
+# end
 
 function sample(  model::Model,
                   alg::PG;
@@ -828,4 +824,37 @@ function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
         end
     end
     return indx
+end
+
+
+#############################
+# Common particle functions #
+#############################
+
+vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
+
+"""
+    transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}})
+
+Returns a basic TransitionType for the particle samplers.
+"""
+function transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}})
+    # Array version
+    vals = vi.vals
+    if length(spl.state.vnames) == 0
+        spl.state.vnames = vnames(vi)
+    end
+    new_trans = ParticleTransition{typeof(vals)}(spl.state.vnames, vals)
+    return new_trans
+
+
+    ### Namedtuple version.
+    # vals = vi.vals
+    # ks = collect(keys(vi))
+    # ln = length(ks)
+    # nms = ntuple(i -> Symbol(ks[i]), ln)
+    # vs = ntuple(i -> vals[i], ln)
+    # tup = NamedTuple{nms}(vs)
+    # println(tup)
+    # return s
 end

@@ -213,6 +213,34 @@ function step!(
     # Do nothing.
     @warn "No step! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
+    return step!(rng, ℓ, s, N; kwargs...)
+end
+
+"""
+    step!(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer,
+        t::Nothing;
+        kwargs...
+    )
+
+Returns a single `AbstractTransition` drawn using the model and sampler type.
+"""
+function step!(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer,
+    t::Nothing;
+    kwargs...
+) where {ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    TransitionType<:AbstractTransition
+}
+    @warn "No transition type passed in, running normal step! function."
+    return step!(rng, ℓ, s, N; kwargs...)
 end
 
 """
