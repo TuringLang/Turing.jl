@@ -8,13 +8,20 @@ using ..Turing: Model, SampleFromPrior, SampleFromUniform
 using ..Turing: Turing
 using Random: AbstractRNG
 
+import ..Core: getchunksize, getADtype
+
 export
     vi,
     ADVI,
     ELBO
 
 
-abstract type VariationalInference end
+abstract type VariationalInference{AD} end
+
+getchunksize(::T) where {T <: VariationalInference} = getchunksize(T)
+getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
+getADtype(alg::VariationalInference) = getADtype(typeof(alg))
+getADtype(::Type{<: VariationalInference{AD}}) where {AD} = AD
 
 abstract type VariationalObjective end
 

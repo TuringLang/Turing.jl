@@ -5,8 +5,12 @@ function jac_inv_transform(dist::Distribution, x::T where T<:Real)
     ForwardDiff.derivative(x -> invlink(dist, x), x)
 end
 
-function jac_inv_transform(dist::Distribution, x::Array{T} where T <: Real)
+function jac_inv_transform(dist::Distribution, x::AbstractArray{T} where T <: Real)
     ForwardDiff.jacobian(x -> invlink(dist, x), x)
+end
+
+function jac_inv_transform(dist::Distribution, x::TrackedArray{T} where T <: Real)
+    Tracker.jacobian(x -> invlink(dist, x), x)
 end
 
 function center_diag_gaussian(x, μ, σ)

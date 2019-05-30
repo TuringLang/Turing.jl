@@ -1,16 +1,19 @@
 using ForwardDiff
+using Flux.Tracker
 using Flux.Optimise
+
 
 """
     ADVI(samplers_per_step = 10, max_iters = 5000)
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
-struct ADVI <: VariationalInference
+struct ADVI{AD} <: VariationalInference{AD}
     samples_per_step # number of samples used to estimate the ELBO in each optimization step
     max_iters        # maximum number of gradient steps used in optimization
 end
 
+ADVI(args...) = ADVI{ADBackend()}(args...)
 ADVI() = ADVI(10, 5000)
 
 alg_str(::ADVI) = "ADVI"
@@ -30,7 +33,8 @@ vi(model::Model, alg::ADVI; optimizer = ADAGrad()) = begin
     elbo = ELBO()
 
     Turing.DEBUG && @debug "Optimizing ADVI..."
-    μ, ω = optimize(elbo, alg, q, model; optimizer = optimizer)
+    θ = optimize(elbo, alg, q, model; optimizer = optimizer)
+    μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
 
     # TODO: make mutable instead?
     MeanField(μ, ω, dists, ranges) 
@@ -41,6 +45,13 @@ end
 # end
 
 function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer = ADAGrad())
+    θ = randn(2 * length(q))
+    optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
+
+    return θ
+end
+
+function optimize!(elbo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ; optimizer = ADAGrad()) where AD
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
@@ -49,30 +60,28 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
     stepsize_num_prev = 10
     
     # setup
-    var_info = Turing.VarInfo()
-    model(var_info, Turing.SampleFromUniform())
-    num_params = size(var_info.vals, 1)
+    # var_info = Turing.VarInfo()
+    # model(var_info, Turing.SampleFromUniform())
+    # num_params = size(var_info.vals, 1)
+    num_params = length(q)
 
-    function f(x)
-        # extract the mean-field Gaussian params
-        μ, ω = x[1:num_params], x[num_params + 1: end]
-        
-        - elbo(alg, q, model, μ, ω, samples_per_step)
-    end
-
-    # buffer
-    x = zeros(2 * num_params)
+    # # buffer
+    # θ = zeros(2 * num_params)
 
     # HACK: re-use previous gradient `acc` if equal in value
     # Can cause issues if two entries have idenitical values
-    vs = [v for v ∈ keys(optimizer.acc)]
-    idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
-    if idx != nothing
-        @info "[$alg_name] Re-using previous optimizer accumulator"
-        x = vs[idx]
+    if θ ∉ keys(optimizer.acc)
+        vs = [v for v ∈ keys(optimizer.acc)]
+        idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
+        if idx != nothing
+            @info "[$alg_name] Re-using previous optimizer accumulator"
+            θ .= vs[idx]
+        end
+    else
+        @info "[$alg_name] Already present in optimizer acc"
     end
     
-    diff_result = DiffResults.GradientResult(x)
+    diff_result = DiffResults.GradientResult(θ)
 
     # TODO: in (Blei et al, 2015) TRUNCATED ADAGrad is suggested; this is not available in Flux.Optimise
     # Maybe consider contributed a truncated ADAGrad to Flux.Optimise
@@ -82,12 +91,13 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
 
     time_elapsed = @elapsed while (i < max_iters) # & converged # <= add criterion? A running mean maybe?
         # TODO: separate into a `grad(...)` call; need to manually provide `diff_result` buffers
-        ForwardDiff.gradient!(diff_result, f, x)
+        # ForwardDiff.gradient!(diff_result, f, x)
+        grad!(elbo, alg,q, model, θ, diff_result, samples_per_step)
 
         # apply update rule
         Δ = DiffResults.gradient(diff_result)
-        Δ = Optimise.apply!(optimizer, x, Δ)
-        @. x = x - Δ
+        Δ = Optimise.apply!(optimizer, θ, Δ)
+        @. θ = θ - Δ
         
         Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result) norm(DiffResults.gradient(diff_result))
         PROGRESS[] && (ProgressMeter.next!(prog))
@@ -97,12 +107,34 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
 
     @info time_elapsed
 
-    μ, ω = x[1:num_params], x[num_params + 1: end]
-
-    return μ, ω
+    return θ
 end
 
-function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, μ::Vector{T}, ω::Vector{T}, num_samples) where T <: Real
+function grad!(vo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: ForwardDiffAD}
+    # TODO: this probably slows down executation quite a bit; exists a better way of doing this?
+    f(θ_) = - vo(alg, q, model, θ_, args...)
+
+    chunk_size = getchunksize(alg)
+    # Set chunk size and do ForwardMode.
+    chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
+    config = ForwardDiff.GradientConfig(f, θ, chunk)
+    ForwardDiff.gradient!(out, f, θ, config)
+end
+
+# TODO: implement for `Tracker`
+# function grad(vo::ELBO, alg::ADVI, q::MeanField, model::Model, f, autodiff::Val{:backward})
+#     vo_tracked, vo_pullback = Tracker.forward()
+# end
+function grad!(vo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: TrackerAD}
+    θ_tracked = Tracker.param(θ)
+    y = - vo(alg, q, model, θ_tracked, args...)
+    Tracker.back!(y, 1.0)
+
+    DiffResults.value!(out, Tracker.data(y))
+    DiffResults.gradient!(out, Tracker.grad(θ_tracked))
+end
+
+function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, θ::AbstractVector{T}, num_samples) where T <: Real
     # setup
     var_info = Turing.VarInfo()
 
@@ -110,6 +142,7 @@ function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, μ::Vector{T}, ω::
     model(var_info, Turing.SampleFromUniform())
 
     num_params = length(q)
+    μ, ω = θ[1:num_params], θ[num_params + 1: end]
     
     elbo_acc = 0.0
 
@@ -154,7 +187,7 @@ end
 
 function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, num_samples)
     # extract the mean-field Gaussian params
-    μ, ω = q.μ, q.ω
+    θ = vcat(q.μ, q.ω)
 
-    elbo(alg, q, model, μ, ω, num_samples)
+    elbo(alg, q, model, θ, num_samples)
 end
