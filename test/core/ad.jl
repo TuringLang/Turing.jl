@@ -8,6 +8,8 @@ using Test
 
 include("../test_utils/AllUtils.jl")
 
+_to_cov(B) = B * B' + Matrix(I, size(B)...)
+
 @testset "ad.jl" begin
     @turing_testset "AD compatibility" begin
 
@@ -128,17 +130,15 @@ include("../test_utils/AllUtils.jl")
         test_model_ad(wishart_ad(), logp3, [:v])
     end
     @numerical_testset "Tracker + logdet" begin
-        rng, N = MersenneTwister(123456), 13
-        B = randn(rng, N, N)
-
-        logdet_func(B) = logdet(cholesky(B' * B + Matrix(I, N, N)))
-
-        f_tracker, back = Tracker.forward(logdet_func, B)
-        tracker_grad = back(1.0)[1]
-        fdm_grad = FDM.j′vp(central_fdm(5, 1), logdet_func, 1.0, B)
-
-        @test logdet_func(B) == f_tracker
-        @test fdm_grad ≈ tracker_grad
+        rng, N = MersenneTwister(123456), 7
+        ȳ, B = randn(rng), randn(rng, N, N)
+        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-8)
+    end
+    @numerical_testset "Tracker + fill" begin
+        rng = MersenneTwister(123456)
+        test_tracker_ad(x->fill(x, 7), randn(rng, 7), randn(rng))
+        test_tracker_ad(x->fill(x, 7, 11), randn(rng, 7, 11), randn(rng))
+        test_tracker_ad(x->fill(x, 7, 11, 13), rand(rng, 7, 11, 13), randn(rng))
     end
     @numerical_testset "Tracker + MvNormal" begin
         rng, N = MersenneTwister(123456), 11
@@ -153,19 +153,7 @@ include("../test_utils/AllUtils.jl")
         d_ref = MvNormal(m, PDMat(A))
         @test logpdf(d, x) ≈ logpdf(d_ref, x)
 
-        logpdf_func(m, B, x) = logpdf(MvNormal(m, B' * B + Matrix(I, N, N)), x)
-
-        # Ensure that forward-pass is correct.
-        @test Tracker.forward(logpdf_func, m, B, x)[1] ≈ logpdf_func(m, B, x)
-
-        # Check reverse-pass with finite differencing.
-        fdm_grads = FDM.j′vp(central_fdm(5, 1), logpdf_func, 1.0, m, B, x)
-        out, back = Tracker.forward(logpdf_func, m, B, x)
-        tracker_grads = back(1)
-
-        @test fdm_grads[1] ≈ tracker_grads[1]
-        @test fdm_grads[2] ≈ tracker_grads[2]
-        @test fdm_grads[3] ≈ tracker_grads[3]
+        test_tracker_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), m, B, x)
     end
     @numerical_testset "Tracker + Diagonal Normal" begin
         rng, N = MersenneTwister(123456), 11
@@ -178,17 +166,137 @@ include("../test_utils/AllUtils.jl")
         d_ref = MvNormal(m, σ)
         @test logpdf(d, x) ≈ logpdf(d_ref, x)
 
-        out, _ = Tracker.forward((m, σ, x)->logpdf(MvNormal(m, σ), x), m, σ, x)
-        @test out ≈ logpdf(MvNormal(m, σ), x)
+        test_tracker_ad((m, σ, x)->logpdf(MvNormal(m, σ), x), randn(rng), m, σ, x)
+    end
+    @numerical_testset "Tracker + MvNormal Interface" begin
+        # Note that we only test methods where the `MvNormal` ctor actually constructs
+        # a TuringMvNormal.
 
-        diag_logpdf_func(m, σ, x) = logpdf(MvNormal(m, σ), x)
+        rng, N = MersenneTwister(123456), 7
+        m, b, B, x = randn(rng, N), randn(rng, N), randn(rng, N, N), randn(rng, N)
+        ȳ = randn(rng)
 
-        fdm_grads = FDM.j′vp(forward_fdm(5, 1), diag_logpdf_func, 1.0, m, σ, x)
-        out, back = Tracker.forward(diag_logpdf_func, m, σ, x)
-        tracker_grads = back(1)
+        # zero mean, dense covariance
+        test_tracker_ad((B, x)->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B, x)
+        test_tracker_ad(B->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B)
 
-        @test fdm_grads[1] ≈ tracker_grads[1]
-        @test fdm_grads[2] ≈ tracker_grads[2]
-        @test fdm_grads[3] ≈ tracker_grads[3]
+        # zero mean, diagonal covariance
+        test_tracker_ad((b, x)->logpdf(MvNormal(exp.(b)), x), randn(rng), b, x)
+        test_tracker_ad(b->logpdf(MvNormal(exp.(b)), x), randn(rng), b)
+
+        # dense mean, dense covariance
+        test_tracker_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N, N), randn(rng, N),
+        )
+        test_tracker_ad((m, B)->logpdf(MvNormal(m, _to_cov(B)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N, N),
+        )
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+            randn(rng),
+            randn(rng, N, N), randn(rng, N),
+        )
+        test_tracker_ad(m->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(B->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N, N))
+
+        # dense mean, diagonal covariance
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad(m->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N),
+        )
+        test_tracker_ad(b->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+            randn(rng),
+            randn(rng, N),
+        )
+
+        # dense mean, diagonal variance
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp.(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp.(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp.(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp.(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad(m->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
+
+        # dense mean, constant covariance
+        b_s = randn(rng)
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng), randn(rng, N),
+        )
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp(b)), x),
+            randn(rng),
+            randn(rng, N), randn(rng),
+        )
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp(b_s)), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N)
+        )
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp(b)), x),
+            randn(rng),
+            randn(rng), randn(rng, N),
+        )
+        test_tracker_ad(m->logpdf(MvNormal(m, exp(b_s)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp(b)), x), randn(rng), randn(rng))
+
+        # dense mean, constant variance
+        b_s = randn(rng)
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp(b) * I), x),
+            randn(rng),
+            randn(rng, N), randn(rng), randn(rng, N),
+        )
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp(b) * I), x),
+            randn(rng),
+            randn(rng, N), randn(rng),
+        )
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp(b_s) * I), x),
+            randn(rng),
+            randn(rng, N), randn(rng, N),
+        )
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp(b) * I), x),
+            randn(rng),
+            randn(rng), randn(rng, N),
+        )
+        test_tracker_ad(m->logpdf(MvNormal(m, exp(b_s) * I), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp(b) * I), x), randn(rng), randn(rng))
+
+        # zero mean, constant variance
+        test_tracker_ad((b, x)->logpdf(MvNormal(N, exp(b)), x),
+            randn(rng),
+            randn(rng), randn(rng, N),
+        )
+        test_tracker_ad(b->logpdf(MvNormal(N, exp(b)), x), randn(rng), randn(rng))
     end
 end

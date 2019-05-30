@@ -15,6 +15,40 @@ function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
     end
 end
 
+"""
+    test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
+
+Check that the reverse-mode sensitivities produced by an AD library are correct for `f`
+at `x...`, given sensitivity `ȳ` w.r.t. `y = f(x...)` up to `rtol` and `atol`.
+`forward` should be either `Tracker.forward` or `Zygote.forward`.
+"""
+function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
+
+    # Perform a regular forwards-pass.
+    y = f(x...)
+
+    # Use tracker to compute reverse-mode sensitivities.
+    y_tracker, back = forward(f, x...)
+    x̄s_tracker = back(ȳ)
+
+    # Use finite differencing to compute reverse-mode sensitivities.
+    x̄s_fdm = FDM.j′vp(central_fdm(5, 1), f, ȳ, x...)
+    if length(x) == 1
+        x̄s_fdm = (x̄s_fdm,)
+    end
+
+    # Check that forwards-pass produces the correct answer.
+    @test y ≈ y_tracker
+
+    # Check that reverse-mode sensitivities are correct.
+    @test all([x̄_tracker ≈ x̄_fdm for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
+end
+
+# See `test_reverse_mode_ad` for details.
+function test_tracker_ad(f, ȳ, x...; rtol=1e-8, atol=1e-8)
+    return test_reverse_mode_ad(Tracker.forward, f, ȳ, x...; rtol=rtol, atol=atol)
+end
+
 function test_model_ad(model, f, syms::Vector{Symbol})
     # Set up VI.
     vi = Turing.VarInfo()
