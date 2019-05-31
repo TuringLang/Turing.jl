@@ -125,7 +125,7 @@ end
 ####
 
 """
-    PG(n_particles::Int, n_iters::Int)
+    PG(n_particles::Int)
 
 Particle Gibbs sampler.
 
@@ -140,19 +140,18 @@ PG(100, 100)
 """
 mutable struct PG{T, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
-  n_iters               ::    Int         # number of iterations
   resampler             ::    F           # function to resample
   space                 ::    Set{T}      # sampling space, emtpy means all
 end
 
-function PG(n1::Int, n2::Int)
-    alg = PG(n1, n2, resample_systematic, Set())
+function PG(n1::Int)
+    alg = PG(n1, resample_systematic, Set())
     return Sampler(alg)
 end
 
-function PG(n1::Int, n2::Int, space...)
+function PG(n1::Int, space...)
   _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  alg = PG(n1, n2, resample_systematic, _space)
+  alg = PG(n1, resample_systematic, _space)
   return Sampler(alg)
 end
 
@@ -164,9 +163,10 @@ const CSMC = PG # type alias of PG as Conditional SMC
 Maintains the state for the Particle Gibbs sampler.
 """
 mutable struct PGState <: SamplerState
-    logevidence::Vector{Float64}
-    vi::VarInfo
-    vnames::Vector{Symbol}
+    logevidence          ::   Vector{Float64}
+    vi                   ::   VarInfo
+    vnames               ::   Vector{Symbol} # TODO: Find a better way to do this.
+    final_logevidence    ::   Float64
 end
 
 """
@@ -176,8 +176,8 @@ Return a `Sampler` object for the PG algorithm.
 """
 function Sampler(alg::PG, s::Selector)
     info = Dict{Symbol, Any}()
-    state = PGState(Float64[], VarInfo())
-    return Sampler{SMC,SMCState}(alg, info, s, state)
+    state = PGState(Float64[], VarInfo(), Symbol[], 0.0)
+    return Sampler{PG,PGState}(alg, info, s, state)
 end
 
 #####################
@@ -193,16 +193,6 @@ function transitions_init(
     return Vector{ParticleTransition}(undef, N)
 end
 
-function sample_init!(
-    ::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler{PG, PGState},
-    N::Integer;
-    kwargs...
-) where {ModelType<:Sampleable}
-    # Do nothing.
-end
-
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
     ℓ::Turing.Model,
@@ -212,7 +202,7 @@ function step!(
 )
     particles = ParticleContainer{Trace}(ℓ)
 
-    vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    s.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(s.state.vi) ?
                   nothing :
                   forkr(Trace(ℓ, s, s.state.vi))
@@ -236,10 +226,9 @@ function step!(
     indx = randcat(Ws)
     push!(s.state.logevidence, particles.logE)
 
+    # Extract the VarInfo from the retained particle.
     params = particles[indx].vi
 
-    # update the master VarInfo.
-    s.state.vi = params
     return transition(params, s)
 end
 
@@ -275,53 +264,87 @@ end
 #     return particles[indx].vi, true
 # end
 
-function sample(  model::Model,
-                  alg::PG;
-                  save_state=false,         # flag for state saving
-                  resume_from=nothing,      # chain to continue
-                  reuse_spl_n=0             # flag for spl re-using
-                )
+# function sample(  model::Model,
+#                   alg::PG;
+#                   save_state=false,         # flag for state saving
+#                   resume_from=nothing,      # chain to continue
+#                   reuse_spl_n=0             # flag for spl re-using
+#                 )
+#
+#     # spl = reuse_spl_n > 0 ?
+#     #       resume_from.info[:spl] :
+#     #       Sampler(alg)
+#     # if resume_from != nothing
+#     #     spl.selector = resume_from.info[:spl].selector
+#     # end
+#     # @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+#     #
+#     # n = reuse_spl_n > 0 ?
+#     #     reuse_spl_n :
+#     #     alg.n_iters
+#     # samples = Vector{Sample}()
+#     #
+#     # ## custom resampling function for pgibbs
+#     # ## re-inserts reteined particle after each resampling step
+#     # time_total = zero(Float64)
+#     #
+#     # vi = resume_from == nothing ?
+#     #     VarInfo() :
+#     #     resume_from.info[:vi]
+#     #
+#     # pm = nothing
+#     # PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
+#
+#     for i = 1:n
+#         time_elapsed = @elapsed vi, _ = step(model, spl, vi)
+#         push!(samples, Sample(vi))
+#         samples[i].value[:elapsed] = time_elapsed
+#
+#         time_total += time_elapsed
+#
+#         if PROGRESS[] && spl.selector.tag == :default
+#             ProgressMeter.next!(spl.info[:progress])
+#         end
+#     end
+#
+#     @info("[PG] Finished with")
+#     @info("  Running time    = $time_total;")
+#
+#     loge = exp.(mean(spl.info[:logevidence]))
+#     if resume_from != nothing   # concat samples
+#         pushfirst!(samples, resume_from.info[:samples]...)
+#         pre_loge = exp.(resume_from.logevidence)
+#         # Calculate new log-evidence
+#         pre_n = length(resume_from.info[:samples])
+#         loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
+#     end
+#     c = Chain(loge, samples)       # wrap the result by Chain
+#
+#     if save_state               # save state
+#         c = save(c, spl, model, vi, samples)
+#     end
+#
+#     return c
+# end
 
-    spl = reuse_spl_n > 0 ?
-          resume_from.info[:spl] :
-          Sampler(alg)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-    @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+function sample_end!(
+    ::AbstractRNG,
+    ::ModelType,
+    s::Sampler{PG, PGState},
+    ::Integer,
+    ::Vector{TransitionType};
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    TransitionType<:AbstractTransition
+}
+    # Set the default for resuming the sampler.
+    resume_from = get(kwargs, :resume_from, nothing)
 
-    n = reuse_spl_n > 0 ?
-        reuse_spl_n :
-        alg.n_iters
-    samples = Vector{Sample}()
+    # Exponentiate the average log evidence.
+    loge = exp.(mean(s.state.logevidence))
 
-    ## custom resampling function for pgibbs
-    ## re-inserts reteined particle after each resampling step
-    time_total = zero(Float64)
-
-    vi = resume_from == nothing ?
-        VarInfo() :
-        resume_from.info[:vi]
-
-    pm = nothing
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
-
-    for i = 1:n
-        time_elapsed = @elapsed vi, _ = step(model, spl, vi)
-        push!(samples, Sample(vi))
-        samples[i].value[:elapsed] = time_elapsed
-
-        time_total += time_elapsed
-
-        if PROGRESS[] && spl.selector.tag == :default
-            ProgressMeter.next!(spl.info[:progress])
-        end
-    end
-
-    @info("[PG] Finished with")
-    @info("  Running time    = $time_total;")
-
-    loge = exp.(mean(spl.info[:logevidence]))
+    # If we already had a chain, grab it's logevidence.
     if resume_from != nothing   # concat samples
         pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = exp.(resume_from.logevidence)
@@ -329,13 +352,9 @@ function sample(  model::Model,
         pre_n = length(resume_from.info[:samples])
         loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
     end
-    c = Chain(loge, samples)       # wrap the result by Chain
 
-    if save_state               # save state
-        c = save(c, spl, model, vi, samples)
-    end
-
-    return c
+    # Store the logevidence.
+    s.state.final_logevidence = loge
 end
 
 function assume(  spl::Sampler{T},
