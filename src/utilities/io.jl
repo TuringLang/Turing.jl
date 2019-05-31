@@ -146,3 +146,29 @@ function resume(c::Chains, n_iter::Int)
         reuse_spl_n=n_iter
     )
 end
+
+function set_resume!(s::Sampler; kwargs...)
+    # Set reuse_spl_n if not given.
+    reuse_spl_n = get(kwargs, :reuse_spl_n, 0)
+    @assert reuse_spl_n isa Integer "reuse_spl_n must be an Integer."
+
+    # Set the default for resuming the sampler.
+    resume_from = get(kwargs, :resume_from, nothing)
+    @assert resume_from isa Union{Chains, Nothing}
+        "resume_from must be a MCMCChains.Chains object."
+
+    # Grab the sampler if we're reusing it.
+    s = reuse_spl_n > 0 ?
+        resume_from.info[:spl] :
+        s
+
+    # If we're resuming, grab the selector.
+    if resume_from != nothing
+        s.selector = resume_from.info[:spl].selector
+    end
+
+    # Pull in the vi if we're resuming.
+    s.state.vi = resume_from == nothing ?
+        s.state.vi :
+        resume_from.info[:vi]
+end
