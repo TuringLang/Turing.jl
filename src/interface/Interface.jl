@@ -211,8 +211,8 @@ function step!(
     TransitionType<:AbstractTransition
 }
     # Do nothing.
-    @warn "No step! function has been implemented for objects
-           of types $(typeof(ℓ)) and $(typeof(s))"
+    # @warn "No step! function has been implemented for objects
+    #        of types $(typeof(ℓ)) and $(typeof(s))"
     return step!(rng, ℓ, s, N; kwargs...)
 end
 
