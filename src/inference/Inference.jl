@@ -17,7 +17,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Utilities: Sample, save, resume
+import ..Utilities: Sample, save, resume, set_resume!
 import ..Interface: AbstractTransition, step!, sample_init!, transitions_init,
     sample_end!
 
@@ -206,6 +206,18 @@ function observe(spl::A,
 
 end
 
+
+# Default definitions for the interface.
+function sample_init!(
+    ::AbstractRNG,
+    ℓ::ModelType,
+    s::Sampler,
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable}
+    # Resume the sampler.
+    set_resume!(s; kwargs...)
+end
 
 ##############
 # Utilities  #
