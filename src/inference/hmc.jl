@@ -217,7 +217,7 @@ function sample(
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor = AHMCAdaptor(alg),
+    adaptor=AHMCAdaptor(alg),
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
     discard_adapt::Bool=true,
@@ -326,7 +326,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor = AHMCAdaptor(spl.alg),
+    adaptor=AHMCAdaptor(spl.alg),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -553,13 +553,20 @@ function hmc_step(
     h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
 
     # Sample momentum
-    r = AHMC.rand_momentum(h)
+    r = AHMC.rand(h.metric)
+
+    # Build phase point
+    z = AHMC.phasepoint(h, θ, r)
 
     # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation
+    H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
 
     # Call AHMC to make one MCMC transition
-    θ_new, _, α, H_new = AHMC.transition(traj, h, Vector{Float64}(θ), r)
+    z_new, α = AHMC.transition(traj, h, z)
+
+    # Compute new Hamiltonian energy
+    H_new = AHMC.neg_energy(z_new)
+    θ_new = z_new.θ
 
     # NOTE: as `transition` doesn't return `is_accept`,
     #       I use `H == H_new` to check if the sample is accepted.
