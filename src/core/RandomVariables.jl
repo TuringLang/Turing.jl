@@ -207,7 +207,7 @@ function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, name
 	    nt = NamedTuple{(f,)}((md,))
         return merge(nt, newmetadata(_tail(metadata), spl, T))
     else
-        md = getfield(vi, f)
+        md = getfield(metadata, f)
 	    nt = NamedTuple{(f,)}((md,))
         return merge(nt, newmetadata(_tail(metadata), spl, T))
     end
@@ -442,7 +442,7 @@ end
 Returns a tuple of the unique symbols of random variables sampled in `vi`.
 """
 syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
-syms(vi::TypedVarInfo) = fieldnames(vi.metadata)
+syms(vi::TypedVarInfo) = keys(vi.metadata)
 
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
@@ -1135,7 +1135,7 @@ function push!(
             gidset::Set{Selector}
             ) where sym
 
-    @assert ~(haskey(vi, vn)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to TypedVarInfo of syms $(syms(vi)) with dist=$dist, gid=$gid"
+    @assert ~(haskey(vi, vn)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to TypedVarInfo of syms $(syms(vi)) with dist=$dist, gid=$gidset"
 
     val = vectorize(dist, r)
 
