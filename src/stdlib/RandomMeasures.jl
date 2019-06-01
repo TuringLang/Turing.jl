@@ -136,12 +136,11 @@ end
 function _logpdf_table(d::DirichletProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
         return zeros(V,1)
-    elseif sum(m .== 0) > 0
+    elseif any(m_ -> m_ == 0, m)
         z = log(sum(m) - 1 + d.α)
         K = length(m)
-        zidx = findall(m .== 0)
-        zid = rand(zidx)
-        lpt(k) = k ∈ zidx ? (k == zid ? log(d.α) - z : map(V,-Inf)) : log(m[k]) - z
+        zid = findfirst(m_ -> m_ == 0, m)
+        lpt(k) = k == zid ? log(d.α) - z : log(m[k]) - z
         return map(k -> lpt(k), 1:K)
     else
         z = log(sum(m) - 1 + d.α)
@@ -202,12 +201,11 @@ end
 function _logpdf_table(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
     if sum(m) == 0
         return zeros(V,1)
-    elseif sum(m .== 0) > 0
+    elseif any(m_ -> m_ == 0, m)
         z = log(sum(m) + d.θ)
         K = length(m)
-        zidx = findall(m .== 0)
-        zid = rand(zidx)
-        lpt(k) = k ∈ zidx ? (k == zid ? log(d.θ+d.d*d.t) - z : map(V,-Inf)) : log(m[k]-d.d) - z
+        zidx = findfirst(m_ -> m_ == 0, m)
+        lpt(k) = k == zid ? log(d.θ+d.d*d.t) - z : m[k] == 0 ? -Inf : log(m[k]-d.d) - z
         return map(k -> lpt(k), 1:K)
     else
         z = log(sum(m) + d.θ)
