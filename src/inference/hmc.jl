@@ -243,9 +243,7 @@ function sample(
 
     # Create VarInfo
     vi = if resume_from == nothing
-        vi_ = VarInfo()
-        runmodel!(model, vi_, SampleFromUniform())
-        vi_
+        VarInfo(model)
     else
         deepcopy(resume_from.info[:vi])
     end
