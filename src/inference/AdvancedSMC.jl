@@ -66,7 +66,7 @@ function sample(model::Model, alg::SMC)
     spl = Sampler(alg)
 
     particles = ParticleContainer{Trace}(model)
-    push!(particles, spl.alg.n_particles, spl, VarInfo())
+    push!(particles, spl.alg.n_particles, spl, empty!(VarInfo(model)))
 
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
@@ -174,7 +174,7 @@ function sample(  model::Model,
     time_total = zero(Float64)
 
     vi = resume_from == nothing ?
-        VarInfo() :
+        empty!(VarInfo(model)) :
         resume_from.info[:vi]
 
     pm = nothing
@@ -413,7 +413,7 @@ function sample(  model::Model,
 
     # Init parameters
     vi = if resume_from == nothing
-        vi_ = VarInfo()
+        vi_ = empty!(VarInfo(model))
         model(vi_, SampleFromUniform())
         vi_
     else
@@ -572,7 +572,7 @@ function sample(model::Model, alg::IPMCMC)
   # Init parameters
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
-    VarInfos[j] = VarInfo()
+    VarInfos[j] = empty!(VarInfo(model))
   end
   n = spl.alg.n_iters
 

@@ -113,7 +113,7 @@ function sample(
 
     # Init parameters
     varInfo = if resume_from == nothing
-        vi_ = VarInfo()
+        vi_ = VarInfo(model)
         model(vi_, SampleFromUniform())
         vi_
     else

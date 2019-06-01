@@ -46,7 +46,7 @@ function sample(model::Model, alg::IS)
 
     n = spl.alg.n_particles
     for i = 1:n
-        vi = VarInfo()
+        vi = VarInfo(model)
         model(vi, spl)
         samples[i] = Sample(vi)
     end
