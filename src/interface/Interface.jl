@@ -109,7 +109,7 @@ function sample(
     # Wrap up the sampler, if necessary.
     sample_end!(rng, ℓ, s, N, ts; kwargs...)
 
-    return Chains(ts; kwargs...)
+    return Chains(rng, ℓ, s, N, ts; kwargs...)
 end
 
 """

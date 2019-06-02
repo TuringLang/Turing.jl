@@ -81,6 +81,9 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
 
+# Internal variables for MCMCChains.
+const INTERNAL_VARS = Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight"])
+
 # Concrete algorithm implementations.
 include("sghmc.jl")
 include("hmc.jl")
@@ -206,17 +209,45 @@ function observe(spl::A,
 
 end
 
+##########################################
+# Default definitions for the interface. #
+##########################################
+function sample(
+    model::ModelType,
+    alg::AlgType,
+    N::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return sample(model, Sampler(alg, model), N; kwargs...)
+end
 
-# Default definitions for the interface.
+function sample(
+    rng::AbstractRNG,
+    model::ModelType,
+    alg::AlgType,
+    N::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return sample(rng, model, Sampler(alg), N; kwargs...)
+end
+
 function sample_init!(
     ::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler,
+    model::ModelType,
+    spl::Sampler,
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable}
     # Resume the sampler.
-    set_resume!(s; kwargs...)
+    set_resume!(spl; kwargs...)
 end
 
 ##############

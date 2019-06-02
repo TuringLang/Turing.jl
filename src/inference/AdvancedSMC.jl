@@ -2,6 +2,18 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+####################
+# Transition Types #
+####################
+
+# used by PG, SMC, PMMH
+struct ParticleTransition{T} <: AbstractTransition
+    θ::T
+    weight::Float64
+    lp::Float64
+    le::Float64
+end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -27,97 +39,70 @@ struct SMC{T, F} <: InferenceAlgorithm
     space                 ::  Set{T}
 end
 
-function SMC(n)
-    alg = SMC(n, resample_systematic, 0.5, Set())
-    return Sampler(alg)
-end
+alg_str(spl::Sampler{SMC}) = "SMC"
 
+SMC(n) = SMC(n, resample_systematic, 0.5, Set())
 function SMC(n_particles::Int, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    alg = SMC(n_particles, resample_systematic, 0.5, _space)
-    return Sampler(alg)
+    return SMC(n_particles, resample_systematic, 0.5, _space)
 end
 
 mutable struct SMCState <: SamplerState
-    logevidence::Vector{Float64}
-    vi::VarInfo
-    vnames::Vector{Symbol}
+    logevidence        ::   Vector{Float64}
+    vi                 ::   VarInfo
+    vnames             ::   Vector{Symbol}
+    final_logevidence  ::   Float64
 end
 
-SMCState() = SMCState(Float64[], VarInfo(), Symbol[])
+SMCState() = SMCState(Float64[], VarInfo(), Symbol[], 0.0)
 
-function Sampler(alg::SMC, s::Selector)
+function Sampler(alg::SMC, model::Model, s::Selector)
     dict = Dict{Symbol, Any}()
     state = SMCState()
     return Sampler{SMC,SMCState}(alg, dict, s, state)
 end
 
-struct ParticleTransition{T} <: AbstractTransition
-    names::Vector{Symbol}
-    θ::T
-end
-
-#####################
-# Interface for SMC #
-#####################
-function transitions_init(
-    ::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler{SMC, SMCState},
-    N::Integer;
-    kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return Vector{ParticleTransition}(undef, N)
-end
-
 function step!(
-    a::AbstractRNG, # Note: This function does not use the range argument.
-    ℓ::Turing.Model,
-    s::Sampler{SMC, SMCState},
+    rng::AbstractRNG,
+    model::Turing.Model,
+    spl::Sampler{SMC, SMCState},
     N::Integer, # Note: This function doesn't use the N argument.
     ::T; # Note: No use of the previous draw.
     kwargs...
 ) where T<:AbstractTransition
-    return step!(a, ℓ, s, N; kwargs...)
+    return step!(rng, model, spl, N; kwargs...)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument.
-    ℓ::Turing.Model,
-    s::Sampler{SMC, SMCState},
+    model::Turing.Model,
+    spl::Sampler{SMC, SMCState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace}(ℓ)
-    s.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(s.state.vi, s)
-    resetlogp!(s.state.vi)
+    particles = ParticleContainer{Trace}(model)
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    set_retained_vns_del_by_spl!(spl.state.vi, spl)
+    resetlogp!(spl.state.vi)
 
-    push!(particles, s.alg.n_particles, s, s.state.vi)
+    push!(particles, spl.alg.n_particles, spl, spl.state.vi)
 
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
-      if ess <= s.alg.resampler_threshold * length(particles)
-        resample!(particles,s.alg.resampler)
+      if ess <= spl.alg.resampler_threshold * length(particles)
+        resample!(particles,spl.alg.resampler)
       end
     end
 
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(s.state.logevidence, particles.logE)
+    push!(spl.state.logevidence, particles.logE)
 
     params = particles[indx].vi
 
     # update the master vi.
-    s.state.vi = params
-    return transition(params, s)
-end
-
-function Chains(ts::Vector{ParticleTransition}; kwargs...)
-    nms = first(ts).names
-    parray = vcat(map(x -> x.θ, ts)...)
-    return Chains(parray, string.(nms))
+    return transition(params, spl, Ws[indx], particles.logE)
 end
 
 ####
@@ -138,22 +123,20 @@ Usage:
 PG(100, 100)
 ```
 """
-mutable struct PG{T, F} <: InferenceAlgorithm
-  n_particles           ::    Int         # number of particles used
-  resampler             ::    F           # function to resample
-  space                 ::    Set{T}      # sampling space, emtpy means all
+struct PG{T, F} <: InferenceAlgorithm
+    n_particles           ::    Int         # number of particles used
+    resampler             ::    F           # function to resample
+    space                 ::    Set{T}      # sampling space, emtpy means all
 end
 
-function PG(n1::Int)
-    alg = PG(n1, resample_systematic, Set())
-    return Sampler(alg)
-end
-
+PG(n1::Int) = PG(n1, resample_systematic, Set())
 function PG(n1::Int, space...)
-  _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  alg = PG(n1, resample_systematic, _space)
-  return Sampler(alg)
+    _space = isa(space, Symbol) ? Set([space]) : Set(space)
+    alg = PG(n1, resample_systematic, _space)
+    return alg
 end
+
+alg_str(spl::Sampler{PG}) = "PG"
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
@@ -169,180 +152,76 @@ mutable struct PGState <: SamplerState
     final_logevidence    ::   Float64
 end
 
+PGState() = PGState(Float64[], VarInfo(), Symbol[], 0.0)
+
 """
-    Sampler(alg::PG, s::Selector)
+    Sampler(alg::PG, model::Model, s::Selector)
 
 Return a `Sampler` object for the PG algorithm.
 """
-function Sampler(alg::PG, s::Selector)
+function Sampler(alg::PG, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    state = PGState(Float64[], VarInfo(), Symbol[], 0.0)
+    state = PGState()
     return Sampler{PG,PGState}(alg, info, s, state)
-end
-
-#####################
-# Interface for PG #
-#####################
-function transitions_init(
-    ::AbstractRNG,
-    ℓ::ModelType,
-    s::Sampler{PG, PGState},
-    N::Integer;
-    kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return Vector{ParticleTransition}(undef, N)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
-    ℓ::Turing.Model,
-    s::Sampler{PG, PGState},
+    model::Turing.Model,
+    spl::Sampler{PG, PGState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace}(ℓ)
+    particles = ParticleContainer{Trace}(model)
 
-    s.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    ref_particle = isempty(s.state.vi) ?
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    ref_particle = isempty(spl.state.vi) ?
                   nothing :
                   forkr(Trace(ℓ, s, s.state.vi))
 
-    set_retained_vns_del_by_spl!(s.state.vi, s)
-    resetlogp!(s.state.vi)
+    set_retained_vns_del_by_spl!(spl.state.vi, spl)
+    resetlogp!(spl.state.vi)
 
     if ref_particle == nothing
-        push!(particles, s.alg.n_particles, s, s.state.vi)
+        push!(particles, spl.alg.n_particles, spl, spl.state.vi)
     else
-        push!(particles, s.alg.n_particles-1, s, s.state.vi)
+        push!(particles, spl.alg.n_particles-1, spl, spl.state.vi)
         push!(particles, ref_particle)
     end
 
     while consume(particles) != Val{:done}
-        resample!(particles, s.alg.resampler, ref_particle)
+        resample!(particles, spl.alg.resampler, ref_particle)
     end
 
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(s.state.logevidence, particles.logE)
+    push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
     params = particles[indx].vi
 
-    return transition(params, s)
+    return transition(params, spl, Ws[indx], particles.logE)
 end
-
-# step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
-#
-# function step(model, spl::Sampler{<:PG}, vi::VarInfo)
-#     particles = ParticleContainer{Trace}(model)
-#
-#     vi.num_produce = 0;  # Reset num_produce before new sweep\.
-#     ref_particle = isempty(vi) ?
-#                   nothing :
-#                   forkr(Trace(model, spl, vi))
-#
-#     set_retained_vns_del_by_spl!(vi, spl)
-#     resetlogp!(vi)
-#
-#     if ref_particle == nothing
-#         push!(particles, spl.alg.n_particles, spl, vi)
-#     else
-#         push!(particles, spl.alg.n_particles-1, spl, vi)
-#         push!(particles, ref_particle)
-#     end
-#
-#     while consume(particles) != Val{:done}
-#         resample!(particles, spl.alg.resampler, ref_particle)
-#     end
-#
-#     ## pick a particle to be retained.
-#     Ws, _ = weights(particles)
-#     indx = randcat(Ws)
-#     push!(spl.info[:logevidence], particles.logE)
-#
-#     return particles[indx].vi, true
-# end
-
-# function sample(  model::Model,
-#                   alg::PG;
-#                   save_state=false,         # flag for state saving
-#                   resume_from=nothing,      # chain to continue
-#                   reuse_spl_n=0             # flag for spl re-using
-#                 )
-#
-#     # spl = reuse_spl_n > 0 ?
-#     #       resume_from.info[:spl] :
-#     #       Sampler(alg)
-#     # if resume_from != nothing
-#     #     spl.selector = resume_from.info[:spl].selector
-#     # end
-#     # @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
-#     #
-#     # n = reuse_spl_n > 0 ?
-#     #     reuse_spl_n :
-#     #     alg.n_iters
-#     # samples = Vector{Sample}()
-#     #
-#     # ## custom resampling function for pgibbs
-#     # ## re-inserts reteined particle after each resampling step
-#     # time_total = zero(Float64)
-#     #
-#     # vi = resume_from == nothing ?
-#     #     VarInfo() :
-#     #     resume_from.info[:vi]
-#     #
-#     # pm = nothing
-#     # PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
-#
-#     for i = 1:n
-#         time_elapsed = @elapsed vi, _ = step(model, spl, vi)
-#         push!(samples, Sample(vi))
-#         samples[i].value[:elapsed] = time_elapsed
-#
-#         time_total += time_elapsed
-#
-#         if PROGRESS[] && spl.selector.tag == :default
-#             ProgressMeter.next!(spl.info[:progress])
-#         end
-#     end
-#
-#     @info("[PG] Finished with")
-#     @info("  Running time    = $time_total;")
-#
-#     loge = exp.(mean(spl.info[:logevidence]))
-#     if resume_from != nothing   # concat samples
-#         pushfirst!(samples, resume_from.info[:samples]...)
-#         pre_loge = exp.(resume_from.logevidence)
-#         # Calculate new log-evidence
-#         pre_n = length(resume_from.info[:samples])
-#         loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
-#     end
-#     c = Chain(loge, samples)       # wrap the result by Chain
-#
-#     if save_state               # save state
-#         c = save(c, spl, model, vi, samples)
-#     end
-#
-#     return c
-# end
 
 function sample_end!(
     ::AbstractRNG,
     ::ModelType,
-    s::Sampler{PG, PGState},
+    spl::Sampler{T, TState},
     ::Integer,
     ::Vector{TransitionType};
     kwargs...
 ) where {
     ModelType<:Sampleable,
-    TransitionType<:AbstractTransition
+    TransitionType<:AbstractTransition,
+    T<:Union{PG, SMC},
+    TState<:Union{PGState, SMCState}
 }
     # Set the default for resuming the sampler.
     resume_from = get(kwargs, :resume_from, nothing)
 
     # Exponentiate the average log evidence.
-    loge = exp.(mean(s.state.logevidence))
+    loge = exp.(mean(spl.state.logevidence))
 
     # If we already had a chain, grab it's logevidence.
     if resume_from != nothing   # concat samples
@@ -354,7 +233,7 @@ function sample_end!(
     end
 
     # Store the logevidence.
-    s.state.final_logevidence = loge
+    spl.state.final_logevidence = loge
 end
 
 function assume(  spl::Sampler{T},
@@ -418,7 +297,7 @@ end
 ####
 
 """
-    PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})
+    PMMH(smc_alg:::SMC, parameters_algs::Tuple{MH})
 
 Particle independant Metropolis–Hastings and
 Particle marginal Metropolis–Hastings samplers.
@@ -429,31 +308,40 @@ must be stored in a [`TArray`](@ref) object.
 Usage:
 
 ```julia
-alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
-alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
+alg = PMMH(SMC(20, :v1), MH(1,:v2))
+alg = PMMH(SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
 ```
 
 Arguments:
 
-- `n_iters::Int` : Number of iterations to run.
 - `smc_alg:::SMC` : An [`SMC`](@ref) algorithm to use.
 - `parameters_algs::Tuple{MH}` : An [`MH`](@ref) algorithm, which includes a
 sample space specification.
 """
-mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
-    n_iters               ::    Int               # number of iterations
+struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
     algs                  ::    A                 # Proposals for state & parameters
     space                 ::    Set{T}            # sampling space, emtpy means all
 end
-function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
-    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set())
+
+mutable struct PMMHState <: SamplerState
+    samplers                :: Array{Sampler} # NOTE: May need parametric types?
+    old_prior_prob          :: Float64
+    old_likelihood_estimate :: Float64
+    vi                      :: VarInfo
 end
 
-PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
+PMMHState() = PMMHState(Sampler[], 0.0, -Inf, VarInfo())
+
+function PMMH(smc_alg::SMC, parameter_algs...)
+    return PMMH(tuple(parameter_algs..., smc_alg), Set())
+end
+
+PIMH(smc_alg::SMC) = PMMH(tuple(smc_alg), Set())
+alg_str(spl::Sampler{PMMH}) = "PMMH"
 
 function Sampler(alg::PMMH, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s)
+    spl = Sampler(alg, info, s, PMMHState())
 
     alg_str = "PMMH"
     n_samplers = length(alg.algs)
@@ -483,14 +371,19 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
         end
     end
 
-    info[:old_likelihood_estimate] = -Inf # Force to accept first proposal
-    info[:old_prior_prob] = 0.0
-    info[:samplers] = samplers
+    # Set the samplers.
+    spl.state.samplers = samplers
 
     return spl
 end
 
-function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
+function step!(
+    ::AbstractRNG, # Note: This function does not use the range argument for now.
+    model::Turing.Model,
+    spl::Sampler{PMMH, PMMHState},
+    ::Integer; # Note: This function doesn't use the N argument.
+    kwargs...
+)
     violating_support = false
     proposal_ratio = 0.0
     new_prior_prob = 0.0
@@ -498,22 +391,25 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     old_θ = copy(vi[spl])
 
     Turing.DEBUG && @debug "Propose new parameters from proposals..."
-    for local_spl in spl.info[:samplers][1:end-1]
+    for local_spl in spl.state.samplers[1:end-1]
         Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
-        propose(model, local_spl, vi)
-        if local_spl.info[:violating_support] violating_support=true; break end
-        new_prior_prob += local_spl.info[:prior_prob]
-        proposal_ratio += local_spl.info[:proposal_ratio]
+        propose(model, local_spl, spl.state.vi)
+        if local_spl.state.violating_support
+            violating_support=true
+            break
+        end
+        new_prior_prob += local_spl.state.prior_prob
+        proposal_ratio += local_spl.state.proposal_ratio
     end
 
     if !violating_support # do not run SMC if going to refuse anyway
         Turing.DEBUG && @debug "Propose new state with SMC..."
-        vi, _ = step(model, spl.info[:samplers][end], vi)
-        new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
+        spl.state.vi, _ = step(model, spl.state.samplers[end], spl.state.vi)
+        new_likelihood_estimate = spl.state.samplers[end].state.logevidence[end]
 
         Turing.DEBUG && @debug "computing accept rate α..."
         is_accept, _ = mh_accept(
-          -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
+          -(spl.state.old_likelihood_estimate + spl.state.old_prior_prob),
           -(new_likelihood_estimate + new_prior_prob),
           proposal_ratio,
         )
@@ -522,15 +418,57 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     Turing.DEBUG && @debug "decide whether to accept..."
     if !violating_support && is_accept # accepted
         is_accept = true
-        spl.info[:old_likelihood_estimate] = new_likelihood_estimate
-        spl.info[:old_prior_prob] = new_prior_prob
+        spl.state.old_likelihood_estimate = new_likelihood_estimate
+        spl.state.old_prior_prob = new_prior_prob
     else                      # rejected
         is_accept = false
-        vi[spl] = old_θ
+        spl.state.vi[spl] = old_θ
     end
 
-    return vi, is_accept
+    return transition(spl.state.vi, spl)
 end
+
+# function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
+#     violating_support = false
+#     proposal_ratio = 0.0
+#     new_prior_prob = 0.0
+#     new_likelihood_estimate = 0.0
+#     old_θ = copy(vi[spl])
+#
+#     Turing.DEBUG && @debug "Propose new parameters from proposals..."
+#     for local_spl in spl.info[:samplers][1:end-1]
+#         Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
+#         propose(model, local_spl, vi)
+#         if local_spl.info[:violating_support] violating_support=true; break end
+#         new_prior_prob += local_spl.info[:prior_prob]
+#         proposal_ratio += local_spl.info[:proposal_ratio]
+#     end
+#
+#     if !violating_support # do not run SMC if going to refuse anyway
+#         Turing.DEBUG && @debug "Propose new state with SMC..."
+#         vi, _ = step(model, spl.info[:samplers][end], vi)
+#         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
+#
+#         Turing.DEBUG && @debug "computing accept rate α..."
+#         is_accept, _ = mh_accept(
+#           -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
+#           -(new_likelihood_estimate + new_prior_prob),
+#           proposal_ratio,
+#         )
+#     end
+#
+#     Turing.DEBUG && @debug "decide whether to accept..."
+#     if !violating_support && is_accept # accepted
+#         is_accept = true
+#         spl.info[:old_likelihood_estimate] = new_likelihood_estimate
+#         spl.info[:old_prior_prob] = new_prior_prob
+#     else                      # rejected
+#         is_accept = false
+#         vi[spl] = old_θ
+#     end
+#
+#     return vi, is_accept
+# end
 
 function sample(  model::Model,
                   alg::PMMH;
@@ -853,27 +791,49 @@ end
 vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
 
 """
-    transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}})
+    transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}}, weight::Float64)
 
 Returns a basic TransitionType for the particle samplers.
 """
-function transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}})
-    # Array version
+function transition(
+        vi::AbstractVarInfo,
+        spl::Sampler{<:Union{SMC, PG}},
+        weight::Float64,
+        le::Float64
+)
     vals = vi.vals
     if length(spl.state.vnames) == 0
         spl.state.vnames = vnames(vi)
     end
-    new_trans = ParticleTransition{typeof(vals)}(spl.state.vnames, vals)
-    return new_trans
+    return ParticleTransition{typeof(vals)}(vals, weight, getlogp(vi), le)
+end
 
 
-    ### Namedtuple version.
-    # vals = vi.vals
-    # ks = collect(keys(vi))
-    # ln = length(ks)
-    # nms = ntuple(i -> Symbol(ks[i]), ln)
-    # vs = ntuple(i -> vals[i], ln)
-    # tup = NamedTuple{nms}(vs)
-    # println(tup)
-    # return s
+# Common functions for PG and SMC.
+function Chains(
+    ::AbstractRNG,
+    ::ModelType,
+    spl::Sampler{T, TState},
+    ::Integer,
+    ts::Vector{ParticleTransition};
+    kwargs...
+) where {T<:Union{SMC, PG}, TState<:Union{SMCState, PGState}, ModelType<:Sampleable}
+    nms = vcat(spl.state.vnames, :weight, :lp)
+    parray = vcat(map(x -> hcat(x.θ, x.weight, x.lp), ts)...)
+    return Chains(
+        parray,
+        string.(nms),
+        INTERNAL_VARS,
+        evidence = spl.state.final_logevidence
+    )
+end
+
+function transitions_init(
+    ::AbstractRNG,
+    model::ModelType,
+    spl::Sampler{T, TState},
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, T<:Union{SMC, PG}, TState<:Union{SMCState, PGState}}
+    return Vector{ParticleTransition}(undef, N)
 end
