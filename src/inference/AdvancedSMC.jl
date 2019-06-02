@@ -120,7 +120,7 @@ end
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
 
 function step(model, spl::Sampler{<:PG}, vi::VarInfo)
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer{Trace{typeof(spl), typeof(vi), typeof(model)}}(model)
 
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(vi) ?
@@ -569,6 +569,7 @@ function sample(model::Model, alg::IPMCMC)
 
   # Init parameters
   vi = empty!(VarInfo(model))
+  @show typeof(vi.metadata.x.vals)
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
     VarInfos[j] = deepcopy(vi)
