@@ -151,8 +151,12 @@ function gradient_logp_reverse(
 
     # Specify objective function.
     function f(θ)
-        vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        new_vi = VarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = Tracker.data.(θ)
+        vi.logp = Tracker.data(logp)
+        return logp
     end
 
     # Compute forward and reverse passes.

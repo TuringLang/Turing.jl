@@ -413,9 +413,7 @@ function sample(  model::Model,
 
     # Init parameters
     vi = if resume_from == nothing
-        vi_ = empty!(VarInfo(model))
-        model(vi_, SampleFromUniform())
-        vi_
+        vi_ = VarInfo(model)
     else
         resume_from.info[:vi]
     end
@@ -570,9 +568,10 @@ function sample(model::Model, alg::IPMCMC)
   end
 
   # Init parameters
+  vi = empty!(VarInfo(model))
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
-    VarInfos[j] = empty!(VarInfo(model))
+    VarInfos[j] = deepcopy(vi)
   end
   n = spl.alg.n_iters
 

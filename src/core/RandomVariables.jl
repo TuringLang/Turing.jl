@@ -183,6 +183,8 @@ function VarInfo(model::Model)
     return TypedVarInfo(vi)
 end
 
+VarInfo(old_vi::UntypedVarInfo, spl, T) = old_vi
+
 function VarInfo(old_vi::TypedVarInfo, spl, T)
     md = newmetadata(old_vi.metadata, spl, T)
     VarInfo(md, Base.RefValue{T}(old_vi.logp), Ref(old_vi.num_produce))
