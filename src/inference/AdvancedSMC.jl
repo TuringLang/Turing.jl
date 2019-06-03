@@ -569,7 +569,6 @@ function sample(model::Model, alg::IPMCMC)
 
   # Init parameters
   vi = empty!(VarInfo(model))
-  @show typeof(vi.metadata.x.vals)
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
     VarInfos[j] = deepcopy(vi)
