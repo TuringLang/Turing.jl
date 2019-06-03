@@ -210,22 +210,22 @@ end
 # VarInfo to Sample
 Sample(vi::VarInfo) = Sample(0.0, todict(vi))
 function todict(vi::VarInfo)
-    value = todict(vi.metadata)
+    value = todict(vi.metadata, vi)
     value[:lp] = getlogp(vi)
     return value
 end
-function todict(md::Metadata)
+function todict(md::Metadata, vi::VarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
     for vn in keys(md.idcs)
-        value[Symbol(vn)] = md.idcs[vn]
+        value[Symbol(vn)] = vi[vn]
     end
     return value
 end
-function todict(metadata::NamedTuple{names}) where {names}
+function todict(metadata::NamedTuple{names}, vi::VarInfo) where {names}
     length(names) === 0 && return Dict{Symbol, Any}()
     f = names[1]
     mdf = getfield(metadata, f)
-    return merge(todict(mdf), todict(_tail(metadata)))
+    return merge(todict(mdf, vi), todict(_tail(metadata), vi))
 end
 
 # VarInfo, combined with spl.info, to Sample
