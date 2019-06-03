@@ -4,7 +4,8 @@ using Turing: ParticleContainer, weights, resample!,
     Sampler, consume, produce, copy, fork
 using Test
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "container.jl" begin
     @turing_testset "copy particle container" begin
