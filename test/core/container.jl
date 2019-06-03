@@ -39,10 +39,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         pc = ParticleContainer{Trace}(fpc)
-
-        push!(pc, Trace(pc.model))
-        push!(pc, Trace(pc.model))
-        push!(pc, Trace(pc.model))
+        model = Turing.Model{(:x,),()}(fpc, NamedTuple(), NamedTuple())
+        tr = Trace(pc.model, model, spl, Turing.VarInfo())
+        push!(pc, tr)
+        tr = Trace(pc.model, model, spl, Turing.VarInfo())
+        push!(pc, tr)
+        tr = Trace(pc.model, model, spl, Turing.VarInfo())
+        push!(pc, tr)
 
         Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
         Base.@assert weights(pc)[2] ≈ log(3)
@@ -82,7 +85,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         # Test task copy version of trace
-        tr = Trace(f2)
+        model = Turing.Model{(:x,),()}(f2, NamedTuple(), NamedTuple())
+        tr = Trace(f2, model, spl, Turing.VarInfo())
 
         consume(tr); consume(tr)
         a = fork(tr);
