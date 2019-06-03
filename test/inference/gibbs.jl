@@ -1,6 +1,7 @@
 using Random, Turing, Test
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin

@@ -1,12 +1,13 @@
 using ForwardDiff, Distributions, FDM, Tracker, Random, LinearAlgebra, PDMats
-using Turing: gradient_logp_reverse, invlink, link, SampleFromPrior
+using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
 using Turing.Core.RandomVariables: getval
 using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 _to_cov(B) = B * B' + Matrix(I, size(B)...)
 

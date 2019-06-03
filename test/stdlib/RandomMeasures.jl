@@ -3,7 +3,8 @@ using Turing.RandomMeasures
 using Test
 using Random
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "RandomMeasures.jl" begin
     partitions = [
