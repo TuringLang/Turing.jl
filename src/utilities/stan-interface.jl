@@ -75,7 +75,7 @@ function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
             adaptor.window
     else # default adaptor
         @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
-        adaptor = AHMC.StanNUTSAdaptor(
+        adaptor = AHMC.StanHMCAdaptor(
             spl.alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
             AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
         )

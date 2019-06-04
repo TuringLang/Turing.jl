@@ -421,12 +421,12 @@ function steps!(model,
     verbose::Bool=true
 )
     ahmc_samples = AHMC.sample(
-        rng, 
-        spl.info[:h], 
-        spl.info[:traj], 
+        rng,
+        spl.info[:h],
+        spl.info[:traj],
         Vector{Float64}(vi[spl]),
-        spl.alg.n_iters, 
-        spl.info[:adaptor], 
+        spl.alg.n_iters,
+        spl.info[:adaptor],
         spl.alg.n_adapts;
         verbose=verbose
     )
@@ -446,10 +446,10 @@ function steps!(
     verbose::Bool=true
 )
     ahmc_samples = AHMC.sample(
-        rng, 
-        spl.info[:h], 
-        spl.info[:traj], 
-        Vector{Float64}(vi[spl]), 
+        rng,
+        spl.info[:h],
+        spl.info[:traj],
+        Vector{Float64}(vi[spl]),
         spl.alg.n_iters;
         verbose=verbose
     )
@@ -655,9 +655,9 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian)
     p = AHMC.Preconditioner(alg.metricT)
     nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
     if alg.metricT == AHMC.UnitEuclideanMetric
-        adaptor = AHMC.NaiveCompAdaptor(p, nda)
+        adaptor = AHMC.NaiveHMCAdaptor(p, nda)
     else
-        adaptor = AHMC.StanNUTSAdaptor(alg.n_adapts, p, nda)
+        adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, p, nda)
     end
     return adaptor
 end
