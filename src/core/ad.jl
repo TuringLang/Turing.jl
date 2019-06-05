@@ -258,25 +258,174 @@ function poislogpdf(v::ForwardDiff.Dual{T}, x::Int) where {T}
     return FD(poislogpdf(val, x), Δ * (x/val - 1))
 end
 
-fleshout(M::AbstractMatrix) = [M[i,j] for i in 1:size(M,1), j in 1:size(M,2)]
-fleshout(v::AbstractVector) = [v[i] for i in 1:length(v)]
 
-function Distributions.MvNormal(u::AbstractVector, M::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
-    return MvNormal(u, fleshout(M))
-end
-for T in (:(Tracker.TrackedVector{T}), :(Tracker.TrackedMatrix{T}))
-    @eval begin
-        function Distributions.MvNormal(u::Tracker.TrackedVector{T}, M::$T) where {T <: Real}
-            return MvNormal(fleshout(u), fleshout(M))
-        end
-    end
-end
-for T in (:(Vector{T}), :(Matrix{T}), :(AbstractVector{T}), :(AbstractMatrix{T}))
-    @eval begin
-        function Distributions.MvNormal(u::Tracker.TrackedVector{T}, M::$T) where {T <: Real}
-            return MvNormal(fleshout(u), M)
-        end
-    end
+#
+# Make Tracker work with MvNormal. This is a bit nasty.
+#
+
+using Zygote
+
+LinearAlgebra.UpperTriangular(A::Tracker.TrackedMatrix) = Tracker.track(UpperTriangular, A)
+Tracker.@grad function LinearAlgebra.UpperTriangular(A::AbstractMatrix)
+    return UpperTriangular(Tracker.data(A)), Δ->(UpperTriangular(Δ),)
 end
 
-LinearAlgebra.cholesky(M::Tracker.TrackedMatrix) = cholesky(fleshout(M))
+turing_chol(A::AbstractMatrix) = cholesky(A).factors
+turing_chol(A::Tracker.TrackedMatrix) = Tracker.track(turing_chol, A)
+Tracker.@grad function turing_chol(A::AbstractMatrix)
+    C, back = Zygote.forward(cholesky, Tracker.data(A))
+    return C.factors, Δ->back((factors=Tracker.data(Δ),))
+end
+
+function LinearAlgebra.cholesky(A::Tracker.TrackedMatrix)
+    factors = turing_chol(A)
+    return Cholesky{eltype(factors), typeof(factors)}(factors, 'U', 0)
+end
+
+# Specialised logdet for cholesky to target the triangle directly.
+logdet_chol_tri(U::AbstractMatrix) = 2 * sum(log, U[diagind(U)])
+logdet_chol_tri(U::Tracker.TrackedMatrix) = Tracker.track(logdet_chol_tri, U)
+Tracker.@grad function logdet_chol_tri(U::AbstractMatrix)
+    U_data = Tracker.data(U)
+    return logdet_chol_tri(U_data), Δ->(Matrix(Diagonal(2 .* Δ ./ diag(U_data))),)
+end
+
+function LinearAlgebra.logdet(C::Cholesky{<:Tracker.TrackedReal, <:Tracker.TrackedMatrix})
+    return logdet_chol_tri(C.U)
+end
+
+# Tracker's implementation of ldiv isn't good. We'll use Zygote's instead.
+const TrackedVecOrMat = Union{Tracker.TrackedVector, Tracker.TrackedMatrix}
+zygote_ldiv(A::AbstractMatrix, B::AbstractVecOrMat) = A \ B
+function zygote_ldiv(A::Tracker.TrackedMatrix, B::TrackedVecOrMat)
+    return Tracker.track(zygote_ldiv, A, B)
+end
+function zygote_ldiv(A::Tracker.TrackedMatrix, B::AbstractVecOrMat)
+    return Tracker.track(zygote_ldiv, A, B)
+end
+zygote_ldiv(A::AbstractMatrix, B::TrackedVecOrMat) =  Tracker.track(zygote_ldiv, A, B)
+Tracker.@grad function zygote_ldiv(A, B)
+    Y, back = Zygote.forward(\, Tracker.data(A), Tracker.data(B))
+    return Y, Δ->back(Tracker.data(Δ))
+end
+
+function Base.fill(
+    value::Tracker.TrackedReal,
+    dims::Vararg{Union{Integer, AbstractUnitRange}},
+)
+    return Tracker.track(fill, value, dims...)
+end
+Tracker.@grad function Base.fill(value::Real, dims...)
+    return fill(Tracker.data(value), dims...), function(Δ)
+        size(Δ) ≢ dims && error("Dimension mismatch")
+        return (sum(Δ), map(_->nothing, dims)...)
+    end
+end
+
+using PDMats
+
+PDMats.invquad(Σ::PDiagMat, x::Tracker.TrackedVector) = sum(abs2.(x) ./ Σ.diag)
+
+
+"""
+    TuringMvNormal{Tm<:AbstractVector, TC<:Cholesky} <: ContinuousMultivariateDistribution
+
+A multivariate Normal distribution whose covariance is dense. Compatible with Tracker.
+"""
+struct TuringMvNormal{Tm<:AbstractVector, TC<:Cholesky} <: ContinuousMultivariateDistribution
+    m::Tm
+    C::TC
+end
+
+TuringMvNormal(m::AbstractVector, A::AbstractMatrix) = TuringMvNormal(m, cholesky(A))
+
+Distributions.dim(d::TuringMvNormal) = length(d.m)
+function Distributions.rand(rng::Random.AbstractRNG, d::TuringMvNormal)
+    return d.m .+ d.C.U' * randn(rng, dim(d))
+end
+function Distributions.logpdf(d::TuringMvNormal, x::AbstractVector)
+    return -(dim(d) * log(2π) + logdet(d.C) + sum(abs2, zygote_ldiv(d.C.U', x .- d.m))) / 2
+end
+
+# Deal with ambiguities.
+function Base.:*(
+    A::Tracker.TrackedMatrix,
+    B::Adjoint{T, V} where V<:LinearAlgebra.AbstractTriangular{T} where {T},
+)
+    return Tracker.track(*, A, B)
+end
+
+
+
+"""
+    TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMultivariateDistribution
+
+A multivariate normal distribution whose covariance is diagonal. Compatible with Tracker.
+"""
+struct TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMultivariateDistribution
+    m::Tm
+    σ::Tσ
+end
+
+Distributions.dim(d::TuringDiagNormal) = length(d.m)
+function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal)
+    return d.m .+ d.σ .* randn(rng, dim(d))
+end
+function Distributions.logpdf(d::TuringDiagNormal, x::AbstractVector)
+    return -(dim(d) * log(2π) + 2 * sum(log.(d.σ)) + sum(abs2, (x .- d.m) ./ d.σ)) / 2
+end
+
+
+
+#
+# Intercepts to construct appropriate TuringMvNormal types. Methods line-separated. Imports
+# used do avoid excessive code duplication. This is mildly annoying to maintain, but it
+# should do the job reasonably well for now.
+#
+
+using Tracker: TrackedReal, TrackedVector, TrackedMatrix
+import Distributions: MvNormal
+
+# zero mean, dense covariance
+MvNormal(A::TrackedMatrix) = MvNormal(zeros(size(A, 1)), A)
+
+# zero mean, diagonal covariance
+MvNormal(σ::TrackedVector) = MvNormal(zeros(length(σ)), σ)
+
+# dense mean, dense covariance
+MvNormal(m::TrackedVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvNormal(m, A)
+MvNormal(m::TrackedVector{<:Real}, A::Matrix{<:Real}) = TuringMvNormal(m, A)
+MvNormal(m::AbstractVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvNormal(m, A)
+
+# dense mean, diagonal covariance
+function MvNormal(
+    m::TrackedVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvNormal(m, sqrt.(D.diag))
+end
+function MvNormal(
+    m::AbstractVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvNormal(m, sqrt.(D.diag))
+end
+
+# dense mean, diagonal covariance
+MvNormal(m::TrackedVector{<:Real}, σ::TrackedVector{<:Real}) = TuringDiagNormal(m, σ)
+MvNormal(m::TrackedVector{<:Real}, σ::AbstractVector{<:Real}) = TuringDiagNormal(m, σ)
+MvNormal(m::TrackedVector{<:Real}, σ::Vector{<:Real}) = TuringDiagNormal(m, σ)
+MvNormal(m::AbstractVector{<:Real}, σ::TrackedVector{<:Real}) = TuringDiagNormal(m, σ)
+
+# dense mean, constant variance
+MvNormal(m::TrackedVector{<:Real}, σ::TrackedReal) = MvNormal(m, fill(σ, length(m)))
+MvNormal(m::TrackedVector{<:Real}, σ::Real) = MvNormal(m, fill(σ, length(m)))
+MvNormal(m::AbstractVector{<:Real}, σ::TrackedReal) = MvNormal(m, fill(σ, length(m)))
+
+# dense mean, constant variance
+MvNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:TrackedReal}) = MvNormal(m, A.λ)
+MvNormal(m::AbstractVector{<:Real}, A::UniformScaling{<:TrackedReal}) = MvNormal(m, A.λ)
+MvNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:Real}) = MvNormal(m, A.λ)
+
+# zero mean,, constant variance
+MvNormal(d::Int, σ::TrackedReal{<:Real}) = MvNormal(zeros(d), σ)

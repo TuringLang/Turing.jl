@@ -1,6 +1,6 @@
 module Core
 
-using MacroTools, Libtask, ForwardDiff
+using MacroTools, Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker

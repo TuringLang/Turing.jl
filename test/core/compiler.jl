@@ -1,7 +1,8 @@
 using Turing, Random, MacroTools, Distributions, Test
 import Turing.translate_tilde!
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 Random.seed!(129)
 

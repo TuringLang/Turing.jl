@@ -3,7 +3,8 @@ using Turing: @VarName
 using Distributions: Normal
 using StatsFuns
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @turing_testset "util.jl" begin
     i = 1

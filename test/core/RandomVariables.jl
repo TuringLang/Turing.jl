@@ -12,7 +12,8 @@ using Test
 
 i, j, k = 1, 2, 3
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "RandomVariables.jl" begin
     @turing_testset "TypedVarInfo" begin

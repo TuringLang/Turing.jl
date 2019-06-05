@@ -97,7 +97,9 @@ The returned chain contains samples of the variables in the model.
 var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 ```
 
-Note that the key (`:var_1`) should be a symbol. For example, to fetch `x[1]`, one would need to do `chn[Symbol(:x[1])`.
+The key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")` or `chn["x[1]"]`.
+
+The benefit of using a `Symbol` to index allows you to retrieve all the parameters associated with that symbol. As an example, if you have the parameters `"x[1]"`, `"x[2]"`, and `"x[3]"`, calling `chn[:x]` will return a new chain with only `"x[1]"`, `"x[2]"`, and `"x[3]"`.
 
 Turing does not have a declarative form. More generally, the order in which you place the lines of a `@model` macro matters. For example, the following example works:
 
@@ -140,7 +142,7 @@ Having multiple chains in the same object is valuable for evaluating convergence
 
 Please note that Turing does not have native support for chains sampled in parallel.
 
-### Sampling from the Prior
+### Sampling from an Unconditional Distribution (The Prior)
 
 Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.
 
@@ -157,6 +159,7 @@ end
 Assign the function without inputs to a variable, and Turing will produce a sample from the prior distribution.
 
 ```julia
+# Samples from p(x,y)
 g_prior_sampler = gdemo()
 g_prior_sampler()
 ```
@@ -165,11 +168,11 @@ Output:
 (0.685690547873451, -1.1972706455914328)
 ```
 
-### Generative Models
+### Sampling from a Conditional Distribution (The Posterior)
 
 #### Using `Missing`
 
-The simplest way to treat a model as generative is to pass in an `Array{Missing}` value for the parameter(s) you wish to generate. Turing v0.6.7 supports the following syntax:
+Values that are `missing` are treated as parameters to be estimated. This can be useful if you want to simulate draws for that parameter, or if you are sampling from a conditional distribution. Turing v0.6.7 supports the following syntax:
 
 ```julia
 @model gdemo(x) = begin
@@ -186,6 +189,38 @@ c = sample(model, HMC(500, 0.01, 5))
 ```
 
 The above case tells the model compiler the dimensions of the values it needs to generate. The generated values for `x` can be extracted from the `Chains` object using `c[:x]`.
+
+Currently, Turing does not support vector-valued inputs containing mixed `missing` and non-missing values, i.e. vectors of type `Union{Missing, T}` where `T` is any type. The following **will not work**:
+
+```julia
+@model gdemo(x) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    for i in eachindex(x)
+        x[i] ~ Normal(m, sqrt(s))
+    end
+end
+
+# Warning: This will provide an error!
+model = gdemo([missing, 2.4])
+c = sample(model, HMC(500, 0.01, 5))
+```
+
+If this is functionality you need, you may need to define each parameter as a separate variable, as below:
+
+```julia
+@model gdemo(x1, x2) = begin
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    # Note that x1 and x2 are no longer vector-valued.
+    x1 ~ Normal(m, sqrt(s))
+    x2 ~ Normal(m, sqrt(s))
+end
+
+# Equivalent to sampling p( x1 | x2 = 1.5).
+model = gdemo(missing, 1.5)
+c = sample(model, HMC(500, 0.01, 5))
+```
 
 #### Using Argument Defaults
 
@@ -231,28 +266,29 @@ We can generate observations by providing no arguments in the `sample` call.
 generated = sample(generative(), HMC(1000, 0.01, 5))
 ```
 
-The generated quantities can then be accessed by pulling them out of the chain.
+The generated quantities can then be accessed by pulling them out of the chain. To access all the `x` values, we first subset the chain using `generated[:x]`
 
 ```julia
 xs = generated[:x]
-xs[15]
 ```
 
-Output:
+You can access the values inside a chain several ways:
 
+1. Turn them into a `DataFrame` object
+2. Use their raw `AxisArray` form
+3. Create a three-dimensional `Array` object
+
+```julia
+# Convert to a DataFrame.
+DataFrame(xs)
+
+# Retrieve an AxisArray.
+xs.value
+
+# Retrieve a basic 3D Array.
+xs.value.data
 ```
-15-element Array{Any,1}:
- 2.5087545935216204
- 1.9705471514656179
- 1.5909436324555706
- 0.657277570452348
- 1.7559808833945953
- ⋮
- 1.393870026816734
- 0.517867487068248
- 1.198359051797093
- 1.7438714106828728
-```
+
 
 #### What to Use as a Default Value
 
