@@ -1,6 +1,7 @@
 using Turing, Test
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @stage_testset "dynamichmc" "dynamichmc.jl" begin
     import DynamicHMC
