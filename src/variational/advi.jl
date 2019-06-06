@@ -1,8 +1,3 @@
-using ForwardDiff
-using Flux.Tracker
-using Flux.Optimise
-
-
 """
     ADVI(samplers_per_step = 10, max_iters = 5000)
 
@@ -108,30 +103,6 @@ function optimize!(elbo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ; op
     @info time_elapsed
 
     return θ
-end
-
-function grad!(vo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: ForwardDiffAD}
-    # TODO: this probably slows down executation quite a bit; exists a better way of doing this?
-    f(θ_) = - vo(alg, q, model, θ_, args...)
-
-    chunk_size = getchunksize(alg)
-    # Set chunk size and do ForwardMode.
-    chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
-    config = ForwardDiff.GradientConfig(f, θ, chunk)
-    ForwardDiff.gradient!(out, f, θ, config)
-end
-
-# TODO: implement for `Tracker`
-# function grad(vo::ELBO, alg::ADVI, q::MeanField, model::Model, f, autodiff::Val{:backward})
-#     vo_tracked, vo_pullback = Tracker.forward()
-# end
-function grad!(vo::ELBO, alg::ADVI{AD}, q::MeanField, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: TrackerAD}
-    θ_tracked = Tracker.param(θ)
-    y = - vo(alg, q, model, θ_tracked, args...)
-    Tracker.back!(y, 1.0)
-
-    DiffResults.value!(out, Tracker.data(y))
-    DiffResults.gradient!(out, Tracker.grad(θ_tracked))
 end
 
 function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, θ::AbstractVector{T}, num_samples) where T <: Real
