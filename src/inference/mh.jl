@@ -1,3 +1,20 @@
+mutable struct MHState <: SamplerState
+    proposal_ratio        ::   Float64
+    prior_prob            ::   Float64
+    violating_support     ::   Bool
+    vi                    ::   VarInfo
+end
+
+MHState() = MHState(0.0, 0.0, false, VarInfo())
+
+struct MHTransition{T}
+    θ :: T
+end
+
+function transition(spl::Sampler{<:MH})
+    return MHTransition{typeof(spl.state.vi.vals)}(spl.state.vi.vals)
+end
+
 """
     MH(n_iters::Int)
 
@@ -25,12 +42,11 @@ chn = sample(gdemo([1.5, 2]), MH(1000))
 ```
 """
 mutable struct MH{T} <: InferenceAlgorithm
-  n_iters   ::  Int       # number of iterations
-  proposals ::  Dict{Symbol,Any}  # Proposals for paramters
-  space     ::  Set{T}    # sampling space, emtpy means all
+    proposals ::  Dict{Symbol,Any}  # Proposals for paramters
+    space     ::  Set{T}    # sampling space, emtpy means all
 end
 
-function MH(n_iters::Int, space...)
+function MH(space...)
   new_space = Set()
   proposals = Dict{Symbol,Any}()
 
@@ -45,7 +61,7 @@ function MH(n_iters::Int, space...)
       end
   end
   set = Set(new_space)
-  MH{eltype(set)}(n_iters, proposals, set)
+  MH{eltype(set)}(proposals, set)
 end
 
 function Sampler(alg::MH, model::Model, s::Selector)
@@ -60,47 +76,60 @@ function Sampler(alg::MH, model::Model, s::Selector)
     end
 
     info = Dict{Symbol, Any}()
-    info[:proposal_ratio] = 0.0
-    info[:prior_prob] = 0.0
-    info[:violating_support] = false
+    state = MHState()
 
-    return Sampler(alg, info, s)
+    return Sampler(alg, info, s, state)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
-    spl.info[:proposal_ratio] = 0.0
-    spl.info[:prior_prob] = 0.0
-    spl.info[:violating_support] = false
-    return runmodel!(model, vi ,spl)
+    spl.state.proposal_ratio = 0.0
+    spl.state.prior_prob = 0.0
+    spl.state.violating_support = false
+    return runmodel!(model, spl.state.vi, spl)
 end
 
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
-    return vi, true
+# First step always returns a value.
+function step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    ::Integer;
+    kwargs...
+)
+    return transition(spl)
 end
 
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector.tag != :default # Recompute joint in logp
-    runmodel!(model, vi)
-  end
-  old_θ = copy(vi[spl])
-  old_logp = getlogp(vi)
+# Every step after the first.
+function step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    ::Integer
+    ::MHTransition;
+    kwargs...
+)
+    if spl.selector.tag != :default # Recompute joint in logp
+        runmodel!(model, spl.state.vi)
+    end
+    old_θ = copy(spl.state.vi[spl])
+    old_logp = getlogp(spl.state.vi)
 
-  Turing.DEBUG && @debug "Propose new parameters from proposals..."
-  propose(model, spl, vi)
+    Turing.DEBUG && @debug "Propose new parameters from proposals..."
+    propose(model, spl, spl.state.vi)
 
-  Turing.DEBUG && @debug "computing accept rate α..."
-  is_accept, _ = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
+    Turing.DEBUG && @debug "computing accept rate α..."
+    is_accept, _ = mh_accept(-old_logp, -getlogp(spl.state.vi), spl.state.proposal_ratio)
 
-  Turing.DEBUG && @debug "decide wether to accept..."
-  if is_accept && !spl.info[:violating_support]  # accepted
-    is_accept = true
-  else                      # rejected
-    is_accept = false
-    vi[spl] = old_θ         # reset Θ
-    setlogp!(vi, old_logp)  # reset logp
-  end
+    Turing.DEBUG && @debug "decide wether to accept..."
+    if is_accept && !spl.state.violating_support  # accepted
+        is_accept = true
+    else                      # rejected
+        is_accept = false
+        spl.state.vi[spl] = old_θ         # reset Θ
+        setlogp!(spl.state.vi, old_logp)  # reset logp
+    end
 
-  return vi, is_accept
+    return transition(spl.state.vi)
 end
 
 function sample(model::Model, alg::MH;
