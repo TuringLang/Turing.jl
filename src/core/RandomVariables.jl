@@ -1,7 +1,7 @@
 module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
-    AbstractSampler, Sampler, SampleFromPrior,
+    AbstractSampler, Sampler, SampleFromPrior, SampleFromUniform,
     Selector, getspace
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution, link, invlink
@@ -176,6 +176,44 @@ struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
 end
 const UntypedVarInfo = VarInfo{<:Metadata}
 const TypedVarInfo = VarInfo{<:NamedTuple}
+
+function VarInfo(model::Model)
+    vi = VarInfo()
+    model(vi, SampleFromUniform())
+    return TypedVarInfo(vi)
+end
+
+VarInfo(old_vi::UntypedVarInfo, spl, T) = old_vi
+
+function VarInfo(old_vi::TypedVarInfo, spl, T)
+    md = newmetadata(old_vi.metadata, spl, T)
+    VarInfo(md, Base.RefValue{T}(old_vi.logp), Ref(old_vi.num_produce))
+end
+function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, names}
+    # Check if the named tuple is empty and end the recursion
+    length(names) === 0 && return ()
+    # Take the first key in the NamedTuple
+    f = names[1]
+    mdf = getfield(metadata, f)
+    syms = getspace(spl)
+    if f ∈ syms || length(syms) == 0
+        idcs = mdf.idcs
+        vns = mdf.vns
+        ranges = mdf.ranges
+        vals = similar(mdf.vals, T)
+        dists = mdf.dists
+        gids = mdf.gids
+        orders = mdf.orders
+        flags = mdf.flags
+        md = Metadata(idcs, vns, ranges, vals, dists, gids, orders, flags)
+	    nt = NamedTuple{(f,)}((md,))
+        return merge(nt, newmetadata(_tail(metadata), spl, T))
+    else
+        md = getfield(metadata, f)
+	    nt = NamedTuple{(f,)}((md,))
+        return merge(nt, newmetadata(_tail(metadata), spl, T))
+    end
+end
 
 ####
 #### Internal functions
@@ -406,7 +444,7 @@ end
 Returns a tuple of the unique symbols of random variables sampled in `vi`.
 """
 syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
-syms(vi::TypedVarInfo) = fieldnames(vi.metadata)
+syms(vi::TypedVarInfo) = keys(vi.metadata)
 
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
@@ -643,7 +681,7 @@ Samples from `model` using the sampler `spl` storing the sample and log joint
 probability in `vi`.
 """
 function runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
-    setlogp!(vi, zero(Float64))
+    setlogp!(vi, 0)
     if spl isa Sampler && haskey(spl.info, :eval_num)
         spl.info[:eval_num] += 1
     end
@@ -1099,7 +1137,7 @@ function push!(
             gidset::Set{Selector}
             ) where sym
 
-    @assert ~(haskey(vi, vn)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to TypedVarInfo of syms $(syms(vi)) with dist=$dist, gid=$gid"
+    @assert ~(haskey(vi, vn)) "[push!] attempt to add an exisitng variable $(vn.sym) ($(vn)) to TypedVarInfo of syms $(syms(vi)) with dist=$dist, gid=$gidset"
 
     val = vectorize(dist, r)
 

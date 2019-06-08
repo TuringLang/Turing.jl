@@ -1,6 +1,6 @@
-# Uniform rand with range e
-randrealuni() = Real(MathConstants.e * rand())  # may Euler's number give us good luck
-randrealuni(args...) = map(Real, MathConstants.e * rand(args...))
+# Uniform rand with range 2; ref: https://mc-stan.org/docs/2_19/reference-manual/initialization.html
+randrealuni() = Real(2rand())
+randrealuni(args...) = map(Real, 2rand(args...))
 
 const Transformable = Union{TransformDistribution, SimplexDistribution, PDMatDistribution}
 

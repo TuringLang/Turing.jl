@@ -1,7 +1,8 @@
 using Turing, Random, Test
 using Turing: Sampler, NUTS
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "hmc.jl" begin
     @numerical_testset "constrained bounded" begin

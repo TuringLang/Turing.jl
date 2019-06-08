@@ -1,7 +1,8 @@
 using Turing, Random, Test
 using StatsFuns
 
-include("../test_utils/AllUtils.jl")
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 @turing_testset "is.jl" begin
     function reference(n :: Int)
@@ -45,6 +46,9 @@ include("../test_utils/AllUtils.jl")
       _f = normal();
       for i=1:100
         Random.seed!(seed)
+        # Move the rng twice - equivalent to sampling from prior
+        rand(Normal(4,5))
+        rand(Normal(0,1))
         exact = reference(n)
         Random.seed!(seed)
         tested = sample(_f, alg)

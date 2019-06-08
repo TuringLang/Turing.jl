@@ -49,16 +49,16 @@ end
 
 mutable struct SMCState <: SamplerState
     logevidence        ::   Vector{Float64}
-    vi                 ::   VarInfo
+    vi                 ::   TypedVarInfo
     vnames             ::   Vector{Symbol}
     final_logevidence  ::   Float64
 end
 
-SMCState() = SMCState(Float64[], VarInfo(), Symbol[], 0.0)
+SMCState(model::Model) = SMCState(Float64[], VarInfo(model), Symbol[], 0.0)
 
 function Sampler(alg::SMC, model::Model, s::Selector)
     dict = Dict{Symbol, Any}()
-    state = SMCState()
+    state = SMCState(model)
     return Sampler{SMC,SMCState}(alg, dict, s, state)
 end
 
@@ -85,7 +85,7 @@ function step!(
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)
 
-    push!(particles, spl.alg.n_particles, spl, spl.state.vi)
+    push!(particles, spl.alg.n_particles, spl, empty!(spl.state.vi))
 
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
@@ -99,7 +99,7 @@ function step!(
     indx = randcat(Ws)
     push!(spl.state.logevidence, particles.logE)
 
-    params = particles[indx].vi
+    params = particles[indx].vi[spl]
 
     # update the master vi.
     return transition(params, spl, Ws[indx], particles.logE)
@@ -172,7 +172,8 @@ function step!(
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer{Trace{typeof(spl),
+        typeof(spl.state.vi), typeof(model)}}(model)
 
     spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(spl.state.vi) ?
@@ -199,7 +200,7 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
-    params = particles[indx].vi
+    params = particles[indx].vi[spl]
 
     return transition(params, spl, Ws[indx], particles.logE)
 end
@@ -496,9 +497,7 @@ function sample(  model::Model,
 
     # Init parameters
     vi = if resume_from == nothing
-        vi_ = VarInfo()
-        model(vi_, SampleFromUniform())
-        vi_
+        vi_ = VarInfo(model)
     else
         resume_from.info[:vi]
     end
@@ -653,9 +652,10 @@ function sample(model::Model, alg::IPMCMC)
   end
 
   # Init parameters
+  vi = empty!(VarInfo(model))
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
-    VarInfos[j] = VarInfo()
+    VarInfos[j] = deepcopy(vi)
   end
   n = spl.alg.n_iters
 

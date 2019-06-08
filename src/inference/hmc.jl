@@ -217,7 +217,7 @@ function sample(
     save_state=false,                                   # flag for state saving
     resume_from=nothing,                                # chain to continue
     reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor = AHMCAdaptor(alg),
+    adaptor=AHMCAdaptor(alg),
     init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
     rng::AbstractRNG=GLOBAL_RNG,
     discard_adapt::Bool=true,
@@ -243,24 +243,23 @@ function sample(
 
     # Create VarInfo
     vi = if resume_from == nothing
-        vi_ = VarInfo()
-        runmodel!(model, vi_, SampleFromUniform())
-        vi_
+        VarInfo(model)
     else
         deepcopy(resume_from.info[:vi])
     end
 
     # Get `init_theta`
     if init_theta != nothing
-        @info "Using passed-in initial variable values" init_theta
-        # Convert individual numbers to length 1 vector
-        init_theta = [size(v) == () ? [v] : v for v in init_theta]
+        verbose && @info "Using passed-in initial variable values" init_theta
+        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
+        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
         # Flatten `init_theta`
         init_theta_flat = foldl(vcat, map(vec, init_theta))
         # Create a mask to inidicate which values are not missing
         theta_mask = map(x -> !ismissing(x), init_theta_flat)
         # Get all values
         theta = vi[spl]
+        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
         # Update those which are provided (i.e. not missing)
         theta[theta_mask] .= init_theta_flat[theta_mask]
         # Update in `vi`
@@ -325,7 +324,7 @@ function step(
     spl::Sampler{<:AdaptiveHamiltonian},
     vi::VarInfo,
     is_first::Val{true};
-    adaptor = AHMCAdaptor(spl.alg),
+    adaptor=AHMCAdaptor(spl.alg),
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -420,12 +419,12 @@ function steps!(model,
     verbose::Bool=true
 )
     ahmc_samples = AHMC.sample(
-        rng, 
-        spl.info[:h], 
-        spl.info[:traj], 
+        rng,
+        spl.info[:h],
+        spl.info[:traj],
         Vector{Float64}(vi[spl]),
-        spl.alg.n_iters, 
-        spl.info[:adaptor], 
+        spl.alg.n_iters,
+        spl.info[:adaptor],
         spl.alg.n_adapts;
         verbose=verbose
     )
@@ -445,10 +444,10 @@ function steps!(
     verbose::Bool=true
 )
     ahmc_samples = AHMC.sample(
-        rng, 
-        spl.info[:h], 
-        spl.info[:traj], 
-        Vector{Float64}(vi[spl]), 
+        rng,
+        spl.info[:h],
+        spl.info[:traj],
+        Vector{Float64}(vi[spl]),
         spl.alg.n_iters;
         verbose=verbose
     )
@@ -552,13 +551,20 @@ function hmc_step(
     h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
 
     # Sample momentum
-    r = AHMC.rand_momentum(h)
+    r = AHMC.rand(h.metric)
+
+    # Build phase point
+    z = AHMC.phasepoint(h, θ, r)
 
     # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.hamiltonian_energy(h, θ, r)    # NOTE: this a waste of computation
+    H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
 
     # Call AHMC to make one MCMC transition
-    θ_new, _, α, H_new = AHMC.transition(traj, h, Vector{Float64}(θ), r)
+    z_new, α = AHMC.transition(traj, h, z)
+
+    # Compute new Hamiltonian energy
+    H_new = AHMC.neg_energy(z_new)
+    θ_new = z_new.θ
 
     # NOTE: as `transition` doesn't return `is_accept`,
     #       I use `H == H_new` to check if the sample is accepted.
@@ -644,10 +650,15 @@ observe(spl::Sampler{<:Hamiltonian},
 ####
 
 function AHMCAdaptor(alg::AdaptiveHamiltonian)
-        adaptor = AHMC.StanNUTSAdaptor(
-            alg.n_adapts, AHMC.Preconditioner(alg.metricT),
-            AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
-        )
+    p = AHMC.Preconditioner(alg.metricT)
+    nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
+    if alg.metricT == AHMC.UnitEuclideanMetric
+        adaptor = AHMC.NaiveHMCAdaptor(p, nda)
+    else
+        adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, p, nda)
+    end
+    return adaptor
 end
+
 
 AHMCAdaptor(alg::Hamiltonian) = nothing
