@@ -37,7 +37,7 @@ function sample(model::Model,
         samples[i] = Sample(weight, Dict{Symbol, Any}())
     end
 
-    vi = VarInfo()
+    vi = VarInfo(model)
     runmodel!(model, vi, SampleFromUniform())
 
     if spl.selector.tag == :default

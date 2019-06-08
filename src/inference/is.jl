@@ -45,8 +45,9 @@ function sample(model::Model, alg::IS)
     samples = Array{Sample}(undef, alg.n_particles)
 
     n = spl.alg.n_particles
+    vi = VarInfo(model)
     for i = 1:n
-        vi = VarInfo()
+        empty!(vi)
         model(vi, spl)
         samples[i] = Sample(vi)
     end

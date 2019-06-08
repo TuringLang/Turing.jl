@@ -66,7 +66,7 @@ function sample(model::Model, alg::SMC)
     spl = Sampler(alg)
 
     particles = ParticleContainer{Trace}(model)
-    push!(particles, spl.alg.n_particles, spl, VarInfo())
+    push!(particles, spl.alg.n_particles, spl, empty!(VarInfo(model)))
 
     while consume(particles) != Val{:done}
       ess = effectiveSampleSize(particles)
@@ -120,7 +120,7 @@ end
 step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
 
 function step(model, spl::Sampler{<:PG}, vi::VarInfo)
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer{Trace{typeof(spl), typeof(vi), typeof(model)}}(model)
 
     vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(vi) ?
@@ -174,7 +174,7 @@ function sample(  model::Model,
     time_total = zero(Float64)
 
     vi = resume_from == nothing ?
-        VarInfo() :
+        empty!(VarInfo(model)) :
         resume_from.info[:vi]
 
     pm = nothing
@@ -413,9 +413,7 @@ function sample(  model::Model,
 
     # Init parameters
     vi = if resume_from == nothing
-        vi_ = VarInfo()
-        model(vi_, SampleFromUniform())
-        vi_
+        vi_ = VarInfo(model)
     else
         resume_from.info[:vi]
     end
@@ -570,9 +568,10 @@ function sample(model::Model, alg::IPMCMC)
   end
 
   # Init parameters
+  vi = empty!(VarInfo(model))
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
-    VarInfos[j] = VarInfo()
+    VarInfos[j] = deepcopy(vi)
   end
   n = spl.alg.n_iters
 

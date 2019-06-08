@@ -1,6 +1,7 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
+using ..Core.RandomVariables: Metadata, _tail
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -207,14 +208,24 @@ end
 ##############
 
 # VarInfo to Sample
-function Sample(vi::UntypedVarInfo)
+Sample(vi::VarInfo) = Sample(0.0, todict(vi))
+function todict(vi::VarInfo)
+    value = todict(vi.metadata, vi)
+    value[:lp] = getlogp(vi)
+    return value
+end
+function todict(md::Metadata, vi::VarInfo)
     value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
-    for vn in keys(vi)
+    for vn in keys(md.idcs)
         value[Symbol(vn)] = vi[vn]
     end
-    # NOTE: do we need to check if lp is 0?
-    value[:lp] = getlogp(vi)
-    return Sample(0.0, value)
+    return value
+end
+function todict(metadata::NamedTuple{names}, vi::VarInfo) where {names}
+    length(names) === 0 && return Dict{Symbol, Any}()
+    f = names[1]
+    mdf = getfield(metadata, f)
+    return merge(todict(mdf, vi), todict(_tail(metadata), vi))
 end
 
 # VarInfo, combined with spl.info, to Sample
