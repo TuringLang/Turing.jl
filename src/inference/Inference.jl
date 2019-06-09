@@ -83,7 +83,7 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 end
 
 # Internal variables for MCMCChains.
-const INTERNAL_VARS = Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight"])
+const INTERNAL_VARS = Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le"])
 
 ###########################
 # Generic Transition type #
@@ -100,14 +100,19 @@ function transition(spl::Sampler)
     return Transition{typeof(theta)}(theta, lp)
 end
 
+function additional_parameters(::Type{Transition})
+    return (:lp,)
+end
+
 function transitions_init(
     ::AbstractRNG,
-    model::ModelType,
-    spl::SamplerType,
+    model::Model,
+    spl::Sampler,
     N::Integer;
     kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return Vector{Transition}(undef, N)
+)
+    ttype = transition_type(spl)
+    return Vector{ttype}(undef, N)
 end
 
 # Concrete algorithm implementations.
@@ -279,7 +284,7 @@ end
 function sample_end!(
     ::AbstractRNG,
     ::Model,
-    ::Sampler,
+    ::AbstractSampler,
     ::Integer,
     ::Vector{TransitionType};
     kwargs...
@@ -292,19 +297,32 @@ function Chains(
     ::AbstractRNG,
     ::ModelType,
     spl::Sampler,
-    ::Integer,
-    ts::Vector{Transition};
+    N::Integer,
+    ts::Vector{T};
     kwargs...
-) where {ModelType<:Sampleable}
+) where {ModelType<:Sampleable, T<:AbstractTransition}
+    # Get the extra field names from the sampler state type.
+    # This handles things like :lp or :weight.
+    extra_params = additional_parameters(T)
+
+    # Get the values of the extra parameters.
+    extra_values = vcat(map(t -> [getproperty(t, p) for p in extra_params], ts))
+
     # Extract names & construct param array.
-    nms = vcat(keys(spl.state.vi.metadata)..., :lp)
-    parray = vcat(map(x -> hcat(x.θ, x.lp), ts)...)
+    nms = vcat(keys(spl.state.vi.metadata)..., extra_params...)
+    parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:N]...)
+
+    # If the state field has final_logevidence, grab that.
+    le = :final_logevidence in fieldnames(typeof(spl.state)) ?
+        getproperty(spl.state, :final_logevidence) :
+        missing
 
     # Chain construction.
     return Chains(
         parray,
         string.(nms),
         INTERNAL_VARS,
+        evidence = le
     )
 end
 

@@ -14,6 +14,14 @@ struct ParticleTransition{T} <: AbstractTransition
     weight::Float64
 end
 
+abstract type ParticleInference <: InferenceAlgorithm end
+
+transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
+
+function additional_parameters(::Type{ParticleTransition})
+    return (:lp,:le,:weight)
+end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -32,7 +40,7 @@ Usage:
 SMC(1000)
 ```
 """
-struct SMC{T, F} <: InferenceAlgorithm
+struct SMC{T, F} <: ParticleInference
     n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
@@ -115,7 +123,7 @@ Usage:
 PG(100, 100)
 ```
 """
-struct PG{T, F} <: InferenceAlgorithm
+struct PG{T, F} <: ParticleInference
     n_particles           ::    Int         # number of particles used
     resampler             ::    F           # function to resample
     space                 ::    Set{T}      # sampling space, emtpy means all
@@ -186,16 +194,12 @@ end
 
 function sample_end!(
     ::AbstractRNG,
-    ::ModelType,
-    spl::Sampler{T, ParticleState},
+    ::Model,
+    spl::Sampler{<:ParticleInference},
     ::Integer,
-    ::Vector{TransitionType};
+    ::Vector{ParticleTransition};
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    TransitionType<:AbstractTransition,
-    T<:Union{PG, SMC}
-}
+)
     # Set the default for resuming the sampler.
     resume_from = get(kwargs, :resume_from, nothing)
 
@@ -780,37 +784,4 @@ function transition(
         le::Float64
 ) where {T<:Real}
     return ParticleTransition{T}(theta, lp, weight, le)
-end
-
-
-# Common functions for PG and SMC.
-function Chains(
-    ::AbstractRNG,
-    ::ModelType,
-    spl::Sampler{T, ParticleState},
-    ::Integer,
-    ts::Vector{ParticleTransition};
-    kwargs...
-) where {T<:Union{SMC, PG}, ModelType<:Sampleable}
-    # Extract names & construct param array.
-    nms = vcat(keys(spl.state.vi.metadata)..., :weight, :lp)
-    parray = vcat(map(x -> hcat(x.θ, x.weight, x.lp), ts)...)
-
-    # Chain construction.
-    return Chains(
-        parray,
-        string.(nms),
-        INTERNAL_VARS,
-        evidence = spl.state.final_logevidence
-    )
-end
-
-function transitions_init(
-    ::AbstractRNG,
-    model::ModelType,
-    spl::Sampler{T, ParticleState},
-    N::Integer;
-    kwargs...
-) where {ModelType<:Sampleable, T<:Union{SMC, PG}}
-    return Vector{ParticleTransition}(undef, N)
 end

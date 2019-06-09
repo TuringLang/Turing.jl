@@ -37,6 +37,9 @@ mutable struct MH{T} <: InferenceAlgorithm
     space     ::  Set{T}    # sampling space, emtpy means all
 end
 
+transition_type(::Sampler{<:MH}) = Transition
+alg_str(::Sampler{<:MH}) = "MH"
+
 function MH(space...)
     new_space = Set()
     proposals = Dict{Symbol,Any}()

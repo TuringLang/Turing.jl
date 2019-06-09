@@ -3,7 +3,7 @@
 ###
 
 """
-    HMC(n_iters::Int, ϵ::Float64, n_leapfrog::Int)
+    HMC(ϵ::Float64, n_leapfrog::Int)
 
 Hamiltonian Monte Carlo sampler.
 
@@ -16,7 +16,7 @@ Arguments:
 Usage:
 
 ```julia
-HMC(1000, 0.05, 10)
+HMC(0.05, 10)
 ```
 
 Tips:
@@ -32,8 +32,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
 sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
-mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
-    n_iters     ::  Int       # number of samples
+struct HMC{AD, T} <: StaticHamiltonian{AD}
     ϵ           ::  Float64   # leapfrog step size
     n_leapfrog  ::  Int       # leapfrog step number
     space       ::  Set{T}    # sampling space, emtpy means all
@@ -41,25 +40,73 @@ mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
 end
 
 HMC(args...) = HMC{ADBackend()}(args...)
+transition_type(::Sampler{<:Hamiltonian}) = Transition
+alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 function HMC{AD}(
-    n_iters::Int,
     ϵ::Float64,
     n_leapfrog::Int;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMC{AD, Any}(n_iters, ϵ, n_leapfrog, Set(), metricT)
+    return HMC{AD, Any}(ϵ, n_leapfrog, Set(), metricT)
 end
 
 function HMC{AD}(
-    n_iters::Int,
     ϵ::Float64,
     n_leapfrog::Int,
     space...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, ϵ, n_leapfrog, _space, metricT)
+    return HMC{AD, eltype(_space)}(ϵ, n_leapfrog, _space, metricT)
+end
+
+mutable struct HMCState <: SamplerState
+    vi :: TypedVarInfo
+    eval_num :: Int64
+    i        :: Int64
+end
+
+HMCState(model::Model) = HMCState(VarInfo(model, 0, 0))
+
+function sample_init!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Hamiltonian},
+    N::Integer;
+    adaptor=AHMCAdaptor(spl.alg),
+    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+    rng::AbstractRNG=GLOBAL_RNG,
+    discard_adapt::Bool=true,
+    verbose::Bool=true,
+    kwargs...
+)
+    # Resume the sampler.
+    set_resume!(spl; kwargs...)
+
+    # Get `init_theta`
+    if init_theta != nothing
+        verbose && @info "Using passed-in initial variable values" init_theta
+        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
+        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
+        # Flatten `init_theta`
+        init_theta_flat = foldl(vcat, map(vec, init_theta))
+        # Create a mask to inidicate which values are not missing
+        theta_mask = map(x -> !ismissing(x), init_theta_flat)
+        # Get all values
+        theta = vi[spl]
+        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
+        # Update those which are provided (i.e. not missing)
+        theta[theta_mask] .= init_theta_flat[theta_mask]
+        # Update in `vi`
+        spl.state.vi[spl] = theta
+    end
+
+    # Convert to transformed space
+    if spl.selector.tag == :default
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
+    end
 end
 
 """
@@ -201,13 +248,11 @@ end
 ####
 
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
-function Sampler(alg::Hamiltonian, s::Selector=Selector())
+function Sampler(alg::Hamiltonian, model::Model, s::Selector=Selector())
     info = Dict{Symbol, Any}()
+    state = HMCState(model)
 
-    info[:eval_num] = 0
-    info[:i] = 0
-
-    Sampler(alg, info, s)
+    Sampler(alg, info, s, state)
 end
 
 
