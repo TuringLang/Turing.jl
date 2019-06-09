@@ -100,7 +100,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         @test pdf(Gamma(2, 3), d2).value ≈ pdf(Gamma(2, 3), float2) atol=0.001
         @test pdf(Beta(2, 3), (d2 - d1) / 2).value ≈ pdf(Beta(2, 3), (float2 - float1) / 2) atol=0.001
     end
-    @numerical_testset "general AD tests" begin
+    @turing_testset "general AD tests" begin
         # Tests gdemo gradient.
         function logp1(x::Vector)
             dist_s = InverseGamma(2, 3)
@@ -130,18 +130,18 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
-    @numerical_testset "Tracker + logdet" begin
+    @turing_testset "Tracker + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
         test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-8)
     end
-    @numerical_testset "Tracker + fill" begin
+    @turing_testset "Tracker + fill" begin
         rng = MersenneTwister(123456)
         test_tracker_ad(x->fill(x, 7), randn(rng, 7), randn(rng))
         test_tracker_ad(x->fill(x, 7, 11), randn(rng, 7, 11), randn(rng))
         test_tracker_ad(x->fill(x, 7, 11, 13), rand(rng, 7, 11, 13), randn(rng))
     end
-    @numerical_testset "Tracker + MvNormal" begin
+    @turing_testset "Tracker + MvNormal" begin
         rng, N = MersenneTwister(123456), 11
         B = randn(rng, N, N)
         m, A = randn(rng, N), B' * B + I
@@ -156,7 +156,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_tracker_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), m, B, x)
     end
-    @numerical_testset "Tracker + Diagonal Normal" begin
+    @turing_testset "Tracker + Diagonal Normal" begin
         rng, N = MersenneTwister(123456), 11
         m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
 
@@ -169,7 +169,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_tracker_ad((m, σ, x)->logpdf(MvNormal(m, σ), x), randn(rng), m, σ, x)
     end
-    @numerical_testset "Tracker + MvNormal Interface" begin
+    @turing_testset "Tracker + MvNormal Interface" begin
         # Note that we only test methods where the `MvNormal` ctor actually constructs
         # a TuringMvNormal.
 
