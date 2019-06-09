@@ -1,7 +1,7 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail
+using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -84,6 +84,31 @@ end
 
 # Internal variables for MCMCChains.
 const INTERNAL_VARS = Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight"])
+
+###########################
+# Generic Transition type #
+###########################
+
+struct Transition{T} <: AbstractTransition
+    θ  :: T
+    lp :: Float64
+end
+
+function transition(spl::Sampler)
+    theta = spl.state.vi[spl]
+    lp = getlogp(spl.state.vi)
+    return Transition{typeof(theta)}(theta, lp)
+end
+
+function transitions_init(
+    ::AbstractRNG,
+    model::ModelType,
+    spl::SamplerType,
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    return Vector{Transition}(undef, N)
+end
 
 # Concrete algorithm implementations.
 include("sghmc.jl")
@@ -242,13 +267,45 @@ end
 
 function sample_init!(
     ::AbstractRNG,
-    model::ModelType,
+    model::Model,
     spl::Sampler,
     N::Integer;
     kwargs...
-) where {ModelType<:Sampleable}
+)
     # Resume the sampler.
     set_resume!(spl; kwargs...)
+end
+
+function sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    ::Sampler,
+    ::Integer,
+    ::Vector{TransitionType};
+    kwargs...
+) where {TransitionType<:AbstractTransition}
+    # Silence the default API function.
+end
+
+# Default Chains type.
+function Chains(
+    ::AbstractRNG,
+    ::ModelType,
+    spl::Sampler,
+    ::Integer,
+    ts::Vector{Transition};
+    kwargs...
+) where {ModelType<:Sampleable}
+    # Extract names & construct param array.
+    nms = vcat(keys(spl.state.vi.metadata)..., :lp)
+    parray = vcat(map(x -> hcat(x.θ, x.lp), ts)...)
+
+    # Chain construction.
+    return Chains(
+        parray,
+        string.(nms),
+        INTERNAL_VARS,
+    )
 end
 
 ##############

@@ -8,10 +8,10 @@
 
 # used by PG, SMC, PMMH
 struct ParticleTransition{T} <: AbstractTransition
-    θ::T
-    weight::Float64
+    θ::Vector{T}
     lp::Float64
     le::Float64
+    weight::Float64
 end
 
 ####
@@ -47,40 +47,30 @@ function SMC(n_particles::Int, space...)
     return SMC(n_particles, resample_systematic, 0.5, _space)
 end
 
-mutable struct SMCState <: SamplerState
+mutable struct ParticleState <: SamplerState
     logevidence        ::   Vector{Float64}
     vi                 ::   TypedVarInfo
-    vnames             ::   Vector{Symbol}
     final_logevidence  ::   Float64
 end
 
-SMCState(model::Model) = SMCState(Float64[], VarInfo(model), Symbol[], 0.0)
+ParticleState(model::Model) = ParticleState(Float64[], VarInfo(model), 0.0)
 
 function Sampler(alg::SMC, model::Model, s::Selector)
     dict = Dict{Symbol, Any}()
-    state = SMCState(model)
-    return Sampler{SMC,SMCState}(alg, dict, s, state)
-end
-
-function step!(
-    rng::AbstractRNG,
-    model::Turing.Model,
-    spl::Sampler{SMC, SMCState},
-    N::Integer, # Note: This function doesn't use the N argument.
-    ::T; # Note: No use of the previous draw.
-    kwargs...
-) where T<:AbstractTransition
-    return step!(rng, model, spl, N; kwargs...)
+    state = ParticleState(model)
+    return Sampler{SMC,ParticleState}(alg, dict, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument.
     model::Turing.Model,
-    spl::Sampler{SMC, SMCState},
+    spl::Sampler{SMC, ParticleState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer{Trace{typeof(spl),
+        typeof(spl.state.vi), typeof(model)}}(model)
+
     spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)
@@ -100,9 +90,11 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     params = particles[indx].vi[spl]
+    vi_draw = particles[indx].vi
+    lp = getlogp(vi_draw)
 
     # update the master vi.
-    return transition(params, spl, Ws[indx], particles.logE)
+    return transition(vi_draw[spl], lp, Ws[indx], particles.logE)
 end
 
 ####
@@ -141,34 +133,20 @@ alg_str(spl::Sampler{PG}) = "PG"
 const CSMC = PG # type alias of PG as Conditional SMC
 
 """
-    PGState <: SamplerState
-
-Maintains the state for the Particle Gibbs sampler.
-"""
-mutable struct PGState <: SamplerState
-    logevidence          ::   Vector{Float64}
-    vi                   ::   VarInfo
-    vnames               ::   Vector{Symbol} # TODO: Find a better way to do this.
-    final_logevidence    ::   Float64
-end
-
-PGState() = PGState(Float64[], VarInfo(), Symbol[], 0.0)
-
-"""
     Sampler(alg::PG, model::Model, s::Selector)
 
 Return a `Sampler` object for the PG algorithm.
 """
 function Sampler(alg::PG, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    state = PGState()
-    return Sampler{PG,PGState}(alg, info, s, state)
+    state = ParticleState(model)
+    return Sampler{PG,ParticleState}(alg, info, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
     model::Turing.Model,
-    spl::Sampler{PG, PGState},
+    spl::Sampler{PG, ParticleState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -178,7 +156,7 @@ function step!(
     spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(spl.state.vi) ?
                   nothing :
-                  forkr(Trace(ℓ, s, s.state.vi))
+                  forkr(Trace(model, spl, spl.state.vi))
 
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)
@@ -200,23 +178,23 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
-    params = particles[indx].vi[spl]
+    vi_draw = particles[indx].vi
+    lp = getlogp(vi_draw)
 
-    return transition(params, spl, Ws[indx], particles.logE)
+    return transition(vi_draw[spl], lp, Ws[indx], particles.logE)
 end
 
 function sample_end!(
     ::AbstractRNG,
     ::ModelType,
-    spl::Sampler{T, TState},
+    spl::Sampler{T, ParticleState},
     ::Integer,
     ::Vector{TransitionType};
     kwargs...
 ) where {
     ModelType<:Sampleable,
     TransitionType<:AbstractTransition,
-    T<:Union{PG, SMC},
-    TState<:Union{PGState, SMCState}
+    T<:Union{PG, SMC}
 }
     # Set the default for resuming the sampler.
     resume_from = get(kwargs, :resume_from, nothing)
@@ -796,16 +774,12 @@ vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
 Returns a basic TransitionType for the particle samplers.
 """
 function transition(
-        vi::AbstractVarInfo,
-        spl::Sampler{<:Union{SMC, PG}},
+        theta::Vector{T},
+        lp::Float64,
         weight::Float64,
         le::Float64
-)
-    vals = vi.vals
-    if length(spl.state.vnames) == 0
-        spl.state.vnames = vnames(vi)
-    end
-    return ParticleTransition{typeof(vals)}(vals, weight, getlogp(vi), le)
+) where {T<:Real}
+    return ParticleTransition{T}(theta, lp, weight, le)
 end
 
 
@@ -813,13 +787,16 @@ end
 function Chains(
     ::AbstractRNG,
     ::ModelType,
-    spl::Sampler{T, TState},
+    spl::Sampler{T, ParticleState},
     ::Integer,
     ts::Vector{ParticleTransition};
     kwargs...
-) where {T<:Union{SMC, PG}, TState<:Union{SMCState, PGState}, ModelType<:Sampleable}
-    nms = vcat(spl.state.vnames, :weight, :lp)
+) where {T<:Union{SMC, PG}, ModelType<:Sampleable}
+    # Extract names & construct param array.
+    nms = vcat(keys(spl.state.vi.metadata)..., :weight, :lp)
     parray = vcat(map(x -> hcat(x.θ, x.weight, x.lp), ts)...)
+
+    # Chain construction.
     return Chains(
         parray,
         string.(nms),
@@ -831,9 +808,9 @@ end
 function transitions_init(
     ::AbstractRNG,
     model::ModelType,
-    spl::Sampler{T, TState},
+    spl::Sampler{T, ParticleState},
     N::Integer;
     kwargs...
-) where {ModelType<:Sampleable, T<:Union{SMC, PG}, TState<:Union{SMCState, PGState}}
+) where {ModelType<:Sampleable, T<:Union{SMC, PG}}
     return Vector{ParticleTransition}(undef, N)
 end

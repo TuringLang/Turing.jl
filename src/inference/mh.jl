@@ -2,19 +2,10 @@ mutable struct MHState <: SamplerState
     proposal_ratio        ::   Float64
     prior_prob            ::   Float64
     violating_support     ::   Bool
-    vi                    ::   VarInfo
+    vi                    ::   TypedVarInfo
 end
 
-MHState() = MHState(0.0, 0.0, false, VarInfo())
-
-struct MHTransition{T}
-    θ :: T
-end
-
-function transition(spl::Sampler{<:MH})
-    return MHTransition{typeof(spl.state.vi.vals)}(spl.state.vi.vals)
-end
-
+MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
 """
     MH(n_iters::Int)
 
@@ -47,21 +38,21 @@ mutable struct MH{T} <: InferenceAlgorithm
 end
 
 function MH(space...)
-  new_space = Set()
-  proposals = Dict{Symbol,Any}()
+    new_space = Set()
+    proposals = Dict{Symbol,Any}()
 
-  # parse random variables with their hypothetical proposal
-  for element in space
-      if isa(element, Symbol)
-        push!(new_space, element)
-      else
-        @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
-        push!(new_space, element[1])
-        proposals[element[1]] = element[2]
-      end
-  end
-  set = Set(new_space)
-  MH{eltype(set)}(proposals, set)
+    # parse random variables with their hypothetical proposal
+    for element in space
+        if isa(element, Symbol)
+            push!(new_space, element)
+        else
+            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For     proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
+            push!(new_space, element[1])
+            proposals[element[1]] = element[2]
+        end
+    end
+    set = Set(new_space)
+    MH{eltype(set)}(proposals, set)
 end
 
 function Sampler(alg::MH, model::Model, s::Selector)
@@ -76,7 +67,7 @@ function Sampler(alg::MH, model::Model, s::Selector)
     end
 
     info = Dict{Symbol, Any}()
-    state = MHState()
+    state = MHState(model)
 
     return Sampler(alg, info, s, state)
 end
@@ -104,8 +95,8 @@ function step!(
     ::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
-    ::Integer
-    ::MHTransition;
+    ::Integer,
+    ::Transition;
     kwargs...
 )
     if spl.selector.tag != :default # Recompute joint in logp
@@ -129,79 +120,7 @@ function step!(
         setlogp!(spl.state.vi, old_logp)  # reset logp
     end
 
-    return transition(spl.state.vi)
-end
-
-function sample(model::Model, alg::MH;
-                save_state=false,         # flag for state saving
-                resume_from=nothing,      # chain to continue
-                reuse_spl_n=0,            # flag for spl re-using
-                )
-
-  spl = reuse_spl_n > 0 ?
-        resume_from.info[:spl] :
-        Sampler(alg, model)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-  alg_str = "MH"
-
-  # Initialization
-  time_total = 0.0
-  n = reuse_spl_n > 0 ?
-      reuse_spl_n :
-      alg.n_iters
-  samples = Array{Sample}(undef, n)
-  weight = 1 / n
-  for i = 1:n
-    samples[i] = Sample(weight, Dict{Symbol, Any}())
-  end
-
-    vi = if resume_from == nothing
-        VarInfo(model)
-    else
-        resume_from.info[:vi]
-    end
-
-  if spl.selector.tag == :default
-    runmodel!(model, vi, spl)
-  end
-
-  # MH steps
-  accept_his = Bool[]
-  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-  for i = 1:n
-    Turing.DEBUG && @debug "$alg_str stepping..."
-
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
-    time_total += time_elapsed
-
-    if is_accept # accepted => store the new predcits
-        samples[i].value = Sample(vi, spl).value
-    else         # rejected => store the previous predcits
-        samples[i] = samples[i - 1]
-    end
-
-    samples[i].value[:elapsed] = time_elapsed
-    push!(accept_his, is_accept)
-
-    PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
-  end
-
-  println("[$alg_str] Finished with")
-  println("  Running time        = $time_total;")
-  accept_rate = sum(accept_his) / n  # calculate the accept rate
-  println("  Accept rate         = $accept_rate;")
-
-  if resume_from != nothing   # concat samples
-    pushfirst!(samples, resume_from.info[:samples]...)
-  end
-  c = Chain(0.0, samples)       # wrap the result by Chain
-  if save_state               # save state
-    c = save(c, spl, model, vi, samples)
-  end
-
-  c
+    return transition(spl)
 end
 
 function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
@@ -218,25 +137,25 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
                 stdG = Normal()
                 r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
                 # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
-                spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
-                spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
+                spl.state.proposal_ratio += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
+                spl.state.proposal_ratio -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
             else # Other than Gaussian proposal
                 r = rand(proposal)
                 if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
-                    spl.info[:violating_support] = true
+                    spl.state.violating_support = true
                     r = old_val
                 end
-                spl.info[:proposal_ratio] -= logpdf(proposal, r) # accumulate pdf of proposal
+                spl.state.proposal_ratio -= logpdf(proposal, r) # accumulate pdf of proposal
                 reverse_proposal = spl.alg.proposals[vn.sym](r)
-                spl.info[:proposal_ratio] += logpdf(reverse_proposal, old_val)
+                spl.state.proposal_ratio += logpdf(reverse_proposal, old_val)
             end
 
         else # Prior as proposal
             r = rand(dist)
-            spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
+            spl.state.proposal_ratio += (logpdf(dist, old_val) - logpdf(dist, r))
         end
 
-        spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
+        spl.state.prior_prob += logpdf(dist, r) # accumulate prior for PMMH
         vi[vn] = vectorize(dist, r)
         setgid!(vi, spl.selector, vn)
     else

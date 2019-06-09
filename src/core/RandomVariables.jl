@@ -682,8 +682,8 @@ probability in `vi`.
 """
 function runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
     setlogp!(vi, 0)
-    if spl isa Sampler && haskey(spl.info, :eval_num)
-        spl.info[:eval_num] += 1
+    if :eval_num in fieldnames(typeof(spl.state))
+        spl.state.eval_num += 1
     end
     model(vi, spl)
     return vi
