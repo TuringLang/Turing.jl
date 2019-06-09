@@ -37,6 +37,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_gdemo(chn3_contd)
     end
     @testset "split var string" begin
+        var_str = "x"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds == Vector{String}[]
+
         var_str = "x[1,1][2,3]"
         sym, inds = Utilities.split_var_str(var_str)
         @test sym == "x"

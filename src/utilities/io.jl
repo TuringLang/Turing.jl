@@ -148,9 +148,13 @@ function resume(c::Chains, n_iter::Int)
 end
 
 function split_var_str(var_str)
-    sym = match(r"^([^\[]]*)\[", var_str).captures[1]
-    ind = length(sym)
+    ind = findfirst(c -> c == '[', var_str)
     inds = Vector{String}[]
+    if ind == nothing
+        return var_str, inds
+    end
+    sym = var_str[1:ind-1]
+    ind = length(sym)
     while ind < length(var_str)
         ind += 1
         @assert var_str[ind] == '['
