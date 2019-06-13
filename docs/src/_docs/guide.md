@@ -144,7 +144,7 @@ Please note that Turing does not have native support for chains sampled in paral
 
 ### Sampling from an Unconditional Distribution (The Prior)
 
-Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which accepts two inputs, `x` and `y`.
+Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which returns two variables, `x` and `y`. The model includes `x` and `y` as arguments, but calling the function without passing in `x` or `y` means that Turing's compiler will assume they are missing values to draw from the relevant distribution. The `return` statement is necessary to retrieve the sampled `x` and `y` values.
 
 ```julia
 @model gdemo(x, y) = begin
