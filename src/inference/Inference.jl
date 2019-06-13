@@ -267,7 +267,7 @@ function sample(
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    return sample(rng, model, Sampler(alg), N; kwargs...)
+    return sample(rng, model, Sampler(alg, model), N; kwargs...)
 end
 
 function sample_init!(
