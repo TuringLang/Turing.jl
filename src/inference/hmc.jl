@@ -1,4 +1,106 @@
 ###
+### Sampler states
+###
+
+struct BlankState <: SamplerState end
+
+mutable struct StaticHMCState{TTraj<:AHMC.StaticTrajectory} <: SamplerState
+    vi       :: TypedVarInfo
+    eval_num :: Int
+    i        :: Int
+    traj     :: TTraj
+    h        :: AHMC.Hamiltonian
+end
+
+mutable struct DynamicHMCState{
+    TTraj<:AHMC.DynamicTrajectory,
+    TAdapt<:AHMC.Adaptation.AbstractAdaptor
+} <: SamplerState
+    vi       :: TypedVarInfo
+    eval_num :: Int
+    i        :: Int
+    traj     :: TTraj
+    h        :: AHMC.Hamiltonian
+    adaptor  :: TAdapt
+end
+
+function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
+    # Create VarInfo.
+    vi = VarInfo(model)
+
+    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+    logπ = gen_logπ(vi, spl, model)
+    h = AHMC.Hamiltonian(spl.alg.metricT(
+        length(vi[spl])),
+        logπ, ∂logπ∂θ)
+    traj = gen_traj(spl.alg, spl.alg.ϵ)
+    return StaticHMCState(vi, 0, 0, traj, h)
+end
+
+function HMCState(model::Model,
+        spl::Sampler{<:AdaptiveHamiltonian};
+        adaptor=AHMCAdaptor(spl.alg),
+        kwargs...
+)
+    # Create VarInfo.
+    vi = VarInfo(model)
+
+    # Link everything if needed.
+    spl.selector.tag != :default && link!(vi, spl)
+
+    # Get the initial log pdf and gradient.
+    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+    logπ = gen_logπ(vi, spl, model)
+
+    # Create a Hamiltonian.
+    θ_init = Vector{Float64}(vi[spl])
+    metric = spl.alg.metricT(length(θ_init))
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+
+    # Find a step size.
+    init_ϵ = spl.alg.init_ϵ
+
+    # Find good eps if not provided one
+    if init_ϵ == 0.0
+        init_ϵ = AHMC.find_good_eps(h, θ_init)
+        @info "Found initial step size" init_ϵ
+    end
+
+    # Generate a trajectory.
+    traj = gen_traj(spl.alg, init_ϵ)
+
+    # Unlink everything, if necessary.
+    spl.selector.tag != :default && invlink!(vi, spl)
+
+    return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
+end
+
+
+# mutable struct StaticHMCState <: SamplerState
+#     vi       :: TypedVarInfo
+#     eval_num :: Int
+#     i        :: Int
+#     traj     :: AHMC.StaticTrajectory
+#     h        :: AHMC.Hamiltonian
+# end
+#
+# mutable struct HMCDAState <: SamplerState
+#     vi       :: TypedVarInfo
+#     eval_num :: Int
+#     i        :: Int
+#     traj     :: AHMC.HMCDA
+#     h        :: AHMC.Hamiltonian
+# end
+#
+# mutable struct NUTSState <: SamplerState
+#     vi       :: TypedVarInfo
+#     eval_num :: Int
+#     i        :: Int
+#     traj     :: AHMC.NUTS
+#     h        :: AHMC.Hamiltonian
+# end
+
+###
 ### Hamiltonian Monte Carlo samplers.
 ###
 
@@ -61,14 +163,6 @@ function HMC{AD}(
     return HMC{AD, eltype(_space)}(ϵ, n_leapfrog, _space, metricT)
 end
 
-mutable struct HMCState <: SamplerState
-    vi :: TypedVarInfo
-    eval_num :: Int64
-    i        :: Int64
-end
-
-HMCState(model::Model) = HMCState(VarInfo(model, 0, 0))
-
 function sample_init!(
     ::AbstractRNG,
     model::Model,
@@ -104,8 +198,8 @@ function sample_init!(
 
     # Convert to transformed space
     if spl.selector.tag == :default
-        link!(vi, spl)
-        runmodel!(model, vi, spl)
+        link!(spl.state.vi, spl)
+        runmodel!(model, spl.state.vi, spl)
     end
 end
 
@@ -189,12 +283,11 @@ No-U-Turn Sampler (NUTS) sampler.
 Usage:
 
 ```julia
-NUTS(1000, 200, 0.6j_max)
+NUTS(200, 0.6j_max)
 ```
 
 Arguments:
 
-- `n_iters::Int` : The number of samples to pull.
 - `n_adapts::Int` : The number of samples to use with adapatation.
 - `δ::Float64` : Target acceptance rate.
 - `max_depth::Float64` : Maximum doubling tree depth.
@@ -203,7 +296,6 @@ Arguments:
 
 """
 mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
-    n_iters     ::  Int       # number of samples
     n_adapts    ::  Int       # number of samples with adaption for ϵ
     δ           ::  Float64   # target accept rate
     space       ::  Set{T}    # sampling space, emtpy means all
@@ -216,7 +308,6 @@ end
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
 
 function NUTS{AD}(
-    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     space...;
@@ -226,20 +317,17 @@ function NUTS{AD}(
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    NUTS{AD, eltype(_space)}(n_iters, n_adapts, δ, _space, max_depth, Δ_max, init_ϵ, metricT)
+    NUTS{AD, eltype(_space)}(n_adapts, δ, _space, max_depth, Δ_max, init_ϵ, metricT)
 end
 
 function NUTS{AD}(
-    n_iters::Int,
     δ::Float64;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
-    n_adapts_default = Int(round(n_iters / 2))
-    NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ?
-        1000 : n_adapts_default, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
+    NUTS{AD, Any}(0, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
 end
 
 
@@ -250,11 +338,40 @@ end
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(alg::Hamiltonian, model::Model, s::Selector=Selector())
     info = Dict{Symbol, Any}()
-    state = HMCState(model)
+    state_bad = BlankState()
 
-    Sampler(alg, info, s, state)
+    # Create an initial sampler, to get all the initiation out of the way.
+    spl_bad = Sampler(alg, info, s, state_bad)
+
+    # Create the actual state based on the alg type.
+    state = HMCState(model, spl_bad)
+
+    # Create a real sampler after getting all the types/running the init phase.
+    return Sampler(alg, spl_bad.info, spl_bad.selector, state)
 end
 
+function sample_init!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:AdaptiveHamiltonian},
+    N::Integer;
+    kwargs...
+)
+    # Resume the sampler.
+    set_resume!(spl; kwargs...)
+
+    # Set the defualt number of adaptations.
+    if spl.alg.n_adapts == 0
+        n_adapts_default = Int(round(N / 2))
+        spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
+    else
+        # Verify that n_adapts is less than the samples to draw.
+        spl.alg.n_adapts < N ?
+            nothing :
+            throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
+    end
+
+end
 
 function sample(
     model::Model,
@@ -349,109 +466,107 @@ end
 ####
 
 # Init for StaticHamiltonian
-function step(
-    model,
-    spl::Sampler{<:StaticHamiltonian},
-    vi::VarInfo,
-    is_first::Val{true};
-    kwargs...
-)
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
-    spl.info[:h] = AHMC.Hamiltonian(spl.alg.metricT(length(vi[spl])), logπ, ∂logπ∂θ)
-    spl.info[:traj] = gen_traj(spl.alg, spl.alg.ϵ)
-    return vi, true
-end
+# function step(
+#     model,
+#     spl::Sampler{<:StaticHamiltonian},
+#     vi::VarInfo,
+#     is_first::Val{true};
+#     kwargs...
+# )
+#     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+#     logπ = gen_logπ(vi, spl, model)
+#     spl.info[:h] = AHMC.Hamiltonian(spl.alg.metricT(length(vi[spl])), logπ, ∂logπ∂θ)
+#     spl.info[:traj] = gen_traj(spl.alg, spl.alg.ϵ)
+#     return vi, true
+# end
 
 # Init for AdaptiveHamiltonian
-function step(
-    model,
-    spl::Sampler{<:AdaptiveHamiltonian},
-    vi::VarInfo,
-    is_first::Val{true};
-    adaptor=AHMCAdaptor(spl.alg),
-    kwargs...
-)
-    spl.selector.tag != :default && link!(vi, spl)
-
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
-
-    θ_init = Vector{Float64}(vi[spl])
-    metric = spl.alg.metricT(length(θ_init))
-    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    init_ϵ = spl.alg.init_ϵ
-
-    # Find good eps if not provided one
-    if init_ϵ == 0.0
-        init_ϵ = AHMC.find_good_eps(h, θ_init)
-        @info "Found initial step size" init_ϵ
-    end
-
-    spl.info[:h] = h
-    spl.info[:traj] = gen_traj(spl.alg, init_ϵ)
-    spl.info[:adaptor] = adaptor
-
-    spl.selector.tag != :default && invlink!(vi, spl)
-    return vi, true
-end
+# function step(
+#     model,
+#     spl::Sampler{<:AdaptiveHamiltonian},
+#     vi::VarInfo,
+#     is_first::Val{true};
+#     adaptor=AHMCAdaptor(spl.alg),
+#     kwargs...
+# )
+#     spl.selector.tag != :default && link!(vi, spl)
+#
+#     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+#     logπ = gen_logπ(vi, spl, model)
+#
+#     θ_init = Vector{Float64}(vi[spl])
+#     metric = spl.alg.metricT(length(θ_init))
+#     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+#     init_ϵ = spl.alg.init_ϵ
+#
+#     # Find good eps if not provided one
+#     if init_ϵ == 0.0
+#         init_ϵ = AHMC.find_good_eps(h, θ_init)
+#         @info "Found initial step size" init_ϵ
+#     end
+#
+#     spl.info[:h] = h
+#     spl.info[:traj] = gen_traj(spl.alg, init_ϵ)
+#     spl.info[:adaptor] = adaptor
+#
+#     spl.selector.tag != :default && invlink!(vi, spl)
+#     return vi, true
+# end
 
 # Single step for Gibbs compatible HMC sampling.
-function step(
-    model,
-    spl::Sampler{<:Hamiltonian},
-    vi::VarInfo,
-    is_first::Val{false}
-)
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{T},
+    N::Integer;
+    kwargs...
+) where T<:Hamiltonian
     # Get step size
-    ϵ = :adaptor in keys(spl.info) ? AHMC.getϵ(spl.info[:adaptor]) : spl.alg.ϵ
+    ϵ = T <: AdaptiveHamiltonian ?
+        AHMC.getϵ(spl.state.adaptor) :
+        spl.alg.ϵ
 
-    spl.info[:i] += 1
-    spl.info[:eval_num] = 0
+    spl.state.i += 1
+    spl.state.eval_num = 0
 
     Turing.DEBUG && @debug "current ϵ: $ϵ"
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
-        link!(vi, spl)
-        runmodel!(model, vi, spl)
+        println(spl.selector.tag)
+        println()
+        println()
+        link!(spl.state.vi, spl)
+        runmodel!(model, spl.state.vi, spl)
     end
 
-    grad_func = gen_∂logπ∂θ(vi, spl, model)
-    lj_func = gen_logπ(vi, spl, model)
-    metric = gen_metric(length(vi[spl]), spl)
+    grad_func = gen_∂logπ∂θ(spl.state.vi, spl, model)
+    lj_func = gen_logπ(spl.state.vi, spl, model)
+    metric = gen_metric(length(spl.state.vi[spl]), spl)
 
-    θ, lj = vi[spl], vi.logp
+    θ, lj = spl.state.vi[spl], spl.state.vi.logp
 
     θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl.alg, metric)
 
     Turing.DEBUG && @debug "decide whether to accept..."
     if is_accept
-        vi[spl] = θ_new
-        setlogp!(vi, lj_new)
+        spl.state.vi[spl] = θ_new
+        setlogp!(spl.state.vi, lj_new)
     else
-        vi[spl] = θ
-        setlogp!(vi, lj)
-    end
-
-    if PROGRESS[] && spl.selector.tag == :default
-        haskey(spl.info, :progress) && ProgressMeter.update!(
-            spl.info[:progress],
-            spl.info[:progress].counter;
-            showvalues = [(:ϵ, ϵ), (:α, α), (:metric, metric)],
-        )
+        spl.state.vi[spl] = θ
+        setlogp!(spl.state.vi, lj)
     end
 
     if spl.alg isa AdaptiveHamiltonian
-        if spl.info[:i] <= spl.alg.n_adapts
-            AHMC.adapt!(spl.info[:adaptor], Vector{Float64}(vi[spl]), α)
+        if spl.state.i <= spl.alg.n_adapts
+            AHMC.adapt!(spl.state.adaptor, Vector{Float64}(spl.state.vi[spl]), α)
         end
     end
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector.tag != :default && invlink!(vi, spl)
+    spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return vi, is_accept
+    return transition(spl)
 end
 
 
@@ -572,7 +687,7 @@ gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim
 gen_metric(dim::Int, ::AHMC.UnitPreconditioner)   = AHMC.UnitEuclideanMetric(dim)
 gen_metric(::Int, pc::AHMC.DiagPreconditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
 gen_metric(::Int, pc::AHMC.DensePreconditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.info[:adaptor].pc)
+gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.state.adaptor.pc)
 
 gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
