@@ -224,6 +224,15 @@ function step!(
     @warn "No step! function has been implemented for objects of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
 end
 
+function step!(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    return step!(rng, ℓ, s, 1; kwargs...)
+end
+
 """
     step!(
         rng::AbstractRNG,
