@@ -1,5 +1,5 @@
 ###
-### Gibbs samplers / compositional samplers. 
+### Gibbs samplers / compositional samplers.
 ###
 
 """
@@ -28,18 +28,31 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-mutable struct Gibbs{A} <: InferenceAlgorithm
-    n_iters   ::  Int     # number of Gibbs iterations
+struct Gibbs{A} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
     thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
 end
-Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
+Gibbs(algs...; thin=true) = Gibbs(n_iters, algs, thin)
+
+alg_str(::Sampler{<:Gibbs}) = "Gibbs"
+
+mutable struct GibbsState{T} <: SamplerState
+    vi::TypedVarInfo
+    samplers::Array{Sampler}
+    subsamples::Array{T}
+end
+
+function GibbsState(model::Model, samplers::Array{Sampler})
+    types = unique(transition_type.(samplers))
+    union_type = Union{types...}
+    subsamples = Array{union_type}(undef, length(samplers))
+    return GibbsState{union_type}(VarInfo(model), samplers, subsamples)
+end
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s)
 
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -62,9 +75,90 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(get_pvars(model))))")
     end
 
-    info[:samplers] = samplers
+    # Create a state variable.
+    state = GibbsState(model, samplers)
 
-    return spl
+    return Sampler(alg, info, s, state)
+end
+
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{Gibbs},
+    N::Integer;
+    kwargs...
+)
+    Turing.DEBUG && @debug "Gibbs stepping..."
+
+    time_elapsed = zero(Float64)
+    lp = nothing; ϵ = nothing; eval_num = nothing
+
+    # Allocation subsample vector.
+    subsamples = Vector{AbstractTransition}(undef, length(spl.state.samplers))
+
+    # Iterate through each of the samplers.
+    for local_spl in spl.state.samplers
+        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+
+        if isa(local_spl, GibbsComponent)
+            # CONTINUE HERE
+        else
+            @error("[Gibbs] unsupport base sampler $local_spl")
+        end
+    end
+
+    for local_spl in spl.state.samplers
+        last_spl = local_spl
+
+        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+
+        if isa(local_spl.alg, GibbsComponent)
+            # NOTE: This forces Gibbs to only sample one draw apiece
+            #       from each local sampler. It may be necessary to
+            #       refactor the inferface to handle cases where some
+            #       samplers draw more samples than others.
+            Turing.DEBUG && @debug "recording old θ..."
+
+            time_elapsed_thin =
+                @elapsed trans = step!(rng, model, local_spl; kwargs...)
+
+            if ~spl.alg.thin
+                samples[i_thin].value = Sample(varInfo).value
+                samples[i_thin].value[:elapsed] = time_elapsed_thin
+                if ~isa(local_spl.alg, Hamiltonian)
+                    # If statement below is true if there is a HMC component which provides lp and ϵ
+                    if lp != nothing samples[i_thin].value[:lp] = lp end
+                    if ϵ != nothing samples[i_thin].value[:ϵ] = ϵ end
+                    if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
+                end
+                i_thin += 1
+            end
+            time_elapsed += time_elapsed_thin
+
+            if isa(local_spl.alg, Hamiltonian)
+                lp = getlogp(varInfo)
+                if local_spl.alg isa AdaptiveHamiltonian
+                    ϵ = AHMC.getϵ(local_spl.info[:adaptor])
+                else
+                    ϵ = local_spl.alg.ϵ
+                end
+                eval_num = local_spl.info[:eval_num]
+            end
+        else
+            @error("[Gibbs] unsupport base sampler $local_spl")
+        end
+    end
+
+    time_total += time_elapsed
+
+    if spl.alg.thin
+        samples[i].value = Sample(varInfo).value
+        samples[i].value[:elapsed] = time_elapsed
+        # If statement below is true if there is a HMC component which provides lp and ϵ
+        if lp != nothing samples[i].value[:lp] = lp end
+        if ϵ != nothing samples[i].value[:ϵ] = ϵ end
+        if eval_num != nothing samples[i].value[:eval_num] = eval_num end
+    end
 end
 
 function sample(
