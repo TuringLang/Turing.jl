@@ -2,6 +2,18 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
+struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
+    subsamples :: T
+    elapsed    :: Float64
+end
+
+function transition(state::GibbsState, elapsed::Float64)
+    nt = NamedTuple{keys(state.subsamples)}(
+        tuple([x[] for x in values(state.subsamples)]...)
+    )
+    return GibbsTransition{typeof(nt)}(nt, elapsed)
+end
+
 """
     Gibbs(n_iters, algs...)
 
@@ -32,21 +44,22 @@ struct Gibbs{A} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
     thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
 end
-Gibbs(algs...; thin=true) = Gibbs(n_iters, algs, thin)
+Gibbs(algs...; thin=true) = Gibbs(algs, thin)
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
+transition_type(::Sampler{<:Gibbs}) = GibbsTransition
 
-mutable struct GibbsState{T} <: SamplerState
+mutable struct GibbsState{T<:NamedTuple} <: SamplerState
     vi::TypedVarInfo
     samplers::Array{Sampler}
-    subsamples::Array{T}
+    subsamples::T
 end
 
 function GibbsState(model::Model, samplers::Array{Sampler})
-    types = unique(transition_type.(samplers))
-    union_type = Union{types...}
-    subsamples = Array{union_type}(undef, length(samplers))
-    return GibbsState{union_type}(VarInfo(model), samplers, subsamples)
+    ids = tuple([Symbol(s.selector.gid) for s in samplers]...)
+    refs = tuple([Ref{transition_type(s)}() for s in samplers]...)
+    nt = NamedTuple{ids}(refs)
+    return GibbsState{typeof(nt)}(VarInfo(model), samplers, nt)
 end
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
@@ -84,7 +97,7 @@ end
 function step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{Gibbs},
+    spl::Sampler{<:Gibbs},
     N::Integer;
     kwargs...
 )
@@ -100,65 +113,28 @@ function step!(
     for local_spl in spl.state.samplers
         Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
 
-        if isa(local_spl, GibbsComponent)
-            # CONTINUE HERE
-        else
-            @error("[Gibbs] unsupport base sampler $local_spl")
-        end
+        Turing.DEBUG && @debug "recording old θ..."
+
+        # Update the sampler's VarInfo.
+        local_spl.state.vi = spl.state.vi
+
+        time_elapsed_thin =
+            @elapsed trans = step!(rng, model, local_spl, N; kwargs...)
+
+        # After the step, update the master varinfo.
+        spl.state.vi = local_spl.state.vi
+
+        # Retrieve symbol to store this subsample.
+        symbol_id = Symbol(local_spl.selector.gid)
+
+        # Store the subsample.
+        spl.state.subsamples[symbol_id][] = trans
+
+        # Record elapsed time.
+        time_elapsed += time_elapsed_thin
     end
 
-    for local_spl in spl.state.samplers
-        last_spl = local_spl
-
-        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-
-        if isa(local_spl.alg, GibbsComponent)
-            # NOTE: This forces Gibbs to only sample one draw apiece
-            #       from each local sampler. It may be necessary to
-            #       refactor the inferface to handle cases where some
-            #       samplers draw more samples than others.
-            Turing.DEBUG && @debug "recording old θ..."
-
-            time_elapsed_thin =
-                @elapsed trans = step!(rng, model, local_spl; kwargs...)
-
-            if ~spl.alg.thin
-                samples[i_thin].value = Sample(varInfo).value
-                samples[i_thin].value[:elapsed] = time_elapsed_thin
-                if ~isa(local_spl.alg, Hamiltonian)
-                    # If statement below is true if there is a HMC component which provides lp and ϵ
-                    if lp != nothing samples[i_thin].value[:lp] = lp end
-                    if ϵ != nothing samples[i_thin].value[:ϵ] = ϵ end
-                    if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
-                end
-                i_thin += 1
-            end
-            time_elapsed += time_elapsed_thin
-
-            if isa(local_spl.alg, Hamiltonian)
-                lp = getlogp(varInfo)
-                if local_spl.alg isa AdaptiveHamiltonian
-                    ϵ = AHMC.getϵ(local_spl.info[:adaptor])
-                else
-                    ϵ = local_spl.alg.ϵ
-                end
-                eval_num = local_spl.info[:eval_num]
-            end
-        else
-            @error("[Gibbs] unsupport base sampler $local_spl")
-        end
-    end
-
-    time_total += time_elapsed
-
-    if spl.alg.thin
-        samples[i].value = Sample(varInfo).value
-        samples[i].value[:elapsed] = time_elapsed
-        # If statement below is true if there is a HMC component which provides lp and ϵ
-        if lp != nothing samples[i].value[:lp] = lp end
-        if ϵ != nothing samples[i].value[:ϵ] = ϵ end
-        if eval_num != nothing samples[i].value[:eval_num] = eval_num end
-    end
+    return transition(spl.state, time_elapsed)
 end
 
 function sample(

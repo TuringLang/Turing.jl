@@ -444,9 +444,6 @@ function step!(
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
-        println(spl.selector.tag)
-        println()
-        println()
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
     end
