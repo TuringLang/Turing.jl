@@ -114,7 +114,7 @@ jobs:
       os: linux
       env: STAGE=benchmark
       script:
-        - ./scripts/benchmark-on-ci.sh
+        - ./scripts/run-benchmarks-on-travis.sh
 after_success:
   - julia -e 'if get(ENV, "STAGE", "") == "test"
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
