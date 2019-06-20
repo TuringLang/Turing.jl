@@ -15,6 +15,10 @@ fi
         
 COMMIT_MSG=$(git show -s --format="%s")
 
+SANTI_BR_NAME=$(echo $CURRENT_BRANCH | sed 's/\W/_/g')
+COMMIT_SHA=$(git rev-parse  HEAD)
+BM_JOB_NAME="BMCI-${SANTI_BR_NAME}-${COMMIT_SHA:0:7}"
+
 if [[ $COMMIT_MSG != *"[bm]"* ]]; then
     echo "skipping the benchmark jobs."
     # exit 0
@@ -44,10 +48,7 @@ julia pre.jl
 
 cat > run.jl <<EOF
 using TuringBenchmarks.Runner
-
-report_path = Runner.local_benchmark("Travis-CI", ("master", "$CURRENT_BRANCH"))
-
-@show report_path
+Runner.run_bm_on_travis("$BM_JOB_NAME", ("master", "$CURRENT_BRANCH"), "$COMMIT_SHA")
 EOF
 
 cat run.jl
