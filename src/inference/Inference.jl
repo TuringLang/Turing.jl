@@ -123,45 +123,35 @@ function assume(spl::A,
     var::Any,
     vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
-    @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
+    @assert isa(var, Vector) "Turing.assume: unsupported variable container."
 
+    n = length(var)
     vns = map(i -> VarName(vn, "[$i]"), 1:n)
 
     if haskey(vi, vns[1])
         rs = vi[vns]
     else
-        rs = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
-
-        if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[i], dist, spl)
-            end
-            @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-            var = rs
-        elseif isa(dist, MultivariateDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist, spl)
-            end
-            if isa(var, Vector)
-                @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
-                for i = 1:n
-                    var[i] = rs[:,i]
-                end
-            elseif isa(var, Matrix)
-                @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-                var = rs
-            else
-                @error("Turing.assume: unsupported variable container"); error()
-            end
+        if length(dists) == 1
+            dist = dists[1]
+            rs = isa(spl, SampleFromUniform) ? [init(dist) for i in 1:n] : [rand(dist) for i in 1:n]
+        elseif length(dists) == n
+            rs = isa(spl, SampleFromUniform) ? init.(dists) : rand.(dists)
+        else
+            throw("The distribution and values vectors have mis-matching lengths.")
         end
+
+        push!.(Ref(vi), vns, rs, dists, Ref(spl))
+        var = rs
     end
 
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
+    @assert length(var) == length(rs) "Turing.assume: variable and random number dimension unmatched"
 
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
-
+    # acclogp!(vi, logp)
+    logp = sum(1:n) do i 
+        dist = length(dists) == 1 ? dists[1] : dists[i]
+        logpdf_with_trans(dist, rs[i], istrans(vi, vns[i]))
+    end
+    return var, logp
 end
 
 

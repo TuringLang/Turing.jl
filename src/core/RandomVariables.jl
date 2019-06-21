@@ -975,10 +975,12 @@ function getindex(vi::AbstractVarInfo, vn::VarName)
 end
 function getindex(vi::AbstractVarInfo, vns::Vector{<:VarName})
     @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
-    dist = getdist(vi, vns[1])
-    return copy(istrans(vi, vns[1]) ?
-        invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
-        reconstruct(dist, getval(vi, vns), length(vns)))
+    n = length(vns)
+    return map(1:n) do i
+        dist = getdist(vi, vns[i])
+        val = reconstruct(dist, getval(vi, vns[i]))
+        istrans(vi, vns[i]) ? invlink(dist, val) : val
+    end
 end
 
 """
