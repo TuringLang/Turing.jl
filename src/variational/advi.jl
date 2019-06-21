@@ -1,5 +1,5 @@
 """
-    ADVI(samplers_per_step = 10, max_iters = 5000)
+    ADVI(samples_per_step = 10, max_iters = 5000)
 
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """

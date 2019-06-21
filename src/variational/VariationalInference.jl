@@ -101,6 +101,8 @@ Iteratively updates parameters by calling `grad!` and using the given `optimizer
 """
 function optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad()) where AD
     # TODO: this default constructor for `optimizer` is probably dangerous because of the `acc` field being an `IdDict`!!!
+
+    # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
