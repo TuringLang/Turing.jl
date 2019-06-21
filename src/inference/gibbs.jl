@@ -2,18 +2,6 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
-    subsamples :: T
-    elapsed    :: Float64
-end
-
-function transition(state::GibbsState, elapsed::Float64)
-    nt = NamedTuple{keys(state.subsamples)}(
-        tuple([x[] for x in values(state.subsamples)]...)
-    )
-    return GibbsTransition{typeof(nt)}(nt, elapsed)
-end
-
 """
     Gibbs(n_iters, algs...)
 
@@ -40,14 +28,15 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{A} <: InferenceAlgorithm
+struct Gibbs{A, T} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
     thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
+    space     ::  Set{T}
 end
-Gibbs(algs...; thin=true) = Gibbs(algs, thin)
+Gibbs(algs...; thin=true) = Gibbs(algs, thin, Set{Symbol}())
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(::Sampler{<:Gibbs}) = GibbsTransition
+transition_type(spl::Sampler{<:Gibbs}) = GibbsTransition
 
 mutable struct GibbsState{T<:NamedTuple} <: SamplerState
     vi::TypedVarInfo
@@ -118,6 +107,7 @@ function step!(
         # Update the sampler's VarInfo.
         local_spl.state.vi = spl.state.vi
 
+        # Step through the local sampler.
         time_elapsed_thin =
             @elapsed trans = step!(rng, model, local_spl, N; kwargs...)
 
@@ -268,4 +258,63 @@ function sample(
     end
 
     return c
+end
+
+
+##########################
+# Gibbs Tansition struct #
+##########################
+
+struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
+    subsamples :: T
+    elapsed    :: Float64
+end
+
+function transition(state::GibbsState, elapsed::Float64)
+    nt = NamedTuple{keys(state.subsamples)}(
+        tuple([x[] for x in values(state.subsamples)]...)
+    )
+    return GibbsTransition{typeof(nt)}(nt, elapsed)
+end
+
+######################
+# Chains constructor #
+######################
+
+function Chains(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer,
+    ts::Vector{GibbsTransition};
+    kwargs...
+)
+    try
+        display(spl.state.vi[spl])
+    catch e
+        println(e)
+    end
+
+    try
+       display(spl.state.vi.metadata.vals)
+    catch e
+        println(e)
+    end
+    # Reorganize the transitions into matrix form.
+    ts_extract = [[sub for sub in values(t.subsamples)] for t in ts]
+    tsmat = hcat(ts_extract...)
+    fts = [convert(Array{typeof(tsmat[i,1])}, tsmat[i,:]) for i in 1:length(spl.state.samplers)]
+    # display(fts)
+    chains = [Chains(rng, model, spl.state.samplers[i], N, fts[i])
+        for i in 1:length(spl.state.samplers)]
+
+    display(chains)
+
+    # Chain construction.
+    return Chains(
+        parray,
+        string.(nms),
+        INTERNAL_VARS,
+        evidence = le
+    )
 end

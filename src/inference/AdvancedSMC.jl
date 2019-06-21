@@ -18,8 +18,8 @@ abstract type ParticleInference <: InferenceAlgorithm end
 
 transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
 
-function additional_parameters(::Type{ParticleTransition})
-    return (:lp,:le,:weight)
+function additional_parameters(::Type{<:ParticleTransition})
+    return [:lp,:le,:weight]
 end
 
 ####

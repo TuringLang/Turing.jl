@@ -101,7 +101,7 @@ function transition(spl::Sampler)
 end
 
 function additional_parameters(::Type{Transition})
-    return (:lp,)
+    return [:lp]
 end
 
 function transitions_init(
@@ -292,7 +292,7 @@ function sample_end!(
     # Silence the default API function.
 end
 
-# Default Chains type.
+# Default Chains constructor.
 function Chains(
     ::AbstractRNG,
     ::ModelType,
