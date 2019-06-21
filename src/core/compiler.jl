@@ -96,11 +96,7 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         end
         @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
 
-        ($var, $lp) = if isa($dist, AbstractVector)
-            Turing.assume($sampler, $dist, $varname, $var, $vi)
-        else
-            Turing.assume($sampler, $dist, $varname, $vi)
-        end
+        ($var, $lp) = Turing.assume($sampler, $dist, $varname, $vi)
         $vi.logp += $lp
     end
 end

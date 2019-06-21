@@ -601,16 +601,13 @@ end
 function assume(spl::Sampler{<:Hamiltonian},
     dists::Vector{<:Distribution},
     vn::VarName,
-    var::Any,
-    vi::VarInfo
-)
-    @assert isa(var, Vector) "Turing.assume: unsupported variable container."
-    n = length(var)
-
+    vi::VarInfo,
+) 
+    n = length(dists)
     vns = map(i -> VarName(vn, "[$i]"), 1:n)
     rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
 
-    @assert length(var) == length(rs) "Turing.assume: variable and random number dimension unmatched"
+    @assert n == length(rs) "Turing.assume: variable and random number dimension unmatched"
 
     logp = sum(1:n) do i
         dist = length(dists) == 1 ? dists[1] : dists[i]

@@ -117,15 +117,12 @@ function assume(spl::A,
 
 end
 
-function assume(spl::A,
-    dists::Vector{T},
+function assume(spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Vector{<:Distribution},
     vn::VarName,
-    var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo)
 
-    @assert isa(var, Vector) "Turing.assume: unsupported variable container."
-
-    n = length(var)
+    n = length(dists)
     vns = map(i -> VarName(vn, "[$i]"), 1:n)
 
     if haskey(vi, vns[1])
@@ -144,7 +141,7 @@ function assume(spl::A,
         var = rs
     end
 
-    @assert length(var) == length(rs) "Turing.assume: variable and random number dimension unmatched"
+    @assert n == length(rs) "Turing.assume: variable and random number dimension unmatched"
 
     # acclogp!(vi, logp)
     logp = sum(1:n) do i 
