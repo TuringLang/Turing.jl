@@ -38,41 +38,46 @@ Produces `num_samples` samples for the given VI method using number of samples e
 function rand(vi::VariationalPosterior, num_samples) end
 
 """
-    objective(vi::VariationalInference, num_samples)
+    objective(vi::VariationalInference, q::VariationalPosterior, model::Model, args...)
 
-Computes empirical estimates of ELBO for the given VI method using number of samples equal to `num_samples`.
+Computes the variational objective to be optimized for a given VI method.
 """
-function objective(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model, num_samples) end
+function objective(vi::VariationalInference, q::VariationalPosterior, model::Model, num_samples) end
 
 # (::VariationalObjective)(vi::VariationalInference, model::Model, num_samples, args...; kwargs...) = begin
 # end
 
 """
-    optimize(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model)
+    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad())
 
-Finds parameters which maximizes the ELBO for the given VI method.
+Iteratively updates parameters by calling `grad!` and using the given `optimizer` to compute the steps.
 """
-function optimize(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model) end
+optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad()) =
+    error("Turing.Variational.optimize!: unmanaged variational inference algorithm: $(typeof(alg))")
 
 """
-    grad(vo::VariationalObjective, vi::VariationalInference)
+    grad!(vo, vi::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
 
-Computes the gradients used in `optimize`.
+Computes the gradients used in `optimize!`. Default implementation is provided for `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`. This implicitly also gives a default implementation of `optimize!`.
 
 Variance reduction techniques, e.g. control variates, should be implemented in this function.
 """
-function grad(vo::VariationalObjective, vi::VariationalInference, q::VariationalPosterior, model::Model) end
+grad!(vo, vi::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...) =
+    error("Turing.Variational.grad!: unmanaged variational inference algorithm: $(typeof(alg))")
 
 """
     vi(model::Model, alg::VariationalInference)
     vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
 
-Constructs the variational posterior from the `model` using ``
+Constructs the variational posterior from the `model` and performs the optimization following the configuration of the given `VariationalInference` instance.
 """
-function vi(model::Model, alg::VariationalInference) end
+vi(model::Model, alg::VariationalInference) = 
+    error("Turing.Variational.vi: unmanaged variational inference algorithm: $(typeof(alg))")
+vi(model::Model, alg::VariationalInference, q::VariationalPosterior) =
+    error("Turing.Variational.vi: unmanaged variational inference algorithm: $(typeof(alg))")
 
 # default implementations
-function grad!(vo::VariationalObjective, alg::VariationalInference{AD}, q, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: ForwardDiffAD}
+function grad!(vo, alg::VariationalInference{AD}, q, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: ForwardDiffAD}
     # TODO: this probably slows down executation quite a bit; exists a better way of doing this?
     f(θ_) = - vo(alg, q, model, θ_, args...)
 
@@ -87,7 +92,7 @@ end
 # function grad(vo::ELBO, alg::ADVI, q::MeanField, model::Model, f, autodiff::Val{:backward})
 #     vo_tracked, vo_pullback = Tracker.forward()
 # end
-function grad!(vo::VariationalObjective, alg::VariationalInference{AD}, q, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: TrackerAD}
+function grad!(vo, alg::VariationalInference{AD}, q, model::Model, θ::AbstractVector{T}, out::DiffResults.MutableDiffResult, args...) where {T <: Real, AD <: TrackerAD}
     θ_tracked = Tracker.param(θ)
     y = - vo(alg, q, model, θ_tracked, args...)
     Tracker.back!(y, 1.0)
@@ -97,7 +102,7 @@ function grad!(vo::VariationalObjective, alg::VariationalInference{AD}, q, model
 end
 
 # TODO: this default constructor for `optimizer` is probably dangerous because of the `acc` field being an `IdDict`!!!
-function optimize!(vo::VariationalObjective, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad()) where AD
+function optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad()) where AD
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
@@ -150,8 +155,6 @@ function optimize!(vo::VariationalObjective, alg::VariationalInference{AD}, q::V
 
         i += 1
     end
-
-    @info time_elapsed
 
     return θ
 end
