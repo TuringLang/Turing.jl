@@ -118,7 +118,7 @@ function assume(spl::A,
 end
 
 function assume(spl::Union{SampleFromPrior, SampleFromUniform},
-    dists::Vector{<:Distribution},
+    dists::AbstractVector{<:Distribution},
     vn::VarName,
     vi::VarInfo)
 

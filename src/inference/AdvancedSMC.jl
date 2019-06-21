@@ -248,7 +248,6 @@ end
 function assume(  spl::Sampler{A},
                   dists::Vector{D},
                   vn::VarName,
-                  var::Any,
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")

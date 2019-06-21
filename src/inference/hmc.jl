@@ -599,7 +599,7 @@ function assume(spl::Sampler{<:Hamiltonian},
 end
 
 function assume(spl::Sampler{<:Hamiltonian},
-    dists::Vector{<:Distribution},
+    dists::AbstractVector{<:Distribution},
     vn::VarName,
     vi::VarInfo,
 ) 
@@ -622,7 +622,7 @@ observe(spl::Sampler{<:Hamiltonian},
     vi::VarInfo) = observe(nothing, d, value, vi)
 
 observe(spl::Sampler{<:Hamiltonian},
-    ds::Vector{<:Distribution},
+    ds::AbstractVector{<:Distribution},
     value::Any,
     vi::VarInfo) = observe(nothing, ds, value, vi)
 
