@@ -494,14 +494,15 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Vector{Float64}
+    function ∂logπ∂θ!(grad, x)::Vector{Float64}
         x_old, lj_old = vi[spl], vi.logp
-        _, deriv = gradient_logp(x, vi, model, spl)
+        _, _grad = gradient_logp(x, vi, model, spl)
+        grad .= _grad
         vi[spl] = x_old
         setlogp!(vi, lj_old)
-        return deriv
+        return grad
     end
-    return ∂logπ∂θ
+    return ∂logπ∂θ!
 end
 
 """
@@ -555,12 +556,13 @@ function hmc_step(
 
     # Build phase point
     z = AHMC.phasepoint(h, θ, r)
+    z_temp = deepcopy(z)
 
     # TODO: remove below when we can get is_accept from AHMC.transition
     H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
 
     # Call AHMC to make one MCMC transition
-    z_new, α = AHMC.transition(traj, h, z)
+    z_new, α = AHMC.transition(z_temp, traj, h, z)
 
     # Compute new Hamiltonian energy
     H_new = AHMC.neg_energy(z_new)
