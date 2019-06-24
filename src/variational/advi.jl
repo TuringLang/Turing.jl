@@ -32,7 +32,7 @@ function vi(model::Model, alg::ADVI; optimizer = ADAGrad())
     μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
 
     # TODO: make mutable instead?
-    MeanField(μ, ω, dists, ranges) 
+    return MeanField(μ, ω, dists, ranges) 
 end
 
 # TODO: implement optimize like this?
