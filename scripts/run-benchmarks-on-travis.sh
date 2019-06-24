@@ -13,23 +13,24 @@ if [[ $TRAVIS == true ]]; then
 else
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 fi
-        
-COMMIT_MSG=$(git show -s --format="%s")
 
 SANTI_BR_NAME=$(echo $CURRENT_BRANCH | sed 's/\W/_/g')
-COMMIT_SHA=$(git rev-parse  HEAD)
+COMMIT_SHA=$(git rev-parse HEAD)
 TIME=$(date +%Y%m%d%H%M%S)
 BM_JOB_NAME="BMCI-${SANTI_BR_NAME}-${COMMIT_SHA:0:7}-${TIME}"
 
-if [[ $COMMIT_MSG != *"[bm]"* ]]; then
-    echo "skipping the benchmark jobs."
-    exit 0
-fi
+# Run benchmarks by default, so the following lines are commented out
+# COMMIT_MSG=$(git show -s --format="%s")
+# if [[ $COMMIT_MSG != *"[bm]"* ]]; then
+#    echo "skipping the benchmark jobs."
+#    exit 0
+# fi
 
 git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 git fetch --all --unshallow
 
 git clone https://github.com/TuringLang/TuringBenchmarks.git ../TuringBenchmarks
+
 # Notice: uncomment the following line to use travis-ci branch of TuringBenchmarks
 # git -C ../TuringBenchmarks checkout -b travis-ci origin/travis-ci
 
