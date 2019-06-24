@@ -23,15 +23,15 @@ BM_JOB_NAME="BMCI-${SANTI_BR_NAME}-${COMMIT_SHA:0:7}-${TIME}"
 
 if [[ $COMMIT_MSG != *"[bm]"* ]]; then
     echo "skipping the benchmark jobs."
-    # exit 0
+    exit 0
 fi
 
 git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 git fetch --all --unshallow
 
 git clone https://github.com/TuringLang/TuringBenchmarks.git ../TuringBenchmarks
-# TEMP: use travis-ci branch of TuringBenchmarks
-git -C ../TuringBenchmarks checkout -b travis-ci origin/travis-ci
+# Notice: uncomment the following line to use travis-ci branch of TuringBenchmarks
+# git -C ../TuringBenchmarks checkout -b travis-ci origin/travis-ci
 
 unset JULIA_PROJECT
 cat > pre.jl <<EOF
