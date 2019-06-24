@@ -100,12 +100,12 @@ function (elbo::ELBO)(
     variational_posterior_entropy = sum(ω)
     elbo_acc += variational_posterior_entropy
 
-    elbo_acc
+    return elbo_acc
 end
 
 function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, num_samples)
     # extract the mean-field Gaussian params
     θ = vcat(q.μ, q.ω)
 
-    elbo(alg, q, model, θ, num_samples)
+    return elbo(alg, q, model, θ, num_samples)
 end
