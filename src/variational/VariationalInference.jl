@@ -79,12 +79,14 @@ end
 Constructs the variational posterior from the `model` and performs the optimization
 following the configuration of the given `VariationalInference` instance.
 """
-vi(model::Model, alg::VariationalInference) = 
+function vi(model::Model, alg::VariationalInference)
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
-vi(model::Model, alg::VariationalInference, q::VariationalPosterior) =
+end
+function vi(model::Model, alg::VariationalInference, q::VariationalPosterior) =
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
+end
 
 # default implementations
 function grad!(
