@@ -83,7 +83,7 @@ function vi(model::Model, alg::VariationalInference)
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
 end
-function vi(model::Model, alg::VariationalInference, q::VariationalPosterior) =
+function vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
 end
