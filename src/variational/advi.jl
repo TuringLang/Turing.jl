@@ -13,7 +13,7 @@ ADVI() = ADVI(10, 5000)
 
 alg_str(::ADVI) = "ADVI"
 
-vi(model::Model, alg::ADVI; optimizer = ADAGrad()) = begin
+function vi(model::Model, alg::ADVI; optimizer = ADAGrad())
     # setup
     var_info = VarInfo()
     model(var_info, SampleFromUniform())
@@ -46,7 +46,13 @@ function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer =
     return θ
 end
 
-function (elbo::ELBO)(alg::ADVI, q::MeanField, model::Model, θ::AbstractVector{T}, num_samples) where T <: Real
+function (elbo::ELBO)(
+    alg::ADVI,
+    q::MeanField,
+    model::Model,
+    θ::AbstractVector{T},
+    num_samples
+) where T <: Real
     # setup
     var_info = Turing.VarInfo()
 
