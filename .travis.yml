@@ -8,6 +8,7 @@ jobs:
     - env: STAGE=numerical
     - env: STAGE=stan
     - env: STAGE=dynamichmc
+    - env: STAGE=benchmark
   include:
     - stage: test
       os: linux
@@ -108,6 +109,12 @@ jobs:
         - julia -e 'using Pkg, Turing;
                     cd(joinpath(dirname(pathof(Turing)), ".."));
                     include(joinpath("docs", "make.jl"))'
+    - stage: benchmark
+      julia: 1.1
+      os: linux
+      env: STAGE=benchmark
+      script:
+        - julia ./benchmarks/runbenchmarks.jl
 after_success:
   - julia -e 'if get(ENV, "STAGE", "") == "test"
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
