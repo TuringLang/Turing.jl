@@ -13,17 +13,13 @@ function jac_inv_transform(dist::Distribution, x::TrackedArray{T} where T <: Rea
     Tracker.jacobian(x -> invlink(dist, x), x)
 end
 
-function center_diag_gaussian(x, μ, σ)
-    # instead of creating a diagonal matrix, we just do elementwise multiplication
-    (σ .^(-1)) .* (x - μ)
-end
+# instead of creating a diagonal matrix, we just do elementwise multiplication
+center_diag_gaussian(x, μ, σ) = (x .- μ) ./ σ
+center_diag_gaussian_inv(η, μ, σ) = (η .* σ) .+ μ
 
-function center_diag_gaussian_inv(η, μ, σ)
-    (η .* σ) + μ
-end
 
 # Mean-field approximation used by ADVI
-struct MeanField{T, TDists <: AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
+struct MeanField{T, <:AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
     μ::Vector{T}
     ω::Vector{T}
     dists::TDists
@@ -32,7 +28,11 @@ end
 
 Base.length(advi::MeanField) = length(advi.μ)
 
-_rand!(rng::AbstractRNG, q::MeanField{T, TDists}, x::AbstractVector{T}) where {T<:Real, TDists <: AbstractVector{<: Distribution}} = begin
+function _rand!(
+    rng::AbstractRNG,
+    q::MeanField{T, TDists},
+    x::AbstractVector{T}
+) where {T<:Real, TDists <: AbstractVector{<: Distribution}}
     # extract parameters for convenience
     μ, ω = q.μ, q.ω
     num_params = length(q)
