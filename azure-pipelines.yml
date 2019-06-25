@@ -3,17 +3,63 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-trigger:
-- master
+jobs:
+- job: Linux
 
-pool:
-  vmImage: 'ubuntu-latest'
+  pool:
+    vmImage: 'Ubuntu 16.04'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+  strategy:
+    matrix:
+      Julia 1.0:
+        JULIA_VERSION: '1.0.1'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+  steps:
+  - script: |
+      wget -nv https://julialang-s3.julialang.org/bin/linux/x64/1.0/julia-$(JULIA_VERSION)-linux-x86_64.tar.gz
+      tar zxf julia-$(JULIA_VERSION)-linux-x86_64.tar.gz
+    displayName: 'Download and extract Julia 1.0'
+  - script: |
+      ./julia-$(JULIA_VERSION)/bin/julia --project=@. -e 'using Pkg; Pkg.instantiate()'
+      ./julia-$(JULIA_VERSION)/bin/julia --project=@. -e 'using Pkg; Pkg.test("Turing")'
+    displayName: 'Run the tests'
+- job: macOS
+
+  pool:
+    vmImage: 'macOS-10.13'
+
+  strategy:
+    matrix:
+      Julia 1.0:
+        JULIA_VERSION: '1.0.1'
+        JULIA_VERSION_SHORT: '1.0'
+
+  steps:
+  - script: |
+      wget -nv https://julialang-s3.julialang.org/bin/mac/x64/1.0/julia-$(JULIA_VERSION)-mac64.dmg
+      hdiutil attach julia-$(JULIA_VERSION)-mac64.dmg
+      ln -s /Volumes/Julia-$(JULIA_VERSION)/Julia-$(JULIA_VERSION_SHORT).app/Contents/Resources/julia/bin/julia
+    displayName: 'Download and extract Julia 1.0'
+  - script: |
+      ./julia --project=@. -e 'using Pkg; Pkg.instantiate()'
+      ./julia --project=@. -e 'using Pkg; Pkg.test("Turing")'
+    displayName: 'Run the tests'
+- job: Windows
+
+  pool:
+    vmImage: 'VS2017-Win2016'
+
+  strategy:
+    matrix:
+      Julia 1.0:
+        JULIA_VERSION: '1.0.1'
+
+  steps:
+  - powershell: |
+      wget https://julialang-s3.julialang.org/bin/winnt/x64/1.0/julia-$(JULIA_VERSION)-win64.exe -OutFile julia-$(JULIA_VERSION)-win64.exe
+      Start-Process -FilePath .\julia-$(JULIA_VERSION)-win64.exe -ArgumentList "/S /D=C:\julia" -NoNewWindow -Wait
+    displayName: 'Download and extract Julia 1.0'
+  - powershell: |
+      C:\julia\bin\julia --project=@. -e 'using Pkg; Pkg.instantiate()'
+      C:\julia\bin\julia --project=@. -e 'using Pkg; Pkg.test(\"Turing\")'
+    displayName: 'Run the tests'
