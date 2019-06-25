@@ -47,6 +47,7 @@ jobs:
       ./julia --project=@. -e 'using Pkg; Pkg.test("Turing")'
     displayName: 'Run the tests'
 - job: Windows
+  timeoutInMinutes: 360
 
   pool:
     vmImage: 'VS2017-Win2016'
