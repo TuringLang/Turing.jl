@@ -158,13 +158,12 @@ function step!(
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace{typeof(spl),
-        typeof(spl.state.vi), typeof(model)}}(model)
+    particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
 
     spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     ref_particle = isempty(spl.state.vi) ?
-                  nothing :
-                  forkr(Trace(model, spl, spl.state.vi))
+              nothing :
+              forkr(Trace(model, spl, spl.state.vi))
 
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)

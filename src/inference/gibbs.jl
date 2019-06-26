@@ -85,6 +85,8 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     spl = Sampler(alg, info, s, state)
 
     # Force draw of VI, so Gibbs knows where everything is.
+    # This mostly enables the use of spl.state.vi[spl] later on
+    # when generating transitions.
     spl.state.vi[spl]
 
     return spl
@@ -99,7 +101,7 @@ function step!(
 )
     Turing.DEBUG && @debug "Gibbs stepping..."
 
-    time_elapsed = zero(Float64)
+    time_elapsed = 0.0
     lp = nothing; ϵ = nothing; eval_num = nothing
 
     # Iterate through each of the samplers.
