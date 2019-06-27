@@ -121,10 +121,10 @@ function _tilde(vsym, left, dist, model_info)
     main_body_names = model_info[:main_body_names]
     model_name = main_body_names[:model]
 
+    model_info[:tent_dvars_list] = copy(model_info[:arg_syms])
     if vsym in model_info[:arg_syms]
         if !(vsym in model_info[:tent_dvars_list])
             Turing.DEBUG && @debug " Observe - `$(vsym)` is an observation"
-            push!(model_info[:tent_dvars_list], vsym)
         end
 
         return quote
@@ -136,6 +136,8 @@ function _tilde(vsym, left, dist, model_info)
         end
     else
         # Assume it is a parameter.
+        vind = findfirst(x -> x == vsym, model_info[:tent_dvars_list])
+        vind == nothing || deleteat!(model_info[:tent_dvars_list], vind)
         if !(vsym in model_info[:tent_pvars_list])
             Turing.DEBUG && @debug begin
                 msg = " Assume - `$(vsym)` is a parameter"
@@ -228,14 +230,38 @@ function build_model_info(input_expr)
     warn_empty(modeldef[:body])
     # Construct model_info dictionary
 
-    arg_syms = [(arg isa Symbol) ? arg : arg.args[1] for arg in modeldef[:args]]
+    arg_syms = map(modeldef[:args]) do arg
+        if (arg isa Symbol)
+            arg
+        elseif MacroTools.@capture(arg, ::Type{T_} = TVal_)
+            T
+        else
+            arg.args[1]
+        end
+    end
+    args = map(modeldef[:args]) do arg
+        if (arg isa Symbol)
+            arg
+        elseif MacroTools.@capture(arg, ::Type{T_} = Tval_)
+            if in(T, modeldef[:whereparams])
+                S = :Any
+            else
+                ind = findfirst(x -> MacroTools.@capture(x, T1_ <: S_) && T1 == T, modeldef[:whereparams])
+                @assert ind != nothing "Please make sure type parameters are properly used. Every `Type{T}` argument need to have `T` in the a `where` clause"
+            end
+            Expr(:kw, :($T::Type{<:$S}), Tval)
+        else
+            arg
+        end
+    end
     model_info = Dict(
         :name => modeldef[:name],
         :input_expr => input_expr,
         :main_body => modeldef[:body],
         :arg_syms => arg_syms,
-        :args => modeldef[:args],
+        :args => args,
         :kwargs => modeldef[:kwargs],
+        :whereparams => modeldef[:whereparams],
         :tent_dvars_list => Symbol[],
         :tent_pvars_list => Symbol[],
         :main_body_names => Dict(
@@ -271,12 +297,15 @@ end
 Extracts default argument values and replaces them with `nothing`.
 """
 function update_args!(model_info)
-    fargs = model_info[:args]
+    fargs = Vector{Union{Symbol, Expr}}(model_info[:args])
     fargs_default_values = []
     for i in 1:length(fargs)
         if isa(fargs[i], Symbol)
             push!(fargs_default_values, :($(fargs[i]) = :nothing))
             fargs[i] = Expr(:kw, fargs[i], :nothing)
+        elseif isa(fargs[i], Expr) && MacroTools.@capture(fargs[i], T_::Type{<:S_} = Tval_)
+            nothing
+            #push!(fargs_default_values, :($T = $Tval))
         elseif isa(fargs[i], Expr) && fargs[i].head == :kw
             push!(fargs_default_values, :($(fargs[i].args[1]) = $(fargs[i].args[2])))
             fargs[i] = Expr(:kw, fargs[i].args[1], :nothing)
@@ -316,6 +345,7 @@ function build_output(model_info)
     # Argument symbols without default values
     arg_syms = model_info[:arg_syms]
     # Default values of the arguments
+    whereparams = model_info[:whereparams]
     tent_arg_defaults_nt = model_info[:tent_arg_defaults_nt]
     # Model generator name
     outer_function_name = model_info[:name]
@@ -331,7 +361,6 @@ function build_output(model_info)
     else
         tent_dvars_nt = :($([:($var = $var) for var in tent_dvars_list]...),)
     end
-
     #= Does the following for each of the tentative dvars
         local x
         if isdefined(model.data, :x)
@@ -345,7 +374,16 @@ function build_output(model_info)
         push!(unwrap_data_expr.args, quote
             local $var
             if isdefined($model_name.data, $(QuoteNode(var)))
-                $var = $model_name.data.$var
+                # The `Type{T}` arguments will always show up in the `model.data` named tuple.
+                # This is because we are not replacing the default value of these arguments with `nothing` but keeping the same value defined by by the user, e.g. `Float64`.
+                # So if the value is indeed correct, i.e. a type then it should just work
+                # If the value is not a type, i.e. `::Type{T} = 1` and the user doesn't pass it something for this argument, then it will give an error when constructing the model, which is a correct Julia error.
+                # This means that we don't need an expression for the default value of the `Type{T}` arguments in `model.defaults`.
+                if $model_name.data.$var isa Type{<:AbstractFloat} || $model_name.data.$var isa Type{<:AbstractArray}
+                    $var = Turing.Core.get_matching_type($sampler_name, $vi_name, $model_name.data.$var)
+                else
+                    $var = $model_name.data.$var
+                end
             else
                 $var = $model_name.defaults.$var
             end
@@ -354,7 +392,7 @@ function build_output(model_info)
     return esc(quote
         # Allows passing arguments as kwargs
         $outer_function_name(;$(args...)) = $outer_function_name($(arg_syms...))
-        # Outer function with `nothing` as default values
+        # Outer function with `nothing` as default values except for Type{T} arguments
         function $outer_function_name($(args...))
             # Adds variables equal to `nothing` or `missing` or whose `eltype` is `Missing` to pvars and the rest to dvars
             # `tent_pvars_list` is the tentative list of pvars
@@ -401,7 +439,7 @@ end
     for (n, t) in zip(dvar_names, dvar_types)
         if eltype(t) == Missing
             push!(defaults, :($n = similar(tent_dvars_nt.$n, Real)))
-        else
+        elseif in(n, tent_arg_defaults_nt.names)
             push!(defaults, :($n = tent_arg_defaults_nt.$n))
         end
     end
@@ -470,3 +508,5 @@ function data(dict::Dict, keys::Vector{Symbol})
     end
     return Main.eval(r)
 end
+
+get_matching_type(spl, vi, ::Type{T}) where {T} = T
