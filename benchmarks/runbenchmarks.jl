@@ -1,6 +1,7 @@
 using Pkg
 using Dates
 
+PROJECT_DIR = abspath(@__DIR__) |> dirname
 
 # prepare packages
 try pkg"develop ." catch end
@@ -39,8 +40,8 @@ end
 # run
 code_run = """using TuringBenchmarks
 using TuringBenchmarks.Runner
-TuringBenchmarks.set_benchmark_files("./benchmarks/benchmark_list.jl")
+TuringBenchmarks.set_benchmark_files(joinpath("$PROJECT_DIR", "benchmarks/benchmark_list.jl"))
 Runner.run_bm_on_travis("$BM_JOB_NAME", ("$BASE_BRANCH", "$CURRENT_BRANCH"), "$COMMIT_SHA")
 """
-
-run(`julia -e $code_run`)
+cd(PROJECT_DIR)
+run(`julia --project=. -e $code_run`)
