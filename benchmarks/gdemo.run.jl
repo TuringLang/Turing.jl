@@ -10,6 +10,7 @@ end
 
 data = (1.5, 2.0)
 
+# sample(gdemo(1.5, 2.0), Turing.NUTS(2000000, 0.65));
 bench_res = @tbenchmark(Turing.NUTS(2000000, 0.65), gdemo, data...)
 
 logd = build_logd("GDemo-Benchmark", bench_res...)
