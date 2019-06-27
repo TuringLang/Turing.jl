@@ -1,17 +1,19 @@
 using Pkg
 using Dates
 
-BENCHMARK_REV = "master"
-BENCHMARK_REV = "external-bm"
 
+# prepare packages
 try pkg"develop ." catch end
 try pkg"develop ." catch end
 try pkg"build Turing" catch end
 
+BENCHMARK_REV = "master"
+BENCHMARK_REV = "external-bm"
 Pkg.add(PackageSpec(url="https://github.com/TuringLang/TuringBenchmarks.git", rev=BENCHMARK_REV))
 Pkg.build("TuringBenchmarks")
 
-BASE_BRANCH = "master"
+# prepare BenchMark information
+BASE_BRANCH = "bm-test" # should be master
 CURRENT_BRANCH = strip(read(`git rev-parse --abbrev-ref HEAD`, String))
 
 if get(ENV, "TRAVIS", "false") == "true"
@@ -34,10 +36,11 @@ if get(ENV, "TRAVIS", "false") == "true"
     run(`git fetch --all --unshallow`)
 end
 
+# run
 code_run = """using TuringBenchmarks
 using TuringBenchmarks.Runner
 TuringBenchmarks.set_benchmark_files("./benchmarks/benchmark_list.jl")
-Runner.run_bm_on_travis("$BM_JOB_NAME", ("master", "$CURRENT_BRANCH"), "$COMMIT_SHA")
+Runner.run_bm_on_travis("$BM_JOB_NAME", ("$BASE_BRANCH", "$CURRENT_BRANCH"), "$COMMIT_SHA")
 """
 
 run(`julia -e $code_run`)
