@@ -202,6 +202,19 @@ priors = 0 # See "new grammar" test.
 
         chain = sample(gauss(x), PG(10, 10))
         chain = sample(gauss(x), SMC(10))
+
+        @model gauss2(x, ::Type{TV}=Vector{Float64}) where {TV} = begin
+            priors = TV(undef, 2)
+            priors[1] ~ InverseGamma(2,3)         # s
+            priors[2] ~ Normal(0, sqrt(priors[1])) # m
+            for i in 1:length(x)
+                x[i] ~ Normal(priors[2], sqrt(priors[1]))
+            end
+            priors
+        end
+
+        chain = sample(gauss2(x), PG(10, 10))
+        chain = sample(gauss2(x), SMC(10))
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -293,19 +306,36 @@ priors = 0 # See "new grammar" test.
 
         t_loop = @elapsed res = sample(vdemo3(), alg)
 
+        @model vdemo4(::Type{T}=Float64) where {T} = begin
+            x = Vector{T}(undef, N)
+            for i = 1:N
+                x[i] ~ Normal(0, sqrt(4))
+            end
+        end
+
+        t_loop = @elapsed res = sample(vdemo4(), alg)
+
+
         # Test for vectorize UnivariateDistribution
-        @model vdemo4() = begin
+        @model vdemo5() = begin
           x = Vector{Real}(undef, N)
           x ~ [Normal(0, 2)]
         end
 
-        t_vec = @elapsed res = sample(vdemo4(), alg)
+        t_vec = @elapsed res = sample(vdemo5(), alg)
 
-        @model vdemo5() = begin
+        @model vdemo6(::Type{T}=Float64) where {T} = begin
+            x = Vector{T}(undef, N)
+            x ~ [Normal(0, 2)]
+        end
+  
+        t_vec = @elapsed res = sample(vdemo6(), alg)
+  
+        @model vdemo7() = begin
           x ~ MvNormal(zeros(N), 2 * ones(N))
         end
 
-        t_mv = @elapsed res = sample(vdemo5(), alg)
+        t_mv = @elapsed res = sample(vdemo7(), alg)
 
         println("Time for")
         println("  Loop : $t_loop")
@@ -313,12 +343,19 @@ priors = 0 # See "new grammar" test.
         println("  Mv   : $t_mv")
 
         # Transformed test
-        @model vdemo6() = begin
+        @model vdemo8() = begin
           x = Vector{Real}(undef, N)
           x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo6(), alg)
+        sample(vdemo8(), alg)
+
+        @model vdemo8(::Type{T}=Float64) where {T} = begin
+            x = Vector{T}(undef, N)
+            x ~ [InverseGamma(2, 3)]
+        end
+  
+        sample(vdemo8(), alg)
     end
     @testset "tilde" begin
         model_info = Dict(
