@@ -6,16 +6,15 @@ PROJECT_DIR = abspath(@__DIR__) |> dirname
 # prepare packages
 Pkg.build("Turing")
 
-Pkg.add("CmdStan")
-Pkg.add("JSON")
-
 BENCHMARK_REV = "master"
-BENCHMARK_REV = "external-bm"
+BENCHMARK_REV = "external-bm" # TODO: delete this line
 Pkg.add(PackageSpec(url="https://github.com/TuringLang/TuringBenchmarks.git", rev=BENCHMARK_REV))
 Pkg.build("TuringBenchmarks")
+Pkg.resolve()
 
 # prepare BenchMark information
-BASE_BRANCH = "bm-test" # should be master
+BASE_BRANCH = "master"
+BASE_BRANCH = "bm-test" # TODO: delete this line (should be master)
 CURRENT_BRANCH = strip(read(`git rev-parse --abbrev-ref HEAD`, String))
 
 if get(ENV, "TRAVIS", "false") == "true"
