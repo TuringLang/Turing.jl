@@ -1,3 +1,5 @@
+using Turing, TuringBenchmarks.TuringTools
+
 using Distributions: MvNormal, logpdf
 using ForwardDiff: gradient
 using AdvancedHMC
@@ -28,7 +30,5 @@ bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
                              sample(h, prop, θ_init, n_samples, adaptor, n_adapts))
 
 # bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
-logd = build_logd("MvNormal-Benchmark", bench_res...)
-
+LOG_DATA = build_log_data("MvNormal-Benchmark", bench_res...)
 print_log(logd)
-send_log(logd)
