@@ -85,7 +85,8 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
 
-@inline floatof(::Type{T}) where {T} = typeof(one(T)/one(T))
+@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+@inline floatof(::Type) = Real
 # Make eltype(vi[spl]) lazy
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
