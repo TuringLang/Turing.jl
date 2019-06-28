@@ -192,13 +192,21 @@ function model_generator(x = nothing, y = nothing)
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
         local x
         if isdefined(model.data, :x)
-            x = model.data.x
+            if model.data.x isa Type{<:AbstractFloat} || model.data.x isa Type{<:AbstractArray}
+                x = Turing.Core.get_matching_type(sampler, vi, model.data.x)
+            else
+                x = model.data.x
+            end
         else
             x = model_defaults.x
         end
         local y
         if isdefined(model.data, :y)
-            y = model.data.y
+            if model.data.y isa Type{<:AbstractFloat} || model.data.y isa Type{<:AbstractArray}
+                y = Turing.Core.get_matching_type(sampler, vi, model.data.y)
+            else
+                y = model.data.y
+            end
         else
             y = model.defaults.y
         end
@@ -434,6 +442,10 @@ function build_output(model_info)
     end)
 end
 
+# A hack for NamedTuple type specialization
+# (T = Int,) has type NamedTuple{(:T,), Tuple{DataType}} by default
+# With this function, we can make it NamedTuple{(:T,), Tuple{Type{Int}}}
+# Both are correct, but the latter is what we want for type stability
 get_type(::Type{T}) where {T} = Type{T}
 get_type(t) = typeof(t)
 
@@ -510,4 +522,9 @@ function data(dict::Dict, keys::Vector{Symbol})
     return Main.eval(r)
 end
 
+"""
+    get_matching_type(spl, vi, ::Type{T}) where {T}
+Get the specialized version of type `T` for sampler `spl`. For example,
+if `T === Float64` and `spl::Hamiltonian`, the matching type is `eltype(vi[spl])`.
+"""
 get_matching_type(spl, vi, ::Type{T}) where {T} = T
