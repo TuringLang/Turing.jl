@@ -1046,6 +1046,10 @@ end
     return _setindex!(_tail(metadata), val, ranges, start)
 end
 
+function Base.eltype(vi::AbstractVarInfo, spl::Union{AbstractSampler, SampleFromPrior})
+    return eltype(Core.Compiler.return_type(getindex, Tuple{typeof(vi), typeof(spl)}))
+end
+
 """
 `haskey(vi::VarInfo, vn::VarName)`
 

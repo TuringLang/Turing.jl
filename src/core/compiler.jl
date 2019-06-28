@@ -359,7 +359,11 @@ function build_output(model_info)
     if length(tent_dvars_list) == 0
         tent_dvars_nt = :(NamedTuple())
     else
-        tent_dvars_nt = :($([:($var = $var) for var in tent_dvars_list]...),)
+        nt_type = Expr(:curly, :NamedTuple, 
+            Expr(:tuple, QuoteNode.(tent_dvars_list)...), 
+            Expr(:curly, :Tuple, [:(Turing.Core.get_type($x)) for x in tent_dvars_list]...)
+        )
+        tent_dvars_nt = Expr(:call, nt_type, Expr(:tuple, tent_dvars_list...))
     end
     #= Does the following for each of the tentative dvars
         local x
@@ -431,6 +435,8 @@ function build_output(model_info)
     end)
 end
 
+@inline get_type(t) = t isa Type ? Type{t} : typeof(t)
+
 # Replaces the default for `Vector{Missing}` inputs by `Vector{Real}` of the same length as the input.
 @generated function get_default_values(tent_dvars_nt::Tdvars, tent_arg_defaults_nt::Tdefaults) where {Tdvars <: NamedTuple, Tdefaults <: NamedTuple}
     dvar_names = Tdvars.names
@@ -462,17 +468,12 @@ end
     return :($pvars_tuple, $dvars_tuple)
 end
 
-@generated function get_data(::Type{Tdvars}, nt) where Tdvars
-    dvars = Tdvars.types
-    args = []
-    for var in dvars
-        push!(args, :($var = nt.$var))
-    end
-    if length(args) == 0
-        return :(NamedTuple())
-    else
-        return :($(args...),)
-    end
+@inline get_data(Tdvars::Type{<:Tuple}, nt::NamedTuple) = _get_data(Tuple(Tdvars.types), nt)
+@inline function _get_data(dvars::Tuple, nt::NamedTuple)
+    length(dvars) === 0 && return NamedTuple()
+    n = dvars[1]
+    f = getfield(nt, n)
+    return merge(NamedTuple{(n,), Tuple{get_type(f)}}((f,)), _get_data(Base.tail(dvars), nt))
 end
 
 function warn_empty(body)
