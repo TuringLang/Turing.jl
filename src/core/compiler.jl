@@ -72,15 +72,14 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym = Symbol($(QuoteNode(model_info[:name])), $csym)
-            $syms = Symbol[$csym, $(QuoteNode(var))]
-            $varname = Turing.VarName($syms, "")
+            $varname = Turing.VarName{$sym}($csym, "")
         end
     else
         varname_expr = quote
             $sym, $idcs, $csym = Turing.@VarName $var
             $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
             $indexing = foldl(*, $idcs, init = "")
-            $varname = Turing.VarName(Symbol($csym_str), $sym, $indexing)
+            $varname = Turing.VarName{$sym}(Symbol($csym_str), $indexing)
         end
     end
 
@@ -435,7 +434,8 @@ function build_output(model_info)
     end)
 end
 
-@inline get_type(t) = t isa Type ? Type{t} : typeof(t)
+get_type(::Type{T}) where {T} = Type{T}
+get_type(t) = typeof(t)
 
 # Replaces the default for `Vector{Missing}` inputs by `Vector{Real}` of the same length as the input.
 @generated function get_default_values(tent_dvars_nt::Tdvars, tent_arg_defaults_nt::Tdefaults) where {Tdvars <: NamedTuple, Tdefaults <: NamedTuple}
