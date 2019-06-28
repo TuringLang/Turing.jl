@@ -20,7 +20,7 @@ n_adapts = 2_000
 # Define metric space, Hamiltonian and sampling method
 metric = DenseEuclideanMetric(D)
 h = Hamiltonian(metric, logπ, ∂logπ∂θ)
-prop = NUTS(Leapfrog(find_good_eps(h, θ_init)))
+prop = Turing.NUTS(Leapfrog(find_good_eps(h, θ_init)))
 adaptor = StanHMCAdaptor(
     n_adapts, Preconditioner(metric), NesterovDualAveraging(0.8, prop.integrator.ϵ))
 
@@ -31,4 +31,4 @@ bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
 
 # bench_res[4].names = ["phi[1]", "phi[2]", "phi[3]", "phi[4]"]
 LOG_DATA = build_log_data("MvNormal-Benchmark", bench_res...)
-print_log(logd)
+print_log(LOG_DATA)
