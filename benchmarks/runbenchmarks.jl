@@ -4,9 +4,10 @@ using Dates
 PROJECT_DIR = abspath(@__DIR__) |> dirname
 
 # prepare packages
-try pkg"develop ." catch end
-try pkg"develop ." catch end
-try pkg"build Turing" catch end
+Pkg.build("Turing")
+
+Pkg.add("CmdStan")
+Pkg.add("JSON")
 
 BENCHMARK_REV = "master"
 BENCHMARK_REV = "external-bm"
@@ -40,8 +41,8 @@ end
 # run
 code_run = """using TuringBenchmarks
 using TuringBenchmarks.Runner
+TuringBenchmarks.set_project_path("$PROJECT_DIR")
 TuringBenchmarks.set_benchmark_files(joinpath("$PROJECT_DIR", "benchmarks/benchmark_list.jl"))
 Runner.run_bm_on_travis("$BM_JOB_NAME", ("$BASE_BRANCH", "$CURRENT_BRANCH"), "$COMMIT_SHA")
 """
-cd(PROJECT_DIR)
-run(`julia --project=. -e $code_run`)
+run(`julia --project=$PROJECT_DIR -e $code_run`)
