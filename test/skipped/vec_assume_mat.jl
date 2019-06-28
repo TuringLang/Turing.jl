@@ -4,8 +4,8 @@ N = 5
 setchunksize(4*N)
 alg = HMC(1000, 0.2, 4)
 
-@model vdemo() = begin
-  v = Vector{Matrix{Real}}(undef, N)
+@model vdemo(::Type{T}=Float64) where {T} = begin
+  v = Vector{Matrix{T}}(undef, N)
   v ~ [Wishart(7, [1 0.5; 0.5 1])]
 end
 

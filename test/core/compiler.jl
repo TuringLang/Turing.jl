@@ -130,6 +130,8 @@ priors = 0 # See "new grammar" test.
         end
         f1_mm = testmodel1(1., 10.)
         @test f1_mm() == (1, 10)
+        f1_mm = testmodel1(x1=1., x2=10.)
+        @test f1_mm() == (1, 10)
 
         @info "Testing the compiler's ability to catch bad models..."
 
@@ -214,7 +216,9 @@ priors = 0 # See "new grammar" test.
         end
 
         chain = sample(gauss2(x), PG(10, 10))
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), PG(10, 10))
         chain = sample(gauss2(x), SMC(10))
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(10))
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -314,6 +318,8 @@ priors = 0 # See "new grammar" test.
         end
 
         t_loop = @elapsed res = sample(vdemo4(), alg)
+        t_loop = @elapsed res = sample(vdemo4(Float64), alg)
+        t_loop = @elapsed res = sample(vdemo4(T=Float64), alg)
 
 
         # Test for vectorize UnivariateDistribution
@@ -330,6 +336,8 @@ priors = 0 # See "new grammar" test.
         end
   
         t_vec = @elapsed res = sample(vdemo6(), alg)
+        t_vec = @elapsed res = sample(vdemo6(Float64), alg)
+        t_vec = @elapsed res = sample(vdemo6(T=Float64), alg)
   
         @model vdemo7() = begin
           x ~ MvNormal(zeros(N), 2 * ones(N))
@@ -354,8 +362,10 @@ priors = 0 # See "new grammar" test.
             x = Vector{T}(undef, N)
             x ~ [InverseGamma(2, 3)]
         end
-  
+
         sample(vdemo8(), alg)
+        sample(vdemo8(Float64), alg)
+        sample(vdemo8(T=Float64), alg)
     end
     @testset "tilde" begin
         model_info = Dict(

@@ -246,7 +246,7 @@ function build_model_info(input_expr)
                 S = :Any
             else
                 ind = findfirst(x -> MacroTools.@capture(x, T1_ <: S_) && T1 == T, modeldef[:whereparams])
-                @assert ind != nothing "Please make sure type parameters are properly used. Every `Type{T}` argument need to have `T` in the a `where` clause"
+                ind != nothing || throw(ArgumentError("Please make sure type parameters are properly used. Every `Type{T}` argument need to have `T` in the a `where` clause"))
             end
             Expr(:kw, :($T::Type{<:$S}), Tval)
         else
