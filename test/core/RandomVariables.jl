@@ -61,7 +61,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vn2 = VarName(csym, :x, "[1][2]", 1)
         @test vn2 == vn1
         @test hash(vn2) == hash(vn1)
-        @test in(vn1, Set([:x]))
+        @test in(vn1, (:x,))
 
         function test_base!(vi)
             empty!(vi)
@@ -96,7 +96,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             push!(vi, vn, r, dist, gid)
 
             function test_in()
-                space = Set([:x, :y, :(z[1])])
+                space = (:x, :y, :(z[1]))
                 vn1 = genvn(:x)
                 vn2 = genvn(:y)
                 vn3 = genvn(:(x[1]))

@@ -192,7 +192,7 @@ function model_generator(x = nothing, y = nothing)
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
         local x
         if isdefined(model.data, :x)
-            if model.data.x isa Type{<:AbstractFloat} || model.data.x isa Type{<:AbstractArray}
+            if model.data.x isa Type && (model.data.x <: AbstractFloat || model.data.x <: AbstractArray)
                 x = Turing.Core.get_matching_type(sampler, vi, model.data.x)
             else
                 x = model.data.x
@@ -202,7 +202,7 @@ function model_generator(x = nothing, y = nothing)
         end
         local y
         if isdefined(model.data, :y)
-            if model.data.y isa Type{<:AbstractFloat} || model.data.y isa Type{<:AbstractArray}
+            if model.data.y isa Type && (model.data.y <: AbstractFloat || model.data.y <: AbstractArray)
                 y = Turing.Core.get_matching_type(sampler, vi, model.data.y)
             else
                 y = model.data.y
@@ -390,7 +390,7 @@ function build_output(model_info)
                 # So if the value is indeed correct, i.e. a type then it should just work
                 # If the value is not a type, i.e. `::Type{T} = 1` and the user doesn't pass it something for this argument, then it will give an error when constructing the model, which is a correct Julia error.
                 # This means that we don't need an expression for the default value of the `Type{T}` arguments in `model.defaults`.
-                if $model_name.data.$var isa Type{<:AbstractFloat} || $model_name.data.$var isa Type{<:AbstractArray}
+                if $model_name.data.$var isa Type && ($model_name.data.$var <: AbstractFloat || $model_name.data.$var <: AbstractArray)
                     $var = Turing.Core.get_matching_type($sampler_name, $vi_name, $model_name.data.$var)
                 else
                     $var = $model_name.data.$var

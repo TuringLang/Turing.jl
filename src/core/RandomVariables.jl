@@ -483,18 +483,18 @@ function _getidcs(vi::AbstractVarInfo, spl::Sampler)
         spl.info[:idcs]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = _getidcs(vi, spl.selector, spl.alg.space)
+        spl.info[:idcs] = _getidcs(vi, spl.selector, getspace(spl.alg))
     end
 end
-function _getidcs(vi::UntypedVarInfo, s::Selector, space)
+function _getidcs(vi::UntypedVarInfo, s::Selector, space::Tuple)
     filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) &&
         (isempty(space) || in(vi.vns[i], space)), 1:length(vi.gids))
 end
-function _getidcs(vi::TypedVarInfo, s::Selector, space)
+function _getidcs(vi::TypedVarInfo, s::Selector, space::Tuple)
     return __getidcs(vi.metadata, s, space)
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
-@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space) where {names}
+@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space::Tuple) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first sybmol
@@ -532,23 +532,26 @@ end
 end
 
 # Get the index (in vals) ranges of all the vns of variables belonging to spl
-function _getranges(vi::AbstractVarInfo, spl::Sampler)
-    if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
-    if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
-        spl.info[:ranges]
-    else
-        spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        spl.info[:ranges] = _getranges(vi, spl.selector, spl.alg.space)
-    end
+@inline function _getranges(vi::AbstractVarInfo, spl::Sampler)
+    ## Uncomment the spl.info stuff when it is concretely typed, not Dict{Symbol, Any}
+    #if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+    #if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
+    #    spl.info[:ranges]
+    #else
+        #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
+        ranges = _getranges(vi, spl.selector, getspace(spl.alg))
+        #spl.info[:ranges] = ranges
+        return ranges
+    #end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
-function _getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
+@inline function _getranges(vi::AbstractVarInfo, s::Selector, space::Tuple=())
     __getranges(vi, _getidcs(vi, s, space))
 end
-function __getranges(vi::UntypedVarInfo, idcs)
+@inline function __getranges(vi::UntypedVarInfo, idcs)
     union(map(i -> vi.ranges[i], idcs)...)
 end
-__getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
+@inline __getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
 @inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
@@ -656,20 +659,25 @@ Symbol(vn::VarName) = Symbol(string(vn, all=false))  # simplified symbol
 
 Returns `true` if `vn`'s symbol is in `space` and `false` otherwise.
 """
-function in(vn::VarName, space::Set)::Bool
+function in(vn::VarName, space::Tuple)::Bool
     if vn.sym in space
         return true
     else
-        # Collect expressions from space
-        exprs = filter(el -> isa(el, Expr), space)
-        # Filter `(` and `)` out and get a string representation of `exprs`
-        expr_strs = Set((replace(string(ex), r"\(|\)" => "") for ex in exprs))
         # String representation of `vn`
         vn_str = string(vn, all=false)
-        # Check if `vn_str` is in `expr_strs`
-        valid = filter(str -> occursin(str, vn_str), expr_strs)
-        return length(valid) > 0
+        return _in(vn_str, space)
     end
+end
+@inline function _in(vn_str::String, space::Tuple)
+    length(space) === 0 && return false
+    el = space[1]
+    # Collect expressions from space
+    expr = isa(el, Expr) ? el : return _in(vn_str, Base.tail(space))
+    # Filter `(` and `)` out and get a string representation of `exprs`
+    expr_str = replace(string(expr), r"\(|\)" => "")
+    # Check if `vn_str` is in `expr_strs`
+    valid = occursin(expr_str, vn_str)
+    return valid || _in(vn_str, Base.tail(space))
 end
 
 # VarInfo
@@ -1266,7 +1274,7 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vn) in spl.alg.space
+    if ~isempty(getspace(spl.alg)) && isempty(getgid(vi, vn)) && getsym(vn) in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end

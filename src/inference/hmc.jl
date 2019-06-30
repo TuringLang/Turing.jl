@@ -32,23 +32,22 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
 sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 ```
 """
-mutable struct HMC{AD, T} <: StaticHamiltonian{AD}
+mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     n_iters     ::  Int       # number of samples
     ϵ           ::  Float64   # leapfrog step size
     n_leapfrog  ::  Int       # leapfrog step number
-    space       ::  Set{T}    # sampling space, emtpy means all
-    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
-
 HMC(args...) = HMC{ADBackend()}(args...)
-
+function HMC{AD}(n_iters::Int, ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+    return HMC{AD, space, metricT}(n_iters, ϵ, n_leapfrog)
+end
 function HMC{AD}(
     n_iters::Int,
     ϵ::Float64,
     n_leapfrog::Int;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMC{AD, Any}(n_iters, ϵ, n_leapfrog, Set(), metricT)
+    return HMC{AD}(n_iters, ϵ, n_leapfrog, metricT, ())
 end
 
 function HMC{AD}(
@@ -58,8 +57,7 @@ function HMC{AD}(
     space...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(n_iters, ϵ, n_leapfrog, _space, metricT)
+    return HMC{AD}(n_iters, ϵ, n_leapfrog, metricT, space)
 end
 
 """
@@ -87,16 +85,17 @@ For more information, please view the following paper ([arXiv link](https://arxi
   setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
   Research 15, no. 1 (2014): 1593-1623.
 """
-mutable struct HMCDA{AD, T} <: AdaptiveHamiltonian{AD}
+mutable struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
     n_iters     ::  Int       # number of samples
     n_adapts    ::  Int       # number of samples with adaption for ϵ
     δ           ::  Float64   # target accept rate
     λ           ::  Float64   # target leapfrog length
-    space       ::  Set{T}    # sampling space, emtpy means all
     init_ϵ      ::  Float64
-    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
+function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, init_ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+    return HMCDA{AD, space, metricT}(n_iters, n_adapts, δ, λ, init_ϵ)
+end
 
 function HMCDA{AD}(
     n_iters::Int,
@@ -107,7 +106,7 @@ function HMCDA{AD}(
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
     n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-    return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
+    return HMCDA{AD}(n_iters, n_adapts, δ, λ, init_ϵ,metricT, ())
 end
 
 function HMCDA{AD}(
@@ -118,7 +117,7 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMCDA{AD, Any}(n_iters, n_adapts, δ, λ, Set(), init_ϵ, metricT)
+    return HMCDA{AD}(n_iters, n_adapts, δ, λ, init_ϵ, metricT, ())
 end
 
 function HMCDA{AD}(
@@ -130,8 +129,7 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(n_iters, n_adapts, δ, λ, _space, init_ϵ, metricT)
+    return HMCDA{AD}(n_iters, n_adapts, δ, λ, init_ϵ, metricT, space)
 end
 
 """
@@ -155,18 +153,19 @@ Arguments:
 - `init_ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
 
 """
-mutable struct NUTS{AD, T} <: AdaptiveHamiltonian{AD}
+mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
     n_iters     ::  Int       # number of samples
     n_adapts    ::  Int       # number of samples with adaption for ϵ
     δ           ::  Float64   # target accept rate
-    space       ::  Set{T}    # sampling space, emtpy means all
     max_depth   ::  Int
     Δ_max       ::  Float64
     init_ϵ      ::  Float64
-    metricT     ::  Type{<:AHMC.AbstractMetric}
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
+function NUTS{AD}(n_iters::Int, n_adapts::Int, δ::Float64, max_depth::Int, Δ_max::Float64, init_ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT}
+    return NUTS{AD, space, metricT}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ)
+end
 
 function NUTS{AD}(
     n_iters::Int,
@@ -178,8 +177,7 @@ function NUTS{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    NUTS{AD, eltype(_space)}(n_iters, n_adapts, δ, _space, max_depth, Δ_max, init_ϵ, metricT)
+    NUTS{AD}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
 end
 
 function NUTS{AD}(
@@ -191,10 +189,13 @@ function NUTS{AD}(
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
-    NUTS{AD, Any}(n_iters, n_adapts_default > 1000 ?
-        1000 : n_adapts_default, δ, Set(), max_depth, Δ_max, init_ϵ, metricT)
+    NUTS{AD}(n_iters, n_adapts_default > 1000 ?
+        1000 : n_adapts_default, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
+for alg in (:HMC, :HMCDA, :NUTS)
+    @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
+end
 
 ####
 #### Sampler construction
@@ -313,7 +314,7 @@ function step(
 )
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
-    spl.info[:h] = AHMC.Hamiltonian(spl.alg.metricT(length(vi[spl])), logπ, ∂logπ∂θ)
+    spl.info[:h] = AHMC.Hamiltonian(getmetricT(spl.alg)(length(vi[spl])), logπ, ∂logπ∂θ)
     spl.info[:traj] = gen_traj(spl.alg, spl.alg.ϵ)
     return vi, true
 end
@@ -333,7 +334,7 @@ function step(
     logπ = gen_logπ(vi, spl, model)
 
     θ_init = Vector{Float64}(vi[spl])
-    metric = spl.alg.metricT(length(θ_init))
+    metric = getmetricT(spl.alg)(length(θ_init))
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     init_ϵ = spl.alg.init_ϵ
 
@@ -650,9 +651,9 @@ observe(spl::Sampler{<:Hamiltonian},
 ####
 
 function AHMCAdaptor(alg::AdaptiveHamiltonian)
-    p = AHMC.Preconditioner(alg.metricT)
+    p = AHMC.Preconditioner(getmetricT(alg))
     nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
-    if alg.metricT == AHMC.UnitEuclideanMetric
+    if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(p, nda)
     else
         adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, p, nda)
