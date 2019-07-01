@@ -49,7 +49,7 @@ end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
 
-SMC(n) = SMC(n, resample_systematic, 0.5, Set())
+SMC(n::Int) = SMC(n, resample_systematic, 0.5, Set())
 function SMC(n_particles::Int, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return SMC(n_particles, resample_systematic, 0.5, _space)
@@ -98,11 +98,11 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     params = particles[indx].vi[spl]
-    vi_draw = particles[indx].vi
-    lp = getlogp(vi_draw)
+    spl.state.vi = particles[indx].vi
+    lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(vi_draw[spl], lp, Ws[indx], particles.logE)
+    return transition(spl.state.vi[spl], lp, Ws[indx], particles.logE)
 end
 
 ####
@@ -185,10 +185,12 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
-    vi_draw = particles[indx].vi
-    lp = getlogp(vi_draw)
+    params = particles[indx].vi[spl]
+    spl.state.vi = particles[indx].vi
+    lp = getlogp(spl.state.vi)
 
-    return transition(vi_draw[spl], lp, Ws[indx], particles.logE)
+    # update the master vi.
+    return transition(spl.state.vi[spl], lp, Ws[indx], particles.logE)
 end
 
 function sample_end!(

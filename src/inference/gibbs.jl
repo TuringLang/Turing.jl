@@ -66,7 +66,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         if isa(sub_alg, GibbsComponent)
             samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
         else
-            @error("[Gibbs] unsupport base sampling algorithm $alg")
+            @error("[Gibbs] Unsupported sampling algorithm $sub_alg")
         end
         space = union(space, sub_alg.space)
     end
