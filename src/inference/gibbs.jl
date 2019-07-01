@@ -52,7 +52,7 @@ function GibbsState(model::Model, samplers::Array{Sampler})
     return GibbsState{typeof(nt)}(VarInfo(model), samplers, nt)
 end
 
-const GibbsComponent = Union{Hamiltonian,MH,PG, SMC}
+const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
