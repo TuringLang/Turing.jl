@@ -122,10 +122,7 @@ function _tilde(vsym, left, dist, model_info)
 
     model_info[:tent_dvars_list] = copy(model_info[:arg_syms])
     if vsym in model_info[:arg_syms]
-        if !(vsym in model_info[:tent_dvars_list])
-            Turing.DEBUG && @debug " Observe - `$(vsym)` is an observation"
-        end
-
+        Turing.DEBUG && @debug " Observe - `$(vsym)` is an observation"
         return quote
             if Turing.in_pvars($(Val(vsym)), $model_name)
                 $(generate_assume(left, dist, model_info))
@@ -135,8 +132,6 @@ function _tilde(vsym, left, dist, model_info)
         end
     else
         # Assume it is a parameter.
-        vind = findfirst(x -> x == vsym, model_info[:tent_dvars_list])
-        vind == nothing || deleteat!(model_info[:tent_dvars_list], vind)
         if !(vsym in model_info[:tent_pvars_list])
             Turing.DEBUG && @debug begin
                 msg = " Assume - `$(vsym)` is a parameter"
