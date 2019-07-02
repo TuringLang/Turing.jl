@@ -4,7 +4,7 @@ if ON_TRAVIS
     BENCHMARK_FILES = [
         "dummy.run.jl",
         "gdemo.run.jl",
-        # "mvnormal.run.jl",
+        "mvnormal.run.jl",
     ]
 else
     BENCHMARK_FILES = [
