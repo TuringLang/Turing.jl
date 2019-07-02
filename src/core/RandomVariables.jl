@@ -454,9 +454,9 @@ function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
 end
 # Get a NamedTuple of all the indices belonging to SampleFromPrior, one for each symbol
 function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
-    return __getidcs(vi.metadata)
+    return _getidcs(vi.metadata)
 end
-@inline function __getidcs(metadata::NamedTuple{names}) where {names}
+@inline function _getidcs(metadata::NamedTuple{names}) where {names}
     # Check if the `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first key/symbol
@@ -468,7 +468,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of metadata
-    return merge(nt, __getidcs(_tail(metadata)))
+    return merge(nt, _getidcs(_tail(metadata)))
 end
 
 # Get all indices of variables belonging to a given sampler
@@ -491,10 +491,10 @@ function _getidcs(vi::UntypedVarInfo, s::Selector, space::Tuple)
         (isempty(space) || in(vi.vns[i], space)), 1:length(vi.gids))
 end
 function _getidcs(vi::TypedVarInfo, s::Selector, space::Tuple)
-    return __getidcs(vi.metadata, s, space)
+    return _getidcs(vi.metadata, s, space)
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
-@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space::Tuple) where {names}
+@inline function _getidcs(metadata::NamedTuple{names}, s::Selector, space::Tuple) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first sybmol
@@ -507,7 +507,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of metadata
-    return merge(nt, __getidcs(_tail(metadata), s, space))
+    return merge(nt, _getidcs(_tail(metadata), s, space))
 end
 
 # Get all vns of variables belonging to spl
@@ -515,10 +515,10 @@ _getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, sp
 function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
     # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
     idcs = _getidcs(vi, spl)
-    return __getvns(vi.metadata, idcs)
+    return _getvns(vi.metadata, idcs)
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
-@inline function __getvns(metadata::NamedTuple{names}, idcs) where {names}
+@inline function _getvns(metadata::NamedTuple{names}, idcs) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first symbol
@@ -528,7 +528,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of `metadata`
-    return merge(nt, __getvns(_tail(metadata), idcs))
+    return merge(nt, _getvns(_tail(metadata), idcs))
 end
 
 # Get the index (in vals) ranges of all the vns of variables belonging to spl
@@ -546,13 +546,13 @@ end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
 @inline function _getranges(vi::AbstractVarInfo, s::Selector, space::Tuple=())
-    __getranges(vi, _getidcs(vi, s, space))
+    _getranges(vi, _getidcs(vi, s, space))
 end
-@inline function __getranges(vi::UntypedVarInfo, idcs)
+@inline function _getranges(vi::UntypedVarInfo, idcs::Vector{Int})
     mapreduce(i -> vi.ranges[i], vcat, idcs, init=Int[])
 end
-@inline __getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
-@inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
+@inline _getranges(vi::TypedVarInfo, idcs::NamedTuple) = _getranges(vi.metadata, idcs)
+@inline function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first symbol
@@ -562,7 +562,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of `metadata`
-    return merge(nt, __getranges(_tail(metadata), idcs))
+    return merge(nt, _getranges(_tail(metadata), idcs))
 end
 
 """
