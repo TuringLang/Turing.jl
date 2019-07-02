@@ -154,7 +154,7 @@ using .Inference
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
-    include("inference/dynamichmc.jl")
+    include("contrib/inference/dynamichmc.jl")
 end
 
 # Random probability measures.

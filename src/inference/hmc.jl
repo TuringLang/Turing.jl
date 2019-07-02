@@ -2,8 +2,6 @@
 ### Sampler states
 ###
 
-struct BlankState <: SamplerState end
-
 mutable struct StaticHMCState{TTraj<:AHMC.StaticTrajectory} <: SamplerState
     vi       :: TypedVarInfo
     eval_num :: Int
@@ -25,8 +23,8 @@ mutable struct DynamicHMCState{
 end
 
 function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
-    # Create VarInfo.
-    vi = VarInfo(model)
+    # Reuse the VarInfo.
+    vi = spl.state.vi
 
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
@@ -43,8 +41,8 @@ function HMCState(model::Model,
         adaptor=AHMCAdaptor(spl.alg),
         kwargs...
 )
-    # Create VarInfo.
-    vi = VarInfo(model)
+    # Reuse the VarInfo.
+    vi = spl.state.vi
 
     # Link everything if needed.
     spl.selector.tag != :default && link!(vi, spl)
@@ -87,7 +85,6 @@ Hamiltonian Monte Carlo sampler.
 
 Arguments:
 
-- `n_iters::Int` : The number of samples to pull.
 - `ϵ::Float64` : The leapfrog step size to use.
 - `n_leapfrog::Int` : The number of leapfrop steps to use.
 
@@ -186,6 +183,7 @@ function sample_init!(
     end
 
     # Convert to transformed space
+    println(spl.selector.tag)
     if spl.selector.tag == :default
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
@@ -320,9 +318,9 @@ end
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(alg::Hamiltonian, model::Model, s::Selector=Selector())
     info = Dict{Symbol, Any}()
-    state_bad = BlankState()
+    state_bad = BlankState(VarInfo(model))
 
-    # Create an initial sampler, to get all the initiation out of the way.
+    # Create an initial sampler, to get all the initialization out of the way.
     spl_bad = Sampler(alg, info, s, state_bad)
 
     # Create the actual state based on the alg type.

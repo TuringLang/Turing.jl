@@ -115,13 +115,28 @@ function transitions_init(
     return Vector{ttype}(undef, N)
 end
 
-# Concrete algorithm implementations.
-include("sghmc.jl")
+#########################
+# Default sampler state #
+#########################
+
+"""
+A blank `SamplerState` that contains only `VarInfo` information.
+"""
+struct BlankState <: SamplerState
+    vi :: TypedVarInfo
+end
+
+#######################################
+# Concrete algorithm implementations. #
+#######################################
+
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
+include("../contrib/inference/sghmc.jl")
+include("../contrib/inference/AdvancedSMCExtensions.jl")
 
 ## Fallback functions
 
