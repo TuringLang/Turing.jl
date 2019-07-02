@@ -330,7 +330,7 @@ end
 Returns all the indices of `vns` in `vi.metadata.vals`.
 """
 function getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})
-    return union(map(vn -> getrange(vi, vn), vns)...)
+    return mapreduce(vn -> getrange(vi, vn), vcat, vns, init=Int[])
 end
 
 """
@@ -549,7 +549,7 @@ end
     __getranges(vi, _getidcs(vi, s, space))
 end
 @inline function __getranges(vi::UntypedVarInfo, idcs)
-    union(map(i -> vi.ranges[i], idcs)...)
+    mapreduce(i -> vi.ranges[i], vcat, idcs, init=Int[])
 end
 @inline __getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
 @inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
@@ -558,7 +558,7 @@ end
     # Take the first symbol
     f = names[1]
     # Collect the index ranges of all the vns with symbol `f`
-    v = union(map(i -> getfield(metadata, f).ranges[i], getfield(idcs, f))..., Int[])
+    v = mapreduce(i -> getfield(metadata, f).ranges[i], vcat, getfield(idcs, f), init=Int[])
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of `metadata`
