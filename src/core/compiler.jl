@@ -232,13 +232,19 @@ function build_model_info(input_expr)
     warn_empty(modeldef[:body])
     # Construct model_info dictionary
 
+    # Extracting the argument symbols from the model definition
     arg_syms = map(modeldef[:args]) do arg
+        # @model demo(x)
         if (arg isa Symbol)
             arg
-        elseif MacroTools.@capture(arg, ::Type{T_} = TVal_)
+        # @model demo(::Type{T}) where {T}
+        elseif MacroTools.@capture(arg, ::Type{T_} = Tval_)
             T
+        # @model demo(x = 1)
+        elseif MacroTools.@capture(arg, x_ = val_)
+            x
         else
-            arg.args[1]
+            throw(ArgumentError("Unsupported argument $arg to the `@model` macro."))
         end
     end
     args = map(modeldef[:args]) do arg
