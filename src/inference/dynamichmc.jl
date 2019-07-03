@@ -15,7 +15,8 @@ To use it, make sure you have the DynamicHMC package installed.
 
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
-function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
+DynamicNUTS{AD}(n_iters::Integer, ::Tuple{}) where AD = DynamicNUTS{AD}(n_iters)
+function DynamicNUTS{AD}(n_iters::Integer, space::Symbol...) where AD
     DynamicNUTS{AD}(n_iters, space)
 end
 

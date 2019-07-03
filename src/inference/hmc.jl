@@ -44,17 +44,17 @@ end
 function HMC{AD}(
     n_iters::Int,
     ϵ::Float64,
-    n_leapfrog::Int;
-    metricT=AHMC.UnitEuclideanMetric
+    n_leapfrog::Int,
+    ::Tuple{};
+    kwargs...
 ) where AD
-    return HMC{AD}(n_iters, ϵ, n_leapfrog, metricT, ())
+    return HMC{AD}(n_iters, ϵ, n_leapfrog; kwargs...)
 end
-
 function HMC{AD}(
     n_iters::Int,
     ϵ::Float64,
     n_leapfrog::Int,
-    space...;
+    space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return HMC{AD}(n_iters, ϵ, n_leapfrog, metricT, space)
@@ -113,11 +113,11 @@ function HMCDA{AD}(
     n_iters::Int,
     n_adapts::Int,
     δ::Float64,
-    λ::Float64;
-    init_ϵ::Float64=0.1,
-    metricT=AHMC.UnitEuclideanMetric
+    λ::Float64,
+    ::Tuple{};
+    kwargs...
 ) where AD
-    return HMCDA{AD}(n_iters, n_adapts, δ, λ, init_ϵ, metricT, ())
+    return HMCDA{AD}(n_iters, n_adapts, δ, λ; kwargs...)
 end
 
 function HMCDA{AD}(
@@ -125,7 +125,7 @@ function HMCDA{AD}(
     n_adapts::Int,
     δ::Float64,
     λ::Float64,
-    space...;
+    space::Symbol...;
     init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
@@ -163,7 +163,16 @@ mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamilt
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
-function NUTS{AD}(n_iters::Int, n_adapts::Int, δ::Float64, max_depth::Int, Δ_max::Float64, init_ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT}
+function NUTS{AD}(
+    n_iters::Int, 
+    n_adapts::Int, 
+    δ::Float64, 
+    max_depth::Int, 
+    Δ_max::Float64, 
+    init_ϵ::Float64, 
+    ::Type{metricT}, 
+    space::Tuple
+) where {AD, metricT}
     return NUTS{AD, space, metricT}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ)
 end
 
@@ -171,7 +180,17 @@ function NUTS{AD}(
     n_iters::Int,
     n_adapts::Int,
     δ::Float64,
-    space...;
+    ::Tuple{};
+    kwargs...
+) where AD
+    NUTS{AD}(n_iters, n_adapts, δ; kwargs...)
+end
+
+function NUTS{AD}(
+    n_iters::Int,
+    n_adapts::Int,
+    δ::Float64,
+    space::Symbol...;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.1,

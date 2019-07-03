@@ -38,16 +38,17 @@ end
 function SGHMC{AD}(
     n_iters,
     learning_rate,
-    momentum_decay;
-    metricT=AHMC.UnitEuclideanMetric
-    ) where AD
-    return SGHMC{AD}(n_iters, learning_rate, momentum_decay, metricT, ())
+    momentum_decay,
+    ::Tuple{};
+    kwargs...
+) where AD
+    return SGHMC{AD}(n_iters, learning_rate, momentum_decay; kwargs...)
 end
 function SGHMC{AD}(
     n_iters,
     learning_rate,
     momentum_decay,
-    space...;
+    space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return SGHMC{AD}(n_iters, learning_rate, momentum_decay, metricT, space)
@@ -145,16 +146,17 @@ SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
 
 function SGLD{AD}(
     n_iters,
-    ϵ;
-    metricT=AHMC.UnitEuclideanMetric
+    ϵ,
+    ::Tuple{};
+    kwargs...
 ) where AD
-    return SGLD{AD}(n_iters, ϵ, metricT, ())
+    return SGLD{AD}(n_iters, ϵ; kwargs...)
 end
 
 function SGLD{AD}(
     n_iters,
     ϵ,
-    space...;
+    space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return SGLD{AD}(n_iters, ϵ, metricT, space)

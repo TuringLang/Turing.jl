@@ -29,7 +29,8 @@ function SMC(n_particles::Int, resampler::F, resampler_threshold::Float64, space
     return SMC{space, F}(n_particles, resampler, resampler_threshold)
 end
 SMC(n) = SMC(n, resample_systematic, 0.5, ())
-function SMC(n_particles::Int, space...)
+SMC(n_particles::Int, ::Tuple{}) = SMC(n_particles)
+function SMC(n_particles::Int, space::Symbol...)
     SMC(n_particles, resample_systematic, 0.5, space)
 end
 
@@ -106,8 +107,8 @@ end
 function PG(n_particles::Int, n_iters::Int, resampler::F, space::Tuple) where F
     return PG{space, F}(n_particles, n_iters, resampler)
 end
-PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, ())
-function PG(n1::Int, n2::Int, space...)
+PG(n1::Int, n2::Int, ::Tuple{}) = PG(n1, n2)
+function PG(n1::Int, n2::Int, space::Symbol...)
     PG(n1, n2, resample_systematic, space)
 end
 
@@ -499,10 +500,10 @@ end
 function IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int, resampler::F, space::Tuple) where {F}
     return IPMCMC{space, F}(n_particles, n_iters, n_nodes, n_csmc_nodes, resampler)
 end
-IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16, resample_systematic, ())
-IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)), resample_systematic, ())
-IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = IPMCMC(n1, n2, n3, n4, resample_systematic, ())
-function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
+IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16)
+IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)))
+IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, ::Tuple{}) = IPMCMC(n1, n2, n3, n4)
+function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space::Symbol...)
   IPMCMC(n1, n2, n3, n4, resample_systematic, space)
 end
 
@@ -513,7 +514,7 @@ function Sampler(alg::IPMCMC, s::Selector)
   samplers = Array{Sampler}(undef, alg.n_nodes)
   # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
   default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, getspace(alg))
-  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, false, getspace(alg))
+  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, getspace(alg))
 
   for i in 1:alg.n_csmc_nodes
     samplers[i] = Sampler(default_CSMC, Selector(Symbol(typeof(default_CSMC))))
