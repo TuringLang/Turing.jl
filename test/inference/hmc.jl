@@ -135,15 +135,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_gdemo(res3)
     end
     @turing_testset "hmcda constructor" begin
-        alg = HMCDA(1000, 0.8, 0.75)
+        alg = HMCDA(0.8, 0.75)
         println(alg)
         sampler = Sampler(alg)
 
-        alg = HMCDA(1000, 200, 0.8, 0.75)
+        alg = HMCDA( 200, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg)
 
-        alg = HMCDA(1000, 200, 0.8, 0.75, :s)
+        alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
         sampler = Sampler(alg)
 
@@ -151,18 +151,18 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
     @numerical_testset "nuts inference" begin
-        alg = NUTS(5000, 1000, 0.8)
-        res = sample(gdemo_default, alg)
+        alg = NUTS(1000, 0.8)
+        res = sample(gdemo_default, alg, 5000)
         check_gdemo(res)
     end
     @turing_testset "nuts constructor" begin
-        alg = NUTS(1000, 200, 0.65)
+        alg = NUTS(200, 0.65)
         sampler = Sampler(alg)
 
-        alg = NUTS(1000, 0.65)
+        alg = NUTS(0.65)
         sampler = Sampler(alg)
 
-        alg = NUTS(1000, 200, 0.65, :m)
+        alg = NUTS(200, 0.65, :m)
         sampler = Sampler(alg)
     end
     @turing_testset "check discard" begin
