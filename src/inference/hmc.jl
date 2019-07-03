@@ -135,7 +135,7 @@ function HMCDA{AD}(
 end
 
 """
-    NUTS(n_iters::Int, n_adapts::Int, δ::Float64)
+    NUTS(n_iters::Int, n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.1)
 
 No-U-Turn Sampler (NUTS) sampler.
 
