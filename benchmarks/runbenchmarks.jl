@@ -13,7 +13,6 @@ Pkg.resolve()
 
 # prepare BenchMark information
 BASE_BRANCH = "master"
-BASE_BRANCH = "bm-test" # TODO: delete this line (should be master)
 CURRENT_BRANCH = strip(read(`git rev-parse --abbrev-ref HEAD`, String))
 
 if get(ENV, "TRAVIS", "false") == "true"
