@@ -183,8 +183,11 @@ function VarInfo(model::Model)
     return TypedVarInfo(vi)
 end
 
-VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector) = old_vi
-
+function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
+    new_vi = deepcopy(old_vi)
+    new_vi[spl] = x 
+    return new_vi
+end
 function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
     md = newmetadata(old_vi.metadata, spl, x, 0)
     VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))

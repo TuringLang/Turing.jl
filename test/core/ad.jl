@@ -53,10 +53,10 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
-        vi = Turing.VarInfo(ad_test_f)
+        vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
-        svn = vi.metadata.s.vns[1]
-        mvn = vi.metadata.m.vns[1]
+        svn = vi.vns[1]
+        mvn = vi.vns[2]
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 

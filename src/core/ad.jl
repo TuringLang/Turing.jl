@@ -104,9 +104,6 @@ function gradient_logp_forward(
     logp_old = vi.logp
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        if vi isa UntypedVarInfo
-            new_vi[sampler] = θ
-        end
         logp = runmodel!(model, new_vi, sampler).logp
         vi.logp = ForwardDiff.value(logp)
         return logp
@@ -145,9 +142,6 @@ function gradient_logp_reverse(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        if vi isa UntypedVarInfo
-            new_vi[sampler] = θ
-        end
         logp = runmodel!(model, new_vi, sampler).logp
         vi.logp = Tracker.data(logp)
         return logp

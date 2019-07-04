@@ -40,7 +40,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], eps=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
-        alg = HMC(3000, 0.15, 10)
+        alg = HMC(4000, 0.15, 10)
         res = sample(gdemo_default, alg)
         check_gdemo(res, eps=0.1)
     end
@@ -115,7 +115,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(3000, 1000, 0.8, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
-        alg3 = Gibbs(1500,
+        alg3 = Gibbs(500,
             PG(30, 10, :s),
             HMCDA(1, 500, 0.8, 0.005, :m))
         # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
@@ -149,7 +149,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
     @numerical_testset "nuts inference" begin
-        alg = NUTS(5000, 1000, 0.8)
+        alg = NUTS(6000, 1000, 0.8)
         res = sample(gdemo_default, alg)
         check_gdemo(res)
     end

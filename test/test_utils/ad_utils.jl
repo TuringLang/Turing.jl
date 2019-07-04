@@ -52,7 +52,6 @@ end
 function test_model_ad(model, f, syms::Vector{Symbol})
     # Set up VI.
     vi = Turing.VarInfo(model)
-    model(vi, SampleFromPrior())
 
     # Collect symbols.
     vnms = Vector(undef, length(syms))
