@@ -89,6 +89,9 @@ Robust initialization method for model parameters in Hamiltonian samplers.
 struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
 
+getspace(::SampleFromPrior) = ()
+getspace(::SampleFromUniform) = ()
+
 """
     Sampler{T}
 
