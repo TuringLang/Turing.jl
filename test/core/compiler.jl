@@ -330,7 +330,7 @@ priors = 0 # See "new grammar" test.
 
         t_vec = @elapsed res = sample(vdemo5(), alg)
 
-        @model vdemo6(::Type{T}=Float64) where {T} = begin
+        @model vdemo6(::Type{T}=Float64) where {T <: Real} = begin
             x = Vector{T}(undef, N)
             x ~ [Normal(0, 2)]
         end
@@ -358,8 +358,8 @@ priors = 0 # See "new grammar" test.
 
         sample(vdemo8(), alg)
 
-        @model vdemo8(::Type{T}=Float64) where {T} = begin
-            x = Vector{T}(undef, N)
+        @model vdemo8(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
+            x = TV(undef, N)
             x ~ [InverseGamma(2, 3)]
         end
 
