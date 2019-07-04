@@ -103,8 +103,7 @@ function gradient_logp_forward(
     # Define function to compute log joint.
     logp_old = vi.logp
     function f(θ)
-        new_vi = VarInfo(vi, sampler, eltype(θ))
-        new_vi[sampler] = θ
+        new_vi = VarInfo(vi, sampler, θ)
         logp = runmodel!(model, new_vi, sampler).logp
         vi.logp = ForwardDiff.value(logp)
         return logp
@@ -142,8 +141,7 @@ function gradient_logp_reverse(
 
     # Specify objective function.
     function f(θ)
-        new_vi = VarInfo(vi, sampler, eltype(θ))
-        new_vi[sampler] = θ
+        new_vi = VarInfo(vi, sampler, θ)
         logp = runmodel!(model, new_vi, sampler).logp
         vi.logp = Tracker.data(logp)
         return logp
@@ -338,6 +336,10 @@ function Distributions.rand(rng::Random.AbstractRNG, d::TuringMvNormal)
 end
 function Distributions.logpdf(d::TuringMvNormal, x::AbstractVector)
     return -(dim(d) * log(2π) + logdet(d.C) + sum(abs2, zygote_ldiv(d.C.U', x .- d.m))) / 2
+end
+
+function Distributions.logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
+    logpdf(TuringMvNormal(d.μ, d.Σ.chol), x)
 end
 
 # Deal with ambiguities.

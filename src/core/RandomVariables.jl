@@ -183,13 +183,13 @@ function VarInfo(model::Model)
     return TypedVarInfo(vi)
 end
 
-VarInfo(old_vi::UntypedVarInfo, spl, T) = old_vi
+VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector) = old_vi
 
-function VarInfo(old_vi::TypedVarInfo, spl, T)
-    md = newmetadata(old_vi.metadata, spl, T)
-    VarInfo(md, Base.RefValue{T}(old_vi.logp), Ref(old_vi.num_produce))
+function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
+    md = newmetadata(old_vi.metadata, spl, x, 0)
+    VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))
 end
-function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, names}
+function newmetadata(metadata::NamedTuple{names}, spl, x, offset) where {names}
     # Check if the named tuple is empty and end the recursion
     length(names) === 0 && return ()
     # Take the first key in the NamedTuple
@@ -200,18 +200,18 @@ function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, name
         idcs = mdf.idcs
         vns = mdf.vns
         ranges = mdf.ranges
-        vals = similar(mdf.vals, T)
+        vals = x[(offset+1):(offset+length(mdf.vals))]
         dists = mdf.dists
         gids = mdf.gids
         orders = mdf.orders
         flags = mdf.flags
         md = Metadata(idcs, vns, ranges, vals, dists, gids, orders, flags)
 	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, T))
+        return merge(nt, newmetadata(_tail(metadata), spl, x, offset+length(mdf.vals)))
     else
         md = getfield(metadata, f)
 	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, T))
+        return merge(nt, newmetadata(_tail(metadata), spl, x, offset))
     end
 end
 
