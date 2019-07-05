@@ -46,7 +46,7 @@ function HMCState(model::Model,
 
     # Link everything if needed.
     # spl.selector.tag != :default && link!(vi, spl)
-    spl.selector.tag == :default && link!(vi, spl)
+    link!(vi, spl)
 
     # Get the initial log pdf and gradient.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
@@ -71,7 +71,7 @@ function HMCState(model::Model,
 
     # Unlink everything, if necessary.
     # spl.selector.tag != :default && invlink!(vi, spl)
-    spl.selector.tag == :default && invlink!(vi, spl)
+    invlink!(vi, spl)
 
     return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
 end
