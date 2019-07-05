@@ -45,7 +45,8 @@ function HMCState(model::Model,
     vi = spl.state.vi
 
     # Link everything if needed.
-    spl.selector.tag != :default && link!(vi, spl)
+    # spl.selector.tag != :default && link!(vi, spl)
+    spl.selector.tag == :default && link!(vi, spl)
 
     # Get the initial log pdf and gradient.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
@@ -69,7 +70,8 @@ function HMCState(model::Model,
     traj = gen_traj(spl.alg, init_ϵ)
 
     # Unlink everything, if necessary.
-    spl.selector.tag != :default && invlink!(vi, spl)
+    # spl.selector.tag != :default && invlink!(vi, spl)
+    spl.selector.tag == :default && invlink!(vi, spl)
 
     return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
 end
@@ -183,11 +185,11 @@ function sample_init!(
     end
 
     # Convert to transformed space
-    println(spl.selector.tag)
-    if spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
-    end
+    # println(spl.selector.tag)
+    # if spl.selector.tag != :default
+    #     link!(spl.state.vi, spl)
+    #     runmodel!(model, spl.state.vi, spl)
+    # end
 end
 
 """
@@ -441,7 +443,7 @@ function step!(
     Turing.DEBUG && @debug "current ϵ: $ϵ"
 
     Turing.DEBUG && @debug "X-> R..."
-    if spl.selector.tag != :default
+    if spl.selector.tag == :default
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
     end
@@ -470,7 +472,8 @@ function step!(
     end
 
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector.tag != :default && invlink!(spl.state.vi, spl)
+    spl.selector.tag == :default && invlink!(spl.state.vi, spl)
+    # spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
     return transition(spl)
 end
