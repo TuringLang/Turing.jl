@@ -28,6 +28,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @model constrained_simplex_test(obs12) = begin
             ps ~ Dirichlet(2, 3)
+            pd ~ Dirichlet(4, 1)
             for i = 1:length(obs12)
                 obs12[i] ~ Categorical(ps)
             end
@@ -131,7 +132,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # @test mean(res2[:s]) ≈ 49/24 atol=0.2
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
 
-        res3 = sample(gdemo_default, alg3)
+        res3 = sample(gdemo_default, alg3, 500)
         check_gdemo(res3)
     end
     @turing_testset "hmcda constructor" begin
