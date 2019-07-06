@@ -2,9 +2,9 @@
 # Helper functions for vectorize/reconstruct values #
 #####################################################
 
-vectorize(d::UnivariateDistribution, r::Real) = Vector{Real}([r])
-vectorize(d::MultivariateDistribution, r::AbstractVector{<:Real}) = Vector{Real}(r)
-vectorize(d::MatrixDistribution, r::AbstractMatrix{<:Real}) = Vector{Real}(vec(r))
+vectorize(d::UnivariateDistribution, r::Real) = [r]
+vectorize(d::MultivariateDistribution, r::AbstractVector{<:Real}) = copy(r)
+vectorize(d::MatrixDistribution, r::AbstractMatrix{<:Real}) = copy(vec(r))
 
 # NOTE:
 # We cannot use reconstruct{T} because val is always Vector{Real} then T will be Real.

@@ -129,9 +129,7 @@ function sample(model::Model, alg::MH;
   end
 
     vi = if resume_from == nothing
-        vi_ = VarInfo()
-        model(vi_, SampleFromUniform())
-        vi_
+        VarInfo(model)
     else
         resume_from.info[:vi]
     end

@@ -101,12 +101,16 @@ function gradient_logp_forward(
     sampler::AbstractSampler=SampleFromPrior(),
 )
     # Record old parameters.
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Define function to compute log joint.
     function f(θ)
-        vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        new_vi = VarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = ForwardDiff.value.(θ)
+        vi.logp = ForwardDiff.value(logp)
+        return logp
     end
 
     chunk_size = getchunksize(sampler)
@@ -114,10 +118,10 @@ function gradient_logp_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp.value
+    l = vi.logp
 
     # Replace old parameters to ensure this function doesn't mutate `vi`.
-    vi.vals .= vals_old
+    vi[sampler] = vals_old
     vi.logp = logp_old
 
     # Strip tracking info from θ to avoid mutating it.
@@ -143,12 +147,16 @@ function gradient_logp_reverse(
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
-    vals_old, logp_old = copy(vi.vals), copy(vi.logp)
+    vals_old, logp_old = copy(vi[sampler]), copy(vi.logp)
 
     # Specify objective function.
     function f(θ)
-        vi[sampler] = θ
-        return runmodel!(model, vi, sampler).logp
+        new_vi = VarInfo(vi, sampler, eltype(θ))
+        new_vi[sampler] = θ
+        logp = runmodel!(model, new_vi, sampler).logp
+        vi[sampler] = Tracker.data.(θ)
+        vi.logp = Tracker.data(logp)
+        return logp
     end
 
     # Compute forward and reverse passes.
@@ -156,7 +164,7 @@ function gradient_logp_reverse(
     l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     # Remove tracking info from variables in model (because mutable state).
-    vi.vals .= vals_old
+    vi[sampler] .= vals_old
     vi.logp = logp_old
     # Strip tracking info from θ to avoid mutating it.
     θ .= Tracker.data.(θ)

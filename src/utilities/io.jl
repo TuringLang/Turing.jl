@@ -146,3 +146,31 @@ function resume(c::Chains, n_iter::Int)
         reuse_spl_n=n_iter
     )
 end
+
+function split_var_str(var_str)
+    ind = findfirst(c -> c == '[', var_str)
+    inds = Vector{String}[]
+    if ind == nothing
+        return var_str, inds
+    end
+    sym = var_str[1:ind-1]
+    ind = length(sym)
+    while ind < length(var_str)
+        ind += 1
+        @assert var_str[ind] == '['
+        push!(inds, String[])
+        while var_str[ind] != ']'
+            ind += 1
+            if var_str[ind] == '['
+                ind2 = findnext(c -> c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2]))
+                ind = ind2+1
+            else
+                ind2 = findnext(c -> c == ',' || c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2-1]))
+                ind = ind2
+            end
+        end
+    end
+    return sym, inds
+end
