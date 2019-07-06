@@ -69,7 +69,7 @@ function grad!(
     args...
 ) where AD
     error("Turing.Variational.grad!: unmanaged variational inference algorithm: "
-          "$(typeof(alg))")
+          * "$(typeof(alg))")
 end
 
 """

@@ -19,7 +19,7 @@ center_diag_gaussian_inv(η, μ, σ) = (η .* σ) .+ μ
 
 
 # Mean-field approximation used by ADVI
-struct MeanField{T, <:AbstractVector{<: Distribution}} <: VariationalPosterior where T <: Real
+struct MeanField{T, TDists} <: VariationalPosterior where {T <: Real, TDists <: AbstractVector{<: Distribution}}
     μ::Vector{T}
     ω::Vector{T}
     dists::TDists

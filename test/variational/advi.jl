@@ -2,7 +2,7 @@ using Turing, Random, Test
 
 include("../test_utils/AllUtils.jl")
 
-@testset "vi.jl" begin
+@testset "advi.jl" begin
     @turing_testset "advi constructor" begin
         Random.seed!(0)
         N = 500
