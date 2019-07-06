@@ -109,10 +109,6 @@ function grad!(
     ForwardDiff.gradient!(out, f, θ, config)
 end
 
-# TODO: implement for `Tracker`
-# function grad(vo::ELBO, alg::ADVI, q::MeanField, model::Model, f, autodiff::Val{:backward})
-#     vo_tracked, vo_pullback = Tracker.forward()
-# end
 function grad!(
     vo,
     alg::VariationalInference{AD},
@@ -144,9 +140,6 @@ function optimize!(
     θ;
     optimizer = ADAGrad()
 ) where AD
-    # TODO: this default constructor for `optimizer` is probably dangerous because of
-    # the `acc` field being an `IdDict`!!!
-
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
@@ -161,20 +154,11 @@ function optimize!(
     # num_params = size(var_info.vals, 1)
     num_params = length(q)
 
-    # # buffer
-    # θ = zeros(2 * num_params)
-
-    # HACK: re-use previous gradient `acc` if equal in value
-    # Can cause issues if two entries have idenitical values
-    if θ ∉ keys(optimizer.acc)
-        vs = [v for v ∈ keys(optimizer.acc)]
-        idx = findfirst(w -> vcat(q.μ, q.ω) == w, vs)
-        if idx != nothing
-            @info "[$alg_name] Re-using previous optimizer accumulator"
-            θ .= vs[idx]
-        end
-    else
-        @info "[$alg_name] Already present in optimizer acc"
+    # TODO: really need a better way to warn the user about potentially
+    # not using the correct accumulator
+    if θ isa Union{RMSProp, ADAGrad} && θ ∉ keys(optimizer.acc)
+        # this message should only occurr once in the optimization process
+        @info "[$alg_name] Optimization accumulator created for θ"
     end
     
     diff_result = DiffResults.GradientResult(θ)
@@ -192,9 +176,6 @@ function optimize!(
 
     # add criterion? A running mean maybe?
     time_elapsed = @elapsed while (i < max_iters) # & converged
-        # TODO: separate into a `grad(...)` call;
-        # need to manually provide `diff_result` buffers
-        # ForwardDiff.gradient!(diff_result, f, x)
         grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
 
         # apply update rule

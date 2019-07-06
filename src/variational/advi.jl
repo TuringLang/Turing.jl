@@ -31,7 +31,6 @@ function vi(model::Model, alg::ADVI; optimizer = ADAGrad())
     θ = optimize(elbo, alg, q, model; optimizer = optimizer)
     μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
 
-    # TODO: make mutable instead?
     return MeanField(μ, ω, dists, ranges) 
 end
 
@@ -65,6 +64,7 @@ function (elbo::ELBO)(
     elbo_acc = 0.0
 
     # TODO: instead use `rand(q, num_samples)` and iterate through?
+    # Requires new interface for Bijectors.jl
 
     for i = 1:num_samples
         # iterate through priors, sample and update
