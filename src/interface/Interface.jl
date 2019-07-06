@@ -100,7 +100,7 @@ function sample(
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return sample(GLOBAL_RNG, ℓ, s, N)
+    return sample(GLOBAL_RNG, ℓ, s, N; kwargs...)
 end
 
 """
