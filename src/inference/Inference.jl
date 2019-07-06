@@ -255,9 +255,9 @@ function observe(spl::A,
 
 end
 
-##########################################
-# Default definitions for the interface. #
-##########################################
+#########################################
+# Default definitions for the interface #
+#########################################
 function sample(
     model::ModelType,
     alg::AlgType,
@@ -307,6 +307,38 @@ function sample_end!(
     # Silence the default API function.
 end
 
+# Retrieve the VarNames from a varinfo at the end of sampling.
+function _get_vi_syms(vi::VarInfo)
+    nms = String[]
+
+    # TODO: Remove val after Turing is migrated to the
+    # new interface. Not needed. CSP 2019-07-05
+    val = Float64[]
+    pairs = _get_vi_syms(vi.metadata, vi)
+    for (k, v) in pairs
+        Utilities.flatten(nms, val, k, v)
+    end
+    return nms
+end
+function _get_vi_syms(md::Metadata, vi::VarInfo)
+    pairs = []
+    for vn in keys(md.idcs)
+        push!(pairs, string(vn) => vi[vn])
+    end
+    return pairs
+end
+function _get_vi_syms(metadata::NamedTuple{names}, vi::VarInfo) where {names}
+    pairs = []
+    length(names) === 0 && return pairs
+    for name in names
+        mdf = getfield(metadata, name)
+        for vn in keys(mdf.idcs)
+            push!(pairs, string(name) => vi[vn])
+        end
+    end
+    return pairs
+end
+
 # Default Chains constructor.
 function Chains(
     ::AbstractRNG,
@@ -314,8 +346,14 @@ function Chains(
     spl::Sampler,
     N::Integer,
     ts::Vector{T};
+    discard_adapt::Bool = true,
     kwargs...
 ) where {ModelType<:Sampleable, T<:AbstractTransition}
+    # Check if we have adaptation samples.
+    if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
+        ts = ts[(spl.alg.n_adapts+1):end]
+    end
+
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
     extra_params = additional_parameters(T)
@@ -324,8 +362,9 @@ function Chains(
     extra_values = vcat(map(t -> [getproperty(t, p) for p in extra_params], ts))
 
     # Extract names & construct param array.
-    nms = vcat(keys(spl.state.vi.metadata)..., extra_params...)
-    parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:N]...)
+    pnames = _get_vi_syms(spl.state.vi)
+    nms = vcat(pnames..., extra_params...)
+    parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:length(ts)]...)
 
     # If the state field has final_logevidence, grab that.
     le = :final_logevidence in fieldnames(typeof(spl.state)) ?
