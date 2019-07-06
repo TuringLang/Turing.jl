@@ -118,9 +118,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(1000, 0.8, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
-        alg3 = Gibbs(1500,
-            PG(10, :s),
-            HMCDA(500, 0.8, 0.005, :m))
+        alg3 = Gibbs(PG(10, :s), HMCDA(500, 0.8, 0.005, :m))
         # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
@@ -138,15 +136,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
-        alg = HMCDA( 200, 0.8, 0.75)
+        alg = HMCDA(200, 0.8, 0.75)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
         alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
@@ -158,19 +156,19 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
     @turing_testset "nuts constructor" begin
         alg = NUTS(200, 0.65)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
         alg = NUTS(0.65)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
         alg = NUTS(200, 0.65, :m)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
     end
     @turing_testset "check discard" begin
-        alg = NUTS(500, 100, 0.8)
+        alg = NUTS(100, 0.8)
 
-        c1 = sample(gdemo_default, alg, discard_adapt = true)
-        c2 = sample(gdemo_default, alg, discard_adapt = false)
+        c1 = sample(gdemo_default, alg, 500, discard_adapt = true)
+        c2 = sample(gdemo_default, alg, 500, discard_adapt = false)
 
         @test size(c1, 1) == 400
         @test size(c2, 1) == 500
