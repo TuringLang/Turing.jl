@@ -116,7 +116,7 @@ mutable struct Sampler{T, S<:SamplerState} <: AbstractSampler
 end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
-Sampler(alg, model::Model, s::Selector) = Sampler(alg, s)
+# Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
 
 include("utilities/Utilities.jl")
 using .Utilities
