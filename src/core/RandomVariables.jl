@@ -680,10 +680,17 @@ end
 Samples from `model` using the sampler `spl` storing the sample and log joint
 probability in `vi`.
 """
-function runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
+function runmodel!(
+    model::Model,
+    vi::AbstractVarInfo,
+    spl::T = SampleFromPrior()
+) where T<:AbstractSampler
     setlogp!(vi, 0)
-    if :eval_num in fieldnames(typeof(spl.state))
-        spl.state.eval_num += 1
+    # Check that the sampler has the state field.
+    if !(T <: Union{SampleFromPrior, SampleFromUniform})
+        if :eval_num in fieldnames(typeof(spl.state ))
+            spl.state.eval_num += 1
+        end
     end
     model(vi, spl)
     return vi
