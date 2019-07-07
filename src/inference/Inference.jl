@@ -19,8 +19,8 @@ import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Utilities: Sample, save, resume, set_resume!
-import ..Interface: AbstractTransition, step!, sample_init!, transitions_init,
-    sample_end!
+import ..Interface: AbstractTransition, step!, sample_init!,
+    transitions_init, sample_end!
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -122,8 +122,8 @@ end
 """
 A blank `SamplerState` that contains only `VarInfo` information.
 """
-struct BlankState <: SamplerState
-    vi :: TypedVarInfo
+mutable struct BlankState{VIType<:VarInfo} <: SamplerState
+    vi :: VIType
 end
 
 #######################################
