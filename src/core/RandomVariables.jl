@@ -192,7 +192,7 @@ function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
     md = newmetadata(old_vi.metadata, spl, x, 0)
     VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))
 end
-function newmetadata(metadata::NamedTuple{names}, spl, x, offset) where {names}
+@inline function newmetadata(metadata::NamedTuple{names}, spl, x, offset) where {names}
     # Check if the named tuple is empty and end the recursion
     length(names) === 0 && return ()
     # Take the first key in the NamedTuple
