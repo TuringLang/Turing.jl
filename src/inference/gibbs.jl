@@ -92,6 +92,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     return spl
 end
 
+# First step.
 function step!(
     rng::AbstractRNG,
     model::Model,
@@ -133,6 +134,51 @@ function step!(
 
     return transition(spl)
 end
+
+# Steps 2:N
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer,
+    t::TransitionType;
+    kwargs...
+) where TransitionType<:AbstractTransition
+    Turing.DEBUG && @debug "Gibbs stepping..."
+
+    time_elapsed = 0.0
+    lp = nothing; ϵ = nothing; eval_num = nothing
+
+    # Iterate through each of the samplers.
+    for local_spl in spl.state.samplers
+        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+
+        Turing.DEBUG && @debug "recording old θ..."
+
+        # Update the sampler's VarInfo.
+        local_spl.state.vi = spl.state.vi
+
+        # Step through the local sampler.
+        time_elapsed_thin =
+            @elapsed trans = step!(rng, model, local_spl, N, t; kwargs...)
+
+        # After the step, update the master varinfo.
+        spl.state.vi = local_spl.state.vi
+
+        # Uncomment when developing thinning functionality.
+        # Retrieve symbol to store this subsample.
+        # symbol_id = Symbol(local_spl.selector.gid)
+        #
+        # # Store the subsample.
+        # spl.state.subsamples[symbol_id][] = trans
+
+        # Record elapsed time.
+        time_elapsed += time_elapsed_thin
+    end
+
+    return transition(spl)
+end
+
 
 function sample(
                 model::Model,
