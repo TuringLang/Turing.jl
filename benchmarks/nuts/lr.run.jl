@@ -1,23 +1,22 @@
 using Turing, TuringBenchmarks.TuringTools
+using LinearAlgebra
 using StatsFuns: logistic
+
+Turing.setadbackend(:forward_diff)
 
 include("lr_helper.jl")
 
-x, y = readlrdata()
+X, Y = readlrdata()
 
-@assert all(yi -> 0 <= yi <= 1, y)
-
-@model lr_nuts(x, y, σ²) = begin
+@model lr_nuts(x, y, σ) = begin
 
     N,D = size(x)
 
-    w0 ~ Normal(0, sqrt(σ²))
-    w ~ MvNormal(zeros(D), ones(D)*sqrt(σ²))
-
-    v = logistic.(x*w .+ w0)
+    α ~ Normal(0, σ)
+    β ~ MvNormal(zeros(D), ones(D)*σ)
 
     for n = 1:N
-        y[n] ~ Bernoulli(v[n])
+        y[n] ~ BinomialLogit(1, dot(x[n,:], β) + α)
     end
 end
 
@@ -27,7 +26,8 @@ n_adapts = 1_000
 
 # Sampling
 bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
-                             sample(lr_nuts(x, y, 100), NUTS(n_samples, n_adapts, 0.65)));
+                             sample(lr_nuts(x, y, 100),
+                             NUTS(n_samples, n_adapts, 0.65)));
 
 LOG_DATA = build_log_data("[NUTS] LogisticRegression-Benchmark", bench_res...)
 print_log(LOG_DATA)
