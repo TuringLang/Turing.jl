@@ -12,13 +12,19 @@ mutable struct TruncatedADAGrad
     acc::IdDict
 end
 
-TruncatedADAGrad(η = 0.1, τ = 1.0, n = 100) = TruncatedADAGrad(η, τ, n, IdDict(), IdDict(), IdDict())
+function TruncatedADAGrad(η = 0.1, τ = 1.0, n = 100)
+    TruncatedADAGrad(η, τ, n, IdDict(), IdDict(), IdDict())
+end
 
 function Optimise.apply!(o::TruncatedADAGrad, x, Δ)
     η = o.eta
     τ = o.tau
 
-    g² = get!(o.history, x, [fill(0.0, size(x)) for j = 1:o.n])::Array{typeof(Tracker.data(x)), 1}
+    g² = get!(
+        o.history,
+        x,
+        [fill(0.0, size(x)) for j = 1:o.n]
+    )::Array{typeof(Tracker.data(x)), 1}
     i = get!(o.iters, x, 1)::Int
 
     # Example: suppose i = 12 and o.n = 10
