@@ -1,7 +1,7 @@
 readlrdata() = begin
     x = Matrix{Float64}(undef, 0, 24)
     y = Vector{Float64}()
-    open("lr_nuts.data") do f
+    open(joinpath(dirname(@__FILE__), "lr_nuts.data")) do f
         while !eof(f)
             raw_line = readline(f)
             s = split(raw_line, r"[  ]+")[1:end-1]
