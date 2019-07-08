@@ -85,6 +85,20 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
 
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
+    @eval getspace(::$alg{space}) where {space} = space
+end
+for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
+    @eval getspace(::$alg{<:Any, space}) where {space} = space
+end
+
+@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+@inline floatof(::Type) = Real
+
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+
 ## Fallback functions
 
 # utility funcs for querying sampler information

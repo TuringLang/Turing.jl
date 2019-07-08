@@ -55,8 +55,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ad_test_f = gdemo_default
         vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
-        svn = collect(Iterators.filter(vn -> vn.sym == :s, keys(vi)))[1]
-        mvn = collect(Iterators.filter(vn -> vn.sym == :m, keys(vi)))[1]
+        svn = vi.vns[1]
+        mvn = vi.vns[2]
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 

@@ -52,14 +52,14 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         else
             @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
-        space = union(space, sub_alg.space)
+        space = (space..., getspace(sub_alg)...)
     end
 
     # Sanity check for space
-    @assert issubset(Set(get_pvars(model)), space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
+    @assert issubset(get_pvars(model), space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(get_pvars(model)))"
 
-    if Set(get_pvars(model)) != space
-        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(get_pvars(model))))")
+    if !(issetequal(get_pvars(model), space))
+        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
     end
 
     info[:samplers] = samplers

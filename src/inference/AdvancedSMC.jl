@@ -20,16 +20,18 @@ Usage:
 SMC(1000)
 ```
 """
-mutable struct SMC{T, F} <: InferenceAlgorithm
+mutable struct SMC{space, F} <: InferenceAlgorithm
     n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
-    space                 ::  Set{T}
 end
-SMC(n) = SMC(n, resample_systematic, 0.5, Set())
-function SMC(n_particles::Int, space...)
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    SMC(n_particles, resample_systematic, 0.5, _space)
+function SMC(n_particles::Int, resampler::F, resampler_threshold::Float64, space::Tuple) where {F}
+    return SMC{space, F}(n_particles, resampler, resampler_threshold)
+end
+SMC(n) = SMC(n, resample_systematic, 0.5, ())
+SMC(n_particles::Int, ::Tuple{}) = SMC(n_particles)
+function SMC(n_particles::Int, space::Symbol...)
+    SMC(n_particles, resample_systematic, 0.5, space)
 end
 
 function Sampler(alg::SMC, s::Selector)
@@ -97,16 +99,17 @@ Usage:
 PG(100, 100)
 ```
 """
-mutable struct PG{T, F} <: InferenceAlgorithm
+mutable struct PG{space, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   resampler             ::    F           # function to resample
-  space                 ::    Set{T}      # sampling space, emtpy means all
 end
-PG(n1::Int, n2::Int) = PG(n1, n2, resample_systematic, Set())
-function PG(n1::Int, n2::Int, space...)
-  _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  PG(n1, n2, resample_systematic, _space)
+function PG(n_particles::Int, n_iters::Int, resampler::F, space::Tuple) where F
+    return PG{space, F}(n_particles, n_iters, resampler)
+end
+PG(n1::Int, n2::Int, ::Tuple{}) = PG(n1, n2)
+function PG(n1::Int, n2::Int, space::Symbol...)
+    PG(n1, n2, resample_systematic, space)
 end
 
 const CSMC = PG # type alias of PG as Conditional SMC
@@ -219,7 +222,7 @@ function assume(  spl::Sampler{T},
                 ) where T<:Union{PG,SMC}
 
     vi = current_trace().vi
-    if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
         if ~haskey(vi, vn)
             r = rand(dist)
             push!(vi, vn, r, dist, spl)
@@ -295,16 +298,18 @@ Arguments:
 - `parameters_algs::Tuple{MH}` : An [`MH`](@ref) algorithm, which includes a
 sample space specification.
 """
-mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
+mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
     n_iters               ::    Int               # number of iterations
     algs                  ::    A                 # Proposals for state & parameters
-    space                 ::    Set{T}            # sampling space, emtpy means all
+end
+function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
+    return PMMH{space, A}(n_iters, algs)
 end
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
-    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set())
+    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), ())
 end
 
-PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
+PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), ())
 
 function Sampler(alg::PMMH, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
@@ -324,17 +329,17 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end
         if typeof(sub_alg) == MH && sub_alg.n_iters != 1
-            warn("[$alg_str] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
+            @warn("[$alg_str] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
         end
-        space = union(space, sub_alg.space)
+        space = (space..., getspace(sub_alg)...)
     end
 
     # Sanity check for space
     if !isempty(space)
-        @assert issubset(Set(get_pvars(model)), space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
+        @assert issubset(get_pvars(model), space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(get_pvars(model)))"
 
-        if Set(get_pvars(model)) != space
-            warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(get_pvars(model))))")
+        if !(issetequal(get_pvars(model), space))
+            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
         end
     end
 
@@ -354,7 +359,7 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
 
     Turing.DEBUG && @debug "Propose new parameters from proposals..."
     for local_spl in spl.info[:samplers][1:end-1]
-        Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
+        Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(getspace(local_spl.alg))..."
         propose(model, local_spl, vi)
         if local_spl.info[:violating_support] violating_support=true; break end
         new_prior_prob += local_spl.info[:prior_prob]
@@ -485,20 +490,21 @@ Arguments:
 
 A paper on this can be found [here](https://arxiv.org/abs/1602.05128).
 """
-mutable struct IPMCMC{T, F} <: InferenceAlgorithm
+mutable struct IPMCMC{space, F} <: InferenceAlgorithm
   n_particles           ::    Int         # number of particles used
   n_iters               ::    Int         # number of iterations
   n_nodes               ::    Int         # number of nodes running SMC and CSMC
   n_csmc_nodes          ::    Int         # number of nodes CSMC
   resampler             ::    F           # function to resample
-  space                 ::    Set{T}      # sampling space, emtpy means all
 end
-IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16, resample_systematic, Set())
-IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)), resample_systematic, Set())
-IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int) = IPMCMC(n1, n2, n3, n4, resample_systematic, Set())
-function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space...)
-  _space = isa(space, Symbol) ? Set([space]) : Set(space)
-  IPMCMC(n1, n2, n3, n4, resample_systematic, _space)
+function IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int, resampler::F, space::Tuple) where {F}
+    return IPMCMC{space, F}(n_particles, n_iters, n_nodes, n_csmc_nodes, resampler)
+end
+IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16)
+IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)))
+IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, ::Tuple{}) = IPMCMC(n1, n2, n3, n4)
+function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space::Symbol...)
+  IPMCMC(n1, n2, n3, n4, resample_systematic, space)
 end
 
 function Sampler(alg::IPMCMC, s::Selector)
@@ -507,8 +513,8 @@ function Sampler(alg::IPMCMC, s::Selector)
   # Create SMC and CSMC nodes
   samplers = Array{Sampler}(undef, alg.n_nodes)
   # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
-  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, alg.space)
-  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, false, alg.space)
+  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, getspace(alg))
+  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, getspace(alg))
 
   for i in 1:alg.n_csmc_nodes
     samplers[i] = Sampler(default_CSMC, Selector(Symbol(typeof(default_CSMC))))

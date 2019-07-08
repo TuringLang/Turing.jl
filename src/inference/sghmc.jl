@@ -25,32 +25,33 @@ Arguments:
 - `momentum_decay::Float64` : Momentum decay variable.
 
 """
-mutable struct SGHMC{AD, T} <: StaticHamiltonian{AD}
+mutable struct SGHMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     n_iters::Int       # number of samples
     learning_rate::Float64   # learning rate
     momentum_decay::Float64   # momentum decay
-    space::Set{T}    # sampling space, emtpy means all
-    metricT::Type{<:AHMC.AbstractMetric}
 end
 SGHMC(args...) = SGHMC{ADBackend()}(args...)
+function SGHMC{AD}(n_iters::Int, learning_rate::Float64, momentum_decay::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+    return SGHMC{AD, space, metricT}(n_iters, learning_rate, momentum_decay)
+end
 
 function SGHMC{AD}(
     n_iters,
     learning_rate,
-    momentum_decay;
-    metricT=AHMC.UnitEuclideanMetric
-    ) where AD
-    return SGHMC{AD, Any}(n_iters, learning_rate, momentum_decay, Set(), metricT)
+    momentum_decay,
+    ::Tuple{};
+    kwargs...
+) where AD
+    return SGHMC{AD}(n_iters, learning_rate, momentum_decay; kwargs...)
 end
 function SGHMC{AD}(
     n_iters,
     learning_rate,
     momentum_decay,
-    space...;
+    space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGHMC{AD, eltype(_space)}(n_iters, learning_rate, momentum_decay, _space, metricT)
+    return SGHMC{AD}(n_iters, learning_rate, momentum_decay, metricT, space)
 end
 
 function step(
@@ -133,31 +134,32 @@ Reference:
 Welling, M., & Teh, Y. W. (2011).  Bayesian learning via stochastic gradient Langevin dynamics.
 In Proceedings of the 28th international conference on machine learning (ICML-11) (pp. 681-688).
 """
-mutable struct SGLD{AD, T} <: StaticHamiltonian{AD}
+mutable struct SGLD{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     n_iters :: Int       # number of samples
     ϵ :: Float64   # constant scale factor of learning rate
-    space   :: Set{T}    # sampling space, emtpy means all
-    metricT :: Type{<:AHMC.AbstractMetric}
+end
+function SGLD{AD}(n_iters::Int, ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+    return SGLD{AD, space, metricT}(n_iters, ϵ)
 end
 
 SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
 
 function SGLD{AD}(
     n_iters,
-    ϵ;
-    metricT=AHMC.UnitEuclideanMetric
+    ϵ,
+    ::Tuple{};
+    kwargs...
 ) where AD
-    SGLD{AD, Any}(n_iters, ϵ, Set(), metricT)
+    return SGLD{AD}(n_iters, ϵ; kwargs...)
 end
 
 function SGLD{AD}(
     n_iters,
     ϵ,
-    space...;
+    space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SGLD{AD, eltype(_space)}(n_iters, ϵ, _space, metricT)
+    return SGLD{AD}(n_iters, ϵ, metricT, space)
 end
 
 function step(

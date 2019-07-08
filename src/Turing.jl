@@ -72,7 +72,7 @@ end
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function runmodel! end
-getspace(alg) = Tuple(alg.space)
+function getspace end
 
 struct Selector
     gid :: UInt64
@@ -88,6 +88,9 @@ Robust initialization method for model parameters in Hamiltonian samplers.
 """
 struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
+
+getspace(::SampleFromPrior) = ()
+getspace(::SampleFromUniform) = ()
 
 """
     Sampler{T}
