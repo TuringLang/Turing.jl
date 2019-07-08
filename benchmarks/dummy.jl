@@ -1,4 +1,4 @@
-using Turing, TuringBenchmarks.TuringTools, TuringBenchmarks.Reporter
+using Turing, ContinuousBenchmarks.TuringTools, ContinuousBenchmarks.Reporter
 
 data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 

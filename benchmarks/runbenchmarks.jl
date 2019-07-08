@@ -7,9 +7,8 @@ PROJECT_DIR = abspath(@__DIR__) |> dirname
 Pkg.build("Turing")
 
 BENCHMARK_REV = "master"
-BENCHMARK_REV = "log_report"
-Pkg.add(PackageSpec(url="https://github.com/TuringLang/TuringBenchmarks.git", rev=BENCHMARK_REV))
-Pkg.build("TuringBenchmarks")
+Pkg.add(PackageSpec(url="https://github.com/TuringLang/ContinuousBenchmarks.jl", rev=BENCHMARK_REV))
+Pkg.build("ContinuousBenchmarks")
 Pkg.resolve()
 
 # prepare BenchMark information
@@ -37,10 +36,10 @@ if get(ENV, "TRAVIS", "false") == "true"
 end
 
 # run
-code_run = """using TuringBenchmarks
-using TuringBenchmarks.Runner
-TuringBenchmarks.set_project_path("$PROJECT_DIR")
-TuringBenchmarks.set_benchmark_files(joinpath("$PROJECT_DIR", "benchmarks/benchmark_list.jl"))
+code_run = """using ContinuousBenchmarks
+using ContinuousBenchmarks.Runner
+ContinuousBenchmarks.set_project_path("$PROJECT_DIR")
+ContinuousBenchmarks.set_benchmark_files(joinpath("$PROJECT_DIR", "benchmarks/benchmark_list.jl"))
 Runner.run_bm_on_travis("$BM_JOB_NAME", ("$BASE_BRANCH", "$CURRENT_BRANCH"), "$COMMIT_SHA")
 """
 run(`julia --project=$PROJECT_DIR -e $code_run`)
