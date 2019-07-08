@@ -276,7 +276,7 @@ priors = 0 # See "new grammar" test.
         chn = sample(gdemo_default, alg);
     end
     @testset "vectorization" begin
-        @model vdemo(x) = begin
+        @model vdemo1(x) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
             x ~ [Normal(m, sqrt(s))]
@@ -285,7 +285,7 @@ priors = 0 # See "new grammar" test.
 
         alg = HMC(250, 0.01, 5)
         x = randn(1000)
-        res = sample(vdemo(x), alg)
+        res = sample(vdemo1(x), alg)
 
         D = 2
         @model vdemo2(x) = begin
@@ -310,40 +310,19 @@ priors = 0 # See "new grammar" test.
 
         t_loop = @elapsed res = sample(vdemo3(), alg)
 
-        @model vdemo4(::Type{T}=Float64) where {T} = begin
-            x = Vector{T}(undef, N)
-            for i = 1:N
-                x[i] ~ Normal(0, sqrt(4))
-            end
-        end
-
-        t_loop = @elapsed res = sample(vdemo4(), alg)
-        t_loop = @elapsed res = sample(vdemo4(Float64), alg)
-        t_loop = @elapsed res = sample(vdemo4(T=Float64), alg)
-
-
         # Test for vectorize UnivariateDistribution
-        @model vdemo5() = begin
+        @model vdemo4() = begin
           x = Vector{Real}(undef, N)
           x ~ [Normal(0, 2)]
         end
 
-        t_vec = @elapsed res = sample(vdemo5(), alg)
+        t_vec = @elapsed res = sample(vdemo4(), alg)
 
-        @model vdemo6(::Type{T}=Float64) where {T <: Real} = begin
-            x = Vector{T}(undef, N)
-            x ~ [Normal(0, 2)]
-        end
-  
-        t_vec = @elapsed res = sample(vdemo6(), alg)
-        t_vec = @elapsed res = sample(vdemo6(Float64), alg)
-        t_vec = @elapsed res = sample(vdemo6(T=Float64), alg)
-  
-        @model vdemo7() = begin
-          x ~ MvNormal(zeros(N), 2 * ones(N))
+        @model vdemo5() = begin
+            x ~ MvNormal(zeros(N), 2 * ones(N))
         end
 
-        t_mv = @elapsed res = sample(vdemo7(), alg)
+        t_mv = @elapsed res = sample(vdemo5(), alg)
 
         println("Time for")
         println("  Loop : $t_loop")
@@ -351,21 +330,47 @@ priors = 0 # See "new grammar" test.
         println("  Mv   : $t_mv")
 
         # Transformed test
-        @model vdemo8() = begin
-          x = Vector{Real}(undef, N)
-          x ~ [InverseGamma(2, 3)]
+        @model vdemo6() = begin
+            x = Vector{Real}(undef, N)
+            x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo8(), alg)
+        sample(vdemo6(), alg)    
+    end
+    @testset "Type parameters" begin
+        N = 10
+        setchunksize(N)
+        alg = HMC(250, 0.01, 5)
+        x = randn(1000)
+        @model vdemo1(::Type{T}=Float64) where {T} = begin
+            x = Vector{T}(undef, N)
+            for i = 1:N
+                x[i] ~ Normal(0, sqrt(4))
+            end
+        end
 
-        @model vdemo8(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
+        t_loop = @elapsed res = sample(vdemo1(), alg)
+        t_loop = @elapsed res = sample(vdemo1(Float64), alg)
+        t_loop = @elapsed res = sample(vdemo1(T=Float64), alg)
+
+        @model vdemo2(::Type{T}=Float64) where {T <: Real} = begin
+            x = Vector{T}(undef, N)
+            x ~ [Normal(0, 2)]
+        end
+
+        t_vec = @elapsed res = sample(vdemo2(), alg)
+        t_vec = @elapsed res = sample(vdemo2(Float64), alg)
+        t_vec = @elapsed res = sample(vdemo2(T=Float64), alg)
+
+        @model vdemo3(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
             x = TV(undef, N)
             x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo8(), alg)
-        sample(vdemo8(Float64), alg)
-        sample(vdemo8(T=Float64), alg)
+        sample(vdemo3(), alg)
+        sample(vdemo3(Vector{Float64}), alg)
+        sample(vdemo3(TV=Vector{Float64}), alg)
+
     end
     @testset "tilde" begin
         model_info = Dict(

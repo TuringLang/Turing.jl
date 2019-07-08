@@ -344,8 +344,12 @@ function Distributions.logpdf(d::TuringMvNormal, x::AbstractVector)
 end
 
 function Distributions.logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
-    logpdf(TuringMvNormal(d.μ, d.Σ.chol), x)
+    logpdf(TuringMvNormal(d.μ, getchol(d.Σ)), x)
 end
+
+getchol(m::PDMats.AbstractPDMat) = m.chol
+getchol(m::PDMats.PDiagMat) = cholesky(Diagonal(m.diag))
+getchol(m::PDMats.ScalMat) = cholesky(Diagonal(fill(m.value, m.dim)))
 
 # Deal with ambiguities.
 function Base.:*(
