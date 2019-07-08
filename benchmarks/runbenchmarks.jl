@@ -7,6 +7,7 @@ PROJECT_DIR = abspath(@__DIR__) |> dirname
 Pkg.build("Turing")
 
 BENCHMARK_REV = "master"
+BENCHMARK_REV = "log_report"
 Pkg.add(PackageSpec(url="https://github.com/TuringLang/TuringBenchmarks.git", rev=BENCHMARK_REV))
 Pkg.build("TuringBenchmarks")
 Pkg.resolve()
