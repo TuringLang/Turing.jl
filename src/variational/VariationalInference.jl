@@ -16,7 +16,8 @@ import ..Core: getchunksize, getADtype
 export
     vi,
     ADVI,
-    ELBO
+    ELBO,
+    TruncatedADAGrad
 
 
 abstract type VariationalInference{AD} end
@@ -197,6 +198,9 @@ include("distributions.jl")
 
 # objectives
 include("objectives.jl")
+
+# optimisers
+include("optimisers.jl")
 
 # VI algorithms
 include("advi.jl")

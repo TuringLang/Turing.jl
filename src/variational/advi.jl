@@ -88,7 +88,8 @@ function (elbo::ELBO)(
 
             # add the log-det-jacobian of inverse transform;
             # `logabsdet` returns `(log(abs(det(M))), sign(det(M)))` so return first entry
-            elbo_acc += logabsdet(jac_inv_transform(prior, ζ))[1] / num_samples
+            # add `eps` to ensure SingularException does not occurr in `logabsdet`
+            elbo_acc += logabsdet(jac_inv_transform(prior, ζ) .+ eps(T))[1] / num_samples
         end
 
         # compute log density

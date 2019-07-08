@@ -51,8 +51,6 @@ for seed ∈ seeds
 
         θ = vcat(q.μ, q.ω)
         # θ = zeros(2 * length(q))
-        
-        empty!(opt.acc)
 
         history = [elbo(advi, q, m, 1000)]     # history of objective evaluations
 
