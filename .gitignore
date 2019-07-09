@@ -20,5 +20,6 @@ docs/site/_site/
 docs/site/assets/
 docs/site/*.md
 docs/site/.sass-cache/
+docs/site/node_modules/
 
 .DS_Store
