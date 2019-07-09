@@ -2,7 +2,7 @@ using Turing, ContinuousBenchmarks.TuringTools, ContinuousBenchmarks.Reporter
 
 data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
-log_report("Dummy Bnechmark start!")
+log_report("Dummy Benchmark started!")
 
 @model constrained_test(obs) = begin
     p ~ Beta(2,2)
