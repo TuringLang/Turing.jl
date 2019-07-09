@@ -19,15 +19,10 @@ BENCHMARK_FILES = map(BENCHMARK_FILES) do x joinpath(@__DIR__, x) end
 
 COMMENT_TEMPLATES = Dict{Symbol, String}()
 COMMENT_TEMPLATES[:CI_BM_COMPLETE_FOR_COMMIT] = """
-!!!THIS IS A CUSTOMIZED COMMENT IN "$(@__FILE__)"!!!
 
-The benchmark job for this commit is finished.
-
-The report is committed in this commit: {{{ :report_repo }}}#{{{ :commit_id }}}.
-
-You can see the report at {{{ :report_url }}}.
-
-Below is the log reported from the benchmark:
+The benchmark job for this commit is complete. 
+Here is the benchmark [report]( {{{ :report_url }}}) and [commit]({{{ :report_repo }}}@{{{ :commit_id }}}). 
+The benchmark log (printted via `log_report`) can be found below.
 
 ```
 {{#:report_logs}}
