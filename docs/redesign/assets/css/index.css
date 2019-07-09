@@ -1,0 +1,446 @@
+h1, h2, h3 {
+  font-family: "Segoe UI","Helvetica Neue","Helvetica",Arial,sans-serif;
+  font-weight: 100; }
+
+h4, .faux-h4 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-transform: uppercase; }
+
+a {
+  color: #0072be; }
+  a:hover, a:focus {
+    color: #23527c; }
+
+.home-page .update-banner {
+  padding: 12px;
+  text-align: center;
+  background-color: #e3e3e3;
+  color: #1e1e1e;
+  font-size: 1.6rem; }
+  .home-page .update-banner p {
+    padding: 0 12%;
+    margin: 0px; }
+  .home-page .update-banner a {
+    color: #0258e2;
+    text-decoration: none; }
+    .home-page .update-banner a:hover {
+      text-decoration: underline; }
+.home-page .jumbotron {
+  padding-top: 30px;
+  margin-bottom: 0px;
+  background: #373277;
+  background-repeat: no-repeat;
+  background-position: bottom; 
+  background-size: 100% 70%;
+  color: #FFF; 
+  background-image: url("/assets/images/turing-logo-wide.svg");}
+  .home-page .jumbotron .left {
+    margin: 0px -15px; }
+    .home-page .jumbotron .left h1 {
+      font-size: 5rem;
+      font-family: "Segoe UI","Helvetica Neue","Helvetica",Arial,sans-serif;
+      font-weight: 100;
+      color: inherit;
+      margin: .67em 0px 10px;
+      line-height: 1.1em; }
+      .home-page .jumbotron .left h1 strong {
+        display: block;
+        font-weight: normal; }
+    .home-page .jumbotron .left .lead p {
+      font-weight: 300;
+      font-size: 1.7rem;
+      color: rgba(255, 255, 255, 0.6);}
+    .home-page .jumbotron .left #download-buttons {
+      padding: 0;
+      max-width: 27.7rem;
+      position: relative;
+      margin: auto; }
+      .home-page .jumbotron .left #download-buttons .primary-buttons {
+        overflow: hidden; }
+        .home-page .jumbotron .left #download-buttons .primary-buttons .link-button {
+          height: 6.5rem;
+          color: white;
+          background-color: #477a32;
+          display: inline-block;
+          position: relative;
+          cursor: pointer;
+          margin-top: 0px; }
+          .home-page .jumbotron .left #download-buttons .primary-buttons .link-button:focus, .home-page .jumbotron .left #download-buttons .primary-buttons .link-button:hover {
+            background-color: #58973e; }
+        .home-page .jumbotron .left #download-buttons .primary-buttons .left-btn {
+          width: CALC(100% - 40px);
+          float: left; }
+          .home-page .jumbotron .left #download-buttons .primary-buttons .left-btn span {
+            position: absolute;
+            top: 10px;
+            display: block;
+            font-size: 17px;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+            left: 0px;
+            opacity: 0.9; }
+          .home-page .jumbotron .left #download-buttons .primary-buttons .left-btn .build-type {
+            position: absolute;
+            display: block;
+            text-align: center;
+            width: 100%;
+            left: 0px;
+            top: 25px;
+            font-size: 14px;
+            opacity: 0.7; }
+        .home-page .jumbotron .left #download-buttons .primary-buttons #download-dropdown {
+          width: 43px;
+          position: absolute;
+          top: 0px;
+          right: -5px;
+          padding-left: 10px;
+          padding-right: 10px;
+          margin-top: 0px; }
+          .home-page .jumbotron .left #download-buttons .primary-buttons #download-dropdown img {
+            width: 16px;
+            height: 16px; }
+      .home-page .jumbotron .left #download-buttons #download-matrix {
+        white-space: nowrap;
+        background: #e1e1e1;
+        border: 2px #477a32 solid;
+        position: absolute;
+        z-index: 1;
+        -webkit-box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, 0.33);
+        -moz-box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, 0.33);
+        box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, 0.33);
+        display: none;
+        color: black; }
+        .home-page .jumbotron .left #download-buttons #download-matrix thead tr td, .home-page .jumbotron .left #download-buttons #download-matrix thead tr th {
+          padding: 10px;
+          font-weight: 400; }
+        .home-page .jumbotron .left #download-buttons #download-matrix thead tr .build-header-white {
+          background-color: #eeeeef; }
+        .home-page .jumbotron .left #download-buttons #download-matrix td {
+          font-weight: 400;
+          padding: 10px;
+          text-align: center; }
+          .home-page .jumbotron .left #download-buttons #download-matrix td img {
+            width: 20px;
+            height: 20px;
+            margin: 0px auto; }
+        .home-page .jumbotron .left #download-buttons #download-matrix td.white {
+          background-color: #eeeeef; }
+        .home-page .jumbotron .left #download-buttons #download-matrix .os, .home-page .jumbotron .left #download-buttons #download-matrix .download-type {
+          text-align: left; }
+        .home-page .jumbotron .left #download-buttons #download-matrix .os {
+          font-weight: bold; }
+        .home-page .jumbotron .left #download-buttons #download-matrix .os-group tr td {
+          border-bottom: 1px solid rgba(0, 0, 0, 0.336); }
+        .home-page .jumbotron .left #download-buttons #download-matrix .special1 td {
+          padding-top: 10px;
+          padding-bottom: 0px;
+          border-bottom: none !important; }
+        .home-page .jumbotron .left #download-buttons #download-matrix .special2 td {
+          padding-bottom: 10px;
+          padding-top: 0px; }
+        .home-page .jumbotron .left #download-buttons #download-matrix #other-downloads {
+          text-align: center; }
+          .home-page .jumbotron .left #download-buttons #download-matrix #other-downloads a {
+            color: #0258e2;
+            text-decoration: none; }
+            .home-page .jumbotron .left #download-buttons #download-matrix #other-downloads a:hover {
+              text-decoration: underline;
+              color: #23527c; }
+    .home-page .jumbotron .left #download-matrix-label {
+      font-size: 1.4rem;
+      margin-bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      -webkit-border-radius: 8px;
+      -moz-border-radius: 8px;
+      -o-border-radius: 8px;
+      border-radius: 8px;
+      padding: 8px 8px;
+      margin-top: 1.5rem;
+      position: relative;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.6); }
+      .home-page .jumbotron .left #download-matrix-label::after {
+        content: '';
+        width: 1.4rem;
+        height: 1.4rem;
+        display: block;
+        -webkit-transform: rotate(45deg);
+        -ms-transform: rotate(45deg);
+        transform: rotate(45deg);
+        background: #272354;
+        position: absolute;
+        top: -.7rem;
+        right: 1.45rem; }
+      .home-page .jumbotron .left #download-matrix-label a {
+        color: #b5a0ff; }
+    .home-page .jumbotron .left .terms {
+      padding: 4px 8px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      margin-top: 1rem;
+      display: inline-block;
+      width: 100%; }
+      .home-page .jumbotron .left .terms a {
+        color: #b5a0ff;
+        display: block; }
+  .home-page .jumbotron .right-section {
+    margin-right: -7%;
+    text-align: right; }
+    .home-page .jumbotron .right-section .screenshot img {
+      width: 100%;
+      height: auto; }
+.home-page .value-props .value-prop {
+  padding: 2rem 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  color: #444;
+  font-size: 2rem; }
+  .home-page .value-props .value-prop:hover {
+    color: #000;
+    background: #e3e3e3;
+    text-decoration: none; }
+  .home-page .value-props .value-prop .value-prop-icon {
+    background-image: url(style.css);
+    background-repeat: no-repeat;
+    width: 5rem;
+    height: 5rem;
+    background-size: 20rem 10rem;
+    margin: auto;
+    margin-bottom: 0.5rem; }
+  .home-page .value-props .value-prop .intellisense {
+    background-position: 0 0; }
+  .home-page .value-props .value-prop .debugging {
+    background-position: 33.3% 0; }
+  .home-page .value-props .value-prop .git {
+    background-position: 67% 0; }
+  .home-page .value-props .value-prop .extensions-icon {
+    background-position: 101% 0; }
+  .home-page .value-props .value-prop:hover .intellisense {
+    background-position: 0 -5rem !important; }
+  .home-page .value-props .value-prop:hover .debugging {
+    background-position: 33.3% -5rem !important; }
+  .home-page .value-props .value-prop:hover .git {
+    background-position: 67% -5rem; }
+  .home-page .value-props .value-prop:hover .extensions-icon {
+    background-position: 101% -5rem; }
+.home-page .social-proof {
+  padding: 6rem 0 6rem;
+  min-height: 30rem;
+  position: relative; }
+  .home-page .social-proof .carousel-control {
+    background: transparent;
+    width: 5%; }
+    .home-page .social-proof .carousel-control .glyphicon {
+      margin-top: -37px;
+      color: #ccc;
+      text-shadow: initial; }
+  .home-page .social-proof .carousel {
+    background-color: transparent;
+    padding: 1rem; }
+  .home-page .social-proof .tweets > div {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    min-height: 85px; }
+  .home-page .social-proof .profile-image {
+    width: 7.2rem;
+    height: 7.2rem;
+    background-size: 100%;
+    background-position: 50% 25%;
+    border-radius: 50%;
+    box-shadow: 2px 2px 2px 0 rgba(0, 0, 0, 0.2);
+    background-image: url(style.css);
+    position: absolute; }
+  .home-page .social-proof .text-content {
+    padding-top: 5px; }
+  .home-page .social-proof .attribution {
+    color: black; }
+  .home-page .social-proof .tweet-body {
+    font-weight: 300;
+    font-size: 1.8rem;
+    line-height: 2.4rem; }
+  .home-page .social-proof .tweets > div {
+    font-size: 3rem;
+    margin-bottom: 0.5rem; }
+.home-page .swimlane {
+  padding: 6rem 0 6rem;
+  min-height: 30rem;
+  position: relative; }
+  .home-page .swimlane h2 {
+    margin-bottom: 3.5rem; }
+  .home-page .swimlane p {
+    font-size: 1.5rem; }
+.home-page .swimlane:nth-child(even) {
+  background-color: #f5f5f5; }
+.home-page .hundreds-extensions .hundreds-extensions-img {
+  width: 100%;
+  display: block;
+  margin-top: 28px;
+  padding: 0;
+  transition: transform 0.5s ease-out; }
+  .home-page .hundreds-extensions .hundreds-extensions-img:hover {
+    transform: scale(1.1); }
+.home-page .getting-started {
+  padding: 50px 0; }
+  .home-page .getting-started .vscode-for {
+    height: 20.5rem; }
+    .home-page .getting-started .vscode-for h2 {
+      text-align: right;
+      margin-top: -1.6rem;
+      position: relative;
+      top: 50%; }
+  .home-page .getting-started .home-languages-list-parent {
+    height: 20.5rem; }
+  .home-page .getting-started .mask {
+    background: linear-gradient(to bottom, #fff, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0), #fff);
+    z-index: 990;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    left: -20px; }
+  .home-page .getting-started .supported-languages-list {
+    height: 100%;
+    overflow: hidden;
+    position: relative; }
+  .home-page .getting-started .supported-languages-list > ul {
+    height: 100%;
+    width: 100%;
+    box-sizing: content-box;
+    padding-right: 20px;
+    overflow-y: scroll;
+    padding-left: 0;
+    list-style: none;
+    margin-bottom: 0; }
+  .home-page .getting-started .supported-languages-list > ul li {
+    font-size: 3rem; }
+  .home-page .getting-started .caption {
+    text-align: center;
+    margin-top: 20px; }
+    .home-page .getting-started .caption .link-button {
+      background-color: #373277;
+      color: white;
+      margin: 20px 0;
+      font-family: "Segoe UI","Helvetica Neue","Helvetica",Arial,sans-serif;
+      font-weight: 600;
+      font-size: 20px;
+      padding: 15px 35px;
+      display: inline-block;
+      cursor: pointer;
+      text-decoration: none; }
+      .home-page .getting-started .caption .link-button:hover {
+        background-color: rgba(55, 50, 119, 0.8); }
+.home-page .alt-downloads {
+  text-align: center; }
+  .home-page .alt-downloads.swimlane {
+    padding-bottom: 0px; }
+  .home-page .alt-downloads .download {
+    padding: 0 25px;
+    display: inline-block;
+    vertical-align: top; }
+  .home-page .alt-downloads .logo {
+    height: 100px;
+    width: 100px;
+    background-size: contain !important;
+    margin: 0 auto;
+    -ms-high-contrast-adjust: none; }
+  .home-page .alt-downloads .link-button {
+    color: white;
+    margin: 20px 0 5px;
+    padding: 10px 0;
+    font-size: 1.8rem;
+    width: 240px;
+    background-color: #373277;
+    font-family: "Segoe UI","Helvetica Neue","Helvetica",Arial,sans-serif;
+    font-weight: 600;
+    cursor: pointer; }
+    .home-page .alt-downloads .link-button:hover {
+      background-color: rgba(55, 50, 119, 0.8); }
+    .home-page .alt-downloads .link-button img {
+      position: relative;
+      top: -2px;
+      margin-right: 10px; }
+    .home-page .alt-downloads .link-button small {
+      display: block;
+      margin-top: 0.75rem;
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 1.2rem; }
+  .home-page .alt-downloads .link-button[data-os='linux64_deb'], .home-page .alt-downloads .link-button[data-os='linux64_rpm'] {
+    width: 147px; }
+  .home-page .alt-downloads .download-icon {
+    display: inline; }
+  .home-page .alt-downloads .win-downloads {
+    width: 94%; }
+  .home-page .alt-downloads .win-downloads, .home-page .alt-downloads .linux-downloads {
+    margin-top: 16px;
+    margin-left: auto;
+    margin-right: auto; }
+    .home-page .alt-downloads .win-downloads td, .home-page .alt-downloads .linux-downloads td {
+      padding: 0px 7px; }
+    .home-page .alt-downloads .win-downloads strong, .home-page .alt-downloads .linux-downloads strong {
+      font-weight: 400; }
+  .home-page .alt-downloads .swimlane {
+    padding-top: 0px;
+    background-color: #f5f5f5; }
+    .home-page .alt-downloads .swimlane .terms {
+      color: #6c6c6c; }
+    .home-page .alt-downloads .swimlane h2 {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #444444;
+      font-size: 2.1rem; }
+    .home-page .alt-downloads .swimlane .call-to-action {
+      font-size: 1.8rem;
+      color: #444444; }
+    .home-page .alt-downloads .swimlane .alt-downloads p {
+      font-size: 1.4rem; }
+
+@media (min-width: 768px) {
+  h3, .faux-h3 {
+    font-size: 2.2rem; }
+
+  h2, .faux-h2 {
+    font-size: 2.6rem; }
+
+  .social-proof .carousel-control.left .glyphicon {
+    margin-left: -4rem; }
+  .social-proof .carousel-control.right .glyphicon {
+    margin-right: -6rem; }
+
+  #meet-intellisense .screenshot {
+    margin-top: 28px; } }
+@media (min-width: 992px) {
+  .social-proof .tweets > div {
+    flex-basis: 0; }
+
+  .social-proof .tweets > div:not(:last-child) {
+    border-right: #f2f2f2 solid 1px; } }
+@media (min-width: 1200px) {
+  .social-proof .tweet-body {
+    min-height: 12rem; }
+
+  .alt-downloads .terms {
+    padding: 20px 20%; } }
+@media only screen and (max-width: 767px) {
+  .home-page .jumbotron .left #download-buttons #download-matrix {
+    font-size: 13px !important; }
+    .home-page .jumbotron .left #download-buttons #download-matrix td {
+      padding: 5px; }
+  .home-page .social-proof > .container {
+    padding-left: 3rem;
+    padding-right: 3rem; }
+  .home-page .tweet-body {
+    font-weight: 400;
+    font-size: 1.4rem;
+    line-height: 2.4rem; }
+  .home-page .getting-started .vscode-for {
+    height: initial; }
+    .home-page .getting-started .vscode-for h2 {
+      text-align: center;
+      font-size: 2rem;
+      top: initial;
+      margin-top: initial;
+      margin-bottom: 40px; }
+  .home-page .getting-started .supported-languages-list {
+    text-align: center; } }

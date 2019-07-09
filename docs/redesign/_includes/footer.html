@@ -1,0 +1,50 @@
+<footer role="contentinfo">
+    <!-- content -->
+    <div class="container">
+        <div class="row">
+            <div class="left col-md-7">
+                <ul class="links">
+                    <li>
+                        <span class="message">Hello from Seattle.</span>
+                    </li>
+                    <li>
+                        <a href="https://go.microsoft.com/fwlink/?LinkID=533687" onclick="followOnTwitter()" role="button" tabindex="0">Follow @code</a>
+                    </li>
+                    <li>
+                        <div class="github-star-button">
+                            <iframe src="https://ghbtns.com/github-btn.html?user=Microsoft&amp;repo=vscode&amp;type=star&amp;count=true" frameborder="0" scrolling="0" width="130px" height="20px" title="GitHub follow button" aria-label="GitHub follow button"></iframe>
+                        </div>
+                    </li>
+
+                    <script>
+                        function followOnTwitter() {
+                            var windowFeatures = "location=yes,height=600,width=550,scrollbars=yes,status=yes";
+                            var originalReferer = "&original_referer=" + document.URL;
+                            var screenName = "&screen_name=code";
+                            var URL = "https://twitter.com/intent/follow?" + originalReferer + screenName;
+                            window.open(URL, "_blank", windowFeatures);
+                        }
+                    </script>
+                </ul>
+            </div>
+            <div class="right col-md-5">
+                <ul class="links">
+                    <li><a id="footer-support-link" href="https://support.microsoft.com/en-us/getsupport?wf=0&amp;tenant=ClassicCommercial&amp;oaspworkflow=start_1.0.0.0&amp;locale=en-us&amp;supportregion=en-us&amp;pesid=16064&amp;ccsid=636196895839595242" target="_blank">Support</a></li>
+                    <li><a id="footer-privacy-link" href="https://privacy.microsoft.com/en-us/privacystatement" target="_blank">Privacy</a></li>
+                    <li><a id="footer-terms-link" href="https://www.microsoft.com/en-us/legal/intellectualproperty/copyright/default.aspx" target="_blank">Terms of Use</a></li>
+                    <li><a id="footer-license-link" href="{{'/License' | relative_url}}">License</a></li>
+                </ul>
+                <div class="copyright">
+                    <a id="footer-microsoft-link" class="logo" href="https://www.microsoft.com">
+                        <img class="microsoft-logo" src="{{'/assets/imgs/microsoft-logo.png' | relative_url}}" height="20" alt="Microsoft homepage">
+                    </a>
+                    <span> © 2019 
+                        <span itemprop="publisher" itemscope="" itemtype="https://schema.org/Organization">
+                            <span itemprop="name">Microsoft</span>
+                        </span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>

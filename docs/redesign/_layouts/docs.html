@@ -1,0 +1,78 @@
+---
+layout : default
+---
+<div class="container">
+    <div class="row">
+      <div class="col-md-2 docs-navbar-container"> 
+        <nav id="docs-navbar" aria-label="Topics" class="docs-nav visible-md visible-lg"> 
+        <ul class="nav" id="main-nav">
+          <li><a class="docs-home" href="https://code.visualstudio.com/docs">Overview</a></li>
+          
+          <li class="panel collapsed">
+              <a class="area" aria-label="Setup drop down" href="https://code.visualstudio.com/docs#setup-articles" data-parent="#main-nav" data-toggle="collapse">Setup</a>
+              <ul id="setup-articles" class="collapse ">
+              
+                  <li><a href="https://code.visualstudio.com/docs/setup/setup-overview">Overview</a></li>
+              
+                  <li><a href="https://code.visualstudio.com/docs/setup/linux">Linux</a></li>
+
+              </ul>
+          </li>
+
+          <li class="panel collapsed">
+              <a class="area" aria-label="Get Started drop down" href="https://code.visualstudio.com/docs#getstarted-articles" data-parent="#main-nav" data-toggle="collapse">Get Started</a>
+              <ul id="getstarted-articles" class="collapse ">
+              
+                  <li><a href="https://code.visualstudio.com/docs/getstarted/introvideos">Intro Videos</a></li>
+              
+                  <li><a href="https://code.visualstudio.com/docs/getstarted/tips-and-tricks">Tips and Tricks</a></li>
+                                
+              </ul>
+          </li> 
+        </ul>
+      </nav>
+
+      <nav id="small-nav" aria-label="Topics" class="docs-nav hidden-md hidden-lg">
+          <h4>Topics</h4>
+          <select id="small-nav-dropdown">
+              <option value="/docs">Overview</option> 
+
+              <optgroup label="Setup">                  
+                  <option value="/docs/setup/setup-overview">Overview</option>                  
+                  <option value="/docs/setup/linux">Linux</option>                                    
+              </optgroup>
+          
+              <optgroup label="Get Started">
+              
+                  <option value="/docs/getstarted/introvideos">Intro Videos</option>
+              
+                  <option value="/docs/getstarted/tips-and-tricks">Tips and Tricks</option>
+              
+              </optgroup>                     
+          </select>
+      </nav> 
+
+      </div>
+
+     
+
+      
+      <div class="col-sm-9 col-md-8 body">
+          {{ content }}
+      </div>
+
+      <div class="hidden-xs col-sm-3 col-md-2 docs-subnavbar-container">
+          <nav id="docs-subnavbar" aria-label="On Page" data-spy="affix" data-offset-top="20" class="affix-top">
+              <h4>Getting Started</h4>
+              <ul class="nav">
+                  <li><a id="docs-index-nav-vscode-in-action-link" href="/">VS Code in Action</a></li>
+                  <li><a id="docs-index-nav-top-extensions-link" href="/">Top Extensions</a></li>
+                  <li><a id="docs-index-nav-firststeps-link" href="/">First Steps</a></li>
+                  <li><a id="docs-index-nav-shortcuts-link" href="/">Keyboard Shortcuts</a></li>
+                  <li><a id="docs-index-nav-downloads-link" href="/">Downloads</a></li>
+                  <li><a id="docs-index-nav-privacy-link" href="/">Privacy</a></li>
+              </ul>
+          </nav>
+      </div>
+
+  </div>

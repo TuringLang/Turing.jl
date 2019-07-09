@@ -1,0 +1,34 @@
+{% if include.id %}
+{% assign feature_row = page[include.id] %}
+{% else %}
+{% assign feature_row = page.feature_row %}
+{% endif %}
+
+<div class="swimlane">
+
+    {% for f in feature_row %}
+  
+    {% if f.url contains "://" %}
+      {% capture f_url %}{{ f.url }}{% endcapture %}
+    {% else %}
+      {% capture f_url %}{{ f.url | relative_url }}{% endcapture %}
+    {% endif %}
+
+  <div class="container">
+    <div class="row">
+      <div class="terms text-center">
+        {% if f.title %}
+        <h2 class="faux-h3">{{ f.title }}</h2>
+        {% endif %}
+      </div>
+    </div>
+    <div class="alt-downloads">
+      {% if f.excerpt %}
+      <div class="archive__item-excerpt">
+        {{ f.excerpt | markdownify }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
