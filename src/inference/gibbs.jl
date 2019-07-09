@@ -116,7 +116,7 @@ function step!(
 
         # Step through the local sampler.
         time_elapsed_thin =
-            @elapsed trans = step!(rng, model, local_spl, N; kwargs...)
+            @elapsed step!(rng, model, local_spl, N; kwargs...)
 
         # After the step, update the master varinfo.
         spl.state.vi = local_spl.state.vi
