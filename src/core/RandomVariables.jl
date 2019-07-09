@@ -183,13 +183,16 @@ function VarInfo(model::Model)
     return TypedVarInfo(vi)
 end
 
-VarInfo(old_vi::UntypedVarInfo, spl, T) = old_vi
-
-function VarInfo(old_vi::TypedVarInfo, spl, T)
-    md = newmetadata(old_vi.metadata, spl, T)
-    VarInfo(md, Base.RefValue{T}(old_vi.logp), Ref(old_vi.num_produce))
+function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
+    new_vi = deepcopy(old_vi)
+    new_vi[spl] = x 
+    return new_vi
 end
-function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, names}
+function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
+    md = newmetadata(old_vi.metadata, spl, x, 0)
+    VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))
+end
+@inline function newmetadata(metadata::NamedTuple{names}, spl, x, offset) where {names}
     # Check if the named tuple is empty and end the recursion
     length(names) === 0 && return ()
     # Take the first key in the NamedTuple
@@ -200,18 +203,18 @@ function newmetadata(metadata::NamedTuple{names}, spl, ::Type{T}) where {T, name
         idcs = mdf.idcs
         vns = mdf.vns
         ranges = mdf.ranges
-        vals = similar(mdf.vals, T)
+        vals = x[(offset+1):(offset+length(mdf.vals))]
         dists = mdf.dists
         gids = mdf.gids
         orders = mdf.orders
         flags = mdf.flags
         md = Metadata(idcs, vns, ranges, vals, dists, gids, orders, flags)
 	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, T))
+        return merge(nt, newmetadata(_tail(metadata), spl, x, offset+length(mdf.vals)))
     else
         md = getfield(metadata, f)
 	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, T))
+        return merge(nt, newmetadata(_tail(metadata), spl, x, offset))
     end
 end
 
@@ -330,7 +333,7 @@ end
 Returns all the indices of `vns` in `vi.metadata.vals`.
 """
 function getranges(vi::AbstractVarInfo, vns::Vector{<:VarName})
-    return union(map(vn -> getrange(vi, vn), vns)...)
+    return mapreduce(vn -> getrange(vi, vn), vcat, vns, init=Int[])
 end
 
 """
@@ -454,9 +457,9 @@ function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
 end
 # Get a NamedTuple of all the indices belonging to SampleFromPrior, one for each symbol
 function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
-    return __getidcs(vi.metadata)
+    return _getidcs(vi.metadata)
 end
-@inline function __getidcs(metadata::NamedTuple{names}) where {names}
+@inline function _getidcs(metadata::NamedTuple{names}) where {names}
     # Check if the `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first key/symbol
@@ -468,7 +471,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of metadata
-    return merge(nt, __getidcs(_tail(metadata)))
+    return merge(nt, _getidcs(_tail(metadata)))
 end
 
 # Get all indices of variables belonging to a given sampler
@@ -483,18 +486,18 @@ function _getidcs(vi::AbstractVarInfo, spl::Sampler)
         spl.info[:idcs]
     else
         spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = _getidcs(vi, spl.selector, spl.alg.space)
+        spl.info[:idcs] = _getidcs(vi, spl.selector, getspace(spl.alg))
     end
 end
-function _getidcs(vi::UntypedVarInfo, s::Selector, space)
+function _getidcs(vi::UntypedVarInfo, s::Selector, space::Tuple)
     filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) &&
         (isempty(space) || in(vi.vns[i], space)), 1:length(vi.gids))
 end
-function _getidcs(vi::TypedVarInfo, s::Selector, space)
-    return __getidcs(vi.metadata, s, space)
+function _getidcs(vi::TypedVarInfo, s::Selector, space::Tuple)
+    return _getidcs(vi.metadata, s, space)
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
-@inline function __getidcs(metadata::NamedTuple{names}, s::Selector, space) where {names}
+@inline function _getidcs(metadata::NamedTuple{names}, s::Selector, space::Tuple) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first sybmol
@@ -507,7 +510,7 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of metadata
-    return merge(nt, __getidcs(_tail(metadata), s, space))
+    return merge(nt, _getidcs(_tail(metadata), s, space))
 end
 
 # Get all vns of variables belonging to spl
@@ -515,10 +518,10 @@ _getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, sp
 function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
     # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
     idcs = _getidcs(vi, spl)
-    return __getvns(vi.metadata, idcs)
+    return _getvns(vi.metadata, idcs)
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
-@inline function __getvns(metadata::NamedTuple{names}, idcs) where {names}
+@inline function _getvns(metadata::NamedTuple{names}, idcs) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first symbol
@@ -528,38 +531,41 @@ end
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of `metadata`
-    return merge(nt, __getvns(_tail(metadata), idcs))
+    return merge(nt, _getvns(_tail(metadata), idcs))
 end
 
 # Get the index (in vals) ranges of all the vns of variables belonging to spl
-function _getranges(vi::AbstractVarInfo, spl::Sampler)
-    if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
-    if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
-        spl.info[:ranges]
-    else
-        spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        spl.info[:ranges] = _getranges(vi, spl.selector, spl.alg.space)
-    end
+@inline function _getranges(vi::AbstractVarInfo, spl::Sampler)
+    ## Uncomment the spl.info stuff when it is concretely typed, not Dict{Symbol, Any}
+    #if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+    #if haskey(spl.info, :ranges) && (spl.info[:cache_updated] & CACHERANGES) > 0
+    #    spl.info[:ranges]
+    #else
+        #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
+        ranges = _getranges(vi, spl.selector, getspace(spl.alg))
+        #spl.info[:ranges] = ranges
+        return ranges
+    #end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
-function _getranges(vi::AbstractVarInfo, s::Selector, space::Set=Set())
-    __getranges(vi, _getidcs(vi, s, space))
+@inline function _getranges(vi::AbstractVarInfo, s::Selector, space::Tuple=())
+    _getranges(vi, _getidcs(vi, s, space))
 end
-function __getranges(vi::UntypedVarInfo, idcs)
-    union(map(i -> vi.ranges[i], idcs)...)
+@inline function _getranges(vi::UntypedVarInfo, idcs::Vector{Int})
+    mapreduce(i -> vi.ranges[i], vcat, idcs, init=Int[])
 end
-__getranges(vi::TypedVarInfo, idcs) = __getranges(vi.metadata, idcs)
-@inline function __getranges(metadata::NamedTuple{names}, idcs) where {names}
+@inline _getranges(vi::TypedVarInfo, idcs::NamedTuple) = _getranges(vi.metadata, idcs)
+@inline function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
     # Check if `metadata` is empty to end the recursion
     length(names) === 0 && return NamedTuple()
     # Take the first symbol
     f = names[1]
     # Collect the index ranges of all the vns with symbol `f`
-    v = union(map(i -> getfield(metadata, f).ranges[i], getfield(idcs, f))..., Int[])
+    v = mapreduce(i -> getfield(metadata, f).ranges[i], vcat, getfield(idcs, f), init=Int[])
     # Make a single-pair NamedTuple to merge with the result of the recursion
     nt = NamedTuple{(f,)}((v,))
     # Recurse using the remaining of `metadata`
-    return merge(nt, __getranges(_tail(metadata), idcs))
+    return merge(nt, _getranges(_tail(metadata), idcs))
 end
 
 """
@@ -656,20 +662,25 @@ Symbol(vn::VarName) = Symbol(string(vn, all=false))  # simplified symbol
 
 Returns `true` if `vn`'s symbol is in `space` and `false` otherwise.
 """
-function in(vn::VarName, space::Set)::Bool
+function in(vn::VarName, space::Tuple)::Bool
     if vn.sym in space
         return true
     else
-        # Collect expressions from space
-        exprs = filter(el -> isa(el, Expr), space)
-        # Filter `(` and `)` out and get a string representation of `exprs`
-        expr_strs = Set((replace(string(ex), r"\(|\)" => "") for ex in exprs))
         # String representation of `vn`
         vn_str = string(vn, all=false)
-        # Check if `vn_str` is in `expr_strs`
-        valid = filter(str -> occursin(str, vn_str), expr_strs)
-        return length(valid) > 0
+        return _in(vn_str, space)
     end
+end
+@inline function _in(vn_str::String, space::Tuple)
+    length(space) === 0 && return false
+    el = space[1]
+    # Collect expressions from space
+    expr = isa(el, Expr) ? el : return _in(vn_str, Base.tail(space))
+    # Filter `(` and `)` out and get a string representation of `exprs`
+    expr_str = replace(string(expr), r"\(|\)" => "")
+    # Check if `vn_str` is in `expr_strs`
+    valid = occursin(expr_str, vn_str)
+    return valid || _in(vn_str, Base.tail(space))
 end
 
 # VarInfo
@@ -1046,6 +1057,10 @@ end
     return _setindex!(_tail(metadata), val, ranges, start)
 end
 
+function Base.eltype(vi::AbstractVarInfo, spl::Union{AbstractSampler, SampleFromPrior})
+    return eltype(Core.Compiler.return_type(getindex, Tuple{typeof(vi), typeof(spl)}))
+end
+
 """
 `haskey(vi::VarInfo, vn::VarName)`
 
@@ -1262,7 +1277,7 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(spl.alg.space) && isempty(getgid(vi, vn)) && getsym(vn) in spl.alg.space
+    if ~isempty(getspace(spl.alg)) && isempty(getgid(vi, vn)) && getsym(vn) in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end

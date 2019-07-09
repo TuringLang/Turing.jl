@@ -2,10 +2,10 @@
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
-struct DynamicNUTS{AD, T} <: Hamiltonian{AD}
-    n_iters   ::  Integer   # number of samples
-    space     ::  Set{T}    # sampling space, emtpy means all
+struct DynamicNUTS{AD, space} <: Hamiltonian{AD}
+    n_iters   ::  Int   # number of samples
 end
+DynamicNUTS{AD}(n_iters::Int, space::Tuple) where {AD} = DynamicNUTS{AD, space}(n_iters)
 
 """
     DynamicNUTS(n_iters::Integer)
@@ -15,10 +15,11 @@ To use it, make sure you have the DynamicHMC package installed.
 
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
-function DynamicNUTS{AD}(n_iters::Integer, space...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    DynamicNUTS{AD, eltype(_space)}(n_iters, _space)
+function DynamicNUTS{AD}(n_iters::Integer, space::Symbol...) where AD
+    DynamicNUTS{AD}(n_iters, space)
 end
+
+getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
 function Sampler(alg::DynamicNUTS{T}, s::Selector=Selector()) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}(), s)

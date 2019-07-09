@@ -2,15 +2,15 @@ ON_TRAVIS = get(ENV, "TRAVIS", "false") == "true"
 
 if ON_TRAVIS
     BENCHMARK_FILES = [
-        "dummy.run.jl",
-        "gdemo.run.jl",
-        "mvnormal.run.jl",
+        "dummy.jl",
+        "gdemo.jl",
+        "mvnormal.jl",
     ]
 else
     BENCHMARK_FILES = [
-        "dummy.run.jl",
-        "gdemo.run.jl",
-        "mvnormal.run.jl",
+        "dummy.jl",
+        "gdemo.jl",
+        "mvnormal.jl",
     ]
 end
 

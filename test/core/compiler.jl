@@ -130,6 +130,8 @@ priors = 0 # See "new grammar" test.
         end
         f1_mm = testmodel1(1., 10.)
         @test f1_mm() == (1, 10)
+        f1_mm = testmodel1(x1=1., x2=10.)
+        @test f1_mm() == (1, 10)
 
         @info "Testing the compiler's ability to catch bad models..."
 
@@ -202,6 +204,21 @@ priors = 0 # See "new grammar" test.
 
         chain = sample(gauss(x), PG(10, 10))
         chain = sample(gauss(x), SMC(10))
+
+        @model gauss2(x, ::Type{TV}=Vector{Float64}) where {TV} = begin
+            priors = TV(undef, 2)
+            priors[1] ~ InverseGamma(2,3)         # s
+            priors[2] ~ Normal(0, sqrt(priors[1])) # m
+            for i in 1:length(x)
+                x[i] ~ Normal(priors[2], sqrt(priors[1]))
+            end
+            priors
+        end
+
+        chain = sample(gauss2(x), PG(10, 10))
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), PG(10, 10))
+        chain = sample(gauss2(x), SMC(10))
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(10))
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -259,7 +276,7 @@ priors = 0 # See "new grammar" test.
         chn = sample(gdemo_default, alg);
     end
     @testset "vectorization" begin
-        @model vdemo(x) = begin
+        @model vdemo1(x) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
             x ~ [Normal(m, sqrt(s))]
@@ -268,7 +285,7 @@ priors = 0 # See "new grammar" test.
 
         alg = HMC(250, 0.01, 5)
         x = randn(1000)
-        res = sample(vdemo(x), alg)
+        res = sample(vdemo1(x), alg)
 
         D = 2
         @model vdemo2(x) = begin
@@ -302,7 +319,7 @@ priors = 0 # See "new grammar" test.
         t_vec = @elapsed res = sample(vdemo4(), alg)
 
         @model vdemo5() = begin
-          x ~ MvNormal(zeros(N), 2 * ones(N))
+            x ~ MvNormal(zeros(N), 2 * ones(N))
         end
 
         t_mv = @elapsed res = sample(vdemo5(), alg)
@@ -314,11 +331,46 @@ priors = 0 # See "new grammar" test.
 
         # Transformed test
         @model vdemo6() = begin
-          x = Vector{Real}(undef, N)
-          x ~ [InverseGamma(2, 3)]
+            x = Vector{Real}(undef, N)
+            x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo6(), alg)
+        sample(vdemo6(), alg)    
+    end
+    @testset "Type parameters" begin
+        N = 10
+        setchunksize(N)
+        alg = HMC(250, 0.01, 5)
+        x = randn(1000)
+        @model vdemo1(::Type{T}=Float64) where {T} = begin
+            x = Vector{T}(undef, N)
+            for i = 1:N
+                x[i] ~ Normal(0, sqrt(4))
+            end
+        end
+
+        t_loop = @elapsed res = sample(vdemo1(), alg)
+        t_loop = @elapsed res = sample(vdemo1(Float64), alg)
+        t_loop = @elapsed res = sample(vdemo1(T=Float64), alg)
+
+        @model vdemo2(::Type{T}=Float64) where {T <: Real} = begin
+            x = Vector{T}(undef, N)
+            x ~ [Normal(0, 2)]
+        end
+
+        t_vec = @elapsed res = sample(vdemo2(), alg)
+        t_vec = @elapsed res = sample(vdemo2(Float64), alg)
+        t_vec = @elapsed res = sample(vdemo2(T=Float64), alg)
+
+        @model vdemo3(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
+            x = TV(undef, N)
+            x ~ [InverseGamma(2, 3)]
+        end
+
+        sample(vdemo3(), alg)
+        sample(vdemo3(Vector{Float64}), alg)
+        sample(vdemo3(TV=Vector{Float64}), alg)
+
     end
     @testset "tilde" begin
         model_info = Dict(

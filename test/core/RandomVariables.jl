@@ -61,7 +61,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vn2 = VarName(csym, :x, "[1][2]", 1)
         @test vn2 == vn1
         @test hash(vn2) == hash(vn1)
-        @test in(vn1, Set([:x]))
+        @test in(vn1, (:x,))
 
         function test_base!(vi)
             empty!(vi)
@@ -96,7 +96,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             push!(vi, vn, r, dist, gid)
 
             function test_in()
-                space = Set([:x, :y, :(z[1])])
+                space = (:x, :y, :(z[1]))
                 vn1 = genvn(:x)
                 vn2 = genvn(:y)
                 vn3 = genvn(:(x[1]))
@@ -324,8 +324,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         xs = rand(Normal(0.5, 1), 100)
 
         # Define model
-        @model priorsinarray(xs) = begin
-            priors = Vector{Real}(undef, 2)
+        @model priorsinarray(xs, ::Type{T}=Float64) where {T} = begin
+            priors = Vector{T}(undef, 2)
             priors[1] ~ InverseGamma(2, 3)
             priors[2] ~ Normal(0, sqrt(priors[1]))
             for i = 1:length(xs)
