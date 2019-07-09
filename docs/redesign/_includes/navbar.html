@@ -1,0 +1,38 @@
+<!-- navbar page style -->
+<nav id="navbar" class="navbar navbar-inverse navbar-fixed-top affix-top">
+    <div class="container">
+
+        <!-- menu dropdown menu button -->
+        <span class="menu-icon" onclick='$(".drowDownMenu").slideToggle()'>
+            <span class="icon-bar" style="margin-top : 0px;"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </span>
+
+        <!-- page logo -->
+        <a href="/" class="brand">
+            <img src="/assets/images/turing-logo.svg" alt="{{ site.title }}">
+            <span>{{ site.title }}</span>
+        </a>
+
+        <!-- drowdown menu container -->
+        <div class="drowDownMenu">
+            <!-- pages list auto -->
+            <ul class="pages nav navbar-nav navbar-left"> 
+                <li><a href="/">Get Started</a></li>
+                <li><a href="/docs/">Documentation</a></li>
+                <li><a href="/">Tutorials</a></li>
+            </ul>
+            
+            <!-- search and download button container -->
+            <ul class="search-download nav navbar-nav navbar-right">
+                <!-- download software link -->
+                <li class="download">
+                    <a itemprop="downloadUrl" class="link-button" href="/" id="nav-download">
+                        <span>Github</span>
+                    </a>
+                </li>
+            </ul><!-- </search download container> -->
+        </div> <!-- </dropWownContainer> -->
+    </div>    
+</nav>  <!-- </navbarContainer> -->

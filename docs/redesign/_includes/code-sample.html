@@ -1,0 +1,50 @@
+
+{% if include.id %}
+{% assign feature_row = page[include.id] %}
+{% else %}
+{% assign feature_row = page.feature_row %}
+{% endif %}
+
+<div class="swimlane">
+
+    {% for f in feature_row %}
+
+    {% if f.url contains "://" %}
+      {% capture f_url %}{{ f.url }}{% endcapture %}
+    {% else %}
+      {% capture f_url %}{{ f.url | relative_url }}{% endcapture %}
+    {% endif %}
+
+  <div class="container">
+      <div class="row">
+          <div class="col-sm-6 col-md-8">
+            <div class="archive__item-body">
+              {% if f.title %}
+                <h2 class="archive__item-title">{{ f.title }}</h2>
+              {% endif %}
+    
+              {% if f.excerpt %}
+                <div class="archive__item-excerpt">
+                  {{ f.excerpt | markdownify }}
+                </div>
+              {% endif %}
+    
+              {% if f.url %}
+                <p><a href="{{ f_url }}" class="btn {{ f.btn_class }}">{{ f.btn_label | default: site.data.ui-text[site.locale].more_label | default: "Learn More" }}</a></p>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-sm-6  col-md-4">              
+            <div class="archive__item-teaser">
+              {% if f.snippet %}
+                <div class="archive__snippet">
+                  {% highlight julia %}{{f.snippet}}{% endhighlight %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+      </div>
+  </div>
+
+  {% endfor %}
+</div>

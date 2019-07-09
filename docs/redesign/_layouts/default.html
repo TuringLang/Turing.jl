@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- main meta data -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Begin Jekyll SEO tag v2.6.1 -->
+    <title>{{ page.title }}</title>
+    <meta name="generator" content="Jekyll v3.8.6" />
+    <meta name="description" content="{{ site.description }}" />
+    <link rel="canonical" href="{{ site.url }}" />
+    <link rel="icon" href="{{ site.logo }}">
+
+    <meta property="og:title" content="{{ site.title }}" />
+    <meta property="og:locale" content="en_US" />    
+    <meta property="og:description" content="{{ site.description }}" />    
+    <meta property="og:url" content="{{ site.url }}" />
+    <meta property="og:site_name" content="Turing.jl - Turing.jl" />
+
+    <script type="application/ld+json">
+    {"@type":"WebPage","url":"{{ site.url }}","description":"{{ site.description }}","headline":"Docs","@context":"https://schema.org"}</script>
+    <!-- end SEO tags -->
+
+    <!-- style -->    
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/assets/css/navbar.css">
+    <link rel="stylesheet" href="/assets/css/footer.css">
+    <link rel="stylesheet" href="/assets/css/index.css">    
+    
+  </head>
+  <body>
+    {% include navbar.html %}    
+
+    {{ content }}
+
+    <!-- javascript -->    
+    <script src="/assets/js/jquery.js"></script>
+    <script src="/assets/js/bootstrap.min.js"></script>    
+    <script src="/assets/js/index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+{% if include.id %}
+  {% assign feature_row = page[include.id] %}
+{% else %}
+  {% assign feature_row = page.feature_row %}
+{% endif %}
+
+<div class="swimlane social-proof">  
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-12">
+        <div id="carousel-social-proof" class="carousel slide" data-ride="carousel" data-interval="false">
+          <div class="carousel-inner" role="listbox">            
+            <div class="item active">
+              <div class="container-fluid">
+                <div class="row tweets" tabindex="0" aria-label="Tweets list contains 6 tweets">
+                  <!-- Tweet -->
+
+                  {% for f in feature_row %}
+
+                  <div id="tweet-0_0" class="col-md-4">
+                      <div class="text-content">
+                          <strong id="tweet-0_0-name" class="name">{{ f.title }}</strong>
+                        <div class="tweet-body">
+                            {{ f.excerpt }}
+                        </div>
+                      </div>
+                  </div>   
+
+                  {% endfor %}
+                </div>
+              </div>
+            </div>            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

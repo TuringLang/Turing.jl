@@ -1,0 +1,60 @@
+footer {
+    background-color: #333;
+    font-size: 1.4rem;
+    color: white;
+    padding: 25px 0;
+    position: relative;
+    left: 0;
+    bottom: 0;
+    height: 135px;
+    width: 100%;
+    .links {
+        padding: 0;
+        li:not(:last-child) {
+            padding-right: 20px;
+        }
+        li {
+            display: inline-block;
+        }
+        a {
+            color: white;
+        }
+    }
+    .github-star-button, .twitter-follow-button {
+        margin-bottom: 20px;
+        display: inline-block;
+    }
+    .github-star-button {
+        top: 5px;
+        position: relative;
+    }
+    .right>* {
+        display: inline-block;
+        vertical-align: top;
+        font-size : 1.1rem;
+    }
+    .copyright {
+        margin-left: 30px;
+        .logo {
+            display: block;
+            margin-bottom: 2px;
+        }
+    }
+}
+
+@media (min-width: 1200px){
+    footer {
+        height: 90px;
+    }
+}
+@media (min-width: 992px){
+    footer .github-star-button, footer .twitter-follow-button {
+        margin-bottom: 0;
+    }
+}
+
+@media (min-width: 530px){
+    footer .message {
+        display: inline-block;
+    }
+}
