@@ -15,15 +15,27 @@ alg_str(::ADVI) = "ADVI"
 
 function vi(model::Model, alg::ADVI; optimizer = ADAGrad())
     # setup
-    var_info = VarInfo()
-    model(var_info, SampleFromUniform())
-    num_params = size(var_info.vals, 1)
+    var_info = Turing.VarInfo(model)
+    num_params = sum([size(var_info.metadata[sym].vals, 1) for sym ∈ keys(var_info.metadata)])
 
-    dists = var_info.dists
-    ranges = var_info.ranges
+    dists = vcat([var_info.metadata[sym].dists for sym ∈ keys(var_info.metadata)]...)
+
+    num_ranges = sum([length(var_info.metadata[sym].ranges) for sym ∈ keys(var_info.metadata)])
+    ranges = Vector{UnitRange{Int}}(undef, num_ranges)
+    idx = 0
+    range_idx = 1
+    for sym ∈ keys(var_info.metadata)
+        for r ∈ var_info.metadata[sym].ranges
+            ranges[range_idx] = idx .+ r
+            range_idx += 1
+        end
+        
+        # append!(ranges, [idx .+ r for r ∈ var_info.metadata[sym].ranges])
+        idx += var_info.metadata[sym].ranges[end][end]
+    end
+
+    q = Variational.MeanField(zeros(num_params), zeros(num_params), dists, ranges)
     
-    q = MeanField(zeros(num_params), zeros(num_params), dists, ranges)
-
     # construct objective
     elbo = ELBO()
 
@@ -53,10 +65,7 @@ function (elbo::ELBO)(
     num_samples
 ) where T <: Real
     # setup
-    var_info = Turing.VarInfo()
-
-    # initialize `VarInfo` object
-    model(var_info, Turing.SampleFromUniform())
+    var_info = Turing.VarInfo(model)
 
     num_params = length(q)
     μ, ω = θ[1:num_params], θ[num_params + 1: end]
@@ -68,31 +77,43 @@ function (elbo::ELBO)(
 
     for i = 1:num_samples
         # iterate through priors, sample and update
-        for i = 1:size(q.dists, 1)
-            prior = q.dists[i]
-            r = q.ranges[i]
-
-            # mean-field params for this set of model params
-            μ_i = μ[r]
-            ω_i = ω[r]
-
-            # obtain samples from mean-field posterior approximation
-            η = randn(length(μ_i))
-            ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
+        idx = 0
+        z = zeros(T, num_params)
+        
+        for sym ∈ keys(var_info.metadata)
+            md = var_info.metadata[sym]
             
-            # inverse-transform back to domain of original priro
-            θ = invlink(prior, ζ)
+            for i = 1:size(md.dists, 1)
+                prior = md.dists[i]
+                r = md.ranges[i] .+ idx
 
-            # update
-            var_info.vals[r] = θ
+                # mean-field params for this set of model params
+                μ_i = μ[r]
+                ω_i = ω[r]
 
-            # add the log-det-jacobian of inverse transform;
-            # `logabsdet` returns `(log(abs(det(M))), sign(det(M)))` so return first entry
-            # add `eps` to ensure SingularException does not occurr in `logabsdet`
-            elbo_acc += logabsdet(jac_inv_transform(prior, ζ) .+ eps(T))[1] / num_samples
+                # obtain samples from mean-field posterior approximation
+                η = randn(length(μ_i))
+                ζ = center_diag_gaussian_inv(η, μ_i, exp.(ω_i))
+                
+                # inverse-transform back to domain of original priro
+                z[r] .= invlink(prior, ζ)
+
+                # update
+                # @info θ
+                # z[md.ranges[i]] .= θ
+                # @info md.vals
+
+                # add the log-det-jacobian of inverse transform;
+                # `logabsdet` returns `(log(abs(det(M))), sign(det(M)))` so return first entry
+                # add `eps` to ensure SingularException does not occurr in `logabsdet`
+                elbo_acc += logabsdet(jac_inv_transform(prior, ζ) .+ eps(T))[1] / num_samples
+            end
+
+            idx += md.ranges[end][end]
         end
-
+        
         # compute log density
+        var_info = VarInfo(var_info, SampleFromUniform(), z)
         model(var_info)
         elbo_acc += var_info.logp / num_samples
     end

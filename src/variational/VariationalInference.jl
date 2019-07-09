@@ -119,12 +119,12 @@ function grad!(
     out::DiffResults.MutableDiffResult,
     args...
 ) where {T <: Real, AD <: TrackerAD}
-    θ_tracked = Tracker.param(θ)
+    θ_tracked = [Tracker.param(θ[i]) for i ∈ eachindex(θ)]
     y = - vo(alg, q, model, θ_tracked, args...)
     Tracker.back!(y, 1.0)
 
     DiffResults.value!(out, Tracker.data(y))
-    DiffResults.gradient!(out, Tracker.grad(θ_tracked))
+    DiffResults.gradient!(out, [Tracker.grad(θ_tracked[i]) for i ∈ eachindex(θ_tracked)])
 end
 
 """
