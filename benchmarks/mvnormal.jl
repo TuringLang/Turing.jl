@@ -2,7 +2,7 @@
 ## MvNormal
 ##
 
-using Turing, TuringBenchmarks.TuringTools
+using Turing, ContinuousBenchmarks.TuringTools
 
 # Define the target distribution and its gradient
 const D = 10

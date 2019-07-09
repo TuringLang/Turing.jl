@@ -1,4 +1,4 @@
-using Turing, TuringBenchmarks.TuringTools
+using Turing, ContinuousBenchmarks.TuringTools
 
 @model gdemo(x, y) = begin
     s ~ InverseGamma(2,3)
