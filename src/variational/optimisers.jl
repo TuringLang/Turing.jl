@@ -31,10 +31,10 @@ function Optimise.apply!(o::TruncatedADAGrad, x, Δ)
     idx = mod(i - 1, o.n) + 1 # => idx = 2
 
     # set the current
-    @. g²[idx] = Δ^2 # => g²[2] = Δ^2 where Δ is the (o.n + 2)-th Δ
+    @inbounds @. g²[idx] = Δ^2 # => g²[2] = Δ^2 where Δ is the (o.n + 2)-th Δ
 
     # TODO: make more efficient and stable
-    @inbounds s .= sum(g²)
+    s = sum(g²)
     
     # increment
     o.iters[x] += 1
