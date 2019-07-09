@@ -8,7 +8,7 @@
 
 # used by PG, SMC, PMMH
 struct ParticleTransition{T} <: AbstractTransition
-    θ::Vector{T}
+    θ::T
     lp::Float64
     le::Float64
     weight::Float64
@@ -49,7 +49,7 @@ end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
 
-SMC(n::Int) = SMC(n, resample_systematic, 0.5, Set())
+SMC(n_particles::Int) = SMC(n_particles, resample_systematic, 0.5, Set())
 function SMC(n_particles::Int, space...)
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     return SMC(n_particles, resample_systematic, 0.5, _space)
@@ -214,6 +214,8 @@ function sample_end!(
         # Calculate new log-evidence
         pre_n = length(resume_from.info[:samples])
         loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
+    else
+        loge = log(loge)
     end
 
     # Store the logevidence.
@@ -389,10 +391,10 @@ vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
 Returns a basic TransitionType for the particle samplers.
 """
 function transition(
-        theta::Vector{T},
+        theta::T,
         lp::Float64,
         weight::Float64,
         le::Float64
-) where {T<:Real}
+) where {T}
     return ParticleTransition{T}(theta, lp, weight, le)
 end
