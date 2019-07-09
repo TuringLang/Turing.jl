@@ -319,10 +319,10 @@ end
 
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(
-    alg::H,
+    alg::Hamiltonian{AD},
     model::Model,
     s::Selector=Selector()
-) where H <: Union{StaticHamiltonian, AdaptiveHamiltonian}
+) where AD
     info = Dict{Symbol, Any}()
     state_bad = BlankState(VarInfo(model))
 
@@ -350,7 +350,7 @@ function sample(
     kwargs...
 )
     # Create sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg)
+    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
     @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
 
     # Resume selector
@@ -668,7 +668,7 @@ function assume(spl::Sampler{<:Hamiltonian},
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "vn = $vn"
     Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
 function assume(spl::Sampler{<:Hamiltonian},

@@ -16,11 +16,11 @@ priors = 0 # See "new grammar" test.
             x, y
         end
 
-        smc = SMC(10000)
-        pg = PG(10,1000)
+        smc = SMC(10)
+        pg = PG(10)
 
-        res1 = sample(test_assume(), smc)
-        res2 = sample(test_assume(), pg)
+        res1 = sample(test_assume(), smc, 1000)
+        res2 = sample(test_assume(), pg, 1000)
 
         check_numerical(res1, [:y], [0.5], eps=0.1)
         check_numerical(res2, [:y], [0.5], eps=0.1)
@@ -44,13 +44,13 @@ priors = 0 # See "new grammar" test.
             p, x
         end
 
-        smc = SMC(10000)
-        pg = PG(100,1000)
-        gibbs = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
+        smc = SMC(10)
+        pg = PG(10)
+        gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
 
-        chn_s = sample(testbb(obs), smc)
-        chn_p = sample(testbb(obs), pg)
-        chn_g = sample(testbb(obs), gibbs)
+        chn_s = sample(testbb(obs), smc, 1000)
+        chn_p = sample(testbb(obs), pg, 1000)
+        chn_g = sample(testbb(obs), gibbs, 1500) ############ not linked somewhere XXX:
 
         check_numerical(chn_s, [:p], [meanp], eps=0.05)
         check_numerical(chn_p, [:x], [meanp], eps=0.1)
@@ -73,8 +73,8 @@ priors = 0 # See "new grammar" test.
             s, m
         end
 
-        gibbs = Gibbs(2, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
-        chain = sample(fggibbstest(xs), gibbs);
+        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m))
+        chain = sample(fggibbstest(xs), gibbs, 2);
     end
     @testset "model macro" begin
         model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
@@ -200,8 +200,8 @@ priors = 0 # See "new grammar" test.
             priors
         end
 
-        chain = sample(gauss(x), PG(10, 10))
-        chain = sample(gauss(x), SMC(10))
+        chain = sample(gauss(x), PG(10), 10)
+        chain = sample(gauss(x), SMC(10), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -214,8 +214,10 @@ priors = 0 # See "new grammar" test.
           p
         end
 
-        chain = sample(newinterface(obs),
-            HMC{Turing.ForwardDiffAD{2}}(100, 0.75, 3, :p, :x))
+        chain = sample(
+            newinterface(obs),
+            HMC{Turing.ForwardDiffAD{2}}(0.75, 3, :p, :x),
+            100)
     end
     @testset "no return" begin
         @model noreturn(x) = begin
@@ -226,8 +228,8 @@ priors = 0 # See "new grammar" test.
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(3000, 0.15, 6))
-        check_numerical(chain, [:s, :m], [49/24, 7/6])
+        chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6))
+        check_numerical(chain, [:s, :m], [49/24, 7/6], 3000)
     end
     @testset "observe" begin
         @model test() = begin
@@ -238,25 +240,25 @@ priors = 0 # See "new grammar" test.
           x
         end
 
-        is  = IS(10000)
-        smc = SMC(10000)
-        pg  = PG(100,10)
+        is  = IS()
+        smc = SMC(10)
+        pg  = PG(10)
 
-        res_is = sample(test(), is)
-        res_smc = sample(test(), smc)
-        res_pg = sample(test(), pg)
+        res_is = sample(test(), is, 10000)
+        res_smc = sample(test(), smc, 1000)
+        res_pg = sample(test(), pg, 100)
 
         @test all(res_is[:x].value .== 1)
         @test res_is.logevidence ≈ 2 * log(0.5)
 
         @test all(res_smc[:x].value .== 1)
-        @test res_smc.logevidence ≈ 2 * log(0.5)
+        @test res_smc.logevidence ≈ 2 * log(0.5) # LOGEVIDENCE POSTIVE, WRONG .25 VS. -1.38
 
         @test all(res_pg[:x].value .== 1)
     end
     @testset "sample" begin
-        alg = Gibbs(1000, HMC(1, 0.2, 3, :m), PG(10, 1, :s))
-        chn = sample(gdemo_default, alg);
+        alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
+        chn = sample(gdemo_default, alg, 1000);
     end
     @testset "vectorization" begin
         @model vdemo(x) = begin
@@ -266,9 +268,9 @@ priors = 0 # See "new grammar" test.
             return s, m
         end
 
-        alg = HMC(250, 0.01, 5)
+        alg = HMC(0.01, 5)
         x = randn(1000)
-        res = sample(vdemo(x), alg)
+        res = sample(vdemo(x), alg, 250)
 
         D = 2
         @model vdemo2(x) = begin
@@ -276,13 +278,13 @@ priors = 0 # See "new grammar" test.
             x ~ [MvNormal(μ, ones(D))]
         end
 
-        alg = HMC(250, 0.01, 5)
-        res = sample(vdemo2(randn(D,1000)), alg)
+        alg = HMC(0.01, 5)
+        res = sample(vdemo2(randn(D,1000)), alg, 250)
 
         # Vector assumptions
         N = 10
         setchunksize(N)
-        alg = HMC(1000, 0.2, 4)
+        alg = HMC(0.2, 4)
 
         @model vdemo3() = begin
             x = Vector{Real}(undef, N)
@@ -291,7 +293,7 @@ priors = 0 # See "new grammar" test.
             end
         end
 
-        t_loop = @elapsed res = sample(vdemo3(), alg)
+        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
         # Test for vectorize UnivariateDistribution
         @model vdemo4() = begin
@@ -299,13 +301,13 @@ priors = 0 # See "new grammar" test.
           x ~ [Normal(0, 2)]
         end
 
-        t_vec = @elapsed res = sample(vdemo4(), alg)
+        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
 
         @model vdemo5() = begin
           x ~ MvNormal(zeros(N), 2 * ones(N))
         end
 
-        t_mv = @elapsed res = sample(vdemo5(), alg)
+        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
 
         println("Time for")
         println("  Loop : $t_loop")
@@ -318,7 +320,7 @@ priors = 0 # See "new grammar" test.
           x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo6(), alg)
+        sample(vdemo6(), alg, 1000)
     end
     @testset "tilde" begin
         model_info = Dict(
