@@ -5,10 +5,11 @@ PROJECT_DIR = abspath(@__DIR__) |> dirname
 
 # prepare packages
 Pkg.build("Turing")
+Pkg.add("BenchmarkTools")
 
 BENCHMARK_REV = "master"
-BENCHMARK_REV = "bm_config"
-Pkg.add(PackageSpec(url="https://github.com/TuringLang/ContinuousBenchmarks.jl", rev=BENCHMARK_REV))
+Pkg.add(PackageSpec(
+    url="https://github.com/TuringLang/ContinuousBenchmarks.jl", rev=BENCHMARK_REV))
 Pkg.build("ContinuousBenchmarks")
 Pkg.resolve()
 

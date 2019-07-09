@@ -22,4 +22,4 @@ log_report("Dummy benchmark finished!")
 LOG_DATA = build_log_data("Dummy-Benchmark", bench_res...)
 print_log(LOG_DATA)
 
-log_report("Dummy benchmark reported !")
+log_report("Dummy benchmark reported!")
