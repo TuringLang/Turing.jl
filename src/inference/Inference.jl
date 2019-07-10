@@ -83,7 +83,8 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 end
 
 # Internal variables for MCMCChains.
-const INTERNAL_VARS = Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le"])
+const INTERNAL_VARS =
+    Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le"])
 
 ###########################
 # Generic Transition type #
@@ -363,7 +364,7 @@ function Chains(
 
     # Extract names & construct param array.
     pnames = _get_vi_syms(spl.state.vi)
-    nms = vcat(pnames..., extra_params...)
+    nms = vcat(pnames..., string.(extra_params)...)
     parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:length(ts)]...)
 
     # If the state field has final_logevidence, grab that.

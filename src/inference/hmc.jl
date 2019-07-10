@@ -45,7 +45,6 @@ function HMCState(model::Model,
     vi = spl.state.vi
 
     # Link everything if needed.
-    # spl.selector.tag != :default && link!(vi, spl)
     link!(vi, spl)
 
     # Get the initial log pdf and gradient.
@@ -69,8 +68,7 @@ function HMCState(model::Model,
     # Generate a trajectory.
     traj = gen_traj(spl.alg, init_ϵ)
 
-    # Unlink everything, if necessary.
-    # spl.selector.tag != :default && invlink!(vi, spl)
+    # Unlink everything.
     invlink!(vi, spl)
 
     return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
@@ -184,12 +182,12 @@ function sample_init!(
         end
     end
 
-    # Convert to transformed space
-    # println(spl.selector.tag)
-    # if spl.selector.tag != :default
-    #     link!(spl.state.vi, spl)
-    #     runmodel!(model, spl.state.vi, spl)
-    # end
+    # Convert to transformed space if we're using
+    # non-Gibbs sampling.
+    if spl.selector.tag == :default
+        link!(spl.state.vi, spl)
+        runmodel!(model, spl.state.vi, spl)
+    end
 end
 
 """
@@ -336,94 +334,6 @@ function Sampler(
     return Sampler(alg, spl_bad.info, spl_bad.selector, state)
 end
 
-function sample(
-    model::Model,
-    alg::Hamiltonian;
-    save_state=false,                                   # flag for state saving
-    resume_from=nothing,                                # chain to continue
-    reuse_spl_n=0,                                      # flag for spl re-using
-    adaptor=AHMCAdaptor(alg),
-    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
-    rng::AbstractRNG=GLOBAL_RNG,
-    discard_adapt::Bool=true,
-    verbose::Bool=true,
-    kwargs...
-)
-    # Create sampler
-    spl = reuse_spl_n > 0 ? resume_from.info[:spl] : Sampler(alg, model)
-    @assert isa(spl.alg, Hamiltonian) "[Turing] alg type mismatch; please use resume() to re-use spl"
-
-    # Resume selector
-    resume_from != nothing && (spl.selector = resume_from.info[:spl].selector)
-
-    # TODO: figure out what does this line do
-    n = reuse_spl_n > 0 ? reuse_spl_n : alg.n_iters
-
-    # Init samples
-    samples = Vector{Sample}(undef, n)
-    weight = 1 / n
-    for i = 1:n
-        samples[i] = Sample(weight, Dict{Symbol, Any}())
-    end
-
-    # Create VarInfo
-    vi = if resume_from == nothing
-        VarInfo(model)
-    else
-        deepcopy(resume_from.info[:vi])
-    end
-
-    # Get `init_theta`
-    if init_theta != nothing
-        verbose && @info "Using passed-in initial variable values" init_theta
-        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
-        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
-        # Flatten `init_theta`
-        init_theta_flat = foldl(vcat, map(vec, init_theta))
-        # Create a mask to inidicate which values are not missing
-        theta_mask = map(x -> !ismissing(x), init_theta_flat)
-        # Get all values
-        theta = vi[spl]
-        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
-        # Update those which are provided (i.e. not missing)
-        theta[theta_mask] .= init_theta_flat[theta_mask]
-        # Update in `vi`
-        vi[spl] = theta
-    end
-
-    # Convert to transformed space
-    if spl.selector.tag == :default
-        link!(vi, spl)
-        runmodel!(model, vi, spl)
-    end
-
-    # Init h, prop and adaptor
-    step(model, spl, vi, Val(true); adaptor=adaptor)
-
-    # Sampling using AHMC and store samples in `samples`
-    steps!(model, spl, vi, samples; rng=rng, verbose=verbose)
-
-    # Concatenate samples
-    if resume_from != nothing
-        pushfirst!(samples, resume_from.info[:samples]...)
-    end
-
-    # Wrap the result by Chain
-    c = typeof(alg) <: AdaptiveHamiltonian && discard_adapt ?
-        Chain(0.0, samples[(alg.n_adapts+1):end]) :
-        Chain(0.0, samples)
-
-    # Save state
-    if save_state
-        # Convert vi back to X if vi is required to be saved.
-        spl.selector.tag == :default && invlink!(vi, spl)
-        c = save(c, spl, model, vi, samples)
-    end
-
-    return c
-end
-
-
 ####
 #### Transition / step functions for HMC samplers.
 ####
@@ -446,8 +356,9 @@ function step!(
 
     Turing.DEBUG && @debug "current ϵ: $ϵ"
 
+    # Transform the space if we're using Gibbs.
     Turing.DEBUG && @debug "X-> R..."
-    if spl.selector.tag == :default
+    if spl.selector.tag != :default
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
     end
@@ -475,9 +386,9 @@ function step!(
         end
     end
 
+    # Transform the space back if we're using Gibbs.
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector.tag == :default && invlink!(spl.state.vi, spl)
-    # spl.selector.tag != :default && invlink!(spl.state.vi, spl)
+    spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
     return transition(spl)
 end
