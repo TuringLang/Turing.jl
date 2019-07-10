@@ -1,5 +1,3 @@
-using Flux.Optimise
-
 const ϵ = 1e-8
 
 mutable struct TruncatedADAGrad
@@ -7,21 +5,20 @@ mutable struct TruncatedADAGrad
     tau::Float64
     n::Int
     
-    history::IdDict
     iters::IdDict
     acc::IdDict
 end
 
 function TruncatedADAGrad(η = 0.1, τ = 1.0, n = 100)
-    TruncatedADAGrad(η, τ, n, IdDict(), IdDict(), IdDict())
+    TruncatedADAGrad(η, τ, n, IdDict(), IdDict())
 end
 
-function Optimise.apply!(o::TruncatedADAGrad, x, Δ)
+function apply!(o::TruncatedADAGrad, x, Δ)
     η = o.eta
     τ = o.tau
 
     g² = get!(
-        o.history,
+        o.acc,
         x,
         [fill(0.0, size(x)) for j = 1:o.n]
     )::Array{typeof(Tracker.data(x)), 1}
@@ -44,3 +41,4 @@ function Optimise.apply!(o::TruncatedADAGrad, x, Δ)
 
     @. Δ *= η / (τ + sqrt(s) + ϵ)
 end
+

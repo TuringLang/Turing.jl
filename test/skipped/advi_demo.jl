@@ -5,8 +5,6 @@ using Random
 using Turing
 using Turing: Variational
 
-using Flux.Optimise
-
 # setup for plotting
 using Plots, StatsPlots, LaTeXStrings
 pyplot()
@@ -43,11 +41,11 @@ for seed ∈ seeds
         m = model(x)
         
         # ADVI
-        opt = ADAGrad()                  # optimizer taking value and gradient to new value
-        advi = ADVI(10, 100)             # <: VariationalInference
-        q = vi(m, advi; optimizer = opt) # => MeanField <: VariationalPosterior
+        opt = Variational.TruncatedADAGrad() # optimizer
+        advi = ADVI(10, 100)                 # <: VariationalInference
+        q = vi(m, advi; optimizer = opt)     # => MeanField <: VariationalPosterior
         
-        elbo = Variational.ELBO()        # <: VariationalObjective
+        elbo = Variational.ELBO()            # <: VariationalObjective
 
         θ = vcat(q.μ, q.ω)
         # θ = zeros(2 * length(q))

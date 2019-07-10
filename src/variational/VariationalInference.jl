@@ -9,16 +9,20 @@ using ..Turing: Turing
 using Random: AbstractRNG
 
 using ForwardDiff
-using Flux.Tracker, Flux.Optimise
+using Tracker
 
 import ..Core: getchunksize, getADtype
+
+using Requires
+function __init__()
+    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
+end
 
 export
     vi,
     ADVI,
     ELBO,
     TruncatedADAGrad
-
 
 abstract type VariationalInference{AD} end
 
@@ -128,7 +132,7 @@ function grad!(
 end
 
 """
-    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = ADAGrad())
+    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = TruncatedADAGrad())
 
 Iteratively updates parameters by calling `grad!` and using the given `optimizer` to compute
 the steps.
@@ -139,7 +143,7 @@ function optimize!(
     q::VariationalPosterior,
     model::Model,
     θ;
-    optimizer = ADAGrad()
+    optimizer = TruncatedADAGrad()
 ) where AD
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
@@ -157,16 +161,12 @@ function optimize!(
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
-    if θ isa Union{RMSProp, ADAGrad} && θ ∉ keys(optimizer.acc)
+    if (optimizer isa TruncatedADAGrad) && (θ ∉ keys(optimizer.acc))
         # this message should only occurr once in the optimization process
-        @info "[$alg_name] Optimization accumulator created for θ"
+        @info "[$alg_name] Should only be seen once: optimizer created for θ" objectid(θ)
     end
     
     diff_result = DiffResults.GradientResult(θ)
-
-    # TODO: in (Blei et al, 2015) TRUNCATED ADAGrad is suggested;
-    # this is not available in Flux.Optimise
-    # Maybe consider contributing a truncated ADAGrad to Flux.Optimise
 
     i = 0
     prog = if PROGRESS[]
@@ -181,7 +181,7 @@ function optimize!(
 
         # apply update rule
         Δ = DiffResults.gradient(diff_result)
-        Δ = Optimise.apply!(optimizer, θ, Δ)
+        Δ = apply!(optimizer, θ, Δ)
         @. θ = θ - Δ
         
         Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
