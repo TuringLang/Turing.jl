@@ -515,11 +515,7 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
     function ∂logπ∂θ(x)
-        x_old, lj_old = vi[spl], vi.logp
-        val, deriv = gradient_logp(x, vi, model, spl)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return (val, deriv)
+        return gradient_logp(x, vi, model, spl)
     end
     return ∂logπ∂θ
 end
