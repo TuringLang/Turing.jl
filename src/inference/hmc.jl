@@ -242,6 +242,7 @@ function sample(
     rng::AbstractRNG=GLOBAL_RNG,
     discard_adapt::Bool=true,
     verbose::Bool=true,
+    progress::Bool=false,
     kwargs...
 )
     # Create sampler
@@ -296,7 +297,7 @@ function sample(
     step(model, spl, vi, Val(true); adaptor=adaptor)
 
     # Sampling using AHMC and store samples in `samples`
-    steps!(model, spl, vi, samples; rng=rng, verbose=verbose)
+    steps!(model, spl, vi, samples; rng=rng, verbose=verbose, progress=progress)
 
     # Concatenate samples
     if resume_from != nothing
@@ -436,7 +437,8 @@ function steps!(model,
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
     ahmc_samples = AHMC.sample(
         rng,
@@ -446,7 +448,8 @@ function steps!(model,
         spl.alg.n_iters,
         spl.info[:adaptor],
         spl.alg.n_adapts;
-        verbose=verbose
+        verbose=verbose,
+        progress=progress
     )
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
@@ -461,7 +464,8 @@ function steps!(
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
     ahmc_samples = AHMC.sample(
         rng,
@@ -469,7 +473,8 @@ function steps!(
         spl.info[:traj],
         Vector{Float64}(vi[spl]),
         spl.alg.n_iters;
-        verbose=verbose
+        verbose=verbose,
+        progress=progress
     )
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
