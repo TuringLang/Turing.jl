@@ -194,7 +194,7 @@ function NUTS{AD}(
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.1,
-    metricT=AHMC.DenseEuclideanMetric
+    metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
 end
@@ -205,7 +205,7 @@ function NUTS{AD}(
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.1,
-    metricT=AHMC.DenseEuclideanMetric
+    metricT=AHMC.DiagEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
     NUTS{AD}(n_iters, n_adapts_default > 1000 ?
