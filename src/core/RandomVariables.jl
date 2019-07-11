@@ -189,33 +189,34 @@ function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     return new_vi
 end
 function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
-    md = newmetadata(old_vi.metadata, spl, x, 0)
+    md = newmetadata(old_vi.metadata, getspaceval(spl), x)
     VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))
 end
-@inline function newmetadata(metadata::NamedTuple{names}, spl, x, offset) where {names}
-    # Check if the named tuple is empty and end the recursion
-    length(names) === 0 && return ()
-    # Take the first key in the NamedTuple
-    f = names[1]
-    mdf = getfield(metadata, f)
-    syms = getspace(spl)
-    if f ∈ syms || length(syms) == 0
-        idcs = mdf.idcs
-        vns = mdf.vns
-        ranges = mdf.ranges
-        vals = x[(offset+1):(offset+length(mdf.vals))]
-        dists = mdf.dists
-        gids = mdf.gids
-        orders = mdf.orders
-        flags = mdf.flags
-        md = Metadata(idcs, vns, ranges, vals, dists, gids, orders, flags)
-	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, x, offset+length(mdf.vals)))
-    else
-        md = getfield(metadata, f)
-	    nt = NamedTuple{(f,)}((md,))
-        return merge(nt, newmetadata(_tail(metadata), spl, x, offset))
+@generated function newmetadata(metadata::NamedTuple{names}, ::Val{space}, x) where {names, space}
+    exprs = []
+    offset = :(0)
+    for f in names
+        mdf = :(metadata.$f)
+        if f in space || length(space) == 0
+            len = :(length($mdf.vals))
+            push!(exprs, :($f = Metadata($mdf.idcs, 
+                                        $mdf.vns, 
+                                        $mdf.ranges, 
+                                        x[($offset + 1):($offset + $len)], 
+                                        $mdf.dists, 
+                                        $mdf.gids, 
+                                        $mdf.orders, 
+                                        $mdf.flags
+                                    )
+                            )
+            )
+            offset = :($offset + $len)
+        else
+            push!(exprs, :($f = $mdf))
+        end
     end
+    length(exprs) == 0 && return :(NamedTuple())
+    return :($(exprs...),)
 end
 
 ####
@@ -386,13 +387,12 @@ transformed to Eucledian space.
 """
 getall(vi::UntypedVarInfo) = vi.vals
 getall(vi::TypedVarInfo) = vcat(_getall(vi.metadata)...)
-@inline function _getall(metadata::NamedTuple{names}) where {names}
-    # Check if NamedTuple is empty and end recursion
-    length(names) === 0 && return ()
-    # Take the first key of the NamedTuple
-    f = names[1]
-    # Recurse using the remaining of `metadata`
-    return (getfield(metadata, f).vals, _getall(_tail(metadata))...)
+@generated function _getall(metadata::NamedTuple{names}) where {names}
+    exprs = []
+    for f in names
+        push!(exprs, :(metadata.$f.vals))
+    end
+    return :($(exprs...),)
 end
 
 """
@@ -403,16 +403,16 @@ transformed to Eucledian space.
 """
 setall!(vi::UntypedVarInfo, val) = vi.vals .= val
 setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
-@inline function _setall!(metadata::NamedTuple{names}, val, start = 0) where {names}
-    # Check if `metadata` is empty and end recursion
-    length(names) === 0 && return nothing
-    # Take the first key of `metadata`
-    f = names[1]
-    # Set the `vals` of the current symbol, i.e. f, to the relevant portion in `val`
-    vals = getfield(metadata, f).vals
-    @views vals .= val[start + 1 : start + length(vals)]
-    # Recurse using the remaining of `metadata` and the remaining of `val`
-    return _setall!(_tail(metadata), val, start + length(vals))
+@generated function _setall!(metadata::NamedTuple{names}, val, start = 0) where {names}
+    expr = Expr(:block)
+    start = :(1)
+    for f in names
+        length = :(length(metadata.$f.vals))
+        finish = :($start + $length - 1)
+        push!(expr.args, :(metadata.$f.vals .= val[$start:$finish]))
+        start = :($start + $length)
+    end
+    return expr
 end
 
 """
@@ -449,68 +449,67 @@ Returns a tuple of the unique symbols of random variables sampled in `vi`.
 syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
 syms(vi::TypedVarInfo) = keys(vi.metadata)
 
+getspaceval(alg::T) where T = Val(getspace(T))
+
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
 #   the SampleFromPrior sampler
-function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
+@inline function _getidcs(vi::UntypedVarInfo, ::SampleFromPrior)
     return filter(i -> isempty(vi.gids[i]) , 1:length(vi.gids))
 end
 # Get a NamedTuple of all the indices belonging to SampleFromPrior, one for each symbol
-function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
+@inline function _getidcs(vi::TypedVarInfo, ::SampleFromPrior)
     return _getidcs(vi.metadata)
 end
-@inline function _getidcs(metadata::NamedTuple{names}) where {names}
-    # Check if the `metadata` is empty to end the recursion
-    length(names) === 0 && return NamedTuple()
-    # Take the first key/symbol
-    f = names[1]
-    # Get the first symbol's metadata
-    meta = getfield(metadata, f)
-    # Get all the idcs of vns with empty gid
-    v = filter(i -> isempty(meta.gids[i]), 1:length(meta.gids))
-    # Make a single-pair NamedTuple to merge with the result of the recursion
-    nt = NamedTuple{(f,)}((v,))
-    # Recurse using the remaining of metadata
-    return merge(nt, _getidcs(_tail(metadata)))
+@generated function _getidcs(metadata::NamedTuple{names}) where {names}
+    exprs = []
+    for f in names
+        push!(exprs, :($f = findinds(metadata.$f)))
+    end
+    length(exprs) == 0 && return :(NamedTuple())
+    return :($(exprs...),)
 end
 
 # Get all indices of variables belonging to a given sampler
-function _getidcs(vi::AbstractVarInfo, spl::Sampler)
+@inline function _getidcs(vi::AbstractVarInfo, spl::Sampler)
     # NOTE: 0b00 is the sanity flag for
     #         |\____ getidcs   (mask = 0b10)
     #         \_____ getranges (mask = 0b01)
-    if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
+    #if ~haskey(spl.info, :cache_updated) spl.info[:cache_updated] = CACHERESET end
     # Checks if cache is valid, i.e. no new pushes were made, to return the cached idcs
     # Otherwise, it recomputes the idcs and caches it
-    if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
-        spl.info[:idcs]
-    else
-        spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        spl.info[:idcs] = _getidcs(vi, spl.selector, getspace(spl.alg))
-    end
+    #if haskey(spl.info, :idcs) && (spl.info[:cache_updated] & CACHEIDCS) > 0
+    #    spl.info[:idcs]
+    #else
+        #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
+        idcs = _getidcs(vi, spl.selector, getspaceval(spl.alg))
+        #spl.info[:idcs] = idcs
+    #end
+    return idcs
 end
-function _getidcs(vi::UntypedVarInfo, s::Selector, space::Tuple)
-    filter(i -> (s in vi.gids[i] || isempty(vi.gids[i])) &&
-        (isempty(space) || in(vi.vns[i], space)), 1:length(vi.gids))
+@inline function _getidcs(vi::UntypedVarInfo, s::Selector, ::Val{space}) where {space}
+    findinds(vi, s, Val(space))
 end
-function _getidcs(vi::TypedVarInfo, s::Selector, space::Tuple)
-    return _getidcs(vi.metadata, s, space)
+@inline function _getidcs(vi::TypedVarInfo, s::Selector, ::Val{space}) where {space}
+    return _getidcs(vi.metadata, s, Val(space))
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
-@inline function _getidcs(metadata::NamedTuple{names}, s::Selector, space::Tuple) where {names}
-    # Check if `metadata` is empty to end the recursion
-    length(names) === 0 && return NamedTuple()
-    # Take the first sybmol
-    f = names[1]
-    # Get the first symbol's metadata
-    f_meta = getfield(metadata, f)
+@generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
+    exprs = []
+    for f in names
+        push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
+    end
+    length(exprs) == 0 && return :(NamedTuple())
+    return :($(exprs...),)
+end
+@inline function findinds(f_meta, s, ::Val{space}) where {space}
     # Get all the idcs of the vns in `space` and that belong to the selector `s`
-    v = filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
+    return filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
         (isempty(space) || in(f_meta.vns[i], space)), 1:length(f_meta.gids))
-    # Make a single-pair NamedTuple to merge with the result of the recursion
-    nt = NamedTuple{(f,)}((v,))
-    # Recurse using the remaining of metadata
-    return merge(nt, _getidcs(_tail(metadata), s, space))
+end
+@inline function findinds(f_meta)
+    # Get all the idcs of the vns
+    return filter((i) -> isempty(f_meta.gids[i]), 1:length(f_meta.gids))
 end
 
 # Get all vns of variables belonging to spl
@@ -521,17 +520,13 @@ function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
     return _getvns(vi.metadata, idcs)
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
-@inline function _getvns(metadata::NamedTuple{names}, idcs) where {names}
-    # Check if `metadata` is empty to end the recursion
-    length(names) === 0 && return NamedTuple()
-    # Take the first symbol
-    f = names[1]
-    # Get the vector of `vns` with symbol `f`
-    v = getfield(metadata, f).vns[getfield(idcs, f)]
-    # Make a single-pair NamedTuple to merge with the result of the recursion
-    nt = NamedTuple{(f,)}((v,))
-    # Recurse using the remaining of `metadata`
-    return merge(nt, _getvns(_tail(metadata), idcs))
+@generated function _getvns(metadata::NamedTuple{names}, idcs) where {names}
+    exprs = []
+    for f in names
+        push!(exprs, :($f = metadata.$f.vns[idcs.$f]))
+    end
+    length(exprs) == 0 && return :(NamedTuple())
+    return :($(exprs...),)
 end
 
 # Get the index (in vals) ranges of all the vns of variables belonging to spl
@@ -542,30 +537,30 @@ end
     #    spl.info[:ranges]
     #else
         #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        ranges = _getranges(vi, spl.selector, getspace(spl.alg))
+        ranges = _getranges(vi, spl.selector, getspaceval(spl.alg))
         #spl.info[:ranges] = ranges
         return ranges
     #end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
-@inline function _getranges(vi::AbstractVarInfo, s::Selector, space::Tuple=())
-    _getranges(vi, _getidcs(vi, s, space))
+@inline function _getranges(vi::AbstractVarInfo, s::Selector, ::Val{space}=Val(())) where {space}
+    _getranges(vi, _getidcs(vi, s, Val(space)))
 end
 @inline function _getranges(vi::UntypedVarInfo, idcs::Vector{Int})
     mapreduce(i -> vi.ranges[i], vcat, idcs, init=Int[])
 end
 @inline _getranges(vi::TypedVarInfo, idcs::NamedTuple) = _getranges(vi.metadata, idcs)
-@inline function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
-    # Check if `metadata` is empty to end the recursion
-    length(names) === 0 && return NamedTuple()
-    # Take the first symbol
-    f = names[1]
-    # Collect the index ranges of all the vns with symbol `f`
-    v = mapreduce(i -> getfield(metadata, f).ranges[i], vcat, getfield(idcs, f), init=Int[])
-    # Make a single-pair NamedTuple to merge with the result of the recursion
-    nt = NamedTuple{(f,)}((v,))
-    # Recurse using the remaining of `metadata`
-    return merge(nt, _getranges(_tail(metadata), idcs))
+
+@generated function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
+    exprs = []
+    for f in names
+        push!(exprs, :($f = findranges(metadata.$f.ranges, idcs.$f)))
+    end
+    length(exprs) == 0 && return :(NamedTuple())
+    return :($(exprs...),)
+end
+@inline function findranges(f_ranges, f_idcs)
+    return mapreduce(i -> f_ranges[i], vcat, f_idcs, init=Int[])
 end
 
 """
@@ -783,15 +778,12 @@ function empty!(vi::VarInfo)
     return vi
 end
 @inline _empty!(metadata::Metadata) = empty!(metadata)
-@inline function _empty!(metadata::NamedTuple{names}) where {names}
-    # Check if the named tuple is empty and end the recursion
-    length(names) === 0 && return nothing
-    # Take the first key in the NamedTuple
-    f = names[1]
-    # Empty the first instance of `Metadata`
-    empty!(getfield(metadata, f))
-    # Recurse using the remaining pairs of the NamedTuple
-    return _empty!(_tail(metadata))
+@generated function _empty!(metadata::NamedTuple{names}) where {names}
+    expr = Expr(:block)
+    for f in names
+        push!(expr.args, :(empty!(metadata.$f)))
+    end
+    return expr
 end
 
 # Functions defined only for UntypedVarInfo
@@ -859,13 +851,12 @@ Returns true if `vi` is empty and false otherwise.
 """
 isempty(vi::UntypedVarInfo) = isempty(vi.idcs)
 isempty(vi::TypedVarInfo) = _isempty(vi.metadata)
-@inline function _isempty(metadata::NamedTuple{names}) where {names}
-    # Checks if `metadata` is empty to end the recursion
-    length(names) === 0 && return true
-    # Take the first key of `metadata`
-    f = names[1]
-    # If not empty, return false and end the recursion. Otherwise, recurse using the remaining of `metadata`.
-    return isempty(getfield(metadata, f).idcs) && _isempty(_tail(metadata))
+@generated function _isempty(metadata::NamedTuple{names}) where {names}
+    expr = Expr(:&&, :true)
+    for f in names
+        push!(expr.args, :(isempty(metadata.$f.idcs)))
+    end
+    return expr
 end
 
 # X -> R for all variables associated with given sampler
@@ -892,31 +883,28 @@ function link!(vi::UntypedVarInfo, spl::Sampler)
 end
 function link!(vi::TypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
-    space = getspace(spl)
-    return _link!(vi.metadata, vi, vns, space)
+    return _link!(vi.metadata, vi, vns, getspaceval(spl))
 end
-@inline function _link!(metadata::NamedTuple{names}, vi, vns, space) where {names}
-    # Check if the `metadata` is empty to end the recursion
-    length(names) === 0 && return nothing
-    # Take the first key/symbol of `metadata`
-    f = names[1]
-    # Extract the list of `vns` with symbol `f`
-    f_vns = getfield(vns, f)
-    # Transform only if `f` is in the space of the sampler or the space is void
-    if f ∈ space || length(space) == 0
-        if ~istrans(vi, f_vns[1])
-            # Iterate over all `f_vns` and transform
-            for vn in f_vns
-                dist = getdist(vi, vn)
-                setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
-                settrans!(vi, true, vn)
-            end
-        else
-            @warn("[Turing] attempt to link a linked vi")
+@generated function _link!(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
+    expr = Expr(:block)
+    for f in names
+        if f in space || length(space) == 0
+            push!(expr.args, quote
+                f_vns = vi.metadata.$f.vns
+                if ~istrans(vi, f_vns[1])
+                    # Iterate over all `f_vns` and transform
+                    for vn in f_vns
+                        dist = getdist(vi, vn)
+                        setval!(vi, vectorize(dist, link(dist, reconstruct(dist, getval(vi, vn)))), vn)
+                        settrans!(vi, true, vn)
+                    end
+                else
+                    @warn("[Turing] attempt to link a linked vi")
+                end
+            end)
         end
     end
-    # Recurse using the remaining of `metadata`
-    return _link!(_tail(metadata), vi, vns, space)
+    return expr
 end
 
 # R -> X for all variables associated with given sampler
@@ -941,30 +929,28 @@ function invlink!(vi::UntypedVarInfo, spl::Sampler)
 end
 function invlink!(vi::TypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
-    space = getspace(spl)
-    return _invlink!(vi.metadata, vi, vns, space)
+    return _invlink!(vi.metadata, vi, vns, getspaceval(spl))
 end
-@inline function _invlink!(metadata::NamedTuple{names}, vi, vns, space) where {names}
-    # Check if the `metadata` is empty to end the recursion
-    length(names) === 0 && return nothing
-    # Take the first key/symbol of `metadata`
-    f = names[1]
-    # Extract the list of `vns` with symbol `f`
-    f_vns = getfield(vns, f)
-    # Transform only if `f` is in the space of the sampler or the space is void
-    if f ∈ space || length(space) == 0
-        if istrans(vi, f_vns[1])
-            # Iterate over all `f_vns` and transform
-            for vn in f_vns
-                dist = getdist(vi, vn)
-                setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
-                settrans!(vi, false, vn)
-            end
-        else
-            @warn("[Turing] attempt to invlink an invlinked vi")
+@generated function _invlink!(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
+    expr = Expr(:block)
+    for f in names
+        if f in space || length(space) == 0
+            push!(expr.args, quote
+                f_vns = vi.metadata.$f.vns
+                if istrans(vi, f_vns[1])
+                    # Iterate over all `f_vns` and transform
+                    for vn in f_vns
+                        dist = getdist(vi, vn)
+                        setval!(vi, vectorize(dist, invlink(dist, reconstruct(dist, getval(vi, vn)))), vn)
+                        settrans!(vi, false, vn)
+                    end
+                else
+                    @warn("[Turing] attempt to invlink an invlinked vi")
+                end    
+            end)
         end
     end
-    return _invlink!(_tail(metadata), vi, vns, space)
+    return expr
 end
 
 # The default getindex & setindex!() for get & set values
@@ -1007,16 +993,12 @@ function getindex(vi::TypedVarInfo, spl::Sampler)
     return vcat(_getindex(vi.metadata, ranges)...)
 end
 # Recursively builds a tuple of the `vals` of all the symbols
-@inline function _getindex(metadata::NamedTuple{names}, ranges) where {names}
-    # Check if `metadata` is empty to end the recursion
-    length(names) === 0 && return ()
-    # Take the first key of `metadata`
-    f = names[1]
-    # Get the `vals` and `ranges` of symbol `f`
-    f_vals = getfield(metadata, f).vals
-    f_range = getfield(ranges, f)
-    # Get the values from `f_vals` that were sampled by `spl` and recurse using the remaining of `metadata`
-    return (f_vals[f_range], _getindex(_tail(metadata), ranges)...)
+@generated function _getindex(metadata::NamedTuple{names}, ranges) where {names}
+    expr = Expr(:tuple)
+    for f in names
+        push!(expr.args, :(metadata.$f.vals[ranges.$f]))
+    end
+    return expr
 end
 
 """
@@ -1042,19 +1024,36 @@ function setindex!(vi::TypedVarInfo, val, spl::Sampler)
     return val
 end
 # Recursively writes the entries of `val` to the `vals` fields of all the symbols as if they were a contiguous vector.
-@inline function _setindex!(metadata::NamedTuple{names}, val, ranges, start = 0) where {names}
-    length(names) === 0 && return nothing
-    f = names[1]
-    # The `vals` field of symbol `f`
-    f_vals = getfield(metadata, f).vals
-    # The indices in `f_vals` corresponding to sampler `spl`
-    f_range = getfield(ranges, f)
-    n = length(f_range)
-    # Writes the portion of `val` corresponding to the symbol `f`
-    @views f_vals[f_range] .= val[start+1:start+n]
-    # Increment the global index and move to the next symbol
-    start += n
-    return _setindex!(_tail(metadata), val, ranges, start)
+@generated function _setindex!(metadata::NamedTuple{names}, val, ranges) where {names}
+    expr = Expr(:block)
+    offset = :(0)
+    for f in names
+        f_vals = :(metadata.$f.vals)
+        f_range = :(ranges.$f)
+        start = :($offset + 1)
+        len = :(length($f_range))
+        finish = :($offset + $len)
+        push!(expr.args, :(@views $f_vals[$f_range] .= val[$start:$finish]))
+        offset = :($offset + $len)
+    end
+    return expr
+end
+
+function getparams(vi::TypedVarInfo, spl::Union{SampleFromPrior, Sampler})
+    # Gets the vns as a NamedTuple
+    vns = _getvns(vi, spl)
+    return vcat(_getparams(vns, vi)...)
+end
+# Recursively builds a tuple of the parameter values of all the symbols
+@generated function _getparams(vns::NamedTuple{names}, vi) where {names}
+    expr = Expr(:tuple)
+    for f in names
+        push!(expr.args, :(findvns(vi, vns.$f)))
+    end
+    return expr
+end
+@inline function findvns(vi, f_vns)
+    return mapreduce(vn -> vi[vn], vcat, f_vns)
 end
 
 function Base.eltype(vi::AbstractVarInfo, spl::Union{AbstractSampler, SampleFromPrior})
@@ -1245,29 +1244,28 @@ function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
     gidcs = _getidcs(vi, spl)
     return _set_retained_vns_del_by_spl!(vi.metadata, gidcs, vi.num_produce)
 end
-@inline function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
-    # Check if `metadata` is empty to end the recursion
-    length(names) === 0 && return nothing
-    # Take the first symbol
-    f = names[1]
-    # Get the idcs, orders and flags with symbol `f`
-    f_gidcs = getfield(gidcs, f)
-    f_orders = getfield(metadata, f).orders
-    f_flags = getfield(metadata, f).flags
-    # Set the flag for variables with symbol `f`
-    if num_produce == 0
-        for i = length(f_gidcs):-1:1
-            f_flags["del"][f_gidcs[i]] = true
-        end
-    else
-        for i in 1:length(f_orders)
-            if i in f_gidcs && f_orders[i] > num_produce
-                f_flags["del"][i] = true
+@generated function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
+    expr = Expr(:block)
+    for f in names
+        f_gidcs = :(gidcs.$f)
+        f_orders = :(metadata.$f.orders)
+        f_flags = :(metadata.$f.flags)
+        push!(expr.args, quote
+            # Set the flag for variables with symbol `f`
+            if num_produce == 0
+                for i = length($f_gidcs):-1:1
+                    $f_flags["del"][$f_gidcs[i]] = true
+                end
+            else
+                for i in 1:length($f_orders)
+                    if i in $f_gidcs && $f_orders[i] > num_produce
+                        $f_flags["del"][i] = true
+                    end
+                end
             end
-        end
+        end)
     end
-    # Recurse using the remaining of `metadata`
-    return _set_retained_vns_del_by_spl!(_tail(metadata), gidcs, num_produce)
+    return expr
 end
 
 """

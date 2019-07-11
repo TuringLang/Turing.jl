@@ -66,8 +66,6 @@ getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
-getspace(alg::InferenceAlgorithm) = getspace(typeof(alg))
-
 """
     mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
 
@@ -88,9 +86,11 @@ include("AdvancedSMC.jl")
 include("gibbs.jl")
 
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
+    @eval getspace(::$alg{space}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
+    @eval getspace(::$alg{<:Any, space}) where {space} = space
     @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
 
