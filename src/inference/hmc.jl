@@ -581,7 +581,7 @@ function hmc_step(
     H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
 
     # Call AHMC to make one MCMC transition
-    z_new, α = AHMC.transition(traj, h, z)
+    z_new, α, stat = AHMC.transition(traj, h, z)
 
     # Compute new Hamiltonian energy
     H_new = AHMC.neg_energy(z_new)
