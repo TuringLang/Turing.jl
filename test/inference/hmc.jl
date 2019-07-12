@@ -44,7 +44,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
     @numerical_testset "hmc reverse diff" begin
         alg = HMC(0.15, 10)
-        res = sample(gdemo_default, alg, 3000)
+        res = sample(gdemo_default, alg, 4000)
         check_gdemo(res, eps=0.1)
     end
     @turing_testset "matrix support" begin
@@ -151,7 +151,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
     @numerical_testset "nuts inference" begin
         alg = NUTS(1000, 0.8)
-        res = sample(gdemo_default, alg, 5000)
+        res = sample(gdemo_default, alg, 6000)
         check_gdemo(res)
     end
     @turing_testset "nuts constructor" begin

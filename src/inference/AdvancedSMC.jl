@@ -40,19 +40,24 @@ Usage:
 SMC(1000)
 ```
 """
-struct SMC{T, F} <: ParticleInference
+mutable struct SMC{space, F} <: InferenceAlgorithm
     n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
-    space                 ::  Set{T}
 end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
-
-SMC(n_particles::Int) = SMC(n_particles, resample_systematic, 0.5, Set())
-function SMC(n_particles::Int, space...)
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return SMC(n_particles, resample_systematic, 0.5, _space)
+function SMC(
+        n_particles::Int,
+        resampler::F,
+        resampler_threshold::Float64,
+        space::Tuple) where {F}
+    return SMC{space, F}(n_particles, resampler, resampler_threshold)
+end
+SMC(n) = SMC(n, resample_systematic, 0.5, ())
+SMC(n_particles::Int, ::Tuple{}) = SMC(n_particles)
+function SMC(n_particles::Int, space::Symbol...)
+    SMC(n_particles, resample_systematic, 0.5, space)
 end
 
 mutable struct ParticleState <: SamplerState
@@ -123,17 +128,17 @@ Usage:
 PG(100, 100)
 ```
 """
-struct PG{T, F} <: ParticleInference
-    n_particles           ::    Int         # number of particles used
-    resampler             ::    F           # function to resample
-    space                 ::    Set{T}      # sampling space, emtpy means all
+mutable struct PG{space, F} <: InferenceAlgorithm
+  n_particles           ::    Int         # number of particles used
+  n_iters               ::    Int         # number of iterations
+  resampler             ::    F           # function to resample
 end
-
-PG(n1::Int) = PG(n1, resample_systematic, Set())
-function PG(n1::Int, space...)
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    alg = PG(n1, resample_systematic, _space)
-    return alg
+function PG(n_particles::Int, n_iters::Int, resampler::F, space::Tuple) where F
+    return PG{space, F}(n_particles, n_iters, resampler)
+end
+PG(n1::Int, n2::Int, ::Tuple{}) = PG(n1, n2)
+function PG(n1::Int, n2::Int, space::Symbol...)
+    PG(n1, n2, resample_systematic, space)
 end
 
 alg_str(spl::Sampler{PG}) = "PG"
@@ -229,7 +234,7 @@ function assume(  spl::Sampler{T},
                 ) where T<:Union{PG,SMC}
 
     vi = current_trace().vi
-    if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
         if ~haskey(vi, vn)
             r = rand(dist)
             push!(vi, vn, r, dist, spl)

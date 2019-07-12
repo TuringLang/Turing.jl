@@ -1,4 +1,5 @@
 using Turing, Random, Test
+using Turing: Utilities
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -34,5 +35,35 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         chn3_contd = sample(gdemo_default, alg3; resume_from=chn3)
         check_gdemo(chn3_contd)
+    end
+    @testset "split var string" begin
+        var_str = "x"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds == Vector{String}[]
+
+        var_str = "x[1,1][2,3]"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["1", "1"]
+        @test inds[2] == ["2", "3"]
+
+        var_str = "x[Colon(),1][2,Colon()]"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["Colon()", "1"]
+        @test inds[2] == ["2", "Colon()"]
+
+        var_str = "x[2:3,1][2,1:2]"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "1"]
+        @test inds[2] == ["2", "1:2"]
+
+        var_str = "x[2:3,2:3][[1,2],[1,2]]"
+        sym, inds = Utilities.split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "2:3"]
+        @test inds[2] == ["[1,2]", "[1,2]"]
     end
 end

@@ -51,17 +51,14 @@ end
 
 function test_model_ad(model, f, syms::Vector{Symbol})
     # Set up VI.
-    vi = Turing.VarInfo()
-    model(vi, SampleFromPrior())
+    vi = Turing.VarInfo(model)
 
     # Collect symbols.
     vnms = Vector(undef, length(syms))
     vnvals = Vector{Float64}()
     for i in 1:length(syms)
         s = syms[i]
-        vnms[i] = collect(
-            Iterators.filter(vn -> vn.sym == s, keys(vi))
-        )[1]
+        vnms[i] = getfield(vi.metadata, s).vns[1]
 
         vals = getval(vi, vnms[i])
         for i in eachindex(vals)

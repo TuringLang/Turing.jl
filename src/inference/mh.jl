@@ -32,40 +32,43 @@ end
 chn = sample(gdemo([1.5, 2]), MH(1000))
 ```
 """
-mutable struct MH{T} <: InferenceAlgorithm
+mutable struct MH{space} <: InferenceAlgorithm
+    n_iters   ::  Int       # number of iterations
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
-    space     ::  Set{T}    # sampling space, emtpy means all
 end
 
 transition_type(::Sampler{<:MH}) = Transition
 alg_str(::Sampler{<:MH}) = "MH"
 
-function MH(space...)
-    new_space = Set()
+function MH(n_iters::Int, proposals::Dict{Symbol, Any}, space::Tuple)
+    return MH{space}(n_iters, proposals)
+end
+
+function MH(n_iters::Int, space...)
+    new_space = ()
     proposals = Dict{Symbol,Any}()
 
     # parse random variables with their hypothetical proposal
     for element in space
         if isa(element, Symbol)
-            push!(new_space, element)
+            new_space = (new_space..., element)
         else
-            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For     proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
-            push!(new_space, element[1])
+            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
+            new_space = (new_space..., element[1])
             proposals[element[1]] = element[2]
         end
     end
-    set = Set(new_space)
-    MH{eltype(set)}(proposals, set)
+    MH(proposals, new_space)
 end
 
 function Sampler(alg::MH, model::Model, s::Selector)
     alg_str = "MH"
 
     # Sanity check for space
-    if (s.tag == :default) && !isempty(alg.space)
-        @assert issubset(Set(get_pvars(model)), alg.space) "[$alg_str] symbols specified to samplers ($alg.space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
-        if Set(get_pvars(model)) != alg.space
-            warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(alg.space, Set(get_pvars(model))))")
+    if (s.tag == :default) && !isempty(getspace(alg))
+        @assert issubset(get_pvars(model), getspace(alg)) "[$alg_str] symbols specified to samplers ($getspace(alg)) doesn't cover the model parameters ($(get_pvars(model)))"
+        if !(issetequal(get_pvars(model), getspace(alg)))
+            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(getspace(alg), get_pvars(model)))")
         end
     end
 
@@ -127,7 +130,7 @@ function step!(
 end
 
 function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
-    if isempty(spl.alg.space) || vn.sym in spl.alg.space
+    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
         if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
         old_val = vi[vn]
 

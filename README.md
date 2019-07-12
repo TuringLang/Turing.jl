@@ -1,7 +1,7 @@
 # Turing.jl
 
 [![Build Status](https://travis-ci.org/TuringLang/Turing.jl.svg?branch=master)](https://travis-ci.org/TuringLang/Turing.jl)
-[![Build status](https://ci.appveyor.com/api/projects/status/gp1xtxsc3971pwi6/branch/master?svg=true)](https://ci.appveyor.com/project/TuringLang/turing-jl/branch/master)
+[![Build Status](https://dev.azure.com/yebai/TuringLang/_apis/build/status/TuringLang.Turing.jl?branchName=master)](https://dev.azure.com/yebai/TuringLang/_build/latest?definitionId=1&branchName=master)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/)
 
@@ -37,4 +37,4 @@ Turing is an open source project so if you feel you have some relevant skills an
 Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in the Julia Slack chat for help, discussion, or general communication with the Turing team. If you do not already have an invitation to Julia's Slack, you can get one by going [here](https://slackinvite.julialang.org/).
 
 ## Citing Turing.jl ##
-If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: a language for flexible probabilistic inference.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)
+If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: a language for flexible probabilistic inference.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://github.com/TuringLang/Turing.jl/blob/master/CITATION.bib)

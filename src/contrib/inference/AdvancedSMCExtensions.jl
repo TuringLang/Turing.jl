@@ -26,16 +26,18 @@ Arguments:
 - `parameters_algs::Tuple{MH}` : An [`MH`](@ref) algorithm, which includes a
 sample space specification.
 """
-mutable struct PMMH{T, A<:Tuple} <: InferenceAlgorithm
+mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
     n_iters               ::    Int               # number of iterations
     algs                  ::    A                 # Proposals for state & parameters
-    space                 ::    Set{T}            # sampling space, emtpy means all
+end
+function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
+    return PMMH{space, A}(n_iters, algs)
 end
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
-    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), Set())
+    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), ())
 end
 
-PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), Set())
+PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), ())
 
 function Sampler(alg::PMMH, model::Model, s::Selector)
     info = Dict{Symbol, Any}()

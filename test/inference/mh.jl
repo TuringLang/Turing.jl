@@ -34,7 +34,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
-        chain = sample(gdemo_default, alg, 5000)
+        chain = sample(gdemo_default, alg, 2000)
         check_gdemo(chain, eps = 0.1)
 
         # MoGtest
