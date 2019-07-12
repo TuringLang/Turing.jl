@@ -42,7 +42,7 @@ Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in 
 - A general-purpose probabilistic programming system with programmable inference - [Gen.jl](https://probcomp.github.io/Gen/)
 - Bare-bones implementation of robust dynamic Hamiltonian Monte Carlo methods - [DynamicHMC.jl](https://github.com/tpapp/DynamicHMC.jl)
 - Comparing performance and results of mcmc options using Julia - [MCMCBenchmarks.jl](https://github.com/StatisticalRethinkingJulia/MCMCBenchmarks.jl)
-
+- [Omega.jl](https://github.com/zenna/Omega.jl) for probabilistic programming and causal inference.
 
 ## Citing Turing.jl ##
 If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: a language for flexible probabilistic inference.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://github.com/TuringLang/Turing.jl/blob/master/CITATION.bib)
