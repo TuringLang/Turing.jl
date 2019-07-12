@@ -39,8 +39,8 @@ Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in 
 ## Related packages
 
 - Probabilistic programming via source rewriting - [Soss.jl](https://github.com/cscherrer/Soss.jl)
-- A general-purpose probabilistic programming system with programmable inference - [Gen](https://probcomp.github.io/Gen/)
-- Bare-bones implementation of robust dynamic Hamiltonian Monte Carlo methods - [DynamicHMC](https://github.com/tpapp/DynamicHMC.jl)
+- A general-purpose probabilistic programming system with programmable inference - [Gen.jl](https://probcomp.github.io/Gen/)
+- Bare-bones implementation of robust dynamic Hamiltonian Monte Carlo methods - [DynamicHMC.jl](https://github.com/tpapp/DynamicHMC.jl)
 
 
 ## Citing Turing.jl ##
