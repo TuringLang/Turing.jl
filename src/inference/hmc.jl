@@ -432,7 +432,8 @@ end
 
 
 # Efficient multiple step sampling for adaptive HMC.
-function steps!(model,
+function steps!(
+    model,
     spl::Sampler{<:AdaptiveHamiltonian},
     vi,
     samples;
@@ -440,7 +441,7 @@ function steps!(model,
     verbose::Bool=true,
     progress::Bool=false
 )
-    ahmc_samples = AHMC.sample(
+    ahmc_samples, stats = AHMC.sample(
         rng,
         spl.info[:h],
         spl.info[:traj],
@@ -454,6 +455,7 @@ function steps!(model,
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
+        foreach(name -> samples[i].value[name] = stats[i][name], typeof(stats[i]).names)
     end
 end
 
@@ -467,7 +469,7 @@ function steps!(
     verbose::Bool=true,
     progress::Bool=false
 )
-    ahmc_samples = AHMC.sample(
+    ahmc_samples, stats = AHMC.sample(
         rng,
         spl.info[:h],
         spl.info[:traj],
@@ -476,9 +478,11 @@ function steps!(
         verbose=verbose,
         progress=progress
     )
+    
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
+        foreach(name -> samples[i].value[name] = stats[i][name], typeof(stats[i]).names)
     end
 end
 
@@ -577,26 +581,10 @@ function hmc_step(
     # Build phase point
     z = AHMC.phasepoint(h, θ, r)
 
-    # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
-
     # Call AHMC to make one MCMC transition
-    z_new, α, stat = AHMC.transition(traj, h, z)
+    z_new, stat = AHMC.transition(traj, h, z)
 
-    # Compute new Hamiltonian energy
-    H_new = AHMC.neg_energy(z_new)
-    θ_new = z_new.θ
-
-    # NOTE: as `transition` doesn't return `is_accept`,
-    #       I use `H == H_new` to check if the sample is accepted.
-    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
-                            # from the old one, the sample was accepted.
-    alg isa NUTS && (is_accept = true)  # we always accept in NUTS
-
-    # Compute updated log-joint probability
-    lj_new = logπ(θ_new)
-
-    return θ_new, lj_new, is_accept, α
+    return z_new.θ, stat.log_density, stat.is_accept, stat.acceptance_rate
 end
 
 ####
