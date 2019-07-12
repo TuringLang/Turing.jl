@@ -28,15 +28,12 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-mutable struct Gibbs{A, T} <: InferenceAlgorithm
+mutable struct Gibbs{A} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
-    thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
-    space     ::  Set{T}
 end
-Gibbs(algs...; thin=true) = Gibbs(algs, thin, Set{Symbol}())
+Gibbs(algs...) = Gibbs{typeof(algs)}(algs)
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-# transition_type(spl::Sampler{<:Gibbs}) = GibbsTransition
 transition_type(spl::Sampler{<:Gibbs}) = Transition
 
 mutable struct GibbsState{T<:NamedTuple} <: SamplerState

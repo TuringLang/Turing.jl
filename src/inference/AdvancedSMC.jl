@@ -40,7 +40,7 @@ Usage:
 SMC(1000)
 ```
 """
-mutable struct SMC{space, F} <: InferenceAlgorithm
+mutable struct SMC{space, F} <: ParticleInference
     n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
@@ -128,17 +128,16 @@ Usage:
 PG(100, 100)
 ```
 """
-mutable struct PG{space, F} <: InferenceAlgorithm
+mutable struct PG{space, F} <: ParticleInference
   n_particles           ::    Int         # number of particles used
-  n_iters               ::    Int         # number of iterations
   resampler             ::    F           # function to resample
 end
-function PG(n_particles::Int, n_iters::Int, resampler::F, space::Tuple) where F
-    return PG{space, F}(n_particles, n_iters, resampler)
+function PG(n_particles::Int, resampler::F, space::Tuple) where F
+    return PG{space, F}(n_particles, resampler)
 end
-PG(n1::Int, n2::Int, ::Tuple{}) = PG(n1, n2)
-function PG(n1::Int, n2::Int, space::Symbol...)
-    PG(n1, n2, resample_systematic, space)
+PG(n1::Int, ::Tuple{}) = PG(n1)
+function PG(n1::Int, space::Symbol...)
+    PG(n1, resample_systematic, space)
 end
 
 alg_str(spl::Sampler{PG}) = "PG"

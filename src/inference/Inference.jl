@@ -145,6 +145,7 @@ end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
 end
+getspace(::Gibbs) = ()
 
 @inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
 @inline floatof(::Type) = Real
@@ -385,6 +386,9 @@ function Chains(
     le = :final_logevidence in fieldnames(typeof(spl.state)) ?
         getproperty(spl.state, :final_logevidence) :
         missing
+
+    display(pnames)
+    display(parray)
 
     # Chain construction.
     return Chains(

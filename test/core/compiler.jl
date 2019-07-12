@@ -245,7 +245,7 @@ priors = 0 # See "new grammar" test.
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6))
+        chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6), 1000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], 3000)
     end
     @testset "observe" begin

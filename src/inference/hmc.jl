@@ -22,57 +22,6 @@ mutable struct DynamicHMCState{
     adaptor  :: TAdapt
 end
 
-function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
-    # Reuse the VarInfo.
-    vi = spl.state.vi
-
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
-    h = AHMC.Hamiltonian(spl.alg.metricT(
-        length(vi[spl])),
-        logπ, ∂logπ∂θ)
-    traj = gen_traj(spl.alg, spl.alg.ϵ)
-
-    return StaticHMCState(vi, 0, 0, traj, h)
-end
-
-function HMCState(model::Model,
-        spl::Sampler{<:AdaptiveHamiltonian};
-        adaptor=AHMCAdaptor(spl.alg),
-        kwargs...
-)
-    # Reuse the VarInfo.
-    vi = spl.state.vi
-
-    # Link everything if needed.
-    link!(vi, spl)
-
-    # Get the initial log pdf and gradient.
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
-
-    # Create a Hamiltonian.
-    θ_init = Vector{Float64}(vi[spl])
-    metric = spl.alg.metricT(length(θ_init))
-    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-
-    # Find a step size.
-    init_ϵ = spl.alg.init_ϵ
-
-    # Find good eps if not provided one
-    if init_ϵ == 0.0
-        init_ϵ = AHMC.find_good_eps(h, θ_init)
-        @info "Found initial step size" init_ϵ
-    end
-
-    # Generate a trajectory.
-    traj = gen_traj(spl.alg, init_ϵ)
-
-    # Unlink everything.
-    invlink!(vi, spl)
-
-    return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
-end
 
 ###
 ### Hamiltonian Monte Carlo samplers.
@@ -111,10 +60,11 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     ϵ           ::  Float64   # leapfrog step size
     n_leapfrog  ::  Int       # leapfrog step number
 end
-HMC(args...) = HMC{ADBackend()}(args...)
+
 transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
+HMC(args...) = HMC{ADBackend()}(args...)
 function HMC{AD}( ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
     return HMC{AD, space, metricT}(ϵ, n_leapfrog)
 end
@@ -132,8 +82,7 @@ function HMC{AD}(
     space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMC{AD, eltype(_space)}(ϵ, n_leapfrog, _space, metricT)
+    return HMC{AD}(ϵ, n_leapfrog, metricT, space)
 end
 
 function sample_init!(
@@ -221,8 +170,8 @@ mutable struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamil
     init_ϵ      ::  Float64
 end
 HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
-function HMCDA{AD}(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64, init_ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
-    return HMCDA{AD, space, metricT}(n_iters, n_adapts, δ, λ, init_ϵ)
+function HMCDA{AD}(n_adapts::Int, δ::Float64, λ::Float64, init_ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+    return HMCDA{AD, space, metricT}(n_adapts, δ, λ, init_ϵ)
 end
 
 function HMCDA{AD}(
@@ -231,7 +180,7 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMCDA{AD, Any}(0, δ, λ, Set(), init_ϵ, metricT, ())
+    return HMCDA{AD}(0, δ, λ, init_ϵ,metricT, ())
 end
 
 function HMCDA{AD}(
@@ -252,9 +201,9 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    return HMCDA{AD, eltype(_space)}(n_adapts, δ, λ, _space, init_ϵ, metricT)
+    return HMCDA{AD}(n_adapts, δ, λ, init_ϵ, metricT, space)
 end
+
 
 """
     NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.1)
@@ -276,6 +225,7 @@ Arguments:
 - `init_ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
 
 """
+
 mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
     n_adapts    ::  Int       # number of samples with adaption for ϵ
     δ           ::  Float64   # target accept rate
@@ -286,7 +236,6 @@ end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
 function NUTS{AD}(
-    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     max_depth::Int,
@@ -295,17 +244,16 @@ function NUTS{AD}(
     ::Type{metricT},
     space::Tuple
 ) where {AD, metricT}
-    return NUTS{AD, space, metricT}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ)
+    return NUTS{AD, space, metricT}(n_adapts, δ, max_depth, Δ_max, init_ϵ)
 end
 
 function NUTS{AD}(
-    n_iters::Int,
     n_adapts::Int,
     δ::Float64,
     ::Tuple{};
     kwargs...
 ) where AD
-    NUTS{AD}(n_iters, n_adapts, δ; kwargs...)
+    NUTS{AD}(n_adapts, δ; kwargs...)
 end
 
 function NUTS{AD}(
@@ -317,7 +265,7 @@ function NUTS{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
-    NUTS{AD}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
+    NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
 end
 
 function NUTS{AD}(
@@ -327,7 +275,7 @@ function NUTS{AD}(
     init_ϵ::Float64=0.1,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
-    NUTS{AD, Any}(0, δ, Set(), max_depth, Δ_max, init_ϵ, metricT, ())
+    NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
@@ -669,3 +617,65 @@ end
 
 
 AHMCAdaptor(alg::Hamiltonian) = nothing
+
+##########################
+# HMC State Constructors #
+##########################
+
+function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
+    # Reuse the VarInfo.
+    vi = spl.state.vi
+
+    # Get the metric type.
+    metricT = getmetricT(spl.alg)
+
+    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+    logπ = gen_logπ(vi, spl, model)
+    h = AHMC.Hamiltonian(
+        metricT(length(vi[spl])),
+        logπ, ∂logπ∂θ)
+    traj = gen_traj(spl.alg, spl.alg.ϵ)
+
+    return StaticHMCState(vi, 0, 0, traj, h)
+end
+
+function HMCState(model::Model,
+        spl::Sampler{<:AdaptiveHamiltonian};
+        adaptor=AHMCAdaptor(spl.alg),
+        kwargs...
+)
+    # Reuse the VarInfo.
+    vi = spl.state.vi
+
+    # Link everything if needed.
+    link!(vi, spl)
+
+    # Get the initial log pdf and gradient.
+    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+    logπ = gen_logπ(vi, spl, model)
+
+    # Get the metric type.
+    metricT = getmetricT(spl.alg)
+
+    # Create a Hamiltonian.
+    θ_init = Vector{Float64}(vi[spl])
+    metric = metricT(length(θ_init))
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+
+    # Find a step size.
+    init_ϵ = spl.alg.init_ϵ
+
+    # Find good eps if not provided one
+    if init_ϵ == 0.0
+        init_ϵ = AHMC.find_good_eps(h, θ_init)
+        @info "Found initial step size" init_ϵ
+    end
+
+    # Generate a trajectory.
+    traj = gen_traj(spl.alg, init_ϵ)
+
+    # Unlink everything.
+    invlink!(vi, spl)
+
+    return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
+end
