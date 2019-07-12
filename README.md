@@ -41,6 +41,7 @@ Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in 
 - Probabilistic programming via source rewriting - [Soss.jl](https://github.com/cscherrer/Soss.jl)
 - A general-purpose probabilistic programming system with programmable inference - [Gen.jl](https://probcomp.github.io/Gen/)
 - Bare-bones implementation of robust dynamic Hamiltonian Monte Carlo methods - [DynamicHMC.jl](https://github.com/tpapp/DynamicHMC.jl)
+- Comparing performance and results of mcmc options using Julia - [MCMCBenchmarks.jl](https://github.com/StatisticalRethinkingJulia/MCMCBenchmarks.jl)
 
 
 ## Citing Turing.jl ##
