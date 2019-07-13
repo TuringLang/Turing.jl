@@ -141,9 +141,11 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
     @eval getspace(::$alg{space}) where {space} = space
+    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
+    @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
 getspace(::Gibbs) = ()
 
@@ -436,6 +438,7 @@ function Sample(vi::AbstractVarInfo, spl::Sampler)
     return s
 end
 
-getspace(spl::Sampler) = getspace(spl.alg)
+getspace(spl::Sampler) = getspace(typeof(spl))
+getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
 
 end # module
