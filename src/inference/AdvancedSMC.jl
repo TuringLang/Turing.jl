@@ -68,10 +68,10 @@ end
 
 ParticleState(model::Model) = ParticleState(Float64[], VarInfo(model), 0.0)
 
-function Sampler(alg::SMC, model::Model, s::Selector)
+function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
     dict = Dict{Symbol, Any}()
     state = ParticleState(model)
-    return Sampler{SMC,ParticleState}(alg, dict, s, state)
+    return Sampler{T,ParticleState}(alg, dict, s, state)
 end
 
 function step!(
@@ -102,12 +102,12 @@ function step!(
     indx = randcat(Ws)
     push!(spl.state.logevidence, particles.logE)
 
-    params = particles[indx].vi[spl]
     spl.state.vi = particles[indx].vi
+    params = getparams(spl.state.vi, spl)
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(spl.state.vi[spl], lp, Ws[indx], particles.logE)
+    return transition(params, lp, Ws[indx], particles.logE)
 end
 
 ####
@@ -149,16 +149,16 @@ const CSMC = PG # type alias of PG as Conditional SMC
 
 Return a `Sampler` object for the PG algorithm.
 """
-function Sampler(alg::PG, model::Model, s::Selector)
+function Sampler(alg::T, model::Model, s::Selector) where T<:PG
     info = Dict{Symbol, Any}()
     state = ParticleState(model)
-    return Sampler{PG,ParticleState}(alg, info, s, state)
+    return Sampler{T,ParticleState}(alg, info, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
     model::Turing.Model,
-    spl::Sampler{PG, ParticleState},
+    spl::Sampler{<:PG, ParticleState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -189,12 +189,12 @@ function step!(
     push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
-    params = particles[indx].vi[spl]
+    params = getparams(spl.state.vi, spl)
     spl.state.vi = particles[indx].vi
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(spl.state.vi[spl], lp, Ws[indx], particles.logE)
+    return transition(params, lp, Ws[indx], particles.logE)
 end
 
 function sample_end!(

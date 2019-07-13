@@ -658,7 +658,7 @@ function HMCState(model::Model,
     metricT = getmetricT(spl.alg)
 
     # Create a Hamiltonian.
-    θ_init = Vector{Float64}(vi[spl])
+    θ_init = Vector{Float64}(spl.state.vi[spl])
     metric = metricT(length(θ_init))
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
 

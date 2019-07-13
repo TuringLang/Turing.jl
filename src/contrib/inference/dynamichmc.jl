@@ -1,9 +1,7 @@
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
-struct DynamicNUTS{AD, T} <: Hamiltonian{AD}
-    space     ::  Set{T}    # sampling space, emtpy means all
-end
+struct DynamicNUTS{AD, Space} <: Hamiltonian{AD} end
 
 """
     DynamicNUTS()
@@ -13,10 +11,13 @@ To use it, make sure you have the DynamicHMC package installed.
 
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
-function DynamicNUTS{AD}(space...) where AD
+function DynamicNUTS{AD}(space::Symbol...) where AD
     _space = isa(space, Symbol) ? Set([space]) : Set(space)
     DynamicNUTS{AD, eltype(_space)}(_space)
 end
+
+getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space
+getspace(alg::DynamicNUTS{<:Any, space}) where {space} = space
 
 function sample(
     rng::AbstractRNG,

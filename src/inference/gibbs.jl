@@ -84,7 +84,12 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     # Force draw of VI, so Gibbs knows where everything is.
     # This mostly enables the use of spl.state.vi[spl] later on
     # when generating transitions.
-    spl.state.vi[spl]
+    getparams(spl.state.vi, spl) |> println
+
+    # for s in spl.state.samplers
+    #     println(getspace(s))
+    #     println(getparams(spl.state.vi, s))
+    # end
 
     return spl
 end
@@ -128,7 +133,7 @@ function step!(
         # Record elapsed time.
         time_elapsed += time_elapsed_thin
     end
-
+    println(Turing.RandomVariables.getall(spl.state.vi))
     return transition(spl)
 end
 

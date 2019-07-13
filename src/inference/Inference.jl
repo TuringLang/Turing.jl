@@ -18,6 +18,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
+import ..Core.RandomVariables: getparams
 import ..Utilities: Sample, save, resume, set_resume!
 import ..Interface: AbstractTransition, step!, sample_init!,
     transitions_init, sample_end!
@@ -96,7 +97,7 @@ struct Transition{T} <: AbstractTransition
 end
 
 function transition(spl::Sampler)
-    theta = spl.state.vi[spl]
+    theta = getparams(spl.state.vi, spl)
     lp = getlogp(spl.state.vi)
     return Transition{typeof(theta)}(theta, lp)
 end
@@ -147,7 +148,8 @@ for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
     @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
-getspace(::Gibbs) = ()
+getspace(::Gibbs) = Tuple{}()
+getspace(::Type{<:Gibbs}) = Tuple{}()
 
 @inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
 @inline floatof(::Type) = Real
@@ -381,7 +383,7 @@ function Chains(
 
     # Extract names & construct param array.
     pnames = _get_vi_syms(spl.state.vi)
-    nms = vcat(pnames..., string.(extra_params)...)
+    nms = string.(vcat(pnames..., string.(extra_params)...))
     parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:length(ts)]...)
 
     # If the state field has final_logevidence, grab that.
@@ -389,7 +391,8 @@ function Chains(
         getproperty(spl.state, :final_logevidence) :
         missing
 
-    display(pnames)
+    #
+    println(nms)
     display(parray)
 
     # Chain construction.
