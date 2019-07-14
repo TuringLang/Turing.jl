@@ -497,7 +497,9 @@ end
 @generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
     exprs = []
     for f in names
-        push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
+        if f in space
+            push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
+        end
     end
     length(exprs) == 0 && return :(NamedTuple())
     return :($(exprs...),)
@@ -520,7 +522,7 @@ function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
     return _getvns(vi.metadata, idcs)
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
-@generated function _getvns(metadata::NamedTuple{names}, idcs) where {names}
+@generated function _getvns(metadata, idcs::NamedTuple{names}) where {names}
     exprs = []
     for f in names
         push!(exprs, :($f = metadata.$f.vns[idcs.$f]))
@@ -551,7 +553,7 @@ end
 end
 @inline _getranges(vi::TypedVarInfo, idcs::NamedTuple) = _getranges(vi.metadata, idcs)
 
-@generated function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
+@generated function _getranges(metadata::NamedTuple, idcs::NamedTuple{names}) where {names}
     exprs = []
     for f in names
         push!(exprs, :($f = findranges(metadata.$f.ranges, idcs.$f)))
@@ -1000,7 +1002,7 @@ function getindex(vi::TypedVarInfo, spl::Sampler)
     return vcat(_getindex(vi.metadata, ranges)...)
 end
 # Recursively builds a tuple of the `vals` of all the symbols
-@generated function _getindex(metadata::NamedTuple{names}, ranges) where {names}
+@generated function _getindex(metadata, ranges::NamedTuple{names}) where {names}
     expr = Expr(:tuple)
     for f in names
         push!(expr.args, :(metadata.$f.vals[ranges.$f]))
@@ -1031,7 +1033,7 @@ function setindex!(vi::TypedVarInfo, val, spl::Sampler)
     return val
 end
 # Recursively writes the entries of `val` to the `vals` fields of all the symbols as if they were a contiguous vector.
-@generated function _setindex!(metadata::NamedTuple{names}, val, ranges) where {names}
+@generated function _setindex!(metadata, val, ranges::NamedTuple{names}) where {names}
     expr = Expr(:block)
     offset = :(0)
     for f in names
@@ -1060,6 +1062,9 @@ end
     return expr
 end
 @inline function findvns(vi, f_vns)
+    if length(f_vns) == 0
+        throw("Unidentified error, please report this error in an issue.")
+    end
     return mapreduce(vn -> vi[vn], vcat, f_vns)
 end
 
@@ -1251,7 +1256,7 @@ function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
     gidcs = _getidcs(vi, spl)
     return _set_retained_vns_del_by_spl!(vi.metadata, gidcs, vi.num_produce)
 end
-@generated function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
+@generated function _set_retained_vns_del_by_spl!(metadata, gidcs::NamedTuple{names}, num_produce) where {names}
     expr = Expr(:block)
     for f in names
         f_gidcs = :(gidcs.$f)
