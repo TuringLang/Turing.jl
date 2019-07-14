@@ -15,23 +15,23 @@ alg_str(::ADVI) = "ADVI"
 
 function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
     # setup
-    var_info = Turing.VarInfo(model)
-    num_params = sum([size(var_info.metadata[sym].vals, 1) for sym ∈ keys(var_info.metadata)])
+    varinfo = Turing.VarInfo(model)
+    num_params = sum([size(varinfo.metadata[sym].vals, 1) for sym ∈ keys(varinfo.metadata)])
 
-    dists = vcat([var_info.metadata[sym].dists for sym ∈ keys(var_info.metadata)]...)
+    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
 
-    num_ranges = sum([length(var_info.metadata[sym].ranges) for sym ∈ keys(var_info.metadata)])
+    num_ranges = sum([length(varinfo.metadata[sym].ranges) for sym ∈ keys(varinfo.metadata)])
     ranges = Vector{UnitRange{Int}}(undef, num_ranges)
     idx = 0
     range_idx = 1
-    for sym ∈ keys(var_info.metadata)
-        for r ∈ var_info.metadata[sym].ranges
+    for sym ∈ keys(varinfo.metadata)
+        for r ∈ varinfo.metadata[sym].ranges
             ranges[range_idx] = idx .+ r
             range_idx += 1
         end
         
-        # append!(ranges, [idx .+ r for r ∈ var_info.metadata[sym].ranges])
-        idx += var_info.metadata[sym].ranges[end][end]
+        # append!(ranges, [idx .+ r for r ∈ varinfo.metadata[sym].ranges])
+        idx += varinfo.metadata[sym].ranges[end][end]
     end
 
     q = Variational.MeanField(zeros(num_params), zeros(num_params), dists, ranges)
@@ -65,7 +65,7 @@ function (elbo::ELBO)(
     num_samples
 ) where T <: Real
     # setup
-    var_info = Turing.VarInfo(model)
+    varinfo = Turing.VarInfo(model)
 
     num_params = length(q)
     μ, ω = θ[1:num_params], θ[num_params + 1: end]
@@ -80,8 +80,8 @@ function (elbo::ELBO)(
         idx = 0
         z = zeros(T, num_params)
         
-        for sym ∈ keys(var_info.metadata)
-            md = var_info.metadata[sym]
+        for sym ∈ keys(varinfo.metadata)
+            md = varinfo.metadata[sym]
             
             for i = 1:size(md.dists, 1)
                 prior = md.dists[i]
@@ -113,9 +113,9 @@ function (elbo::ELBO)(
         end
         
         # compute log density
-        var_info = VarInfo(var_info, SampleFromUniform(), z)
-        model(var_info)
-        elbo_acc += var_info.logp / num_samples
+        varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+        model(varinfo)
+        elbo_acc += varinfo.logp / num_samples
     end
 
     # add the term for the entropy of the variational posterior

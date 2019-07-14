@@ -153,10 +153,6 @@ function optimize!(
     # number of previous gradients to use to compute `s` in adaGrad
     stepsize_num_prev = 10
     
-    # setup
-    # var_info = Turing.VarInfo()
-    # model(var_info, Turing.SampleFromUniform())
-    # num_params = size(var_info.vals, 1)
     num_params = length(q)
 
     # TODO: really need a better way to warn the user about potentially
