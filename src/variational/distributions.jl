@@ -19,9 +19,9 @@ center_diag_gaussian_inv(η, μ, σ) = (η .* σ) .+ μ
 
 
 # Mean-field approximation used by ADVI
-struct MeanField{T, TDists} <: VariationalPosterior where {T <: Real, TDists <: AbstractVector{<: Distribution}}
-    μ::Vector{T}
-    ω::Vector{T}
+struct MeanField{TDists, V} <: VariationalPosterior where {V <: AbstractVector{<: Real}, TDists <: AbstractVector{<: Distribution}}
+    μ::V
+    ω::V
     dists::TDists
     ranges::Vector{UnitRange{Int}}
 end
@@ -30,7 +30,7 @@ Base.length(advi::MeanField) = length(advi.μ)
 
 function _rand!(
     rng::AbstractRNG,
-    q::MeanField{T, TDists},
+    q::MeanField{TDists},
     x::AbstractVector{T}
 ) where {T<:Real, TDists <: AbstractVector{<: Distribution}}
     # extract parameters for convenience

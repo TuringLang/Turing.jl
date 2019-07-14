@@ -13,7 +13,7 @@ ADVI() = ADVI(10, 5000)
 
 alg_str(::ADVI) = "ADVI"
 
-function vi(model::Model, alg::ADVI; optimizer = ADAGrad())
+function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
     # setup
     var_info = Turing.VarInfo(model)
     num_params = sum([size(var_info.metadata[sym].vals, 1) for sym ∈ keys(var_info.metadata)])
@@ -50,7 +50,7 @@ end
 # (advi::ADVI)(elbo::EBLO, q::MeanField, model::Model) = begin
 # end
 
-function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer = ADAGrad())
+function optimize(elbo::ELBO, alg::ADVI, q::MeanField, model::Model; optimizer = TruncatedADAGrad())
     θ = randn(2 * length(q))
     optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
 
