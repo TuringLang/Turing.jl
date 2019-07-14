@@ -497,7 +497,7 @@ end
 @generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
     exprs = []
     for f in names
-        if f in space
+        if f in space || length(space) == 0
             push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
         end
     end
@@ -660,7 +660,7 @@ Symbol(vn::VarName) = Symbol(string(vn, all=false))  # simplified symbol
 Returns `true` if `vn`'s symbol is in `space` and `false` otherwise.
 """
 function in(vn::VarName, space::Tuple)::Bool
-    if vn.sym in space
+    if vn.sym in space || length(space) == 0
         return true
     else
         # String representation of `vn`
