@@ -39,9 +39,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # MoGtest
         gibbs = Gibbs(
-            CSMC(10, 1, :z1, :z2, :z3, :z4),
+            CSMC(15, :z1, :z2, :z3, :z4),
             MH((:mu1,GKernel(1)), (:mu2,GKernel(1))))
-        chain = sample(MoGtest_default, gibbs, 5000)
+        chain = sample(MoGtest_default, gibbs, 6000)
         check_MoGtest_default(chain, eps=0.1)
     end
 end

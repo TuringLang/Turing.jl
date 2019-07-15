@@ -33,18 +33,17 @@ chn = sample(gdemo([1.5, 2]), MH(1000))
 ```
 """
 mutable struct MH{space} <: InferenceAlgorithm
-    n_iters   ::  Int       # number of iterations
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
 
 transition_type(::Sampler{<:MH}) = Transition
 alg_str(::Sampler{<:MH}) = "MH"
 
-function MH(n_iters::Int, proposals::Dict{Symbol, Any}, space::Tuple)
-    return MH{space}(n_iters, proposals)
+function MH(proposals::Dict{Symbol, Any}, space::Tuple)
+    return MH{space}(proposals)
 end
 
-function MH(n_iters::Int, space...)
+function MH(space...)
     new_space = ()
     proposals = Dict{Symbol,Any}()
 
@@ -58,7 +57,7 @@ function MH(n_iters::Int, space...)
             proposals[element[1]] = element[2]
         end
     end
-    MH(proposals, new_space)
+    return MH(proposals, new_space)
 end
 
 function Sampler(alg::MH, model::Model, s::Selector)

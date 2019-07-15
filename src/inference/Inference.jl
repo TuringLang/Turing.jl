@@ -140,7 +140,7 @@ include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("../contrib/inference/AdvancedSMCExtensions.jl")
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
@@ -329,34 +329,26 @@ end
 
 # Retrieve the VarNames from a varinfo at the end of sampling.
 function _get_vi_syms(vi::VarInfo)
-    nms = String[]
-
-    # TODO: Remove val after Turing is migrated to the
-    # new interface. Not needed. CSP 2019-07-05
-    val = Float64[]
-    pairs = _get_vi_syms(vi.metadata, vi)
-    for (k, v) in pairs
-        Utilities.flatten(nms, val, k, v)
-    end
+    nms = _get_vi_syms(vi.metadata, vi)
     return nms
 end
 function _get_vi_syms(md::Metadata, vi::VarInfo)
-    pairs = []
+    nms = String[]
     for vn in keys(md.idcs)
-        push!(pairs, string(vn) => vi[vn])
+        push!(nms, string(vn, all=false))
     end
-    return pairs
+    return nms
 end
 function _get_vi_syms(metadata::NamedTuple{names}, vi::VarInfo) where {names}
-    pairs = []
+    nms = String[]
     length(names) === 0 && return pairs
     for name in names
         mdf = getfield(metadata, name)
         for vn in keys(mdf.idcs)
-            push!(pairs, string(name) => vi[vn])
+            push!(nms, string(vn, all=false))
         end
     end
-    return pairs
+    return nms
 end
 
 # Default Chains constructor.

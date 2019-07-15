@@ -1,7 +1,7 @@
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
-struct DynamicNUTS{AD, Space} <: Hamiltonian{AD} end
+struct DynamicNUTS{AD, space} <: Hamiltonian{AD} end
 
 """
     DynamicNUTS()
@@ -11,9 +11,9 @@ To use it, make sure you have the DynamicHMC package installed.
 
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
+DynamicNUTS{AD}() where AD = DynamicNUTS{AD, ()}()
 function DynamicNUTS{AD}(space::Symbol...) where AD
-    _space = isa(space, Symbol) ? Set([space]) : Set(space)
-    DynamicNUTS{AD, eltype(_space)}(_space)
+    DynamicNUTS{AD, space}()
 end
 
 getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space

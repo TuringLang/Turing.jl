@@ -29,7 +29,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)
         alg = Gibbs(
-            CSMC(1, :s),
+            CSMC(10, :s),
             HMC(0.2, 4, :m))
         chain = sample(gdemo(1.5, 2.0), alg, 3000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], eps=0.1)

@@ -27,11 +27,9 @@ end
 sample(gdemo([1.5, 2]), IS(), 1000)
 ```
 """
-struct IS{T} <: InferenceAlgorithm
-    space  ::  Set{T}
-end
+struct IS{space} <: InferenceAlgorithm end
 
-IS() = IS(Set())
+IS() = IS{()}()
 transition_type(::Sampler{<:IS}) = Transition
 alg_str(::Sampler{<:IS}) = "IS"
 

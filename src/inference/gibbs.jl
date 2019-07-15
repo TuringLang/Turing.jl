@@ -30,8 +30,11 @@ more particles in the particle sampler.
 """
 mutable struct Gibbs{A} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
+    function Gibbs(algs...)
+        algs = algs isa Tuple ? algs : (algs, )
+        return new{typeof(algs)}(algs)
+    end
 end
-Gibbs(algs...) = Gibbs{typeof(algs)}(algs)
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
 transition_type(spl::Sampler{<:Gibbs}) = Transition
