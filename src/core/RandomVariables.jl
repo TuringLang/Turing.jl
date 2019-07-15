@@ -185,7 +185,7 @@ end
 
 function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     new_vi = deepcopy(old_vi)
-    new_vi[spl] = x 
+    new_vi[spl] = x
     return new_vi
 end
 function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
@@ -199,13 +199,13 @@ end
         mdf = :(metadata.$f)
         if f in space || length(space) == 0
             len = :(length($mdf.vals))
-            push!(exprs, :($f = Metadata($mdf.idcs, 
-                                        $mdf.vns, 
-                                        $mdf.ranges, 
-                                        x[($offset + 1):($offset + $len)], 
-                                        $mdf.dists, 
-                                        $mdf.gids, 
-                                        $mdf.orders, 
+            push!(exprs, :($f = Metadata($mdf.idcs,
+                                        $mdf.vns,
+                                        $mdf.ranges,
+                                        x[($offset + 1):($offset + $len)],
+                                        $mdf.dists,
+                                        $mdf.gids,
+                                        $mdf.orders,
                                         $mdf.flags
                                     )
                             )
@@ -506,7 +506,8 @@ end
 end
 @inline function findinds(f_meta, s, ::Val{space}) where {space}
     # Get all the idcs of the vns in `space` and that belong to the selector `s`
-    return filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
+    return filter((i) ->
+        (s in f_meta.gids[i] || isempty(f_meta.gids[i]) || length(space) == 0) &&
         (isempty(space) || in(f_meta.vns[i], space)), 1:length(f_meta.gids))
 end
 @inline function findinds(f_meta)
@@ -955,7 +956,7 @@ end
                     end
                 else
                     @warn("[Turing] attempt to invlink an invlinked vi")
-                end    
+                end
             end)
         end
     end

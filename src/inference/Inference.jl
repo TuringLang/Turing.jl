@@ -391,10 +391,6 @@ function Chains(
         getproperty(spl.state, :final_logevidence) :
         missing
 
-    #
-    println(nms)
-    display(parray)
-
     # Chain construction.
     return Chains(
         parray,
