@@ -49,7 +49,7 @@ priors = 0 # See "new grammar" test.
         gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
 
         chn_s = sample(testbb(obs), smc, 1000)
-        chn_p = sample(testbb(obs), pg, 1000)
+        chn_p = sample(testbb(obs), pg, 2000)
         chn_g = sample(testbb(obs), gibbs, 1500) ############ not linked somewhere XXX:
 
         check_numerical(chn_s, [:p], [meanp], eps=0.05)
@@ -246,7 +246,7 @@ priors = 0 # See "new grammar" test.
         end
 
         chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6), 1000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], 3000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6])
     end
     @testset "observe" begin
         @model test() = begin

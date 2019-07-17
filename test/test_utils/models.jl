@@ -1,3 +1,5 @@
+using Suppressor
+
 # The old-gdemo model.
 @model gdemo(x, y) = begin
   s ~ InverseGamma(2, 3)

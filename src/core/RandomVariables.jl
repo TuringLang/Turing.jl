@@ -1052,13 +1052,13 @@ end
 function getparams(vi::TypedVarInfo, spl::Union{SampleFromPrior, Sampler})
     # Gets the vns as a NamedTuple
     vns = _getvns(vi, spl)
-    return vcat(_getparams(vns, vi)...)
+    return _getparams(vns, vi)
 end
 # Recursively builds a tuple of the parameter values of all the symbols
 @generated function _getparams(vns::NamedTuple{names}, vi) where {names}
     expr = Expr(:tuple)
     for f in names
-        push!(expr.args, :(findvns(vi, vns.$f)))
+        push!(expr.args, :($f = findvns(vi, vns.$f)))
     end
     return expr
 end

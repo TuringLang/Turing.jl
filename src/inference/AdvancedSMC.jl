@@ -77,7 +77,7 @@ end
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument.
     model::Turing.Model,
-    spl::Sampler{SMC, ParticleState},
+    spl::Sampler{<:SMC, ParticleState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -102,11 +102,11 @@ function step!(
     indx = randcat(Ws)
     push!(spl.state.logevidence, particles.logE)
 
+    # update the master vi.
     spl.state.vi = particles[indx].vi
     params = getparams(spl.state.vi, spl)
     lp = getlogp(spl.state.vi)
 
-    # update the master vi.
     return transition(params, lp, Ws[indx], particles.logE)
 end
 

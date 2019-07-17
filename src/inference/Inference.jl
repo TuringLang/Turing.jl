@@ -327,28 +327,54 @@ function sample_end!(
     # Silence the default API function.
 end
 
-# Retrieve the VarNames from a varinfo at the end of sampling.
-function _get_vi_syms(vi::VarInfo)
-    nms = _get_vi_syms(vi.metadata, vi)
-    return nms
-end
-function _get_vi_syms(md::Metadata, vi::VarInfo)
-    nms = String[]
-    for vn in keys(md.idcs)
-        push!(nms, string(vn, all=false))
+function _params_to_array(ts::Vector{T}) where {T<:Union{ParticleTransition,Transition}}
+    local names
+    vals  = Vector{Vector{Float64}}()
+    for t in ts
+        names, v = flatten_namedtuple(t.θ)
+        push!(vals, v)
     end
-    return nms
+
+    return names, vals
 end
-function _get_vi_syms(metadata::NamedTuple{names}, vi::VarInfo) where {names}
-    nms = String[]
-    length(names) === 0 && return pairs
-    for name in names
-        mdf = getfield(metadata, name)
-        for vn in keys(mdf.idcs)
-            push!(nms, string(vn, all=false))
+
+function flatten_namedtuple(nt::NamedTuple{pnames}) where pnames
+    vals  = Vector{Float64}()
+    names = Vector{AbstractString}()
+    for k in pnames
+        v = nt[k]
+        flatten_namedtuple(names, vals, string(k), v)
+    end
+    return names, vals
+end
+
+function flatten_namedtuple(names, value :: Array{Float64}, k :: String, v)
+    if isa(v, Number)
+        name = k
+        push!(value, v)
+        push!(names, name)
+    elseif isa(v, Array)
+        for i = eachindex(v)
+            if isa(v[i], Number)
+                name = string(Turing.Utilities.ind2sub(size(v), i))
+                name = replace(name, "(" => "[");
+                name = replace(name, ",)" => "]");
+                name = replace(name, ")" => "]");
+                name = k * name
+                isa(v[i], Nothing) && println(v, i, v[i])
+                push!(value, Float64(v[i]))
+                push!(names, name)
+            elseif isa(v[i], Array)
+                name = k * string(ind2sub(size(v), i))
+                flatten(names, value, name, v[i])
+            else
+                error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
+            end
         end
+    else
+        error("Unknown var type: typeof($v)=$(typeof(v))")
     end
-    return nms
+    return
 end
 
 # Default Chains constructor.
@@ -366,6 +392,10 @@ function Chains(
         ts = ts[(spl.alg.n_adapts+1):end]
     end
 
+    # Convert transitions to array format.
+    # Also retrieve the variable names.
+    nms, vals = _params_to_array(ts)
+
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
     extra_params = additional_parameters(T)
@@ -374,9 +404,8 @@ function Chains(
     extra_values = vcat(map(t -> [getproperty(t, p) for p in extra_params], ts))
 
     # Extract names & construct param array.
-    pnames = _get_vi_syms(spl.state.vi)
-    nms = string.(vcat(pnames..., string.(extra_params)...))
-    parray = vcat([hcat(ts[i].θ..., extra_values[i]...) for i in 1:length(ts)]...)
+    nms = string.(vcat(nms..., string.(extra_params)...))
+    parray = vcat([hcat(vals[i]..., extra_values[i]...) for i in 1:length(ts)]...)
 
     # If the state field has final_logevidence, grab that.
     le = :final_logevidence in fieldnames(typeof(spl.state)) ?
