@@ -460,6 +460,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test the update of group IDs
         g_demo_f = igtest()
 
+
+        # This test section no longer seems as applicable, considering the
+        # user will never end up using an UntypedVarInfo. The `VarInfo`
+        # Varible is also not passed around in the same way as it used to be.
         g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
         pg, hmc = g.state.samplers
         vi = VarInfo()

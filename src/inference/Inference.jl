@@ -332,7 +332,8 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleT
     names = vcat([[string(v; all=false) for v in vn] for vn in vns]...)
     vals  = Vector{Vector{Float64}}()
     for t in ts
-        _, vs = flatten_namedtuple(t.θ)
+        znms, vs = flatten_namedtuple(t.θ)
+        println(znms)
         push!(vals, vs)
     end
 
