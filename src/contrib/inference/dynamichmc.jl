@@ -48,12 +48,8 @@ function sample(
         N
     )
 
-    spl.selector.tag == :default && invlink!(spl.state.vi, spl)
-
     for i = 1:N
-        spl.selector.tag == :default && link!(spl.state.vi, spl)
         spl.state.vi[spl] = chn_dynamic[i].q
-        spl.selector.tag == :default && invlink!(spl.state.vi, spl)
         samples[i] = transition(spl)
     end
 

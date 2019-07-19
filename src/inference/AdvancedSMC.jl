@@ -201,7 +201,7 @@ function sample_end!(
     ::AbstractRNG,
     ::Model,
     spl::Sampler{<:ParticleInference},
-    ::Integer,
+    N::Integer,
     ::Vector{ParticleTransition};
     kwargs...
 )
@@ -213,11 +213,11 @@ function sample_end!(
 
     # If we already had a chain, grab it's logevidence.
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.info[:samples]...)
+        # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence
-        pre_n = length(resume_from.info[:samples])
-        loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
+        pre_n = length(resume_from)
+        loge = (log(pre_loge) * pre_n + log(loge) * N) / (pre_n + N)
     else
         loge = log(loge)
     end

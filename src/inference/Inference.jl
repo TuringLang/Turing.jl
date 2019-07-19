@@ -319,7 +319,7 @@ end
 function sample_end!(
     ::AbstractRNG,
     ::Model,
-    ::AbstractSampler,
+    spl::AbstractSampler,
     ::Integer,
     ::Vector{TransitionType};
     kwargs...
@@ -327,18 +327,19 @@ function sample_end!(
     # Silence the default API function.
 end
 
-function _params_to_array(ts::Vector{T}) where {T<:Union{ParticleTransition,Transition}}
-    local names
+function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleTransition,Transition}}
+    vns = Turing.RandomVariables._getvns(spl.state.vi, spl)
+    names = vcat([[string(v; all=false) for v in vn] for vn in vns]...)
     vals  = Vector{Vector{Float64}}()
     for t in ts
-        names, v = flatten_namedtuple(t.θ)
-        push!(vals, v)
+        _, vs = flatten_namedtuple(t.θ)
+        push!(vals, vs)
     end
 
     return names, vals
 end
 
-function flatten_namedtuple(nt::NamedTuple{pnames}) where pnames
+function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
     vals  = Vector{Float64}()
     names = Vector{AbstractString}()
     for k in pnames
@@ -379,12 +380,13 @@ end
 
 # Default Chains constructor.
 function Chains(
-    ::AbstractRNG,
-    ::ModelType,
+    rng::AbstractRNG,
+    model::ModelType,
     spl::Sampler,
     N::Integer,
     ts::Vector{T};
-    discard_adapt::Bool = true,
+    discard_adapt::Bool=true,
+    save_state=false,
     kwargs...
 ) where {ModelType<:Sampleable, T<:AbstractTransition}
     # Check if we have adaptation samples.
@@ -394,7 +396,7 @@ function Chains(
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(ts)
+    nms, vals = _params_to_array(ts, spl)
 
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
@@ -412,12 +414,23 @@ function Chains(
         getproperty(spl.state, :final_logevidence) :
         missing
 
+    # Set up the info tuple.
+    Turing.RandomVariables.invlink!(spl.state.vi, spl)
+    info = if save_state
+        (range = rng,
+        model = model,
+        spl = spl)
+    else
+        NamedTuple()
+    end
+
     # Chain construction.
     return Chains(
-        parray,
+        convert(Array{Real}, parray),
         string.(nms),
-        INTERNAL_VARS,
-        evidence = le
+        INTERNAL_VARS;
+        evidence=le,
+        info=info
     )
 end
 
@@ -460,5 +473,7 @@ end
 
 getspace(spl::Sampler) = getspace(typeof(spl))
 getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
+
+transition_type(::Sampler{alg}) where alg = transition_type(alg)
 
 end # module

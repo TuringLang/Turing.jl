@@ -19,18 +19,18 @@ include("test_utils/AllUtils.jl")
 
     @testset "inference" begin
         @testset "samplers" begin
-            include("inference/dynamichmc.jl")
+            include("contrib/inference/dynamichmc.jl")
             include("inference/gibbs.jl")
             include("inference/hmc.jl")
             include("inference/is.jl")
             include("inference/mh.jl")
-            include("inference/sghmc.jl")
+            # include("inference/sghmc.jl")
             include("inference/AdvancedSMC.jl")
         end
     end
 
     @testset "stdlib" begin
-        include("stdlib/distributions.jl")
+        # include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
     end
 

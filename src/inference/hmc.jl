@@ -95,6 +95,7 @@ function sample_init!(
     rng::AbstractRNG=GLOBAL_RNG,
     discard_adapt::Bool=true,
     verbose::Bool=true,
+    resume_from=nothing,
     kwargs...
 )
     # Resume the sampler.
@@ -120,14 +121,19 @@ function sample_init!(
 
     # Set the defualt number of adaptations, if relevant.
     if spl.alg isa AdaptiveHamiltonian
-        if spl.alg.n_adapts == 0
-            n_adapts_default = Int(round(N / 2))
-            spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
+        # If there's no chain passed in, verify the n_adapts.
+        if ismissing(resume_from)
+            if spl.alg.n_adapts == 0
+                n_adapts_default = Int(round(N / 2))
+                spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
+            else
+                # Verify that n_adapts is less than the samples to draw.
+                spl.alg.n_adapts < N || !ismissing(resume_from) ?
+                    nothing :
+                    throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
+            end
         else
-            # Verify that n_adapts is less than the samples to draw.
-            spl.alg.n_adapts < N ?
-                nothing :
-                throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
+            spl.alg.n_adapts = 0
         end
     end
 

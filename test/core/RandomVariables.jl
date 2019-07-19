@@ -464,7 +464,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         pg, hmc = g.state.samplers
         vi = VarInfo()
         g_demo_f(vi, SampleFromPrior())
-        vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
+        Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
         @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
                         Set{Selector}(), Set{Selector}()]
 
@@ -476,7 +476,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         pg, hmc = g.state.samplers
         vi = empty!(TypedVarInfo(vi))
         g_demo_f(vi, SampleFromPrior())
-        vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
+        pg.state.vi = vi
+        Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
+        vi = pg.state.vi
         g_demo_f(vi, hmc)
         @test vi.metadata.x.gids[1] == Set([pg.selector])
         @test vi.metadata.y.gids[1] == Set([pg.selector])
