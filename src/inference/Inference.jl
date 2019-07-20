@@ -332,8 +332,7 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleT
     names = vcat([[string(v; all=false) for v in vn] for vn in vns]...)
     vals  = Vector{Vector{Float64}}()
     for t in ts
-        znms, vs = flatten_namedtuple(t.θ)
-        println(znms)
+        names, vs = flatten_namedtuple(t.θ)
         push!(vals, vs)
     end
 
@@ -345,12 +344,12 @@ function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
     names = Vector{AbstractString}()
     for k in pnames
         v = nt[k]
-        flatten_namedtuple(names, vals, string(k), v)
+        flatten(names, vals, string(k), v)
     end
     return names, vals
 end
 
-function flatten_namedtuple(names, value :: Array{Float64}, k :: String, v)
+function flatten(names, value :: Array{Float64}, k :: String, v)
     if isa(v, Number)
         name = k
         push!(value, v)
@@ -367,7 +366,7 @@ function flatten_namedtuple(names, value :: Array{Float64}, k :: String, v)
                 push!(value, Float64(v[i]))
                 push!(names, name)
             elseif isa(v[i], Array)
-                name = k * string(ind2sub(size(v), i))
+                name = k# * string(Turing.Utilities.ind2sub(size(v), i))
                 flatten(names, value, name, v[i])
             else
                 error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
