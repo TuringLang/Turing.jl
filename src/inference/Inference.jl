@@ -85,8 +85,11 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
 
+getspace(::IS) = ()
+getspace(::Type{<:IS}) = ()
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
     @eval getspace(::$alg{space}) where {space} = space
+    @eval getspace(::Type{<:$alg{space}}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)

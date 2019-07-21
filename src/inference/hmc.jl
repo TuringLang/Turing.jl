@@ -297,7 +297,7 @@ function sample(
 
     # Sampling using AHMC and store samples in `samples`
     steps!(model, spl, vi, samples; rng=rng, verbose=verbose)
-
+    
     # Concatenate samples
     if resume_from != nothing
         pushfirst!(samples, resume_from.info[:samples]...)
@@ -314,7 +314,7 @@ function sample(
         spl.selector.tag == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
     end
-
+    
     return c
 end
 
@@ -514,7 +514,7 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Vector{Float64}
+    function ∂logπ∂θ(x)
         x_old, lj_old = vi[spl], vi.logp
         _, deriv = gradient_logp(x, vi, model, spl)
         vi[spl] = x_old
