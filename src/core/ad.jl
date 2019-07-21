@@ -452,7 +452,7 @@ for F in (:link, :invlink)
     end
 end
 
-Base.:*(x::Adjoint{T, <:AbstractMatrix{T}} where {T}, y::TrackedVector) = Tracker.track(*, x, y)
+Base.:*(x::Adjoint{T, <:AbstractMatrix{T}}, y::TrackedVector) where {T} = Tracker.track(*, x, y)
 
 for F in (:link, :invlink)
     @eval begin
@@ -460,10 +460,11 @@ for F in (:link, :invlink)
         Tracker.@grad function $F(dist::PDMatDistribution, x::Tracker.TrackedArray)
             x_data = Tracker.data(x)
             y = $F(dist, x_data)
-            return  y, Δ -> begin
-                out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * vec(Δ), size(Δ))
-                return (nothing, out)
-            end
+            return  y,
+                    Δ -> begin
+                        out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * Δ, size(Δ))
+                        return (nothing, out)
+                    end
         end
     end
 end
