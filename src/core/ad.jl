@@ -466,7 +466,7 @@ for F in (:link, :invlink)
             x_data = Tracker.data(x)
             y = $F(dist, x_data)
             return  y, Δ -> begin
-                out = ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * Δ
+                out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * vec(Δ), size(Δ))
                 return (nothing, out)
             end
         end

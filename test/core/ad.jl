@@ -4,7 +4,7 @@ using Turing.Core.RandomVariables: getval
 using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
-using Test
+using Test, LinearAlgebra
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -299,5 +299,19 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
             randn(rng), randn(rng, N),
         )
         test_tracker_ad(b->logpdf(MvNormal(N, exp(b)), x), randn(rng), randn(rng))
+    end
+    @testset "Simplex Tracker AD" begin
+        @model dir() = begin
+            theta ~ Dirichlet(1 ./ fill(4, 4))
+        end
+        Turing.setadbackend(:reverse_diff)
+        sample(dir(), HMC(1000, 0.01, 1));
+    end
+    @testset "PDMatDistribution Tracker AD" begin
+        @model wishart() = begin
+            theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
+        end
+        Turing.setadbackend(:reverse_diff)
+        sample(wishart(), HMC(1000, 0.01, 1));
     end
 end
