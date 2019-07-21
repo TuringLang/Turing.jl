@@ -435,20 +435,29 @@ using Bijectors: Dirichlet, PDMatDistribution
 
 for F in (:link, :invlink)
     @eval begin
-        $F(dist::Dirichlet, x::Tracker.TrackedArray, ::Type{Val{proj}}=Val{true}) where {proj} = Tracker.track($F, dist, x, Val{proj})
-        Tracker.@grad function $F(dist::Dirichlet, x::Tracker.TrackedArray, ::Type{Val{proj}}) where {proj}
+        function $F(
+            dist::Dirichlet, 
+            x::Tracker.TrackedArray, 
+            ::Type{Val{proj}} = Val{true}
+        ) where {proj}
+            return Tracker.track($F, dist, x, Val{proj})
+        end
+        Tracker.@grad function $F(
+            dist::Dirichlet, 
+            x::Tracker.TrackedArray, 
+            ::Type{Val{proj}}
+        ) where {proj}
             x_data = Tracker.data(x)
             y = $F(dist, x_data, Val{proj})
-            return  y,
-                    Δ -> begin
-                        out = ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)' * Δ
-                        return (nothing, out, nothing)
-                    end
+            return  y, Δ -> begin
+                out = ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)' * Δ
+                return (nothing, out, nothing)
+            end
         end
     end
 end
 
-Base.:*(x::Adjoint{T, <:AbstractMatrix{T}}, y::TrackedVector) where {T} = Tracker.track(*, x, y)
+Base.:*(x::Adjoint{T, <:AbstractMatrix{T}} where {T}, y::TrackedVector) = Tracker.track(*, x, y)
 
 for F in (:link, :invlink)
     @eval begin
@@ -456,11 +465,10 @@ for F in (:link, :invlink)
         Tracker.@grad function $F(dist::PDMatDistribution, x::Tracker.TrackedArray)
             x_data = Tracker.data(x)
             y = $F(dist, x_data)
-            return  y,
-                    Δ -> begin
-                        out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * Δ, size(Δ))
-                        return (nothing, out)
-                    end
+            return  y, Δ -> begin
+                out = ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * Δ
+                return (nothing, out)
+            end
         end
     end
 end
