@@ -69,7 +69,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # Define NN flow
         function nn(x, b1, w11, w12, w13, bo, wo)
-            h = tanh.([w11' * x + b1[1]; w12' * x + b1[2]; w13' * x + b1[3]])
+            h = tanh.([w11 w12 w13]' * x + b1)
             return sigmoid((wo' * h)[1] + bo)
         end
 
