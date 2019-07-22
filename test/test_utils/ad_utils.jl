@@ -1,6 +1,16 @@
 using Turing: gradient_logp_forward, gradient_logp_reverse
 using Test
 
+function test_dense_mvnormal_ad(f, at, mat_start=1; rtol = 1e-8, atol = 1e-8)
+    reverse = Tracker.gradient(f, at)[1]
+    forward = ForwardDiff.gradient(f, at)
+    @test isapprox(reverse[1:(mat_start-1)], forward[1:(mat_start-1)], rtol=rtol, atol=atol)
+    N = Int(sqrt(length(forward) - mat_start + 1))
+    forward_mat = reshape(forward[mat_start:end], N, N)
+    symm_forward_mat = (forward_mat' + forward_mat)/2
+    @test isapprox(reverse[mat_start:end], vec(symm_forward_mat), rtol=rtol, atol=atol)
+end
+
 function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
     isarr = isa(at, AbstractArray)
     reverse = Tracker.gradient(f, at)[1]
