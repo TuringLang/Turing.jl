@@ -8,8 +8,8 @@ Random.seed!(0)
 
 # Define a strange model.
 @model gdemo(x, y) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt(s))
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
     m = m*sin(m)+s*cos(s)
     x ~ Normal(m, sqrt(s))
     y ~ Normal(m, sqrt(s))

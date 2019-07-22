@@ -61,8 +61,8 @@ priors = 0 # See "new grammar" test.
         # xx = 1
 
         @model fggibbstest(xs) = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
             # xx ~ Normal(m, sqrt(s)) # this is illegal
 
             for i = 1:length(xs)
@@ -84,8 +84,8 @@ priors = 0 # See "new grammar" test.
         @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
 
         @model testmodel_comp(x, y) = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
@@ -120,8 +120,8 @@ priors = 0 # See "new grammar" test.
 
         # test if we get the correct return values
         @model testmodel1(x1, x2) = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ Normal(m, sqrt(s))
@@ -137,8 +137,8 @@ priors = 0 # See "new grammar" test.
 
         # Test for assertions in observe statements.
         @model brokentestmodel_observe1(x1, x2) = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ x1 + 2
@@ -150,8 +150,8 @@ priors = 0 # See "new grammar" test.
         @test_throws ArgumentError btest()
 
         @model brokentestmodel_observe2(x) = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x = Vector{Float64}(undef, 2)
             x ~ [Normal(m, sqrt(s)), 2.0]
@@ -164,8 +164,8 @@ priors = 0 # See "new grammar" test.
 
         # Test for assertions in assume statements.
         @model brokentestmodel_assume1() = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ x1 + 2
@@ -177,8 +177,8 @@ priors = 0 # See "new grammar" test.
         @test_throws ArgumentError btest()
 
         @model brokentestmodel_assume2() = begin
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0,sqrt(s))
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
 
             x = Vector{Float64}(undef, 2)
             x ~ [Normal(m, sqrt(s)), 2.0]
@@ -194,7 +194,7 @@ priors = 0 # See "new grammar" test.
 
         @model gauss(x) = begin
             priors = TArray{Float64}(2)
-            priors[1] ~ InverseGamma(2,3)         # s
+            priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
@@ -207,7 +207,7 @@ priors = 0 # See "new grammar" test.
 
         @model gauss2(x, ::Type{TV}=Vector{Float64}) where {TV} = begin
             priors = TV(undef, 2)
-            priors[1] ~ InverseGamma(2,3)         # s
+            priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
@@ -236,7 +236,7 @@ priors = 0 # See "new grammar" test.
     end
     @testset "no return" begin
         @model noreturn(x) = begin
-            s ~ InverseGamma(2,3)
+            s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
             for i in 1:length(x)
                 x[i] ~ Normal(m, sqrt(s))
@@ -277,7 +277,7 @@ priors = 0 # See "new grammar" test.
     end
     @testset "vectorization" begin
         @model vdemo1(x) = begin
-            s ~ InverseGamma(2,3)
+            s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
             x ~ [Normal(m, sqrt(s))]
             return s, m
