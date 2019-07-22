@@ -369,8 +369,7 @@ priors = 0 # See "new grammar" test.
 
         sample(vdemo3(), alg)
         sample(vdemo3(Vector{Float64}), alg)
-        sample(vdemo3(TV=Vector{Float64}), alg)
-
+        sample(vdemo3(TV=Vector{Float64}), alg)        
     end
     @testset "tilde" begin
         model_info = Dict(
