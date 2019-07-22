@@ -966,16 +966,16 @@ distribution(s). If the value(s) is (are) transformed to the Eucledian space, it
 function getindex(vi::AbstractVarInfo, vn::VarName)
     @assert haskey(vi, vn) "[Turing] attempted to replay unexisting variables in VarInfo"
     dist = getdist(vi, vn)
-    return copy(istrans(vi, vn) ?
+    return istrans(vi, vn) ?
         invlink(dist, reconstruct(dist, getval(vi, vn))) :
-        reconstruct(dist, getval(vi, vn)))
+        reconstruct(dist, getval(vi, vn))
 end
 function getindex(vi::AbstractVarInfo, vns::Vector{<:VarName})
     @assert haskey(vi, vns[1]) "[Turing] attempted to replay unexisting variables in VarInfo"
     dist = getdist(vi, vns[1])
-    return copy(istrans(vi, vns[1]) ?
+    return istrans(vi, vns[1]) ?
         invlink(dist, reconstruct(dist, getval(vi, vns), length(vns))) :
-        reconstruct(dist, getval(vi, vns), length(vns)))
+        reconstruct(dist, getval(vi, vns), length(vns))
 end
 
 """
