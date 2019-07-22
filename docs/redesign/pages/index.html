@@ -1,0 +1,287 @@
+---
+layout: splash
+title: Turing.jl - Turing.jl
+permalink: /
+
+main-feature_row:
+  - title: "Intuitive"
+    excerpt: "Turing models are easy to read and write. Specify models quickly and easily."
+  - title: "Universal"
+    excerpt: "Turing supports models with stochastic control flow — models work the way you write them."
+  - title: "Adaptable"
+    excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
+
+code-sample:
+  excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
+  snippet: |
+    @model gdemo(x, y) = begin
+      # Assumptions
+      σ ~ InverseGamma(2,3)
+      μ ~ Normal(0,sqrt(σ))
+      # Observations
+      x ~ Normal(μ, sqrt(σ))
+      y ~ Normal(μ, sqrt(σ))
+    end
+
+samplers:
+  image_path: /assets/images/sampler.svg
+  excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+
+
+flux:
+  image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
+  excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
+
+ecosystem:
+  title: Ecosystem
+  subtitle: Explore a rich ecosystem of libraries, tools, and more to support development.
+  ecosystems:
+    - title: Glow
+      url: https://turing.ml/ecosystem/glow/
+      text: Glow is a ML compiler that accelerates the performance of deep learning frameworks on different hardware platforms.
+    - title: PyTorch Geometric
+      url: https://turing.ml/ecosystem/turing-geometric/
+      text: PyTorch Geometric is a library for deep learning on irregular input data such as graphs, point clouds, and manifolds.
+    - title: skorch
+      url: https://turing.ml/ecosystem/glow/
+      text: Gskorch is a high-level library for PyTorch that provides full scikit-learn compatibility.
+
+community:
+  title: Community
+  subtitle: Join the Turing developer community to contribute, learn, and get your questions answered.
+  comunities:
+    - title: GitHub
+      url: https://github.com/TuringLang/Turing.jl
+      text: Report bugs, request features, discuss issues, and more.
+      class: github
+    - title: Turing.jl Discuss
+      url: https://github.com/TuringLang/Turing.jl
+      text: Browse and join discussions on deep learning with Turing.
+      class: turing-resource
+    - title: Slack
+      url: https://github.com/TuringLang/Turing.jl
+      text: Discuss advanced topics. Request access https://bit.ly/ptslack
+      class: slack
+
+support:
+  title: Companies &amp; Universities<br>Using Turing.jl
+  supports:
+    - image: assets/images/cambridge.png
+      text: Pushing the state of the art in NLP and Multi-task learning.
+    - image: assets/images/oxford.png
+      text: Using Turing’s flexibility to efficiently research new algorithmic approaches.
+    - image: assets/images/edinburgh.png
+      text: Educating the next wave of AI Innovators using Turing.
+      
+---
+
+<div class="jumbotron" style="background-image: url('{{ site.baseurl }}/assets/images/turing-logo-wide.svg');">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 col-sm-6 col-xs-0"></div>
+      <div class="left col-md-6 col-sm-6 col-xs-12">
+        <div class="right-section text-right">
+          <!-- header section -->
+          <h1><strong>Turing.jl</strong></h1>
+          <!-- desc section -->
+          <div class="lead">
+            <p><strong>Turing</strong>  is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- main-feature_row -->
+<div class="swimlane">  
+  <div class="container"> 
+    <div class="container-fluid">
+      <div class="row">
+        {% for f in page.main-feature_row %}
+        <div class="col-md-4">
+            <div class="text-content">
+              <strong>{{ f.title }}</strong>
+              <div>{{ f.excerpt }}</div>
+            </div>
+        </div>   
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A Quick Example -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">A Quick Example</h2>
+          <div class="archive__item-excerpt">
+            {{ page.code-sample.excerpt | markdownify }}
+          </div>
+          <p><a href="http://turing.ml/docs/quick-start/" class="btn btn-default">Quick Start</a></p>
+        </div>
+      </div>
+      <div class="col-sm-6  col-md-4">              
+        <div class="archive__item-teaser">
+          <div class="archive__snippet">
+            {% highlight julia %} {{page.code-sample.snippet}} {% endhighlight %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Large Sampling Library -->
+ <div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="{{ site.baseurl }}{{ page.samplers.image_path }}" alt="" style="max-width: 100%; max-height:100%;">
+        </div>
+      </div>
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body">
+          <h2 class="archive__item-title">Large Sampling Library</h2>       
+          <div class="archive__item-excerpt">
+            {{ page.samplers.excerpt | markdownify }}
+          </div>          
+          <p><a href="http://turing.ml/docs/library/#samplers" class="btn btn-default">Samplers</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Integrates With Other Machine Learning Packages -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">Integrates With Other Machine Learning Packages</h2> 
+          <div class="archive__item-excerpt">
+            {{ page.flux.excerpt | markdownify }}
+          </div>
+          <p><a href="http://turing.ml/tutorials/3-bayesnn/" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
+        </div>                
+      </div>
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="{{ page.flux.image_path }}" alt="Bayesian Neural Network Tutorial" style="max-width: 100%; max-height:100%">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Community -->
+<div class="swimlane">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12 community-heading">
+          <h2>{{ page.community.title }}</h2>
+        </div>
+        <div class="col-md-8">
+          <p class="h2-subheadline">{{ page.community.subtitle }}</p>
+        </div>
+      </div>
+  
+      <div class="row resources">     
+        {% for f in page.community.comunities %}
+            <div class="col-md-4">
+            <div class="card resource-card {{ f.class }}">
+              <!-- Cards with the pytorch-resource class also have a pytorch-discuss class.
+                  These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
+                 -->
+                  <a href="{{ f.url }}" target="_blank">
+                
+                <div class="card-body">
+                  <h4>{{ f.title }}</h4>
+              
+                  <p class="card-summary">{{ f.text }}</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          {% endfor %}  
+        </div>
+  
+    </div>
+  </div>
+
+<!-- Ecosystem -->
+<div class="swimlane">
+  <div class="container">
+
+    <div class="row">
+      <div class="col-md-12">
+        <h2>{{ page.ecosystem.title }}</h2>
+      </div>
+
+      <div class="col-md-8">
+        <p class="h2-subheadline">{{ page.ecosystem.subtitle }}</p>
+      </div>
+    </div>
+    
+    <div class="row ecosystem-row">   
+      {% for f in page.ecosystem.ecosystems %}
+      <div class="col-md-4">
+        <div class="card ecosystem-card">          
+            <a href="{{ f.url }}">          
+            <div class="card-body tool ">
+              <h4>{{ f.title }}</h4>
+              <p class="card-summary">{{ f.text }}</p>
+            </div>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Companies & Universities Using PyTorch -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 university-testimonials">
+        <h2>{{ page.support.title }}</h2>
+
+        <!-- Temporarily hiding button since there isn't a 'Stories' page
+        <a href="/features" class="btn btn-lg with-right-arrow module-button">
+          See all Stories
+        </a> -->
+
+        <div class="row university-testimonials-content">
+          {% for f in page.support.supports %}
+            <div class="col-md-4">
+              <img src="{{ site.baseurl }}/{{ f.image }}" class="img-fluid" width="140">
+              <p></p><p>{{ f.text }}</p>
+<p></p>
+              <!-- Temporarily hiding link out to case studies for time being -->
+<!--               <a href="/case-studies/salesforce/" class="btn btn-lg with-right-arrow">
+                Read More
+              </a> -->
+            </div>
+          {% endfor %}
+          
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<div class="swimlane text-center">
+  <div>Citing Turing</div>
+  <div>
+      {{ '<sub>If you use **Turing** for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: **Turing: Composable inference for probabilistic programming.** AISTATS 2018 [pdf](http://proceedings.mlr.press/v84/ge18b.html) [bibtex](https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib)</sub>' | markdownify }}
+  </div>
+</div>

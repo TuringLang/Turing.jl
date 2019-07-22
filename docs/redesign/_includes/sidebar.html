@@ -1,0 +1,80 @@
+<div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            {% if site.logo %}<img height="48" src="{{ site.baseurl }}/{{ site.logo }}" width="48">{% else %}<i class="md-icon"></i>{% endif %}
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="{{ site.repo }}" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            {{ site.github_user }}/{{ site.github_repo }}
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                {% for section in site.data.toc %}
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="{% if section.external_url %}{{ section.external_url }}{% else %}{{ site.baseurl }}/{{ section.url }}{% endif %}"
+                     id="pancakes-{{ section.title | slugify }}" 
+                     title="{{ section.title }}">{{ section.title }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          {% for section in site.data.toc %}<li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="{% if section.external_url %}{{ section.external_url }}{% else %}{{ site.baseurl }}/{{ section.url }}{% endif %}" title="{{ section.title }}">{{ section.title }}</a>
+          </li>{% endfor %}
+
+          <!-- This navigation is completely for non mobile -->
+         {% for section in site.data.toc %}
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" {% if section.children %}href="#pancakes-{{ section.title | slugify }}"{% else %}href="{% if section.external_url %}{{ section.external_url }}{% else %}{{ site.baseurl }}/{{ section.url }}{% endif %}"{% endif %}
+                id="pancakes-{{ section.title | slugify }}" 
+                title="{{ section.title }}">{{ section.title }}</a>
+                {% if section.children %}<nav class="md-nav">
+                    <ul class="md-nav__list">
+                        {% for child in section.children %}<li class="md-nav__item">
+                        <a href="{% if child.external_url %}{{ child.external_url }}{% else %}{{ site.baseurl }}/{{ child.url }}{% endif %}" 
+                           title="{{ child.title }}" style="display:none"
+                           class="md-nav__link pancakes-child">{{ child.title }}</a>
+                        </li>{% endfor %}
+                    </ul>
+              </nav>{% endif %}
+         </li>{% endfor %}
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>

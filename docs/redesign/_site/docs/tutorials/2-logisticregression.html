@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-language" content="en">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <title>Bayesian Logistic Regression</title>
+    <meta name="description" content="Bayesian Logistic Regression">
+    <meta name="author" content="Mustafa Aga">
+    <meta name="theme-color" content="red">    
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+    <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+  
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="canonical" href="http://localhost:4000/turingdocs/docs/tutorials/2-logisticregression">
+    <link rel="alternate" type="application/rss+xml" title="Turing.jl" href="http://localhost:4000/turingdocs/feed.xml">
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copied" content="Copied to clipboard">
+    <meta name="lang:search.language" content="en">
+    <meta name="lang:search.pipeline.stopwords" content="True">
+    <meta name="lang:search.pipeline.trimmer" content="True">
+    <meta name="lang:search.result.none" content="No matching documents">
+    <meta name="lang:search.result.one" content="1 matching document">
+    <meta name="lang:search.result.other" content="# matching documents">
+    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <script src="/turingdocs/assets/js/modernizr.74668098.js"></script>
+    <link rel="shortcut icon" href="/turingdocs/assets/img/favicon.ico"> 
+    <link rel="stylesheet" href="/turingdocs/assets/css/main.css">
+    <link rel="stylesheet" href="/turingdocs/assets/css/palette.css">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+    
+    
+  </head> 
+
+  <body dir="ltr" data-md-color-primary="red" data-md-color-accent="red">
+    <svg class="md-svg">
+<defs>
+  <svg>
+  <path d="M160 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360 304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25 2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75 1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75 0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5 46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z" fill="currentColor"></path></svg>
+</defs></svg>
+
+    <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off>
+    <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off>
+    <label class=md-overlay data-md-component=overlay for=__drawer></label> <a href="#bayesian-logistic-regression" tabindex=1 class=md-skip> Skip to content </a>
+    <header class=md-header data-md-component=header data-md-state=none>
+        <nav class="md-header-nav md-grid">
+            <div class=md-flex>
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <a class="md-header-nav__button md-logo" href="http://localhost:4000/turingdocs/" title="Turing.jl">
+                    <img height="34" src="/turingdocs/assets/img/favicon.ico" width="34"></a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--stretch">
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                        <span class=md-header-nav__topic>Turing.jl</span>
+                    </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" href="/turingdocs/docs/using/get-started" title="Go to Get Started">
+                      Get Started
+                    </a>
+                  </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <div class="md-header-nav__source">
+                      <a class="md-source" href="/turingdocs/docs/using/" title="Go to Documentation">
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="md-flex__cell md-flex__cell--shrink">
+                      <div class="md-header-nav__source">
+                        <a class="md-source" href="/turingdocs/docs/tutorials/" title="Go to Tutorial">
+                          Tutorials
+                        </a>
+                      </div>
+                    </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+                    <div class="md-source__icon" style="padding-top:5px">
+                      <i class="fa fa-github fa-3x"></i>
+                    </div>
+                    <div class="md-source__repository">
+                      TuringLang/Turing.jl
+                    </div></a>
+                  </div>
+                </div>
+                
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
+                    <div class=md-search data-md-component=search role=dialog>
+                        <label class=md-search__overlay for=__search></label>
+                        <div class=md-search__inner role=search>
+                            <form class=md-search__form name=search>
+                                <input type=text class=md-search__input name=query placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=query data-md-state=active>
+                                <label class="md-icon md-search__icon" for=__search></label>
+                                <button type=reset class="md-icon md-search__icon" data-md-component=reset tabindex=-1> &#xE5CD; </button>
+                            </form>
+                            <div class=md-search__output>
+                                <div class=md-search__scrollwrap data-md-scrollfix>
+                                    <div class=md-search-result data-md-component=result>
+                                        <div class=md-search-result__meta> Type to start searching </div>
+                                        <ol class=md-search-result__list></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+    </div>
+  </nav>
+</header>
+
+
+    <div class="md-container">         
+        <main class="md-main">
+            <div class="md-main__inner md-grid full-width" data-md-component="container">
+            <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            <img height="48" src="/turingdocs/assets/img/favicon.ico" width="48">
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            TuringLang/Turing.jl
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/using/get-started"
+                     id="pancakes-using-turing" 
+                     title="USING TURING">USING TURING</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/tutorials"
+                     id="pancakes-tutorials" 
+                     title="TUTORIALS">TUTORIALS</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/library"
+                     id="pancakes-library" 
+                     title="LIBRARY">LIBRARY</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/contributing/guide"
+                     id="pancakes-contributing" 
+                     title="CONTRIBUTING">CONTRIBUTING</a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          <li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/using/get-started" title="USING TURING">USING TURING</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/tutorials" title="TUTORIALS">TUTORIALS</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/library" title="LIBRARY">LIBRARY</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/contributing/guide" title="CONTRIBUTING">CONTRIBUTING</a>
+          </li>
+
+          <!-- This navigation is completely for non mobile -->
+         
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-using-turing"
+                id="pancakes-using-turing" 
+                title="USING TURING">USING TURING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/get-started" 
+                           title="Getting Started" style="display:none"
+                           class="md-nav__link pancakes-child">Getting Started</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/quick-start" 
+                           title="Quick Start" style="display:none"
+                           class="md-nav__link pancakes-child">Quick Start</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/guide" 
+                           title="Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Guide</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/advanced" 
+                           title="Advanced Usage" style="display:none"
+                           class="md-nav__link pancakes-child">Advanced Usage</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/autodiff" 
+                           title="Automatic Differentiation" style="display:none"
+                           class="md-nav__link pancakes-child">Automatic Differentiation</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/dynamichmc" 
+                           title="Using DynamicHMC" style="display:none"
+                           class="md-nav__link pancakes-child">Using DynamicHMC</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/sampler-viz" 
+                           title="Sampler Visualization" style="display:none"
+                           class="md-nav__link pancakes-child">Sampler Visualization</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-tutorials"
+                id="pancakes-tutorials" 
+                title="TUTORIALS">TUTORIALS</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials" 
+                           title="Home" style="display:none"
+                           class="md-nav__link pancakes-child">Home</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/0-introduction" 
+                           title="Introduction to Turing" style="display:none"
+                           class="md-nav__link pancakes-child">Introduction to Turing</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/1-gaussianmixturemodel" 
+                           title="Gaussian Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Gaussian Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/2-logisticregression" 
+                           title="Bayesian Logistic Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Logistic Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/3-bayesnn" 
+                           title="Bayesian Neural Networks" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Neural Networks</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/4-bayeshmm" 
+                           title="Hidden Markov Models" style="display:none"
+                           class="md-nav__link pancakes-child">Hidden Markov Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/5-linearregression" 
+                           title="Linear Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Linear Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/6-infinitemixturemodel" 
+                           title="Infinite Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Infinite Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/7-poissontegression" 
+                           title="Bayesian Poisson Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Poisson Regression</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-library"
+                id="pancakes-library" 
+                title="LIBRARY">LIBRARY</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/library" 
+                           title="Public" style="display:none"
+                           class="md-nav__link pancakes-child">Public</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-contributing"
+                id="pancakes-contributing" 
+                title="CONTRIBUTING">CONTRIBUTING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/contributing/guide" 
+                           title="How to Contribute" style="display:none"
+                           class="md-nav__link pancakes-child">How to Contribute</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/contributing/style-guide" 
+                           title="Style Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Style Guide</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+                <div id="md-container-pancakes">
+                <div class="md-content full-width"> 
+    <article class="md-content__inner md-typeset  full-width">
+    <h1 id="bayesian-logistic-regression">Bayesian Logistic Regression</h1>
+
+<p><a href="https://en.wikipedia.org/wiki/Logistic_regression#Bayesian">Bayesian logistic regression</a> is the Bayesian counterpart to a common tool in machine learning, logistic regression. The goal of logistic regression is to predict a one or a zero for a given training item. An example might be predicting whether someone is sick or ill given their symptoms and personal information.</p>
+
+<p>In our example, we’ll be working to predict whether someone is likely to default with a synthetic dataset found in the <code class="highlighter-rouge">RDatasets</code> package. This dataset, <code class="highlighter-rouge">Defaults</code>, comes from R’s <a href="https://cran.r-project.org/web/packages/ISLR/index.html">ISLR</a> package and contains information on borrowers.</p>
+
+<p>To start, let’s import all the libraries we’ll need.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import Turing and Distributions.</span>
+<span class="n">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Distributions</span>
+
+<span class="c"># Import RDatasets.</span>
+<span class="n">using</span> <span class="n">RDatasets</span>
+
+<span class="c"># Import MCMCChains, Plots, and StatsPlots for visualizations and diagnostics.</span>
+<span class="n">using</span> <span class="n">MCMCChains</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">StatsPlots</span>
+
+<span class="c"># We need a logistic function, which is provided by StatsFuns.</span>
+<span class="n">using</span> <span class="n">StatsFuns</span><span class="x">:</span> <span class="n">logistic</span>
+
+<span class="c"># Set a seed for reproducibility.</span>
+<span class="n">using</span> <span class="n">Random</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">);</span>
+
+<span class="c"># Turn off progress monitor.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">turnprogress</span><span class="x">(</span><span class="n">false</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>false
+</code></pre></div></div>
+
+<h2 id="data-cleaning--set-up">Data Cleaning &amp; Set Up</h2>
+
+<p>Now we’re going to import our dataset. The first six rows of the dataset are shown below so you capn get a good feel for what kind of data we have.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import the "Default" dataset.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">RDatasets</span><span class="o">.</span><span class="n">dataset</span><span class="x">(</span><span class="s">"ISLR"</span><span class="x">,</span> <span class="s">"Default"</span><span class="x">);</span>
+
+<span class="c"># Show the first six rows of the dataset.</span>
+<span class="n">first</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mi">6</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>6×4 DataFrame
+│ Row │ Default      │ Student      │ Balance │ Income  │
+│     │ Categorical… │ Categorical… │ Float64 │ Float64 │
+├─────┼──────────────┼──────────────┼─────────┼─────────┤
+│ 1   │ No           │ No           │ 729.526 │ 44361.6 │
+│ 2   │ No           │ Yes          │ 817.18  │ 12106.1 │
+│ 3   │ No           │ No           │ 1073.55 │ 31767.1 │
+│ 4   │ No           │ No           │ 529.251 │ 35704.5 │
+│ 5   │ No           │ No           │ 785.656 │ 38463.5 │
+│ 6   │ No           │ Yes          │ 919.589 │ 7491.56 │
+</code></pre></div></div>
+
+<p>Most machine learning processes require some effort to tidy up the data, and this is no different. We need to convert the <code class="highlighter-rouge">Default</code> and <code class="highlighter-rouge">Student</code> columns, which say “Yes” or “No” into 1s and 0s. Afterwards, we’ll get rid of the old words-based columns.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create new rows, defaulted to zero.</span>
+<span class="n">data</span><span class="x">[:</span><span class="n">DefaultNum</span><span class="x">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+<span class="n">data</span><span class="x">[:</span><span class="n">StudentNum</span><span class="x">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="x">:</span><span class="n">length</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">Default</span><span class="x">)</span>
+    <span class="c"># If a row's "Default" or "Student" columns say "Yes",</span>
+    <span class="c"># set them to 1 in our new columns.</span>
+    <span class="n">data</span><span class="x">[:</span><span class="n">DefaultNum</span><span class="x">][</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">Default</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">==</span> <span class="s">"Yes"</span> <span class="o">?</span> <span class="mf">1.0</span> <span class="x">:</span> <span class="mf">0.0</span>
+    <span class="n">data</span><span class="x">[:</span><span class="n">StudentNum</span><span class="x">][</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">Student</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">==</span> <span class="s">"Yes"</span> <span class="o">?</span> <span class="mf">1.0</span> <span class="x">:</span> <span class="mf">0.0</span>
+<span class="k">end</span>
+
+<span class="c"># Delete the old columns which say "Yes" and "No".</span>
+<span class="n">deletecols!</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="x">:</span><span class="n">Default</span><span class="x">)</span>
+<span class="n">deletecols!</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="x">:</span><span class="n">Student</span><span class="x">)</span>
+
+<span class="c"># Show the first six rows of our edited dataset.</span>
+<span class="n">first</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mi">6</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>6×4 DataFrame
+│ Row │ Balance │ Income  │ DefaultNum │ StudentNum │
+│     │ Float64 │ Float64 │ Float64    │ Float64    │
+├─────┼─────────┼─────────┼────────────┼────────────┤
+│ 1   │ 729.526 │ 44361.6 │ 0.0        │ 0.0        │
+│ 2   │ 817.18  │ 12106.1 │ 0.0        │ 1.0        │
+│ 3   │ 1073.55 │ 31767.1 │ 0.0        │ 0.0        │
+│ 4   │ 529.251 │ 35704.5 │ 0.0        │ 0.0        │
+│ 5   │ 785.656 │ 38463.5 │ 0.0        │ 0.0        │
+│ 6   │ 919.589 │ 7491.56 │ 0.0        │ 1.0        │
+</code></pre></div></div>
+
+<p>After we’ve done that tidying, it’s time to split our dataset into training and testing sets, and separate the labels from the data. We separate our data into two halves, <code class="highlighter-rouge">train</code> and <code class="highlighter-rouge">test</code>. You can use a higher percentage of splitting (or a lower one) by modifying the <code class="highlighter-rouge">at = 0.05</code> argument. We have highlighted the use of only a 5% sample to show the power of Bayesian inference with small sample sizes.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Function to split samples.</span>
+<span class="k">function</span><span class="nf"> split_data</span><span class="x">(</span><span class="n">df</span><span class="x">,</span> <span class="n">at</span> <span class="o">=</span> <span class="mf">0.70</span><span class="x">)</span>
+    <span class="x">(</span><span class="n">r</span><span class="x">,</span> <span class="n">_</span><span class="x">)</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">df</span><span class="x">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="kt">Int</span><span class="x">(</span><span class="n">round</span><span class="x">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">at</span><span class="x">))</span>
+    <span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="x">[</span><span class="mi">1</span><span class="x">:</span><span class="n">index</span><span class="x">,</span> <span class="x">:]</span>
+    <span class="n">test</span>  <span class="o">=</span> <span class="n">df</span><span class="x">[(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="x">):</span><span class="k">end</span><span class="x">,</span> <span class="x">:]</span>
+    <span class="k">return</span> <span class="n">train</span><span class="x">,</span> <span class="n">test</span>
+<span class="k">end</span>
+
+<span class="c"># Split our dataset 5/95 into training/test sets.</span>
+<span class="n">train</span><span class="x">,</span> <span class="n">test</span> <span class="o">=</span> <span class="n">split_data</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mf">0.05</span><span class="x">);</span>
+
+<span class="c"># Create our labels. These are the values we are trying to predict.</span>
+<span class="n">train_label</span> <span class="o">=</span> <span class="n">train</span><span class="x">[:</span><span class="n">DefaultNum</span><span class="x">]</span>
+<span class="n">test_label</span> <span class="o">=</span> <span class="n">test</span><span class="x">[:</span><span class="n">DefaultNum</span><span class="x">]</span>
+
+<span class="c"># Remove the columns that are not our predictors.</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">train</span><span class="x">[[:</span><span class="n">StudentNum</span><span class="x">,</span> <span class="x">:</span><span class="n">Balance</span><span class="x">,</span> <span class="x">:</span><span class="n">Income</span><span class="x">]];</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">test</span><span class="x">[[:</span><span class="n">StudentNum</span><span class="x">,</span> <span class="x">:</span><span class="n">Balance</span><span class="x">,</span> <span class="x">:</span><span class="n">Income</span><span class="x">]];</span>
+</code></pre></div></div>
+
+<p>Our <code class="highlighter-rouge">train</code> and <code class="highlighter-rouge">test</code> matrices are still in the <code class="highlighter-rouge">DataFrame</code> format, which tends not to play too well with the kind of manipulations we’re about to do, so we convert them into <code class="highlighter-rouge">Matrix</code> objects.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert the DataFrame objects to matrices.</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">Matrix</span><span class="x">(</span><span class="n">train</span><span class="x">);</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">Matrix</span><span class="x">(</span><span class="n">test</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>This next part is critically important. We must rescale our variables so that they are centered around zero by subtracting each column by the mean and dividing it by the standard deviation. Without this step, Turing’s sampler will have a hard time finding a place to start searching for parameter estimates.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Rescale our matrices.</span>
+<span class="n">train</span> <span class="o">=</span> <span class="x">(</span><span class="n">train</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">train</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">train</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">)</span>
+<span class="n">test</span> <span class="o">=</span> <span class="x">(</span><span class="n">test</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">test</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">test</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>9500×3 Array{Float64,2}:
+  1.54877    0.267577   -1.28037 
+  1.54877    2.13084    -0.976825
+ -0.645608  -0.892311    0.62087 
+ -0.645608  -0.500971    0.311075
+ -0.645608  -1.72494     0.826565
+ -0.645608  -0.193203    0.438225
+  1.54877    0.565783   -1.53722 
+ -0.645608  -0.132822    1.19331 
+ -0.645608  -0.436599    0.672515
+  1.54877   -0.693263   -0.797271
+  ⋮                              
+ -0.645608  -0.365488    1.59521 
+ -0.645608   0.568975    0.897238
+ -0.645608   0.212375    1.73249 
+  1.54877   -1.36916    -1.39162 
+ -0.645608  -0.256626    1.45956 
+ -0.645608  -0.160862   -1.03896 
+ -0.645608   0.0195917   1.88261 
+ -0.645608   1.51275     0.235979
+  1.54877   -1.31033    -1.24868
+</code></pre></div></div>
+
+<h2 id="model-declaration">Model Declaration</h2>
+<p>Finally, we can define our model.</p>
+
+<p><code class="highlighter-rouge">logistic_regression</code> takes four arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">x</code> is our set of independent variables;</li>
+  <li><code class="highlighter-rouge">y</code> is the element we want to predict;</li>
+  <li><code class="highlighter-rouge">n</code> is the number of observations we have; and</li>
+  <li><code class="highlighter-rouge">σ</code> is the standard deviation we want to assume for our priors.</li>
+</ul>
+
+<p>Within the model, we create four coefficients (<code class="highlighter-rouge">intercept</code>, <code class="highlighter-rouge">student</code>, <code class="highlighter-rouge">balance</code>, and <code class="highlighter-rouge">income</code>) and assign a prior of normally distributed with means of zero and standard deviations of <code class="highlighter-rouge">σ</code>. We want to find values of these four coefficients to predict any given <code class="highlighter-rouge">y</code>.</p>
+
+<p>The <code class="highlighter-rouge">for</code> block creates a variable <code class="highlighter-rouge">v</code> which is the logistic function. We then observe the liklihood of calculating <code class="highlighter-rouge">v</code> given the actual label, <code class="highlighter-rouge">y[i]</code>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bayesian logistic regression (LR)</span>
+<span class="nd">@model</span> <span class="n">logistic_regression</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+    <span class="n">intercept</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+
+    <span class="n">student</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">balance</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">income</span>  <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="x">:</span><span class="n">n</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">logistic</span><span class="x">(</span><span class="n">intercept</span> <span class="o">+</span> <span class="n">student</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span> <span class="n">balance</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">2</span><span class="x">]</span> <span class="o">+</span> <span class="n">income</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">3</span><span class="x">])</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Bernoulli</span><span class="x">(</span><span class="n">v</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<h2 id="sampling">Sampling</h2>
+
+<p>Now we can run our sampler. This time we’ll use <a href="http://turing.ml/docs/library/#Turing.HMC"><code class="highlighter-rouge">HMC</code></a> to sample from our posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># This is temporary while the reverse differentiation backend is being improved.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">setadbackend</span><span class="x">(:</span><span class="n">forward_diff</span><span class="x">)</span>
+
+<span class="c"># Retrieve the number of observations.</span>
+<span class="n">n</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">train</span><span class="x">)</span>
+
+<span class="c"># Sample using HMC.</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">mapreduce</span><span class="x">(</span><span class="n">c</span> <span class="o">-&gt;</span> <span class="n">sample</span><span class="x">(</span><span class="n">logistic_regression</span><span class="x">(</span><span class="n">train</span><span class="x">,</span> <span class="n">train_label</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="mi">1</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1500</span><span class="x">,</span> <span class="mf">0.05</span><span class="x">,</span> <span class="mi">10</span><span class="x">)),</span>
+    <span class="n">chainscat</span><span class="x">,</span>
+    <span class="mi">1</span><span class="x">:</span><span class="mi">3</span>
+<span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[HMC] Finished with
+  Running time        = 32.75128093599998;
+  Accept rate         = 0.9946666666666667;
+  #lf / sample        = 9.993333333333334;
+  #evals / sample     = 0.0006666666666666666;
+  pre-cond. metric    = [1.0].
+[HMC] Finished with
+  Running time        = 32.45210917600001;
+  Accept rate         = 0.9926666666666667;
+  #lf / sample        = 9.993333333333334;
+  #evals / sample     = 0.0006666666666666666;
+  pre-cond. metric    = [1.0].
+[HMC] Finished with
+  Running time        = 32.587576130999956;
+  Accept rate         = 0.9953333333333333;
+  #lf / sample        = 9.993333333333334;
+  #evals / sample     = 0.0006666666666666666;
+  pre-cond. metric    = [1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">describe</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+. Omitted printing of 1 columns
+│ Row │ parameters │ mean       │ std        │ naive_se    │ mcse        │
+│     │ Symbol     │ Float64    │ Float64    │ Float64     │ Float64     │
+├─────┼────────────┼────────────┼────────────┼─────────────┼─────────────┤
+│ 1   │ balance    │ 1.68562    │ 0.315471   │ 0.00470277  │ 0.00735181  │
+│ 2   │ income     │ -0.0296337 │ 0.377066   │ 0.00562096  │ 0.00827714  │
+│ 3   │ intercept  │ -4.3785    │ 0.553123   │ 0.00824547  │ 0.0141316   │
+│ 4   │ lf_eps     │ 0.05       │ 2.0819e-17 │ 3.10351e-19 │ 2.09216e-18 │
+│ 5   │ student    │ -0.271651  │ 0.373947   │ 0.00557447  │ 0.00935029  │
+
+Quantiles
+. Omitted printing of 1 columns
+│ Row │ parameters │ 2.5%      │ 25.0%     │ 50.0%      │ 75.0%      │
+│     │ Symbol     │ Float64   │ Float64   │ Float64    │ Float64    │
+├─────┼────────────┼───────────┼───────────┼────────────┼────────────┤
+│ 1   │ balance    │ 1.13784   │ 1.48794   │ 1.67625    │ 1.87022    │
+│ 2   │ income     │ -0.760113 │ -0.280494 │ -0.0298922 │ 0.218566   │
+│ 3   │ intercept  │ -5.21811  │ -4.62621  │ -4.34761   │ -4.09165   │
+│ 4   │ lf_eps     │ 0.05      │ 0.05      │ 0.05       │ 0.05       │
+│ 5   │ student    │ -0.995905 │ -0.513987 │ -0.272845  │ -0.0321513 │
+</code></pre></div></div>
+
+<p>Since we ran multiple chains, we may as well do a spot check to make sure each chain converges around similar points.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/turingdocs/docs/tutorials/figures/2_LogisticRegression_9_1.png" alt="" /></p>
+
+<p>Looks good!</p>
+
+<p>We can also use the <code class="highlighter-rouge">corner</code> function from MCMCChains to show the distributions of the various parameters of our logistic regression.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># The labels to use.</span>
+<span class="n">l</span> <span class="o">=</span> <span class="x">[:</span><span class="n">student</span><span class="x">,</span> <span class="x">:</span><span class="n">balance</span><span class="x">,</span> <span class="x">:</span><span class="n">income</span><span class="x">]</span>
+
+<span class="c"># Use the corner function. Requires StatsPlots and MCMCChain.</span>
+<span class="n">corner</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="n">l</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/turingdocs/docs/tutorials/figures/2_LogisticRegression_10_1.png" alt="" /></p>
+
+<p>Fortunately the corner plot appears to demonstrate unimodal distributions for each of our parameters, so it should be straightforward to take the means of each parameter’s sampled values to estimate our model to make predictions.</p>
+
+<h2 id="making-predictions">Making Predictions</h2>
+<p>How do we test how well the model actually predicts whether someone is likely to default? We need to build a prediction function that takes the <code class="highlighter-rouge">test</code> object we made earlier and runs it through the average parameter calculated during sampling.</p>
+
+<p>The <code class="highlighter-rouge">prediction</code> function below takes a <code class="highlighter-rouge">Matrix</code> and a <code class="highlighter-rouge">Chain</code> object. It takes the mean of each parameter’s sampled values and re-runs the logistic function using those mean values for every element in the test set.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span><span class="nf"> prediction</span><span class="x">(</span><span class="n">x</span><span class="o">::</span><span class="n">Matrix</span><span class="x">,</span> <span class="n">chain</span><span class="x">,</span> <span class="n">threshold</span><span class="x">)</span>
+    <span class="c"># Pull the means from each parameter's sampled values in the chain.</span>
+    <span class="n">intercept</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[:</span><span class="n">intercept</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">student</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[:</span><span class="n">student</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">balance</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[:</span><span class="n">balance</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">income</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[:</span><span class="n">income</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+
+    <span class="c"># Retrieve the number of rows.</span>
+    <span class="n">n</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+
+    <span class="c"># Generate a vector to store our predictions.</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">Vector</span><span class="x">{</span><span class="kt">Float64</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="n">n</span><span class="x">)</span>
+
+    <span class="c"># Calculate the logistic function for each element in the test set.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="x">:</span><span class="n">n</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">logistic</span><span class="x">(</span><span class="n">intercept</span> <span class="o">.+</span> <span class="n">student</span> <span class="o">*</span> <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">1</span><span class="x">]</span> <span class="o">+</span> <span class="n">balance</span> <span class="o">*</span> <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">2</span><span class="x">]</span> <span class="o">+</span> <span class="n">income</span> <span class="o">*</span> <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">3</span><span class="x">])</span>
+        <span class="k">if</span> <span class="n">num</span> <span class="o">&gt;=</span> <span class="n">threshold</span>
+            <span class="n">v</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span>
+            <span class="n">v</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">end</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">v</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>Let’s see how we did! We run the test matrix through the prediction function, and compute the <a href="https://en.wikipedia.org/wiki/Mean_squared_error">mean squared error</a> (MSE) for our prediction. The <code class="highlighter-rouge">threshold</code> variable sets the sensitivity of the predictions. For example, a threshold of 0.10 will predict a defualt value of 1 for any predicted value greater than 1.0 and no default if it is less than 0.10.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Set the prediction threshold.</span>
+<span class="n">threshold</span> <span class="o">=</span> <span class="mf">0.10</span>
+
+<span class="c"># Make the predictions.</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">prediction</span><span class="x">(</span><span class="n">test</span><span class="x">,</span> <span class="n">chain</span><span class="x">,</span> <span class="n">threshold</span><span class="x">)</span>
+
+<span class="c"># Calculate MSE for our test set.</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">sum</span><span class="x">((</span><span class="n">predictions</span> <span class="o">-</span> <span class="n">test_label</span><span class="x">)</span><span class="o">.^</span><span class="mi">2</span><span class="x">)</span> <span class="o">/</span> <span class="n">length</span><span class="x">(</span><span class="n">test_label</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.08242105263157895
+</code></pre></div></div>
+
+<p>Perhaps more important is to see what percentage of defaults we correctly predicted. The code below simply counts defaults and predictions and presents the results.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">defaults</span> <span class="o">=</span> <span class="n">sum</span><span class="x">(</span><span class="n">test_label</span><span class="x">)</span>
+<span class="n">not_defaults</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">test_label</span><span class="x">)</span> <span class="o">-</span> <span class="n">defaults</span>
+
+<span class="n">predicted_defaults</span> <span class="o">=</span> <span class="n">sum</span><span class="x">(</span><span class="n">test_label</span> <span class="o">.==</span> <span class="n">predictions</span> <span class="o">.==</span> <span class="mi">1</span><span class="x">)</span>
+<span class="n">predicted_not_defaults</span> <span class="o">=</span> <span class="n">sum</span><span class="x">(</span><span class="n">test_label</span> <span class="o">.==</span> <span class="n">predictions</span> <span class="o">.==</span> <span class="mi">0</span><span class="x">)</span>
+
+<span class="n">println</span><span class="x">(</span><span class="s">"Defaults: </span><span class="si">$$</span><span class="s">defaults
+    Predictions: </span><span class="si">$$</span><span class="s">predicted_defaults
+    Percentage defaults correct </span><span class="si">$$</span><span class="s">(predicted_defaults/defaults)"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Defaults: 317.0
+    Predictions: 247
+    Percentage defaults correct 0.7791798107255521
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="n">println</span><span class="x">(</span><span class="s">"Not defaults: </span><span class="si">$$</span><span class="s">not_defaults
+    Predictions: </span><span class="si">$$</span><span class="s">predicted_not_defaults
+    Percentage non-defaults correct </span><span class="si">$$</span><span class="s">(predicted_not_defaults/not_defaults)"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Not defaults: 9183.0
+    Predictions: 8470
+    Percentage non-defaults correct 0.9223565283676358
+</code></pre></div></div>
+
+<p>The above shows that with a threshold of 0.10, we correctly predict a respectable portion of the defaults, and correctly identify most non-defaults. This is fairly sensitive to a choice of threshold, and you may wish to experiment with it.</p>
+
+<p>This tutorial has demonstrated how to use Turing to perform Bayesian logistic regression.</p>
+
+    <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+
+    var toc = $('#nav-toc');
+
+    // Select each header
+    sections = $('#md-container-pancakes h1');
+        $.each(sections, function(idx, v) {
+            section = $(v);
+            var div_id = $(section).attr('id');
+            var div_text = section.text().split('¶')[0];
+            var parent = $("#" + div_id)
+            var content = '<li id="link_' + div_id + '" class="md-nav__item"><a class="md-nav__link" href="#' + div_id + '" title="' + div_text +'">' + div_text +'</a></li>';
+            $(toc).append(content);
+
+            // Add section code to subnavigation
+            var children = $('<nav class="md-nav"><ul class="md-nav__list"></nav></ul>')
+            var contenders = $("#" + div_id).nextUntil( "h1" );
+            $.each(contenders, function(idx, contender){
+               if($(contender).is('h2')) {
+                   var contender_id = $(contender).attr('id');
+                   var contender_text = $(contender).text().split('¶')[0];
+                   var content = '<li class="md-nav__item"><a class="md-nav__link" href="#' + contender_id + '" title="' + contender_text +'">' + contender_text +'</a></li>';
+                   children.append(content);
+                }
+             })
+             $("#link_" + div_id).append(children);
+        });
+    });
+</script>
+
+    <!-- this will parse through the header fields and add a button to open
+     an issue / ask a question on Github. The editable field should be in
+     the post frontend matter, and refer to the label to open the issue for -->
+
+<style>
+.more {
+    float:right;
+    font-size: 1.0rem !important;
+}
+.more:hover {
+    color: cornflowerblue !important;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    font-weight: 200;
+    box-shadow: 0px 8px 6px 0px rgba(0,0,0,0.2);
+    padding: 0px 10px;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+</style>
+<script>
+$(document).ready(function() {
+
+    var divs = $("#h1,h2,h3,h4"); 
+    $.each(divs, function(i,e){
+
+        // Edit
+        var did = $(e).attr('id');
+        var start = '<div class="dropdown more"><span><i class="fa fa-ellipsis-h more" title="Edit"></i></span><div class="dropdown-content">';
+
+        // Edit (assuming deployed under main organization repo)
+        var link = "https://github.com/TuringLang/Turing.jl/edit/master/_docs/tutorials/2-logisticregression.md#" + did;
+        var button = "<p><a href='" + link + "' target='_blank'>Edit this page</a></p>";
+        start += button;
+
+        // Issues;
+        var link = "https://github.com/TuringLang/Turing.jl/issues/new?labels=question&title=Question:&body=Question on: https://github.com/TuringLang/Turing.jl/tree/master/_docs/tutorials/2-logisticregression.md%23" + did;
+
+        var button = "<p><a href='" + link + "' target='_blank'>Ask a Question</a></p>";
+        start += button;
+        start += "</div></div>";
+        $(e).append(start)
+
+    })
+});
+</script>
+
+    </article>
+</div>      
+
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/turingdocs/assets/js/application.js"></script>
+    
+    <script>console.log('4')</script>
+    <script>app.initialize({version:"0.17.4", url:{base:'/turingdocs'}})</script>
+
+    
+    
+    <script>
+var headers = ["h1", "h2", "h3", "h4"]
+var colors = ["red", "orange", "green", "blue"]
+
+$.each(headers, function(i, header){
+    var color = colors[i];
+    $(header).each(function () {
+        var href=$(this).attr("id");
+        $(this).append('<a class="headerlink" style="color:' + color + '" href="#' + href + '" title="Permanent link">¶</a>')
+    });
+})
+
+// Ensure that sidebar on left has arrows
+$(".pancakes-parent").on('click', function(){ 
+    console.log($(this).next());
+    $(this).next().find('.pancakes-child').toggle();
+    if ($(this).hasClass('open-parent')){
+        $(this).removeClass('open-parent');
+    } else {
+        $(this).addClass('open-parent');
+    }
+})
+</script>
+
+    <script>
+$('h1').first().append('<div></div>')</script>
+
+    <style>
+#scrolltop {
+  display: none; /* Hidden by default */
+  position: fixed; /* Fixed/sticky position */
+  bottom: 20px; /* Place the button at the bottom of the page */
+  right: 30px; /* Place the button 30px from the right */
+  z-index: 99; /* Make sure it does not overlap */
+  border: none; /* Remove borders */
+  outline: none; /* Remove outline */
+  background-color: #3f51b5; /* Set a background color */
+  color: white; /* Text color */
+  cursor: pointer; /* Add a mouse pointer on hover */
+  padding: 10px 15px; /* Some padding */
+  border-radius: 100px; /* Rounded corners */
+  font-size: 18px; /* Increase font size */
+  font-weight: 600;
+}
+
+#scrolltop:hover {
+  background-color: #555; /* Add a dark-grey background on hover */
+}
+</style>
+<button onclick="topFunction()" id="scrolltop" title="Go to top">🔝</button>
+
+<script>
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    document.getElementById("scrolltop").style.display = "block";
+  } else {
+    document.getElementById("scrolltop").style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+    
+
+  </body>
+</html>

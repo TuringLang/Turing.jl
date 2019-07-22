@@ -1,0 +1,163 @@
+---
+layout: null
+excluded_in_search: true
+---
+.full-width {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+.show-hide {
+    display: none;
+}
+
+.md-flex__cell--shrink a {
+    color: white;
+    text-decoration: none;
+}
+
+.jumbotron {
+    background-color: #3f51b5;
+    color: white;
+    margin: 0;
+}
+
+.jumbotron h1 {
+    color: inherit;
+}
+
+.lead p {
+    font-size: 1.6rem;
+}
+
+.text-content {
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+}
+
+.swimlane {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+}
+
+.md-typeset h2 {
+    font-weight: bold;
+}
+
+button:focus {
+    outline:none;
+}
+
+.swimlane:nth-child(even) {
+    background-color: #f5f5f5;
+}
+
+/* Gray */
+.btn-default {
+    border-color: #e7e7e7;
+    color: black;
+  }
+  
+  .btn-default:hover {
+    background: #e7e7e7;
+  }
+
+  .btn {
+    border-radius: 5px;
+  }
+
+
+  .ecosystem-card {
+    border-radius: 0;
+    border: none;
+    margin-bottom: 1.875rem;
+    height: auto;
+    background-color: #f3f4f7;
+}
+
+.card-body {
+    -webkit-box-flex: 1;
+    flex: 1 1 auto;
+}
+
+.ecosystem-card .card-body {
+    background-position: top 1.25rem right 1.25rem;
+    background-repeat: no-repeat;
+    padding: 1.5625rem 1.875rem;
+}
+
+.ecosystem-card .card-body.tool {
+    background-size: 29px 25px;
+}
+
+@media (max-width: 991px) and (min-width: 768px){
+    .ecosystem-card, .resource-card {
+        height: 24rem;
+    }
+}
+
+@media (max-width: 1199px) and (min-width: 992px){
+    .ecosystem-card, .resource-card {
+        height: 20rem;
+    }
+}
+
+@media (min-width: 1200px){
+    .ecosystem-card, .resource-card {
+        height: 18rem;
+    }
+}
+
+.md-typeset a {
+    text-decoration: none;
+}
+
+.resource-card {
+    border: 1px solid #d6d7d8;
+    background-color: white;
+    margin-bottom: 1.25rem;
+}
+
+.resource-card.slack:before, .resource-card.github:before, .resource-card.turing-resource:before {
+    content: "";
+    background-size: 32px 32px;
+    background-repeat: no-repeat;
+    display: block;
+    position: absolute;
+    height: 32px;
+    width: 32px;
+    top: 15px;
+    left: 15px;
+}
+
+.resource-card.slack:before {
+    background-image: url({{ site.baseurl }}/assets/images/logo-slack.svg);
+}
+
+.resource-card.github:before {
+    background-image: url({{ site.baseurl }}/assets/images/logo-github.svg);
+}
+
+.resource-card.turing-resource:before {
+    background-image: url({{ site.baseurl }}/assets/images/turing-logo.svg);
+}
+
+.resource-card .card-body {
+    display: block;
+    padding: 0 15px 0 0;
+    position: relative;
+    margin-left: 60px;
+}
+
+@media screen and (min-width: 1240px){
+    .resource-card .card-body {
+        margin-left: 80px;
+        padding-right: 30px;
+    }
+}
+
+.university-testimonials h2 {
+    margin-top: 0;
+    margin-bottom: 4rem;
+}

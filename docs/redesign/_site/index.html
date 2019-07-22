@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-language" content="en">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <title>Turing.jl - Turing.jl</title>
+    <meta name="description" content="Turing is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.
+">
+    <meta name="author" content="Mustafa Aga">
+    <meta name="theme-color" content="red">    
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+    <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+  
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="canonical" href="http://localhost:4000/turingdocs/">
+    <link rel="alternate" type="application/rss+xml" title="Turing.jl" href="http://localhost:4000/turingdocs/feed.xml">
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copied" content="Copied to clipboard">
+    <meta name="lang:search.language" content="en">
+    <meta name="lang:search.pipeline.stopwords" content="True">
+    <meta name="lang:search.pipeline.trimmer" content="True">
+    <meta name="lang:search.result.none" content="No matching documents">
+    <meta name="lang:search.result.one" content="1 matching document">
+    <meta name="lang:search.result.other" content="# matching documents">
+    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <script src="/turingdocs/assets/js/modernizr.74668098.js"></script>
+    <link rel="shortcut icon" href="/turingdocs/assets/img/favicon.ico"> 
+    <link rel="stylesheet" href="/turingdocs/assets/css/main.css">
+    <link rel="stylesheet" href="/turingdocs/assets/css/palette.css">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/turingdocs/assets/css/index.css">
+    
+    
+  </head> 
+
+  <body dir="ltr" data-md-color-primary="red" data-md-color-accent="red">
+    <svg class="md-svg">
+<defs>
+  <svg>
+  <path d="M160 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360 304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25 2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75 1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75 0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5 46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z" fill="currentColor"></path></svg>
+</defs></svg>
+
+    <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off>
+    <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off>
+    <label class=md-overlay data-md-component=overlay for=__drawer></label> <a href="#turing-jl-turing-jl" tabindex=1 class=md-skip> Skip to content </a>
+    <header class=md-header data-md-component=header data-md-state=none>
+        <nav class="md-header-nav md-grid">
+            <div class=md-flex>
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <a class="md-header-nav__button md-logo" href="http://localhost:4000/turingdocs/" title="Turing.jl">
+                    <img height="34" src="/turingdocs/assets/img/favicon.ico" width="34"></a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--stretch">
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                        <span class=md-header-nav__topic>Turing.jl</span>
+                    </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" href="/turingdocs/docs/using/get-started" title="Go to Get Started">
+                      Get Started
+                    </a>
+                  </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <div class="md-header-nav__source">
+                      <a class="md-source" href="/turingdocs/docs/using/" title="Go to Documentation">
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="md-flex__cell md-flex__cell--shrink">
+                      <div class="md-header-nav__source">
+                        <a class="md-source" href="/turingdocs/docs/tutorials/" title="Go to Tutorial">
+                          Tutorials
+                        </a>
+                      </div>
+                    </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+                    <div class="md-source__icon" style="padding-top:5px">
+                      <i class="fa fa-github fa-3x"></i>
+                    </div>
+                    <div class="md-source__repository">
+                      TuringLang/Turing.jl
+                    </div></a>
+                  </div>
+                </div>
+                
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
+                    <div class=md-search data-md-component=search role=dialog>
+                        <label class=md-search__overlay for=__search></label>
+                        <div class=md-search__inner role=search>
+                            <form class=md-search__form name=search>
+                                <input type=text class=md-search__input name=query placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=query data-md-state=active>
+                                <label class="md-icon md-search__icon" for=__search></label>
+                                <button type=reset class="md-icon md-search__icon" data-md-component=reset tabindex=-1> &#xE5CD; </button>
+                            </form>
+                            <div class=md-search__output>
+                                <div class=md-search__scrollwrap data-md-scrollfix>
+                                    <div class=md-search-result data-md-component=result>
+                                        <div class=md-search-result__meta> Type to start searching </div>
+                                        <ol class=md-search-result__list></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+    </div>
+  </nav>
+</header>
+
+
+    <div class="md-container">         
+        <main class="md-main">
+            <div class="md-main__inner md-grid full-width" data-md-component="container">
+            <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            <img height="48" src="/turingdocs/assets/img/favicon.ico" width="48">
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            TuringLang/Turing.jl
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/using/get-started"
+                     id="pancakes-using-turing" 
+                     title="USING TURING">USING TURING</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/tutorials"
+                     id="pancakes-tutorials" 
+                     title="TUTORIALS">TUTORIALS</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/library"
+                     id="pancakes-library" 
+                     title="LIBRARY">LIBRARY</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/turingdocs/docs/contributing/guide"
+                     id="pancakes-contributing" 
+                     title="CONTRIBUTING">CONTRIBUTING</a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          <li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/using/get-started" title="USING TURING">USING TURING</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/tutorials" title="TUTORIALS">TUTORIALS</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/library" title="LIBRARY">LIBRARY</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/turingdocs/docs/contributing/guide" title="CONTRIBUTING">CONTRIBUTING</a>
+          </li>
+
+          <!-- This navigation is completely for non mobile -->
+         
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-using-turing"
+                id="pancakes-using-turing" 
+                title="USING TURING">USING TURING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/get-started" 
+                           title="Getting Started" style="display:none"
+                           class="md-nav__link pancakes-child">Getting Started</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/quick-start" 
+                           title="Quick Start" style="display:none"
+                           class="md-nav__link pancakes-child">Quick Start</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/guide" 
+                           title="Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Guide</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/advanced" 
+                           title="Advanced Usage" style="display:none"
+                           class="md-nav__link pancakes-child">Advanced Usage</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/autodiff" 
+                           title="Automatic Differentiation" style="display:none"
+                           class="md-nav__link pancakes-child">Automatic Differentiation</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/dynamichmc" 
+                           title="Using DynamicHMC" style="display:none"
+                           class="md-nav__link pancakes-child">Using DynamicHMC</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/using/sampler-viz" 
+                           title="Sampler Visualization" style="display:none"
+                           class="md-nav__link pancakes-child">Sampler Visualization</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-tutorials"
+                id="pancakes-tutorials" 
+                title="TUTORIALS">TUTORIALS</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials" 
+                           title="Home" style="display:none"
+                           class="md-nav__link pancakes-child">Home</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/0-introduction" 
+                           title="Introduction to Turing" style="display:none"
+                           class="md-nav__link pancakes-child">Introduction to Turing</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/1-gaussianmixturemodel" 
+                           title="Gaussian Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Gaussian Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/2-logisticregression" 
+                           title="Bayesian Logistic Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Logistic Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/3-bayesnn" 
+                           title="Bayesian Neural Networks" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Neural Networks</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/4-bayeshmm" 
+                           title="Hidden Markov Models" style="display:none"
+                           class="md-nav__link pancakes-child">Hidden Markov Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/5-linearregression" 
+                           title="Linear Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Linear Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/6-infinitemixturemodel" 
+                           title="Infinite Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Infinite Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/tutorials/7-poissontegression" 
+                           title="Bayesian Poisson Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Poisson Regression</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-library"
+                id="pancakes-library" 
+                title="LIBRARY">LIBRARY</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/library" 
+                           title="Public" style="display:none"
+                           class="md-nav__link pancakes-child">Public</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-contributing"
+                id="pancakes-contributing" 
+                title="CONTRIBUTING">CONTRIBUTING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/turingdocs/docs/contributing/guide" 
+                           title="How to Contribute" style="display:none"
+                           class="md-nav__link pancakes-child">How to Contribute</a>
+                        </li><li class="md-nav__item">
+                        <a href="/turingdocs/docs/contributing/style-guide" 
+                           title="Style Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Style Guide</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+                <div id="md-container-pancakes">
+                <div class="md-content full-width"> 
+    <article class="md-content__inner md-typeset  full-width">
+    <div class="jumbotron" style="background-image: url('/turingdocs/assets/images/turing-logo-wide.svg');">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6 col-sm-6 col-xs-0"></div>
+      <div class="left col-md-6 col-sm-6 col-xs-12">
+        <div class="right-section text-right">
+          <!-- header section -->
+          <h1><strong>Turing.jl</strong></h1>
+          <!-- desc section -->
+          <div class="lead">
+            <p><strong>Turing</strong>  is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- main-feature_row -->
+<div class="swimlane">  
+  <div class="container"> 
+    <div class="container-fluid">
+      <div class="row">
+        
+        <div class="col-md-4">
+            <div class="text-content">
+              <strong>Intuitive</strong>
+              <div>Turing models are easy to read and write. Specify models quickly and easily.</div>
+            </div>
+        </div>   
+        
+        <div class="col-md-4">
+            <div class="text-content">
+              <strong>Universal</strong>
+              <div>Turing supports models with stochastic control flow — models work the way you write them.</div>
+            </div>
+        </div>   
+        
+        <div class="col-md-4">
+            <div class="text-content">
+              <strong>Adaptable</strong>
+              <div>Turing is written fully in Julia, and can be modified to suit your needs.</div>
+            </div>
+        </div>   
+        
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A Quick Example -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">A Quick Example</h2>
+          <div class="archive__item-excerpt">
+            <p>Turing’s modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow.</p>
+
+          </div>
+          <p><a href="http://turing.ml/docs/quick-start/" class="btn btn-default">Quick Start</a></p>
+        </div>
+      </div>
+      <div class="col-sm-6  col-md-4">              
+        <div class="archive__item-teaser">
+          <div class="archive__snippet">
+            <figure class="highlight"><pre><code class="language-julia" data-lang="julia"> <span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+  <span class="c"># Assumptions</span>
+  <span class="n">σ</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+  <span class="n">μ</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">σ</span><span class="x">))</span>
+  <span class="c"># Observations</span>
+  <span class="n">x</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">μ</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">σ</span><span class="x">))</span>
+  <span class="n">y</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">μ</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">σ</span><span class="x">))</span>
+<span class="k">end</span>
+ </code></pre></figure>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Large Sampling Library -->
+ <div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="/turingdocs/assets/images/sampler.svg" alt="" style="max-width: 100%; max-height:100%;">
+        </div>
+      </div>
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body">
+          <h2 class="archive__item-title">Large Sampling Library</h2>       
+          <div class="archive__item-excerpt">
+            <p>Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms.</p>
+
+          </div>          
+          <p><a href="http://turing.ml/docs/library/#samplers" class="btn btn-default">Samplers</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Integrates With Other Machine Learning Packages -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">Integrates With Other Machine Learning Packages</h2> 
+          <div class="archive__item-excerpt">
+            <p>Turing supports Julia’s <a href="http://fluxml.ai/">Flux</a> package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models.</p>
+
+          </div>
+          <p><a href="http://turing.ml/tutorials/3-bayesnn/" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
+        </div>                
+      </div>
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg" alt="Bayesian Neural Network Tutorial" style="max-width: 100%; max-height:100%">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Community -->
+<div class="swimlane">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12 community-heading">
+          <h2>Community</h2>
+        </div>
+        <div class="col-md-8">
+          <p class="h2-subheadline">Join the PyTorch developer community to contribute, learn, and get your questions answered.</p>
+        </div>
+      </div>
+  
+      <div class="row resources">     
+        
+            <div class="col-md-4">
+            <div class="card resource-card github">
+              <!-- Cards with the pytorch-resource class also have a pytorch-discuss class.
+                  These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
+                 -->
+                  <a href="https://github.com/TuringLang/Turing.jl" target="_blank">
+                
+                <div class="card-body">
+                  <h4>GitHub</h4>
+              
+                  <p class="card-summary">Report bugs, request features, discuss issues, and more.</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          
+            <div class="col-md-4">
+            <div class="card resource-card turing-resource">
+              <!-- Cards with the pytorch-resource class also have a pytorch-discuss class.
+                  These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
+                 -->
+                  <a href="https://github.com/TuringLang/Turing.jl" target="_blank">
+                
+                <div class="card-body">
+                  <h4>Turing.jl Discuss</h4>
+              
+                  <p class="card-summary">Browse and join discussions on deep learning with Turing.</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          
+            <div class="col-md-4">
+            <div class="card resource-card slack">
+              <!-- Cards with the pytorch-resource class also have a pytorch-discuss class.
+                  These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
+                 -->
+                  <a href="https://github.com/TuringLang/Turing.jl" target="_blank">
+                
+                <div class="card-body">
+                  <h4>Slack</h4>
+              
+                  <p class="card-summary">Discuss advanced topics. Request access https://bit.ly/ptslack</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+            
+        </div>
+  
+    </div>
+  </div>
+
+<!-- Ecosystem -->
+<div class="swimlane">
+  <div class="container">
+
+    <div class="row">
+      <div class="col-md-12">
+        <h2>Ecosystem</h2>
+      </div>
+
+      <div class="col-md-8">
+        <p class="h2-subheadline">Explore a rich ecosystem of libraries, tools, and more to support development.</p>
+      </div>
+    </div>
+    
+    <div class="row ecosystem-row">   
+      
+      <div class="col-md-4">
+        <div class="card ecosystem-card">          
+            <a href="https://turing.ml/ecosystem/glow/">          
+            <div class="card-body tool ">
+              <h4>Glow</h4>
+              <p class="card-summary">Glow is a ML compiler that accelerates the performance of deep learning frameworks on different hardware platforms.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card ecosystem-card">          
+            <a href="https://turing.ml/ecosystem/turing-geometric/">          
+            <div class="card-body tool ">
+              <h4>PyTorch Geometric</h4>
+              <p class="card-summary">PyTorch Geometric is a library for deep learning on irregular input data such as graphs, point clouds, and manifolds.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card ecosystem-card">          
+            <a href="https://turing.ml/ecosystem/glow/">          
+            <div class="card-body tool ">
+              <h4>skorch</h4>
+              <p class="card-summary">Gskorch is a high-level library for PyTorch that provides full scikit-learn compatibility.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+      
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Companies & Universities Using PyTorch -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 university-testimonials">
+        <h2>Companies &amp; Universities<br>Using Turing.jl</h2>
+
+        <!-- Temporarily hiding button since there isn't a 'Stories' page
+        <a href="/features" class="btn btn-lg with-right-arrow module-button">
+          See all Stories
+        </a> -->
+
+        <div class="row university-testimonials-content">
+          
+            <div class="col-md-4">
+              <img src="/turingdocs/assets/images/cambridge.png" class="img-fluid" width="140">
+              <p></p><p>Pushing the state of the art in NLP and Multi-task learning.</p>
+<p></p>
+              <!-- Temporarily hiding link out to case studies for time being -->
+<!--               <a href="/case-studies/salesforce/" class="btn btn-lg with-right-arrow">
+                Read More
+              </a> -->
+            </div>
+          
+            <div class="col-md-4">
+              <img src="/turingdocs/assets/images/oxford.png" class="img-fluid" width="140">
+              <p></p><p>Using Turing’s flexibility to efficiently research new algorithmic approaches.</p>
+<p></p>
+              <!-- Temporarily hiding link out to case studies for time being -->
+<!--               <a href="/case-studies/salesforce/" class="btn btn-lg with-right-arrow">
+                Read More
+              </a> -->
+            </div>
+          
+            <div class="col-md-4">
+              <img src="/turingdocs/assets/images/edinburgh.png" class="img-fluid" width="140">
+              <p></p><p>Educating the next wave of AI Innovators using Turing.</p>
+<p></p>
+              <!-- Temporarily hiding link out to case studies for time being -->
+<!--               <a href="/case-studies/salesforce/" class="btn btn-lg with-right-arrow">
+                Read More
+              </a> -->
+            </div>
+          
+          
+        </div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<div class="swimlane text-center">
+  <div>Citing Turing</div>
+  <div>
+      <p><sub>If you use <strong>Turing</strong> for your own research, please consider citing the following publication: Hong Ge, Kai Xu, and Zoubin Ghahramani: <strong>Turing: Composable inference for probabilistic programming.</strong> AISTATS 2018 <a href="http://proceedings.mlr.press/v84/ge18b.html">pdf</a> <a href="https://dblp.org/rec/bib2/conf/aistats/GeXG18.bib">bibtex</a></sub></p>
+
+  </div>
+</div>
+
+    <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+
+    var toc = $('#nav-toc');
+
+    // Select each header
+    sections = $('#md-container-pancakes h1');
+        $.each(sections, function(idx, v) {
+            section = $(v);
+            var div_id = $(section).attr('id');
+            var div_text = section.text().split('¶')[0];
+            var parent = $("#" + div_id)
+            var content = '<li id="link_' + div_id + '" class="md-nav__item"><a class="md-nav__link" href="#' + div_id + '" title="' + div_text +'">' + div_text +'</a></li>';
+            $(toc).append(content);
+
+            // Add section code to subnavigation
+            var children = $('<nav class="md-nav"><ul class="md-nav__list"></nav></ul>')
+            var contenders = $("#" + div_id).nextUntil( "h1" );
+            $.each(contenders, function(idx, contender){
+               if($(contender).is('h2')) {
+                   var contender_id = $(contender).attr('id');
+                   var contender_text = $(contender).text().split('¶')[0];
+                   var content = '<li class="md-nav__item"><a class="md-nav__link" href="#' + contender_id + '" title="' + contender_text +'">' + contender_text +'</a></li>';
+                   children.append(content);
+                }
+             })
+             $("#link_" + div_id).append(children);
+        });
+    });
+</script>
+
+    <!-- this will parse through the header fields and add a button to open
+     an issue / ask a question on Github. The editable field should be in
+     the post frontend matter, and refer to the label to open the issue for -->
+
+<style>
+.more {
+    float:right;
+    font-size: 1.0rem !important;
+}
+.more:hover {
+    color: cornflowerblue !important;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    font-weight: 200;
+    box-shadow: 0px 8px 6px 0px rgba(0,0,0,0.2);
+    padding: 0px 10px;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+</style>
+<script>
+$(document).ready(function() {
+
+    var divs = $("#h1,h2,h3,h4"); 
+    $.each(divs, function(i,e){
+
+        // Edit
+        var did = $(e).attr('id');
+        var start = '<div class="dropdown more"><span><i class="fa fa-ellipsis-h more" title="Edit"></i></span><div class="dropdown-content">';
+
+        // Edit (assuming deployed under main organization repo)
+        var link = "https://github.com/TuringLang/Turing.jl/edit/master/pages/index.html#" + did;
+        var button = "<p><a href='" + link + "' target='_blank'>Edit this page</a></p>";
+        start += button;
+
+        // Issues;
+        var link = "https://github.com/TuringLang/Turing.jl/issues/new?labels=question&title=Question:&body=Question on: https://github.com/TuringLang/Turing.jl/tree/master/pages/index.html%23" + did;
+
+        var button = "<p><a href='" + link + "' target='_blank'>Ask a Question</a></p>";
+        start += button;
+        start += "</div></div>";
+        $(e).append(start)
+
+    })
+});
+</script>
+
+    </article>
+</div>      
+
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/turingdocs/assets/js/application.js"></script>
+    
+    <script>console.log('0')</script>
+    <script>app.initialize({version:"0.17.4", url:{base:'/turingdocs'}})</script>
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="/turingdocs/assets/js/index.js"></script>
+    
+    
+    <script>
+var headers = ["h1", "h2", "h3", "h4"]
+var colors = ["red", "orange", "green", "blue"]
+
+$.each(headers, function(i, header){
+    var color = colors[i];
+    $(header).each(function () {
+        var href=$(this).attr("id");
+        $(this).append('<a class="headerlink" style="color:' + color + '" href="#' + href + '" title="Permanent link">¶</a>')
+    });
+})
+
+// Ensure that sidebar on left has arrows
+$(".pancakes-parent").on('click', function(){ 
+    console.log($(this).next());
+    $(this).next().find('.pancakes-child').toggle();
+    if ($(this).hasClass('open-parent')){
+        $(this).removeClass('open-parent');
+    } else {
+        $(this).addClass('open-parent');
+    }
+})
+</script>
+
+    
+
+    <style>
+#scrolltop {
+  display: none; /* Hidden by default */
+  position: fixed; /* Fixed/sticky position */
+  bottom: 20px; /* Place the button at the bottom of the page */
+  right: 30px; /* Place the button 30px from the right */
+  z-index: 99; /* Make sure it does not overlap */
+  border: none; /* Remove borders */
+  outline: none; /* Remove outline */
+  background-color: #3f51b5; /* Set a background color */
+  color: white; /* Text color */
+  cursor: pointer; /* Add a mouse pointer on hover */
+  padding: 10px 15px; /* Some padding */
+  border-radius: 100px; /* Rounded corners */
+  font-size: 18px; /* Increase font size */
+  font-weight: 600;
+}
+
+#scrolltop:hover {
+  background-color: #555; /* Add a dark-grey background on hover */
+}
+</style>
+<button onclick="topFunction()" id="scrolltop" title="Go to top">🔝</button>
+
+<script>
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    document.getElementById("scrolltop").style.display = "block";
+  } else {
+    document.getElementById("scrolltop").style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+    
+
+  </body>
+</html>
