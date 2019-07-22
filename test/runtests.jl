@@ -26,7 +26,6 @@ include("test_utils/AllUtils.jl")
             include("inference/mh.jl")
             include("inference/sghmc.jl")
             include("inference/AdvancedSMC.jl")
-            include("inference/vi.jl")
         end
     end
 
