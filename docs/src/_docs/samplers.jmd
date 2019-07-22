@@ -25,8 +25,8 @@ Random.seed!(0)
 
 # Define a strange model.
 @model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt(s))
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
     bumps = sin(m) + cos(m)
     m = m + 5*bumps
     for i in eachindex(x)
@@ -54,7 +54,7 @@ end
 function plot_sampler(chain)
     # Extract values from chain.
     val = get(chain, [:s, :m, :lp])
-    ss = link.(Ref(InverseGamma(2,3)), val.s)
+    ss = link.(Ref(InverseGamma(2, 3)), val.s)
     ms = val.m
     lps = val.lp
 

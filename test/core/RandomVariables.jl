@@ -18,7 +18,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 @testset "RandomVariables.jl" begin
     @turing_testset "TypedVarInfo" begin
         @model gdemo(x, y) = begin
-            s ~ InverseGamma(2,3)
+            s ~ InverseGamma(2, 3)
             m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
@@ -160,7 +160,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test linking spl and vi:
         #    link!, invlink!, istrans
         @model gdemo(x, y) = begin
-            s ~ InverseGamma(2,3)
+            s ~ InverseGamma(2, 3)
             m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
@@ -359,7 +359,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test v_mat== "[1,2]"
 
         v_mat = eval(varname(:(x[i,j,k]))[1])
-        @test v_mat== "[1,2,3]"
+        @test v_mat== "[1,2, 3]"
 
         v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
         @test v_mat == "[1,2][6][45][3][1]"
@@ -450,11 +450,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         test_varinfo!(empty!(TypedVarInfo(vi)))
 
         @model igtest() = begin
-          x ~ InverseGamma(2,3)
-          y ~ InverseGamma(2,3)
-          z ~ InverseGamma(2,3)
-          w ~ InverseGamma(2,3)
-          u ~ InverseGamma(2,3)
+          x ~ InverseGamma(2, 3)
+          y ~ InverseGamma(2, 3)
+          z ~ InverseGamma(2, 3)
+          w ~ InverseGamma(2, 3)
+          u ~ InverseGamma(2, 3)
         end
 
         # Test the update of group IDs
