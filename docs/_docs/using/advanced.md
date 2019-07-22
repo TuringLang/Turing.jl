@@ -82,8 +82,8 @@ using Turing
 
 @model gdemo(x) = begin
   # Set priors.
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
 
   # Observe each value of x.
   [x ~ Normal(m, sqrt(s))]
@@ -123,7 +123,7 @@ mf(vi, sampler, model) = begin
 
     # Assume m has a Normal distribution.
     m, lp = Turing.assume(sampler,
-                Normal(0,sqrt(s)),
+                Normal(0, sqrt(s)),
                 Turing.VarName([:c_m, :m], ""), vi)
 
     # Add the lp to the accumulated logp.
@@ -169,8 +169,8 @@ using Turing
 
 # Define the simple gdemo model.
 @model gdemo(x, y) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt(s))
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
     x ~ Normal(m, sqrt(s))
     y ~ Normal(m, sqrt(s))
     return s, m
@@ -232,7 +232,7 @@ end
 
 # Define the model using @everywhere.
 @everywhere @model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
+    s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
         x[i] ~ Normal(m, sqrt(s))

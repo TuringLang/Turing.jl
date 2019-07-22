@@ -34,8 +34,8 @@ using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x, y) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   x ~ Normal(m, sqrt(s))
   y ~ Normal(m, sqrt(s))
 end
@@ -186,8 +186,8 @@ Turing allows you to sample from a declared model's prior by calling the model w
 
 ```julia
 @model gdemo(x, y) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   x ~ Normal(m, sqrt(s))
   y ~ Normal(m, sqrt(s))
   return x, y
@@ -224,7 +224,7 @@ Values that are `missing` are treated as parameters to be estimated. This can be
 
 ```julia
 @model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
+    s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
         x[i] ~ Normal(m, sqrt(s))
@@ -245,7 +245,7 @@ Currently, Turing does not support vector-valued inputs containing mixed `missin
 
 ```julia
 @model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
+    s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
         x[i] ~ Normal(m, sqrt(s))
@@ -263,7 +263,7 @@ If this is functionality you need, you may need to define each parameter as a se
 
 ```julia
 @model gdemo(x1, x2) = begin
-    s ~ InverseGamma(2,3)
+    s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     # Note that x1 and x2 are no longer vector-valued.
     x1 ~ Normal(m, sqrt(s))
@@ -285,8 +285,8 @@ Turing models can also be treated as generative by providing default values in t
 Suppose we wish to generate data according to the model
 
 
-$$ s \sim \text{InverseGamma}(2,3) \\
-m \sim \text{Normal}(0,\sqrt{s}) \\
+$$ s \sim \text{InverseGamma}(2, 3) \\
+m \sim \text{Normal}(0, \sqrt{s}) \\
 x_i \sim \text{Normal}(m, \sqrt{s}), \space i = 1\dots10 $$
 
 
@@ -298,8 +298,8 @@ using Turing
 
 # Declare a model with a default value.
 @model generative(x = Vector{Real}(undef, 10)) = begin
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0,sqrt(s))
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
     for i in 1:length(x)
         x[i] ~ Normal(m, sqrt(s))
     end
@@ -364,8 +364,8 @@ Currently, the actual *value* of the default argument does not matter. Only the 
 
 ```julia
 @model generator(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   for i in 1:length(x)
       x[i] ~ Normal(m, sqrt(s))
   end
@@ -382,8 +382,8 @@ A sensible default value might be:
 
 ```julia
 @model generator(x = zeros(10)) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   for i in 1:length(x)
       x[i] ~ Normal(m, sqrt(s))
   end
@@ -422,7 +422,7 @@ end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
 
-chn = sample(simple_choice_f, Gibbs(1000, HMC(1,0.2,3,:p), PG(20,1,:z)))
+chn = sample(simple_choice_f, Gibbs(1000, HMC(1, 0.2, 3, :p), PG(20, 1, :z)))
 ```
 
 
@@ -514,4 +514,3 @@ For more information on Turing's automatic differentiation backend, please see t
 
 
 Turing.jl uses ProgressMeter.jl to show the progress of sampling, which may lead to slow down of inference or even cause bugs in some IDEs due to I/O. This can be turned on or off by `turnprogress(true)` and `turnprogress(false)`, of which the former is set as default.
-
