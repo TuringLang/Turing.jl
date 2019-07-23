@@ -41,20 +41,26 @@
 
           <!-- This navigation is completely for mobile -->
           {% for section in site.data.toc %}<li class="md-nav__item mobile-nav" style="display:none">
-            <a class="md-nav__link" href="{% if section.external_url %}{{ section.external_url }}{% else %}{{ site.baseurl }}/{{ section.url }}{% endif %}" title="{{ section.title }}">{{ section.title }}</a>
+            <a class="md-nav__link" title="{{ section.title }}">{{ section.title }}</a>
           </li>{% endfor %}
 
           <!-- This navigation is completely for non mobile -->
-         {% for section in site.data.toc %}
+          {% assign paths = page.url | remove: "/docs/" | split: "/" %}
+
+         {% for section in site.data.toc %}         
+         {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}         
          <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
-             <a class="md-nav__link pancakes-parent" {% if section.children %}href="#pancakes-{{ section.title | slugify }}"{% else %}href="{% if section.external_url %}{{ section.external_url }}{% else %}{{ site.baseurl }}/{{ section.url }}{% endif %}"{% endif %}
+             <a class="md-nav__link pancakes-parent {% if sectionpaths.first == paths.first %}open-parent{% endif %}" 
                 id="pancakes-{{ section.title | slugify }}" 
                 title="{{ section.title }}">{{ section.title }}</a>
                 {% if section.children %}<nav class="md-nav">
                     <ul class="md-nav__list">
-                        {% for child in section.children %}<li class="md-nav__item">
+                        {% for child in section.children %}
+                        {% assign childs = child.url | remove: "docs/" | split: "/" %}
+                        <li class="md-nav__item">
                         <a href="{% if child.external_url %}{{ child.external_url }}{% else %}{{ site.baseurl }}/{{ child.url }}{% endif %}" 
-                           title="{{ child.title }}" style="display:none"
+                           title="{{ child.title }}" {% if sectionpaths.first != paths.first %}style="display:none;"{% endif %}
+                           {% if childs.last == paths.last %} style="color: red;"{% endif %}
                            class="md-nav__link pancakes-child">{{ child.title }}</a>
                         </li>{% endfor %}
                     </ul>

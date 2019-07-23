@@ -1,26 +1,26 @@
 - title: "USING TURING"
-  url: "docs/using/get-started"
+  url: "docs/using-turing/get-started"
   children: 
   - title: "Getting Started"
-    url: "docs/using/get-started"
+    url: "docs/using-turing/get-started"
 
   - title: "Quick Start"
-    url: "docs/using/quick-start"
+    url: "docs/using-turing/quick-start"
 
   - title: "Guide"
-    url: "docs/using/guide"
+    url: "docs/using-turing/guide"
 
   - title: "Advanced Usage"
-    url: "docs/using/advanced"
+    url: "docs/using-turing/advanced"
 
   - title: "Automatic Differentiation"
-    url: "docs/using/autodiff"
+    url: "docs/using-turing/autodiff"
 
   - title: "Using DynamicHMC"
-    url: "docs/using/dynamichmc"
+    url: "docs/using-turing/dynamichmc"
 
   - title: "Sampler Visualization"
-    url: "docs/using/sampler-viz"
+    url: "docs/using-turing/sampler-viz"
 
 - title: "TUTORIALS"
   url: "docs/tutorials"
