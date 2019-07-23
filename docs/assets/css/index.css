@@ -18,10 +18,15 @@ body {
 
 .md-flex__cell--shrink a {
     text-decoration: none;
+    color: #f5f5f5
+}
+
+.md-flex__cell--shrink a:hover {
+    color: #d6d7d8
 }
 
 .jumbotron {
-    background-color: #d2e6f5;
+    background-color: #106470;
     background-repeat: no-repeat;
     margin: 0;
 }
@@ -52,6 +57,10 @@ body {
 
 .jumbotron .bottom-padding{
     padding: 4rem;
+}
+
+.jumbotron-color {
+    color: white;
 }
 
 .lead p {
