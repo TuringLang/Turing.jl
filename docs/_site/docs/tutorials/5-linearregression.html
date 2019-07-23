@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-language" content="en">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <title>Linear Regression</title>
+    <meta name="description" content="Linear Regression">
+    <meta name="author" content="The Turing Team">
+    <meta name="theme-color" content="red">    
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+    <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+  
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="canonical" href="http://localhost:4000/Turing.jl/docs/tutorials/5-linearregression">
+    <link rel="alternate" type="application/rss+xml" title="Turing.jl" href="http://localhost:4000/Turing.jl/feed.xml">
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copied" content="Copied to clipboard">
+    <meta name="lang:search.language" content="en">
+    <meta name="lang:search.pipeline.stopwords" content="True">
+    <meta name="lang:search.pipeline.trimmer" content="True">
+    <meta name="lang:search.result.none" content="No matching documents">
+    <meta name="lang:search.result.one" content="1 matching document">
+    <meta name="lang:search.result.other" content="# matching documents">
+    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <script src="/Turing.jl/assets/js/modernizr.74668098.js"></script>
+    <link rel="shortcut icon" href="/Turing.jl/assets/img/favicon.ico"> 
+    <link rel="stylesheet" href="/Turing.jl/assets/css/main.css">
+    <link rel="stylesheet" href="/Turing.jl/assets/css/palette.css">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+    
+    
+  </head> 
+
+  <body dir="ltr" data-md-color-primary="red" data-md-color-accent="red">
+    <svg class="md-svg">
+<defs>
+  <svg>
+  <path d="M160 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360 304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25 2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75 1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75 0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5 46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z" fill="currentColor"></path></svg>
+</defs></svg>
+
+    <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off>
+    <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off>
+    <label class=md-overlay data-md-component=overlay for=__drawer></label> <a href="#linear-regression" tabindex=1 class=md-skip> Skip to content </a>
+    <header class=md-header data-md-component=header data-md-state=none>
+        <nav class="md-header-nav md-grid">
+            <div class=md-flex>
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <a class="md-header-nav__button md-logo" href="http://localhost:4000/Turing.jl/" title="Turing.jl">
+                    <img height="34" src="/Turing.jl/assets/img/favicon.ico" width="34"></a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--stretch">
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                        <span class=md-header-nav__topic>Turing.jl</span>
+                    </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" href="/Turing.jl/docs/using/get-started" title="Go to Get Started">
+                      Get Started
+                    </a>
+                  </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <div class="md-header-nav__source">
+                      <a class="md-source" href="/Turing.jl/docs/using/" title="Go to Documentation">
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="md-flex__cell md-flex__cell--shrink">
+                      <div class="md-header-nav__source">
+                        <a class="md-source" href="/Turing.jl/docs/tutorials/" title="Go to Tutorial">
+                          Tutorials
+                        </a>
+                      </div>
+                    </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+                    <div class="md-source__icon" style="padding-top:5px">
+                      <i class="fa fa-github fa-3x"></i>
+                    </div>
+                    <div class="md-source__repository">
+                      TuringLang/Turing.jl
+                    </div></a>
+                  </div>
+                </div>
+                
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
+                    <div class=md-search data-md-component=search role=dialog>
+                        <label class=md-search__overlay for=__search></label>
+                        <div class=md-search__inner role=search>
+                            <form class=md-search__form name=search>
+                                <input type=text class=md-search__input name=query placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=query data-md-state=active>
+                                <label class="md-icon md-search__icon" for=__search></label>
+                                <button type=reset class="md-icon md-search__icon" data-md-component=reset tabindex=-1> &#xE5CD; </button>
+                            </form>
+                            <div class=md-search__output>
+                                <div class=md-search__scrollwrap data-md-scrollfix>
+                                    <div class=md-search-result data-md-component=result>
+                                        <div class=md-search-result__meta> Type to start searching </div>
+                                        <ol class=md-search-result__list></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+    </div>
+  </nav>
+</header>
+
+
+    <div class="md-container">         
+        <main class="md-main">
+            <div class="md-main__inner md-grid full-width" data-md-component="container">
+            <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            <img height="48" src="/Turing.jl/assets/img/favicon.ico" width="48">
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            TuringLang/Turing.jl
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/using/get-started"
+                     id="pancakes-using-turing" 
+                     title="USING TURING">USING TURING</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/tutorials"
+                     id="pancakes-tutorials" 
+                     title="TUTORIALS">TUTORIALS</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/library"
+                     id="pancakes-library" 
+                     title="LIBRARY">LIBRARY</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide"
+                     id="pancakes-contributing" 
+                     title="CONTRIBUTING">CONTRIBUTING</a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          <li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/using/get-started" title="USING TURING">USING TURING</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/tutorials" title="TUTORIALS">TUTORIALS</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/library" title="LIBRARY">LIBRARY</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide" title="CONTRIBUTING">CONTRIBUTING</a>
+          </li>
+
+          <!-- This navigation is completely for non mobile -->
+         
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-using-turing"
+                id="pancakes-using-turing" 
+                title="USING TURING">USING TURING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/get-started" 
+                           title="Getting Started" style="display:none"
+                           class="md-nav__link pancakes-child">Getting Started</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/quick-start" 
+                           title="Quick Start" style="display:none"
+                           class="md-nav__link pancakes-child">Quick Start</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/guide" 
+                           title="Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Guide</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/advanced" 
+                           title="Advanced Usage" style="display:none"
+                           class="md-nav__link pancakes-child">Advanced Usage</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/autodiff" 
+                           title="Automatic Differentiation" style="display:none"
+                           class="md-nav__link pancakes-child">Automatic Differentiation</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/dynamichmc" 
+                           title="Using DynamicHMC" style="display:none"
+                           class="md-nav__link pancakes-child">Using DynamicHMC</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/sampler-viz" 
+                           title="Sampler Visualization" style="display:none"
+                           class="md-nav__link pancakes-child">Sampler Visualization</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-tutorials"
+                id="pancakes-tutorials" 
+                title="TUTORIALS">TUTORIALS</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials" 
+                           title="Home" style="display:none"
+                           class="md-nav__link pancakes-child">Home</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/0-introduction" 
+                           title="Introduction to Turing" style="display:none"
+                           class="md-nav__link pancakes-child">Introduction to Turing</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/1-gaussianmixturemodel" 
+                           title="Gaussian Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Gaussian Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/2-logisticregression" 
+                           title="Bayesian Logistic Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Logistic Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/3-bayesnn" 
+                           title="Bayesian Neural Networks" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Neural Networks</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/4-bayeshmm" 
+                           title="Hidden Markov Models" style="display:none"
+                           class="md-nav__link pancakes-child">Hidden Markov Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/5-linearregression" 
+                           title="Linear Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Linear Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/6-infinitemixturemodel" 
+                           title="Infinite Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Infinite Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/7-poissontegression" 
+                           title="Bayesian Poisson Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Poisson Regression</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-library"
+                id="pancakes-library" 
+                title="LIBRARY">LIBRARY</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/library" 
+                           title="Public" style="display:none"
+                           class="md-nav__link pancakes-child">Public</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-contributing"
+                id="pancakes-contributing" 
+                title="CONTRIBUTING">CONTRIBUTING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/guide" 
+                           title="How to Contribute" style="display:none"
+                           class="md-nav__link pancakes-child">How to Contribute</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/style-guide" 
+                           title="Style Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Style Guide</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+                <div id="md-container-pancakes">
+                <div class="md-content full-width"> 
+    <article class="md-content__inner md-typeset  full-width">
+    <h1 id="linear-regression">Linear Regression</h1>
+
+<p>Turing is powerful when applied to complex hierarchical models, but it can also be put to task at common statistical procedures, like <a href="https://en.wikipedia.org/wiki/Linear_regression">linear regression</a>. This tutorial covers how to implement a linear regression model in Turing.</p>
+
+<h2 id="set-up">Set Up</h2>
+
+<p>We begin by importing all the necessary libraries.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import Turing and Distributions.</span>
+<span class="n">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Distributions</span>
+
+<span class="c"># Import RDatasets.</span>
+<span class="n">using</span> <span class="n">RDatasets</span>
+
+<span class="c"># Import MCMCChains, Plots, and StatPlots for visualizations and diagnostics.</span>
+<span class="n">using</span> <span class="n">MCMCChains</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">StatsPlots</span>
+
+<span class="c"># Set a seed for reproducibility.</span>
+<span class="n">using</span> <span class="n">Random</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">);</span>
+
+<span class="c"># Hide the progress prompt while sampling.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">turnprogress</span><span class="x">(</span><span class="n">false</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>We will use the <code class="highlighter-rouge">mtcars</code> dataset from the <a href="https://github.com/johnmyleswhite/RDatasets.jl">RDatasets</a> package. <code class="highlighter-rouge">mtcars</code> contains a variety of statistics on different car models, including their miles per gallon, number of cylinders, and horsepower, among others.</p>
+
+<p>We want to know if we can construct a Bayesian linear regression model to predict the miles per gallon of a car, given the other statistics it has. Lets take a look at the data we have.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import the "Default" dataset.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">RDatasets</span><span class="o">.</span><span class="n">dataset</span><span class="x">(</span><span class="s">"datasets"</span><span class="x">,</span> <span class="s">"mtcars"</span><span class="x">);</span>
+
+<span class="c"># Show the first six rows of the dataset.</span>
+<span class="n">first</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mi">6</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>6×12 DataFrame. Omitted printing of 6 columns
+│ Row │ Model             │ MPG      │ Cyl    │ Disp     │ HP     │ DRat   
+  │
+│     │ String⍰           │ Float64⍰ │ Int64⍰ │ Float64⍰ │ Int64⍰ │ Float64
+⍰ │
+├─────┼───────────────────┼──────────┼────────┼──────────┼────────┼────────
+──┤
+│ 1   │ Mazda RX4         │ 21.0     │ 6      │ 160.0    │ 110    │ 3.9    
+  │
+│ 2   │ Mazda RX4 Wag     │ 21.0     │ 6      │ 160.0    │ 110    │ 3.9    
+  │
+│ 3   │ Datsun 710        │ 22.8     │ 4      │ 108.0    │ 93     │ 3.85   
+  │
+│ 4   │ Hornet 4 Drive    │ 21.4     │ 6      │ 258.0    │ 110    │ 3.08   
+  │
+│ 5   │ Hornet Sportabout │ 18.7     │ 8      │ 360.0    │ 175    │ 3.15   
+  │
+│ 6   │ Valiant           │ 18.1     │ 6      │ 225.0    │ 105    │ 2.76   
+  │
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">size</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>(32, 12)
+</code></pre></div></div>
+
+<p>The next step is to get our data ready for testing. We’ll split the <code class="highlighter-rouge">mtcars</code> dataset into two subsets, one for training our model and one for evaluating our model. Then, we separate the labels we want to learn (<code class="highlighter-rouge">MPG</code>, in this case) and standardize the datasets by subtracting each column’s means and dividing by the standard deviation of that column.</p>
+
+<p>The resulting data is not very familiar looking, but this standardization process helps the sampler converge far easier. We also create a function called <code class="highlighter-rouge">unstandardize</code>, which returns the standardized values to their original form. We will use this function later on when we make predictions.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Function to split samples.</span>
+<span class="k">function</span><span class="nf"> split_data</span><span class="x">(</span><span class="n">df</span><span class="x">,</span> <span class="n">at</span> <span class="o">=</span> <span class="mf">0.70</span><span class="x">)</span>
+    <span class="x">(</span><span class="n">r</span><span class="x">,</span> <span class="n">_</span><span class="x">)</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">df</span><span class="x">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="kt">Int</span><span class="x">(</span><span class="n">round</span><span class="x">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">at</span><span class="x">))</span>
+    <span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="x">[</span><span class="mi">1</span><span class="x">:</span><span class="n">index</span><span class="x">,</span> <span class="x">:]</span>
+    <span class="n">test</span>  <span class="o">=</span> <span class="n">df</span><span class="x">[(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="x">):</span><span class="k">end</span><span class="x">,</span> <span class="x">:]</span>
+    <span class="k">return</span> <span class="n">train</span><span class="x">,</span> <span class="n">test</span>
+<span class="k">end</span>
+
+<span class="c"># Split our dataset 70%/30% into training/test sets.</span>
+<span class="n">train</span><span class="x">,</span> <span class="n">test</span> <span class="o">=</span> <span class="n">split_data</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mf">0.7</span><span class="x">)</span>
+
+<span class="c"># Save dataframe versions of our dataset.</span>
+<span class="n">train_cut</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="x">(</span><span class="n">train</span><span class="x">)</span>
+<span class="n">test_cut</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="x">(</span><span class="n">test</span><span class="x">)</span>
+
+<span class="c"># Create our labels. These are the values we are trying to predict.</span>
+<span class="n">train_label</span> <span class="o">=</span> <span class="n">train</span><span class="x">[:,</span> <span class="x">:</span><span class="n">MPG</span><span class="x">]</span>
+<span class="n">test_label</span> <span class="o">=</span> <span class="n">test</span><span class="x">[:,</span> <span class="x">:</span><span class="n">MPG</span><span class="x">]</span>
+
+<span class="c"># Get the list of columns to keep.</span>
+<span class="n">remove_names</span> <span class="o">=</span> <span class="n">filter</span><span class="x">(</span><span class="n">x</span><span class="o">-&gt;!</span><span class="k">in</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="x">[:</span><span class="n">MPG</span><span class="x">,</span> <span class="x">:</span><span class="n">Model</span><span class="x">]),</span> <span class="n">names</span><span class="x">(</span><span class="n">data</span><span class="x">))</span>
+
+<span class="c"># Filter the test and train sets.</span>
+<span class="n">train</span> <span class="o">=</span> <span class="n">Matrix</span><span class="x">(</span><span class="n">train</span><span class="x">[:,</span><span class="n">remove_names</span><span class="x">]);</span>
+<span class="n">test</span> <span class="o">=</span> <span class="n">Matrix</span><span class="x">(</span><span class="n">test</span><span class="x">[:,</span><span class="n">remove_names</span><span class="x">]);</span>
+
+<span class="c"># A handy helper function to rescale our dataset.</span>
+<span class="k">function</span><span class="nf"> standardize</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+    <span class="k">return</span> <span class="x">(</span><span class="n">x</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">),</span> <span class="n">x</span>
+<span class="k">end</span>
+
+<span class="c"># Another helper function to unstandardize our datasets.</span>
+<span class="k">function</span><span class="nf"> unstandardize</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">orig</span><span class="x">)</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">.*</span> <span class="n">std</span><span class="x">(</span><span class="n">orig</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">)</span> <span class="o">.+</span> <span class="n">mean</span><span class="x">(</span><span class="n">orig</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">)</span>
+<span class="k">end</span>
+
+<span class="c"># Standardize our dataset.</span>
+<span class="x">(</span><span class="n">train</span><span class="x">,</span> <span class="n">train_orig</span><span class="x">)</span> <span class="o">=</span> <span class="n">standardize</span><span class="x">(</span><span class="n">train</span><span class="x">)</span>
+<span class="x">(</span><span class="n">test</span><span class="x">,</span> <span class="n">test_orig</span><span class="x">)</span> <span class="o">=</span> <span class="n">standardize</span><span class="x">(</span><span class="n">test</span><span class="x">)</span>
+<span class="x">(</span><span class="n">train_label</span><span class="x">,</span> <span class="n">train_l_orig</span><span class="x">)</span> <span class="o">=</span> <span class="n">standardize</span><span class="x">(</span><span class="n">train_label</span><span class="x">)</span>
+<span class="x">(</span><span class="n">test_label</span><span class="x">,</span> <span class="n">test_l_orig</span><span class="x">)</span> <span class="o">=</span> <span class="n">standardize</span><span class="x">(</span><span class="n">test_label</span><span class="x">);</span>
+</code></pre></div></div>
+
+<h2 id="model-specification">Model Specification</h2>
+
+<p>In a traditional frequentist model using <a href="https://en.wikipedia.org/wiki/Ordinary_least_squares">OLS</a>, our model might look like:</p>
+
+<p>$$
+MPG_i = \alpha + \boldsymbol{\beta}^T\boldsymbol{X_i}
+$$</p>
+
+<p>where <script type="math/tex">\boldsymbol{\beta}</script> is a vector of coefficients and <script type="math/tex">\boldsymbol{X}</script> is a vector of inputs for observation <script type="math/tex">i</script>. The Bayesian model we are more concerned with is the following:</p>
+
+<p>$$
+MPG_i \sim \mathcal{N}(\alpha + \boldsymbol{\beta}^T\boldsymbol{X_i}, \sigma^2)
+$$</p>
+
+<p>where <script type="math/tex">\alpha</script> is an intercept term common to all observations, <script type="math/tex">\boldsymbol{\beta}</script> is a coefficient vector, <script type="math/tex">\boldsymbol{X_i}</script> is the observed data for car <script type="math/tex">i</script>, and <script type="math/tex">\sigma^2</script> is a common variance term.</p>
+
+<p>For <script type="math/tex">\sigma^2</script>, we assign a prior of <code class="highlighter-rouge">TruncatedNormal(0,100,0,Inf)</code>. This is consistent with <a href="http://www.stat.columbia.edu/~gelman/research/published/taumain.pdf">Andrew Gelman’s recommendations</a> on noninformative priors for variance. The intercept term (<script type="math/tex">\alpha</script>) is assumed to be normally distributed with a mean of zero and a variance of three. This represents our assumptions that miles per gallon can be explained mostly by our assorted variables, but a high variance term indicates our uncertainty about that. Each coefficient is assumed to be normally distributed with a mean of zero and a variance of 10. We do not know that our coefficients are different from zero, and we don’t know which ones are likely to be the most important, so the variance term is quite high. Lastly, each observation <script type="math/tex">y_i</script> is distributed according to the calculated <code class="highlighter-rouge">mu</code> term given by <script type="math/tex">\alpha + \boldsymbol{\beta}^T\boldsymbol{X_i}</script>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bayesian linear regression.</span>
+<span class="nd">@model</span> <span class="n">linear_regression</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">,</span> <span class="n">n_obs</span><span class="x">,</span> <span class="n">n_vars</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+    <span class="c"># Set variance prior.</span>
+    <span class="n">σ₂</span> <span class="o">~</span> <span class="n">TruncatedNormal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">100</span><span class="x">,</span> <span class="mi">0</span><span class="x">,</span> <span class="kt">Inf</span><span class="x">)</span>
+    
+    <span class="c"># Set intercept prior.</span>
+    <span class="n">intercept</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    
+    <span class="c"># Set the priors on our coefficients.</span>
+    <span class="n">coefficients</span> <span class="o">=</span> <span class="n">Array</span><span class="x">{</span><span class="n">Real</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="n">n_vars</span><span class="x">)</span>
+    <span class="n">coefficients</span> <span class="o">~</span> <span class="x">[</span><span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="mi">10</span><span class="x">)]</span>
+    
+    <span class="c"># Calculate all the mu terms.</span>
+    <span class="n">mu</span> <span class="o">=</span> <span class="n">intercept</span> <span class="o">.+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">coefficients</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="x">:</span><span class="n">n_obs</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">mu</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ₂</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>With our model specified, we can call the sampler. We will use the No U-Turn Sampler (<a href="http://turing.ml/docs/library/#-turingnuts--type">NUTS</a>) here.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">n_obs</span><span class="x">,</span> <span class="n">n_vars</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">train</span><span class="x">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">linear_regression</span><span class="x">(</span><span class="n">train</span><span class="x">,</span> <span class="n">train_label</span><span class="x">,</span> <span class="n">n_obs</span><span class="x">,</span> <span class="n">n_vars</span><span class="x">)</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1500</span><span class="x">,</span> <span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">));</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[NUTS] Finished with
+  Running time        = 28.76012935999999;
+  #lf / sample        = 0.0;
+  #evals / sample     = 0.0006666666666666666;
+  pre-cond. metric    = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0,....
+</code></pre></div></div>
+
+<p>As a visual check to confirm that our coefficients have converged, we show the densities and trace plots for our parameters using the <code class="highlighter-rouge">plot</code> functionality.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/Turing.jl/docs/tutorials/figures/5_LinearRegression_7_1.png" alt="" /></p>
+
+<p>It looks like each of our parameters has converged. We can check our numerical esimates using <code class="highlighter-rouge">describe(chain)</code>, as below.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">describe</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+. Omitted printing of 1 columns
+│ Row │ parameters       │ mean       │ std       │ naive_se   │ mcse      
+ │
+│     │ Symbol           │ Float64    │ Float64   │ Float64    │ Float64   
+ │
+├─────┼──────────────────┼────────────┼───────────┼────────────┼───────────
+─┤
+│ 1   │ coefficients[1]  │ 0.374513   │ 0.44485   │ 0.011486   │ 0.0227265 
+ │
+│ 2   │ coefficients[2]  │ -0.171117  │ 0.476053  │ 0.0122916  │ 0.0225355 
+ │
+│ 3   │ coefficients[3]  │ -0.0681829 │ 0.356122  │ 0.00919503 │ 0.0163717 
+ │
+│ 4   │ coefficients[4]  │ 0.66256    │ 0.33855   │ 0.00874132 │ 0.0141081 
+ │
+│ 5   │ coefficients[5]  │ 0.0969497  │ 0.483806  │ 0.0124918  │ 0.0278113 
+ │
+│ 6   │ coefficients[6]  │ 0.0400533  │ 0.272691  │ 0.00704085 │ 0.016834  
+ │
+│ 7   │ coefficients[7]  │ -0.0995777 │ 0.295442  │ 0.00762827 │ 0.0135998 
+ │
+│ 8   │ coefficients[8]  │ 0.10959    │ 0.313314  │ 0.00808972 │ 0.0171665 
+ │
+│ 9   │ coefficients[9]  │ 0.200219   │ 0.329276  │ 0.00850186 │ 0.0116165 
+ │
+│ 10  │ coefficients[10] │ -0.682739  │ 0.361389  │ 0.00933104 │ 0.0179951 
+ │
+│ 11  │ intercept        │ 0.0108571  │ 0.170723  │ 0.00440804 │ 0.0106107 
+ │
+│ 12  │ lf_eps           │ 0.0581085  │ 0.0402024 │ 0.00103802 │ 0.00132349
+ │
+│ 13  │ σ₂               │ 0.484513   │ 0.492571  │ 0.0127181  │ 0.036488  
+ │
+
+Quantiles
+. Omitted printing of 1 columns
+│ Row │ parameters       │ 2.5%      │ 25.0%       │ 50.0%      │ 75.0%    
+ │
+│     │ Symbol           │ Float64   │ Float64     │ Float64    │ Float64  
+ │
+├─────┼──────────────────┼───────────┼─────────────┼────────────┼──────────
+─┤
+│ 1   │ coefficients[1]  │ -0.497325 │ 0.106879    │ 0.367559   │ 0.650437 
+ │
+│ 2   │ coefficients[2]  │ -1.08863  │ -0.444431   │ -0.174282  │ 0.101657 
+ │
+│ 3   │ coefficients[3]  │ -0.808397 │ -0.294186   │ -0.0607567 │ 0.176866 
+ │
+│ 4   │ coefficients[4]  │ 0.028891  │ 0.453163    │ 0.669321   │ 0.847996 
+ │
+│ 5   │ coefficients[5]  │ -0.848829 │ -0.197623   │ 0.0904946  │ 0.384393 
+ │
+│ 6   │ coefficients[6]  │ -0.495648 │ -0.128853   │ 0.0474724  │ 0.200374 
+ │
+│ 7   │ coefficients[7]  │ -0.662909 │ -0.268329   │ -0.109192  │ 0.0712903
+ │
+│ 8   │ coefficients[8]  │ -0.421245 │ -0.053784   │ 0.105746   │ 0.24969  
+ │
+│ 9   │ coefficients[9]  │ -0.438313 │ -0.00346737 │ 0.20142    │ 0.408158 
+ │
+│ 10  │ coefficients[10] │ -1.38271  │ -0.88346    │ -0.679579  │ -0.460576
+ │
+│ 11  │ intercept        │ -0.192764 │ -0.0576108  │ 0.00142006 │ 0.0631787
+ │
+│ 12  │ lf_eps           │ 0.0233708 │ 0.0564162   │ 0.0564162  │ 0.0564162
+ │
+│ 13  │ σ₂               │ 0.293726  │ 0.369497    │ 0.435216   │ 0.508814 
+ │
+</code></pre></div></div>
+
+<h2 id="comparing-to-ols">Comparing to OLS</h2>
+
+<p>A satisfactory test of our model is to evaluate how well it predicts. Importantly, we want to compare our model to existing tools like OLS. The code below uses the <a href="">GLM.jl</a> package to generate a traditional OLS multivariate regression on the same data as our probabalistic model.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import the GLM package.</span>
+<span class="n">using</span> <span class="n">GLM</span>
+
+<span class="c"># Perform multivariate OLS.</span>
+<span class="n">ols</span> <span class="o">=</span> <span class="n">lm</span><span class="x">(</span><span class="nd">@formula</span><span class="x">(</span><span class="n">MPG</span> <span class="o">~</span> <span class="n">Cyl</span> <span class="o">+</span> <span class="n">Disp</span> <span class="o">+</span> <span class="n">HP</span> <span class="o">+</span> <span class="n">DRat</span> <span class="o">+</span> <span class="n">WT</span> <span class="o">+</span> <span class="n">QSec</span> <span class="o">+</span> <span class="n">VS</span> <span class="o">+</span> <span class="n">AM</span> <span class="o">+</span> <span class="n">Gear</span> <span class="o">+</span> <span class="n">Carb</span><span class="x">),</span> <span class="n">train_cut</span><span class="x">)</span>
+
+<span class="c"># Store our predictions in the original dataframe.</span>
+<span class="n">train_cut</span><span class="o">.</span><span class="n">OLSPrediction</span> <span class="o">=</span> <span class="n">GLM</span><span class="o">.</span><span class="n">predict</span><span class="x">(</span><span class="n">ols</span><span class="x">);</span>
+<span class="n">test_cut</span><span class="o">.</span><span class="n">OLSPrediction</span> <span class="o">=</span> <span class="n">GLM</span><span class="o">.</span><span class="n">predict</span><span class="x">(</span><span class="n">ols</span><span class="x">,</span> <span class="n">test_cut</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>The function below accepts a chain and an input matrix and calculates predictions. We use the mean observation of each parameter in the model starting with sample 200, which is where the warm-up period for the NUTS sampler ended.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Make a prediction given an input vector.</span>
+<span class="k">function</span><span class="nf"> prediction</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="n">x</span><span class="x">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">get_params</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="mi">200</span><span class="x">:</span><span class="k">end</span><span class="x">,</span> <span class="x">:,</span> <span class="x">:])</span>
+    <span class="n">α</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">p</span><span class="o">.</span><span class="n">intercept</span><span class="x">)</span>
+    <span class="n">β</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">mean</span><span class="o">.</span><span class="x">(</span><span class="n">p</span><span class="o">.</span><span class="n">coefficients</span><span class="x">))</span>
+    <span class="k">return</span>  <span class="n">α</span> <span class="o">.+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">β</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>prediction (generic function with 2 methods)
+</code></pre></div></div>
+
+<p>When we make predictions, we unstandardize them so they’re more understandable. We also add them to the original dataframes so they can be placed in context.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Calculate the predictions for the training and testing sets.</span>
+<span class="n">train_cut</span><span class="o">.</span><span class="n">BayesPredictions</span> <span class="o">=</span> <span class="n">unstandardize</span><span class="x">(</span><span class="n">prediction</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="n">train</span><span class="x">),</span> <span class="n">train_l_orig</span><span class="x">);</span>
+<span class="n">test_cut</span><span class="o">.</span><span class="n">BayesPredictions</span> <span class="o">=</span> <span class="n">unstandardize</span><span class="x">(</span><span class="n">prediction</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="n">test</span><span class="x">),</span> <span class="n">test_l_orig</span><span class="x">);</span>
+
+<span class="c"># Show the first side rows of the modified dataframe.</span>
+<span class="n">first</span><span class="x">(</span><span class="n">test_cut</span><span class="x">,</span> <span class="mi">6</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>6×14 DataFrame. Omitted printing of 8 columns
+│ Row │ Model            │ MPG      │ Cyl    │ Disp     │ HP     │ DRat    
+ │
+│     │ String⍰          │ Float64⍰ │ Int64⍰ │ Float64⍰ │ Int64⍰ │ Float64⍰
+ │
+├─────┼──────────────────┼──────────┼────────┼──────────┼────────┼─────────
+─┤
+│ 1   │ AMC Javelin      │ 15.2     │ 8      │ 304.0    │ 150    │ 3.15    
+ │
+│ 2   │ Camaro Z28       │ 13.3     │ 8      │ 350.0    │ 245    │ 3.73    
+ │
+│ 3   │ Pontiac Firebird │ 19.2     │ 8      │ 400.0    │ 175    │ 3.08    
+ │
+│ 4   │ Fiat X1-9        │ 27.3     │ 4      │ 79.0     │ 66     │ 4.08    
+ │
+│ 5   │ Porsche 914-2    │ 26.0     │ 4      │ 120.3    │ 91     │ 4.43    
+ │
+│ 6   │ Lotus Europa     │ 30.4     │ 4      │ 95.1     │ 113    │ 3.77    
+ │
+</code></pre></div></div>
+
+<p>Now let’s evaluate the loss for each method, and each prediction set. We will use sum of squared error function to evaluate loss, given by</p>
+
+<p>$$
+\text{SSE} = \sum{(y_i - \hat{y_i})^2}
+$$</p>
+
+<p>where <script type="math/tex">y_i</script> is the actual value (true MPG) and <script type="math/tex">\hat{y_i}</script> is the predicted value using either OLS or Bayesian linear regression. A lower SSE indicates a closer fit to the data.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">bayes_loss1</span> <span class="o">=</span> <span class="n">sum</span><span class="x">((</span><span class="n">train_cut</span><span class="o">.</span><span class="n">BayesPredictions</span> <span class="o">-</span> <span class="n">train_cut</span><span class="o">.</span><span class="n">MPG</span><span class="x">)</span><span class="o">.^</span><span class="mi">2</span><span class="x">)</span>
+<span class="n">ols_loss1</span> <span class="o">=</span> <span class="n">sum</span><span class="x">((</span><span class="n">train_cut</span><span class="o">.</span><span class="n">OLSPrediction</span> <span class="o">-</span> <span class="n">train_cut</span><span class="o">.</span><span class="n">MPG</span><span class="x">)</span><span class="o">.^</span><span class="mi">2</span><span class="x">)</span>
+
+<span class="n">bayes_loss2</span> <span class="o">=</span> <span class="n">sum</span><span class="x">((</span><span class="n">test_cut</span><span class="o">.</span><span class="n">BayesPredictions</span> <span class="o">-</span> <span class="n">test_cut</span><span class="o">.</span><span class="n">MPG</span><span class="x">)</span><span class="o">.^</span><span class="mi">2</span><span class="x">)</span>
+<span class="n">ols_loss2</span> <span class="o">=</span> <span class="n">sum</span><span class="x">((</span><span class="n">test_cut</span><span class="o">.</span><span class="n">OLSPrediction</span> <span class="o">-</span> <span class="n">test_cut</span><span class="o">.</span><span class="n">MPG</span><span class="x">)</span><span class="o">.^</span><span class="mi">2</span><span class="x">)</span>
+
+<span class="n">println</span><span class="x">(</span><span class="s">"Training set:
+    Bayes loss: </span><span class="si">$$</span><span class="s">bayes_loss1
+    OLS loss: </span><span class="si">$$</span><span class="s">ols_loss1
+Test set: 
+    Bayes loss: </span><span class="si">$$</span><span class="s">bayes_loss2
+    OLS loss: </span><span class="si">$$</span><span class="s">ols_loss2"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Training set:
+    Bayes loss: 68.00979321046889
+    OLS loss: 67.56037474764624
+Test set: 
+    Bayes loss: 242.57948201282844
+    OLS loss: 270.94813070761944
+</code></pre></div></div>
+
+<p>As we can see above, OLS and our Bayesian model fit our training set about the same. This is to be expected, given that it is our training set. But when we look at our test set, we see that the Bayesian linear regression model is better able to predict out of sample.</p>
+
+    <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+
+    var toc = $('#nav-toc');
+
+    // Select each header
+    sections = $('#md-container-pancakes h1');
+        $.each(sections, function(idx, v) {
+            section = $(v);
+            var div_id = $(section).attr('id');
+            var div_text = section.text().split('¶')[0];
+            var parent = $("#" + div_id)
+            var content = '<li id="link_' + div_id + '" class="md-nav__item"><a class="md-nav__link" href="#' + div_id + '" title="' + div_text +'">' + div_text +'</a></li>';
+            $(toc).append(content);
+
+            // Add section code to subnavigation
+            var children = $('<nav class="md-nav"><ul class="md-nav__list"></nav></ul>')
+            var contenders = $("#" + div_id).nextUntil( "h1" );
+            $.each(contenders, function(idx, contender){
+               if($(contender).is('h2')) {
+                   var contender_id = $(contender).attr('id');
+                   var contender_text = $(contender).text().split('¶')[0];
+                   var content = '<li class="md-nav__item"><a class="md-nav__link" href="#' + contender_id + '" title="' + contender_text +'">' + contender_text +'</a></li>';
+                   children.append(content);
+                }
+             })
+             $("#link_" + div_id).append(children);
+        });
+    });
+</script>
+
+    <!-- this will parse through the header fields and add a button to open
+     an issue / ask a question on Github. The editable field should be in
+     the post frontend matter, and refer to the label to open the issue for -->
+
+<style>
+.more {
+    float:right;
+    font-size: 1.0rem !important;
+}
+.more:hover {
+    color: cornflowerblue !important;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    font-weight: 200;
+    box-shadow: 0px 8px 6px 0px rgba(0,0,0,0.2);
+    padding: 0px 10px;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+</style>
+<script>
+$(document).ready(function() {
+
+    var divs = $("#h1,h2,h3,h4"); 
+    $.each(divs, function(i,e){
+
+        // Edit
+        var did = $(e).attr('id');
+        var start = '<div class="dropdown more"><span><i class="fa fa-ellipsis-h more" title="Edit"></i></span><div class="dropdown-content">';
+
+        // Edit (assuming deployed under main organization repo)
+        var link = "https://github.com/TuringLang/Turing.jl/edit/master/_docs/tutorials/5-linearregression.md#" + did;
+        var button = "<p><a href='" + link + "' target='_blank'>Edit this page</a></p>";
+        start += button;
+
+        // Issues;
+        var link = "https://github.com/TuringLang/Turing.jl/issues/new?labels=question&title=Question:&body=Question on: https://github.com/TuringLang/Turing.jl/tree/master/_docs/tutorials/5-linearregression.md%23" + did;
+
+        var button = "<p><a href='" + link + "' target='_blank'>Ask a Question</a></p>";
+        start += button;
+        start += "</div></div>";
+        $(e).append(start)
+
+    })
+});
+</script>
+
+    </article>
+</div>      
+
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/Turing.jl/assets/js/application.js"></script>
+    
+    <script>console.log('4')</script>
+    <script>app.initialize({version:"0.17.4", url:{base:'/Turing.jl'}})</script>
+
+    
+    
+    <script>
+var headers = ["h1", "h2", "h3", "h4"]
+var colors = ["red", "orange", "green", "blue"]
+
+$.each(headers, function(i, header){
+    var color = colors[i];
+    $(header).each(function () {
+        var href=$(this).attr("id");
+        $(this).append('<a class="headerlink" style="color:' + color + '" href="#' + href + '" title="Permanent link">¶</a>')
+    });
+})
+
+// Ensure that sidebar on left has arrows
+$(".pancakes-parent").on('click', function(){
+    console.log($(this).next());
+    $(this).next().find('.pancakes-child').toggle();
+    if ($(this).hasClass('open-parent')){
+        $(this).removeClass('open-parent');
+    } else {
+        $(this).addClass('open-parent');
+    }
+})
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+    <script>
+$('h1').first().append('<div></div>')</script>
+
+    <style>
+#scrolltop {
+  display: none; /* Hidden by default */
+  position: fixed; /* Fixed/sticky position */
+  bottom: 20px; /* Place the button at the bottom of the page */
+  right: 30px; /* Place the button 30px from the right */
+  z-index: 99; /* Make sure it does not overlap */
+  border: none; /* Remove borders */
+  outline: none; /* Remove outline */
+  background-color: #d2e6f5; /* Set a background color */
+  color: white; /* Text color */
+  cursor: pointer; /* Add a mouse pointer on hover */
+  padding: 10px 15px; /* Some padding */
+  border-radius: 100px; /* Rounded corners */
+  font-size: 18px; /* Increase font size */
+  font-weight: 600;
+}
+
+#scrolltop:hover {
+  background-color: #555; /* Add a dark-grey background on hover */
+}
+</style>
+<button onclick="topFunction()" id="scrolltop" title="Go to top">🔝</button>
+
+<script>
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    document.getElementById("scrolltop").style.display = "block";
+  } else {
+    document.getElementById("scrolltop").style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+    
+
+  </body>
+</html>

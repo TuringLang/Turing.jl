@@ -1,7 +1,3 @@
----
-layout: null
-excluded_in_search: true
----
 body {
     font-family: "Lato",-apple-system,BlinkMacSystemFont,"Roboto","Segoe UI","Helvetica Neue","Lucida Grande",Arial,sans-serif;
 }
@@ -160,15 +156,15 @@ button:focus {
 }
 
 .resource-card.slack:before {
-    background-image: url({{ site.baseurl }}/assets/images/logo-slack.svg);
+    background-image: url(/Turing.jl/assets/images/logo-slack.svg);
 }
 
 .resource-card.github:before {
-    background-image: url({{ site.baseurl }}/assets/images/logo-github.svg);
+    background-image: url(/Turing.jl/assets/images/logo-github.svg);
 }
 
 .resource-card.turing-resource:before {
-    background-image: url({{ site.baseurl }}/assets/images/turing-logo.svg);
+    background-image: url(/Turing.jl/assets/images/turing-logo.svg);
 }
 
 .resource-card .card-body {

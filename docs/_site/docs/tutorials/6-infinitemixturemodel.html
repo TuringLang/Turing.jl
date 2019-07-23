@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-language" content="en">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <title>Probabilistic Modelling using the Infinite Mixture Model</title>
+    <meta name="description" content="Probabilistic Modelling using the Infinite Mixture Model">
+    <meta name="author" content="The Turing Team">
+    <meta name="theme-color" content="red">    
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+    <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+  
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="canonical" href="http://localhost:4000/Turing.jl/docs/tutorials/6-infinitemixturemodel">
+    <link rel="alternate" type="application/rss+xml" title="Turing.jl" href="http://localhost:4000/Turing.jl/feed.xml">
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copied" content="Copied to clipboard">
+    <meta name="lang:search.language" content="en">
+    <meta name="lang:search.pipeline.stopwords" content="True">
+    <meta name="lang:search.pipeline.trimmer" content="True">
+    <meta name="lang:search.result.none" content="No matching documents">
+    <meta name="lang:search.result.one" content="1 matching document">
+    <meta name="lang:search.result.other" content="# matching documents">
+    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <script src="/Turing.jl/assets/js/modernizr.74668098.js"></script>
+    <link rel="shortcut icon" href="/Turing.jl/assets/img/favicon.ico"> 
+    <link rel="stylesheet" href="/Turing.jl/assets/css/main.css">
+    <link rel="stylesheet" href="/Turing.jl/assets/css/palette.css">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+    
+    
+  </head> 
+
+  <body dir="ltr" data-md-color-primary="red" data-md-color-accent="red">
+    <svg class="md-svg">
+<defs>
+  <svg>
+  <path d="M160 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360 304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25 2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75 1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75 0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5 46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z" fill="currentColor"></path></svg>
+</defs></svg>
+
+    <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off>
+    <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off>
+    <label class=md-overlay data-md-component=overlay for=__drawer></label> <a href="#probabilistic-modelling-using-the-infinite-mixture-model" tabindex=1 class=md-skip> Skip to content </a>
+    <header class=md-header data-md-component=header data-md-state=none>
+        <nav class="md-header-nav md-grid">
+            <div class=md-flex>
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <a class="md-header-nav__button md-logo" href="http://localhost:4000/Turing.jl/" title="Turing.jl">
+                    <img height="34" src="/Turing.jl/assets/img/favicon.ico" width="34"></a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--stretch">
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                        <span class=md-header-nav__topic>Turing.jl</span>
+                    </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" href="/Turing.jl/docs/using/get-started" title="Go to Get Started">
+                      Get Started
+                    </a>
+                  </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <div class="md-header-nav__source">
+                      <a class="md-source" href="/Turing.jl/docs/using/" title="Go to Documentation">
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="md-flex__cell md-flex__cell--shrink">
+                      <div class="md-header-nav__source">
+                        <a class="md-source" href="/Turing.jl/docs/tutorials/" title="Go to Tutorial">
+                          Tutorials
+                        </a>
+                      </div>
+                    </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+                    <div class="md-source__icon" style="padding-top:5px">
+                      <i class="fa fa-github fa-3x"></i>
+                    </div>
+                    <div class="md-source__repository">
+                      TuringLang/Turing.jl
+                    </div></a>
+                  </div>
+                </div>
+                
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
+                    <div class=md-search data-md-component=search role=dialog>
+                        <label class=md-search__overlay for=__search></label>
+                        <div class=md-search__inner role=search>
+                            <form class=md-search__form name=search>
+                                <input type=text class=md-search__input name=query placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=query data-md-state=active>
+                                <label class="md-icon md-search__icon" for=__search></label>
+                                <button type=reset class="md-icon md-search__icon" data-md-component=reset tabindex=-1> &#xE5CD; </button>
+                            </form>
+                            <div class=md-search__output>
+                                <div class=md-search__scrollwrap data-md-scrollfix>
+                                    <div class=md-search-result data-md-component=result>
+                                        <div class=md-search-result__meta> Type to start searching </div>
+                                        <ol class=md-search-result__list></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+    </div>
+  </nav>
+</header>
+
+
+    <div class="md-container">         
+        <main class="md-main">
+            <div class="md-main__inner md-grid full-width" data-md-component="container">
+            <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            <img height="48" src="/Turing.jl/assets/img/favicon.ico" width="48">
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            TuringLang/Turing.jl
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/using/get-started"
+                     id="pancakes-using-turing" 
+                     title="USING TURING">USING TURING</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/tutorials"
+                     id="pancakes-tutorials" 
+                     title="TUTORIALS">TUTORIALS</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/library"
+                     id="pancakes-library" 
+                     title="LIBRARY">LIBRARY</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide"
+                     id="pancakes-contributing" 
+                     title="CONTRIBUTING">CONTRIBUTING</a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          <li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/using/get-started" title="USING TURING">USING TURING</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/tutorials" title="TUTORIALS">TUTORIALS</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/library" title="LIBRARY">LIBRARY</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide" title="CONTRIBUTING">CONTRIBUTING</a>
+          </li>
+
+          <!-- This navigation is completely for non mobile -->
+         
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-using-turing"
+                id="pancakes-using-turing" 
+                title="USING TURING">USING TURING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/get-started" 
+                           title="Getting Started" style="display:none"
+                           class="md-nav__link pancakes-child">Getting Started</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/quick-start" 
+                           title="Quick Start" style="display:none"
+                           class="md-nav__link pancakes-child">Quick Start</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/guide" 
+                           title="Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Guide</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/advanced" 
+                           title="Advanced Usage" style="display:none"
+                           class="md-nav__link pancakes-child">Advanced Usage</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/autodiff" 
+                           title="Automatic Differentiation" style="display:none"
+                           class="md-nav__link pancakes-child">Automatic Differentiation</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/dynamichmc" 
+                           title="Using DynamicHMC" style="display:none"
+                           class="md-nav__link pancakes-child">Using DynamicHMC</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/sampler-viz" 
+                           title="Sampler Visualization" style="display:none"
+                           class="md-nav__link pancakes-child">Sampler Visualization</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-tutorials"
+                id="pancakes-tutorials" 
+                title="TUTORIALS">TUTORIALS</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials" 
+                           title="Home" style="display:none"
+                           class="md-nav__link pancakes-child">Home</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/0-introduction" 
+                           title="Introduction to Turing" style="display:none"
+                           class="md-nav__link pancakes-child">Introduction to Turing</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/1-gaussianmixturemodel" 
+                           title="Gaussian Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Gaussian Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/2-logisticregression" 
+                           title="Bayesian Logistic Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Logistic Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/3-bayesnn" 
+                           title="Bayesian Neural Networks" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Neural Networks</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/4-bayeshmm" 
+                           title="Hidden Markov Models" style="display:none"
+                           class="md-nav__link pancakes-child">Hidden Markov Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/5-linearregression" 
+                           title="Linear Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Linear Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/6-infinitemixturemodel" 
+                           title="Infinite Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Infinite Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/7-poissontegression" 
+                           title="Bayesian Poisson Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Poisson Regression</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-library"
+                id="pancakes-library" 
+                title="LIBRARY">LIBRARY</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/library" 
+                           title="Public" style="display:none"
+                           class="md-nav__link pancakes-child">Public</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-contributing"
+                id="pancakes-contributing" 
+                title="CONTRIBUTING">CONTRIBUTING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/guide" 
+                           title="How to Contribute" style="display:none"
+                           class="md-nav__link pancakes-child">How to Contribute</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/style-guide" 
+                           title="Style Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Style Guide</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+                <div id="md-container-pancakes">
+                <div class="md-content full-width"> 
+    <article class="md-content__inner md-typeset  full-width">
+    <h1 id="probabilistic-modelling-using-the-infinite-mixture-model">Probabilistic Modelling using the Infinite Mixture Model</h1>
+
+<p>In many applications it is desirable to allow the model to adjust its complexity to the amount the data. Consider for example the task of assigning objects into clusters or groups. This task often involves the specification of the number of groups. However, often times it is not known beforehand how many groups exist. Moreover, in some applictions, e.g. modelling topics in text documents or grouping species, the number of examples per group is heavy tailed. This makes it impossible to predefine the number of groups and requiring the model to form new groups when data points from previously unseen groups are observed.</p>
+
+<p>A natural approach for such applications is the use of non-parametric models. This tutorial will introduce how to use the Dirichlet process in a mixture of infinitely many Gaussians using Turing. For further information on Bayesian nonparametrics and the Dirichlet process we refer to the <a href="http://mlg.eng.cam.ac.uk/pub/pdf/Gha12.pdf">introduction by Zoubin Ghahramani</a> and the book “Fundamentals of Nonparametric Bayesian Inference” by Subhashis Ghosal and Aad van der Vaart.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">using</span> <span class="n">Turing</span>
+</code></pre></div></div>
+
+<h2 id="mixture-model">Mixture Model</h2>
+
+<p>Before introducing infinite mixture models in Turing, we will briefly review the construction of finite mixture models. Subsequently, we will define how to use the <a href="https://en.wikipedia.org/wiki/Chinese_restaurant_process">Chinese restaurant process</a> construction of a Dirichlet process for non-parametric clustering.</p>
+
+<h4 id="two-component-model">Two-Component Model</h4>
+
+<p>First, consider the simple case of a mixture model with two Gaussian components with fixed covariance. 
+The generative process of such a model can be written as:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+\pi_1 &\sim Beta(a, b) \\
+\pi_2 &= 1-\pi_1 \\
+\mu_1 &\sim Normal(\mu_0, \Sigma_0) \\
+\mu_2 &\sim Normal(\mu_0, \Sigma_0) \\
+z_i &\sim Categorical(\pi_1, \pi_2) \\
+x_i &\sim Normal(\mu_{z_i}, \Sigma)
+\end{align} %]]></script>
+
+<p>where <script type="math/tex">\pi_1, \pi_2</script> are the mixing weights of the mixture model, i.e. <script type="math/tex">\pi_1 + \pi_2 = 1</script>, and <script type="math/tex">z_i</script> is a latent assignment of the observation <script type="math/tex">x_i</script> to a component (Gaussian).</p>
+
+<p>We can implement this model in Turing for 1D data as follows:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">two_model</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+    
+    <span class="c"># Hyper-parameters</span>
+    <span class="n">μ0</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">σ0</span> <span class="o">=</span> <span class="mf">1.0</span>
+    
+    <span class="c"># Draw weights.</span>
+    <span class="n">π1</span> <span class="o">~</span><span class="err"> </span><span class="n">Beta</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span><span class="mi">1</span><span class="x">)</span>
+    <span class="n">π2</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="n">π1</span>
+    
+    <span class="c"># Draw locations of the components.</span>
+    <span class="n">μ1</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">μ0</span><span class="x">,</span> <span class="n">σ0</span><span class="x">)</span>
+    <span class="n">μ2</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">μ0</span><span class="x">,</span> <span class="n">σ0</span><span class="x">)</span>
+    
+    <span class="c"># Draw latent assignment.</span>
+    <span class="n">z</span> <span class="o">~</span><span class="err"> </span><span class="n">Categorical</span><span class="x">([</span><span class="n">π1</span><span class="x">,</span> <span class="n">π2</span><span class="x">])</span>
+    
+    <span class="c"># Draw observation from selected component.</span>
+    <span class="k">if</span> <span class="n">z</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">x</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">μ1</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">)</span>
+    <span class="k">else</span>
+        <span class="n">x</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">μ2</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>two_model (generic function with 2 methods)
+</code></pre></div></div>
+
+<h4 id="finite-mixture-model">Finite Mixture Model</h4>
+
+<p>If we have more than two components, this model can elegantly be extend using a Dirichlet distribution as prior for the mixing weights <script type="math/tex">\pi_1, \dots, \pi_K</script>. Note that the Dirichlet distribution is the multivariate generalization of the beta distribution. The resulting model can be written as:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\begin{align}
+(\pi_1, \dots, \pi_K) &\sim Dirichlet(K, \alpha) \\
+\mu_k &\sim Normal(\mu_0, \Sigma_0), \;\; \forall k \\
+z &\sim Categorical(\pi_1, \dots, \pi_K) \\
+x &\sim Normal(\mu_z, \Sigma) 
+\end{align} %]]></script>
+
+<p>which resembles the model in the <a href="1_GaussianMixtureModel.ipynb">Gaussian mixture model tutorial</a> with a slightly different notation.</p>
+
+<h2 id="infinite-mixture-model">Infinite Mixture Model</h2>
+
+<p>The question now arises, is there a generalization of a Dirichlet distribution for which the dimensionality <script type="math/tex">K</script> is infinite, i.e. <script type="math/tex">K = \infty</script>?</p>
+
+<p>But first, to implement an infinite Gaussian mixture model in Turing, we first need to load the <code class="highlighter-rouge">Turing.RandomMeasures</code> module. <code class="highlighter-rouge">RandomMeasures</code> contains a variety of tools useful in nonparametrics.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">using</span> <span class="n">Turing</span><span class="o">.</span><span class="n">RandomMeasures</span>
+</code></pre></div></div>
+
+<p>We now will utilize the fact that one can integrate out the mixing weights in a Gaussian mixture model allowing us to arrive at the Chinese restaurant process construction. See Carl E. Rasmussen: <a href="https://www.seas.harvard.edu/courses/cs281/papers/rasmussen-1999a.pdf">The Infinite Gaussian Mixture Model</a>, NIPS (2000) for details.</p>
+
+<p>In fact, if the mixing weights are integrated out, the conditional prior for the latent variable <script type="math/tex">z</script> is given by:</p>
+
+<p>$$ 
+p(z_i = k \mid z_{\not i}, \alpha) = \frac{n_k + \alpha/K}{N - 1 + \alpha}
+$$</p>
+
+<p>where <script type="math/tex">z_{\not i}</script> are the latent assignments of all observations except observation <script type="math/tex">i</script>. Note that we use <script type="math/tex">n_k</script> to denote the number of observations at component <script type="math/tex">k</script> excluding observation <script type="math/tex">i</script>. The parameter <script type="math/tex">\alpha</script> is the concentration parameter of the Dirichlet distribution used as prior over the mixing weights.</p>
+
+<h4 id="chinese-restaurant-process">Chinese Restaurant Process</h4>
+
+<p>To obtain the Chinese restaurant process construction, we can now derive the conditional prior if <script type="math/tex">K \rightarrow \infty</script>.</p>
+
+<p>For <script type="math/tex">n_k > 0</script> we obtain:</p>
+
+<p>$$
+p(z_i = k \mid z_{\not i}, \alpha) = \frac{n_k}{N - 1 + \alpha}
+$$</p>
+
+<p>and for all infinitely many clusters that are empty (combined) we get:</p>
+
+<p>$$
+p(z_i = k \mid z_{\not i}, \alpha) = \frac{\alpha}{N - 1 + \alpha}
+$$</p>
+
+<p>Those equations show that the conditional prior for component assignments is proportional to the number of such observations, meaning that the Chinese restaurant process has a rich get richer property.</p>
+
+<p>To get a better understanding of this property, we can plot the cluster choosen by for each new observation drawn from the conditional prior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Concentration parameter.</span>
+<span class="n">α</span> <span class="o">=</span> <span class="mf">10.0</span>
+
+<span class="c"># Random measure, e.g. Dirichlet process.</span>
+<span class="n">rpm</span> <span class="o">=</span> <span class="n">DirichletProcess</span><span class="x">(</span><span class="n">α</span><span class="x">)</span>
+
+<span class="c"># Cluster assignments for each observation.</span>
+<span class="n">z</span> <span class="o">=</span> <span class="n">Vector</span><span class="x">{</span><span class="kt">Int</span><span class="x">}()</span>
+
+<span class="c"># Maximum number of observations we observe.</span>
+<span class="n">Nmax</span> <span class="o">=</span> <span class="mi">500</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="x">:</span><span class="n">Nmax</span>
+    <span class="c"># Number of observations per cluster.</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">isempty</span><span class="x">(</span><span class="n">z</span><span class="x">)</span> <span class="o">?</span> <span class="mi">0</span> <span class="x">:</span> <span class="n">maximum</span><span class="x">(</span><span class="n">z</span><span class="x">)</span>
+    <span class="n">nk</span> <span class="o">=</span> <span class="n">Vector</span><span class="x">{</span><span class="kt">Int</span><span class="x">}(</span><span class="n">map</span><span class="x">(</span><span class="n">k</span> <span class="o">-&gt;</span> <span class="n">sum</span><span class="x">(</span><span class="n">z</span> <span class="o">.==</span> <span class="n">k</span><span class="x">),</span> <span class="mi">1</span><span class="x">:</span><span class="n">K</span><span class="x">))</span>
+    
+    <span class="c"># Draw new assignment.</span>
+    <span class="n">push!</span><span class="x">(</span><span class="n">z</span><span class="x">,</span> <span class="n">rand</span><span class="x">(</span><span class="n">ChineseRestaurantProcess</span><span class="x">(</span><span class="n">rpm</span><span class="x">,</span> <span class="n">nk</span><span class="x">)))</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">using</span> <span class="n">Plots</span>
+
+<span class="c"># Plot the cluster assignments over time </span>
+<span class="nd">@gif</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="x">:</span><span class="n">Nmax</span>
+    <span class="n">scatter</span><span class="x">(</span><span class="n">collect</span><span class="x">(</span><span class="mi">1</span><span class="x">:</span><span class="n">i</span><span class="x">),</span> <span class="n">z</span><span class="x">[</span><span class="mi">1</span><span class="x">:</span><span class="n">i</span><span class="x">],</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">2</span><span class="x">,</span> <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"observation (i)"</span><span class="x">,</span> <span class="n">ylabel</span> <span class="o">=</span> <span class="s">"cluster (k)"</span><span class="x">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="n">false</span><span class="x">)</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><img src="https://user-images.githubusercontent.com/422990/55284032-90cfa980-5323-11e9-8a99-f9315db170cb.gif" alt="tmp" /></p>
+
+<p>Further, we can see that the number of clusters is logarithmic in the number of observations and data points. This is a side-effect of the “rich get richer” phenomenon, i.e. we expect large clusters and thus the number of clusters has to be smaller than the number of observations.</p>
+
+<p>$$ 
+E[K \mid N] \approx \alpha * log \big(1 - \frac{N}{\alpha}\big)
+$$</p>
+
+<p>We can see from the equation that the concetration parameter <script type="math/tex">\alpha</script> allows use to control the number of cluster formed a priori.</p>
+
+<p>In Turing we can implement an infinite Gaussian mixture model using the Chinese restaurant process construction of a Dirichlet process as follows:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">infiniteGMM</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+    
+    <span class="c"># Hyper-parameters, i.e. concentration parameter and parameters of H.</span>
+    <span class="n">α</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">μ0</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">σ0</span> <span class="o">=</span> <span class="mf">1.0</span>
+    
+    <span class="c"># Define random measure, e.g. Dirichlet process.</span>
+    <span class="n">rpm</span> <span class="o">=</span> <span class="n">DirichletProcess</span><span class="x">(</span><span class="n">α</span><span class="x">)</span>
+    
+    <span class="c"># Define the base distribution, i.e. expected value of the Dirichlet process.</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">Normal</span><span class="x">(</span><span class="n">μ0</span><span class="x">,</span> <span class="n">σ0</span><span class="x">)</span>
+    
+    <span class="c"># Latent assignment.</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">tzeros</span><span class="x">(</span><span class="kt">Int</span><span class="x">,</span> <span class="n">length</span><span class="x">(</span><span class="n">x</span><span class="x">))</span>
+        
+    <span class="c"># Locations of the infinitely many clusters.</span>
+    <span class="n">μ</span> <span class="o">=</span> <span class="n">tzeros</span><span class="x">(</span><span class="kt">Float64</span><span class="x">,</span> <span class="mi">0</span><span class="x">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="x">:</span><span class="n">length</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+        
+        <span class="c"># Number of clusters.</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">z</span><span class="x">)</span>
+        <span class="n">nk</span> <span class="o">=</span> <span class="n">Vector</span><span class="x">{</span><span class="kt">Int</span><span class="x">}(</span><span class="n">map</span><span class="x">(</span><span class="n">k</span> <span class="o">-&gt;</span> <span class="n">sum</span><span class="x">(</span><span class="n">z</span> <span class="o">.==</span> <span class="n">k</span><span class="x">),</span> <span class="mi">1</span><span class="x">:</span><span class="n">K</span><span class="x">))</span>
+
+        <span class="c"># Draw the latent assignment.</span>
+        <span class="n">z</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span><span class="err"> </span><span class="n">ChineseRestaurantProcess</span><span class="x">(</span><span class="n">rpm</span><span class="x">,</span> <span class="n">nk</span><span class="x">)</span>
+        
+        <span class="c"># Create a new cluster?</span>
+        <span class="k">if</span> <span class="n">z</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">&gt;</span> <span class="n">K</span>
+            <span class="n">push!</span><span class="x">(</span><span class="n">μ</span><span class="x">,</span> <span class="mf">0.0</span><span class="x">)</span>
+
+            <span class="c"># Draw location of new cluster.</span>
+            <span class="n">μ</span><span class="x">[</span><span class="n">z</span><span class="x">[</span><span class="n">i</span><span class="x">]]</span> <span class="o">~</span><span class="err"> </span><span class="n">H</span>
+        <span class="k">end</span>
+                
+        <span class="c"># Draw observation.</span>
+        <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">μ</span><span class="x">[</span><span class="n">z</span><span class="x">[</span><span class="n">i</span><span class="x">]],</span> <span class="mf">1.0</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>infiniteGMM (generic function with 2 methods)
+</code></pre></div></div>
+
+<p>We can now use Turing to infer the assignments of some data points. First, we will create some random data that comes from three clusters, with means of 0, -5, and 10.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">using</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Generate some test data.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">1</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">vcat</span><span class="x">(</span><span class="n">randn</span><span class="x">(</span><span class="mi">10</span><span class="x">),</span> <span class="n">randn</span><span class="x">(</span><span class="mi">10</span><span class="x">)</span> <span class="o">.-</span> <span class="mi">5</span><span class="x">,</span> <span class="n">randn</span><span class="x">(</span><span class="mi">10</span><span class="x">)</span> <span class="o">.+</span> <span class="mi">10</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">.-=</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">/=</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>Next, we’ll sample from our posterior using SMC.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># MCMC sampling</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">2</span><span class="x">)</span>
+<span class="n">iterations</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">model_fun</span> <span class="o">=</span> <span class="n">infiniteGMM</span><span class="x">(</span><span class="n">data</span><span class="x">);</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model_fun</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="n">iterations</span><span class="x">));</span>
+</code></pre></div></div>
+
+<p>Finally, we can plot the number of clusters in each sample.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Extract the number of clusters for each sample of the Markov chain.</span>
+<span class="n">k</span> <span class="o">=</span> <span class="n">map</span><span class="x">(</span><span class="n">t</span> <span class="o">-&gt;</span> <span class="n">length</span><span class="x">(</span><span class="n">unique</span><span class="x">(</span><span class="n">chain</span><span class="x">[:</span><span class="n">z</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">[</span><span class="n">t</span><span class="x">,:,:])),</span> <span class="mi">1</span><span class="x">:</span><span class="n">iterations</span><span class="x">);</span>
+
+<span class="c"># Visualize the number of clusters.</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">k</span><span class="x">,</span> <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"Iteration"</span><span class="x">,</span> <span class="n">ylabel</span> <span class="o">=</span> <span class="s">"Number of clusters"</span><span class="x">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s">"Chain 1"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/Turing.jl/docs/tutorials/figures/6_InfiniteMixtureModel_9_1.png" alt="" /></p>
+
+<p>If we visualize the histogram of the number of clusters sampled from our posterior, we observe that the model seems to prefer 3 clusters, which is the true number of clusters. Note that the number of clusters in a Dirichlet process mixture model is not limited a priori and will grow to infinity with probability one. However, if conditioned on data the posterior will concentrate on a finite number of clusters enforcing the resulting model to have a finite amount of clusters. It is, however, not given that the posterior of a Dirichlet process Gaussian mixture model converges to the true number of clusters, given that data comes from a finite mixture model. See Jeffrey Miller and Matthew Harrison: <a href="https://arxiv.org/pdf/1301.2708.pdf">A simple example of Dirichlet process mixture inconsitency for the number of components</a> for details.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">histogram</span><span class="x">(</span><span class="n">k</span><span class="x">,</span> <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"Number of clusters"</span><span class="x">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="n">false</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/Turing.jl/docs/tutorials/figures/6_InfiniteMixtureModel_10_1.png" alt="" /></p>
+
+<p>One issue with the Chinese restaurant process construction is that the number of latent parameters we need to sample scales with the number of observations. It may be desirable to use alternative constructions in certain cases. Alternative methods of constructing a Dirichlet process can be employed via the following representations:</p>
+
+<p>Size-Biased Sampling Process</p>
+
+<p>$$
+j_k \sim Beta(1, \alpha) * surplus
+$$</p>
+
+<p>Stick-Breaking Process
+$$
+v_k \sim Beta(1, \alpha)
+$$</p>
+
+<p>Chinese Restaurant Process
+$$
+p(z_n = k | z_{1:n-1}) \propto \begin{cases} 
+        \frac{m_k}{n-1+\alpha}, \text{ if } m_k &gt; 0\\
+        \frac{\alpha}{n-1+\alpha}
+    \end{cases}
+$$</p>
+
+<p>For more details see <a href="https://www.stats.ox.ac.uk/~teh/research/npbayes/Teh2010a.pdf">this article</a>.</p>
+
+    <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+
+    var toc = $('#nav-toc');
+
+    // Select each header
+    sections = $('#md-container-pancakes h1');
+        $.each(sections, function(idx, v) {
+            section = $(v);
+            var div_id = $(section).attr('id');
+            var div_text = section.text().split('¶')[0];
+            var parent = $("#" + div_id)
+            var content = '<li id="link_' + div_id + '" class="md-nav__item"><a class="md-nav__link" href="#' + div_id + '" title="' + div_text +'">' + div_text +'</a></li>';
+            $(toc).append(content);
+
+            // Add section code to subnavigation
+            var children = $('<nav class="md-nav"><ul class="md-nav__list"></nav></ul>')
+            var contenders = $("#" + div_id).nextUntil( "h1" );
+            $.each(contenders, function(idx, contender){
+               if($(contender).is('h2')) {
+                   var contender_id = $(contender).attr('id');
+                   var contender_text = $(contender).text().split('¶')[0];
+                   var content = '<li class="md-nav__item"><a class="md-nav__link" href="#' + contender_id + '" title="' + contender_text +'">' + contender_text +'</a></li>';
+                   children.append(content);
+                }
+             })
+             $("#link_" + div_id).append(children);
+        });
+    });
+</script>
+
+    <!-- this will parse through the header fields and add a button to open
+     an issue / ask a question on Github. The editable field should be in
+     the post frontend matter, and refer to the label to open the issue for -->
+
+<style>
+.more {
+    float:right;
+    font-size: 1.0rem !important;
+}
+.more:hover {
+    color: cornflowerblue !important;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    font-weight: 200;
+    box-shadow: 0px 8px 6px 0px rgba(0,0,0,0.2);
+    padding: 0px 10px;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+</style>
+<script>
+$(document).ready(function() {
+
+    var divs = $("#h1,h2,h3,h4"); 
+    $.each(divs, function(i,e){
+
+        // Edit
+        var did = $(e).attr('id');
+        var start = '<div class="dropdown more"><span><i class="fa fa-ellipsis-h more" title="Edit"></i></span><div class="dropdown-content">';
+
+        // Edit (assuming deployed under main organization repo)
+        var link = "https://github.com/TuringLang/Turing.jl/edit/master/_docs/tutorials/6-infinitemixturemodel.md#" + did;
+        var button = "<p><a href='" + link + "' target='_blank'>Edit this page</a></p>";
+        start += button;
+
+        // Issues;
+        var link = "https://github.com/TuringLang/Turing.jl/issues/new?labels=question&title=Question:&body=Question on: https://github.com/TuringLang/Turing.jl/tree/master/_docs/tutorials/6-infinitemixturemodel.md%23" + did;
+
+        var button = "<p><a href='" + link + "' target='_blank'>Ask a Question</a></p>";
+        start += button;
+        start += "</div></div>";
+        $(e).append(start)
+
+    })
+});
+</script>
+
+    </article>
+</div>      
+
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/Turing.jl/assets/js/application.js"></script>
+    
+    <script>console.log('4')</script>
+    <script>app.initialize({version:"0.17.4", url:{base:'/Turing.jl'}})</script>
+
+    
+    
+    <script>
+var headers = ["h1", "h2", "h3", "h4"]
+var colors = ["red", "orange", "green", "blue"]
+
+$.each(headers, function(i, header){
+    var color = colors[i];
+    $(header).each(function () {
+        var href=$(this).attr("id");
+        $(this).append('<a class="headerlink" style="color:' + color + '" href="#' + href + '" title="Permanent link">¶</a>')
+    });
+})
+
+// Ensure that sidebar on left has arrows
+$(".pancakes-parent").on('click', function(){
+    console.log($(this).next());
+    $(this).next().find('.pancakes-child').toggle();
+    if ($(this).hasClass('open-parent')){
+        $(this).removeClass('open-parent');
+    } else {
+        $(this).addClass('open-parent');
+    }
+})
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+    <script>
+$('h1').first().append('<div></div>')</script>
+
+    <style>
+#scrolltop {
+  display: none; /* Hidden by default */
+  position: fixed; /* Fixed/sticky position */
+  bottom: 20px; /* Place the button at the bottom of the page */
+  right: 30px; /* Place the button 30px from the right */
+  z-index: 99; /* Make sure it does not overlap */
+  border: none; /* Remove borders */
+  outline: none; /* Remove outline */
+  background-color: #d2e6f5; /* Set a background color */
+  color: white; /* Text color */
+  cursor: pointer; /* Add a mouse pointer on hover */
+  padding: 10px 15px; /* Some padding */
+  border-radius: 100px; /* Rounded corners */
+  font-size: 18px; /* Increase font size */
+  font-weight: 600;
+}
+
+#scrolltop:hover {
+  background-color: #555; /* Add a dark-grey background on hover */
+}
+</style>
+<button onclick="topFunction()" id="scrolltop" title="Go to top">🔝</button>
+
+<script>
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    document.getElementById("scrolltop").style.display = "block";
+  } else {
+    document.getElementById("scrolltop").style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+    
+
+  </body>
+</html>

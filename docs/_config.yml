@@ -40,7 +40,7 @@ dockerhub: Turingjl
 # If commented, will use material hat theme
 logo: "assets/img/favicon.ico"
 logo_pixels: 34
-color: "#3f51b5" # primary color for header, buttons
+color: "#d2e6f5" # primary color for header, buttons
 
 # Build settings
 markdown: kramdown

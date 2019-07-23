@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-language" content="en">
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+    <title>Sampler Visualization</title>
+    <meta name="description" content="Introduction">
+    <meta name="author" content="The Turing Team">
+    <meta name="theme-color" content="red">    
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+    <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+  
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="canonical" href="http://localhost:4000/Turing.jl/docs/sampler-viz/">
+    <link rel="alternate" type="application/rss+xml" title="Turing.jl" href="http://localhost:4000/Turing.jl/feed.xml">
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copied" content="Copied to clipboard">
+    <meta name="lang:search.language" content="en">
+    <meta name="lang:search.pipeline.stopwords" content="True">
+    <meta name="lang:search.pipeline.trimmer" content="True">
+    <meta name="lang:search.result.none" content="No matching documents">
+    <meta name="lang:search.result.one" content="1 matching document">
+    <meta name="lang:search.result.other" content="# matching documents">
+    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <script src="/Turing.jl/assets/js/modernizr.74668098.js"></script>
+    <link rel="shortcut icon" href="/Turing.jl/assets/img/favicon.ico"> 
+    <link rel="stylesheet" href="/Turing.jl/assets/css/main.css">
+    <link rel="stylesheet" href="/Turing.jl/assets/css/palette.css">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  
+    
+    
+  </head> 
+
+  <body dir="ltr" data-md-color-primary="red" data-md-color-accent="red">
+    <svg class="md-svg">
+<defs>
+  <svg>
+  <path d="M160 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75 19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360 304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25 2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8 38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0 37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25 82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75 1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75 0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25 30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5 46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34 99.5z" fill="currentColor"></path></svg>
+</defs></svg>
+
+    <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off>
+    <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off>
+    <label class=md-overlay data-md-component=overlay for=__drawer></label> <a href="#sampler-visualization" tabindex=1 class=md-skip> Skip to content </a>
+    <header class=md-header data-md-component=header data-md-state=none>
+        <nav class="md-header-nav md-grid">
+            <div class=md-flex>
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <a class="md-header-nav__button md-logo" href="http://localhost:4000/Turing.jl/" title="Turing.jl">
+                    <img height="34" src="/Turing.jl/assets/img/favicon.ico" width="34"></a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--stretch">
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                        <span class=md-header-nav__topic>Turing.jl</span>
+                    </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" href="/Turing.jl/docs/using/get-started" title="Go to Get Started">
+                      Get Started
+                    </a>
+                  </div>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <div class="md-header-nav__source">
+                      <a class="md-source" href="/Turing.jl/docs/using/" title="Go to Documentation">
+                        Documentation
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="md-flex__cell md-flex__cell--shrink">
+                      <div class="md-header-nav__source">
+                        <a class="md-source" href="/Turing.jl/docs/tutorials/" title="Go to Tutorial">
+                          Tutorials
+                        </a>
+                      </div>
+                    </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+                    <div class="md-source__icon" style="padding-top:5px">
+                      <i class="fa fa-github fa-3x"></i>
+                    </div>
+                    <div class="md-source__repository">
+                      TuringLang/Turing.jl
+                    </div></a>
+                  </div>
+                </div>
+                
+                <div class="md-flex__cell md-flex__cell--shrink">
+                    <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
+                    <div class=md-search data-md-component=search role=dialog>
+                        <label class=md-search__overlay for=__search></label>
+                        <div class=md-search__inner role=search>
+                            <form class=md-search__form name=search>
+                                <input type=text class=md-search__input name=query placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=query data-md-state=active>
+                                <label class="md-icon md-search__icon" for=__search></label>
+                                <button type=reset class="md-icon md-search__icon" data-md-component=reset tabindex=-1> &#xE5CD; </button>
+                            </form>
+                            <div class=md-search__output>
+                                <div class=md-search__scrollwrap data-md-scrollfix>
+                                    <div class=md-search-result data-md-component=result>
+                                        <div class=md-search-result__meta> Type to start searching </div>
+                                        <ol class=md-search-result__list></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>                
+    </div>
+  </nav>
+</header>
+
+
+    <div class="md-container">         
+        <main class="md-main">
+            <div class="md-main__inner md-grid full-width" data-md-component="container">
+            <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--primary" data-md-level="0">
+
+        <label class="md-nav__title md-nav__title--site" for="__drawer">
+          <span class="md-nav__button md-logo">
+            <img height="48" src="/Turing.jl/assets/img/favicon.ico" width="48">
+          </span>
+        </label>
+
+        <div class="md-nav__source">
+          <a class="md-source" data-md-source="github" href="https://github.com/TuringLang/Turing.jl" title="Go to repository">
+          <div class="md-source__icon">
+            <svg height="24" viewbox="0 0 24 24" width="24">
+            <use height="24" width="24" xlink:href="#__github"></use></svg>
+          </div>
+          <div class="md-source__repository">
+            TuringLang/Turing.jl
+          </div></a>
+        </div>
+
+        <ul class="md-nav__list" data-md-scrollfix="">
+          <li class="md-nav__item md-nav__item--active">
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox"> 
+                <label class="md-nav__link md-nav__link--active" for="__toc">Home</label>
+
+            <nav class="md-nav md-nav--secondary">
+              <label class="md-nav__title" for="__toc">Table of contents</label>
+              <ul class="md-nav__list" data-md-scrollfix="">
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/using/get-started"
+                     id="pancakes-using-turing" 
+                     title="USING TURING">USING TURING</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/tutorials"
+                     id="pancakes-tutorials" 
+                     title="TUTORIALS">TUTORIALS</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/library"
+                     id="pancakes-library" 
+                     title="LIBRARY">LIBRARY</a>
+                </li>
+                
+                <li class="md-nav__item">
+                  <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide"
+                     id="pancakes-contributing" 
+                     title="CONTRIBUTING">CONTRIBUTING</a>
+                </li>
+                
+              </ul>
+            </nav>
+          </li>
+
+          <!-- This navigation is completely for mobile -->
+          <li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/using/get-started" title="USING TURING">USING TURING</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/tutorials" title="TUTORIALS">TUTORIALS</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/library" title="LIBRARY">LIBRARY</a>
+          </li><li class="md-nav__item mobile-nav" style="display:none">
+            <a class="md-nav__link" href="/Turing.jl/docs/contributing/guide" title="CONTRIBUTING">CONTRIBUTING</a>
+          </li>
+
+          <!-- This navigation is completely for non mobile -->
+         
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-using-turing"
+                id="pancakes-using-turing" 
+                title="USING TURING">USING TURING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/get-started" 
+                           title="Getting Started" style="display:none"
+                           class="md-nav__link pancakes-child">Getting Started</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/quick-start" 
+                           title="Quick Start" style="display:none"
+                           class="md-nav__link pancakes-child">Quick Start</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/guide" 
+                           title="Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Guide</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/advanced" 
+                           title="Advanced Usage" style="display:none"
+                           class="md-nav__link pancakes-child">Advanced Usage</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/autodiff" 
+                           title="Automatic Differentiation" style="display:none"
+                           class="md-nav__link pancakes-child">Automatic Differentiation</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/dynamichmc" 
+                           title="Using DynamicHMC" style="display:none"
+                           class="md-nav__link pancakes-child">Using DynamicHMC</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/using/sampler-viz" 
+                           title="Sampler Visualization" style="display:none"
+                           class="md-nav__link pancakes-child">Sampler Visualization</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-tutorials"
+                id="pancakes-tutorials" 
+                title="TUTORIALS">TUTORIALS</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials" 
+                           title="Home" style="display:none"
+                           class="md-nav__link pancakes-child">Home</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/0-introduction" 
+                           title="Introduction to Turing" style="display:none"
+                           class="md-nav__link pancakes-child">Introduction to Turing</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/1-gaussianmixturemodel" 
+                           title="Gaussian Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Gaussian Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/2-logisticregression" 
+                           title="Bayesian Logistic Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Logistic Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/3-bayesnn" 
+                           title="Bayesian Neural Networks" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Neural Networks</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/4-bayeshmm" 
+                           title="Hidden Markov Models" style="display:none"
+                           class="md-nav__link pancakes-child">Hidden Markov Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/5-linearregression" 
+                           title="Linear Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Linear Regression</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/6-infinitemixturemodel" 
+                           title="Infinite Mixture Models" style="display:none"
+                           class="md-nav__link pancakes-child">Infinite Mixture Models</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/tutorials/7-poissontegression" 
+                           title="Bayesian Poisson Regression" style="display:none"
+                           class="md-nav__link pancakes-child">Bayesian Poisson Regression</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-library"
+                id="pancakes-library" 
+                title="LIBRARY">LIBRARY</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/library" 
+                           title="Public" style="display:none"
+                           class="md-nav__link pancakes-child">Public</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+         <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
+             <a class="md-nav__link pancakes-parent" href="#pancakes-contributing"
+                id="pancakes-contributing" 
+                title="CONTRIBUTING">CONTRIBUTING</a>
+                <nav class="md-nav">
+                    <ul class="md-nav__list">
+                        <li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/guide" 
+                           title="How to Contribute" style="display:none"
+                           class="md-nav__link pancakes-child">How to Contribute</a>
+                        </li><li class="md-nav__item">
+                        <a href="/Turing.jl/docs/contributing/style-guide" 
+                           title="Style Guide" style="display:none"
+                           class="md-nav__link pancakes-child">Style Guide</a>
+                        </li>
+                    </ul>
+              </nav>
+         </li>
+
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+<div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <nav class="md-nav md-nav--secondary">
+        <label class="md-nav__title" for="__toc">Table of contents</label>
+        <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
+        <!-- toc will be appended here!-->
+        </ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+                <div id="md-container-pancakes">
+                <div class="md-content full-width"> 
+    <article class="md-content__inner md-typeset  full-width">
+    <h2 id="introduction">Introduction</h2>
+
+<h2 id="the-code">The Code</h2>
+
+<p>For each sampler, we will use the same code to plot sampler paths. The block below loads the relevant libraries and defines a function for plotting the sampler’s trajectory across the posterior.</p>
+
+<p>The Turing model definition used here is not especially practical, but it is designed in such a way as to produce visually interesting posterior surfaces to show how different samplers move along the distribution.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">using</span> <span class="n">Plots</span>
+<span class="n">using</span> <span class="n">StatsPlots</span>
+<span class="n">using</span> <span class="n">Turing</span>
+<span class="n">using</span> <span class="n">Bijectors</span>
+<span class="n">using</span> <span class="n">Random</span>
+
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">)</span>
+
+<span class="c"># Define a strange model.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="n">begin</span>
+    <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="n">bumps</span> <span class="o">=</span> <span class="n">sin</span><span class="x">(</span><span class="n">m</span><span class="x">)</span> <span class="o">+</span> <span class="n">cos</span><span class="x">(</span><span class="n">m</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m</span> <span class="o">+</span> <span class="mi">5</span><span class="o">*</span><span class="n">bumps</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">eachindex</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+      <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="c"># Define our data points.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">13.0</span><span class="x">,</span> <span class="mf">2.1</span><span class="x">,</span> <span class="mf">0.0</span><span class="x">]</span>
+
+<span class="c"># Set up the model call, sample from the prior.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+<span class="n">vi</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">()</span>
+<span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+<span class="n">vi</span><span class="o">.</span><span class="n">flags</span><span class="x">[</span><span class="s">"trans"</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">true</span><span class="x">,</span> <span class="n">false</span><span class="x">]</span>
+
+<span class="c"># Evaluate surface at coordinates.</span>
+<span class="k">function</span><span class="nf"> evaluate</span><span class="x">(</span><span class="n">m1</span><span class="x">,</span> <span class="n">m2</span><span class="x">)</span>
+    <span class="n">vi</span><span class="o">.</span><span class="n">vals</span> <span class="o">.=</span> <span class="x">[</span><span class="n">m1</span><span class="x">,</span> <span class="n">m2</span><span class="x">]</span>
+    <span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+    <span class="o">-</span><span class="n">vi</span><span class="o">.</span><span class="n">logp</span>
+<span class="k">end</span>
+
+<span class="k">function</span><span class="nf"> plot_sampler</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+    <span class="c"># Extract values from chain.</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">get</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="x">[:</span><span class="n">s</span><span class="x">,</span> <span class="x">:</span><span class="n">m</span><span class="x">,</span> <span class="x">:</span><span class="n">lp</span><span class="x">])</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="x">(</span><span class="n">Ref</span><span class="x">(</span><span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)),</span> <span class="n">val</span><span class="o">.</span><span class="n">s</span><span class="x">)</span>
+    <span class="n">ms</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">lps</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">lp</span>
+
+    <span class="c"># How many surface points to sample.</span>
+    <span class="n">granularity</span> <span class="o">=</span> <span class="mi">500</span>
+
+    <span class="c"># Range start/stop points.</span>
+    <span class="n">spread</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">σ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span> <span class="n">σ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span>
+    <span class="n">μ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span> <span class="n">μ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span>
+    <span class="n">σ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">σ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">σ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+    <span class="n">μ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">μ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">μ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+
+    <span class="c"># Make surface plot.</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">surface</span><span class="x">(</span><span class="n">σ_rng</span><span class="x">,</span> <span class="n">μ_rng</span><span class="x">,</span> <span class="n">evaluate</span><span class="x">,</span>
+          <span class="n">camera</span><span class="o">=</span><span class="x">(</span><span class="mi">30</span><span class="x">,</span> <span class="mi">65</span><span class="x">),</span>
+          <span class="n">ticks</span><span class="o">=</span><span class="n">nothing</span><span class="x">,</span>
+          <span class="n">colorbar</span><span class="o">=</span><span class="n">false</span><span class="x">,</span>
+          <span class="n">color</span><span class="o">=</span><span class="x">:</span><span class="n">inferno</span><span class="x">)</span>
+
+    <span class="n">line_range</span> <span class="o">=</span> <span class="mi">1</span><span class="x">:</span><span class="n">length</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span>
+
+    <span class="n">plot3d!</span><span class="x">(</span><span class="n">ss</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="n">ms</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="o">-</span><span class="n">lps</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span>
+        <span class="n">lc</span> <span class="o">=</span><span class="x">:</span><span class="n">viridis</span><span class="x">,</span> <span class="n">line_z</span><span class="o">=</span><span class="n">collect</span><span class="x">(</span><span class="n">line_range</span><span class="x">),</span>
+        <span class="n">legend</span><span class="o">=</span><span class="n">false</span><span class="x">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="n">false</span><span class="x">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="x">)</span>
+
+    <span class="k">return</span> <span class="n">p</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<h2 id="samplers">Samplers</h2>
+
+<h3 id="gibbs">Gibbs</h3>
+
+<p>Gibbs sampling tends to exhibit a “jittery” trajectory. The example below combines <code class="highlighter-rouge">HMC</code> and <code class="highlighter-rouge">PG</code> sampling to traverse the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span>
+  <span class="n">HMC</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mi">5</span><span class="x">,</span> <span class="x">:</span><span class="n">s</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1</span><span class="x">,</span> <span class="x">:</span><span class="n">m</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Other samplers can be combined as well:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="x">:</span><span class="n">s</span><span class="x">),</span> <span class="n">SGLD</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="x">:</span><span class="n">m</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="hmc">HMC</h3>
+
+<p>Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the <code class="highlighter-rouge">NUTS</code> sampler is often easier to run if you don’t want to spend too much time fiddling with step size and and the number of steps to take.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mi">10</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="hmcda">HMCDA</h3>
+
+<p>The HMCDA sampler is an implementation of the Hamiltonian Monte Carlo with Dual Averaging algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMCDA</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="mh">MH</h3>
+
+<p>Metropolis-Hastings (MH) sampling is one of the earliest Markov Chain Monte Carlo methods. MH sampling does not “move” a lot, unlike many of the other samplers implemented in Turing. Typically a much longer chain is required to converge to an appropriate parameter estimate.</p>
+
+<p>The plot below only uses 1,000 iterations of Metropolis-Hastings.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1000</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>As you can see, the MH sampler doesn’t move parameter estimates very often.</p>
+
+<h3 id="nuts">NUTS</h3>
+
+<p>The No U-Turn Sampler (NUTS) is an implementation of the algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<p>NUTS tends to be very good at traversing the minima of complex posteriors quickly.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The only parameter that needs to be set other than the number of iterations to run is the target acceptance rate. In the Hoffman and Gelman paper, they note that a target acceptance rate of 0.65 is typical.</p>
+
+<p>Here is a plot showing a very high acceptance rate. Note that it appears to “stick” to a locla minima and is not particularly good at exploring the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.95</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>An exceptionally low acceptance rate will show very few moves on the posterior:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.2</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="pg">PG</h3>
+
+<p>The Particle Gibbs (PG) sampler is an implementation of an algorithm from the paper “Particle Markov chain Monte Carlo methods” by Andrieu, Doucet, and Holenstein (2010). The interested reader can learn more <a href="https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1467-9868.2009.00736.x">here</a>.</p>
+
+<p>The two parameters are the number of particles, and the number of iterations. The plot below shows the use of 20 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1000</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Next, we plot using 50 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">50</span><span class="x">,</span> <span class="mi">1000</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="pmmh">PMMH</h3>
+
+<p>The Particle Marginal Metropolis-Hastings (PMMH) sampler is an implementation of an algorithm from the paper “Particle Markov chain Monte Carlo methods” by Andrieu, Doucet, and Holenstein (2010). The interested reader can learn more <a href="https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1467-9868.2009.00736.x">here</a>.</p>
+
+<p>PMMH supports the use of different samplers across different parameter spaces, similar to the Gibbs sampler. The plot below uses SMC and MH.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PMMH</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="x">:</span><span class="n">m</span><span class="x">),</span> <span class="n">MH</span><span class="x">(</span><span class="mi">10</span><span class="x">,:</span><span class="n">s</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="pimh">PIMH</h3>
+
+<p>In addition to PMMH, Turing also support the Particle Independent Metropolis-Hastings (PIMH). PIMH accepts a number of iterations, and an SMC call.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PIMH</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="sghmc">SGHMC</h3>
+
+<p>Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper “Stochastic Gradient Hamiltonian Monte Carlo” by Chen, Fox, and Guestrin (2014). The interested reader can learn more <a href="https://arxiv.org/abs/1402.4102">here</a>. This sampler is very similar to the SGLD sampler below.</p>
+
+<p>The two parameters used in SGHMC are the learing rate and the momentum decay. Here is sampler with a higher momentum decay of 0.1:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGHMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.001</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>And the same sampler with a much lower momentum decay:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGHMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.001</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<h3 id="sgld">SGLD</h3>
+
+<p>The Stochastic Gradient Langevin Dynamics (SGLD) is based on the paper “Bayesian learning via stochastic gradient langevin dynamics” by Welling and Teh (2011). A link to the article can be found <a href="https://dl.acm.org/citation.cfm?id=3104568">here</a>.</p>
+
+<p>SGLD is an approximation to <a href="https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm">Langevin adjusted MH</a>. SGLD uses stochastic gradients that are based on mini-batches of data, and it skips the MH correction step to improve scalability. Computing Metropolis-Hastings accept probabilities requires evaluation likelihoods for the full dataset, making it significantly less scalable. The resulting Gibbs sampler is no longer unbiased since SGLD is an approximate sampler.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGLD</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+    <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function() {
+
+    var toc = $('#nav-toc');
+
+    // Select each header
+    sections = $('#md-container-pancakes h1');
+        $.each(sections, function(idx, v) {
+            section = $(v);
+            var div_id = $(section).attr('id');
+            var div_text = section.text().split('¶')[0];
+            var parent = $("#" + div_id)
+            var content = '<li id="link_' + div_id + '" class="md-nav__item"><a class="md-nav__link" href="#' + div_id + '" title="' + div_text +'">' + div_text +'</a></li>';
+            $(toc).append(content);
+
+            // Add section code to subnavigation
+            var children = $('<nav class="md-nav"><ul class="md-nav__list"></nav></ul>')
+            var contenders = $("#" + div_id).nextUntil( "h1" );
+            $.each(contenders, function(idx, contender){
+               if($(contender).is('h2')) {
+                   var contender_id = $(contender).attr('id');
+                   var contender_text = $(contender).text().split('¶')[0];
+                   var content = '<li class="md-nav__item"><a class="md-nav__link" href="#' + contender_id + '" title="' + contender_text +'">' + contender_text +'</a></li>';
+                   children.append(content);
+                }
+             })
+             $("#link_" + div_id).append(children);
+        });
+    });
+</script>
+
+    <!-- this will parse through the header fields and add a button to open
+     an issue / ask a question on Github. The editable field should be in
+     the post frontend matter, and refer to the label to open the issue for -->
+
+<style>
+.more {
+    float:right;
+    font-size: 1.0rem !important;
+}
+.more:hover {
+    color: cornflowerblue !important;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    font-weight: 200;
+    box-shadow: 0px 8px 6px 0px rgba(0,0,0,0.2);
+    padding: 0px 10px;
+    z-index: 1;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+</style>
+<script>
+$(document).ready(function() {
+
+    var divs = $("#h1,h2,h3,h4"); 
+    $.each(divs, function(i,e){
+
+        // Edit
+        var did = $(e).attr('id');
+        var start = '<div class="dropdown more"><span><i class="fa fa-ellipsis-h more" title="Edit"></i></span><div class="dropdown-content">';
+
+        // Edit (assuming deployed under main organization repo)
+        var link = "https://github.com/TuringLang/Turing.jl/edit/master/_docs/using/samplers.md#" + did;
+        var button = "<p><a href='" + link + "' target='_blank'>Edit this page</a></p>";
+        start += button;
+
+        // Issues;
+        var link = "https://github.com/TuringLang/Turing.jl/issues/new?labels=question&title=Question:&body=Question on: https://github.com/TuringLang/Turing.jl/tree/master/_docs/using/samplers.md%23" + did;
+
+        var button = "<p><a href='" + link + "' target='_blank'>Ask a Question</a></p>";
+        start += button;
+        start += "</div></div>";
+        $(e).append(start)
+
+    })
+});
+</script>
+
+    </article>
+</div>      
+
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/Turing.jl/assets/js/application.js"></script>
+    
+    <script>console.log('3')</script>
+    <script>app.initialize({version:"0.17.4", url:{base:'/Turing.jl'}})</script>
+
+    
+    
+    <script>
+var headers = ["h1", "h2", "h3", "h4"]
+var colors = ["red", "orange", "green", "blue"]
+
+$.each(headers, function(i, header){
+    var color = colors[i];
+    $(header).each(function () {
+        var href=$(this).attr("id");
+        $(this).append('<a class="headerlink" style="color:' + color + '" href="#' + href + '" title="Permanent link">¶</a>')
+    });
+})
+
+// Ensure that sidebar on left has arrows
+$(".pancakes-parent").on('click', function(){
+    console.log($(this).next());
+    $(this).next().find('.pancakes-child').toggle();
+    if ($(this).hasClass('open-parent')){
+        $(this).removeClass('open-parent');
+    } else {
+        $(this).addClass('open-parent');
+    }
+})
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+    <script>
+$('h1').first().append('<div></div>')</script>
+
+    <style>
+#scrolltop {
+  display: none; /* Hidden by default */
+  position: fixed; /* Fixed/sticky position */
+  bottom: 20px; /* Place the button at the bottom of the page */
+  right: 30px; /* Place the button 30px from the right */
+  z-index: 99; /* Make sure it does not overlap */
+  border: none; /* Remove borders */
+  outline: none; /* Remove outline */
+  background-color: #d2e6f5; /* Set a background color */
+  color: white; /* Text color */
+  cursor: pointer; /* Add a mouse pointer on hover */
+  padding: 10px 15px; /* Some padding */
+  border-radius: 100px; /* Rounded corners */
+  font-size: 18px; /* Increase font size */
+  font-weight: 600;
+}
+
+#scrolltop:hover {
+  background-color: #555; /* Add a dark-grey background on hover */
+}
+</style>
+<button onclick="topFunction()" id="scrolltop" title="Go to top">🔝</button>
+
+<script>
+// When the user scrolls down 20px from the top of the document, show the button
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+    document.getElementById("scrolltop").style.display = "block";
+  } else {
+    document.getElementById("scrolltop").style.display = "none";
+  }
+}
+
+// When the user clicks on the button, scroll to the top of the document
+function topFunction() {
+  document.body.scrollTop = 0; // For Safari
+  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+
+    
+
+  </body>
+</html>
