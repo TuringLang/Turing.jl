@@ -16,7 +16,7 @@ button[data-md-color-primary=red] {
     background-color: #d2e6f5;
 }
 [data-md-color-primary=red] .md-typeset a {
-    color: #d2e6f5;
+    color: #0f8dec;
 }
 [data-md-color-primary=red] .md-header, [data-md-color-primary=red] .md-hero {
     background-color: #d2e6f5;

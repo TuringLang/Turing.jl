@@ -1,8 +1,9 @@
 ---
 title: Sampler Visualization
-permalink: /docs/sampler-viz/
 mathjax: true
 ---
+
+# Sampler Visualization
 
 ## Introduction
 

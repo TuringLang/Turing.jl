@@ -21,4 +21,5 @@ docs/site/assets/
 docs/site/*.md
 docs/site/.sass-cache/
 docs/_site/
+
 .DS_Store
