@@ -493,7 +493,8 @@ function steps!(
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
     # Init step
     time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
