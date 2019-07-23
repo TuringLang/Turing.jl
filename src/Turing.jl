@@ -89,8 +89,9 @@ Robust initialization method for model parameters in Hamiltonian samplers.
 struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
 
-getspace(::SampleFromPrior) = ()
-getspace(::SampleFromUniform) = ()
+getspace(::Union{SampleFromPrior, SampleFromUniform}) = ()
+getspace(::Type{<:SampleFromPrior}) = ()
+getspace(::Type{<:SampleFromUniform}) = ()
 
 """
     Sampler{T}
@@ -121,6 +122,8 @@ include("core/Core.jl")
 using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
+include("variational/VariationalInference.jl")
+using .Variational
 
 # TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
 #   Related: https://github.com/TuringLang/Turing.jl/issues/746
@@ -184,6 +187,9 @@ export  @model,                 # modelling
         PIMH,
         PMMH,
         IPMCMC,
+        
+        vi,                    # variational inference
+        ADVI,
 
         sample,                 # inference
         setchunksize,

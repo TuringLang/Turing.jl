@@ -1,0 +1,1 @@
+struct ELBO <: VariationalObjective end

@@ -42,8 +42,8 @@ code-sample:
     snippet: |
       @model gdemo(x, y) = begin
         # Assumptions
-        σ ~ InverseGamma(2,3)
-        μ ~ Normal(0,sqrt(σ))
+        σ ~ InverseGamma(2, 3)
+        μ ~ Normal(0, sqrt(σ))
         # Observations
         x ~ Normal(μ, sqrt(σ))
         y ~ Normal(μ, sqrt(σ))

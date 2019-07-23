@@ -19,7 +19,8 @@ function DynamicNUTS{AD}(n_iters::Integer, space::Symbol...) where AD
     DynamicNUTS{AD}(n_iters, space)
 end
 
-getspace(::DynamicNUTS{<:Any, space}) where {space} = space
+getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space
+getspace(alg::DynamicNUTS{<:Any, space}) where {space} = space
 
 function Sampler(alg::DynamicNUTS{T}, s::Selector=Selector()) where T <: Hamiltonian
   return Sampler(alg, Dict{Symbol,Any}(), s)

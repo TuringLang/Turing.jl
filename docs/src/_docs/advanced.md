@@ -63,8 +63,8 @@ using Turing
 
 @model gdemo(x) = begin
   # Set priors.
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
 
   # Observe each value of x.
   [x ~ Normal(m, sqrt(s))]
@@ -103,7 +103,7 @@ mf(vi, sampler, model) = begin
 
     # Assume m has a Normal distribution.
     m, lp = Turing.assume(sampler,
-                Normal(0,sqrt(s)),
+                Normal(0, sqrt(s)),
                 Turing.VarName([:c_m, :m], ""), vi)
 
     # Add the lp to the accumulated logp.
@@ -143,34 +143,39 @@ using Turing
 
 # Define the simple gdemo model.
 @model gdemo(x, y) = begin
- s ~ InverseGamma(2,3)
- m ~ Normal(0,sqrt(s))
- x ~ Normal(m, sqrt(s))
- y ~ Normal(m, sqrt(s))
- return s, m
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+    return s, m
+end
+
+function get_nlogp(model)
+    # Set up the model call, sample from the prior.
+    vi = Turing.VarInfo(model)
+
+    # Define a function to optimize.
+    function nlogp(sm)
+        spl = Turing.SampleFromPrior()
+        new_vi = Turing.VarInfo(vi, spl, sm)
+        model(new_vi, spl)
+        -new_vi.logp
+    end
+
+    return nlogp
 end
 
 # Define our data points.
 x = 1.5
 y = 2.0
-
-# Set up the model call, sample from the prior.
 model = gdemo(x, y)
-vi = Turing.VarInfo()
-model(vi, Turing.SampleFromPrior())
-
-# Define a function to optimize.
-function nlogp(sm)
- vi.vals .= sm
- model(vi, Turing.SampleFromPrior())
- -vi.logp
-end
+nlogp = get_nlogp(model)
 
 # Import Optim.jl.
 using Optim
 
 # Create a starting point, call the optimizer.
-sm_0 = Float64.(vi.vals)
+sm_0 = [1.0, 1.0]
 lb = [0.0, -Inf]
 ub = [Inf, Inf]
 result = optimize(nlogp, lb, ub, sm_0, Fminbox())
@@ -197,7 +202,7 @@ end
 
 # Define the model using @everywhere.
 @everywhere @model gdemo(x) = begin
-    s ~ InverseGamma(2,3)
+    s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
         x[i] ~ Normal(m, sqrt(s))

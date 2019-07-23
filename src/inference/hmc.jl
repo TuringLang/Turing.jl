@@ -315,7 +315,7 @@ function sample(
         spl.selector.tag == :default && invlink!(vi, spl)
         c = save(c, spl, model, vi, samples)
     end
-
+    
     return c
 end
 
