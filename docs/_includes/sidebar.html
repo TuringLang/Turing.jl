@@ -4,9 +4,11 @@
       <nav class="md-nav md-nav--primary" data-md-level="0">
 
         <label class="md-nav__title md-nav__title--site" for="__drawer">
-          <span class="md-nav__button md-logo">
-            {% if site.logo %}<img height="48" src="{{ site.baseurl }}/{{ site.logo }}" width="48">{% else %}<i class="md-icon"></i>{% endif %}
-          </span>
+            <a class="" href="{{ site.url }}{{ site.baseurl }}/" title="{{ site.title }}">
+              <span class="md-nav__button md-logo">
+                {{ site.title }}
+              </span>
+            </a>
         </label>
 
         <div class="md-nav__source">

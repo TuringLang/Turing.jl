@@ -655,6 +655,7 @@ hr {
 }
 .md-header-nav__button.md-logo * {
     display: block;
+    margin-left: 3rem;
 }
 .no-js .md-header-nav__button.md-icon--search {
     display: none;
@@ -694,8 +695,7 @@ hr {
     display: none;
 }
 .md-header-nav__title {
-    font-size: 1.8rem;
-    line-height: 4.8rem;
+    font-size: 2rem;
 }
 
 .md-header-nav__source {
@@ -2370,11 +2370,11 @@ html .md-nav--primary .md-nav__title--site {
 html .md-nav--primary .md-nav__title--site .md-nav__button {
     display: block;
     position: absolute;
-    top: .4rem;
-    left: .4rem;
-    width: 6.4rem;
-    height: 6.4rem;
-    font-size: 4.8rem;
+    top: 1.4rem;
+    left: 5.4rem;
+    font-size: 2.6rem;
+    color: white;
+    font-family: "Lato",-apple-system,BlinkMacSystemFont,"Roboto","Segoe UI","Helvetica Neue","Lucida Grande",Arial,sans-serif;
 }
 html .md-nav--primary .md-nav__title--site:before {
     display: none;

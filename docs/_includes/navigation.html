@@ -11,8 +11,6 @@
         <nav class="md-header-nav md-grid">
             <div class=md-flex>
                 <div class="md-flex__cell md-flex__cell--shrink">
-                  <a class="md-header-nav__button md-logo" href="{{ site.url }}{{ site.baseurl }}/" title="{{ site.title }}">
-                    {% if site.logo %}<img height="{{ site.logo_pixels }}" src="{{ site.baseurl }}/{{ site.logo }}" width="{{ site.logo_pixels }}">{% else %}<i class="md-icon" style="margin-top:5px"></i>{% endif %}</a>
                 </div>
 
                 <div class="md-flex__cell md-flex__cell--shrink">
@@ -20,9 +18,11 @@
                 </div>
 
                 <div class="md-flex__cell md-flex__cell--stretch">
+                    <a class="md-header-nav__button md-logo" href="{{ site.url }}{{ site.baseurl }}/" title="{{ site.title }}">
                     <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
                         <span class=md-header-nav__topic>{{ site.title }}</span>
                     </div>
+                    </a>
                 </div>
 
                 <div class="md-flex__cell md-flex__cell--shrink">
