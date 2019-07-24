@@ -101,7 +101,7 @@ function HMCDA{AD}(
     n_iters::Int,
     δ::Float64,
     λ::Float64;
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
@@ -126,7 +126,7 @@ function HMCDA{AD}(
     δ::Float64,
     λ::Float64,
     space::Symbol...;
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return HMCDA{AD}(n_iters, n_adapts, δ, λ, init_ϵ, metricT, space)
@@ -362,6 +362,9 @@ function step(
     if init_ϵ == 0.0
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
+    end
+    if AHMC.getϵ(adaptor) == 0.0
+        adaptor = AHMCAdaptor(spl.alg; init_ϵ=init_ϵ)
     end
 
     spl.info[:h] = h
@@ -659,9 +662,9 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian)
+function AHMCAdaptor(alg::AdaptiveHamiltonian; init_ϵ=alg.init_ϵ)
     p = AHMC.Preconditioner(getmetricT(alg))
-    nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
+    nda = AHMC.NesterovDualAveraging(alg.δ, init_ϵ)
     if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(p, nda)
     else
