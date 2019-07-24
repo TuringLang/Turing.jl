@@ -45,7 +45,7 @@ end
 Note: As a sanity check, the expectation of `s` is 49/24 (2.04166666...) and the expectation of `m` is 7/6 (1.16666666...).
 
 
-We can perform inference by using the `sample` function, the first argument of which is our probabalistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library/).
+We can perform inference by using the `sample` function, the first argument of which is our probabalistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library).
 
 
 ```julia
@@ -83,7 +83,7 @@ The arguments for each sampler are:
   * NUTS: number of samples, target accept ratio.
 
 
-For detailed information on the samplers, please review Turing.jl's [API]({{site.baseurl}}/docs/library/) documentation.
+For detailed information on the samplers, please review Turing.jl's [API]({{site.baseurl}}/docs/library) documentation.
 
 
 ### Modelling Syntax Explained
@@ -426,7 +426,7 @@ chn = sample(simple_choice_f, Gibbs(1000, HMC(1, 0.2, 3, :p), PG(20, 1, :z)))
 ```
 
 
-The `Gibbs` sampler can be used to specify unique automatic differentation backends for different variable spaces. Please see the [Automatic Differentiation](/docs/autodiff/) article for more.
+The `Gibbs` sampler can be used to specify unique automatic differentation backends for different variable spaces. Please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article for more.
 
 
 For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://xuk.ai/assets/aistats2018-turing.pdf).
@@ -507,7 +507,7 @@ ForwardDiff (Turing's default AD backend) uses forward-mode chunk-wise AD. The c
 Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
 
 
-For more information on Turing's automatic differentiation backend, please see the [Automatic Differentiation](/docs/autodiff/) article.
+For more information on Turing's automatic differentiation backend, please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article.
 
 
 #### Progress Meter

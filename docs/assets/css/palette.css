@@ -26,7 +26,7 @@ button[data-md-color-primary=red] {
     background-color: {{ site.navbarcolor }};
 }
 [data-md-color-primary=red] .md-nav__link--active, [data-md-color-primary=red] .md-nav__link:active {
-    color: {{ site.color }};
+    color: black;
 }
 [data-md-color-primary=red] .md-nav__item--nested>.md-nav__link {
     color: inherit;
@@ -760,7 +760,7 @@ button[data-md-color-accent=deep-orange] {
 }
 @media only screen and (max-width:76.1875em) {
     html [data-md-color-primary=red] .md-nav--primary .md-nav__title--site {
-    background-color: {{ site.color }};
+    background-color: #073c44;
 }
 html [data-md-color-primary=pink] .md-nav--primary .md-nav__title--site {
     background-color: #e91e63;

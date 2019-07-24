@@ -13,6 +13,7 @@ main-feature_row:
 
 code-sample:
   excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
+  url: "/docs/using-turing/quick-start"
   snippet: |
     @model gdemo(x, y) = begin
       # Assumptions
@@ -26,11 +27,13 @@ code-sample:
 samplers:
   image_path: /assets/images/sampler.svg
   excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+  url: "/docs/library/#samplers"
 
 
 flux:
   image_path: "http://turing.ml/tutorials/figures/3_BayesNN_12_1.svg"
   excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
+  url: "/docs/tutorials/3-bayesnn"
 
 ecosystem:
   title: Ecosystem
@@ -55,7 +58,7 @@ community:
       text: Report bugs, request features, discuss issues, and more.
       class: github
     - title: Turing.jl Discuss
-      url: https://discourse.julialang.org/c/domain/stats
+      url: https://discourse.julialang.org/c/domain/probprog
       text: Browse and join discussions on Turing.
       class: turing-resource
     - title: Slack
@@ -122,7 +125,7 @@ support:
           <div class="archive__item-excerpt">
             {{ page.code-sample.excerpt | markdownify }}
           </div>
-          <p><a href="http://turing.ml/docs/quick-start/" class="btn btn-default">Quick Start</a></p>
+          <p><a href="{{ site.baseurl}}{{page.code-sample.url }}" class="btn btn-default">Quick Start</a></p>
         </div>
       </div>
       <div class="col-sm-6  col-md-4">
@@ -151,7 +154,7 @@ support:
           <div class="archive__item-excerpt">
             {{ page.samplers.excerpt | markdownify }}
           </div>
-          <p><a href="http://turing.ml/docs/library/#samplers" class="btn btn-default">Samplers</a></p>
+          <p><a href="{{ site.baseurl}}{{page.samplers.url }}" class="btn btn-default">Samplers</a></p>
         </div>
       </div>
     </div>
@@ -168,7 +171,7 @@ support:
           <div class="archive__item-excerpt">
             {{ page.flux.excerpt | markdownify }}
           </div>
-          <p><a href="http://turing.ml/tutorials/3-bayesnn/" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
+          <p><a href="{{ site.baseurl}}{{page.flux.url }}" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
         </div>
       </div>
       <div class="col-sm-6 col-md-4">
@@ -218,7 +221,6 @@ support:
 <!-- Ecosystem -->
 <div class="swimlane">
   <div class="container">
-
     <div class="row">
       <div class="col-md-12">
         <h2>{{ page.ecosystem.title }}</h2>
@@ -243,6 +245,5 @@ support:
       </div>
       {% endfor %}
     </div>
-
   </div>
 </div>

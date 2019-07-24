@@ -26,7 +26,7 @@ body {
 }
 
 .jumbotron {
-    background-color: #106470;
+    background-color: #d2e6f5;
     background-repeat: no-repeat;
     margin: 0;
 }
@@ -59,8 +59,15 @@ body {
     padding: 4rem;
 }
 
+@media (min-width: 990px){
+.jumbotron .bottom-padding{
+    padding: 3rem;
+}
+}
+
+
 .jumbotron-color {
-    color: white;
+    color: black;
 }
 
 .lead p {
@@ -199,9 +206,57 @@ button:focus {
     margin-bottom: 4rem;
 }
 
+@media (min-width: 1441px){
+    .container {
+         max-width: 1300px; 
+    }
+    .lead p {
+        font-size: 1.4rem;
+    }
+}
+
+@media (min-width: 1600px){
+    .container {
+         max-width: 1500px; 
+    }
+    .lead p {
+        font-size: 1.6rem;
+    }
+}
+
+@media (min-width: 1800px){
+    .container {
+         max-width: 1600px; 
+    }
+    .lead p {
+        font-size: 1.8rem;
+    }
+}
+
 @media (min-width: 2000px){
     .container {
-         max-width: 1900px; 
+         max-width: 1800px; 
+    }
+    .lead p {
+        font-size: 2.0rem;
+    }
+}
+
+@media (min-width: 2200px){
+    .container {
+         max-width: 2000px; 
+    }
+    .lead p {
+        font-size: 2.2rem;
+    }
+}
+
+@media (min-width: 2400px){
+    .container {
+         max-width: 2200px; 
+    }
+    .lead p {
+        font-size: 2.4rem;
     }
 }
 

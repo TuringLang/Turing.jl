@@ -7,7 +7,7 @@ title: Contributing
 Turing is an open source project. If you feel that you have some relevant skills and are interested in contributing, then please do get in touch. You can contribute by opening issues on GitHub or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
 
-Turing has a [style guide](/docs/style-guide/). It is not strictly necessary to review it before making a pull request, but you may be asked to change portions of your code to conform with the style guide before it is merged.
+Turing has a [style guide]({{site.baseurl}}/docs/contributing/style-guide). It is not strictly necessary to review it before making a pull request, but you may be asked to change portions of your code to conform with the style guide before it is merged.
 
 
 ## How to Contribute
