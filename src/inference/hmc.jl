@@ -193,7 +193,7 @@ function NUTS{AD}(
     space::Symbol...;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(n_iters, n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
@@ -204,7 +204,7 @@ function NUTS{AD}(
     δ::Float64;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
     n_adapts_default = Int(round(n_iters / 2))
