@@ -37,13 +37,9 @@ struct TrackerAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
-function ADBackend(::Val{T}) where {T}
-    if T === :forward_diff
-        return ForwardDiffAD{CHUNKSIZE[]}
-    else
-        return TrackerAD
-    end
-end
+
+ADBackend(::Val{:forward_diff}) where {T} = ForwardDiffAD{CHUNKSIZE[]}
+ADBackend(::Val{T}) where {T} = TrackerAD
 
 """
 getADtype(alg)
