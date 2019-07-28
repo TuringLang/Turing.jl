@@ -1,7 +1,7 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo
+using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, islinked
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -414,8 +414,12 @@ function Chains(
         getproperty(spl.state, :final_logevidence) :
         missing
 
+    # Check whether to invlink! the varinfo
+    if islinked(spl.state.vi, spl)
+        invlink!(spl.state.vi, spl)
+    end
+
     # Set up the info tuple.
-    Turing.RandomVariables.invlink!(spl.state.vi, spl)
     info = if save_state
         (range = rng,
         model = model,

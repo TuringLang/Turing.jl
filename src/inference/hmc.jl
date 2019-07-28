@@ -2,8 +2,11 @@
 ### Sampler states
 ###
 
-mutable struct StaticHMCState{TTraj<:AHMC.StaticTrajectory} <: SamplerState
-    vi       :: TypedVarInfo
+mutable struct StaticHMCState{
+    TTraj<:AHMC.StaticTrajectory,
+    TV <: TypedVarInfo
+} <: SamplerState
+    vi       :: TV
     eval_num :: Int
     i        :: Int
     traj     :: TTraj
@@ -12,9 +15,10 @@ end
 
 mutable struct DynamicHMCState{
     TTraj<:AHMC.DynamicTrajectory,
-    TAdapt<:AHMC.Adaptation.AbstractAdaptor
+    TAdapt<:AHMC.Adaptation.AbstractAdaptor,
+    TV <: TypedVarInfo
 } <: SamplerState
-    vi       :: TypedVarInfo
+    vi       :: TV
     eval_num :: Int
     i        :: Int
     traj     :: TTraj
@@ -455,12 +459,12 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Vector{Float64}
+    function ∂logπ∂θ(x)::Tuple{Float64, Vector{Float64}}
         x_old, lj_old = vi[spl], vi.logp
-        _, deriv = gradient_logp(x, vi, model, spl)
+        lp, deriv = gradient_logp(x, vi, model, spl)
         vi[spl] = x_old
         setlogp!(vi, lj_old)
-        return deriv
+        return lp, deriv
     end
     return ∂logπ∂θ
 end
@@ -656,7 +660,7 @@ function HMCState(model::Model,
     # Link everything if needed.
     link!(vi, spl)
 
-    # Get the initial log pdf and gradient.
+    # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
 
