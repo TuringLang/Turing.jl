@@ -264,7 +264,8 @@ function observe(spl::A,
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
+    @assert isa(dist, UnivariateDistribution) || 
+        isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
         sum(logpdf.(Ref(dist), value))
@@ -282,13 +283,18 @@ function sample(
     model::ModelType,
     alg::AlgType,
     N::Integer;
+    resume_from=nothing,
     kwargs...
 ) where {
     ModelType<:Sampleable,
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    return sample(model, Sampler(alg, model), N; kwargs...)
+    if isnothing(resume_from)
+        return sample(model, Sampler(alg, model), N; kwargs...)
+    else
+        return resume(resume_from, N)
+    end
 end
 
 function sample(
@@ -330,28 +336,36 @@ end
 function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleTransition,Transition}}
     vns = Turing.RandomVariables._getvns(spl.state.vi, spl)
     names = vcat([[string(v; all=false) for v in vn] for vn in vns]...)
+    println(names)
+    println()
+    println()
+    println(vns)
+    println()
+
     vals  = Vector{Vector{Float64}}()
     for t in ts
-        names, vs = flatten_namedtuple(t.θ)
+        names, vs = flatten_namedtuple(t.θ, vns)
         push!(vals, vs)
     end
-
+    
+    println(names)
+    println()
     return names, vals
 end
 
-function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
+function flatten_namedtuple(nt::NamedTuple{pnames}, varnames) where {pnames}
     vals  = Vector{Float64}()
     names = Vector{AbstractString}()
     for k in pnames
         v = nt[k]
-        flatten(names, vals, string(k), v)
+        flatten(names, vals, string(k), v, varnames)
     end
     return names, vals
 end
 
-function flatten(names, value :: Array{Float64}, k :: String, v)
+function flatten(names, value :: Array{Float64}, k :: String, v, varnames)
     if isa(v, Number)
-        name = k
+        name = varnames[k].indexing * k
         push!(value, v)
         push!(names, name)
     elseif isa(v, Array)
@@ -367,7 +381,7 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
                 push!(names, name)
             elseif isa(v[i], Array)
                 name = k# * string(Turing.Utilities.ind2sub(size(v), i))
-                flatten(names, value, name, v[i])
+                flatten(names, value, name, v[i], varnames)
             else
                 error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
             end

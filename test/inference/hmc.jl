@@ -118,7 +118,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(1000, 0.8, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
-        alg3 = Gibbs(PG(10, :s), HMCDA(500, 0.8, 0.005, :m))
+        alg3 = Gibbs(PG(10, :s), HMCDA(200, 0.8, 0.005, :m))
         # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
@@ -130,7 +130,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # @test mean(res2[:s]) ≈ 49/24 atol=0.2
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
 
-        res3 = sample(gdemo_default, alg3, 500)
+        res3 = sample(gdemo_default, alg3, 1000)
         check_gdemo(res3)
     end
     @turing_testset "hmcda constructor" begin

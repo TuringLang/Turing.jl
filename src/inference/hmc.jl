@@ -126,7 +126,7 @@ function sample_init!(
     # Set the defualt number of adaptations, if relevant.
     if spl.alg isa AdaptiveHamiltonian
         # If there's no chain passed in, verify the n_adapts.
-        if ismissing(resume_from)
+        if isnothing(resume_from)
             if spl.alg.n_adapts == 0
                 n_adapts_default = Int(round(N / 2))
                 spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
@@ -363,7 +363,7 @@ function step!(
 
     if T <: AdaptiveHamiltonian
         if spl.state.i <= spl.alg.n_adapts
-            AHMC.adapt!(spl.state.adaptor, Vector{Float64}(spl.state.vi[spl]), α)
+            AHMC.adapt!(spl.state.adaptor, Vector{Float64}(spl.state.vi[spl]), α.acceptance_rate)
         end
     end
 
