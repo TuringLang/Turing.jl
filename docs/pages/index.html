@@ -1,0 +1,249 @@
+---
+layout: splash
+title: Turing.jl - Turing.jl
+permalink: /
+
+main-feature_row:
+  - title: "Intuitive"
+    excerpt: "Turing models are easy to read and write. Specify models quickly and easily."
+  - title: "Universal"
+    excerpt: "Turing supports models with stochastic control flow — models work the way you write them."
+  - title: "Adaptable"
+    excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
+
+code-sample:
+  excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
+  url: "/docs/using-turing/quick-start"
+  snippet: |
+    @model gdemo(x, y) = begin
+      # Assumptions
+      σ ~ InverseGamma(2,3)
+      μ ~ Normal(0,sqrt(σ))
+      # Observations
+      x ~ Normal(μ, sqrt(σ))
+      y ~ Normal(μ, sqrt(σ))
+    end
+
+samplers:
+  image_path: /assets/images/sampler.svg
+  excerpt: "Turing provides Hamiltonian Monte Carlo sampling for differentiable posterior distributions, Particle MCMC sampling for complex posterior distributions involving discrete variables and stochastic control flow, and Gibbs sampling which combines particle MCMC, HMC and many other MCMC algorithms."
+  url: "/docs/library/#samplers"
+
+
+flux:
+  image_path: "http://turing.ml/docs/tutorials/figures/3_BayesNN_12_1.svg"
+  excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
+  url: "/docs/tutorials/3-bayesnn"
+
+ecosystem:
+  title: Ecosystem
+  subtitle: Explore a rich ecosystem of libraries, tools, and more to support development.
+  ecosystems:
+    - title: AdvancedHMC
+      url: https://github.com/TuringLang/AdvancedHMC.jl
+      text: Robust, modular and efficient implementation of advanced Hamiltonian Monte Carlo algorithms.
+    - title: MCMCChains
+      url: https://github.com/TuringLang/MCMCChains.jl
+      text: Chain types and utility functions for MCMC simulations.
+    - title: Bijectors
+      url: https://github.com/TuringLang/Bijectors.jl
+      text: Automatic transformations for constrained random variables.
+
+community:
+  title: Community
+  subtitle: Join the Turing community to contribute, learn, and get your questions answered.
+  comunities:
+    - title: GitHub
+      url: https://github.com/TuringLang/Turing.jl
+      text: Report bugs, request features, discuss issues, and more.
+      class: github
+    - title: Turing.jl Discuss
+      url: https://discourse.julialang.org/c/domain/probprog
+      text: Browse and join discussions on Turing.
+      class: turing-resource
+    - title: Slack
+      url: https://julialang.slack.com/messages/turing/
+      text: Discuss advanced topics. [Request access here](https://slackinvite.julialang.org/).
+      class: slack
+
+support:
+  title: Companies &amp; Universities<br>Using Turing.jl
+  supports:
+    - image: assets/images/cambridge.png
+      text: Pushing the state of the art in probabilistic machine learning.
+    - image: assets/images/edinburgh.png
+      text: Using Turing’s flexibility to efficiently research new algorithmic approaches.
+    - image: assets/images/edinburgh.png
+      text: Educating the next wave of Data Scientists using Turing.
+
+---
+
+<div class="jumbotron" style="background-image: url('{{ site.baseurl }}/assets/images/turing-logo-wide.svg');">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-6 col-md-0 col-sm-0 col-xs-0"></div>
+      <div class="left col-lg-6 col-md-12 col-sm-12 col-xs-12">
+        <div class="right-section text-right jumbotron-color">
+          <!-- header section -->
+          <h1><strong>Turing.jl</strong></h1>
+          <!-- desc section -->
+          <div class="lead">
+            <p><strong>Turing</strong>  is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.</p>
+          </div>
+        </div>
+      </div>
+      <div class="row bottom-padding"></div>
+    </div>
+  </div>
+</div>
+
+<!-- main-feature_row -->
+<div class="swimlane">
+  <div class="container">
+    <div class="container-fluid">
+      <div class="row">
+        {% for f in page.main-feature_row %}
+        <div class="col-md-4">
+            <div class="text-content">
+              <strong>{{ f.title }}</strong>
+              <div>{{ f.excerpt }}</div>
+            </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- A Quick Example -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">A Quick Example</h2>
+          <div class="archive__item-excerpt">
+            {{ page.code-sample.excerpt | markdownify }}
+          </div>
+          <p><a href="{{ site.baseurl}}{{page.code-sample.url }}" class="btn btn-default">Quick Start</a></p>
+        </div>
+      </div>
+      <div class="col-sm-6  col-md-4">
+        <div class="archive__item-teaser">
+          <div class="archive__snippet">
+            {% highlight julia %} {{page.code-sample.snippet}} {% endhighlight %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Large Sampling Library -->
+ <div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="{{ site.baseurl }}{{ page.samplers.image_path }}" alt="" style="max-width: 100%; max-height:100%;">
+        </div>
+      </div>
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body">
+          <h2 class="archive__item-title">Large Sampling Library</h2>
+          <div class="archive__item-excerpt">
+            {{ page.samplers.excerpt | markdownify }}
+          </div>
+          <p><a href="{{ site.baseurl}}{{page.samplers.url }}" class="btn btn-default">Samplers</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Integrates With Other Machine Learning Packages -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-8">
+        <div class="archive__item-body  text-right">
+          <h2 class="archive__item-title">Integrates With Other Machine Learning Packages</h2>
+          <div class="archive__item-excerpt">
+            {{ page.flux.excerpt | markdownify }}
+          </div>
+          <p><a href="{{ site.baseurl}}{{page.flux.url }}" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
+        </div>
+      </div>
+      <div class="col-sm-6 col-md-4">
+        <div class="archive__item-teaser">
+          <img src="{{ page.flux.image_path }}" alt="Bayesian Neural Network Tutorial" style="max-width: 100%; max-height:100%">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Community -->
+<div class="swimlane">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-12 community-heading">
+          <h2>{{ page.community.title }}</h2>
+        </div>
+        <div class="col-md-8">
+          <p class="h2-subheadline">{{ page.community.subtitle }}</p>
+        </div>
+      </div>
+
+      <div class="row resources">
+        {% for f in page.community.comunities %}
+            <div class="col-md-4">
+            <div class="card resource-card {{ f.class }}">
+              <!-- Cards with the Turing-resource class also have a Turing-discuss class.
+                  These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
+                 -->
+                  <a href="{{ f.url }}" target="_blank">
+
+                <div class="card-body">
+                  <h4>{{ f.title }}</h4>
+
+                  <p class="card-summary">{{ f.text }}</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+    </div>
+  </div>
+
+<!-- Ecosystem -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <h2>{{ page.ecosystem.title }}</h2>
+      </div>
+
+      <div class="col-md-8">
+        <p class="h2-subheadline">{{ page.ecosystem.subtitle }}</p>
+      </div>
+    </div>
+
+    <div class="row ecosystem-row">
+      {% for f in page.ecosystem.ecosystems %}
+      <div class="col-md-4">
+        <div class="card ecosystem-card">
+            <a href="{{ f.url }}">
+            <div class="card-body tool ">
+              <h4>{{ f.title }}</h4>
+              <p class="card-summary">{{ f.text }}</p>
+            </div>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

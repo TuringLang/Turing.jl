@@ -183,7 +183,7 @@ end
 function HMCDA{AD}(
     δ::Float64,
     λ::Float64;
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return HMCDA{AD}(0, δ, λ, init_ϵ,metricT, ())
@@ -204,7 +204,7 @@ function HMCDA{AD}(
     δ::Float64,
     λ::Float64,
     space::Symbol...;
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
     return HMCDA{AD}(n_adapts, δ, λ, init_ϵ, metricT, space)
@@ -268,8 +268,8 @@ function NUTS{AD}(
     space::Symbol...;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
-    metricT=AHMC.DenseEuclideanMetric
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
 end
@@ -278,8 +278,8 @@ function NUTS{AD}(
     δ::Float64;
     max_depth::Int=5,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
-    metricT=AHMC.DenseEuclideanMetric
+    init_ϵ::Float64=0.0,
+    metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
@@ -296,10 +296,6 @@ end
 function Sampler(
     alg::Hamiltonian{AD},
     model::Model,
-    s::Selector=Selector()
-) where AD
-    info = Dict{Symbol, Any}()
-    state_bad = BlankState(VarInfo(model))
 
     # Create an initial sampler, to get all the initialization out of the way.
     spl_bad = Sampler(alg, info, s, state_bad)
@@ -372,14 +368,16 @@ end
 
 
 # Efficient multiple step sampling for adaptive HMC.
-function steps!(model,
+function steps!(
+    model,
     spl::Sampler{<:AdaptiveHamiltonian},
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
-    ahmc_samples = AHMC.sample(
+    ahmc_samples, stats = AHMC.sample(
         rng,
         spl.info[:h],
         spl.info[:traj],
@@ -387,11 +385,13 @@ function steps!(model,
         spl.alg.n_iters,
         spl.info[:adaptor],
         spl.alg.n_adapts;
-        verbose=verbose
+        verbose=verbose,
+        progress=progress
     )
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
+        foreach(name -> samples[i].value[name] = stats[i][name], typeof(stats[i]).names)
     end
 end
 
@@ -402,19 +402,23 @@ function steps!(
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
-    ahmc_samples = AHMC.sample(
+    ahmc_samples, stats = AHMC.sample(
         rng,
         spl.info[:h],
         spl.info[:traj],
         Vector{Float64}(vi[spl]),
         spl.alg.n_iters;
-        verbose=verbose
+        verbose=verbose,
+        progress=progress
     )
+    
     for i = 1:length(samples)
         vi[spl] = ahmc_samples[i]
         samples[i].value = Sample(vi, spl).value
+        foreach(name -> samples[i].value[name] = stats[i][name], typeof(stats[i]).names)
     end
 end
 
@@ -425,7 +429,8 @@ function steps!(
     vi,
     samples;
     rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
+    verbose::Bool=true,
+    progress::Bool=false
 )
     # Init step
     time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
@@ -455,12 +460,8 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Vector{Float64}
-        x_old, lj_old = vi[spl], vi.logp
-        _, deriv = gradient_logp(x, vi, model, spl)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return deriv
+    function ∂logπ∂θ(x)
+        return gradient_logp(x, vi, model, spl)
     end
     return ∂logπ∂θ
 end
@@ -517,26 +518,10 @@ function hmc_step(
     # Build phase point
     z = AHMC.phasepoint(h, θ, r)
 
-    # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
-
     # Call AHMC to make one MCMC transition
-    z_new, α = AHMC.transition(traj, h, z)
+    z_new, stat = AHMC.transition(traj, h, z)
 
-    # Compute new Hamiltonian energy
-    H_new = AHMC.neg_energy(z_new)
-    θ_new = z_new.θ
-
-    # NOTE: as `transition` doesn't return `is_accept`,
-    #       I use `H == H_new` to check if the sample is accepted.
-    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
-                            # from the old one, the sample was accepted.
-    alg isa NUTS && (is_accept = true)  # we always accept in NUTS
-
-    # Compute updated log-joint probability
-    lj_new = logπ(θ_new)
-
-    return θ_new, lj_new, is_accept, α
+    return z_new.θ, stat.log_density, stat.is_accept, stat.acceptance_rate
 end
 
 ####
@@ -610,9 +595,9 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian)
+function AHMCAdaptor(alg::AdaptiveHamiltonian; init_ϵ=alg.init_ϵ)
     p = AHMC.Preconditioner(getmetricT(alg))
-    nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
+    nda = AHMC.NesterovDualAveraging(alg.δ, init_ϵ)
     if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(p, nda)
     else
@@ -675,6 +660,9 @@ function HMCState(model::Model,
     if init_ϵ == 0.0
         init_ϵ = AHMC.find_good_eps(h, θ_init)
         @info "Found initial step size" init_ϵ
+    end
+    if AHMC.getϵ(spl.state.adaptor) == 0.0
+        spl.state.adaptor = AHMCAdaptor(spl.alg; init_ϵ=init_ϵ)
     end
 
     # Generate a trajectory.

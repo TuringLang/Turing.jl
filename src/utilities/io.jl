@@ -72,7 +72,10 @@ end
 #########
 
 # Variables to put in the Chains :internal section.
-const _internal_vars = ["elapsed", "eval_num", "lf_eps", "lp"]
+const _internal_vars = [
+    "elapsed", "eval_num", "lf_eps", "lp",
+    "acceptance_rate", "hamiltonian_energy", "is_accept", "log_density", "n_steps", "numerical_error", "step_size", "tree_depth",
+]
 
 # ind2sub is deprecated in Julia 1.0
 ind2sub(v, i) = Tuple(CartesianIndices(v)[i])

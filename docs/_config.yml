@@ -1,0 +1,95 @@
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely edit after that. If you find
+# yourself editing these this file very often, consider using Jekyll's data files
+# feature for the data you need to update frequently.
+#
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'jekyll serve'. If you change this file, please restart the server process.
+
+# Site settings
+# These are used to personalize your new site. If you look in the HTML files,
+# you will see them accessed via {{ site.title }}, {{ site.email }}, and so on.
+# You can create any custom variable you would like, and they will be accessible
+# in the templates via {{ site.myvariable }}.
+
+title: Turing.jl
+email: support@turing.jl
+author: The Turing Team
+description: > # this means to ignore newlines until "baseurl:"
+  Turing is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.
+
+# DO NOT CHANGE THE LINE OF THIS FILE without editing .circleci/circle_urls.sh
+baseurl: "/" # the subpath of your site, e.g. /blog
+
+# This is mostly for testing
+url: "" # the base hostname & protocol for your site
+
+# Social (First three Required)
+repo: "https://github.com/TuringLang/Turing.jl"
+github_user: "TuringLang"
+github_repo: "Turing.jl"
+
+# Optional
+twitter: Turingjl
+linkedin: Turingjl
+dockerhub: Turingjl
+# google-analytics: UA-XXXXXXXXXX
+# Image and (square) dimension for logo (don't start with /)
+# If commented, will use material hat theme
+logo: "assets/img/favicon.ico"
+logo_pixels: 34
+color: "#d2e6f5" # primary color for header, buttons
+navbarcolor: "#073c44"
+
+# Build settings
+markdown: kramdown
+
+# If you add tags to pages, you can link them to some external search
+# If you want to disable this, comment the URL.
+tag_search_endpoint: https://ask.cyberinfrastructure.org/search?q=
+tag_color: danger # danger, success, warning, primary, info, secondary
+
+accentColor: red # purple, green, etc.
+themeColor: red # purple, green, blue, orange, purple, grey
+fixedNav: 'true' # true or false
+
+permalink: /:year/:title/
+markdown: kramdown
+exclude: [_site, CHANGELOG.md, LICENSE, README.md, vendor]
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:path
+  tutorials:
+    output: true
+    permalink: /:collection/:path
+
+# Defaults
+defaults:
+  - scope:
+      path: "_docs"
+      type: "docs"
+    values:
+      layout: page
+  - scope:
+      path: "_tutorials"
+      type: "tutorials"
+    values:
+      layout: page
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+
+
+plugins:
+  - jekyll-paginate
+  - jekyll-sitemap
+  - jekyll-gist
+  - jekyll-feed
+  - jemoji

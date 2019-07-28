@@ -1,0 +1,31 @@
+<!-- Companies & Universities Using Turing -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12 university-testimonials">
+        <h2>{{ page.support.title }}</h2>
+
+        <!-- Temporarily hiding button since there isn't a 'Stories' page
+        <a href="/features" class="btn btn-lg with-right-arrow module-button">
+          See all Stories
+        </a> -->
+
+        <div class="row university-testimonials-content">
+          {% for f in page.support.supports %}
+            <div class="col-md-4">
+              <img src="{{ site.baseurl }}/{{ f.image }}" class="img-fluid" width="140">
+              <p></p><p>{{ f.text }}</p>
+<p></p>
+              <!-- Temporarily hiding link out to case studies for time being -->
+<!--               <a href="/case-studies/salesforce/" class="btn btn-lg with-right-arrow">
+                Read More
+              </a> -->
+            </div>
+          {% endfor %}
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
