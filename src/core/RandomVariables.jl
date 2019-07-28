@@ -963,6 +963,31 @@ end
     return expr
 end
 
+
+"""
+    islinked(vi::VT, spl::Sampler) where VT<:VarInfo
+
+Returns `true` if a `VarInfo` is linked for a particular sampler `spl`.
+"""
+function islinked(vi::UntypedVarInfo, spl::Sampler)
+    vns = _getvns(vi, spl)
+    return istrans(vi, vns[1])
+end
+function islinked(vi::TypedVarInfo, spl::Sampler)
+    vns = _getvns(vi, spl)
+    return _islinked(vi.metadata, vi, vns, getspaceval(spl))
+end
+function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
+    for f in names
+        if f in space || length(space) == 0
+            f_vns = vi.metadata[f].vns
+            # TODO: make this less of a stupid way to accomplish this.
+            return istrans(vi, f_vns[1])
+        end
+    end
+    return expr
+end
+
 # The default getindex & setindex!() for get & set values
 # NOTE: vi[vn] will always transform the variable to its original space and Julia type
 """
