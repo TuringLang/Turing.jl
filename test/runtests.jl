@@ -25,13 +25,6 @@ include("test_utils/AllUtils.jl")
             include("inference/is.jl")
             include("inference/mh.jl")
             include("inference/AdvancedSMC.jl")
-            include("inference/vi.jl")
-        end
-    end
-
-    @testset "variational" begin
-        @testset "algorithms" begin
-            include("variational/advi.jl")
         end
     end
 

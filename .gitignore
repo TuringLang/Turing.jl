@@ -20,7 +20,5 @@ docs/site/_site/
 docs/site/assets/
 docs/site/*.md
 docs/site/.sass-cache/
-docs/_site/
-docs/Gemfile.lock
 
 .DS_Store
