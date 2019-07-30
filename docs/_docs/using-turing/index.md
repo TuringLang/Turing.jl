@@ -4,7 +4,7 @@ title: Turing Documentation
 
 # Turing Documentation
 
-Welcome to the documentation for Turing 0.6.4.
+Welcome to the documentation for Turing 0.6.
 
 
 ## Introduction
