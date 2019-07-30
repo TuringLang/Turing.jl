@@ -74,11 +74,6 @@ body {
     font-size: 1.6rem;
 }
 
-.text-content {
-    margin-top: 3rem;
-    margin-bottom: 3rem;
-}
-
 .swimlane {
     padding-top: 6rem;
     padding-bottom: 6rem;
@@ -215,36 +210,9 @@ button:focus {
     }
 }
 
-@media (min-width: 1600px){
-    .container {
-         max-width: 1500px; 
-    }
-    .lead p {
-        font-size: 1.6rem;
-    }
-}
-
 @media (min-width: 1800px){
     .container {
-         max-width: 1600px; 
-    }
-    .lead p {
-        font-size: 1.8rem;
-    }
-}
-
-@media (min-width: 2000px){
-    .container {
-         max-width: 1800px; 
-    }
-    .lead p {
-        font-size: 2.0rem;
-    }
-}
-
-@media (min-width: 2200px){
-    .container {
-         max-width: 2000px; 
+         max-width: 1400px; 
     }
     .lead p {
         font-size: 2.2rem;
@@ -253,7 +221,7 @@ button:focus {
 
 @media (min-width: 2400px){
     .container {
-         max-width: 2200px; 
+         max-width: 1800px; 
     }
     .lead p {
         font-size: 2.4rem;
@@ -262,4 +230,24 @@ button:focus {
 
 sub a {
     color: #52adc8;
+}
+
+.main-feature_row {
+    background-color: #f5f5f5;
+    padding: 5rem 5rem 7rem 5rem;
+    border-right: solid #ffffff;
+    border-bottom: solid #ffffff;
+}
+
+.ecosystem-card a, .resource-card a {
+    width: 50%;
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+}
+
+@media (max-width: 767px){
+    .ecosystem-card, .resource-card {
+        height: 18rem;
+    }
 }
