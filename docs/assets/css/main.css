@@ -729,6 +729,7 @@ hr {
     color: #fff;
     margin-top:50px;
     padding-top:30px;
+    padding-bottom:30px;
 }
 .md-footer-nav__inner {
     padding: .4rem;
@@ -797,6 +798,7 @@ html .md-footer-meta.md-typeset a:focus, html .md-footer-meta.md-typeset a:hover
 }
 .md-footer-copyright__highlight {
     color: hsla(0, 0%, 100%, .7);
+    text-align: center;
 }
 .md-footer-social {
     margin: 0 .8rem;
@@ -866,9 +868,6 @@ html .md-footer-meta.md-typeset a:focus, html .md-footer-meta.md-typeset a:hover
 }
 .md-nav__item--nested>.md-nav__link:after {
     content: "\E313"}
-
-.open-parent:after {
-    content: "\E316" !important}
 
 html .md-nav__link[for=__toc], html .md-nav__link[for=__toc]+.md-nav__link:after, html .md-nav__link[for=__toc]~.md-nav {
     display: none;
@@ -2863,38 +2862,21 @@ tt, code, kbd, samp, pre {
     }
 }
 
-@media (min-width: 1600px){
-    .md-header-nav {
-         max-width: 1500px; 
-    }
-}
-
 @media (min-width: 1800px){
     .md-header-nav {
-         max-width: 1600px; 
-    }
-}
-
-@media (min-width: 2000px){
-    .md-header-nav {
-         max-width: 1800px; 
-    }
-}
-
-@media (min-width: 2200px){
-    .md-header-nav {
-         max-width: 2000px; 
+         max-width: 1400px; 
     }
 }
 
 @media (min-width: 2400px){
     .md-header-nav {
-         max-width: 2200px; 
+         max-width: 1800px; 
     }
 }
 
 .navbar_bottom-border {
     border-bottom: 1px solid #ededed;
+    cursor: pointer;
 }
 
 .md-nav__list .mobile-sub-item {
@@ -2917,6 +2899,67 @@ tt, code, kbd, samp, pre {
         color: white;
     }
 }
+
+@media (max-width: 992px){
+    .md-nav__item--nested .md-nav--secondary {
+        position: absolute;
+        top: 0;
+        opacity: 0;
+        display: none;
+    }
+
+    .md-sidebar__inner .md-nav--primary .mobile-sub-navbar-display {
+        position: absolute; 
+        display: block;
+        background-color: #fff;
+        opacity: 1;
+    }
+
+    
+}
+
+@media (min-width: 992px){
+    .md-nav__item--active {
+        display: none;
+    }
+
+    .toc-side-bar {
+        position: relative;
+        padding-left: 1rem;
+    }
+    .toc-side-bar::before {
+        content: '{';
+        color: #ff1744;
+        position: absolute;
+        font-size: 16px;
+        left: 0;
+        display: none;
+    }
+
+    .toc-side-bar:hover:before {
+        font-weight: bold;
+        display: block;
+    }
+}
+
+.social-link {
+    display: block;
+    padding: 4px 16px;
+    color: #0072be;    
+}
+
+.social-link .fa {
+    margin-right: 4px;
+}
+
+.social-link:hover {
+    text-decoration: underline;
+}
+
+.mobile-navbar-back {
+    cursor: pointer;
+}
+
 
 /*# sourceMappingURL=data:application/json;
     charset=utf-8;

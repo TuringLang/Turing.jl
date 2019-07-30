@@ -16,7 +16,7 @@ locally and review your changes, you will need to do the following:
 
 2. Install Julia by following [the relevant guide](https://julialang.org/downloads/). 
 
-3. Navigate in a terminal to `Turing.jl/docs/`. Run `julia make.jl`, then you'll get a `docs/build` folder full of documents. You might need to install `Documenter` and `DocumenterMarkdown` first. You can install these packages by running `julia -e 'using Pkg;Pkg.add("Documenter");Pkg.add("DocumenterMarkdown");Pkg.build()'`.
+3. Navigate in a terminal to `Turing.jl/docs/`. Run `julia make.jl`, then you'll get a `docs/build` folder full of documents. You might need to install `Documenter` and `DocumenterMarkdown` first. You can install these packages by running `julia -e 'using Pkg;Pkg.add("Documenter");Pkg.add("DocumenterMarkdown");Pkg.add("DynamicHMC");Pkg.add("Turing");Pkg.build()'`.
 
 4. Navigate in a terminal to `Turing.jl/docs/site`.
 

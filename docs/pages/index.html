@@ -31,7 +31,7 @@ samplers:
 
 
 flux:
-  image_path: "http://turing.ml/docs/tutorials/figures/3_BayesNN_12_1.svg"
+  image_path: /docs/tutorials/figures/3_BayesNN_12_1.svg
   excerpt: "Turing supports Julia's [Flux](http://fluxml.ai/) package for automatic differentiation. Combine Turing and Flux to construct probabalistic variants of traditional machine learning models."
   url: "/docs/tutorials/3-bayesnn"
 
@@ -98,37 +98,34 @@ support:
 </div>
 
 <!-- main-feature_row -->
-<div class="swimlane">
-  <div class="container">
     <div class="container-fluid">
       <div class="row">
         {% for f in page.main-feature_row %}
-        <div class="col-md-4">
+        <div class="col-lg-4 main-feature_row">
             <div class="text-content">
-              <strong>{{ f.title }}</strong>
+              <h2>{{ f.title }}</h2>
               <div>{{ f.excerpt }}</div>
             </div>
         </div>
         {% endfor %}
       </div>
     </div>
-  </div>
-</div>
 
 <!-- A Quick Example -->
 <div class="swimlane">
   <div class="container">
     <div class="row">
-      <div class="col-sm-6 col-md-8">
+      <div class="col-xl-2"></div>
+      <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body  text-right">
-          <h2 class="archive__item-title">A Quick Example</h2>
+          <h2 class="archive__item-title" >A Quick Example</h2>
           <div class="archive__item-excerpt">
             {{ page.code-sample.excerpt | markdownify }}
           </div>
           <p><a href="{{ site.baseurl}}{{page.code-sample.url }}" class="btn btn-default">Quick Start</a></p>
         </div>
       </div>
-      <div class="col-sm-6  col-md-4">
+      <div class="col-sm-6  col-md-4 col-xl-4">
         <div class="archive__item-teaser">
           <div class="archive__snippet">
             {% highlight julia %} {{page.code-sample.snippet}} {% endhighlight %}
@@ -143,12 +140,12 @@ support:
  <div class="swimlane">
   <div class="container">
     <div class="row">
-      <div class="col-sm-6 col-md-4">
+      <div class="col-sm-6 col-md-4 col-xl-4">
         <div class="archive__item-teaser">
           <img src="{{ site.baseurl }}{{ page.samplers.image_path }}" alt="" style="max-width: 100%; max-height:100%;">
         </div>
       </div>
-      <div class="col-sm-6 col-md-8">
+      <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body">
           <h2 class="archive__item-title">Large Sampling Library</h2>
           <div class="archive__item-excerpt">
@@ -157,6 +154,7 @@ support:
           <p><a href="{{ site.baseurl}}{{page.samplers.url }}" class="btn btn-default">Samplers</a></p>
         </div>
       </div>
+      <div class="col-xl-2"></div>
     </div>
   </div>
 </div>
@@ -165,7 +163,8 @@ support:
 <div class="swimlane">
   <div class="container">
     <div class="row">
-      <div class="col-sm-6 col-md-8">
+        <div class="col-xl-2"></div>
+      <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body  text-right">
           <h2 class="archive__item-title">Integrates With Other Machine Learning Packages</h2>
           <div class="archive__item-excerpt">
@@ -174,9 +173,9 @@ support:
           <p><a href="{{ site.baseurl}}{{page.flux.url }}" class="btn btn-default">Bayesian Neural Network Tutorial</a></p>
         </div>
       </div>
-      <div class="col-sm-6 col-md-4">
+      <div class="col-sm-6 col-md-4 col-xl-4">
         <div class="archive__item-teaser">
-          <img src="{{ page.flux.image_path }}" alt="Bayesian Neural Network Tutorial" style="max-width: 100%; max-height:100%">
+          <img src="{{ site.baseurl}}{{ page.flux.image_path }}" alt="Bayesian Neural Network Tutorial" style="max-width: 100%; max-height:100%">
         </div>
       </div>
     </div>
@@ -202,14 +201,12 @@ support:
               <!-- Cards with the Turing-resource class also have a Turing-discuss class.
                   These two classes along with the discuss class allow us to stylize the second word in the card header so that it features orange text.
                  -->
-                  <a href="{{ f.url }}" target="_blank">
-
                 <div class="card-body">
                   <h4>{{ f.title }}</h4>
 
-                  <p class="card-summary">{{ f.text }}</p>
-                  </div>
-                </a>
+                  <p class="card-summary">{{ f.text }}</p>                  
+                </div>
+                <a href="{{ f.url }}" class="btn btn-default" target="_blank">Go to {{ f.title }}</a>
               </div>
             </div>
           {% endfor %}
@@ -235,12 +232,11 @@ support:
       {% for f in page.ecosystem.ecosystems %}
       <div class="col-md-4">
         <div class="card ecosystem-card">
-            <a href="{{ f.url }}">
             <div class="card-body tool ">
               <h4>{{ f.title }}</h4>
               <p class="card-summary">{{ f.text }}</p>
             </div>
-          </a>
+          <a href="{{ f.url }}" class="btn btn-default" target="_blank">Go to {{ f.title }}</a>
         </div>
       </div>
       {% endfor %}
