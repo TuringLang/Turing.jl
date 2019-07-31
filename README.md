@@ -18,7 +18,7 @@ Current features include:
 
 Turing's home page, with links to everything you'll need to use Turing is:
 
-http://turing.ml/docs/get-started/
+https://turing.ml/docs/using-turing/get-started
 
 
 ## What's changed recently?
