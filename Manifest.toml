@@ -10,7 +10,7 @@ version = "1.0.0"
 deps = ["ArgCheck", "InplaceOps", "LazyArrays", "LinearAlgebra", "Parameters", "ProgressMeter", "Random", "Statistics", "StatsBase"]
 git-tree-sha1 = "c8fa90ee42ccab3c998e086c4ee82e229eb2f948"
 uuid = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
-version = "0.2.1"
+version = "0.2.2"
 
 [[ArgCheck]]
 deps = ["Random"]
