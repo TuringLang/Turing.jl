@@ -1,42 +1,5 @@
 <footer class="c-footer md-footer-nav">
-  <div class="u-container c-footer__container">
-    <nav class="md-footer-nav__inner md-grid">
-         {% if page.next.url %}<a href="{{ site.baseurl }}{{ page.next.url }}" title="{{ page.next.title }}" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
-            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
-              <span class="md-flex__ellipsis">
-                <span class="md-footer-nav__direction">
-                  Next
-                </span>
-                {{ page.next.title }}
-              </span>
-            </div>
-            <div class="md-flex__cell md-flex__cell--shrink">
-              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
-            </div>
-          </a>{% endif %}
-      </nav>
-    </div>
-  
-   <div class="md-footer-meta md-typeset">
-    <div class="md-footer-meta__inner md-grid">
-      <div class="md-footer-copyright">
-        
-          <div class="md-footer-copyright__highlight">
-            Copyright &copy; {{ site.time | date: '%Y' }} - {{ site.author }}
-          </div>        
-      </div>
-      
-        
-  <div class="md-footer-social">    
-      <a href="https://github.com/{{ site.github_user }}" target="_blank" class="md-footer-social__link fa fa-github"></a>
-      {% if site.twitter %}<a href="https://twitter.com/{{ site.twitter }}" target="_blank" class="md-footer-social__link fa fa-twitter"></a>{% endif %}
-      {% if site.linkedin %}<a href="https://linkedin.com/in/{{ site.linkedin }}" target="_blank" class="md-footer-social__link fa fa-linkedin"></a>{% endif %}
-      {% if site.dockerhub %}<a href="http://hub.docker.com/r/{{ site.dockerhub }}" class="md-footer-social__link fa" target="_blank">
-        <img src="{{ site.baseurl }}/assets/img/docker-clear.png" style="margin-left:10px" width="20px">
-      </a>{% endif %}
-  </div>
-
-    </div>
-  </div>
-
+  <div class="md-footer-copyright__highlight">
+    Copyright &copy; {{ site.time | date: '%Y' }} - {{ site.author }}
+  </div>  
 </footer>

@@ -20,6 +20,17 @@ $(".pancakes-parent").on('click', function(){
         $(this).addClass('open-parent');
     }
 })
+
+$(".pancakes-parent-mobile").on('click', function(){
+    var nav = $(this).next();
+     nav.addClass('mobile-sub-navbar-display');
+})
+
+$(".mobile-navbar-back").on('click', function(){
+    var nav = $(this).parent();
+    nav.removeClass('mobile-sub-navbar-display');
+})
+
 </script>
 <script type="text/javascript" async
   src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML">
