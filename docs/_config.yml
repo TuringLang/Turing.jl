@@ -21,7 +21,7 @@ description: > # this means to ignore newlines until "baseurl:"
   Turing is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.
 
 # DO NOT CHANGE THE LINE OF THIS FILE without editing .circleci/circle_urls.sh
-baseurl: "/" # the subpath of your site, e.g. /blog
+baseurl: "" # the subpath of your site, e.g. /blog
 
 # This is mostly for testing
 url: "" # the base hostname & protocol for your site
