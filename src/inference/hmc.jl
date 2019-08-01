@@ -294,7 +294,7 @@ function sample(
     end
 
     # Init h, prop and adaptor
-    step(model, spl, vi, Val(true); adaptor=adaptor)
+    step(model, spl, vi, Val(true); rng=rng, adaptor=adaptor)
 
     # Sampling using AHMC and store samples in `samples`
     steps!(model, spl, vi, samples; rng=rng, verbose=verbose, progress=progress)
@@ -346,6 +346,7 @@ function step(
     vi::VarInfo,
     is_first::Val{true};
     adaptor=AHMCAdaptor(spl.alg),
+    rng::AbstractRNG=GLOBAL_RNG,
     kwargs...
 )
     spl.selector.tag != :default && link!(vi, spl)
@@ -360,7 +361,7 @@ function step(
 
     # Find good eps if not provided one
     if init_ϵ == 0.0
-        init_ϵ = AHMC.find_good_eps(h, θ_init)
+        init_ϵ = AHMC.find_good_eps(rng, h, θ_init)
         @info "Found initial step size" init_ϵ
     end
     if AHMC.getϵ(adaptor) == 0.0
