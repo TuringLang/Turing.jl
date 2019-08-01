@@ -344,6 +344,13 @@ getchol(m::PDMats.PDiagMat) = cholesky(Diagonal(m.diag))
 getchol(m::PDMats.ScalMat) = cholesky(Diagonal(fill(m.value, m.dim)))
 
 # Deal with ambiguities.
+import Base: *
+function Base.:*(
+    A::Transpose{T, <:AbstractMatrix{T}}, 
+    B::Tracker.TrackedVector
+) where {T}
+    return Tracker.track(*, A, B)
+end
 function Base.:*(
     A::Tracker.TrackedMatrix,
     B::Adjoint{T, V} where V<:LinearAlgebra.AbstractTriangular{T} where {T},
