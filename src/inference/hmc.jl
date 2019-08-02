@@ -191,7 +191,7 @@ function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
     space::Symbol...;
-    max_depth::Int=5,
+    max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
@@ -202,7 +202,7 @@ end
 function NUTS{AD}(
     n_iters::Int,
     δ::Float64;
-    max_depth::Int=5,
+    max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
