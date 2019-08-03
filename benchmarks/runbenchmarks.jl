@@ -13,7 +13,7 @@ Pkg.add(PackageSpec(
 Pkg.build("ContinuousBenchmarks")
 Pkg.resolve()
 
-# prepare BenchMark information
+# prepare benchmark information
 BASE_BRANCH = "master"
 CURRENT_BRANCH = strip(read(`git rev-parse --abbrev-ref HEAD`, String))
 
@@ -40,7 +40,6 @@ end
 # run
 code_run = """using ContinuousBenchmarks
 using ContinuousBenchmarks.Runner
-ContinuousBenchmarks.set_project_path("$PROJECT_DIR")
 ContinuousBenchmarks.set_benchmark_config_file(
     joinpath("$PROJECT_DIR", "benchmarks/benchmark_config.jl"))
 Runner.run_bm_on_travis("$BM_JOB_NAME", ("$BASE_BRANCH", "$CURRENT_BRANCH"), "$COMMIT_SHA")
