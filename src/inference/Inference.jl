@@ -410,6 +410,8 @@ function Chains(
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
+    # RandomVariables.params_nt(spl.state.vi, spl)
+    
     nms, vals = _params_to_array(ts, spl)
 
     # Get the extra field names from the sampler state type.

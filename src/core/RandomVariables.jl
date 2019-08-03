@@ -1083,15 +1083,60 @@ end
 @generated function _getparams(vns::NamedTuple{names}, vi) where {names}
     expr = Expr(:tuple)
     for f in names
-        push!(expr.args, :($f = findvns(vi, vns.$f)))
+        push!(expr.args, :($f = getindex(vi, vns.$f)))
+        # push!(expr.args, :($f = findvns(vi, vns.$f)))
     end
     return expr
 end
+# @inline function findvns(vi, f_vns)
+#     if length(f_vns) == 0
+#         throw("Unidentified error, please report this error in an issue.")
+#     end
+#     return map(vn -> vi[vn], f_vns)
+# end
 @inline function findvns(vi, f_vns)
     if length(f_vns) == 0
         throw("Unidentified error, please report this error in an issue.")
     end
+    mdf = getfield(metadata, f_vns)
+    Core.println(mdf)
     return map(vn -> vi[vn], f_vns)
+end
+
+"""
+    _params_nt()
+
+Converts a `VarInfo` into a flat `NamedTuple`.
+"""
+function params_nt(vi::TypedVarInfo, spl::Union{SampleFromPrior, Sampler})
+    # Gets the vns as a NamedTuple
+    # vns = _getvns(vi, spl)
+    # display(vi.metadata)
+    # println()
+    value = _params_nt(vi.metadata, vi)
+    # println(value)
+    println("=============================")
+    return value
+    # return _params_nt(vi, spl)
+end
+# function _params_nt(vi::VarInfo)
+    # value = _params_nt(vi.metadata, vi)
+    # return value
+# end
+function _params_nt(md::Metadata, vi::VarInfo)
+    value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
+    for vn in keys(md.idcs)
+        value[Symbol(vn)] = vi[vn]
+    end
+    return value
+end
+function _params_nt(metadata::NamedTuple{names}, vi::VarInfo) where {names}
+    length(names) === 0 && return Dict{Symbol, Any}()
+    f = names[1]
+    mdf = getfield(metadata, f)
+    println(mdf)
+    println()
+    return merge(_params_nt(mdf, vi), _params_nt(_tail(metadata), vi))
 end
 
 function Base.eltype(vi::AbstractVarInfo, spl::Union{AbstractSampler, SampleFromPrior})
