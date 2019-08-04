@@ -96,8 +96,20 @@ struct Transition{T} <: AbstractTransition
     lp :: Float64
 end
 
+function tonamedtuple(vi::Turing.VarInfo)
+    return tonamedtuple(vi.metadata, vi)
+end
+@generated function tonamedtuple(metadata::NamedTuple{names}, vi::Turing.VarInfo) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns, all=false))))
+    end
+    return expr
+end
+
 function transition(spl::Sampler)
-    theta = getparams(spl.state.vi, spl)
+    theta = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
     return Transition{typeof(theta)}(theta, lp)
 end
@@ -334,38 +346,31 @@ function sample_end!(
 end
 
 function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleTransition,Transition}}
-    vns = Turing.RandomVariables._getvns(spl.state.vi, spl)
-    names = vcat([[string(v; all=false) for v in vn] for vn in vns]...)
-    println(names)
-    println()
-    println()
-    println(vns)
-    println()
-
+    local names
     vals  = Vector{Vector{Float64}}()
     for t in ts
-        names, vs = flatten_namedtuple(t.θ, vns)
+        names, vs = flatten_namedtuple(t.θ)
         push!(vals, vs)
     end
     
-    println(names)
-    println()
     return names, vals
 end
 
-function flatten_namedtuple(nt::NamedTuple{pnames}, varnames) where {pnames}
+function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
     vals  = Vector{Float64}()
     names = Vector{AbstractString}()
     for k in pnames
         v = nt[k]
-        flatten(names, vals, string(k), v, varnames)
+        for (vnval, vn) in zip(v[1], v[2])
+            flatten(names, vals, vn, vnval)
+        end
     end
     return names, vals
 end
 
-function flatten(names, value :: Array{Float64}, k :: String, v, varnames)
+function flatten(names, value :: Array{Float64}, k :: String, v)
     if isa(v, Number)
-        name = varnames[k].indexing * k
+        name = k
         push!(value, v)
         push!(names, name)
     elseif isa(v, Array)
@@ -380,8 +385,8 @@ function flatten(names, value :: Array{Float64}, k :: String, v, varnames)
                 push!(value, Float64(v[i]))
                 push!(names, name)
             elseif isa(v[i], Array)
-                name = k# * string(Turing.Utilities.ind2sub(size(v), i))
-                flatten(names, value, name, v[i], varnames)
+                name = k * string(Turing.Utilities.ind2sub(size(v), i))
+                flatten(names, value, name, v[i])
             else
                 error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
             end
