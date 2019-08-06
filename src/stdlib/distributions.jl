@@ -9,7 +9,6 @@ Distributions.minimum(d::Flat) = -Inf
 Distributions.maximum(d::Flat) = +Inf
 
 # For vec support
-# Distributions.rand(rng::AbstractRNG, d::Flat, n::Int) = Vector([rand(rng) for _ = 1:n])
 Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 
 # Pos
