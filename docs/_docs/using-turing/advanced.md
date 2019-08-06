@@ -56,13 +56,13 @@ Distributions.maximum(d::Flat) = +Inf
 ```
 
 
-Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size(d)`, `link(d, x)` and `invlink(d, x)`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
+Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size`, `link` and `invlink`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
 
 
 #### 3.2 Vectorization Support
 
 
-The vectorization syntax follows `rv ~ [distribution]`, which requires `rand()` and `logpdf()` to be called on multiple data points at once. An appropriate implementation for `Flat` is shown below.
+The vectorization syntax follows `rv ~ [distribution]`, which requires `rand` and `logpdf` to be called on multiple data points at once. An appropriate implementation for `Flat` is shown below.
 
 
 ```julia
