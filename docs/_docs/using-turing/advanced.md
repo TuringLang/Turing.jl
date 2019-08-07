@@ -29,12 +29,12 @@ end
 ### 2. Implement Sampling and Evaluation of the log-pdf
 
 
-Second, define `rand()` and `logpdf()`, which will be used to run the model.
+Second, define `rand` and `logpdf`, which will be used to run the model.
 
 
 ```julia
-Distributions.rand(d::Flat) = rand()
-Distributions.logpdf{T<:Real}(d::Flat, x::T) = zero(x)
+Distributions.rand(rng::AbstractRNG, d::Flat) = rand(rng)
+Distributions.logpdf(d::Flat, x::Real) = zero(x)
 ```
 
 
@@ -47,7 +47,7 @@ In most cases, it may be required to define helper functions, such as the `minim
 #### 3.1 Domain Transformation
 
 
-Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are `minimum()` and `maximum()`.
+Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are `minimum` and `maximum`.
 
 
 ```julia
@@ -56,18 +56,17 @@ Distributions.maximum(d::Flat) = +Inf
 ```
 
 
-Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size(d)`, `link(d, x)` and `invlink(d, x)`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
+Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size`, `link` and `invlink`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
 
 
 #### 3.2 Vectorization Support
 
 
-The vectorization syntax follows `rv ~ [distribution]`, which requires `rand()` and `logpdf()` to be called on multiple data points at once. An appropriate implementation for `Flat` are shown below.
+The vectorization syntax follows `rv ~ [distribution]`, which requires `rand` and `logpdf` to be called on multiple data points at once. An appropriate implementation for `Flat` is shown below.
 
 
 ```julia
-Distributions.rand(d::Flat, n::Int) = Vector([rand() for _ = 1:n])
-Distributions.logpdf{T<:Real}(d::Flat, x::Vector{T}) = zero(x)
+Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 ```
 
 
@@ -247,4 +246,3 @@ model = gdemo([1.2, 3.5]
 # Run all samples.
 chns = reduce(chainscat, pmap(x->sample(model,sampler),1:num_chains))
 ```
-
