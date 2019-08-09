@@ -57,7 +57,10 @@ fixedNav: 'true' # true or false
 
 permalink: /:year/:title/
 markdown: kramdown
-exclude: [_site, CHANGELOG.md, CNAME, Gemfile, Gemfile.lock, LICENSE, make.jl, make-utils.jl, README.md, vendor]
+exclude: [.gems, _site,
+          CHANGELOG.md, CNAME, LICENSE,
+          Gemfile, Gemfile.lock, jekyll-build,
+          make.jl, make-utils.jl, README.md, vendor]
 
 # Collections
 collections:
@@ -79,7 +82,7 @@ defaults:
       path: "_tutorials"
       type: "tutorials"
     values:
-      layout: page
+      layout: "page"
   - scope:
       path: ""
       type: "pages"
