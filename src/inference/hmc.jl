@@ -375,7 +375,7 @@ function step!(
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return transition(spl)
+    return transition(spl, α)
 end
 
 

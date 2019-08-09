@@ -83,19 +83,17 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
 
-# Internal variables for MCMCChains.
-const INTERNAL_VARS =
-    Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le"])
+"""
+    tonamedtuple(vi::Turing.VarInfo)
 
-###########################
-# Generic Transition type #
-###########################
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values and 
+indexing string of the variable. For example, a model that had a vector of vector-valued
+variables `x` would return
 
-struct Transition{T} <: AbstractTransition
-    θ  :: T
-    lp :: Float64
-end
-
+```julia
+(x = ([1.5, 2.0], [3.0, 1.0]), ["x[1]", "x[2]"]), )
+```
+"""
 function tonamedtuple(vi::Turing.VarInfo)
     return tonamedtuple(vi.metadata, vi)
 end
@@ -106,27 +104,6 @@ end
         push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns, all=false))))
     end
     return expr
-end
-
-function transition(spl::Sampler)
-    theta = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
-    return Transition{typeof(theta)}(theta, lp)
-end
-
-function additional_parameters(::Type{Transition})
-    return [:lp]
-end
-
-function transitions_init(
-    ::AbstractRNG,
-    model::Model,
-    spl::Sampler,
-    N::Integer;
-    kwargs...
-)
-    ttype = transition_type(spl)
-    return Vector{ttype}(undef, N)
 end
 
 #########################
@@ -140,6 +117,31 @@ mutable struct BlankState{VIType<:VarInfo} <: SamplerState
     vi :: VIType
 end
 
+###########################
+# Generic Transition type #
+###########################
+
+struct Transition{T} <: AbstractTransition
+    θ  :: T
+    lp :: Float64
+end
+
+function transition(spl::Sampler)
+    theta = tonamedtuple(spl.state.vi)
+    lp = getlogp(spl.state.vi)
+    return Transition{typeof(theta)}(theta, lp)
+end
+
+function transition(spl::Sampler, nt::NamedTuple)
+    theta = merge(tonamedtuple(spl.state.vi), nt)
+    lp = getlogp(spl.state.vi)
+    return Transition{typeof(theta)}(theta, lp)
+end
+
+function additional_parameters(::Type{Transition})
+    return [:lp]
+end
+
 #######################################
 # Concrete algorithm implementations. #
 #######################################
@@ -151,6 +153,16 @@ include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("../contrib/inference/AdvancedSMCExtensions.jl")
+
+############################
+# Import inferface methods #
+############################
+
+include("interface.jl")
+
+################
+# Typing tools #
+################
 
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
@@ -288,176 +300,6 @@ function observe(spl::A,
 
 end
 
-#########################################
-# Default definitions for the interface #
-#########################################
-function sample(
-    model::ModelType,
-    alg::AlgType,
-    N::Integer;
-    resume_from=nothing,
-    kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
-    if isnothing(resume_from)
-        return sample(model, Sampler(alg, model), N; kwargs...)
-    else
-        return resume(resume_from, N)
-    end
-end
-
-function sample(
-    rng::AbstractRNG,
-    model::ModelType,
-    alg::AlgType,
-    N::Integer;
-    kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
-    return sample(rng, model, Sampler(alg, model), N; kwargs...)
-end
-
-function sample_init!(
-    ::AbstractRNG,
-    model::Model,
-    spl::Sampler,
-    N::Integer;
-    kwargs...
-)
-    # Resume the sampler.
-    set_resume!(spl; kwargs...)
-end
-
-function sample_end!(
-    ::AbstractRNG,
-    ::Model,
-    spl::AbstractSampler,
-    ::Integer,
-    ::Vector{TransitionType};
-    kwargs...
-) where {TransitionType<:AbstractTransition}
-    # Silence the default API function.
-end
-
-function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleTransition,Transition}}
-    local names
-    vals  = Vector{Vector{Float64}}()
-    for t in ts
-        names, vs = flatten_namedtuple(t.θ)
-        push!(vals, vs)
-    end
-    
-    return names, vals
-end
-
-function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
-    vals  = Vector{Float64}()
-    names = Vector{AbstractString}()
-    for k in pnames
-        v = nt[k]
-        for (vnval, vn) in zip(v[1], v[2])
-            flatten(names, vals, vn, vnval)
-        end
-    end
-    return names, vals
-end
-
-function flatten(names, value :: Array{Float64}, k :: String, v)
-    if isa(v, Number)
-        name = k
-        push!(value, v)
-        push!(names, name)
-    elseif isa(v, Array)
-        for i = eachindex(v)
-            if isa(v[i], Number)
-                name = string(Turing.Utilities.ind2sub(size(v), i))
-                name = replace(name, "(" => "[");
-                name = replace(name, ",)" => "]");
-                name = replace(name, ")" => "]");
-                name = k * name
-                isa(v[i], Nothing) && println(v, i, v[i])
-                push!(value, Float64(v[i]))
-                push!(names, name)
-            elseif isa(v[i], Array)
-                name = k * string(Turing.Utilities.ind2sub(size(v), i))
-                flatten(names, value, name, v[i])
-            else
-                error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
-            end
-        end
-    else
-        error("Unknown var type: typeof($v)=$(typeof(v))")
-    end
-    return
-end
-
-# Default Chains constructor.
-function Chains(
-    rng::AbstractRNG,
-    model::ModelType,
-    spl::Sampler,
-    N::Integer,
-    ts::Vector{T};
-    discard_adapt::Bool=true,
-    save_state=false,
-    kwargs...
-) where {ModelType<:Sampleable, T<:AbstractTransition}
-    # Check if we have adaptation samples.
-    if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
-        ts = ts[(spl.alg.n_adapts+1):end]
-    end
-
-    # Convert transitions to array format.
-    # Also retrieve the variable names.
-    # RandomVariables.params_nt(spl.state.vi, spl)
-    
-    nms, vals = _params_to_array(ts, spl)
-
-    # Get the extra field names from the sampler state type.
-    # This handles things like :lp or :weight.
-    extra_params = additional_parameters(T)
-
-    # Get the values of the extra parameters.
-    extra_values = vcat(map(t -> [getproperty(t, p) for p in extra_params], ts))
-
-    # Extract names & construct param array.
-    nms = string.(vcat(nms..., string.(extra_params)...))
-    parray = vcat([hcat(vals[i]..., extra_values[i]...) for i in 1:length(ts)]...)
-
-    # If the state field has final_logevidence, grab that.
-    le = :final_logevidence in fieldnames(typeof(spl.state)) ?
-        getproperty(spl.state, :final_logevidence) :
-        missing
-
-    # Check whether to invlink! the varinfo
-    if islinked(spl.state.vi, spl)
-        invlink!(spl.state.vi, spl)
-    end
-
-    # Set up the info tuple.
-    info = if save_state
-        (range = rng,
-        model = model,
-        spl = spl)
-    else
-        NamedTuple()
-    end
-
-    # Chain construction.
-    return Chains(
-        convert(Array{Real}, parray),
-        string.(nms),
-        INTERNAL_VARS;
-        evidence=le,
-        info=info
-    )
-end
 
 ##############
 # Utilities  #
@@ -498,7 +340,5 @@ end
 
 getspace(spl::Sampler) = getspace(typeof(spl))
 getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
-
-transition_type(::Sampler{alg}) where alg = transition_type(alg)
 
 end # module

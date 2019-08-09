@@ -138,3 +138,4 @@ function split_var_str(var_str)
     end
     return sym, inds
 end
+
