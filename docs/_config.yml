@@ -57,7 +57,7 @@ fixedNav: 'true' # true or false
 
 permalink: /:year/:title/
 markdown: kramdown
-exclude: [_site, CHANGELOG.md, LICENSE, README.md, vendor]
+exclude: [_site, CHANGELOG.md, CNAME, Gemfile, Gemfile.lock, LICENSE, make.jl, make-utils.jl, README.md, vendor]
 
 # Collections
 collections:
@@ -74,7 +74,7 @@ defaults:
       path: "_docs"
       type: "docs"
     values:
-      layout: page
+      layout: "page"
   - scope:
       path: "_tutorials"
       type: "tutorials"
