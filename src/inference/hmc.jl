@@ -288,6 +288,10 @@ function NUTS{AD}(
     NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
+function NUTS{AD}() where AD
+    NUTS{AD}(0, 0.65, 5, 1000.0, 0.1, AHMC.DenseEuclideanMetric, ())
+end
+
 for alg in (:HMC, :HMCDA, :NUTS)
     @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
 end
@@ -512,7 +516,7 @@ function hmc_step(
     # Build Hamiltonian type and trajectory
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     traj = gen_traj(alg, ϵ)
-
+    
     h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
 
     # Sample momentum

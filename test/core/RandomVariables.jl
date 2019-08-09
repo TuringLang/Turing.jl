@@ -402,7 +402,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             resetlogp!(vi)
             @test getlogp(vi) == 0
 
-            spl2 = Turing.Sampler(PG(5), empty_model())
+            spl2 = Turing.Sampler(PG(5, :w, :u), empty_model())
             vn_w = VarName(gensym(), :w, "", 1)
             randr(vi, vn_w, dists[1], spl2, true)
 
@@ -411,7 +411,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             vn_z = VarName(gensym(), :z, "", 1)
             vns = [vn_x, vn_y, vn_z]
 
-            spl1 = Turing.Sampler(PG(5), empty_model())
+            spl1 = Turing.Sampler(PG(5, :x, :y, :z), empty_model())
             for i = 1:3
                 r = randr(vi, vns[i], dists[i], spl1, false)
                 val = vi[vns[i]]
@@ -450,11 +450,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         test_varinfo!(empty!(TypedVarInfo(vi)))
 
         @model igtest() = begin
-          x ~ InverseGamma(2,3)
-          y ~ InverseGamma(2,3)
-          z ~ InverseGamma(2,3)
-          w ~ InverseGamma(2,3)
-          u ~ InverseGamma(2,3)
+            x ~ InverseGamma(2,3)
+            y ~ InverseGamma(2,3)
+            z ~ InverseGamma(2,3)
+            w ~ InverseGamma(2,3)
+            u ~ InverseGamma(2,3)
         end
 
         # Test the update of group IDs
@@ -469,12 +469,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vi = VarInfo()
         g_demo_f(vi, SampleFromPrior())
         Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
-        @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                        Set{Selector}(), Set{Selector}()]
+        vi1 = pg.state.vi
+        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+            [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set{Selector}(), Set{Selector}()]
 
-        g_demo_f(vi, hmc)
-        @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                        Set([hmc.selector]), Set([hmc.selector])]
+        g_demo_f(vi1, hmc)
+        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+            [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set([hmc.selector]), Set([hmc.selector])]
 
         g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
         pg, hmc = g.state.samplers

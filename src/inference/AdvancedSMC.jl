@@ -164,7 +164,7 @@ function step!(
 )
     particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
 
-    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep.
     ref_particle = isempty(spl.state.vi) ?
               nothing :
               forkr(Trace(model, spl, spl.state.vi))

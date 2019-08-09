@@ -507,7 +507,7 @@ end
 @inline function findinds(f_meta, s, ::Val{space}) where {space}
     # Get all the idcs of the vns in `space` and that belong to the selector `s`
     return filter((i) ->
-        (s in f_meta.gids[i] || isempty(f_meta.gids[i]) || length(space) == 0) &&
+        (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
         (isempty(space) || in(f_meta.vns[i], space)), 1:length(f_meta.gids))
 end
 @inline function findinds(f_meta)
@@ -985,7 +985,7 @@ function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {na
             return istrans(vi, f_vns[1])
         end
     end
-    return expr
+    return false
 end
 
 # The default getindex & setindex!() for get & set values
@@ -1314,9 +1314,18 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(getspace(spl.alg)) && isempty(getgid(vi, vn)) && getsym(vn) in getspace(spl.alg)
+    if ~isempty(getspace(spl.alg)) && getsym(vn) in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end
+"""
+`updategid_forced!(vi::VarInfo, vn::VarName, spl::Sampler)`
+
+Forces a sampler to add its `gid` to a `vn`. Currently only used for the Gibbs sampler.
+"""
+function updategid_forced!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
+    setgid!(vi, spl.selector, vn)
+end
+
 
 end # end of module
