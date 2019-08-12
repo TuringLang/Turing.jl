@@ -20,7 +20,7 @@ function sample(
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    if isnothing(resume_from)
+    if resume_from === nothing
         return sample(model, Sampler(alg, model), N; kwargs...)
     else
         return resume(resume_from, N)
