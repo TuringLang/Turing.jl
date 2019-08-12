@@ -101,7 +101,7 @@ jobs:
     - stage: documentation
       julia: 1.1
       os: linux
-      if: branch = master
+      if: (tag =~ ^v) OR (branch = master)
       env: STAGE=documentation
       script:
         - julia -e 'using Pkg; Pkg.update();'

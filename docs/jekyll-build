@@ -5,7 +5,7 @@ export PATH="$DIR/.gems/bin:$PATH"
 OUTPUT=$DIR/.jekyll.output
 cd $DIR
 
-bundle exec jekyll build > $OUTPUT
+bundle exec jekyll build > $OUTPUT 2>&1
 
 if [[ $? != 0 ]]; then
     rm $OUTPUT

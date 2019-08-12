@@ -23,16 +23,22 @@ end
 # connection by calling `julia make.jl no-tutorials`
 in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
-# Copy the built files to the site directory.
-# filecopy_deep(build_path, site_path)
-
-if false && !in(ARGS, "no-publish")
-    # Define homepage update function.
-    page_update = update_homepage(
-        "github.com/TuringLang/Turing.jl.git",
-        "gh-pages",
-        "site"
-    )
-else
-    @info "Skipping publishing."
+baseurl = "/dev"
+if get(ENV, "TRAVIS_TAG", "") != ""
+    baseurl = ENV["TRAVIS_TAG"]
 end
+jekyll_build = joinpath(@__DIR__, "jekyll-build")
+with_baseurl(() -> run(`$jekyll_build`), baseurl)
+
+# deploy
+devurl = "dev"
+# repo = "github.com:KDr2/DS-III.git"
+repo = "github.com:TuringLang/Turing.jl.git"
+deploydocs(
+    target = "_site",
+    repo = repo,
+    branch = "gh-pages",
+    devbranch = "docs-versioning", #"master",
+    devurl = devurl,
+    versions = ["stable" => "v^", "v#.#", devurl => devurl]
+)
