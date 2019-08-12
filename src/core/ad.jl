@@ -166,9 +166,9 @@ import StatsFuns: logsumexp
 logsumexp(x::Tracker.TrackedArray) = Tracker.track(logsumexp, x)
 Tracker.@grad function logsumexp(x::Tracker.TrackedArray)
     lse = logsumexp(Tracker.data(x))
-    se = exp(lse)
+
     return lse,
-          Δ->(Δ .* exp.(x) ./ se,)
+          Δ->(Δ .* exp.(x .- lse),)
 end
 
 import StatsFuns: binomlogpdf
