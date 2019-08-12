@@ -26,8 +26,8 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 AdvancedHMC = ">= 0.2.2"
+MCMCChains = ">= 0.3.12"
 julia = ">= 1.0"
-MCMCChains = ">= 0.3.11"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
