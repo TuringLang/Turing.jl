@@ -64,7 +64,7 @@ end
 mutable struct ParticleSamplerState <: AbstractSamplerState
     vi                 ::   TypedVarInfo
     # The logevidence at the end, after agregating all samples together.
-    final_logevidence  ::   Float64 
+    average_logevidence  ::   Float64 
 end
 
 ParticleSamplerState(model::Model) = ParticleSamplerState(VarInfo(model), 0.0)
@@ -224,7 +224,7 @@ function sample_end!(
     end
 
     # Store the logevidence.
-    spl.state.final_logevidence = loge
+    spl.state.average_logevidence = loge
 end
 
 function assume(  spl::Sampler{T},
