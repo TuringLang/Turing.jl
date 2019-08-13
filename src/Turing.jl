@@ -128,7 +128,8 @@ include("core/Core.jl")
 using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
-include("")
+include("variational/VariationalInference.jl")
+using .Variational
 
 # TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
 #   Related: https://github.com/TuringLang/Turing.jl/issues/746
