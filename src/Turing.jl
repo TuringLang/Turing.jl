@@ -96,7 +96,7 @@ getspace(::Type{<:SampleFromUniform}) = ()
 """
 An abstract type that mutable sampler state structs inherit from.
 """
-abstract type SamplerState end
+abstract type AbstractSamplerState end
 
 """
     Sampler{T}
@@ -112,7 +112,7 @@ The dispatch is based on the value of a `sampler` variable.
 To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T, S<:SamplerState} <: AbstractSampler
+mutable struct Sampler{T, S<:AbstractSamplerState} <: AbstractSampler
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
@@ -128,6 +128,7 @@ include("core/Core.jl")
 using .Core
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
+include("")
 
 # TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
 #   Related: https://github.com/TuringLang/Turing.jl/issues/746

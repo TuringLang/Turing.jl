@@ -7,7 +7,7 @@ using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, SamplerState
+    Selector, AbstractSamplerState
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
@@ -111,9 +111,9 @@ end
 #########################
 
 """
-A blank `SamplerState` that contains only `VarInfo` information.
+A blank `AbstractSamplerState` that contains only `VarInfo` information.
 """
-mutable struct BlankState{VIType<:VarInfo} <: SamplerState
+mutable struct BlankState{VIType<:VarInfo} <: AbstractSamplerState
     vi :: VIType
 end
 

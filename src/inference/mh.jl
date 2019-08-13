@@ -1,4 +1,4 @@
-mutable struct MHState <: SamplerState
+mutable struct MHState <: AbstractSamplerState
     proposal_ratio        ::   Float64
     prior_prob            ::   Float64
     violating_support     ::   Bool

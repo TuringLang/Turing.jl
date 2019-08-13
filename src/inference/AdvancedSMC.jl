@@ -60,7 +60,7 @@ function SMC(n_particles::Int, space::Symbol...)
     SMC(n_particles, resample_systematic, 0.5, space)
 end
 
-mutable struct ParticleState <: SamplerState
+mutable struct ParticleState <: AbstractSamplerState
     logevidence        ::   Vector{Float64}
     vi                 ::   TypedVarInfo
     final_logevidence  ::   Float64

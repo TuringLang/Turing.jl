@@ -33,7 +33,7 @@ IS() = IS{()}()
 transition_type(::Sampler{<:IS}) = Transition
 alg_str(::Sampler{<:IS}) = "IS"
 
-mutable struct ISState <: SamplerState
+mutable struct ISState <: AbstractSamplerState
     vi                 ::  TypedVarInfo
     final_logevidence  ::  Float64
 end

@@ -5,7 +5,7 @@
 mutable struct StaticHMCState{
     TTraj<:AHMC.StaticTrajectory,
     TV <: TypedVarInfo
-} <: SamplerState
+} <: AbstractSamplerState
     vi       :: TV
     eval_num :: Int
     i        :: Int
@@ -17,7 +17,7 @@ mutable struct DynamicHMCState{
     TTraj<:AHMC.DynamicTrajectory,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     TV <: TypedVarInfo
-} <: SamplerState
+} <: AbstractSamplerState
     vi       :: TV
     eval_num :: Int
     i        :: Int

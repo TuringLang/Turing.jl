@@ -39,7 +39,7 @@ end
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
 transition_type(spl::Sampler{<:Gibbs}) = Transition
 
-mutable struct GibbsState{T<:NamedTuple} <: SamplerState
+mutable struct GibbsState{T<:NamedTuple} <: AbstractSamplerState
     vi::TypedVarInfo
     samplers::Array{Sampler}
     subsamples::T
