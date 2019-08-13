@@ -133,22 +133,18 @@ function gradient_logp_reverse(
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
-    logp_old = vi.logp
+    T = typeof(vi.logp)
 
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        logp = runmodel!(model, new_vi, sampler).logp
-        vi.logp = Tracker.data(logp)
-        return logp
+        return runmodel!(model, new_vi, sampler).logp
     end
 
     # Compute forward and reverse passes.
     l_tracked, ȳ = Tracker.forward(f, θ)
-    l, ∂l∂θ = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
+    l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
     # Remove tracking info from variables in model (because mutable state).
-    vi.logp = logp_old
-    # Return non-tracked gradient value
     return l, ∂l∂θ
 end
 
@@ -166,7 +162,6 @@ import StatsFuns: logsumexp
 logsumexp(x::Tracker.TrackedArray) = Tracker.track(logsumexp, x)
 Tracker.@grad function logsumexp(x::Tracker.TrackedArray)
     lse = logsumexp(Tracker.data(x))
-
     return lse,
           Δ->(Δ .* exp.(x .- lse),)
 end
@@ -429,3 +424,46 @@ MvNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:Real}) = MvNormal(m, A.λ
 
 # zero mean,, constant variance
 MvNormal(d::Int, σ::TrackedReal{<:Real}) = MvNormal(zeros(d), σ)
+
+import Bijectors: link, invlink
+using Bijectors: Dirichlet, PDMatDistribution
+
+for F in (:link, :invlink)
+    @eval begin
+        function $F(
+            dist::Dirichlet, 
+            x::Tracker.TrackedArray, 
+            ::Type{Val{proj}} = Val{true}
+        ) where {proj}
+            return Tracker.track($F, dist, x, Val{proj})
+        end
+        Tracker.@grad function $F(
+            dist::Dirichlet, 
+            x::Tracker.TrackedArray, 
+            ::Type{Val{proj}}
+        ) where {proj}
+            x_data = Tracker.data(x)
+            y = $F(dist, x_data, Val{proj})
+            return  y, Δ -> begin
+                out = ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)' * Δ
+                return (nothing, out, nothing)
+            end
+        end
+    end
+end
+
+Base.:*(x::Adjoint{T, <:AbstractMatrix{T}} where {T}, y::TrackedVector) = Tracker.track(*, x, y)
+
+for F in (:link, :invlink)
+    @eval begin
+        $F(dist::PDMatDistribution, x::Tracker.TrackedArray) = Tracker.track($F, dist, x)
+        Tracker.@grad function $F(dist::PDMatDistribution, x::Tracker.TrackedArray)
+            x_data = Tracker.data(x)
+            y = $F(dist, x_data)
+            return  y, Δ -> begin
+                out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * vec(Δ), size(Δ))
+                return (nothing, out)
+            end
+        end
+    end
+end
