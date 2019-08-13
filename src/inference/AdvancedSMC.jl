@@ -61,23 +61,24 @@ function SMC(n_particles::Int, space::Symbol...)
     SMC(n_particles, resample_systematic, 0.5, space)
 end
 
-mutable struct ParticleState <: AbstractSamplerState
+mutable struct ParticleSamplerState <: AbstractSamplerState
     vi                 ::   TypedVarInfo
-    final_logevidence  ::   Float64
+    # The logevidence at the end, after agregating all samples together.
+    final_logevidence  ::   Float64 
 end
 
-ParticleState(model::Model) = ParticleState(VarInfo(model), 0.0)
+ParticleSamplerState(model::Model) = ParticleSamplerState(VarInfo(model), 0.0)
 
 function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
     dict = Dict{Symbol, Any}()
-    state = ParticleState(model)
-    return Sampler{T,ParticleState}(alg, dict, s, state)
+    state = ParticleSamplerState(model)
+    return Sampler{T,ParticleSamplerState}(alg, dict, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument.
     model::Turing.Model,
-    spl::Sampler{<:SMC, ParticleState},
+    spl::Sampler{<:SMC, ParticleSamplerState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -150,14 +151,14 @@ Return a `Sampler` object for the PG algorithm.
 """
 function Sampler(alg::T, model::Model, s::Selector) where T<:PG
     info = Dict{Symbol, Any}()
-    state = ParticleState(model)
-    return Sampler{T,ParticleState}(alg, info, s, state)
+    state = ParticleSamplerState(model)
+    return Sampler{T,ParticleSamplerState}(alg, info, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
     model::Turing.Model,
-    spl::Sampler{<:PG, ParticleState},
+    spl::Sampler{<:PG, ParticleSamplerState},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -193,7 +194,7 @@ function step!(
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(params, lp, Ws[indx], particles.logE)
+    return transition(params, lp, 1.0, particles.logE)
 end
 
 function sample_end!(
@@ -212,6 +213,7 @@ function sample_end!(
 
     # If we already had a chain, grab the logevidence.
     if resume_from != nothing   # concat samples
+        @assert resume_from isa MCMCChains.Chains "resume_from needs to be a Chains object."
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence
