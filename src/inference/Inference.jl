@@ -90,7 +90,7 @@ end
 """
 A blank `AbstractSamplerState` that contains only `VarInfo` information.
 """
-mutable struct BlankState{VIType<:VarInfo} <: AbstractSamplerState
+mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
     vi :: VIType
 end
 

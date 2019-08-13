@@ -307,7 +307,7 @@ function Sampler(
     s::Selector=Selector()
 ) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
     info = Dict{Symbol, Any}()
-    state_bad = BlankState(VarInfo(model))
+    state_bad = SamplerState(VarInfo(model))
 
     # Create an initial sampler, to get all the initialization out of the way.
     spl_bad = Sampler(alg, info, s, state_bad)
