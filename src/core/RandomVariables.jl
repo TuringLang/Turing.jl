@@ -1082,7 +1082,7 @@ indexing string of the variable. For example, a model that had a vector of vecto
 variables `x` would return
 
 ```julia
-(x = ([1.5, 2.0], [3.0, 1.0]), ["x[1]", "x[2]"]), )
+(x = ([1.5, 2.0], [3.0, 1.0], ["x[1]", "x[2]"]), )
 ```
 """
 function tonamedtuple(vi::Turing.VarInfo)
