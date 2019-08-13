@@ -496,7 +496,11 @@ end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
 @generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
     exprs = []
+    # Iterate through each varname in metadata.
     for f in names
+        # If the varname is in the sampler space
+        # or the sample space is empty (all variables)
+        # then return the indices for that variable.
         if f in space || length(space) == 0
             push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
         end
