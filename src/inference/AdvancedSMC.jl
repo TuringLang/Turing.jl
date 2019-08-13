@@ -11,7 +11,6 @@ struct ParticleTransition{T} <: AbstractTransition
     θ::T
     lp::Float64
     le::Float64
-    weight::Float64
 end
 
 abstract type ParticleInference <: InferenceAlgorithm end
@@ -19,7 +18,7 @@ abstract type ParticleInference <: InferenceAlgorithm end
 transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le,:weight]
+    return [:lp,:le]
 end
 
 ####
@@ -107,7 +106,7 @@ function step!(
     params = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
 
-    return transition(params, lp, Ws[indx], particles.logE)
+    return transition(params, lp, particles.logE)
 end
 
 ####
@@ -186,7 +185,6 @@ function step!(
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(spl.state.logevidence, particles.logE)
 
     # Extract the VarInfo from the retained particle.
     params = tonamedtuple(spl.state.vi)
@@ -194,7 +192,7 @@ function step!(
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(params, lp, 1.0, particles.logE)
+    return transition(params, lp, particles.logE)
 end
 
 function sample_end!(
@@ -398,8 +396,7 @@ Returns a basic TransitionType for the particle samplers.
 function transition(
         theta::T,
         lp::Float64,
-        weight::Float64,
         le::Float64
 ) where {T}
-    return ParticleTransition{T}(theta, lp, weight, le)
+    return ParticleTransition{T}(theta, lp, le)
 end

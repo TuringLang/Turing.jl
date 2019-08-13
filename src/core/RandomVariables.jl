@@ -40,7 +40,8 @@ export  VarName,
         setorder!,
         istrans,
         link!,
-        invlink!
+        invlink!,
+        tonamedtuple
 
 ####
 #### Types for typed and untyped VarInfo
@@ -1089,10 +1090,10 @@ variables `x` would return
 (x = ([1.5, 2.0], [3.0, 1.0], ["x[1]", "x[2]"]), )
 ```
 """
-function tonamedtuple(vi::Turing.VarInfo)
+function tonamedtuple(vi::VarInfo)
     return tonamedtuple(vi.metadata, vi)
 end
-@generated function tonamedtuple(metadata::NamedTuple{names}, vi::Turing.VarInfo) where {names}
+@generated function tonamedtuple(metadata::NamedTuple{names}, vi::VarInfo) where {names}
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
