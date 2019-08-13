@@ -48,10 +48,11 @@ end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
-        n_particles::Int,
-        resampler::F,
-        resampler_threshold::Float64,
-        space::Tuple) where {F}
+    n_particles::Int,
+    resampler::F,
+    resampler_threshold::Float64,
+    space::Tuple
+) where {F}
     return SMC{space, F}(n_particles, resampler, resampler_threshold)
 end
 SMC(n) = SMC(n, resample_systematic, 0.5, ())
@@ -61,12 +62,11 @@ function SMC(n_particles::Int, space::Symbol...)
 end
 
 mutable struct ParticleState <: AbstractSamplerState
-    logevidence        ::   Vector{Float64}
     vi                 ::   TypedVarInfo
     final_logevidence  ::   Float64
 end
 
-ParticleState(model::Model) = ParticleState(Float64[], VarInfo(model), 0.0)
+ParticleState(model::Model) = ParticleState(VarInfo(model), 0.0)
 
 function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
     dict = Dict{Symbol, Any}()
@@ -100,7 +100,6 @@ function step!(
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(spl.state.logevidence, particles.logE)
 
     # update the master vi.
     spl.state.vi = particles[indx].vi
@@ -202,16 +201,16 @@ function sample_end!(
     ::Model,
     spl::Sampler{<:ParticleInference},
     N::Integer,
-    ::Vector{ParticleTransition};
+    ts::Vector{ParticleTransition};
     kwargs...
 )
     # Set the default for resuming the sampler.
     resume_from = get(kwargs, :resume_from, nothing)
 
     # Exponentiate the average log evidence.
-    loge = exp.(mean(spl.state.logevidence))
+    loge = mean([t.le for t in ts])
 
-    # If we already had a chain, grab it's logevidence.
+    # If we already had a chain, grab the logevidence.
     if resume_from != nothing   # concat samples
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = exp.(resume_from.logevidence)

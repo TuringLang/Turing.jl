@@ -463,7 +463,7 @@ Generate a function that takes a vector of reals `θ` and compute the logpdf and
 gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-    function ∂logπ∂θ(x)::Tuple{Float64, Vector{Float64}}
+    function ∂logπ∂θ(x)
         x_old, lj_old = vi[spl], vi.logp
         lp, deriv = gradient_logp(x, vi, model, spl)
         vi[spl] = x_old
