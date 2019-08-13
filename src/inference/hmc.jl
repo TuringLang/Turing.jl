@@ -302,10 +302,10 @@ end
 
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(
-    alg::Hamiltonian{AD},
+    alg::SamplerType,
     model::Model,
     s::Selector=Selector()
-) where AD
+) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
     info = Dict{Symbol, Any}()
     state_bad = BlankState(VarInfo(model))
 

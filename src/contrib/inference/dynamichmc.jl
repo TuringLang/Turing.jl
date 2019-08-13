@@ -16,17 +16,26 @@ function DynamicNUTS{AD}(space::Symbol...) where AD
     DynamicNUTS{AD, space}()
 end
 
+mutable struct DynamicNUTSState <: AbstractSamplerState
+    vi::VarInfo
+    draws::Vector
+end
+
 getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space
 getspace(alg::DynamicNUTS{<:Any, space}) where {space} = space
 
-function sample(
+function sample_init!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
     N::Integer;
     kwargs...
 )
-    samples = Array{Transition}(undef, N)
+    # Set up lp function.
+    function _lp(x)
+        value, deriv = gradient_logp(x, spl.state.vi, model, spl)
+        return ValueGradient(value, deriv)
+    end
 
     runmodel!(model, spl.state.vi, SampleFromUniform())
 
@@ -35,25 +44,41 @@ function sample(
         runmodel!(model, spl.state.vi, spl)
     end
 
-    function _lp(x)
-        value, deriv = gradient_logp(x, spl.state.vi, model, spl)
-        return ValueGradient(value, deriv)
-    end
-
-    chn_dynamic, _ = NUTS_init_tune_mcmc(
+    spl.state.draws, _ = NUTS_init_tune_mcmc(
         FunctionLogDensity(
             length(spl.state.vi[spl]),
             _lp
         ),
         N
     )
+end
 
-    for i = 1:N
-        spl.state.vi[spl] = chn_dynamic[i].q
-        samples[i] = transition(spl)
-    end
+function sample_end!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:DynamicNUTS},
+    N::Integer;
+    kwargs...
+)
+    runmodel!(model, spl.state.vi, SampleFromUniform())
 
-    return Chains(rng, model, spl, N, samples; kwargs...)
+    if spl.selector.tag == :default
+        link!(spl.state.vi, spl)
+        runmodel!(model, spl.state.vi, spl)
+    end   
+end
+
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:DynamicNUTS},
+    N::Integer;
+    kwargs...
+)
+    # Pop the next draw off the vector.
+    draw = popfirst!(spl.state.draws)
+    spl.state.vi[spl] = draw.q
+    return transition(spl)
 end
 
 function Sampler(
@@ -61,5 +86,9 @@ function Sampler(
     model::Turing.Model,
     s::Selector=Selector()
 ) where AD
-    return Sampler(alg, Dict{Symbol,Any}(), s, BlankState(VarInfo(model)))
+    # Construct a state, using a default function.
+    state = DynamicNUTSState(VarInfo(model), [])
+
+    # Return a new sampler.
+    return Sampler(alg, Dict{Symbol,Any}(), s, state)
 end
