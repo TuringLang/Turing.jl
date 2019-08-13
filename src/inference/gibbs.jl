@@ -1,5 +1,5 @@
 ###
-### Gibbs samplers / compositional samplers.
+### Gibbs samplers / compositional samplers. 
 ###
 
 """
@@ -29,33 +29,17 @@ methods like Particle Gibbs. You can increase the effectiveness of particle samp
 more particles in the particle sampler.
 """
 mutable struct Gibbs{A} <: InferenceAlgorithm
+    n_iters   ::  Int     # number of Gibbs iterations
     algs      ::  A   # component sampling algorithms
-    function Gibbs(algs...)
-        algs = algs isa Tuple ? algs : (algs, )
-        return new{typeof(algs)}(algs)
-    end
+    thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
 end
-
-alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(spl::Sampler{<:Gibbs}) = Transition
-
-mutable struct GibbsState{T<:NamedTuple} <: AbstractSamplerState
-    vi::TypedVarInfo
-    samplers::Array{Sampler}
-    subsamples::T
-end
-
-function GibbsState(model::Model, samplers::Array{Sampler})
-    ids = tuple([Symbol(s.selector.gid) for s in samplers]...)
-    refs = tuple([Ref{transition_type(s)}() for s in samplers]...)
-    nt = NamedTuple{ids}(refs)
-    return GibbsState{typeof(nt)}(VarInfo(model), samplers, nt)
-end
+Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
+    spl = Sampler(alg, info, s)
 
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -66,7 +50,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         if isa(sub_alg, GibbsComponent)
             samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
         else
-            @error("[Gibbs] Unsupported sampling algorithm $sub_alg")
+            @error("[Gibbs] unsupport base sampling algorithm $alg")
         end
         space = (space..., getspace(sub_alg)...)
     end
@@ -78,115 +62,10 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
     end
 
-    # Create a state variable.
-    state = GibbsState(model, samplers)
-
-    # Create the sampler.
-    spl = Sampler(alg, info, s, state)
-
-    # Add Gibbs to gids for all variables.
-    for sym in keys(spl.state.vi.metadata)
-        vns = getfield(spl.state.vi.metadata, sym).vns
-        for vn in vns
-            Turing.RandomVariables.updategid_forced!(spl.state.vi, vn, spl)
-            
-            # Try to update each gid
-            for local_spl in spl.state.samplers
-                Turing.RandomVariables.updategid!(spl.state.vi, vn, local_spl)
-            end
-        end
-    end
+    info[:samplers] = samplers
 
     return spl
 end
-
-# First step.
-function step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    Turing.DEBUG && @debug "Gibbs stepping..."
-
-    time_elapsed = 0.0
-    lp = nothing; ϵ = nothing; eval_num = nothing
-
-    # Iterate through each of the samplers.
-    for local_spl in spl.state.samplers
-        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-
-        Turing.DEBUG && @debug "recording old θ..."
-
-        # Update the sampler's VarInfo.
-        local_spl.state.vi = spl.state.vi
-
-        # Step through the local sampler.
-        time_elapsed_thin =
-            @elapsed step!(rng, model, local_spl, N; kwargs...)
-
-        # After the step, update the master varinfo.
-        spl.state.vi = local_spl.state.vi
-
-        # Uncomment when developing thinning functionality.
-        # Retrieve symbol to store this subsample.
-        # symbol_id = Symbol(local_spl.selector.gid)
-        #
-        # # Store the subsample.
-        # spl.state.subsamples[symbol_id][] = trans
-
-        # Record elapsed time.
-        time_elapsed += time_elapsed_thin
-    end
-
-    return transition(spl)
-end
-
-# Steps 2:N
-function step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    N::Integer,
-    t::TransitionType;
-    kwargs...
-) where TransitionType<:AbstractTransition
-    Turing.DEBUG && @debug "Gibbs stepping..."
-
-    time_elapsed = 0.0
-    lp = nothing; ϵ = nothing; eval_num = nothing
-
-    # Iterate through each of the samplers.
-    for local_spl in spl.state.samplers
-        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-
-        Turing.DEBUG && @debug "recording old θ..."
-
-        # Update the sampler's VarInfo.
-        local_spl.state.vi = spl.state.vi
-
-        # Step through the local sampler.
-        time_elapsed_thin =
-            @elapsed trans = step!(rng, model, local_spl, N, t; kwargs...)
-
-        # After the step, update the master varinfo.
-        spl.state.vi = local_spl.state.vi
-
-        # Uncomment when developing thinning functionality.
-        # Retrieve symbol to store this subsample.
-        # symbol_id = Symbol(local_spl.selector.gid)
-        #
-        # # Store the subsample.
-        # spl.state.subsamples[symbol_id][] = trans
-
-        # Record elapsed time.
-        time_elapsed += time_elapsed_thin
-    end
-
-    return transition(spl)
-end
-
 
 function sample(
                 model::Model,
@@ -320,52 +199,3 @@ function sample(
 
     return c
 end
-
-
-##########################
-# Gibbs Tansition struct #
-##########################
-
-struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
-    subsamples :: T
-    elapsed    :: Float64
-end
-
-function transition(state::GibbsState, elapsed::Float64)
-    nt = NamedTuple{keys(state.subsamples)}(
-        tuple([x[] for x in values(state.subsamples)]...)
-    )
-    return GibbsTransition{typeof(nt)}(nt, elapsed)
-end
-
-######################
-# Chains constructor #
-######################
-
-# function Chains(
-#     rng::AbstractRNG,
-#     model::Model,
-#     spl::Sampler{<:Gibbs},
-#     N::Integer,
-#     ts::Vector{GibbsTransition};
-#     kwargs...
-# )
-#     return nothing
-#     # Reorganize the transitions into matrix form.
-#     ts_extract = [[sub for sub in values(t.subsamples)] for t in ts]
-#     tsmat = hcat(ts_extract...)
-#     fts = [convert(Array{typeof(tsmat[i,1])}, tsmat[i,:]) for i in 1:length(spl.state.samplers)]
-#     # display(fts)
-#     chains = [Chains(rng, model, spl.state.samplers[i], N, fts[i])
-#         for i in 1:length(spl.state.samplers)]
-#
-#     display(chains)
-#
-#     # Chain construction.
-#     return Chains(
-#         parray,
-#         string.(nms),
-#         INTERNAL_VARS,
-#         evidence = le
-#     )
-# end

@@ -37,9 +37,13 @@ struct TrackerAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
-
-ADBackend(::Val{:forward_diff}) where {T} = ForwardDiffAD{CHUNKSIZE[]}
-ADBackend(::Val{T}) where {T} = TrackerAD
+function ADBackend(::Val{T}) where {T}
+    if T === :forward_diff
+        return ForwardDiffAD{CHUNKSIZE[]}
+    else
+        return TrackerAD
+    end
+end
 
 """
 getADtype(alg)
@@ -161,9 +165,10 @@ end
 import StatsFuns: logsumexp
 logsumexp(x::Tracker.TrackedArray) = Tracker.track(logsumexp, x)
 Tracker.@grad function logsumexp(x::Tracker.TrackedArray)
-    lse = logsumexp(Tracker.data(x))
+    lse = logsumexp(Tracker.data(x)) 
+    se = exp(lse)
     return lse,
-          Δ->(Δ .* exp.(x .- lse),)
+          Δ->(Δ .* exp.(x) ./ se,)
 end
 
 import StatsFuns: binomlogpdf

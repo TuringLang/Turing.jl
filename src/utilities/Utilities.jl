@@ -12,8 +12,7 @@ export  vectorize,
         Sample,
         Chain,
         init,
-        vectorize,
-        set_resume!
+        vectorize
 
 include("helper.jl")
 include("robustinit.jl")

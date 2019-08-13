@@ -17,9 +17,10 @@ n_samples = 100_000
 n_adapts = 2_000
 
 # Sampling
-LOG_DATA = @tbenchmark_expr("NUTS(Leapfrog(...))",
+bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
                              sample(target(D), HMC(n_samples, 0.1, 5)));
 
+LOG_DATA = build_log_data("MvNormal-Benchmark", bench_res...)
 print_log(LOG_DATA)
 
 ##

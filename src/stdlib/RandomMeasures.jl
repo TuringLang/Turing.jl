@@ -7,7 +7,6 @@ using StatsFuns: logsumexp
 
 import Distributions: sample, logpdf
 import Base: maximum, minimum, rand
-import Random: AbstractRNG
 
 ## ############### ##
 ## Representations ##
@@ -26,7 +25,7 @@ struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:Abstract
 end
 
 logpdf(d::SizeBiasedSamplingProcess, x) = _logpdf(d, x)
-rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess) = _rand(rng, d)
+rand(d::SizeBiasedSamplingProcess) = _rand(d)
 minimum(d::SizeBiasedSamplingProcess) = zero(d.surplus)
 maximum(d::SizeBiasedSamplingProcess) = d.surplus
 
@@ -40,7 +39,7 @@ struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <: ContinuousUn
 end
 
 logpdf(d::StickBreakingProcess, x) = _logpdf(d, x)
-rand(rng::AbstractRNG, d::StickBreakingProcess) = _rand(rng, d)
+rand(d::StickBreakingProcess) = _rand(d)
 minimum(d::StickBreakingProcess) = 0.0
 maximum(d::StickBreakingProcess) = 1.0
 
@@ -77,10 +76,10 @@ function logpdf(d::ChineseRestaurantProcess, x::Int)
     end
 end
 
-function rand(rng::AbstractRNG, d::ChineseRestaurantProcess)
+function rand(d::ChineseRestaurantProcess)
     lp = _logpdf_table(d.rpm, d.m)
     p = exp.(lp)
-    return rand(rng, Categorical(p ./ sum(p)))
+    return rand(Categorical(p ./ sum(p)))
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
@@ -108,8 +107,8 @@ v_k \\sim Beta(1, \\alpha)
 
 *Chinese Restaurant Process*
 ```math
-p(z_n = k | z_{1:n-1}) \\propto \\begin{cases}
-        \\frac{m_k}{n-1+\\alpha}, \\text{if} m_k > 0\\\\
+p(z_n = k | z_{1:n-1}) \\propto \\begin{cases} 
+        \\frac{m_k}{n-1+\\alpha}, \\text{if} m_k > 0\\\\ 
         \\frac{\\alpha}{n-1+\\alpha}
     \\end{cases}
 ```
@@ -120,10 +119,10 @@ struct DirichletProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     α::T
 end
 
-_rand(rng::AbstractRNG, d::StickBreakingProcess{DirichletProcess{T}}) where {T<:Real} = rand(rng, Beta(one(T), d.rpm.α))
+_rand(d::StickBreakingProcess{DirichletProcess{T}}) where {T<:Real} = rand(Beta(one(T), d.rpm.α))
 
-function _rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess{DirichletProcess{T}}) where {T<:Real}
-    return d.surplus*rand(rng, Beta(one(T), d.rpm.α))
+function _rand(d::SizeBiasedSamplingProcess{DirichletProcess{T}}) where {T<:Real}
+    return d.surplus*rand(Beta(one(T), d.rpm.α))
 end
 
 function _logpdf(d::StickBreakingProcess{DirichletProcess{T}}, x::T) where {T<:Real}
@@ -169,8 +168,8 @@ v_k \\sim Beta(1-d, \\theta + t*d)
 
 *Chinese Restaurant Process*
 ```math
-p(z_n = k | z_{1:n-1}) \\propto \\begin{cases}
-        \\frac{m_k - d}{n+\\theta}, \\text{if} m_k > 0\\\\
+p(z_n = k | z_{1:n-1}) \\propto \\begin{cases} 
+        \\frac{m_k - d}{n+\\theta}, \\text{if} m_k > 0\\\\ 
         \\frac{\\theta + d*t}{n+\\theta}
     \\end{cases}
 ```
@@ -183,12 +182,12 @@ struct PitmanYorProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     t::Int
 end
 
-function _rand(rng::AbstractRNG, d::StickBreakingProcess{PitmanYorProcess{T}}) where {T<:Real}
-    return rand(rng, Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
+function _rand(d::StickBreakingProcess{PitmanYorProcess{T}}) where {T<:Real}
+    return rand(Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
 end
 
-function _rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}) where {T<:Real}
-    return d.surplus*rand(rng, Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
+function _rand(d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}) where {T<:Real}
+    return d.surplus*rand(Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
 end
 
 function _logpdf(d::StickBreakingProcess{PitmanYorProcess{T}}, x::T) where {T<:Real}

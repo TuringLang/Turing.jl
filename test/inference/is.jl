@@ -40,7 +40,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         a, b
       end
 
-      alg = IS()
+      alg = IS(n)
       seed = 0
 
       _f = normal();
@@ -51,7 +51,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         rand(Normal(0,1))
         exact = reference(n)
         Random.seed!(seed)
-        tested = sample(_f, alg, n)
+        tested = sample(_f, alg)
         t_vals = get(tested, [:a, :b, :lp])
         for i = 1:n
             @test exact[:samples][i][:a] == t_vals.a[i]

@@ -94,11 +94,6 @@ getspace(::Type{<:SampleFromPrior}) = ()
 getspace(::Type{<:SampleFromUniform}) = ()
 
 """
-An abstract type that mutable sampler state structs inherit from.
-"""
-abstract type AbstractSamplerState end
-
-"""
     Sampler{T}
 
 Generic interface for implementing inference algorithms.
@@ -112,15 +107,14 @@ The dispatch is based on the value of a `sampler` variable.
 To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
 """
-mutable struct Sampler{T, S<:AbstractSamplerState} <: AbstractSampler
+mutable struct Sampler{T} <: AbstractSampler
     alg      ::  T
     info     ::  Dict{Symbol, Any} # sampler infomation
     selector ::  Selector
-    state    ::  S
 end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
-# Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
+Sampler(alg, model::Model, s::Selector) = Sampler(alg, s)
 
 include("utilities/Utilities.jl")
 using .Utilities
@@ -160,7 +154,7 @@ using .Variational
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
-    include("contrib/inference/dynamichmc.jl")
+    include("inference/dynamichmc.jl")
 end
 
 # Random probability measures.
@@ -193,10 +187,10 @@ export  @model,                 # modelling
         PIMH,
         PMMH,
         IPMCMC,
-
+        
         vi,                    # variational inference
         ADVI,
-        
+
         sample,                 # inference
         setchunksize,
         resume,
