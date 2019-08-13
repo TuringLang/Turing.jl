@@ -185,7 +185,7 @@ end
 
 function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     new_vi = deepcopy(old_vi)
-    new_vi[spl] = x 
+    new_vi[spl] = x
     return new_vi
 end
 function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
@@ -199,13 +199,13 @@ end
         mdf = :(metadata.$f)
         if f in space || length(space) == 0
             len = :(length($mdf.vals))
-            push!(exprs, :($f = Metadata($mdf.idcs, 
-                                        $mdf.vns, 
-                                        $mdf.ranges, 
-                                        x[($offset + 1):($offset + $len)], 
-                                        $mdf.dists, 
-                                        $mdf.gids, 
-                                        $mdf.orders, 
+            push!(exprs, :($f = Metadata($mdf.idcs,
+                                        $mdf.vns,
+                                        $mdf.ranges,
+                                        x[($offset + 1):($offset + $len)],
+                                        $mdf.dists,
+                                        $mdf.gids,
+                                        $mdf.orders,
                                         $mdf.flags
                                     )
                             )
@@ -497,14 +497,17 @@ end
 @generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
     exprs = []
     for f in names
-        push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
+        if f in space || length(space) == 0
+            push!(exprs, :($f = findinds(metadata.$f, s, Val($space))))
+        end
     end
     length(exprs) == 0 && return :(NamedTuple())
     return :($(exprs...),)
 end
 @inline function findinds(f_meta, s, ::Val{space}) where {space}
     # Get all the idcs of the vns in `space` and that belong to the selector `s`
-    return filter((i) -> (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
+    return filter((i) ->
+        (s in f_meta.gids[i] || isempty(f_meta.gids[i])) &&
         (isempty(space) || in(f_meta.vns[i], space)), 1:length(f_meta.gids))
 end
 @inline function findinds(f_meta)
@@ -520,7 +523,7 @@ function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
     return _getvns(vi.metadata, idcs)
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
-@generated function _getvns(metadata::NamedTuple{names}, idcs) where {names}
+@generated function _getvns(metadata, idcs::NamedTuple{names}) where {names}
     exprs = []
     for f in names
         push!(exprs, :($f = metadata.$f.vns[idcs.$f]))
@@ -551,7 +554,7 @@ end
 end
 @inline _getranges(vi::TypedVarInfo, idcs::NamedTuple) = _getranges(vi.metadata, idcs)
 
-@generated function _getranges(metadata::NamedTuple{names}, idcs::NamedTuple) where {names}
+@generated function _getranges(metadata::NamedTuple, idcs::NamedTuple{names}) where {names}
     exprs = []
     for f in names
         push!(exprs, :($f = findranges(metadata.$f.ranges, idcs.$f)))
@@ -658,7 +661,7 @@ Symbol(vn::VarName) = Symbol(string(vn, all=false))  # simplified symbol
 Returns `true` if `vn`'s symbol is in `space` and `false` otherwise.
 """
 function in(vn::VarName, space::Tuple)::Bool
-    if vn.sym in space
+    if vn.sym in space || length(space) == 0
         return true
     else
         # String representation of `vn`
@@ -686,10 +689,17 @@ end
 Samples from `model` using the sampler `spl` storing the sample and log joint
 probability in `vi`.
 """
-function runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler = SampleFromPrior())
+function runmodel!(
+    model::Model,
+    vi::AbstractVarInfo,
+    spl::T = SampleFromPrior()
+) where T<:AbstractSampler
     setlogp!(vi, 0)
-    if spl isa Sampler && haskey(spl.info, :eval_num)
-        spl.info[:eval_num] += 1
+    # Check that the sampler has the state field.
+    if !(T <: Union{SampleFromPrior, SampleFromUniform})
+        if :eval_num in fieldnames(typeof(spl.state ))
+            spl.state.eval_num += 1
+        end
     end
     model(vi, spl)
     return vi
@@ -946,11 +956,36 @@ end
                     end
                 else
                     @warn("[Turing] attempt to invlink an invlinked vi")
-                end    
+                end
             end)
         end
     end
     return expr
+end
+
+
+"""
+    islinked(vi::VT, spl::Sampler) where VT<:VarInfo
+
+Returns `true` if a `VarInfo` is linked for a particular sampler `spl`.
+"""
+function islinked(vi::UntypedVarInfo, spl::Sampler)
+    vns = _getvns(vi, spl)
+    return istrans(vi, vns[1])
+end
+function islinked(vi::TypedVarInfo, spl::Sampler)
+    vns = _getvns(vi, spl)
+    return _islinked(vi.metadata, vi, vns, getspaceval(spl))
+end
+function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
+    for f in names
+        if f in space || length(space) == 0
+            f_vns = vi.metadata[f].vns
+            # TODO: make this less of a stupid way to accomplish this.
+            return istrans(vi, f_vns[1])
+        end
+    end
+    return false
 end
 
 # The default getindex & setindex!() for get & set values
@@ -993,7 +1028,7 @@ function getindex(vi::TypedVarInfo, spl::Sampler)
     return vcat(_getindex(vi.metadata, ranges)...)
 end
 # Recursively builds a tuple of the `vals` of all the symbols
-@generated function _getindex(metadata::NamedTuple{names}, ranges) where {names}
+@generated function _getindex(metadata, ranges::NamedTuple{names}) where {names}
     expr = Expr(:tuple)
     for f in names
         push!(expr.args, :(metadata.$f.vals[ranges.$f]))
@@ -1024,7 +1059,7 @@ function setindex!(vi::TypedVarInfo, val, spl::Sampler)
     return val
 end
 # Recursively writes the entries of `val` to the `vals` fields of all the symbols as if they were a contiguous vector.
-@generated function _setindex!(metadata::NamedTuple{names}, val, ranges) where {names}
+@generated function _setindex!(metadata, val, ranges::NamedTuple{names}) where {names}
     expr = Expr(:block)
     offset = :(0)
     for f in names
@@ -1039,21 +1074,48 @@ end
     return expr
 end
 
+"""
+    tonamedtuple(vi::Turing.VarInfo)
+
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values and 
+indexing string of the variable. For example, a model that had a vector of vector-valued
+variables `x` would return
+
+```julia
+(x = ([1.5, 2.0], [3.0, 1.0], ["x[1]", "x[2]"]), )
+```
+"""
+function tonamedtuple(vi::Turing.VarInfo)
+    return tonamedtuple(vi.metadata, vi)
+end
+@generated function tonamedtuple(metadata::NamedTuple{names}, vi::Turing.VarInfo) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns, all=false))))
+    end
+    return expr
+end
+
 function getparams(vi::TypedVarInfo, spl::Union{SampleFromPrior, Sampler})
     # Gets the vns as a NamedTuple
     vns = _getvns(vi, spl)
-    return vcat(_getparams(vns, vi)...)
+    return _getparams(vns, vi)
 end
 # Recursively builds a tuple of the parameter values of all the symbols
 @generated function _getparams(vns::NamedTuple{names}, vi) where {names}
     expr = Expr(:tuple)
     for f in names
-        push!(expr.args, :(findvns(vi, vns.$f)))
+        push!(expr.args, :($f = getindex(vi, vns.$f)))
+        # push!(expr.args, :($f = findvns(vi, vns.$f)))
     end
     return expr
 end
 @inline function findvns(vi, f_vns)
-    return mapreduce(vn -> vi[vn], vcat, f_vns)
+    if length(f_vns) == 0
+        throw("Unidentified error, please report this error in an issue.")
+    end
+    return map(vn -> vi[vn], f_vns)
 end
 
 function Base.eltype(vi::AbstractVarInfo, spl::Union{AbstractSampler, SampleFromPrior})
@@ -1244,7 +1306,7 @@ function set_retained_vns_del_by_spl!(vi::TypedVarInfo, spl::Sampler)
     gidcs = _getidcs(vi, spl)
     return _set_retained_vns_del_by_spl!(vi.metadata, gidcs, vi.num_produce)
 end
-@generated function _set_retained_vns_del_by_spl!(metadata::NamedTuple{names}, gidcs, num_produce) where {names}
+@generated function _set_retained_vns_del_by_spl!(metadata, gidcs::NamedTuple{names}, num_produce) where {names}
     expr = Expr(:block)
     for f in names
         f_gidcs = :(gidcs.$f)
@@ -1275,9 +1337,18 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(getspace(spl.alg)) && isempty(getgid(vi, vn)) && getsym(vn) in getspace(spl.alg)
+    if ~isempty(getspace(spl.alg)) && getsym(vn) in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end
+"""
+`updategid_forced!(vi::VarInfo, vn::VarName, spl::Sampler)`
+
+Forces a sampler to add its `gid` to a `vn`. Currently only used for the Gibbs sampler.
+"""
+function updategid_forced!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
+    setgid!(vi, spl.selector, vn)
+end
+
 
 end # end of module

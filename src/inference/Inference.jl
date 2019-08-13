@@ -1,22 +1,27 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail
+using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, islinked
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector
+    Selector, AbstractSamplerState
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
+using ..Interface
+import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Utilities: Sample, save, resume
+import ..Core.RandomVariables: getparams
+import ..Utilities: Sample, save, resume, set_resume!
+import ..Interface: AbstractTransition, step!, sample_init!,
+    transitions_init, sample_end!
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -50,7 +55,8 @@ export  InferenceAlgorithm,
         get_var,
         get_covar,
         add_sample!,
-        reset!
+        reset!,
+        step!
 
 #######################
 # Sampler abstraction #
@@ -77,25 +83,74 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
 
-# Concrete algorithm implementations.
-include("sghmc.jl")
+#########################
+# Default sampler state #
+#########################
+
+"""
+A blank `AbstractSamplerState` that contains only `VarInfo` information.
+"""
+mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
+    vi :: VIType
+end
+
+###########################
+# Generic Transition type #
+###########################
+
+struct Transition{T} <: AbstractTransition
+    θ  :: T
+    lp :: Float64
+end
+
+function transition(spl::Sampler)
+    theta = tonamedtuple(spl.state.vi)
+    lp = getlogp(spl.state.vi)
+    return Transition{typeof(theta)}(theta, lp)
+end
+
+function transition(spl::Sampler, nt::NamedTuple)
+    theta = merge(tonamedtuple(spl.state.vi), nt)
+    lp = getlogp(spl.state.vi)
+    return Transition{typeof(theta)}(theta, lp)
+end
+
+function additional_parameters(::Type{Transition})
+    return [:lp]
+end
+
+#######################################
+# Concrete algorithm implementations. #
+#######################################
+
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
+include("../contrib/inference/sghmc.jl")
+include("../contrib/inference/AdvancedSMCExtensions.jl")
 
-getspace(::IS) = ()
-getspace(::Type{<:IS}) = ()
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
+############################
+# Import inferface methods #
+############################
+
+include("interface.jl")
+
+################
+# Typing tools #
+################
+
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
     @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
+getspace(::Gibbs) = Tuple{}()
+getspace(::Type{<:Gibbs}) = Tuple{}()
 
 @inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
 @inline floatof(::Type) = Real
@@ -210,7 +265,8 @@ function observe(spl::A,
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
+    @assert isa(dist, UnivariateDistribution) || 
+        isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
         sum(logpdf.(Ref(dist), value))
