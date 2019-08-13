@@ -28,6 +28,12 @@ include("test_utils/AllUtils.jl")
         end
     end
 
+    @testset "variational" begin
+        @testset "algorithms" begin
+            include("variational/advi.jl")
+        end
+    end
+
     @testset "stdlib" begin
         # include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
