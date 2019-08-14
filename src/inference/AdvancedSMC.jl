@@ -11,6 +11,7 @@ struct ParticleTransition{T} <: AbstractTransition
     θ::T
     lp::Float64
     le::Float64
+    weight::Float64
 end
 
 abstract type ParticleInference <: InferenceAlgorithm end
@@ -18,7 +19,7 @@ abstract type ParticleInference <: InferenceAlgorithm end
 transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le]
+    return [:lp,:le, :weight]
 end
 
 ####
@@ -26,7 +27,7 @@ end
 ####
 
 """
-    SMC(n_particles::Int)
+    SMC()
 
 Sequential Monte Carlo sampler.
 
@@ -36,28 +37,26 @@ must be stored in a [`TArray`](@ref) object.
 Usage:
 
 ```julia
-SMC(1000)
+SMC()
 ```
 """
 mutable struct SMC{space, F} <: ParticleInference
-    n_particles           ::  Int
     resampler             ::  F
     resampler_threshold   ::  Float64
 end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
-    n_particles::Int,
     resampler::F,
     resampler_threshold::Float64,
     space::Tuple
 ) where {F}
-    return SMC{space, F}(n_particles, resampler, resampler_threshold)
+    return SMC{space, F}(resampler, resampler_threshold)
 end
-SMC(n) = SMC(n, resample_systematic, 0.5, ())
-SMC(n_particles::Int, ::Tuple{}) = SMC(n_particles)
-function SMC(n_particles::Int, space::Symbol...)
-    SMC(n_particles, resample_systematic, 0.5, space)
+SMC() = SMC(resample_systematic, 0.5, ())
+SMC(::Tuple{}) = SMC()
+function SMC(space::Symbol...)
+    SMC(resample_systematic, 0.5, space)
 end
 
 mutable struct SMCState <: AbstractSamplerState
@@ -118,17 +117,15 @@ function step!(
     iteration=-1,
     kwargs...
 )
-    ## pick a particle to be retained.
-    # Ws, _ = weights(spl.state.particles)
-    # indx = randcat(Ws)
+    ## Grab the weights.
+    Ws, _ = weights(spl.state.particles)
 
     # update the master vi.
-    # spl.state.vi = spl.state.particles[indx].vi
     particle = spl.state.particles.vals[iteration]
     params = tonamedtuple(particle.vi)
     lp = getlogp(particle.vi)
 
-    return transition(params, lp, spl.state.particles.logE)
+    return transition(params, lp, spl.state.particles.logE, Ws[iteration])
 end
 
 ####
@@ -225,7 +222,7 @@ function step!(
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(params, lp, particles.logE)
+    return transition(params, lp, particles.logE, 1.0)
 end
 
 function sample_end!(
@@ -429,7 +426,8 @@ Returns a basic TransitionType for the particle samplers.
 function transition(
         theta::T,
         lp::Float64,
-        le::Float64
+        le::Float64,
+        weight::Float64
 ) where {T}
-    return ParticleTransition{T}(theta, lp, le)
+    return ParticleTransition{T}(theta, lp, le, weight)
 end

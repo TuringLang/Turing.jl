@@ -65,7 +65,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(10)
+        sampler = SMC()
         mf = crpimm(data, rpm)
 
         # Compute empirical posterior distribution over partitions
@@ -223,7 +223,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(10)
+        sampler = SMC()
         mf = sbimm(data, rpm, 10)
 
         # Compute empirical posterior distribution over partitions
@@ -301,7 +301,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(10)
+        sampler = SMC()
         mf = sbsimm(data, rpm, 100)
 
         # Compute empirical posterior distribution over partitions

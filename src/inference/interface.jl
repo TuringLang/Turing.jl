@@ -176,9 +176,14 @@ function Chains(
     nms = string.(vcat(nms..., string.(extra_params)...))
     parray = vcat([hcat(vals[i]..., extra_values[i]...) for i in 1:length(ts)]...)
 
-    # If the state field has final_logevidence, grab that.
+    # If the state field has average_logevidence, grab that.
     le = :average_logevidence in fieldnames(typeof(spl.state)) ?
         getproperty(spl.state, :average_logevidence) :
+        missing
+
+    # If the state field has final_logevidence, grab that.
+    le = :final_logevidence in fieldnames(typeof(spl.state)) ?
+        getproperty(spl.state, :final_logevidence) :
         missing
 
     # Check whether to invlink! the varinfo

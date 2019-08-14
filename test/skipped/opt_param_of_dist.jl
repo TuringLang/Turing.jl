@@ -9,7 +9,7 @@ using Test
   y, x
 end
 
-s = SMC(1000)
+s = SMC()
 
 res = sample(testassume, s)
 

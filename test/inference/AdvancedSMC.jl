@@ -12,7 +12,7 @@ end
 #         N = 2000
 #         s1 = PMMH(N, SMC(10, :s), MH(1,(:m, s -> Normal(s, sqrt(1)))))
 #         s2 = PMMH(N, SMC(10, :s), MH(1, :m))
-#         s3 = PIMH(N, SMC(10))
+#         s3 = PIMH(N, SMC())
 #
 #         c1 = sample(gdemo_default, s1)
 #         c2 = sample(gdemo_default, s2)
@@ -29,7 +29,7 @@ end
 #         check_gdemo(chain, eps=0.1)
 #
 #         # PIMH
-#         alg = PIMH(2000, SMC(20))
+#         alg = PIMH(2000, SMC())
 #         chain = sample(gdemo_default, alg)
 #         check_gdemo(chain)
 #

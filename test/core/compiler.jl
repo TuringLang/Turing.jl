@@ -16,7 +16,7 @@ priors = 0 # See "new grammar" test.
             x, y
         end
 
-        smc = SMC(10)
+        smc = SMC()
         pg = PG(10)
 
         res1 = sample(test_assume(), smc, 1000)
@@ -44,7 +44,7 @@ priors = 0 # See "new grammar" test.
             p, x
         end
 
-        smc = SMC(10)
+        smc = SMC()
         pg = PG(10)
         gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
 
@@ -203,7 +203,7 @@ priors = 0 # See "new grammar" test.
         end
 
         chain = sample(gauss(x), PG(10), 10)
-        chain = sample(gauss(x), SMC(10), 10)
+        chain = sample(gauss(x), SMC(), 10)
 
         @model gauss2(x, ::Type{TV}=Vector{Float64}) where {TV} = begin
             priors = TV(undef, 2)
@@ -217,8 +217,8 @@ priors = 0 # See "new grammar" test.
 
         chain = sample(gauss2(x), PG(10), 10)
         chain = sample(gauss2(x=x, TV=Vector{Float64}), PG(10), 10)
-        chain = sample(gauss2(x), SMC(10), 10)
-        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(10), 10)
+        chain = sample(gauss2(x), SMC(), 10)
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -258,7 +258,7 @@ priors = 0 # See "new grammar" test.
         end
 
         is  = IS()
-        smc = SMC(10)
+        smc = SMC()
         pg  = PG(10)
 
         res_is = sample(test(), is, 10000)
