@@ -134,9 +134,9 @@ function sample(
     # Step through the sampler.
     for i=1:N
         if i == 1
-            ts[i] = step!(rng, ℓ, s, N; kwargs...)
+            ts[i] = step!(rng, ℓ, s, N; iteration=i, kwargs...)
         else
-            ts[i] = step!(rng, ℓ, s, N, ts[i-1]; kwargs...)
+            ts[i] = step!(rng, ℓ, s, N, ts[i-1]; iteration=i, kwargs...)
         end
 
         # Run a callback function.

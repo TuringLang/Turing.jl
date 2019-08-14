@@ -91,19 +91,19 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # Define model
 
-        alpha = 0.16            # regularizatin term
-        var = sqrt(1.0 / alpha) # variance of the Gaussian prior
+        alpha = 0.16                  # regularizatin term
+        var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
         @model bnn(ts) = begin
-            b1 ~ MvNormal([0 ;0; 0],
-                [var 0 0; 0 var 0; 0 0 var])
-            w11 ~ MvNormal([0; 0], [var 0; 0 var])
-            w12 ~ MvNormal([0; 0], [var 0; 0 var])
-            w13 ~ MvNormal([0; 0], [var 0; 0 var])
-            bo ~ Normal(0, var)
+            b1 ~ MvNormal([0. ;0.; 0.],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
+            w11 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w12 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w13 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal([0; 0; 0],
-                [var 0 0; 0 var 0; 0 0 var])
+            wo ~ MvNormal([0.; 0; 0],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
             for i = rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)

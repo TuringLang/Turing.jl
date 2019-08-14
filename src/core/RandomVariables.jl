@@ -986,8 +986,10 @@ function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {na
     for f in names
         if f in space || length(space) == 0
             f_vns = vi.metadata[f].vns
-            # TODO: make this less of a stupid way to accomplish this.
-            return istrans(vi, f_vns[1])
+            if length(f_vns) > 0
+                # TODO: make this less of a stupid way to accomplish this.
+                return istrans(vi, f_vns[1])
+            end
         end
     end
     return false

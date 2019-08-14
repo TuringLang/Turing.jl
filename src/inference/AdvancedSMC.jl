@@ -60,53 +60,75 @@ function SMC(n_particles::Int, space::Symbol...)
     SMC(n_particles, resample_systematic, 0.5, space)
 end
 
-mutable struct ParticleSamplerState <: AbstractSamplerState
-    vi                 ::   TypedVarInfo
-    # The logevidence at the end, after agregating all samples together.
-    average_logevidence  ::   Float64 
+mutable struct SMCState <: AbstractSamplerState
+    vi                   ::   TypedVarInfo
+    # The logevidence after aggregating all samples together.
+    average_logevidence  ::   Float64
+    particles            ::   ParticleContainer
 end
 
-ParticleSamplerState(model::Model) = ParticleSamplerState(VarInfo(model), 0.0)
+function SMCState(
+    model::M, 
+) where {
+    M<:Model
+}
+    vi = VarInfo(model)
+    particles = ParticleContainer{Trace}(model)
+
+    return SMCState(vi, 0.0, particles)
+end
 
 function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
     dict = Dict{Symbol, Any}()
-    state = ParticleSamplerState(model)
-    return Sampler{T,ParticleSamplerState}(alg, dict, s, state)
+    state = SMCState(model)
+    return Sampler{T,SMCState}(alg, dict, s, state)
 end
 
-function step!(
+function sample_init!(
     ::AbstractRNG, # Note: This function does not use the range argument.
     model::Turing.Model,
-    spl::Sampler{<:SMC, ParticleSamplerState},
-    ::Integer; # Note: This function doesn't use the N argument.
+    spl::Sampler{<:SMC},
+    N::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
-    particles = ParticleContainer{Trace{typeof(spl),
+    # Update the particle container now that the sampler type
+    # is defined.
+    spl.state.particles = ParticleContainer{Trace{typeof(spl),
         typeof(spl.state.vi), typeof(model)}}(model)
 
     spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)
 
-    push!(particles, spl.alg.n_particles, spl, empty!(spl.state.vi))
+    push!(spl.state.particles, N, spl, empty!(spl.state.vi))
 
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
+    while consume(spl.state.particles) != Val{:done}
+        ess = effectiveSampleSize(spl.state.particles)
+        if ess <= spl.alg.resampler_threshold * length(spl.state.particles)
+            resample!(spl.state.particles, spl.alg.resampler)
+        end
     end
+end
 
+function step!(
+    ::AbstractRNG, 
+    model::Turing.Model,
+    spl::Sampler{<:SMC},
+    ::Integer;
+    iteration=-1,
+    kwargs...
+)
     ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
+    # Ws, _ = weights(spl.state.particles)
+    # indx = randcat(Ws)
 
     # update the master vi.
-    spl.state.vi = particles[indx].vi
-    params = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
+    # spl.state.vi = spl.state.particles[indx].vi
+    particle = spl.state.particles.vals[iteration]
+    params = tonamedtuple(particle.vi)
+    lp = getlogp(particle.vi)
 
-    return transition(params, lp, particles.logE)
+    return transition(params, lp, spl.state.particles.logE)
 end
 
 ####
@@ -141,6 +163,17 @@ end
 
 alg_str(spl::Sampler{PG}) = "PG"
 
+mutable struct PGState <: AbstractSamplerState
+    vi                   ::   TypedVarInfo
+    # The logevidence after aggregating all samples together.
+    average_logevidence  ::   Float64
+end
+
+function PGState(model::M) where {M<:Model}
+    vi = VarInfo(model)
+    return PGState(vi, 0.0)
+end
+
 const CSMC = PG # type alias of PG as Conditional SMC
 
 """
@@ -150,14 +183,14 @@ Return a `Sampler` object for the PG algorithm.
 """
 function Sampler(alg::T, model::Model, s::Selector) where T<:PG
     info = Dict{Symbol, Any}()
-    state = ParticleSamplerState(model)
-    return Sampler{T,ParticleSamplerState}(alg, info, s, state)
+    state = PGState(model)
+    return Sampler{T,PGState}(alg, info, s, state)
 end
 
 function step!(
     ::AbstractRNG, # Note: This function does not use the range argument for now.
     model::Turing.Model,
-    spl::Sampler{<:PG, ParticleSamplerState},
+    spl::Sampler{<:PG},
     ::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
@@ -207,11 +240,11 @@ function sample_end!(
     resume_from = get(kwargs, :resume_from, nothing)
 
     # Exponentiate the average log evidence.
-    loge = mean([t.le for t in ts])
+    loge = exp(mean([t.le for t in ts]))
 
     # If we already had a chain, grab the logevidence.
     if resume_from != nothing   # concat samples
-        @assert resume_from isa MCMCChains.Chains "resume_from needs to be a Chains object."
+        @assert resume_from isa Chains "resume_from needs to be a Chains object."
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = exp.(resume_from.logevidence)
         # Calculate new log-evidence

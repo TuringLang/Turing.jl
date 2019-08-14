@@ -252,15 +252,15 @@ Tracker.@grad function LinearAlgebra.UpperTriangular(A::AbstractMatrix)
     return UpperTriangular(Tracker.data(A)), Δ->(UpperTriangular(Δ),)
 end
 
-turing_chol(A::AbstractMatrix) = cholesky(A).factors
-turing_chol(A::Tracker.TrackedMatrix) = Tracker.track(turing_chol, A)
-Tracker.@grad function turing_chol(A::AbstractMatrix)
+turing_chol(A::AbstractMatrix; kwargs...) = cholesky(A; kwargs...).factors
+turing_chol(A::Tracker.TrackedMatrix; kwargs...) = Tracker.track(turing_chol, A)
+Tracker.@grad function turing_chol(A::AbstractMatrix; kwargs...)
     C, back = Zygote.forward(cholesky, Tracker.data(A))
     return C.factors, Δ->back((factors=Tracker.data(Δ),))
 end
 
-function LinearAlgebra.cholesky(A::Tracker.TrackedMatrix)
-    factors = turing_chol(A)
+function LinearAlgebra.cholesky(A::Tracker.TrackedMatrix; kwargs...)
+    factors = turing_chol(A; kwargs...)
     return Cholesky{eltype(factors), typeof(factors)}(factors, 'U', 0)
 end
 
@@ -363,6 +363,7 @@ struct TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMu
 end
 
 Distributions.dim(d::TuringDiagNormal) = length(d.m)
+Base.length(d::TuringDiagNormal) = length(d.m)
 function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal)
     return d.m .+ d.σ .* randn(rng, dim(d))
 end

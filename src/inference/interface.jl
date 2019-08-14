@@ -163,8 +163,6 @@ function Chains(
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    # RandomVariables.params_nt(spl.state.vi, spl)
-    
     nms, vals = _params_to_array(ts, spl)
 
     # Get the extra field names from the sampler state type.
@@ -179,8 +177,8 @@ function Chains(
     parray = vcat([hcat(vals[i]..., extra_values[i]...) for i in 1:length(ts)]...)
 
     # If the state field has final_logevidence, grab that.
-    le = :final_logevidence in fieldnames(typeof(spl.state)) ?
-        getproperty(spl.state, :final_logevidence) :
+    le = :average_logevidence in fieldnames(typeof(spl.state)) ?
+        getproperty(spl.state, :average_logevidence) :
         missing
 
     # Check whether to invlink! the varinfo
