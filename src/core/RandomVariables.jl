@@ -1344,7 +1344,7 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if ~isempty(getspace(spl.alg)) && getsym(vn) in getspace(spl.alg)
+    if getsym(vn) in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end
