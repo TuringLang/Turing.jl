@@ -1,10 +1,11 @@
-using ForwardDiff, Distributions, FDM, Tracker, Random, LinearAlgebra, PDMats
+using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
 using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
 using Turing.Core.RandomVariables: getval
 using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
+const FDM = FiniteDifferences
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
