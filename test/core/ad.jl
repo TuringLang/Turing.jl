@@ -46,9 +46,9 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3:4]), [1.0, 1.0]), [1.0, 1.0, 1.0, 1.0])
         s = rand(2,2); s = s' * s
         test_ad(m->logpdf(MvNormal(m, s), [1.0, 1.0]), [1.0, 1.0])
-        test_dense_mvnormal_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s, 1)
+        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
         ms = [[0.0, 0.0]; s[:]]
-        test_dense_mvnormal_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms, 3)
+        test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
         test_ad(logsumexp, [1.0, 1.0])
     end
     @turing_testset "adr" begin
