@@ -88,9 +88,10 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     for sym in keys(spl.state.vi.metadata)
         vns = getfield(spl.state.vi.metadata, sym).vns
         for vn in vns
+            # Update the gid for the Gibbs sampler.
             Turing.RandomVariables.updategid_forced!(spl.state.vi, vn, spl)
             
-            # Try to update each gid
+            # Try to store each subsampler's gid in the VarInfo.
             for local_spl in spl.state.samplers
                 Turing.RandomVariables.updategid!(spl.state.vi, vn, local_spl)
             end
