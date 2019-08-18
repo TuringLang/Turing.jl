@@ -368,16 +368,6 @@ getchol(m::PDMats.AbstractPDMat) = m.chol
 getchol(m::PDMats.PDiagMat) = cholesky(Diagonal(m.diag))
 getchol(m::PDMats.ScalMat) = cholesky(Diagonal(fill(m.value, m.dim)))
 
-# Deal with ambiguities.
-function Base.:*(
-    A::Tracker.TrackedMatrix,
-    B::Adjoint{T, V} where V<:LinearAlgebra.AbstractTriangular{T} where {T},
-)
-    return Tracker.track(*, A, B)
-end
-
-
-
 """
     TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMultivariateDistribution
 
@@ -498,8 +488,6 @@ for F in (:link, :invlink)
         end
     end
 end
-
-Base.:*(x::Adjoint{T, <:AbstractMatrix{T}} where {T}, y::TrackedVector) = Tracker.track(*, x, y)
 
 for F in (:link, :invlink)
     @eval begin
