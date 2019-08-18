@@ -25,6 +25,7 @@ include("test_utils/AllUtils.jl")
             include("inference/is.jl")
             include("inference/mh.jl")
             include("inference/AdvancedSMC.jl")
+            include("inference/InterfaceExtensions.jl")
         end
     end
 
@@ -35,12 +36,11 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "stdlib" begin
-        # include("stdlib/distributions.jl")
+        include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
     end
 
     @testset "utilities" begin
-        include("utilities/io.jl")
       # include("utilities/stan-interface.jl")
         include("utilities/util.jl")
     end

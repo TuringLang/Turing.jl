@@ -2,19 +2,8 @@
 ### Sampler states
 ###
 
-mutable struct StaticHMCState{
-    TTraj<:AHMC.StaticTrajectory,
-    TV <: TypedVarInfo
-} <: AbstractSamplerState
-    vi       :: TV
-    eval_num :: Int
-    i        :: Int
-    traj     :: TTraj
-    h        :: AHMC.Hamiltonian
-end
-
-mutable struct DynamicHMCState{
-    TTraj<:AHMC.DynamicTrajectory,
+mutable struct HMCState{
+    TTraj<:AHMC.AbstractTrajectory,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     TV <: TypedVarInfo
 } <: AbstractSamplerState
@@ -650,7 +639,7 @@ function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
         logπ, ∂logπ∂θ)
     traj = gen_traj(spl.alg, spl.alg.ϵ)
 
-    return StaticHMCState(vi, 0, 0, traj, h)
+    return HMCState(vi, 0, 0, traj, h, AHMC.Adaptation.NoAdaptation())
 end
 
 function HMCState(model::Model,
@@ -691,5 +680,5 @@ function HMCState(model::Model,
     # Unlink everything.
     invlink!(vi, spl)
 
-    return DynamicHMCState(vi, 0, 0, traj, h, adaptor)
+    return HMCState(vi, 0, 0, traj, h, adaptor)
 end

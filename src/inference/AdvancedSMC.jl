@@ -2,26 +2,6 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
-####################
-# Transition Types #
-####################
-
-# used by PG, SMC, PMMH
-struct ParticleTransition{T} <: AbstractTransition
-    θ::T
-    lp::Float64
-    le::Float64
-    weight::Float64
-end
-
-abstract type ParticleInference <: InferenceAlgorithm end
-
-transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
-
-function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le, :weight]
-end
-
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -417,17 +397,3 @@ end
 #############################
 
 vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
-
-"""
-    transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}}, weight::Float64)
-
-Returns a basic TransitionType for the particle samplers.
-"""
-function transition(
-        theta::T,
-        lp::Float64,
-        le::Float64,
-        weight::Float64
-) where {T}
-    return ParticleTransition{T}(theta, lp, le, weight)
-end

@@ -16,7 +16,6 @@ using Markdown, Libtask, MacroTools
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import Distributions: sample, Sampleable
 import MCMCChains: AbstractChains, Chains
 
 const PROGRESS = Ref(true)

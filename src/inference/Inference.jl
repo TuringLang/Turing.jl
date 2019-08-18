@@ -19,9 +19,8 @@ import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Core.RandomVariables: getparams
-import ..Utilities: Sample, save, resume, set_resume!
 import ..Interface: AbstractTransition, step!, sample_init!,
-    transitions_init, sample_end!
+    transitions_init, sample_end!, transition_type
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -63,6 +62,7 @@ export  InferenceAlgorithm,
 #######################
 abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
+abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
@@ -83,6 +83,13 @@ function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
     return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
 end
 
+###############################
+# Import interface extensions #
+###############################
+
+include("InterfaceExtensions.jl")
+using .InterfaceExtensions
+
 #########################
 # Default sampler state #
 #########################
@@ -92,31 +99,6 @@ A blank `AbstractSamplerState` that contains only `VarInfo` information.
 """
 mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
     vi :: VIType
-end
-
-###########################
-# Generic Transition type #
-###########################
-
-struct Transition{T} <: AbstractTransition
-    θ  :: T
-    lp :: Float64
-end
-
-function transition(spl::Sampler)
-    theta = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
-    return Transition{typeof(theta)}(theta, lp)
-end
-
-function transition(spl::Sampler, nt::NamedTuple)
-    theta = merge(tonamedtuple(spl.state.vi), nt)
-    lp = getlogp(spl.state.vi)
-    return Transition{typeof(theta)}(theta, lp)
-end
-
-function additional_parameters(::Type{Transition})
-    return [:lp]
 end
 
 #######################################
@@ -130,12 +112,6 @@ include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("../contrib/inference/AdvancedSMCExtensions.jl")
-
-############################
-# Import inferface methods #
-############################
-
-include("interface.jl")
 
 ################
 # Typing tools #

@@ -7,9 +7,14 @@ import ProgressMeter
 
 export AbstractSampler,
        AbstractTransition,
+       transitions_init,
+       transition_type,
        sample_init!,
        sample_end!,
        sample,
+       Sampleable,
+       AbstractRNG,
+       Chains,
        step!
 
 """
@@ -307,9 +312,7 @@ function transitions_init(
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    @warn "No transitions_init function has been implemented
-           for objects of types $(typeof(ℓ)) and $(typeof(s))"
-    return Vector(undef, N)
+    return Vector{transition_type(s)}(undef, N)
 end
 
 """
@@ -343,5 +346,14 @@ function callback(
     # Default callback behavior.
     ProgressMeter.next!(cb.p)
 end
+
+
+"""
+    transition_type(s::SamplerType)
+
+Return the type of `AbstractTransition` that is to be returned by an 
+`AbstractSampler`.
+"""
+transition_type(s::SamplerType) where {SamplerType<:AbstractSampler} = AbstractTransition
 
 end # module Interface

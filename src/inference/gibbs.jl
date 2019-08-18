@@ -327,17 +327,17 @@ end
 # Gibbs Tansition struct #
 ##########################
 
-struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
-    subsamples :: T
-    elapsed    :: Float64
-end
+# struct GibbsTransition{T<:NamedTuple} <: AbstractTransition
+#     subsamples :: T
+#     elapsed    :: Float64
+# end
 
-function transition(state::GibbsState, elapsed::Float64)
-    nt = NamedTuple{keys(state.subsamples)}(
-        tuple([x[] for x in values(state.subsamples)]...)
-    )
-    return GibbsTransition{typeof(nt)}(nt, elapsed)
-end
+# function transition(state::GibbsState, elapsed::Float64)
+#     nt = NamedTuple{keys(state.subsamples)}(
+#         tuple([x[] for x in values(state.subsamples)]...)
+#     )
+#     return GibbsTransition{typeof(nt)}(nt, elapsed)
+# end
 
 ######################
 # Chains constructor #
