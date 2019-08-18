@@ -984,10 +984,9 @@ function islinked(vi::TypedVarInfo, spl::Sampler)
 end
 function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
     for f in names
-        if f in space || length(space) == 0
+        if f in space || isempty(space)
             f_vns = vi.metadata[f].vns
             if length(f_vns) > 0
-                # TODO: make this less of a stupid way to accomplish this.
                 return istrans(vi, f_vns[1])
             end
         end

@@ -258,39 +258,6 @@ end
 # Utilities  #
 ##############
 
-# VarInfo to Sample
-Sample(vi::VarInfo) = Sample(0.0, todict(vi))
-function todict(vi::VarInfo)
-    value = todict(vi.metadata, vi)
-    value[:lp] = getlogp(vi)
-    return value
-end
-function todict(md::Metadata, vi::VarInfo)
-    value = Dict{Symbol, Any}() # value is named here because of Sample has a field called value
-    for vn in keys(md.idcs)
-        value[Symbol(vn)] = vi[vn]
-    end
-    return value
-end
-function todict(metadata::NamedTuple{names}, vi::VarInfo) where {names}
-    length(names) === 0 && return Dict{Symbol, Any}()
-    f = names[1]
-    mdf = getfield(metadata, f)
-    return merge(todict(mdf, vi), todict(_tail(metadata), vi))
-end
-
-# VarInfo, combined with spl.info, to Sample
-function Sample(vi::AbstractVarInfo, spl::Sampler)
-    s = Sample(vi)
-    if haskey(spl.info, :adaptor)
-        s.value[:lf_eps] = AHMC.getϵ(spl.info[:adaptor])
-    end
-    if haskey(spl.info, :eval_num)
-        s.value[:eval_num] = spl.info[:eval_num]
-    end
-    return s
-end
-
 getspace(spl::Sampler) = getspace(typeof(spl))
 getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
 

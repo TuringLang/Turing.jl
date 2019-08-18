@@ -36,7 +36,7 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "stdlib" begin
-        include("stdlib/distributions.jl")
+        # include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
     end
 
