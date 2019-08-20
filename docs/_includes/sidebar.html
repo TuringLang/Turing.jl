@@ -27,13 +27,19 @@
 
                 <div class="md-nav__source">
                     <a class="md-source" data-md-source="github" href="{{ site.repo }}" title="Go to repository">
-                    <div class="md-source__icon">
+                    <span class="md-source__icon">
                         <i class="fa fa-github fa-3x"></i>
-                    </div>
-                    <div class="md-source__repository">
+                    </span>
+                    <span class="md-source__repository">
                       {{ site.github_user }}/{{ site.github_repo }}
-                    </div></a>
-                  </div>
+                    </span></a>
+                </div>
+
+                <div class="md-nav__dropdown">
+                  <select id="version-selector">
+                    <!-- option value="#" selected="selected">v 0.5.1</option -->
+                  </select>
+                </div>
 
               <label class="md-nav__title" for="__drawer"></label>
 

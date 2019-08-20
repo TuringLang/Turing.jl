@@ -1,0 +1,29 @@
+.md-header-nav__button.md-logo * {
+  position: inherit;
+}
+.md-header-nav .dropdown {
+  margin: 1.6rem 0 0 -2rem;
+}
+.md-flex__cell--shrink .dropdown-item, .md-flex__cell--shrink .dropdown-item:hover {
+  color:#262626;
+}
+.dropdown-toggle {
+  opacity: 0.6;
+}
+.dropdown-note {
+  display: block;
+  width: 100%;
+  padding: .25rem 1.5rem;
+  clear: both;
+  font-weight: 400;
+  color: #999;
+  text-align: inherit;
+  white-space: nowrap;
+  background-color: transparent;
+  border: 0;
+}
+.md-nav__dropdown {
+  display: block;
+  padding: 1.2rem;
+  text-align: center;
+}

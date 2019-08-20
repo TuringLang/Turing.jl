@@ -8,7 +8,7 @@ cd $DIR
 bundle exec jekyll build > $OUTPUT 2>&1
 
 if [[ $? != 0 ]]; then
-    rm $OUTPUT
+    rm -fr $OUTPUT
     gem install bundler
     bundle install
 else
