@@ -155,7 +155,7 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleT
         push!(vals, vs)
     end
     
-    return names, vals
+    return string.(names), vals
 end
 
 function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
@@ -260,7 +260,7 @@ function Chains(
     return Chains(
         convert(Array{Real}, parray),
         string.(nms),
-        TURING_INTERNAL_VARS;
+        copy(TURING_INTERNAL_VARS);
         evidence=le,
         info=info
     )
