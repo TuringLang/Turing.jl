@@ -50,12 +50,12 @@ We can perform inference by using the `sample` function, the first argument of w
 
 ```julia
 #  Run sampler, collect results.
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+c1 = sample(gdemo(1.5, 2), SMC(), 1000)
+c2 = sample(gdemo(1.5, 2), PG(10), 1000)
+c3 = sample(gdemo(1.5, 2), HMC(0.1, 5), 1000)
+c4 = sample(gdemo(1.5, 2), Gibbs(PG(10, :m), HMC(0.1, 5, :s)), 1000)
+c5 = sample(gdemo(1.5, 2), HMCDA(0.15, 0.65), 1000)
+c6 = sample(gdemo(1.5, 2), NUTS(0.65), 1000)
 ```
 
 
@@ -136,7 +136,7 @@ Turing does not have a declarative form. More generally, the order in which you 
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
@@ -151,7 +151,7 @@ But if we switch the `s ~ Poisson(1)` and `y ~ Normal(s, 1)` lines, the model wi
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
@@ -200,8 +200,8 @@ Assign the function without inputs to a variable, and Turing will produce a samp
 
 ```julia
 # Samples from p(x,y)
-g_prior_sampler = gdemo()
-g_prior_sampler()
+g_prior_sample = gdemo()
+g_prior_sample()
 ```
 
 
@@ -233,7 +233,7 @@ end
 
 # Treat x as a vector of missing values.
 model = gdemo(fill(missing, 2))
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -254,7 +254,7 @@ end
 
 # Warning: This will provide an error!
 model = gdemo([missing, 2.4])
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -272,7 +272,7 @@ end
 
 # Equivalent to sampling p( x1 | x2 = 1.5).
 model = gdemo(missing, 1.5)
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -314,7 +314,7 @@ This model can be called in a traditional fashion, with an argument vector of an
 ```julia
 # The values 1.5 and 2.0 will be observed by the sampler.
 m = generative([1.5,2.0])
-chain = sample(m, HMC(1000, 0.01, 5))
+chain = sample(m, HMC(0.01, 5), 1000)
 ```
 
 
@@ -324,7 +324,7 @@ We can generate observations by providing no arguments in the `sample` call.
 ```julia
 # This call will generate a vector of 10 values
 # every sampler iteration.
-generated = sample(generative(), HMC(1000, 0.01, 5))
+generated = sample(generative(), HMC(0.01, 5), 1000)
 ```
 
 
@@ -422,7 +422,7 @@ end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
 
-chn = sample(simple_choice_f, Gibbs(1000, HMC(1, 0.2, 3, :p), PG(20, 1, :z)))
+chn = sample(simple_choice_f, Gibbs(HMC(0.2, 3, :p), PG(20, :z)), 1000)
 ```
 
 
