@@ -106,12 +106,12 @@ function flatten(s::Sample)
     return Dict(names[i] => vals[i] for i in 1:length(vals))
 end
 
-function flatten(names, value :: Array{Float64}, k :: String, v)
+function flatten(names, value :: AbstractArray{Float64}, k :: String, v)
     if isa(v, Number)
         name = k
         push!(value, v)
         push!(names, name)
-    elseif isa(v, Array)
+    elseif isa(v, AbstractArray)
         for i = eachindex(v)
             if isa(v[i], Number)
                 name = string(ind2sub(size(v), i))

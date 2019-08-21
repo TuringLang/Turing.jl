@@ -359,7 +359,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test v_mat== "[1,2]"
 
         v_mat = eval(varname(:(x[i,j,k]))[1])
-        @test v_mat== "[1,2, 3]"
+        @test v_mat== "[1,2,3]"
 
         v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
         @test v_mat == "[1,2][6][45][3][1]"

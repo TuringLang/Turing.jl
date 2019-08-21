@@ -242,28 +242,61 @@ end
 
 
 #
-# Make Tracker work with MvNormal. This is a bit nasty.
+# Make Tracker work with MvNormal and unsafe Cholesky. This is quite nasty.
 #
-
-using Zygote
 
 LinearAlgebra.UpperTriangular(A::Tracker.TrackedMatrix) = Tracker.track(UpperTriangular, A)
 Tracker.@grad function LinearAlgebra.UpperTriangular(A::AbstractMatrix)
     return UpperTriangular(Tracker.data(A)), Δ->(UpperTriangular(Δ),)
 end
 
-turing_chol(A::AbstractMatrix) = cholesky(A).factors
-turing_chol(A::Tracker.TrackedMatrix) = Tracker.track(turing_chol, A)
-Tracker.@grad function turing_chol(A::AbstractMatrix)
-    C, back = Zygote.forward(cholesky, Tracker.data(A))
-    return C.factors, Δ->back((factors=Tracker.data(Δ),))
+function LinearAlgebra.cholesky(A::Tracker.TrackedMatrix; check=true)
+    factors_info = turing_chol(A, check)
+    factors = factors_info[1]
+    info = Tracker.data(factors_info[2])
+    return Cholesky{eltype(factors), typeof(factors)}(factors, 'U', info)
+end
+function turing_chol(A::AbstractMatrix, check)
+    chol = cholesky(A, check=check)
+    (chol.factors, chol.info)
+end
+turing_chol(A::Tracker.TrackedMatrix, check) = Tracker.track(turing_chol, A, check)
+Tracker.@grad function turing_chol(A::AbstractMatrix, check)
+    C, back = Zygote.forward(unsafe_cholesky, Tracker.data(A), Tracker.data(check))
+    return (C.factors, C.info), Δ->back((factors=Tracker.data(Δ[1]),))
 end
 
-function LinearAlgebra.cholesky(A::Tracker.TrackedMatrix)
-    factors = turing_chol(A)
-    return Cholesky{eltype(factors), typeof(factors)}(factors, 'U', 0)
+unsafe_cholesky(x, check) = cholesky(x, check=check)
+Zygote.@adjoint function unsafe_cholesky(Σ::Real, check)
+    C = cholesky(Σ; check=check)
+    return C, function(Δ::NamedTuple)
+        issuccess(C) || return (zero(Σ), nothing)
+        (Δ.factors[1, 1] / (2 * C.U[1, 1]), nothing)
+    end
 end
-
+Zygote.@adjoint function unsafe_cholesky(Σ::Diagonal, check)
+    C = cholesky(Σ; check=check)
+    return C, function(Δ::NamedTuple)
+        issuccess(C) || (Diagonal(zero(diag(Δ.factors))), nothing)
+        (Diagonal(diag(Δ.factors) .* inv.(2 .* C.factors.diag)), nothing)
+    end
+end
+Zygote.@adjoint function unsafe_cholesky(Σ::Union{StridedMatrix, Symmetric{<:Real, <:StridedMatrix}}, check)
+    C = cholesky(Σ; check=check)
+    return C, function(Δ::NamedTuple)
+        issuccess(C) || return (zero(Δ.factors), nothing)
+        U, Ū = C.U, Δ.factors
+        Σ̄ = Ū * U'
+        Σ̄ = copytri!(Σ̄, 'U')
+        Σ̄ = ldiv!(U, Σ̄)
+        BLAS.trsm!('R', 'U', 'T', 'N', one(eltype(Σ)), U.data, Σ̄)
+        @inbounds for n in diagind(Σ̄)
+            Σ̄[n] /= 2
+        end
+        return (UpperTriangular(Σ̄), nothing)
+    end
+end
+  
 # Specialised logdet for cholesky to target the triangle directly.
 logdet_chol_tri(U::AbstractMatrix) = 2 * sum(log, U[diagind(U)])
 logdet_chol_tri(U::Tracker.TrackedMatrix) = Tracker.track(logdet_chol_tri, U)
@@ -330,27 +363,10 @@ Distributions.dim(d::TuringMvNormal) = length(d.m)
 function Distributions.rand(rng::Random.AbstractRNG, d::TuringMvNormal)
     return d.m .+ d.C.U' * randn(rng, dim(d))
 end
-function Distributions.logpdf(d::TuringMvNormal, x::AbstractVector)
-    return -(dim(d) * log(2π) + logdet(d.C) + sum(abs2, zygote_ldiv(d.C.U', x .- d.m))) / 2
-end
-
-function Distributions.logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
-    logpdf(TuringMvNormal(d.μ, getchol(d.Σ)), x)
-end
 
 getchol(m::PDMats.AbstractPDMat) = m.chol
 getchol(m::PDMats.PDiagMat) = cholesky(Diagonal(m.diag))
 getchol(m::PDMats.ScalMat) = cholesky(Diagonal(fill(m.value, m.dim)))
-
-# Deal with ambiguities.
-function Base.:*(
-    A::Tracker.TrackedMatrix,
-    B::Adjoint{T, V} where V<:LinearAlgebra.AbstractTriangular{T} where {T},
-)
-    return Tracker.track(*, A, B)
-end
-
-
 
 """
     TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMultivariateDistribution
@@ -366,8 +382,28 @@ Distributions.dim(d::TuringDiagNormal) = length(d.m)
 function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal)
     return d.m .+ d.σ .* randn(rng, dim(d))
 end
-function Distributions.logpdf(d::TuringDiagNormal, x::AbstractVector)
+for T in (:AbstractVector, :AbstractMatrix)
+    @eval Distributions.logpdf(d::TuringDiagNormal, x::$T) = _logpdf(d, x)
+    @eval Distributions.logpdf(d::TuringMvNormal, x::$T) = _logpdf(d, x)
+end
+for T in (:(Tracker.TrackedVector), :(Tracker.TrackedMatrix))
+    @eval Distributions.logpdf(d::MvNormal, x::$T) = _logpdf(d, x)
+end
+
+function _logpdf(d::TuringDiagNormal, x::AbstractVector)
     return -(dim(d) * log(2π) + 2 * sum(log.(d.σ)) + sum(abs2, (x .- d.m) ./ d.σ)) / 2
+end
+function _logpdf(d::TuringDiagNormal, x::AbstractMatrix)
+    return -(dim(d) * log(2π) .+ 2 * sum(log.(d.σ)) .+ sum(abs2, (x .- d.m) ./ d.σ, dims=1)') ./ 2
+end
+function _logpdf(d::TuringMvNormal, x::AbstractVector)
+    return -(dim(d) * log(2π) + logdet(d.C) + sum(abs2, zygote_ldiv(d.C.U', x .- d.m))) / 2
+end
+function _logpdf(d::TuringMvNormal, x::AbstractMatrix)
+    return -(dim(d) * log(2π) .+ logdet(d.C) .+ sum(abs2, zygote_ldiv(d.C.U', x .- d.m), dims=1)') ./ 2
+end
+function _logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
+    _logpdf(TuringMvNormal(d.μ, getchol(d.Σ)), x)
 end
 
 
@@ -443,27 +479,32 @@ for F in (:link, :invlink)
             ::Type{Val{proj}}
         ) where {proj}
             x_data = Tracker.data(x)
+            T = eltype(x_data)
             y = $F(dist, x_data, Val{proj})
             return  y, Δ -> begin
-                out = ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)' * Δ
+                out = (ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)::Matrix{T})' * Δ
                 return (nothing, out, nothing)
             end
         end
     end
 end
 
-Base.:*(x::Adjoint{T, <:AbstractMatrix{T}} where {T}, y::TrackedVector) = Tracker.track(*, x, y)
-
 for F in (:link, :invlink)
     @eval begin
         $F(dist::PDMatDistribution, x::Tracker.TrackedArray) = Tracker.track($F, dist, x)
         Tracker.@grad function $F(dist::PDMatDistribution, x::Tracker.TrackedArray)
             x_data = Tracker.data(x)
+            T = eltype(x_data)
             y = $F(dist, x_data)
             return  y, Δ -> begin
-                out = reshape(ForwardDiff.jacobian(x -> $F(dist, x), x_data)' * vec(Δ), size(Δ))
+                out = reshape((ForwardDiff.jacobian(x -> $F(dist, x), x_data)::Matrix{T})' * vec(Δ), size(Δ))
                 return (nothing, out)
             end
         end
     end
+end
+
+# For InverseWishart
+function Base.:\(a::Cholesky{<:Tracker.TrackedReal, <:Tracker.TrackedArray}, b::AbstractVecOrMat)
+    return (a.U \ (a.U' \ b))
 end

@@ -15,7 +15,7 @@ vectorize(d::MatrixDistribution, r::AbstractMatrix{<:Real}) = copy(vec(r))
 reconstruct(d::UnivariateDistribution, val::AbstractVector) = val[1]
 reconstruct(d::MultivariateDistribution, val::AbstractVector) = copy(val)
 function reconstruct(d::MatrixDistribution, val::AbstractVector)
-    return copy(reshape(val, size(d)))
+    return reshape(copy(val), size(d))
 end
 function reconstruct!(r, d::Distribution, val::AbstractVector)
     return reconstruct!(r, d, val)

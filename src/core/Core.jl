@@ -6,6 +6,8 @@ using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
+using Zygote: Zygote
+using LinearAlgebra: copytri!
 
 include("RandomVariables.jl")
 @reexport using .RandomVariables

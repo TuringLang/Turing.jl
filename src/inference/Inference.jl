@@ -90,7 +90,6 @@ getspace(::Type{<:IS}) = ()
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH)
     @eval getspace(::$alg{space}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
@@ -200,7 +199,6 @@ function observe(spl::A,
 
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)
-
 end
 
 function observe(spl::A,

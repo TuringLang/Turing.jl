@@ -1,10 +1,11 @@
-using ForwardDiff, Distributions, FDM, Tracker, Random, LinearAlgebra, PDMats
+using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
 using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
 using Turing.Core.RandomVariables: getval
 using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
+const FDM = FiniteDifferences
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -313,5 +314,11 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         end
         Turing.setadbackend(:reverse_diff)
         sample(wishart(), HMC(1000, 0.01, 1));
+
+        @model invwishart() = begin
+            theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
+        end
+        Turing.setadbackend(:reverse_diff)
+        sample(invwishart(), HMC(1000, 0.01, 1));
     end
 end

@@ -18,11 +18,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @numerical_testset "single distribution correctness" begin
         Random.seed!(12321)
 
-        n_samples = 20_000
+        n_samples = 50_000
         mean_tol = 0.1
         var_atol = 1.0
         var_tol = 0.5
-        multi_dim = 10
+        multi_dim = 4
         # 1. UnivariateDistribution
         # NOTE: Noncentral distributions are commented out because of
         #       AD imcompatibility of their logpdf functions
@@ -100,7 +100,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                             x ~ dist
                         end
 
-                        chn = sample(m(), NUTS(n_samples, 0.8))
+                        chn = sample(m(), HMC(n_samples, 0.2, 1))
 
                         # Numerical tests.
                         check_dist_numerical(dist,
