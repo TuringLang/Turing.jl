@@ -231,7 +231,6 @@ function observe(spl::A,
 
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)
-
 end
 
 function observe(spl::A,

@@ -174,7 +174,7 @@ function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
     return names, vals
 end
 
-function flatten(names, value :: Array{Float64}, k :: String, v)
+function flatten(names, value :: AbstractArray, k :: String, v)
     if isa(v, Number)
         name = k
         push!(value, v)
@@ -190,7 +190,7 @@ function flatten(names, value :: Array{Float64}, k :: String, v)
                 isa(v[i], Nothing) && println(v, i, v[i])
                 push!(value, Float64(v[i]))
                 push!(names, name)
-            elseif isa(v[i], Array)
+            elseif isa(v[i], AbstractArray)
                 name = k * string(ind2sub(size(v), i))
                 flatten(names, value, name, v[i])
             else

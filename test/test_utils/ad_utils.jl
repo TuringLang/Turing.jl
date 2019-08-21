@@ -3,7 +3,7 @@ using Test
 
 function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
     isarr = isa(at, AbstractArray)
-    reverse = Tracker.gradient(f, at)[1]
+    reverse = Tracker.data(Tracker.gradient(f, at)[1])
     if isarr
         forward = ForwardDiff.gradient(f, at)
         @test isapprox(reverse, forward, rtol=rtol, atol=atol)

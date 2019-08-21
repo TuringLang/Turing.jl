@@ -33,10 +33,10 @@ julia = ">= 1.0"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CmdStan = "593b3428-ca2f-500c-ae53-031589ec8ddd"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-FDM = "e25cca7e-83ef-51fa-be6c-dfe2a3123128"
+FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["UnicodePlots", "StatsBase", "SpecialFunctions", "FDM", "DynamicHMC", "CmdStan", "BenchmarkTools"]
+test = ["UnicodePlots", "StatsBase", "SpecialFunctions", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools"]

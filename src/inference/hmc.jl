@@ -539,7 +539,7 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-
+using Tracker
 function assume(spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
