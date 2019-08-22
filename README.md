@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/TuringLang/Turing.jl.svg?branch=master)](https://travis-ci.org/TuringLang/Turing.jl)
 [![Build Status](https://dev.azure.com/yebai/TuringLang/_apis/build/status/TuringLang.Turing.jl?branchName=master)](https://dev.azure.com/yebai/TuringLang/_build/latest?definitionId=1&branchName=master)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
-[![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](http://turing.ml/docs/using-turing/)
+[![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](https://turing.ml/dev/docs/using-turing/)
 
 **Turing.jl** is a Julia library for (_universal_) [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Turing allows the user to write models in standard Julia syntax, and provide a wide range of sampling-based inference methods for solving problems across probabilistic machine learning, Bayesian statistics and data science etc. Since Turing is implemented in pure Julia code, its compiler and inference methods are amendable for hacking: new model families and inference methods can be easily added.
 
@@ -18,7 +18,7 @@ Current features include:
 
 Turing's home page, with links to everything you'll need to use Turing is:
 
-https://turing.ml/docs/using-turing/get-started
+https://turing.ml/dev/docs/using-turing/get-started
 
 
 ## What's changed recently?
