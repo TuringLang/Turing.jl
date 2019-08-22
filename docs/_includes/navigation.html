@@ -17,12 +17,25 @@
                     <label class="md-icon md-icon--menu md-header-nav__button" for=__drawer></label>
                 </div>
 
-                <div class="md-flex__cell md-flex__cell--stretch">
+                <div class="md-flex__cell md-flex__cell--shrink">
                     <a class="md-header-nav__button md-logo" href="{{ site.url }}{{ site.baseurl }}/" title="{{ site.title }}">
-                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title> 
+                    <div class="md-flex__ellipsis md-header-nav__title" data-md-component=title>
                         <span class=md-header-nav__topic>{{ site.title }}</span>
                     </div>
                     </a>
+                </div>
+
+                <div class="md-flex__cell md-flex__cell--shrink">
+                  <div class="md-header-nav__source">
+                    <div class="dropdown version-switch">
+                      <a class="dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      </a>
+                      <div class="dropdown-menu">
+                        <!-- a class="dropdown-item" href="#">Stable</a -->
+                        <!-- div class="dropdown-divider"></div -->
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="md-flex__cell md-flex__cell--shrink">
@@ -43,7 +56,7 @@
 
                   <div class="md-flex__cell md-flex__cell--shrink">
                       <div class="md-header-nav__source">
-                        <a class="md-source" href="{{ site.baseurl }}/docs/tutorials/" title="Go to Tutorial">
+                        <a class="md-source" href="{{ site.baseurl }}/tutorials/" title="Go to Tutorial">
                           Tutorials
                         </a>
                       </div>
@@ -60,7 +73,7 @@
                     </div></a>
                   </div>
                 </div>
-                
+
                 <div class="md-flex__cell md-flex__cell--shrink">
                     <label class="md-icon md-icon--search md-header-nav__button" for=__search></label>
                     <div class=md-search data-md-component=search role=dialog>
@@ -81,7 +94,7 @@
                             </div>
                         </div>
                     </div>
-                </div>                
+                </div>
     </div>
   </nav>
 </header>

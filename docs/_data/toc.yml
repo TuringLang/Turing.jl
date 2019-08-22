@@ -1,6 +1,6 @@
 - title: "USING TURING"
   url: "docs/using-turing/get-started"
-  children: 
+  children:
   - title: "Getting Started"
     url: "docs/using-turing/get-started"
 
@@ -23,34 +23,34 @@
     url: "docs/using-turing/sampler-viz"
 
 - title: "TUTORIALS"
-  url: "docs/tutorials"
+  url: "tutorials"
   children:
   - title: "Home"
-    url: "docs/tutorials"
+    url: "tutorials"
 
   - title: "Introduction to Turing"
-    url: "docs/tutorials/0-introduction"
+    url: "tutorials/0-introduction"
 
   - title: "Gaussian Mixture Models"
-    url: "docs/tutorials/1-gaussianmixturemodel"
+    url: "tutorials/1-gaussianmixturemodel"
 
   - title: "Bayesian Logistic Regression"
-    url: "docs/tutorials/2-logisticregression"
+    url: "tutorials/2-logisticregression"
 
   - title: "Bayesian Neural Networks"
-    url: "docs/tutorials/3-bayesnn"
+    url: "tutorials/3-bayesnn"
 
   - title: "Hidden Markov Models"
-    url: "docs/tutorials/4-bayeshmm"
+    url: "tutorials/4-bayeshmm"
 
   - title: "Linear Regression"
-    url: "docs/tutorials/5-linearregression"
+    url: "tutorials/5-linearregression"
 
   - title: "Infinite Mixture Models"
-    url: "docs/tutorials/6-infinitemixturemodel"
-  
+    url: "tutorials/6-infinitemixturemodel"
+
   - title: "Bayesian Poisson Regression"
-    url: "docs/tutorials/7-poissontegression"    
+    url: "tutorials/7-poissonregression"
 
 - title: "LIBRARY"
   url: "docs/library"

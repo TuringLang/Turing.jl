@@ -109,14 +109,12 @@ jobs:
     - stage: documentation
       julia: 1.1
       os: linux
-      if: branch = master
+      if: (tag =~ ^v) OR (branch = master)
       env: STAGE=documentation
       script:
         - julia -e 'using Pkg; Pkg.update();'
         - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
-        - julia -e 'using Pkg, Turing;
-                    cd(joinpath(dirname(pathof(Turing)), ".."));
-                    include(joinpath("docs", "make.jl"))'
+        - julia ./docs/make.jl
     - stage: benchmark
       julia: 1.1
       os: linux

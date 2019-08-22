@@ -20,8 +20,8 @@ author: The Turing Team
 description: > # this means to ignore newlines until "baseurl:"
   Turing is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.
 
-# DO NOT CHANGE THE LINE OF THIS FILE without editing .circleci/circle_urls.sh
-baseurl: "" # the subpath of your site, e.g. /blog
+# the subpath of your site, e.g. /blog
+baseurl: "/dev"
 
 # This is mostly for testing
 url: "" # the base hostname & protocol for your site
@@ -57,7 +57,12 @@ fixedNav: 'true' # true or false
 
 permalink: /:year/:title/
 markdown: kramdown
-exclude: [_site, CHANGELOG.md, LICENSE, README.md, vendor]
+exclude: [.gems, _site,
+          CHANGELOG.md, CNAME, LICENSE, src,
+          Gemfile, Gemfile.lock, jekyll-build,
+          make.jl, make-utils.jl, README.md, vendor,
+          test.sh,
+          ]
 
 # Collections
 collections:
@@ -74,12 +79,12 @@ defaults:
       path: "_docs"
       type: "docs"
     values:
-      layout: page
+      layout: "page"
   - scope:
       path: "_tutorials"
       type: "tutorials"
     values:
-      layout: page
+      layout: "page"
   - scope:
       path: ""
       type: "pages"
