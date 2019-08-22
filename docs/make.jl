@@ -32,13 +32,12 @@ with_baseurl(() -> run(`$jekyll_build`), baseurl)
 
 # deploy
 devurl = "dev"
-# repo = "github.com:KDr2/DS-III.git"
 repo = "github.com:TuringLang/Turing.jl.git"
 deploydocs(
     target = "_site",
     repo = repo,
     branch = "gh-pages",
-    devbranch = "docs-versioning", #"master",
+    devbranch = "master",
     devurl = devurl,
     versions = ["stable" => "v^", "v#.#", devurl => devurl]
 )
