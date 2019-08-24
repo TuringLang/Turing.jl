@@ -2,7 +2,7 @@ module Interface
 
 import Distributions: sample, Sampleable
 import Random: GLOBAL_RNG, AbstractRNG
-import ..MCMCChains: Chains
+import MCMCChains: Chains
 import ProgressMeter
 
 export AbstractSampler,
@@ -55,7 +55,9 @@ abstract type AbstractTransition end
 """
     AbstractCallback
 
-An `AbstractCallback` types is a supertype to be inherited from if you want to use custom callback functionality. This is used to report sampling progress such as parameters calculated, remaining samples to run, or even plot graphs if you so choose.
+An `AbstractCallback` types is a supertype to be inherited from if you want to use custom callback 
+functionality. This is used to report sampling progress such as parameters calculated, remaining
+samples to run, or even plot graphs if you so choose.
 
 In order to implement callback functionality, you need the following:
 
@@ -170,10 +172,11 @@ function sample_init!(
     ℓ::ModelType,
     s::SamplerType,
     N::Integer;
+    debug::Bool=false,
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
     # Do nothing.
-    @warn "No sample_init! function has been implemented for objects
+    debug && @warn "No sample_init! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
 end
 
@@ -195,6 +198,7 @@ function sample_end!(
     s::SamplerType,
     N::Integer,
     ts::Vector{TransitionType};
+    debug::Bool=false,
     kwargs...
 ) where {
     ModelType<:Sampleable,
@@ -202,7 +206,7 @@ function sample_end!(
     TransitionType<:AbstractTransition
 }
     # Do nothing.
-    @warn "No sample_end! function has been implemented for objects
+    debug && @warn "No sample_end! function has been implemented for objects
            of types $(typeof(ℓ)) and $(typeof(s))"
 end
 
@@ -223,10 +227,11 @@ function step!(
     ℓ::ModelType,
     s::SamplerType,
     N::Integer;
+    debug::Bool=false,
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
     # Do nothing.
-    @warn "No step! function has been implemented for objects of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
+    debug && @warn "No step! function has been implemented for objects of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
 end
 
 function step!(
@@ -285,12 +290,13 @@ function step!(
     s::SamplerType,
     N::Integer,
     t::Nothing;
+    debug::Bool=true,
     kwargs...
 ) where {ModelType<:Sampleable,
     SamplerType<:AbstractSampler,
     TransitionType<:AbstractTransition
 }
-    @warn "No transition type passed in, running normal step! function."
+    debug && @warn "No transition type passed in, running normal step! function."
     return step!(rng, ℓ, s, N; kwargs...)
 end
 
@@ -326,7 +332,9 @@ end
         kwargs...
     )
 
-`callback` is called after every sample run, and allows you to run some function on a subtype of `AbstractCallback`. Typically this is used to increment a progress meter, show a plot of parameter draws, or otherwise provide information about the sampling process to the user.
+`callback` is called after every sample run, and allows you to run some function on a 
+subtype of `AbstractCallback`. Typically this is used to increment a progress meter, show a 
+plot of parameter draws, or otherwise provide information about the sampling process to the user.
 
 By default, `ProgressMeter` is used to show the number of samples remaning.
 """

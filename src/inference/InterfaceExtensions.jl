@@ -21,14 +21,15 @@ export sample,
        transition,
        Transition,
        ParticleTransition,
-       Chains
+       Chains,
+       initialize_parameters!
 
 # Internal variable names for MCMCChains.
 const TURING_INTERNAL_VARS =
-    Dict(:internals => ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le",
-                        "acceptance_rate", "hamiltonian_energy", "is_accept", 
-                        "log_density", "n_steps", "numerical_error", "step_size",
-                        "tree_depth"])
+    (internals = ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le",
+                  "acceptance_rate", "hamiltonian_energy", "is_accept", 
+                  "log_density", "n_steps", "numerical_error", "step_size",
+                  "tree_depth"],)
 
 ####################
 # Transition Types #
@@ -130,6 +131,9 @@ function Interface.sample_init!(
 )
     # Resume the sampler.
     set_resume!(spl; kwargs...)
+
+    # Set the parameters to a starting value.
+    initialize_parameters!(spl; kwargs...)
 end
 
 function Interface.sample_end!(
@@ -141,6 +145,31 @@ function Interface.sample_end!(
     kwargs...
 ) where {TransitionType<:AbstractTransition}
     # Silence the default API function.
+end
+
+function initialize_parameters!(
+    spl::AbstractSampler;
+    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+    verbose::Bool=false,
+    kwargs...
+)
+    # Get `init_theta`
+    if init_theta != nothing
+        verbose && @info "Using passed-in initial variable values" init_theta
+        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
+        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
+        # Flatten `init_theta`
+        init_theta_flat = foldl(vcat, map(vec, init_theta))
+        # Create a mask to inidicate which values are not missing
+        theta_mask = map(x -> !ismissing(x), init_theta_flat)
+        # Get all values
+        theta = spl.state.vi[spl]
+        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
+        # Update those which are provided (i.e. not missing)
+        theta[theta_mask] .= init_theta_flat[theta_mask]
+        # Update in `vi`
+        spl.state.vi[spl] = theta
+    end
 end
 
 ##########################
@@ -260,7 +289,7 @@ function Chains(
     return Chains(
         convert(Array{Real}, parray),
         string.(nms),
-        copy(TURING_INTERNAL_VARS);
+        deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
         info=info
     )
