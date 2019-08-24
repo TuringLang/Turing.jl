@@ -259,8 +259,8 @@ function NUTS{AD}(
     NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
-function NUTS{AD}() where AD
-    NUTS{AD}(0, 0.65)
+function NUTS{AD}(kwargs...) where AD
+    NUTS{AD}(0, 0.65; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
@@ -289,6 +289,20 @@ function Sampler(
 
     # Create a real sampler after getting all the types/running the init phase.
     return Sampler(alg, spl_bad.info, spl_bad.selector, state)
+end
+
+##########################################################
+# Remove the Callback functionality for the HMC samplers #
+##########################################################
+
+function init_callback(
+    rng::AbstractRNG,
+    model::Model,
+    s::Sampler{<:Hamiltonian},
+    N::Integer;
+    kwargs...
+)
+    return Interface.NoCallback()
 end
 
 ####
@@ -346,6 +360,7 @@ function step!(
     # Transform the space back if we're using Gibbs.
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
+
 
     return transition(spl, α)
 end
@@ -435,11 +450,7 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
     function ∂logπ∂θ(x)
-        x_old, lj_old = vi[spl], vi.logp
-        lp, deriv = gradient_logp(x, vi, model, spl)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return lp, deriv
+        return gradient_logp(x, vi, model, spl)
     end
     return ∂logπ∂θ
 end
@@ -496,26 +507,9 @@ function hmc_step(
     # Build phase point
     z = AHMC.phasepoint(h, θ, r)
 
-    # TODO: remove below when we can get is_accept from AHMC.transition
-    H = AHMC.neg_energy(z)  # NOTE: this a waste of computation
+    z_new, stat = AHMC.transition(traj, h, z)
 
-    # Call AHMC to make one MCMC transition
-    z_new, α = AHMC.transition(traj, h, z)
-
-    # Compute new Hamiltonian energy
-    H_new = AHMC.neg_energy(z_new)
-    θ_new = z_new.θ
-
-    # NOTE: as `transition` doesn't return `is_accept`,
-    #       I use `H == H_new` to check if the sample is accepted.
-    is_accept = H != H_new  # If the new Hamiltonian enerygy is different
-                            # from the old one, the sample was accepted.
-    alg isa NUTS && (is_accept = true)  # we always accept in NUTS
-
-    # Compute updated log-joint probability
-    lj_new = logπ(θ_new)
-
-    return θ_new, lj_new, is_accept, α
+    return z_new.θ, stat.log_density, stat.is_accept, stat
 end
 
 ####

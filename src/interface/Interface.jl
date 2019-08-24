@@ -67,6 +67,19 @@ In order to implement callback functionality, you need the following:
 """
 abstract type AbstractCallback end
 
+"""
+    NoCallback()
+
+This disables the callback functionality in the event that you wish to 
+implement your own callback or reporting.
+"""
+mutable struct NoCallback <: AbstractCallback end
+
+"""
+    DefaultCallback(N::Int)
+
+The default callback struct which uses `ProgressMeter`.
+"""
 mutable struct DefaultCallback{
     ProgType<:ProgressMeter.AbstractProgress
 } <: AbstractCallback
@@ -356,6 +369,20 @@ function callback(
     progress && ProgressMeter.next!(cb.p)
 end
 
+function callback(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer,
+    iteration::Integer,
+    cb::NoCallback;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler
+}
+    # Do nothing.
+end
 
 """
     transition_type(s::SamplerType)
