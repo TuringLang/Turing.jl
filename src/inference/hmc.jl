@@ -241,9 +241,9 @@ function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
     space::Symbol...;
-    max_depth::Int=5,
+    max_depth::Int=10,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
@@ -251,16 +251,16 @@ end
 
 function NUTS{AD}(
     δ::Float64;
-    max_depth::Int=5,
+    max_depth::Int=10,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.1,
+    init_ϵ::Float64=0.0,
     metricT=AHMC.DenseEuclideanMetric
 ) where AD
     NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 function NUTS{AD}() where AD
-    NUTS{AD}(0, 0.65, 5, 1000.0, 0.1, AHMC.DenseEuclideanMetric, ())
+    NUTS{AD}(0, 0.65)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
