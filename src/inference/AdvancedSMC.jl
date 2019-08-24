@@ -70,6 +70,9 @@ function sample_init!(
     N::Integer; # Note: This function doesn't use the N argument.
     kwargs...
 )
+    # Set the parameters to a starting value.
+    initialize_parameters!(spl; kwargs...)
+
     # Update the particle container now that the sampler type
     # is defined.
     spl.state.particles = ParticleContainer{Trace{typeof(spl),
