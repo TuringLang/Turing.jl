@@ -345,6 +345,7 @@ function callback(
     N::Integer,
     iteration::Integer,
     cb::CallbackType;
+    progress::Bool=true,
     kwargs...
 ) where {
     ModelType<:Sampleable,
@@ -352,7 +353,7 @@ function callback(
     CallbackType<:AbstractCallback
 }
     # Default callback behavior.
-    ProgressMeter.next!(cb.p)
+    progress && ProgressMeter.next!(cb.p)
 end
 
 
