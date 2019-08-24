@@ -278,6 +278,7 @@ function Sampler(
     s::Selector=Selector()
 ) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
     info = Dict{Symbol, Any}()
+    # Create an empty sampler state that just holds a typed VarInfo.
     state_bad = SamplerState(VarInfo(model))
 
     # Create an initial sampler, to get all the initialization out of the way.
