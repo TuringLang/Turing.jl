@@ -350,7 +350,6 @@ function step!(
     return transition(spl, α)
 end
 
-
 # Efficient multiple step sampling for adaptive HMC.
 function steps!(model,
     spl::Sampler{<:AdaptiveHamiltonian},
@@ -590,9 +589,9 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian)
+function AHMCAdaptor(alg::AdaptiveHamiltonian; init_ϵ=alg.init_ϵ)
     p = AHMC.Preconditioner(getmetricT(alg))
-    nda = AHMC.NesterovDualAveraging(alg.δ, alg.init_ϵ)
+    nda = AHMC.NesterovDualAveraging(alg.δ, init_ϵ)
     if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(p, nda)
     else
@@ -600,7 +599,6 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian)
     end
     return adaptor
 end
-
 
 AHMCAdaptor(alg::Hamiltonian) = nothing
 
