@@ -340,7 +340,7 @@ function step!(
 
     θ, lj = spl.state.vi[spl], spl.state.vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl.alg, metric)
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl, metric)
 
     Turing.DEBUG && @debug "decide whether to accept..."
     if is_accept
@@ -489,25 +489,25 @@ function hmc_step(
     logπ,
     ∂logπ∂θ,
     ϵ,
-    alg::T,
-    metric
+    spl::Sampler{T},
+    metric,
 ) where {T<:Union{HMC,HMCDA,NUTS}}
     # Make sure the code in AHMC is type stable
     θ = Vector{Float64}(θ)
 
     # Build Hamiltonian type and trajectory
-    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    traj = gen_traj(alg, ϵ)
+    # h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    # traj = gen_traj(alg, ϵ)
     
-    h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
+    spl.state.h = AHMC.update(spl.state.h, θ) # Ensure h.metric has the same dim as θ.
 
     # Sample momentum
-    r = AHMC.rand(h.metric)
+    r = AHMC.rand(spl.state.h.metric)
 
     # Build phase point
-    z = AHMC.phasepoint(h, θ, r)
+    z = AHMC.phasepoint(spl.state.h, θ, r)
 
-    z_new, stat = AHMC.transition(traj, h, z)
+    z_new, stat = AHMC.transition(spl.state.traj, spl.state.h, z)
 
     return z_new.θ, stat.log_density, stat.is_accept, stat
 end
