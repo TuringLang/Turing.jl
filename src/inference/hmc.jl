@@ -79,38 +79,20 @@ function HMC{AD}(
 end
 
 function sample_init!(
-    ::AbstractRNG,
+    rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Hamiltonian},
     N::Integer;
     adaptor=AHMCAdaptor(spl.alg),
-    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
-    rng::AbstractRNG=GLOBAL_RNG,
-    discard_adapt::Bool=true,
     verbose::Bool=true,
     resume_from=nothing,
     kwargs...
 )
     # Resume the sampler.
-    set_resume!(spl; kwargs...)
+    set_resume!(spl; resume_from=resume_from, kwargs...)
 
     # Get `init_theta`
-    if init_theta != nothing
-        verbose && @info "Using passed-in initial variable values" init_theta
-        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
-        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
-        # Flatten `init_theta`
-        init_theta_flat = foldl(vcat, map(vec, init_theta))
-        # Create a mask to inidicate which values are not missing
-        theta_mask = map(x -> !ismissing(x), init_theta_flat)
-        # Get all values
-        theta = vi[spl]
-        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
-        # Update those which are provided (i.e. not missing)
-        theta[theta_mask] .= init_theta_flat[theta_mask]
-        # Update in `vi`
-        spl.state.vi[spl] = theta
-    end
+    initialize_parameters!(spl; verbose=verbose, kwargs...)
 
     # Set the defualt number of adaptations, if relevant.
     if spl.alg isa AdaptiveHamiltonian
