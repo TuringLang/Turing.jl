@@ -700,8 +700,8 @@ function runmodel!(
     spl::T = SampleFromPrior()
 ) where T<:AbstractSampler
     setlogp!(vi, 0)
-    # Check that the sampler has the state field.
     if !(T <: Union{SampleFromPrior, SampleFromUniform})
+        # Check that the sampler has the state field.
         if :eval_num in fieldnames(typeof(spl.state ))
             spl.state.eval_num += 1
         end

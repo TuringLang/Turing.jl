@@ -44,6 +44,9 @@ function sample_init!(
         runmodel!(model, spl.state.vi, spl)
     end
 
+    # Set the parameters to a starting value.
+    initialize_theta!(spl; kwargs...)
+
     spl.state.draws, _ = NUTS_init_tune_mcmc(
         FunctionLogDensity(
             length(spl.state.vi[spl]),
@@ -51,21 +54,6 @@ function sample_init!(
         ),
         N
     )
-end
-
-function sample_end!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
-    N::Integer;
-    kwargs...
-)
-    runmodel!(model, spl.state.vi, SampleFromUniform())
-
-    if spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
-    end   
 end
 
 function step!(
