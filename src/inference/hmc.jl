@@ -116,7 +116,7 @@ function sample_init!(
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
-    if spl.selector.tag == :default
+    if !islinked(spl.state.vi, spl) && spl.selector.tag == :default
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
     end
@@ -342,7 +342,7 @@ function step!(
 
     θ, lj = spl.state.vi[spl], spl.state.vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl, rng, model)
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl.alg, metric)
 
     Turing.DEBUG && @debug "decide whether to accept..."
     if is_accept
@@ -451,24 +451,10 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
     function ∂logπ∂θ(x)
-        # dolink = !islinked(vi, spl) 
-        !islinked(vi, spl) && link!(vi, spl)
         return gradient_logp(x, vi, model, spl)
-        # dolink && invlink!(vi, spl)
     end
     return ∂logπ∂θ
 end
-
-# function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
-#     function ∂logπ∂θ(x)
-#         x_old, lj_old = vi[spl], vi.logp
-#         lp, deriv = gradient_logp(x, vi, model, spl)
-#         vi[spl] = x_old
-#         setlogp!(vi, lj_old)
-#         return lp, deriv
-#     end
-#     return ∂logπ∂θ
-# end
 
 """
     gen_logπ(vi::VarInfo, spl::Sampler, model)
@@ -504,37 +490,28 @@ function hmc_step(
     logπ,
     ∂logπ∂θ,
     ϵ,
-    spl::Sampler{T},
-    rng,
-    model
+    alg::T,
+    metric
 ) where {T<:Union{HMC,HMCDA,NUTS}}
     # Make sure the code in AHMC is type stable
     θ = Vector{Float64}(θ)
 
-    spl.state.h = AHMC.update(spl.state.h, θ) # Ensure h.metric has the same dim as θ.
-
-    # Draw a transition.
-    spl.state.z, stat = 
-        AHMC.transition(rng, spl.state.traj, spl.state.h, spl.state.z)
-
-    # Refresh momentum for next iteration
-    spl.state.z = AHMC.refresh(rng, spl.state.z, spl.state.h)
-
-
     # Build Hamiltonian type and trajectory
-    # spl.state.h = AHMC.Hamiltonian(spl.state.h.metric, logπ, ∂logπ∂θ)
-    # spl.state.traj = gen_traj(spl.alg, ϵ)
+    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    traj = gen_traj(alg, ϵ)
 
-    # # Sample momentum
-    # r = AHMC.rand(spl.state.h.metric)
+    h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
 
-    # # Build phase point
-    # z = AHMC.phasepoint(spl.state.h, θ, r)
+    # Sample momentum
+    r = AHMC.rand(h.metric)
 
-    # z_new, stat = AHMC.transition(spl.state.traj, spl.state.h, z)
-    # println("HMC over")
+    # Build phase point
+    z = AHMC.phasepoint(h, θ, r)
 
-    return spl.state.z.θ, stat.log_density, stat.is_accept, stat
+    # Call AHMC to make one MCMC transition
+    z_new, stat = AHMC.transition(traj, h, z)
+
+    return z_new.θ, stat.log_density, stat.is_accept, stat
 end
 
 ####
@@ -636,14 +613,16 @@ function HMCState(
     # Get the metric type.
     metricT = getmetricT(spl.alg)
 
+    θ = Vector{Float64}(vi[spl])
+
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
     h = AHMC.Hamiltonian(
-        metricT(length(vi[spl])),
+        metricT(length(θ)),
         logπ, ∂logπ∂θ)
     traj = gen_traj(spl.alg, spl.alg.ϵ)
     r = rand(rng, h.metric)
-    z = AHMC.phasepoint(h, vi[spl], r)
+    z = AHMC.phasepoint(h, θ, r)
 
     return HMCState(vi, 0, 0, traj, h, AHMC.Adaptation.NoAdaptation(), z)
 end
@@ -658,7 +637,7 @@ function HMCState(model::Model,
     vi = spl.state.vi
 
     # Link everything if needed.
-    link!(vi, spl)
+    !islinked(vi, spl) && link!(vi, spl)
 
     # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
