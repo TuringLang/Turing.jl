@@ -3,7 +3,7 @@
 ###
 
 """
-    Gibbs(n_iters, algs...)
+    Gibbs(tuple, algs...)
 
 Compositional MCMC interface. Gibbs sampling combines one or more
 sampling algorithms, each of which samples from a different set of
@@ -14,8 +14,8 @@ Example:
 @model gibbs_example(x) = begin
     v1 ~ Normal(0,1)
     v2 ~ Categorical(5)
-        ...
 end
+```
 
 # Use PG for a 'v2' variable, and use HMC for the 'v1' variable.
 # Note that v2 is discrete, so the PG sampler is more appropriate
@@ -101,6 +101,33 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     return spl
 end
 
+# Initialize the Gibbs sampler.
+function sample_init!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    for local_spl in spl.state.samplers
+        sample_init!(rng, model, local_spl, N; kwargs...)
+    end
+end
+
+# Finalize the Gibbs sampler.
+function sample_end!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    for local_spl in spl.state.samplers
+        sample_end!(rng, model, local_spl, N; kwargs...)
+    end
+end
+
+
 # First step.
 function step!(
     rng::AbstractRNG,
@@ -133,7 +160,7 @@ function step!(
         # Uncomment when developing thinning functionality.
         # Retrieve symbol to store this subsample.
         # symbol_id = Symbol(local_spl.selector.gid)
-        #
+        
         # # Store the subsample.
         # spl.state.subsamples[symbol_id][] = trans
 

@@ -5,7 +5,8 @@
 mutable struct HMCState{
     TTraj<:AHMC.AbstractTrajectory,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
-    TV <: TypedVarInfo
+    TV <: TypedVarInfo,
+    PhType <: AHMC.PhasePoint
 } <: AbstractSamplerState
     vi       :: TV
     eval_num :: Int
@@ -13,6 +14,7 @@ mutable struct HMCState{
     traj     :: TTraj
     h        :: AHMC.Hamiltonian
     adaptor  :: TAdapt
+    z        :: PhType
 end
 
 
@@ -87,7 +89,7 @@ function sample_init!(
     verbose::Bool=true,
     resume_from=nothing,
     kwargs...
-)
+) where T<:Hamiltonian
     # Resume the sampler.
     set_resume!(spl; resume_from=resume_from, kwargs...)
 
@@ -243,7 +245,7 @@ function NUTS{AD}(
     space::Symbol...;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
@@ -253,7 +255,7 @@ function NUTS{AD}(
     δ::Float64;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    init_ϵ::Float64=0.1,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
     NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
@@ -285,7 +287,7 @@ function Sampler(
     spl_bad = Sampler(alg, info, s, state_bad)
 
     # Create the actual state based on the alg type.
-    state = HMCState(model, spl_bad)
+    state = HMCState(model, spl_bad, GLOBAL_RNG)
 
     # Create a real sampler after getting all the types/running the init phase.
     return Sampler(alg, spl_bad.info, spl_bad.selector, state)
@@ -340,7 +342,7 @@ function step!(
 
     θ, lj = spl.state.vi[spl], spl.state.vi.logp
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl, metric)
+    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl, rng, model)
 
     Turing.DEBUG && @debug "decide whether to accept..."
     if is_accept
@@ -360,7 +362,6 @@ function step!(
     # Transform the space back if we're using Gibbs.
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
-
 
     return transition(spl, α)
 end
@@ -450,10 +451,24 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
     function ∂logπ∂θ(x)
+        # dolink = !islinked(vi, spl) 
+        # dolink && link!(vi, spl)
         return gradient_logp(x, vi, model, spl)
+        # dolink && invlink!(vi, spl)
     end
     return ∂logπ∂θ
 end
+
+# function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
+#     function ∂logπ∂θ(x)
+#         x_old, lj_old = vi[spl], vi.logp
+#         lp, deriv = gradient_logp(x, vi, model, spl)
+#         vi[spl] = x_old
+#         setlogp!(vi, lj_old)
+#         return lp, deriv
+#     end
+#     return ∂logπ∂θ
+# end
 
 """
     gen_logπ(vi::VarInfo, spl::Sampler, model)
@@ -490,26 +505,38 @@ function hmc_step(
     ∂logπ∂θ,
     ϵ,
     spl::Sampler{T},
-    metric,
+    rng,
+    model
 ) where {T<:Union{HMC,HMCDA,NUTS}}
     # Make sure the code in AHMC is type stable
     θ = Vector{Float64}(θ)
 
-    # Build Hamiltonian type and trajectory
-    # h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    # traj = gen_traj(alg, ϵ)
-    
     spl.state.h = AHMC.update(spl.state.h, θ) # Ensure h.metric has the same dim as θ.
 
-    # Sample momentum
-    r = AHMC.rand(spl.state.h.metric)
+    spl.state.traj = gen_traj(spl.alg, ϵ)
 
-    # Build phase point
-    z = AHMC.phasepoint(spl.state.h, θ, r)
+    # Draw a transition.
+    spl.state.z, stat = 
+        AHMC.transition(rng, spl.state.traj, spl.state.h, spl.state.z)
 
-    z_new, stat = AHMC.transition(spl.state.traj, spl.state.h, z)
+    # Refresh momentum for next iteration
+    spl.state.z = AHMC.refresh(rng, spl.state.z, spl.state.h)
 
-    return z_new.θ, stat.log_density, stat.is_accept, stat
+
+    # Build Hamiltonian type and trajectory
+    # spl.state.h = AHMC.Hamiltonian(spl.state.h.metric, logπ, ∂logπ∂θ)
+    # spl.state.traj = gen_traj(spl.alg, ϵ)
+
+    # # Sample momentum
+    # r = AHMC.rand(spl.state.h.metric)
+
+    # # Build phase point
+    # z = AHMC.phasepoint(spl.state.h, θ, r)
+
+    # z_new, stat = AHMC.transition(spl.state.traj, spl.state.h, z)
+    # println("HMC over")
+
+    return spl.state.z.θ, stat.log_density, stat.is_accept, stat
 end
 
 ####
@@ -600,7 +627,11 @@ AHMCAdaptor(alg::Hamiltonian) = nothing
 # HMC State Constructors #
 ##########################
 
-function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
+function HMCState(
+    model::Model, 
+    spl::Sampler{<:StaticHamiltonian},
+    rng::AbstractRNG;
+    kwargs...)
     # Reuse the VarInfo.
     vi = spl.state.vi
 
@@ -613,12 +644,15 @@ function HMCState(model::Model, spl::Sampler{<:StaticHamiltonian}; kwargs...)
         metricT(length(vi[spl])),
         logπ, ∂logπ∂θ)
     traj = gen_traj(spl.alg, spl.alg.ϵ)
+    r = rand(rng, h.metric)
+    z = AHMC.phasepoint(h, vi[spl], r)
 
-    return HMCState(vi, 0, 0, traj, h, AHMC.Adaptation.NoAdaptation())
+    return HMCState(vi, 0, 0, traj, h, AHMC.Adaptation.NoAdaptation(), z)
 end
 
 function HMCState(model::Model,
-        spl::Sampler{<:AdaptiveHamiltonian};
+        spl::Sampler{<:AdaptiveHamiltonian},
+        rng::AbstractRNG;
         adaptor=AHMCAdaptor(spl.alg),
         kwargs...
 )
@@ -652,8 +686,12 @@ function HMCState(model::Model,
     # Generate a trajectory.
     traj = gen_traj(spl.alg, init_ϵ)
 
+    # Generate a phasepoint. Replaced during sample_init!
+    r = rand(GLOBAL_RNG, h.metric)
+    z = AHMC.phasepoint(h, θ_init, r)
+
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, adaptor)
+    return HMCState(vi, 0, 0, traj, h, adaptor, z)
 end
