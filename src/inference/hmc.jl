@@ -452,7 +452,7 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 function gen_∂logπ∂θ(vi::VarInfo, spl::Sampler, model)
     function ∂logπ∂θ(x)
         # dolink = !islinked(vi, spl) 
-        # dolink && link!(vi, spl)
+        !islinked(vi, spl) && link!(vi, spl)
         return gradient_logp(x, vi, model, spl)
         # dolink && invlink!(vi, spl)
     end
@@ -512,8 +512,6 @@ function hmc_step(
     θ = Vector{Float64}(θ)
 
     spl.state.h = AHMC.update(spl.state.h, θ) # Ensure h.metric has the same dim as θ.
-
-    spl.state.traj = gen_traj(spl.alg, ϵ)
 
     # Draw a transition.
     spl.state.z, stat = 
