@@ -45,7 +45,7 @@ function sample_init!(
     end
 
     # Set the parameters to a starting value.
-    initialize_theta!(spl; kwargs...)
+    initialize_parameters!(spl; kwargs...)
 
     spl.state.draws, _ = NUTS_init_tune_mcmc(
         FunctionLogDensity(
