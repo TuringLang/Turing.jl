@@ -266,7 +266,7 @@ y             = 2
 long_variable = 3
 ```
 
-  * When using parametric types
+  * When using parametric types:
   
 ```julia
 # Yes:
