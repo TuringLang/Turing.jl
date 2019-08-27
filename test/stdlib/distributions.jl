@@ -15,6 +15,20 @@ include(dir*"/test/test_utils/AllUtils.jl")
         k = 3
         @test logpdf(d1, k) ≈ logpdf(d2, k)
     end
+
+    @turing_testset "distributions functions" begin
+
+        d1 = OrderedLogistic(-2, [-1, 1])
+        d2 = OrderedLogistic(0.5, [-1, 1])
+        d3 = OrderedLogistic(2, [-1, 1])
+
+        ns = 10
+
+        @test mean([rand(d1) for i in 1:ns]) ≈ 1.0
+        @test mean([rand(d2) for i in 1:ns]) ≈ 2.0
+        @test mean([rand(d3) for i in 1:ns]) ≈ 3.0
+    end
+
     @numerical_testset "single distribution correctness" begin
         Random.seed!(12321)
 
