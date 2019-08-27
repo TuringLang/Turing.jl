@@ -50,16 +50,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "matrix support" begin
         @model hmcmatrixsup() = begin
             v ~ Wishart(7, [1 0.5; 0.5 1])
-            v
         end
 
         model_f = hmcmatrixsup()
         vs = []
         chain = nothing
-        τ = 3000
+        n_adapts, n_samples = 1_000, 2_000
         for _ in 1:5
-            chain = sample(model_f, HMC(0.1, 3), τ)
-            r = reshape(chain[:v].value, τ, 2, 2)
+            chain = sample(model_f, NUTS(n_adapts, 0.8), n_samples)
+            r = reshape(chain[:v].value, n_samples - n_adapts, 2, 2)
             push!(vs, reshape(mean(r, dims = [1]), 2, 2))
         end
 

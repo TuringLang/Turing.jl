@@ -346,11 +346,11 @@ function step!(
     θ_old, log_density_old = spl.state.vi[spl], spl.state.vi.logp
 
     # Transition
-    spl.state.z, θ, _, _, stat = AHMC.step(rng, spl.state.h, spl.state.traj, spl.state.z)
+    spl.state.z, θ, α, _, stat = AHMC.step(rng, spl.state.h, spl.state.traj, spl.state.z)
 
     # Adaptation
     if T <: AdaptiveHamiltonian
-        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.stat.i, spl.alg.n_adapts, θ, α)
+        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.state.i, spl.alg.n_adapts, θ, α)
     end
 
     Turing.DEBUG && @debug "decide whether to accept..."
@@ -526,8 +526,8 @@ function HMCState(
         metricT(length(θ)),
         logπ, ∂logπ∂θ)
     traj = gen_traj(spl.alg, spl.alg.ϵ)
-    r = rand(rng, h.metric)
-    z = AHMC.phasepoint(h, θ, r)
+    
+    h, z = AHMC.init(rng, h, θ)
 
     return HMCState(vi, 0, 0, traj, h, AHMC.Adaptation.NoAdaptation(), z)
 end
@@ -569,8 +569,7 @@ function HMCState(model::Model,
     traj = gen_traj(spl.alg, init_ϵ)
 
     # Generate a phasepoint. Replaced during sample_init!
-    r = rand(GLOBAL_RNG, h.metric)
-    z = AHMC.phasepoint(h, θ_init, r)
+    h, z = AHMC.init(rng, h, θ_init)
 
     # Unlink everything.
     invlink!(vi, spl)
