@@ -266,6 +266,17 @@ y             = 2
 long_variable = 3
 ```
 
+  * When using parametric types:
+  
+```julia
+# Yes:
+f(a::AbstractArray{T, N}) where {T<:Real, N} = ...
+g(a::AbstractArray{<:Real, N}) where {N} = ...
+
+# No:
+f(a::AbstractArray{T, N}) where {T <: Real, N} = ...
+g(a::AbstractArray{<: Real, N}) where {N} = ...
+```
 
   * Always surround these binary operators with a single space on either side: assignment ($=$), [updating operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Updating-operators-1) ($+=$, $-=$, etc.), [numeric comparisons operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Numeric-Comparisons-1) ($==$, $<$, $>$, $!=$, etc.). Note that this guideline does not apply when performing assignment in method definitions.
 
@@ -410,7 +421,6 @@ str = """
     world!
 """
 ```
-
 
 ### Comments
 
