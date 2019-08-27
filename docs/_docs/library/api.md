@@ -156,7 +156,7 @@ sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
 
 
 ```julia
-HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.1)
+HMCDA(n_iters::Int, n_adapts::Int, δ::Float64, λ::Float64; init_ϵ::Float64=0.0)
 ```
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
@@ -173,7 +173,7 @@ Arguments:
   * `n_adapts::Int` : Numbers of samples to use for adaptation.
   * `δ::Float64` : Target acceptance rate. 65% is often recommended.
   * `λ::Float64` : Target leapfrop length.
-  * `init_ϵ::Float64=0.1` : Inital step size; 0 means automatically search by Turing.
+  * `init_ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
@@ -277,7 +277,7 @@ chn = sample(gdemo([1.5, 2]), MH(1000))
 
 
 ```julia
-NUTS(n_iters::Int, n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.1)
+NUTS(n_iters::Int, n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0)
 ```
 
 No-U-Turn Sampler (NUTS) sampler.
