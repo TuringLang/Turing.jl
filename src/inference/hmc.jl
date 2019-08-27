@@ -328,116 +328,49 @@ function step!(
     spl.state.eval_num = 0
 
     Turing.DEBUG && @debug "current ϵ: $ϵ"
-
-    # Transform the space if we're using Gibbs.
-    Turing.DEBUG && @debug "X-> R..."
+    
+    # Gibbs component specified cares
     if spl.selector.tag != :default
+        # Transform the space
+        Turing.DEBUG && @debug "X-> R..."
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
+        # Update Hamiltonian 
+        metric = gen_metric(length(spl.state.vi[spl]), spl)
+        ∂logπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
+        logπ = gen_logπ(spl.state.vi, spl, model)
+        spl.state.h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
     end
 
-    grad_func = gen_∂logπ∂θ(spl.state.vi, spl, model)
-    lj_func = gen_logπ(spl.state.vi, spl, model)
-    metric = gen_metric(length(spl.state.vi[spl]), spl)
+    # Get position and log density before transition
+    θ_old, log_density_old = spl.state.vi[spl], spl.state.vi.logp
 
-    θ, lj = spl.state.vi[spl], spl.state.vi.logp
+    # Transition
+    spl.state.z, θ, _, _, stat = AHMC.step(rng, spl.state.h, spl.state.traj, spl.state.z)
 
-    θ_new, lj_new, is_accept, α = hmc_step(θ, lj_func, grad_func, ϵ, spl.alg, metric)
+    # Adaptation
+    if T <: AdaptiveHamiltonian
+        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.stat.i, spl.alg.n_adapts, θ, α)
+    end
 
     Turing.DEBUG && @debug "decide whether to accept..."
-    if is_accept
-        spl.state.vi[spl] = θ_new
-        setlogp!(spl.state.vi, lj_new)
-    else
+
+    # Update `vi` based on acceptance
+    if stat.is_accept
         spl.state.vi[spl] = θ
-        setlogp!(spl.state.vi, lj)
+        setlogp!(spl.state.vi, stat.log_density)
+    else
+        spl.state.vi[spl] = θ_old
+        setlogp!(spl.state.vi, log_density_old)
     end
 
-    if T <: AdaptiveHamiltonian
-        if spl.state.i <= spl.alg.n_adapts
-            AHMC.adapt!(spl.state.adaptor, Vector{Float64}(spl.state.vi[spl]), α.acceptance_rate)
-        end
-    end
-
-    # Transform the space back if we're using Gibbs.
+    # Gibbs component specified cares
+    # Transform the space back
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return transition(spl, α)
+    return transition(spl, stat)
 end
-
-# Efficient multiple step sampling for adaptive HMC.
-function steps!(model,
-    spl::Sampler{<:AdaptiveHamiltonian},
-    vi,
-    samples;
-    rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
-)
-    ahmc_samples = AHMC.sample(
-        rng,
-        spl.info[:h],
-        spl.info[:traj],
-        Vector{Float64}(vi[spl]),
-        spl.alg.n_iters,
-        spl.info[:adaptor],
-        spl.alg.n_adapts;
-        verbose=verbose
-    )
-    for i = 1:length(samples)
-        vi[spl] = ahmc_samples[i]
-        samples[i].value = Sample(vi, spl).value
-    end
-end
-
-# Efficient multiple step sampling for static HMC.
-function steps!(
-    model,
-    spl::Sampler{<:HMC},
-    vi,
-    samples;
-    rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
-)
-    ahmc_samples = AHMC.sample(
-        rng,
-        spl.info[:h],
-        spl.info[:traj],
-        Vector{Float64}(vi[spl]),
-        spl.alg.n_iters;
-        verbose=verbose
-    )
-    for i = 1:length(samples)
-        vi[spl] = ahmc_samples[i]
-        samples[i].value = Sample(vi, spl).value
-    end
-end
-
-# Default multiple step sampling for all HMC samplers.
-function steps!(
-    model,
-    spl::Sampler{<:Hamiltonian},
-    vi,
-    samples;
-    rng::AbstractRNG=GLOBAL_RNG,
-    verbose::Bool=true
-)
-    # Init step
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(true))
-    samples[1].value = Sample(vi, spl).value    # we know we always accept the init step
-    samples[1].value[:elapsed] = time_elapsed
-    # Rest steps
-    for i = 2:length(samples)
-        time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(false))
-        if is_accept # accepted => store the new predcits
-            samples[i].value = Sample(vi, spl).value
-        else         # rejected => store the previous predcits
-            samples[i] = samples[i - 1]
-        end
-        samples[i].value[:elapsed] = time_elapsed
-    end
-end
-
 
 #####
 ##### HMC core functions
@@ -485,34 +418,6 @@ gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
 gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
-function hmc_step(
-    θ,
-    logπ,
-    ∂logπ∂θ,
-    ϵ,
-    alg::T,
-    metric
-) where {T<:Union{HMC,HMCDA,NUTS}}
-    # Make sure the code in AHMC is type stable
-    θ = Vector{Float64}(θ)
-
-    # Build Hamiltonian type and trajectory
-    h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
-    traj = gen_traj(alg, ϵ)
-
-    h = AHMC.update(h, θ) # Ensure h.metric has the same dim as θ.
-
-    # Sample momentum
-    r = AHMC.rand(h.metric)
-
-    # Build phase point
-    z = AHMC.phasepoint(h, θ, r)
-
-    # Call AHMC to make one MCMC transition
-    z_new, stat = AHMC.transition(traj, h, z)
-
-    return z_new.θ, stat.log_density, stat.is_accept, stat
-end
 
 ####
 #### Compiler interface, i.e. tilde operators.
