@@ -25,7 +25,7 @@ struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:Abstract
     surplus::V
 end
 
-logpdf(d::SizeBiasedSamplingProcess, x) = _logpdf(d, x)
+logpdf(d::SizeBiasedSamplingProcess, x::T) where {T<:Real} = _logpdf(d, x)
 rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess) = _rand(rng, d)
 minimum(d::SizeBiasedSamplingProcess) = zero(d.surplus)
 maximum(d::SizeBiasedSamplingProcess) = d.surplus
@@ -39,7 +39,7 @@ struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <: ContinuousUn
     rpm::T
 end
 
-logpdf(d::StickBreakingProcess, x) = _logpdf(d, x)
+logpdf(d::StickBreakingProcess, x::T) where {T<:Real} = _logpdf(d, x)
 rand(rng::AbstractRNG, d::StickBreakingProcess) = _rand(rng, d)
 minimum(d::StickBreakingProcess) = 0.0
 maximum(d::StickBreakingProcess) = 1.0
