@@ -7,7 +7,7 @@ import MCMCChains: Chains
 import ..Interface: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback
-import ..Turing: Model, Sampler
+import ..Turing: Model, Sampler, PROGRESS
 import ..RandomVariables: islinked, invlink!, getlogp, tonamedtuple
 import ..Inference: InferenceAlgorithm, ParticleInference, AHMC, Hamiltonian,
                     StaticHamiltonian, AdaptiveHamiltonian
@@ -165,7 +165,7 @@ function Interface.sample(
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    return sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
 end
 
 function Interface.sample(
@@ -180,7 +180,7 @@ function Interface.sample(
     AlgType<:InferenceAlgorithm
 }
     if resume_from === nothing
-        return sample(model, Sampler(alg, model), N; kwargs...)
+        return sample(model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
     else
         return resume(resume_from, N)
     end
