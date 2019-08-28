@@ -5,10 +5,13 @@ using ..Interface
 import MCMCChains: Chains
 
 import ..Interface: AbstractTransition, sample, step!, sample_init!,
-    transitions_init, sample_end!, AbstractSampler, transition_type
+    transitions_init, sample_end!, AbstractSampler, transition_type,
+    callback, init_callback, AbstractCallback
 import ..Turing: Model, Sampler
 import ..RandomVariables: islinked, invlink!, getlogp, tonamedtuple
-import ..Inference: InferenceAlgorithm, ParticleInference
+import ..Inference: InferenceAlgorithm, ParticleInference, AHMC, Hamiltonian,
+                    StaticHamiltonian, AdaptiveHamiltonian
+import ProgressMeter
 
 export sample,
        sample_init!,
@@ -35,7 +38,10 @@ const TURING_INTERNAL_VARS =
 # Transition Types #
 ####################
 
-# Used by all non-particle samplers.
+######################
+# Default Transition #
+######################
+
 struct Transition{T} <: AbstractTransition
     θ  :: T
     lp :: Float64
@@ -57,7 +63,9 @@ function additional_parameters(::Type{Transition})
     return [:lp]
 end
 
-# used by PG and SMC
+#######################
+# Particle Transition #
+#######################
 struct ParticleTransition{T} <: AbstractTransition
     θ::T
     lp::Float64
@@ -71,18 +79,74 @@ function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
 end
 
-"""
-    transition(vi::AbstractVarInfo, spl::Sampler{<:Union{SMC, PG}}, weight::Float64)
-
-Returns a TransitionType for the particle samplers.
-"""
 function transition(
-        theta::T,
-        lp::Float64,
-        le::Float64,
-        weight::Float64
+    theta::T,
+    lp::Float64,
+    le::Float64,
+    weight::Float64
 ) where {T}
     return ParticleTransition{T}(theta, lp, le, weight)
+end
+
+##########################
+# Hamiltonian Transition #
+##########################
+
+function transition(spl::Sampler{<:Hamiltonian}, s::SPL) where SPL<:AHMC.Sample
+    theta = tonamedtuple(spl.state.vi)
+    lp = getlogp(spl.state.vi)
+    return HamiltonianTransition{typeof(theta), typeof(s.stat)}(theta, lp, s.stat)
+end
+
+struct HamiltonianTransition{T, NT<:NamedTuple} <: AbstractTransition
+    θ    :: T
+    lp   :: Float64
+    stat :: NT
+end
+
+transition_type(::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
+    HamiltonianTransition
+
+function additional_parameters(::Type{<:HamiltonianTransition})
+    return [:lp,:stat]
+end
+
+#######################################################
+# Special callback functionality for the HMC samplers #
+#######################################################
+
+mutable struct HMCCallback{
+    ProgType<:ProgressMeter.AbstractProgress
+} <: AbstractCallback
+    p :: ProgType
+end
+
+
+function callback(
+    rng::AbstractRNG,
+    model::ModelType,
+    spl::SamplerType,
+    N::Integer,
+    iteration::Integer,
+    t::HamiltonianTransition,
+    cb::HMCCallback;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler
+}
+    ProgressMeter.next!(cb.p, t.stat, iteration, spl.state.h.metric)
+end
+
+function init_callback(
+    rng::AbstractRNG,
+    model::Model,
+    s::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
+    N::Integer;
+    dt::Real=0.25,
+    kwargs...
+)
+    return HMCCallback(ProgressMeter.Progress(N, dt=dt, desc="Sampling ", barlen=31))
 end
 
 
@@ -176,7 +240,7 @@ end
 # Chain making utilities #
 ##########################
 
-function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:Union{ParticleTransition,Transition}}
+function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransition}
     local names
     vals  = Vector{Vector{Float64}}()
     for t in ts
@@ -232,6 +296,35 @@ function flatten(names, value :: AbstractArray, k :: String, v)
     return
 end
 
+function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
+    # Get the extra field names from the sampler state type.
+    # This handles things like :lp or :weight.
+    extra_params = additional_parameters(T)
+
+    # Get the values of the extra parameters.
+    local extra_names
+    all_vals = []
+    for t in ts
+        extra_names = String[]
+        vals = []
+        for p in extra_params
+            prop = getproperty(t, p)
+            if prop isa NamedTuple
+                for (k, v) in pairs(prop)
+                    push!(extra_names, string(k))
+                    push!(vals, v)
+                end
+            else
+                push!(extra_names, string(p))
+                push!(vals, prop)
+            end
+        end
+        push!(all_vals, vals)
+    end
+
+    return extra_names, vcat(all_vals)
+end
+
 # Default Chains constructor.
 function Chains(
     rng::AbstractRNG,
@@ -252,12 +345,8 @@ function Chains(
     # Also retrieve the variable names.
     nms, vals = _params_to_array(ts, spl)
 
-    # Get the extra field names from the sampler state type.
-    # This handles things like :lp or :weight.
-    extra_params = additional_parameters(T)
-
-    # Get the values of the extra parameters.
-    extra_values = vcat(map(t -> [getproperty(t, p) for p in extra_params], ts))
+    # Get the values of the extra parameters in each Transition struct.
+    extra_params, extra_values = get_transition_extras(ts)
 
     # Extract names & construct param array.
     nms = string.(vcat(nms..., string.(extra_params)...))

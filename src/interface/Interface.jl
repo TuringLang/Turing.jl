@@ -7,6 +7,9 @@ import ProgressMeter
 
 export AbstractSampler,
        AbstractTransition,
+       AbstractCallback,
+       init_callback,
+       callback,
        transitions_init,
        transition_type,
        sample_init!,
@@ -140,6 +143,7 @@ function sample(
     ℓ::ModelType,
     s::SamplerType,
     N::Integer;
+    progress::Bool=true,
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
     # Perform any necessary setup.
@@ -149,7 +153,7 @@ function sample(
     ts = transitions_init(rng, ℓ, s, N; kwargs...)
 
     # Add a progress meter.
-    cb = init_callback(rng, ℓ, s, N; kwargs...)
+    cb = progress ? init_callback(rng, ℓ, s, N; kwargs...) : nothing
 
     # Step through the sampler.
     for i=1:N
@@ -160,7 +164,7 @@ function sample(
         end
 
         # Run a callback function.
-        callback(rng, ℓ, s, N, i, cb; kwargs...)
+        progress && callback(rng, ℓ, s, N, i, ts[i], cb; kwargs...)
     end
 
     # Wrap up the sampler, if necessary.
@@ -357,13 +361,15 @@ function callback(
     s::SamplerType,
     N::Integer,
     iteration::Integer,
+    t::TransitionType,
     cb::CallbackType;
     progress::Bool=true,
     kwargs...
 ) where {
     ModelType<:Sampleable,
     SamplerType<:AbstractSampler,
-    CallbackType<:AbstractCallback
+    CallbackType<:AbstractCallback,
+    TransitionType<:AbstractTransition
 }
     # Default callback behavior.
     progress && ProgressMeter.next!(cb.p)
@@ -375,11 +381,13 @@ function callback(
     s::SamplerType,
     N::Integer,
     iteration::Integer,
+    t::TransitionType,
     cb::NoCallback;
     kwargs...
 ) where {
     ModelType<:Sampleable,
-    SamplerType<:AbstractSampler
+    SamplerType<:AbstractSampler,
+    TransitionType<:AbstractTransition
 }
     # Do nothing.
 end

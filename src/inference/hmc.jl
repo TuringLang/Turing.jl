@@ -293,19 +293,7 @@ function Sampler(
     return Sampler(alg, spl_bad.info, spl_bad.selector, state)
 end
 
-##########################################################
-# Remove the Callback functionality for the HMC samplers #
-##########################################################
 
-function init_callback(
-    rng::AbstractRNG,
-    model::Model,
-    s::Sampler{<:Hamiltonian},
-    N::Integer;
-    kwargs...
-)
-    return Interface.NoCallback()
-end
 
 ####
 #### Transition / step functions for HMC samplers.
@@ -371,8 +359,9 @@ function step!(
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return transition(spl, s.stat)
+    return transition(spl, s)
 end
+
 
 #####
 ##### HMC core functions
