@@ -334,21 +334,21 @@ function step!(
     θ_old, log_density_old = spl.state.vi[spl], spl.state.vi.logp
 
     # Transition
-    s = AHMC.step(rng, spl.state.h, spl.state.traj, spl.state.z)
+    t = AHMC.step(rng, spl.state.h, spl.state.traj, spl.state.z)
     # Update z in state
-    spl.state.z = s.z
+    spl.state.z = t.z
 
     # Adaptation
     if T <: AdaptiveHamiltonian
-        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.state.i, spl.alg.n_adapts, s.z.θ, s.stat.acceptance_rate)
+        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
     end
 
     Turing.DEBUG && @debug "decide whether to accept..."
 
     # Update `vi` based on acceptance
-    if s.stat.is_accept
-        spl.state.vi[spl] = s.z.θ
-        setlogp!(spl.state.vi, s.stat.log_density)
+    if t.stat.is_accept
+        spl.state.vi[spl] = t.z.θ
+        setlogp!(spl.state.vi, t.stat.log_density)
     else
         spl.state.vi[spl] = θ_old
         setlogp!(spl.state.vi, log_density_old)
@@ -359,7 +359,7 @@ function step!(
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return transition(spl, s)
+    return transition(spl, t)
 end
 
 
@@ -533,10 +533,10 @@ function HMCState(model::Model,
     traj = gen_traj(spl.alg, ϵ)
 
     # Generate a phasepoint. Replaced during sample_init!
-    h, s = AHMC.sample_init(rng, h, θ_init)
+    h, t = AHMC.sample_init(rng, h, θ_init)
 
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), s.z)
+    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), t.z)
 end

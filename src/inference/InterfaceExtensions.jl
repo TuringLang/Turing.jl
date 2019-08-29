@@ -92,10 +92,10 @@ end
 # Hamiltonian Transition #
 ##########################
 
-function transition(spl::Sampler{<:Hamiltonian}, s::SPL) where SPL<:AHMC.Sample
+function transition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
     theta = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
-    return HamiltonianTransition{typeof(theta), typeof(s.stat)}(theta, lp, s.stat)
+    return HamiltonianTransition{typeof(theta), typeof(t.stat)}(theta, lp, t.stat)
 end
 
 struct HamiltonianTransition{T, NT<:NamedTuple} <: AbstractTransition
@@ -135,7 +135,7 @@ function callback(
     ModelType<:Sampleable,
     SamplerType<:AbstractSampler
 }
-    ProgressMeter.next!(cb.p, t.stat, iteration, spl.state.h.metric)
+    AHMC.pm_next!(cb.p, t.stat, iteration, spl.state.h.metric)
 end
 
 function init_callback(
