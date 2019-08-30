@@ -84,7 +84,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
             # test is broken
             Weibull(2, 1),
             # Cauchy(0, 1),  # mean and variance are undefined for Cauchy
-            OrderedLogistic(0.5, [-1, 1])
         ]
 
         # 2. MultivariateDistribution
