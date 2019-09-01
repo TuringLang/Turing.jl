@@ -408,7 +408,6 @@ function _logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMat
 end
 
 
-
 #
 # Intercepts to construct appropriate TuringMvNormal types. Methods line-separated. Imports
 # used do avoid excessive code duplication. This is mildly annoying to maintain, but it
@@ -416,7 +415,8 @@ end
 #
 
 using Tracker: TrackedReal, TrackedVector, TrackedMatrix
-import Distributions: MvNormal
+import Distributions: MvNormal, MvLogNormal
+using Distributions: AbstractMvLogNormal
 
 # zero mean, dense covariance
 MvNormal(A::TrackedMatrix) = MvNormal(zeros(size(A, 1)), A)
@@ -461,6 +461,97 @@ MvNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:Real}) = MvNormal(m, A.λ
 
 # zero mean,, constant variance
 MvNormal(d::Int, σ::TrackedReal{<:Real}) = MvNormal(zeros(d), σ)
+
+struct TuringMvLogNormal{TD} <: AbstractMvLogNormal
+    normal::TD
+end
+MvLogNormal(d::TuringMvNormal) = TuringMvLogNormal(d)
+MvLogNormal(d::TuringDiagNormal) = TuringMvLogNormal(d)
+Distributions.dim(d::TuringMvLogNormal) = length(d.normal)
+function Distributions.rand(rng::Random.AbstractRNG, d::TuringMvLogNormal)
+    return exp!(rand(rng, d.normal))
+end
+for T in (:AbstractVector, :AbstractMatrix)
+    @eval Distributions.logpdf(d::TuringMvLogNormal, x::$T) = _logpdf(d, x)
+end
+for T in (:(Tracker.TrackedVector), :(Tracker.TrackedMatrix))
+    @eval Distributions.logpdf(d::TuringMvLogNormal, x::$T) = _logpdf(d, x)
+end
+function _logpdf(d::TuringMvLogNormal, x::AbstractVecOrMat{T}) where {T<:Real}
+    return insupport(d, x) ? (_logpdf(d.normal, log.(x)) - sum(log.(x))) : -Inf
+end
+function _logpdf(d::MvLogNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMatrix})
+    _logpdf(TuringMvLogNormal(TuringMvNormal(d.normal.μ, getchol(d.normal.Σ))), x)
+end
+
+# zero mean, dense covariance
+MvLogNormal(A::TrackedMatrix) = MvLogNormal(zeros(size(A, 1)), A)
+
+# zero mean, diagonal covariance
+MvLogNormal(σ::TrackedVector) = MvLogNormal(zeros(length(σ)), σ)
+
+# dense mean, dense covariance
+MvLogNormal(m::TrackedVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvLogNormal(m, A)
+MvLogNormal(m::TrackedVector{<:Real}, A::Matrix{<:Real}) = TuringMvLogNormal(m, A)
+MvLogNormal(m::AbstractVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvLogNormal(m, A)
+
+# dense mean, diagonal covariance
+function MvLogNormal(
+    m::TrackedVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvLogNormal(m, sqrt.(D.diag))
+end
+function MvLogNormal(
+    m::AbstractVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvLogNormal(m, sqrt.(D.diag))
+end
+
+# zero mean, dense covariance
+MvLogNormal(A::TrackedMatrix) = MvLogNormal(zeros(size(A, 1)), A)
+
+# zero mean, diagonal covariance
+MvLogNormal(σ::TrackedVector) = MvLogNormal(zeros(length(σ)), σ)
+
+# dense mean, dense covariance
+MvLogNormal(m::TrackedVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvLogNormal(TuringMvNormal(m, A))
+MvLogNormal(m::TrackedVector{<:Real}, A::Matrix{<:Real}) = TuringMvLogNormal(TuringMvNormal(m, A))
+MvLogNormal(m::AbstractVector{<:Real}, A::TrackedMatrix{<:Real}) = TuringMvLogNormal(TuringMvNormal(m, A))
+
+# dense mean, diagonal covariance
+function MvLogNormal(
+    m::TrackedVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvLogNormal(m, sqrt.(D.diag))
+end
+function MvLogNormal(
+    m::AbstractVector{<:Real},
+    D::Diagonal{T, <:TrackedVector{T}} where {T<:Real},
+)
+    return MvLogNormal(m, sqrt.(D.diag))
+end
+
+# dense mean, diagonal covariance
+MvLogNormal(m::TrackedVector{<:Real}, σ::TrackedVector{<:Real}) = TuringMvLogNormal(TuringDiagNormal(m, σ))
+MvLogNormal(m::TrackedVector{<:Real}, σ::AbstractVector{<:Real}) = TuringMvLogNormal(TuringDiagNormal(m, σ))
+MvLogNormal(m::TrackedVector{<:Real}, σ::Vector{<:Real}) = TuringMvLogNormal(TuringDiagNormal(m, σ))
+MvLogNormal(m::AbstractVector{<:Real}, σ::TrackedVector{<:Real}) = TuringMvLogNormal(TuringDiagNormal(m, σ))
+
+# dense mean, constant variance
+MvLogNormal(m::TrackedVector{<:Real}, σ::TrackedReal) = MvLogNormal(m, fill(σ, length(m)))
+MvLogNormal(m::TrackedVector{<:Real}, σ::Real) = MvLogNormal(m, fill(σ, length(m)))
+MvLogNormal(m::AbstractVector{<:Real}, σ::TrackedReal) = MvLogNormal(m, fill(σ, length(m)))
+
+# dense mean, constant variance
+MvLogNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:TrackedReal}) = MvLogNormal(m, A.λ)
+MvLogNormal(m::AbstractVector{<:Real}, A::UniformScaling{<:TrackedReal}) = MvLogNormal(m, A.λ)
+MvLogNormal(m::TrackedVector{<:Real}, A::UniformScaling{<:Real}) = MvLogNormal(m, A.λ)
+
+# zero mean,, constant variance
+MvLogNormal(d::Int, σ::TrackedReal{<:Real}) = MvLogNormal(zeros(d), σ)
 
 import Bijectors: link, invlink
 using Bijectors: Dirichlet, PDMatDistribution
