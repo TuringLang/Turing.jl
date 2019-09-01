@@ -39,7 +39,7 @@ end
                     push!(unpacked, x[i:i+length(v)-1])
                     i += length(v)
                 elseif v isa Matrix
-                    push!(unpacked, reshape(x[i:i+length(v)-1]), size(v))
+                    push!(unpacked, reshape(x[i:(i+length(v)-1)], size(v)))
                     i += length(v)
                 else
                     throw("Unsupported argument")
@@ -92,6 +92,15 @@ end
             end
             return fs
         end
+        dim = 3
+        mean = zeros(dim)
+        cov_mat = Matrix{Float64}(I, dim, dim)
+        cov_vec = ones(dim)
+        cov_num = 1.0
+        norm_val = ones(dim)
+        alpha = ones(4)
+        dir_val = fill(0.25, 4)
+
         uni_disc_dists = [
             DistSpec(:Bernoulli, (0.45,), 1),
             DistSpec(:Bernoulli, (0.45,), 0),
@@ -101,8 +110,7 @@ end
             DistSpec(:Geometric, (0.45,), 3),
             DistSpec(:NegativeBinomial, (3.5, 0.5), 1),
             DistSpec(:Poisson, (0.5,), 1),
-            DistSpec(:PoissonBinomial, ([0.5, 0.5],), 3),
-            DistSpec(:Skellam, (1.1, 1,2), -2),
+            DistSpec(:Skellam, (1.0, 2.0), -2),
         ]
         uni_cont_dists = [
             DistSpec(:Arcsine, (), 0.5),
@@ -142,21 +150,19 @@ end
             DistSpec(:Gumbel, (1,), 0.5),
             DistSpec(:Gumbel, (1, 2), 0.5),
             DistSpec(:InverseGamma, (), 0.5),
-            DistSpec(:InverseGamma, (1,), 0.5),
-            #DistSpec(:InverseGamma, (1, 2), 0.5), # Errors
+            DistSpec(:InverseGamma, (1.0,), 0.5),
+            DistSpec(:InverseGamma, (1.0, 2.0), 0.5),
             DistSpec(:InverseGaussian, (), 0.5),
             DistSpec(:InverseGaussian, (1,), 0.5),
             DistSpec(:InverseGaussian, (1, 2), 0.5),
             DistSpec(:Kolmogorov, (), 0.5),
-            #DistSpec(:(()->KSDist(1)), (), 0.5), # Errors # Arg is integer
-            #DistSpec(:(()->KSOneSided(1)), (), 0.5), # Errors # Arg is integer
             DistSpec(:Laplace, (), 0.5),
             DistSpec(:Laplace, (1,), 0.5),
             DistSpec(:Laplace, (1, 2), 0.5),
             DistSpec(:Levy, (), 0.5),
-            DistSpec(:Levy, (1,), 0.5),
-            DistSpec(:Levy, (0.1, 2), 0.5),
-            DistSpec(:((a, b) -> LocationScale(a, b, Normal())), (1, 2), 0.5),
+            DistSpec(:Levy, (0.0,), 0.5),
+            DistSpec(:Levy, (0.0, 2.0), 0.5),
+            DistSpec(:((a, b) -> LocationScale(a, b, Normal())), (1.0, 2.0), 0.5),
             DistSpec(:Logistic, (), 0.5),
             DistSpec(:Logistic, (1,), 0.5),
             DistSpec(:Logistic, (1, 2), 0.5),
@@ -166,15 +172,11 @@ end
             DistSpec(:LogNormal, (), 0.5),
             DistSpec(:LogNormal, (1,), 0.5),
             DistSpec(:LogNormal, (1, 2), 0.5),
-            #DistSpec(:NoncentralBeta, (1, 2, 1), 0.5), # Errors
-            #DistSpec(:NoncentralChisq, (1, 2), 0.5), # Errors
-            #DistSpec(:NoncentralF, (1, 2, 1), 0.5), # Errors
-            #DistSpec(:NoncentralT, (1, 2), 0.5), # Errors
             DistSpec(:Normal, (), 0.5),
-            DistSpec(:Normal, (1,), 0.5),
-            DistSpec(:Normal, (1, 2), 0.5),
-            DistSpec(:NormalCanon, (1, 2), 0.5),
-            DistSpec(:NormalInverseGaussian, (1.0, 1.0, 1.0, 1.0), 0.5),
+            DistSpec(:Normal, (1.0,), 0.5),
+            DistSpec(:Normal, (1.0, 2.0), 0.5),
+            DistSpec(:NormalCanon, (1.0, 2.0), 0.5),
+            DistSpec(:NormalInverseGaussian, (1.0, 2.0, 1.0, 1.0), 0.5),
             DistSpec(:Pareto, (), 1.5),
             DistSpec(:Pareto, (1,), 1.5),
             DistSpec(:Pareto, (1, 1), 1.5),
@@ -182,8 +184,6 @@ end
             DistSpec(:PGeneralizedGaussian, (1, 1, 1), 0.5),
             DistSpec(:Rayleigh, (), 0.5),
             DistSpec(:Rayleigh, (1,), 0.5),
-            #DistSpec(:Semicircle, (1.0,), 0.5), # Errors
-            #DistSpec(:StudentizedRange, (1, 2), 0.5), # Errors
             DistSpec(:SymTriangularDist, (), 0.5),
             DistSpec(:SymTriangularDist, (1,), 0.5),
             DistSpec(:SymTriangularDist, (1, 2), 0.5),
@@ -191,15 +191,68 @@ end
             DistSpec(:TriangularDist, (1, 2), 1.5),
             DistSpec(:TriangularDist, (1, 3, 2), 1.5),
             DistSpec(:Triweight, (1, 1), 1),
-            #DistSpec(:Uniform, (), 0.5), # Errors
             DistSpec(:Uniform, (0, 1), 0.5),
             DistSpec(:VonMises, (), 1),
-            #DistSpec(:VonMises, (1,), 1), # Errors
-            #DistSpec(:VonMises, (1, 1), 1), # Errors
             DistSpec(:Weibull, (), 1),
             DistSpec(:Weibull, (1,), 1),
             DistSpec(:Weibull, (1, 1), 1),
         ]
+        mult_disc_dists = [
+        ]
+        mult_cont_dists = [
+            DistSpec(:MvNormal, (mean, cov_mat), norm_val),
+            DistSpec(:MvNormal, (mean, cov_vec), norm_val),
+            DistSpec(:MvNormal, (mean, cov_num), norm_val),
+            DistSpec(:MvNormal, (cov_mat,), norm_val),
+            DistSpec(:MvNormal, (cov_vec,), norm_val),
+            DistSpec(:(cov_num -> MvNormal(dim, cov_num)), (cov_num,), norm_val),
+            DistSpec(:MvLogNormal, (mean, cov_mat), norm_val),
+            DistSpec(:MvLogNormal, (mean, cov_vec), norm_val),
+            DistSpec(:MvLogNormal, (mean, cov_num), norm_val),
+            DistSpec(:MvLogNormal, (cov_mat,), norm_val),
+            DistSpec(:MvLogNormal, (cov_vec,), norm_val),
+            DistSpec(:(cov_num -> MvLogNormal(dim, cov_num)), (cov_num,), norm_val),
+        ]
+
+        broken_uni_disc_dists = [
+            # Dispatch error
+            DistSpec(:PoissonBinomial, ([0.5, 0.5],), 3),
+        ]
+        broken_uni_cont_dists = [
+            # Broken in Distributions even without autodiff
+            DistSpec(:(()->KSDist(1)), (), 0.5), 
+            DistSpec(:(()->KSOneSided(1)), (), 0.5), 
+            DistSpec(:StudentizedRange, (1.0, 2.0), 0.5),
+            # Dispatch error
+            DistSpec(:NoncentralBeta, (1.0, 2.0, 1.0), 0.5), 
+            DistSpec(:NoncentralChisq, (1.0, 2.0), 0.5),
+            DistSpec(:NoncentralF, (1, 2, 1), 0.5),
+            DistSpec(:NoncentralT, (1, 2), 0.5),
+            DistSpec(:((mu, sigma, l, u) -> Truncated(Normal(mu, sigma), l, u)), (0.0, 1.0, 1.0, 2.0), 1.5),
+            # Possibly Tracker error
+            DistSpec(:Uniform, (), 0.5),
+            DistSpec(:Semicircle, (1.0,), 0.5),
+            # Stackoverflow
+            DistSpec(:VonMises, (1.0,), 1.0),
+            DistSpec(:VonMises, (1, 1), 1),
+        ]
+        broken_mult_disc_dists = [
+            # Dispatch error
+            DistSpec(:((p) -> Multinomial(4, p)), (fill(0.25, 4),), 1),
+        ]
+        broken_mult_cont_dists = [
+            # Dispatch error
+            DistSpec(:MvNormalCanon, (mean, cov_mat), norm_val),
+            DistSpec(:MvNormalCanon, (mean, cov_vec), norm_val),
+            DistSpec(:MvNormalCanon, (mean, cov_num), norm_val),
+            DistSpec(:MvNormalCanon, (cov_mat,), norm_val),
+            DistSpec(:MvNormalCanon, (cov_vec,), norm_val),
+            DistSpec(:(cov_num -> MvNormalCanon(dim, cov_num)), (cov_num,), norm_val),
+            DistSpec(:Dirichlet, (alpha,), dir_val),
+            # Test failure
+            DistSpec(:(() -> Product(Normal.(randn(dim), 1))), (), norm_val),
+        ]
+
         for d in uni_disc_dists
             for testf in get_all_functions(d, false)
                 test_ad(testf.f, testf.x)
@@ -210,43 +263,16 @@ end
                 test_ad(testf.f, testf.x)
             end
         end
-
-        # Real
-        x_real = randn(5)
-        dists = [Normal(0, 1)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            ForwardDiff.gradient(f, x_real)
+        for d in mult_disc_dists
+            for testf in get_all_functions(d, false)
+                test_ad(testf.f, testf.x)
+            end
         end
-
-        # Postive
-        x_positive = randn(5).^2
-        dists = [Gamma(2, 3)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            g = x -> ForwardDiff.gradient(f, x)
+        for d in mult_cont_dists
+            for testf in get_all_functions(d, true)
+                test_ad(testf.f, testf.x)
+            end
         end
-
-        # Test AD.
-        test_ad(p->binomlogpdf(10, p, 3))
-        test_ad(p->logpdf(Binomial(10, p), 3))
-        test_ad(p->Turing.poislogpdf(p, 1))
-        test_ad(p->logpdf(Poisson(p), 3))
-        test_ad(p->Turing.nbinomlogpdf(5, p, 1))
-        test_ad(p->logpdf(NegativeBinomial(5, p), 3))
-        test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
-        test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
-        test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
-        test_ad(m->logpdf(MvNormal(m, 1.0), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3]), [1.0, 1.0]), [1.0, 1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3:4]), [1.0, 1.0]), [1.0, 1.0, 1.0, 1.0])
-        s = rand(2,2); s = s' * s
-        test_ad(m->logpdf(MvNormal(m, s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
-        ms = [[0.0, 0.0]; s[:]]
-        test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
-        test_ad(logsumexp, [1.0, 1.0])
     end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
