@@ -1,12 +1,15 @@
 ##############################
 # Global variables/constants #
 ##############################
+using Bijectors
 
 const ADBACKEND = Ref(:forward_diff)
 function setadbackend(backend_sym)
     @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
     backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = backend_sym
+
+    Bijectors.setadbackend(backend_sym)
 end
 
 const ADSAFE = Ref(false)
@@ -378,9 +381,13 @@ struct TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMu
     σ::Tσ
 end
 
+Base.length(d::TuringDiagNormal) = length(d.m)
 Distributions.dim(d::TuringDiagNormal) = length(d.m)
 function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal)
     return d.m .+ d.σ .* randn(rng, dim(d))
+end
+function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal, n::Int)
+    return d.m .+ d.σ .* randn(rng, dim(d), n)
 end
 for T in (:AbstractVector, :AbstractMatrix)
     @eval Distributions.logpdf(d::TuringDiagNormal, x::$T) = _logpdf(d, x)
@@ -406,7 +413,21 @@ function _logpdf(d::MvNormal, x::Union{Tracker.TrackedVector, Tracker.TrackedMat
     _logpdf(TuringMvNormal(d.μ, getchol(d.Σ)), x)
 end
 
+import Distributions: params
+params(d::TuringDiagNormal) = (d.m, d.σ)
 
+using StatsFuns: log2π
+import StatsBase: entropy
+
+function entropy(d::TuringDiagNormal)
+    T = eltype(d.σ)
+    return (length(d) * (T(log2π) + one(T))) / 2 + sum(log.(d.σ))
+end
+
+import Bijectors: bijector
+bijector(d::TuringDiagNormal) = Bijectors.IdentityBijector
+
+update(d::TuringDiagNormal, θ...) = TuringDiagNormal(θ...)
 
 #
 # Intercepts to construct appropriate TuringMvNormal types. Methods line-separated. Imports
