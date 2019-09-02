@@ -48,20 +48,7 @@ to `num_samples`.
 function rand(vi::VariationalPosterior, num_samples) end
 
 """
-    objective(vi::VariationalInference, q::VariationalPosterior, model::Model, args...)
-
-Computes the variational objective to be optimized for a given VI method.
-"""
-function objective(
-    vi::VariationalInference,
-    q::VariationalPosterior,
-    model::Model,
-    num_samples)
-end
-
-
-"""
-    grad!(vo, vi::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
+    grad!(vo, alg::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
 
 Computes the gradients used in `optimize!`. Default implementation is provided for 
 `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`.
@@ -70,7 +57,8 @@ This implicitly also gives a default implementation of `optimize!`.
 Variance reduction techniques, e.g. control variates, should be implemented in this function.
 """
 function grad!(
-    vo, vi::VariationalInference{AD},
+    vo,
+    alg::VariationalInference{AD},
     q::VariationalPosterior,
     model::Model,
     θ,
@@ -106,7 +94,7 @@ function grad!(
     θ::AbstractVector{T},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T <: Real, AD <: ForwardDiffAD}
+) where {T<:Real, AD<:ForwardDiffAD}
     # TODO: this probably slows down executation quite a bit; exists a better way
     # of doing this?
     f(θ_) = - vo(alg, q, model, θ_, args...)
@@ -126,7 +114,7 @@ function grad!(
     θ::AbstractVector{T},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T <: Real, AD <: TrackerAD}
+) where {T<:Real, AD<:TrackerAD}
     θ_tracked = Tracker.param(θ)
     y = - vo(alg, q, model, θ_tracked, args...)
     Tracker.back!(y, 1.0)
@@ -136,7 +124,7 @@ function grad!(
 end
 
 import Tracker: TrackedArray, track, Call
-function TrackedArray(f::Call, x::SA) where {T, N, A, SA <: SubArray{T, N, A}}
+function TrackedArray(f::Call, x::SA) where {T, N, A, SA<:SubArray{T, N, A}}
     TrackedArray(f, convert(A, x))
 end
 
@@ -151,9 +139,9 @@ function optimize!(
     alg::VariationalInference{AD},
     q::VariationalPosterior,
     model::Model,
-    θ::AbstractVector{<: Real};
+    θ::AbstractVector{<:Real};
     optimizer = TruncatedADAGrad()
-) where AD
+) where {AD}
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
