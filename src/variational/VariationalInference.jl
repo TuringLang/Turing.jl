@@ -6,6 +6,7 @@ using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS
 using ..Turing: Model, SampleFromPrior, SampleFromUniform
 using ..Turing: Turing
+using ..Core: TuringDiagNormal
 using Random: AbstractRNG
 
 using ForwardDiff
@@ -22,6 +23,7 @@ export
     vi,
     ADVI,
     ELBO,
+    elbo,
     TruncatedADAGrad
 
 abstract type VariationalInference{AD} end

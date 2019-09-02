@@ -428,6 +428,12 @@ import Bijectors: bijector
 bijector(d::TuringDiagNormal) = Bijectors.IdentityBijector
 
 update(d::TuringDiagNormal, θ...) = TuringDiagNormal(θ...)
+function update(
+    d::TransformedDistribution{D, B, V},
+    θ...
+) where {V, D<:Distribution{V, Continuous}, B<:Bijector}
+    return TransformedDistribution(update(d.dist, θ...), d.transform)
+end
 
 #
 # Intercepts to construct appropriate TuringMvNormal types. Methods line-separated. Imports

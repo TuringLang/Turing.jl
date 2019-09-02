@@ -1,9 +1,12 @@
-using Revise
-
 using Random
 
+using Bijectors
 using Turing
 using Turing: Variational
+
+using StatsFuns: softplus, invsoftplus
+f = softplus
+f⁻¹ = invsoftplus
 
 # setup for plotting
 using Plots, StatsPlots, LaTeXStrings
@@ -21,7 +24,7 @@ using ConjugatePriors
     end
 end
 
-const seeds = [125, 245, 1]
+const seeds = [125, 245, 3]
 const ad_modes = [:forward_diff, :reverse_diff]
 
 for seed ∈ seeds
@@ -41,16 +44,17 @@ for seed ∈ seeds
         m = model(x)
         
         # ADVI
-        opt = Variational.TruncatedADAGrad() # optimizer
-        advi = ADVI(10, 100)                 # <: VariationalInference
-        q = vi(m, advi; optimizer = opt)     # => MeanField <: VariationalPosterior
+        opt = Variational.TruncatedADAGrad()   # optimizer
+        Variational.TruncatedADAGrad()
+        advi = ADVI(10, 100)                   # <: VariationalInference
+        q = Variational.meanfield(m)           # => MeanField <: VariationalPosterior
         
-        elbo = Variational.ELBO()            # <: VariationalObjective
+        elbo = Variational.ELBO()              # <: VariationalObjective
 
-        θ = vcat(q.μ, q.ω)
-        # θ = zeros(2 * length(q))
+        μ, σs = params(q)
+        θ = vcat(μ, f⁻¹.(σs))
 
-        history = [elbo(advi, q, m, 1000)]     # history of objective evaluations
+        history = [elbo(advi, q, m, θ, 1000)]
 
         # construct animation
         anim = @animate for j = 1:25
@@ -58,7 +62,7 @@ for seed ∈ seeds
             Variational.optimize!(elbo, advi, q, m, θ; optimizer = opt)
             μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
             
-            q = Variational.MeanField(μ, ω, q.dists, q.ranges)
+            q = Variational.update(q, μ, f.(ω))
             samples = rand(q, 2000)
 
             # quick check
