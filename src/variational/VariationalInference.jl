@@ -35,17 +35,9 @@ getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
 getADtype(alg::VariationalInference) = getADtype(typeof(alg))
 getADtype(::Type{<: VariationalInference{AD}}) where {AD} = AD
 
-abstract type VariationalObjective end
 
 const VariationalPosterior = Distribution{Multivariate, Continuous}
 
-"""
-    rand(vi::VariationalInference, num_samples)
-
-Produces `num_samples` samples for the given VI method using number of samples equal
-to `num_samples`.
-"""
-function rand(vi::VariationalPosterior, num_samples) end
 
 """
     grad!(vo, alg::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
@@ -155,7 +147,7 @@ function optimize!(
         # this message should only occurr once in the optimization process
         @info "[$alg_name] Should only be seen once: optimizer created for θ" objectid(θ)
     end
-    
+
     diff_result = DiffResults.GradientResult(θ)
 
     i = 0

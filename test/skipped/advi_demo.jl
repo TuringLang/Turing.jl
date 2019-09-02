@@ -47,7 +47,7 @@ for seed ∈ seeds
         opt = Variational.TruncatedADAGrad()   # optimizer
         Variational.TruncatedADAGrad()
         advi = ADVI(10, 100)                   # <: VariationalInference
-        q = Variational.meanfield(m)           # => MeanField <: VariationalPosterior
+        q = Variational.meanfield(m)           # => <: VariationalPosterior
         
         elbo = Variational.ELBO()              # <: VariationalObjective
 

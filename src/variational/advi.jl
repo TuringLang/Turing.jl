@@ -92,7 +92,7 @@ function optimize(
     return θ
 end
 
-function _logdensity(model, varinfo, z)
+function logdensity(model, varinfo, z)
     varinfo = VarInfo(varinfo, SampleFromUniform(), z)
     model(varinfo)
 
@@ -105,7 +105,7 @@ function (elbo::ELBO)(
     model::Model,
     θ::AbstractVector{T},
     num_samples,
-    weight_ll = 1.0
+    weight = 1.0
 ) where T <: Real
     # setup
     varinfo = Turing.VarInfo(model)
@@ -123,18 +123,19 @@ function (elbo::ELBO)(
     samples = Distributions.rand(q, num_samples)
 
     # rescaling due to loglikelihood weight and samples used
-    c = weight_ll / num_samples
+    c = weight / num_samples
 
     # ELBO = 𝔼[log p(x, z) - log q(z)]
     #      = 𝔼[log p(x, f⁻¹(y)) + logabsdet(J(f⁻¹(y)))] + H(q(z))
     z = samples[:, 1]
-    res = (_logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
-    for i = 2:num_samples
-        z = samples[:, i]
-        res += (_logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
-    end
+    res = (logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
 
     res += entropy(q)
+    
+    for i = 2:num_samples
+        z = samples[:, i]
+        res += (logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
+    end
 
     return res
 end
@@ -151,3 +152,4 @@ function (elbo::ELBO)(
 
     return elbo(alg, q, model, θ, num_samples)
 end
+
