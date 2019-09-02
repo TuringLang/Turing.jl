@@ -18,15 +18,16 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     @turing_testset "distributions functions" begin
 
-        d1 = OrderedLogistic(-2, [-1, 1])
-        d2 = OrderedLogistic(0.5, [-1, 1])
-        d3 = OrderedLogistic(2, [-1, 1])
+        d = OrderedLogistic(-2, [-1, 1])
 
-        ns = 10
+        n = 1e+6
+        y = [rand(d) for i in 1:n]
+        K = length(d.cutpoints) + 1
+        p = [mean(y .== k) for k in 1:K]          # empirical probs
+        pmf = [exp(logpdf(d, k)) for k in 1:K]
+        
+        @test sum(abs.(p - pmf) .< 0.001) == K
 
-        @test mean([rand(d1) for i in 1:ns]) ≈ 1.0
-        @test mean([rand(d2) for i in 1:ns]) ≈ 2.0
-        @test mean([rand(d3) for i in 1:ns]) ≈ 3.0
     end
 
     @numerical_testset "single distribution correctness" begin

@@ -50,13 +50,11 @@ function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer}
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
 end
 
-# OrderedLogistic distribution
 struct OrderedLogistic{T1, T2} <: DiscreteUnivariateDistribution
    η::T1
    cutpoints::Vector{T2}
 end
 
-# logpdf of the OrderedLogistic distribution
 function Distributions.logpdf(d::OrderedLogistic, k::Int)
 
     K = length(d.cutpoints)+1
@@ -64,30 +62,26 @@ function Distributions.logpdf(d::OrderedLogistic, k::Int)
     c =  d.cutpoints
 
     if k==1
-        logp= log(logistic(c[k]-d.η))
+        logp= - softplus(-(c[k]-d.η))  #logp= log(logistic(c[k]-d.η))
     elseif k<K
         logp= log(logistic(c[k]-d.η) - logistic(c[k-1]-d.η))
     else
-        logp= log(1-logistic(c[k-1]-d.η))
+        logp= - softplus(c[k-1]-d.η)  #logp= log(1-logistic(c[k-1]-d.η))
     end
 
-    return(logp)
+    return logp
 end
 
-# rand of the OrderedLogistic distribution
-function Distributions.rand(d::OrderedLogistic)
+function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
     cutpoints = d.cutpoints
     η = d.η
 
-    if !issorted(cutpoints)
-        error("cutpoints are not sorted")
-    end
-
     K = length(cutpoints)+1
     c = vcat(-Inf, cutpoints, Inf)
-    l = [i for i in zip(c[1:(end-1)],c[2:end])]
-    ps = [logistic(η - l[i][1]) - logistic(η - l[i][2]) for i in 1:K]
-    k = findall(ps.== maximum(ps))[1]
+
+    ps = [logistic(η - i[1]) - logistic(η - i[2]) for i in zip(c[1:(end-1)],c[2:end])]
+
+    k = rand(rng, Categorical(ps))
 
     if all(ps.>0)
         return(k)
