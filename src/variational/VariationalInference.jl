@@ -17,6 +17,7 @@ import ..Core: getchunksize, getADtype
 using Requires
 function __init__()
     @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
+    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
 end
 
 export
@@ -125,12 +126,17 @@ function grad!(
     out::DiffResults.MutableDiffResult,
     args...
 ) where {T <: Real, AD <: TrackerAD}
-    θ_tracked = [Tracker.param(θ[i]) for i ∈ eachindex(θ)]
+    θ_tracked = Tracker.param(θ)
     y = - vo(alg, q, model, θ_tracked, args...)
     Tracker.back!(y, 1.0)
 
     DiffResults.value!(out, Tracker.data(y))
-    DiffResults.gradient!(out, [Tracker.grad(θ_tracked[i]) for i ∈ eachindex(θ_tracked)])
+    DiffResults.gradient!(out, Tracker.grad(θ_tracked))
+end
+
+import Tracker: TrackedArray, track, Call
+function TrackedArray(f::Call, x::SA) where {T, N, A, SA <: SubArray{T, N, A}}
+    TrackedArray(f, convert(A, x))
 end
 
 """
@@ -144,16 +150,13 @@ function optimize!(
     alg::VariationalInference{AD},
     q::VariationalPosterior,
     model::Model,
-    θ;
+    θ::AbstractVector{<: Real};
     optimizer = TruncatedADAGrad()
 ) where AD
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
-
-    # number of previous gradients to use to compute `s` in adaGrad
-    stepsize_num_prev = 10
     
     num_params = length(q)
 
