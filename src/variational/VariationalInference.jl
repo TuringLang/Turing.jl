@@ -183,9 +183,6 @@ function optimize!(
     return θ
 end
 
-# distributions
-include("distributions.jl")
-
 # objectives
 include("objectives.jl")
 
