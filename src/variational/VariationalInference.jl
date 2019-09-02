@@ -35,6 +35,7 @@ getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
 getADtype(alg::VariationalInference) = getADtype(typeof(alg))
 getADtype(::Type{<: VariationalInference{AD}}) where {AD} = AD
 
+abstract type VariationalObjective end
 
 const VariationalPosterior = Distribution{Multivariate, Continuous}
 
