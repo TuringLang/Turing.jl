@@ -51,15 +51,15 @@ function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer}
 end
 
 
-struct OrderedLogistic{T1, T2} <: DiscreteUnivariateDistribution
+struct OrderedLogistic{T1, T2<:AbstractVector} <: DiscreteUnivariateDistribution
    η::T1
-   cutpoints::Vector{T2}
+   cutpoints::T2
 
    function OrderedLogistic(η, cutpoints)
         if !issorted(cutpoints)
             error("cutpoints are not sorted")
         end
-        return new{typeof(η), typeof(cutpoints[1])}(η, cutpoints)
+        return new{typeof(η), typeof(cutpoints)}(η, cutpoints)
    end
 
 end
