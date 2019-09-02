@@ -109,3 +109,16 @@ body {
   padding: 1.2rem;
   text-align: center;
 }
+/* Twitter Button */
+#twitter-widget-0 {
+  margin-top: 14px;
+  margin-right: 10px;
+}
+/*--------------------------------------------------------------
+# Media Queries
+--------------------------------------------------------------*/
+@media only screen and (min-width: 80em) {
+  .md-search__inner {
+    width: 23rem;
+  }
+}
