@@ -24,6 +24,7 @@ end
 export
     vi,
     ADVI,
+    SVI,
     ELBO,
     elbo,
     TruncatedADAGrad
@@ -183,5 +184,6 @@ include("optimisers.jl")
 
 # VI algorithms
 include("advi.jl")
+include("svi.jl")
 
 end
