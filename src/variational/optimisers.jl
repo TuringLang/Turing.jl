@@ -42,3 +42,20 @@ function apply!(o::TruncatedADAGrad, x, Δ)
     @. Δ *= η / (τ + sqrt(s) + ϵ)
 end
 
+
+mutable struct DecayedADAGrad
+    eta::Float64
+    pre::Float64
+    post::Float64
+
+    acc::IdDict
+end
+
+DecayedADAGrad(η = 0.1, pre = 1.0, post = 0.9) = DecayedADAGrad(η, pre, post, IdDict())
+
+function apply!(o::DecayedADAGrad, x, Δ)
+  η = o.eta
+  acc = get!(o.acc, x, fill(ϵ, size(x)))::typeof(Tracker.data(x))
+  @. acc = o.post * acc + o.pre * Δ^2
+  @. Δ *= η / (√acc + ϵ)
+end
