@@ -1,3 +1,5 @@
+using ..Core.Interface: init_callback, NoCallback
+
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
@@ -79,4 +81,15 @@ function Sampler(
 
     # Return a new sampler.
     return Sampler(alg, Dict{Symbol,Any}(), s, state)
+end
+
+# Disable the callback for DynamicHMC, since it has it's own progress meter.
+function init_callback(
+    rng::AbstractRNG,
+    model::Model,
+    s::Sampler{<:DynamicNUTS},
+    N::Integer;
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    return NoCallback()
 end

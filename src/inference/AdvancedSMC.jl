@@ -2,6 +2,32 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+#######################
+# Particle Transition #
+#######################
+struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+    θ::T
+    lp::F
+    le::F
+    weight::F
+end
+
+transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
+
+function additional_parameters(::Type{<:ParticleTransition})
+    return [:lp,:le, :weight]
+end
+
+function transition(
+    theta::T,
+    lp::F,
+    le::F,
+    weight::F
+) where {T, F<:AbstractFloat}
+    return ParticleTransition{T, F}(theta, lp, le, weight)
+end
+
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####

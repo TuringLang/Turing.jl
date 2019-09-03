@@ -158,7 +158,6 @@ using .Variational
     end
 end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
-    using ..Turing.Inference.InterfaceExtensions: initialize_parameters!
     using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
     include("contrib/inference/dynamichmc.jl")
 end

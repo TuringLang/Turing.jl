@@ -17,6 +17,29 @@ mutable struct HMCState{
     z        :: PhType
 end
 
+##########################
+# Hamiltonian Transition #
+##########################
+
+function transition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
+    theta = tonamedtuple(spl.state.vi)
+    lp = getlogp(spl.state.vi)
+    return HamiltonianTransition{typeof(theta), typeof(t.stat), typeof(lp)}(theta, lp, t.stat)
+end
+
+struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTransition
+    θ    :: T
+    lp   :: F
+    stat :: NT
+end
+
+transition_type(::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
+    HamiltonianTransition
+
+function additional_parameters(::Type{<:HamiltonianTransition})
+    return [:lp,:stat]
+end
+
 
 ###
 ### Hamiltonian Monte Carlo samplers.
@@ -539,4 +562,42 @@ function HMCState(model::Model,
     invlink!(vi, spl)
 
     return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), t.z)
+end
+
+#######################################################
+# Special callback functionality for the HMC samplers #
+#######################################################
+
+mutable struct HMCCallback{
+    ProgType<:ProgressMeter.AbstractProgress
+} <: AbstractCallback
+    p :: ProgType
+end
+
+
+function callback(
+    rng::AbstractRNG,
+    model::ModelType,
+    spl::SamplerType,
+    N::Integer,
+    iteration::Integer,
+    t::HamiltonianTransition,
+    cb::HMCCallback;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler
+}
+    AHMC.pm_next!(cb.p, t.stat, iteration, spl.state.h.metric)
+end
+
+function init_callback(
+    rng::AbstractRNG,
+    model::Model,
+    s::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
+    N::Integer;
+    dt::Real=0.25,
+    kwargs...
+)
+    return HMCCallback(ProgressMeter.Progress(N, dt=dt, desc="Sampling ", barlen=31))
 end
