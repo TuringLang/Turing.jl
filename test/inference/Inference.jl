@@ -5,7 +5,7 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "io.jl" begin
-    # Numiercal failures -- misorderdered variables?
+    # Numerical failures -- misorderdered variables?
     @testset "chain save/resume" begin
         Random.seed!(1234)
 
