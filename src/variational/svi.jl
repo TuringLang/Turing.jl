@@ -50,7 +50,10 @@ function batch_gen(data, batch_size)
     # shuffle the dataset indices
     indices = shuffle(1:n)
 
-    return ((x = data.x[i:i - 1 + batch_size], ) for i = 1:batch_size:(n - batch_size + 1))
+    return (
+        (x = data.x[indices[i:i - 1 + batch_size]], )
+        for i = 1:batch_size:(n - batch_size + 1)
+    )
 end
 
 # ADVI with 1 sample for gradient estimation and 10 total iterations through the full data
@@ -103,15 +106,15 @@ function optimize!(
     samples_per_step = svi.alg.samples_per_step
     max_iters = svi.alg.max_iters
 
-    s = first(keys(svi.data))  # one of the symbols to be changed in the batch
-    n = svi.n # total number of samples
+    s = first(keys(svi.data)) # one of the symbols to be changed in the batch
+    n = svi.n                 # total number of samples
     batch_size = size(model.data[s])[end]
 
     # total number of iterations needed to get through a full dataset once
     total_iters = Integer(floor(n / batch_size)) * max_iters
 
     # fail we're not going through the entire dataset
-    a = length(svi.data[s]) / length(model.data[s])
+    a = length(svi.n) / length(batch_size)
     if !((a - Integer(floor(a))) == 0.0)
         @warn "number of samples $n is not an integer multiple of $batch_size"
     end
