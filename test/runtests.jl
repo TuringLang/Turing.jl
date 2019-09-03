@@ -1,7 +1,7 @@
 ##########################################
 # Master file for running all test cases #
 ##########################################
-using Turing; turnprogress(false)
+using Turing; #turnprogress(false)
 using Pkg
 using Random
 using Test
@@ -36,7 +36,7 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "stdlib" begin
-        include("stdlib/distributions.jl")
+        # include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
     end
 

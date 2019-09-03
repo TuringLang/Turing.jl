@@ -26,6 +26,14 @@ jobs:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
+    - stage: test
+      os: linux
+      julia: 1.2
+      env: STAGE=test
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;
+                   Pkg.test("Turing"; coverage=true)'
     - stage: numerical
       allow_failures: true
       julia: 1.0
@@ -101,14 +109,12 @@ jobs:
     - stage: documentation
       julia: 1.1
       os: linux
-      if: branch = master
+      if: (tag =~ ^v) OR (branch = master)
       env: STAGE=documentation
       script:
         - julia -e 'using Pkg; Pkg.update();'
         - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown"), Pkg.add("DynamicHMC")'
-        - julia -e 'using Pkg, Turing;
-                    cd(joinpath(dirname(pathof(Turing)), ".."));
-                    include(joinpath("docs", "make.jl"))'
+        - julia ./docs/make.jl
     - stage: benchmark
       julia: 1.1
       os: linux

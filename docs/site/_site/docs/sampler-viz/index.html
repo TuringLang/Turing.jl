@@ -1,0 +1,793 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Sampler Visualization - Turing.jl</title>
+<meta name="description" content="">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Sampler Visualization">
+<meta property="og:url" content="http://localhost:4000/docs/sampler-viz/">
+
+
+  <meta property="og:description" content="">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/docs/sampler-viz/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Using Turing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/get-started/" class="">Getting Started</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/quick-start/" class="">Quick Start</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/guide/" class="">Guide</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/advanced/" class="">Advanced Usage</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/autodiff/" class="">Automatic Differentiation</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/dynamichmc/" class="">Using DynamicHMC</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/sampler-viz/" class="active">Sampler Visualization</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Library</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/library/" class="">Public</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Contributing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/contributing/" class="">How to Contribute</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/style-guide/" class="">Style Guide</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Sampler Visualization">
+    <meta itemprop="description" content="">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Sampler Visualization
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+          <aside class="sidebar__right sticky">
+            <nav class="toc">
+              <header><h4 class="nav__title"><i class="fas fa-list-ul"></i> Contents</h4></header>
+              <ul class="toc__menu">
+  <li><a href="#introduction">Introduction</a></li>
+  <li><a href="#the-code">The Code</a></li>
+  <li><a href="#samplers">Samplers</a>
+    <ul>
+      <li><a href="#gibbs">Gibbs</a></li>
+      <li><a href="#hmc">HMC</a></li>
+      <li><a href="#hmcda">HMCDA</a></li>
+      <li><a href="#mh">MH</a></li>
+      <li><a href="#nuts">NUTS</a></li>
+      <li><a href="#pg">PG</a></li>
+      <li><a href="#pmmh">PMMH</a></li>
+      <li><a href="#pimh">PIMH</a></li>
+      <li><a href="#sghmc">SGHMC</a></li>
+      <li><a href="#sgld">SGLD</a></li>
+    </ul>
+  </li>
+</ul>
+            </nav>
+          </aside>
+        
+        <p><a id="Introduction-1"></a></p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p><a id="The-Code-1"></a></p>
+
+<h2 id="the-code">The Code</h2>
+
+<p>For each sampler, we will use the same code to plot sampler paths. The block below loads the relevant libraries and defines a function for plotting the sampler’s trajectory across the posterior.</p>
+
+<p>The Turing model definition used here is not especially practical, but it is designed in such a way as to produce visually interesting posterior surfaces to show how different samplers move along the distribution.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Plots</span>
+<span class="k">using</span> <span class="n">StatsPlots</span>
+<span class="k">using</span> <span class="n">Turing</span>
+<span class="k">using</span> <span class="n">Bijectors</span>
+<span class="k">using</span> <span class="n">Random</span>
+
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">)</span>
+
+<span class="c"># Define a strange model.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="n">bumps</span> <span class="o">=</span> <span class="n">sin</span><span class="x">(</span><span class="n">m</span><span class="x">)</span> <span class="o">+</span> <span class="n">cos</span><span class="x">(</span><span class="n">m</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m</span> <span class="o">+</span> <span class="mi">5</span><span class="o">*</span><span class="n">bumps</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">eachindex</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+      <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="c"># Define our data points.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">13.0</span><span class="x">,</span> <span class="mf">2.1</span><span class="x">,</span> <span class="mf">0.0</span><span class="x">]</span>
+
+<span class="c"># Set up the model call, sample from the prior.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+<span class="n">vi</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">()</span>
+<span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+<span class="n">vi</span><span class="o">.</span><span class="n">flags</span><span class="x">[</span><span class="s">"trans"</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="nb">true</span><span class="x">,</span> <span class="nb">false</span><span class="x">]</span>
+
+<span class="c"># Evaluate surface at coordinates.</span>
+<span class="k">function</span><span class="nf"> evaluate</span><span class="x">(</span><span class="n">m1</span><span class="x">,</span> <span class="n">m2</span><span class="x">)</span>
+    <span class="n">vi</span><span class="o">.</span><span class="n">vals</span> <span class="o">.=</span> <span class="x">[</span><span class="n">m1</span><span class="x">,</span> <span class="n">m2</span><span class="x">]</span>
+    <span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+    <span class="o">-</span><span class="n">vi</span><span class="o">.</span><span class="n">logp</span>
+<span class="k">end</span>
+
+<span class="k">function</span><span class="nf"> plot_sampler</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+    <span class="c"># Extract values from chain.</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">get</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="x">[</span><span class="o">:</span><span class="n">s</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">,</span> <span class="o">:</span><span class="n">lp</span><span class="x">])</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="x">(</span><span class="n">Ref</span><span class="x">(</span><span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)),</span> <span class="n">val</span><span class="o">.</span><span class="n">s</span><span class="x">)</span>
+    <span class="n">ms</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">lps</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">lp</span>
+
+    <span class="c"># How many surface points to sample.</span>
+    <span class="n">granularity</span> <span class="o">=</span> <span class="mi">500</span>
+
+    <span class="c"># Range start/stop points.</span>
+    <span class="n">spread</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">σ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span> <span class="n">σ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span>
+    <span class="n">μ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span> <span class="n">μ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span>
+    <span class="n">σ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">σ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">σ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+    <span class="n">μ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">μ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">μ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+
+    <span class="c"># Make surface plot.</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">surface</span><span class="x">(</span><span class="n">σ_rng</span><span class="x">,</span> <span class="n">μ_rng</span><span class="x">,</span> <span class="n">evaluate</span><span class="x">,</span>
+          <span class="n">camera</span><span class="o">=</span><span class="x">(</span><span class="mi">30</span><span class="x">,</span> <span class="mi">65</span><span class="x">),</span>
+          <span class="n">ticks</span><span class="o">=</span><span class="nb">nothing</span><span class="x">,</span>
+          <span class="n">colorbar</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span>
+          <span class="n">color</span><span class="o">=:</span><span class="n">inferno</span><span class="x">)</span>
+
+    <span class="n">line_range</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span>
+
+    <span class="n">plot3d!</span><span class="x">(</span><span class="n">ss</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="n">ms</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="o">-</span><span class="n">lps</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span>
+        <span class="n">lc</span> <span class="o">=:</span><span class="n">viridis</span><span class="x">,</span> <span class="n">line_z</span><span class="o">=</span><span class="n">collect</span><span class="x">(</span><span class="n">line_range</span><span class="x">),</span>
+        <span class="n">legend</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="x">)</span>
+
+    <span class="k">return</span> <span class="n">p</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><a id="Samplers-1"></a></p>
+
+<h2 id="samplers">Samplers</h2>
+
+<p><a id="Gibbs-1"></a></p>
+
+<h3 id="gibbs">Gibbs</h3>
+
+<p>Gibbs sampling tends to exhibit a “jittery” trajectory. The example below combines <code class="highlighter-rouge">HMC</code> and <code class="highlighter-rouge">PG</code> sampling to traverse the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span>
+  <span class="n">HMC</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mi">5</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_2_1.svg" alt="" /></p>
+
+<p>Other samplers can be combined as well:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">),</span> <span class="n">SGLD</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">)))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_3_1.svg" alt="" /></p>
+
+<p><a id="HMC-1"></a></p>
+
+<h3 id="hmc">HMC</h3>
+
+<p>Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the <code class="highlighter-rouge">NUTS</code> sampler is often easier to run if you don’t want to spend too much time fiddling with step size and and the number of steps to take.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mi">10</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[HMC] Finished with
+  Running time        = 2.4334476359999986;
+  Accept rate         = 1.0;
+  #lf / sample        = 9.99;
+  #evals / sample     = 11.99;
+  pre-cond. metric    = [1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_4_1.svg" alt="" /></p>
+
+<p><a id="HMCDA-1"></a></p>
+
+<h3 id="hmcda">HMCDA</h3>
+
+<p>The HMCDA sampler is an implementation of the Hamiltonian Monte Carlo with Dual Averaging algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMCDA</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[HMCDA] Finished with
+  Running time        = 2.0255241690000028;
+  Accept rate         = 0.679;
+  #lf / sample        = 1.056;
+  #evals / sample     = 3.062;
+  pre-cond. metric    = [1.0, 1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_5_1.svg" alt="" /></p>
+
+<p><a id="MH-1"></a></p>
+
+<h3 id="mh">MH</h3>
+
+<p>Metropolis-Hastings (MH) sampling is one of the earliest Markov Chain Monte Carlo methods. MH sampling does not “move” a lot, unlike many of the other samplers implemented in Turing. Typically a much longer chain is required to converge to an appropriate parameter estimate.</p>
+
+<p>The plot below only uses 1,000 iterations of Metropolis-Hastings.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1000</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[MH] Finished with
+  Running time        = 0.032115146000000046;
+  Accept rate         = 0.015;
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_6_1.svg" alt="" /></p>
+
+<p>As you can see, the MH sampler doesn’t move parameter estimates very often.</p>
+
+<p><a id="NUTS-1"></a></p>
+
+<h3 id="nuts">NUTS</h3>
+
+<p>The No U-Turn Sampler (NUTS) is an implementation of the algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<p>NUTS tends to be very good at traversing the minima of complex posteriors quickly.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[NUTS] Finished with
+  Running time        = 2.7755298859999935;
+  #lf / sample        = 0.002;
+  #evals / sample     = 12.313;
+  pre-cond. metric    = [1.0, 1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_7_1.svg" alt="" /></p>
+
+<p>The only parameter that needs to be set other than the number of iterations to run is the target acceptance rate. In the Hoffman and Gelman paper, they note that a target acceptance rate of 0.65 is typical.</p>
+
+<p>Here is a plot showing a very high acceptance rate. Note that it appears to “stick” to a locla minima and is not particularly good at exploring the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.95</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[NUTS] Finished with
+  Running time        = 1.7990740579999978;
+  #lf / sample        = 0.004;
+  #evals / sample     = 23.805;
+  pre-cond. metric    = [1.0, 1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_8_1.svg" alt="" /></p>
+
+<p>An exceptionally low acceptance rate will show very few moves on the posterior:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.2</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[NUTS] Finished with
+  Running time        = 0.5854548800000005;
+  #lf / sample        = 0.002;
+  #evals / sample     = 6.627;
+  pre-cond. metric    = [1.0, 1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_9_1.svg" alt="" /></p>
+
+<p><a id="PG-1"></a></p>
+
+<h3 id="pg">PG</h3>
+
+<p>The Particle Gibbs (PG) sampler is an implementation of an algorithm from the paper “Particle Markov chain Monte Carlo methods” by Andrieu, Doucet, and Holenstein (2010). The interested reader can learn more <a href="https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1467-9868.2009.00736.x">here</a>.</p>
+
+<p>The two parameters are the number of particles, and the number of iterations. The plot below shows the use of 20 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1000</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_10_1.svg" alt="" /></p>
+
+<p>Next, we plot using 50 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">50</span><span class="x">,</span> <span class="mi">1000</span><span class="x">))</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_11_1.svg" alt="" /></p>
+
+<p><a id="PMMH-1"></a></p>
+
+<h3 id="pmmh">PMMH</h3>
+
+<p>The Particle Marginal Metropolis-Hastings (PMMH) sampler is an implementation of an algorithm from the paper “Particle Markov chain Monte Carlo methods” by Andrieu, Doucet, and Holenstein (2010). The interested reader can learn more <a href="https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1467-9868.2009.00736.x">here</a>.</p>
+
+<p>PMMH supports the use of different samplers across different parameter spaces, similar to the Gibbs sampler. The plot below uses SMC and MH.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PMMH</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">),</span> <span class="n">MH</span><span class="x">(</span><span class="mi">10</span><span class="x">,</span><span class="o">:</span><span class="n">s</span><span class="x">)))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[PMMH] Finished with
+  Running time    = 4.950841641000002;
+  Accept rate         = 0.09;
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_12_1.svg" alt="" /></p>
+
+<p><a id="PIMH-1"></a></p>
+
+<h3 id="pimh">PIMH</h3>
+
+<p>In addition to PMMH, Turing also support the Particle Independent Metropolis-Hastings (PIMH). PIMH accepts a number of iterations, and an SMC call.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PIMH</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">)))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[PMMH] Finished with
+  Running time    = 4.422653851000006;
+  Accept rate         = 0.232;
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_13_1.svg" alt="" /></p>
+
+<p><a id="SGHMC-1"></a></p>
+
+<h3 id="sghmc">SGHMC</h3>
+
+<p>Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) tends to produce sampling paths not unlike that of stochastic gradient descent in other machine learning model types. It is an implementation of an algorithm in the paper “Stochastic Gradient Hamiltonian Monte Carlo” by Chen, Fox, and Guestrin (2014). The interested reader can learn more <a href="https://arxiv.org/abs/1402.4102">here</a>. This sampler is very similar to the SGLD sampler below.</p>
+
+<p>The two parameters used in SGHMC are the learing rate and the momentum decay. Here is sampler with a higher momentum decay of 0.1:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGHMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.001</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[SGHMC] Finished with
+  Running time        = 1.2120846790000028;
+  Accept rate         = 1.0;
+  #lf / sample        = 0.0;
+  #evals / sample     = 501.5;
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_14_1.svg" alt="" /></p>
+
+<p>And the same sampler with a much lower momentum decay:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGHMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.001</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[SGHMC] Finished with
+  Running time        = 0.08846964400000006;
+  Accept rate         = 1.0;
+  #lf / sample        = 0.0;
+  #evals / sample     = 501.5;
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_15_1.svg" alt="" /></p>
+
+<p><a id="SGLD-1"></a></p>
+
+<h3 id="sgld">SGLD</h3>
+
+<p>The Stochastic Gradient Langevin Dynamics (SGLD) is based on the paper “Bayesian learning via stochastic gradient langevin dynamics” by Welling and Teh (2011). A link to the article can be found <a href="https://dl.acm.org/citation.cfm?id=3104568">here</a>.</p>
+
+<p>SGLD is an approximation to <a href="https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm">Langevin adjusted MH</a>. SGLD uses stochastic gradients that are based on mini-batches of data, and it skips the MH correction step to improve scalability. Computing Metropolis-Hastings accept probabilities requires evaluation likelihoods for the full dataset, making it significantly less scalable. The resulting Gibbs sampler is no longer unbiased since SGLD is an approximate sampler.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">SGLD</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[SGLD] Finished with
+  Running time        = 0.888668504000001;
+  Accept rate         = 1.0;
+  #lf / sample        = 0.0;
+  #evals / sample     = 501.5;
+  pre-cond. metric    = [1.0].
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/assets/figures/samplers_16_1.svg" alt="" /></p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <a href="/docs/sampler-viz/" class="pagination--pager prev" title="Sampler Visualization
+">Previous: Sampler Visualization
+</a>
+    
+    
+      <!-- <a href="#" class="pagination--pager disabled">Next</a> -->
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

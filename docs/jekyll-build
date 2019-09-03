@@ -1,0 +1,20 @@
+#!/bin/bash
+DIR=$(dirname $0)
+export GEM_HOME="$DIR/.gems"
+export PATH="$DIR/.gems/bin:$PATH"
+OUTPUT=$DIR/.jekyll.output
+cd $DIR
+
+bundle exec jekyll build > $OUTPUT 2>&1
+
+if [[ $? != 0 ]]; then
+    rm -fr $OUTPUT
+    gem install bundler
+    bundle install
+else
+    cat $OUTPUT
+    rm $OUTPUT
+    exit 0
+fi
+
+bundle exec jekyll build

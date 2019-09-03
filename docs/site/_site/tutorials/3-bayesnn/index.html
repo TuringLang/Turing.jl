@@ -1,0 +1,660 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Bayesian Neural Networks - Turing.jl</title>
+<meta name="description" content="In this tutorial, we demonstrate how one can implement a Bayesian Neural Network using a combination of Turing and Flux, a suite of tools machine learning. We will use Flux to specify the neural network’s layers and Turing to implement the probabalistic inference, with the goal of implementing a classification algorithm.">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Bayesian Neural Networks">
+<meta property="og:url" content="http://localhost:4000/tutorials/3-bayesnn/">
+
+
+  <meta property="og:description" content="In this tutorial, we demonstrate how one can implement a Bayesian Neural Network using a combination of Turing and Flux, a suite of tools machine learning. We will use Flux to specify the neural network’s layers and Turing to implement the probabalistic inference, with the goal of implementing a classification algorithm.">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/tutorials/3-bayesnn/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Tutorials</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/" class="">Home</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/0-introduction/" class="">Introduction to Turing</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/1-gaussianmixturemodel/" class="">Gaussian Mixture Models</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/2-logisticregression/" class="">Bayesian Logistic Regression</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/3-bayesnn/" class="active">Bayesian Neural Networks</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/4-bayeshmm/" class="">Hidden Markov Models</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/5-linearregression/" class="">Linear Regression</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/6-infinitemixturemodel/" class="">Infinite Mixture Models</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Bayesian Neural Networks">
+    <meta itemprop="description" content="In this tutorial, we demonstrate how one can implement a Bayesian Neural Network using a combination of Turing and Flux, a suite of tools machine learning. We will use Flux to specify the neural network’s layers and Turing to implement the probabalistic inference, with the goal of implementing a classification algorithm.">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Bayesian Neural Networks
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+          <aside class="sidebar__right sticky">
+            <nav class="toc">
+              <header><h4 class="nav__title"><i class="fas fa-file-alt"></i> </h4></header>
+              <ul class="toc__menu">
+  <li><a href="#building-a-neural-network">Building a Neural Network</a></li>
+  <li><a href="#prediction-visualization">Prediction Visualization</a></li>
+  <li><a href="#generic-bayesian-neural-networks">Generic Bayesian Neural Networks</a></li>
+</ul>
+            </nav>
+          </aside>
+        
+        <p>In this tutorial, we demonstrate how one can implement a Bayesian Neural Network using a combination of Turing and <a href="https://github.com/FluxML/Flux.jl">Flux</a>, a suite of tools machine learning. We will use Flux to specify the neural network’s layers and Turing to implement the probabalistic inference, with the goal of implementing a classification algorithm.</p>
+
+<p>We will begin with importing the relevant libraries.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import libraries.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Flux</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">Random</span>
+</code></pre></div></div>
+
+<p>Our goal here is to use a Bayesian neural network to classify points in an artificial dataset. The code below generates data points arranged in a box-like pattern and displays a graph of the dataset we’ll be working with.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Number of points to generate.</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">80</span>
+<span class="n">M</span> <span class="o">=</span> <span class="n">round</span><span class="x">(</span><span class="kt">Int</span><span class="x">,</span> <span class="n">N</span> <span class="o">/</span> <span class="mi">4</span><span class="x">)</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">1234</span><span class="x">)</span>
+
+<span class="c"># Generate artificial data.</span>
+<span class="n">x1s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> <span class="n">x2s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> 
+<span class="n">xt1s</span> <span class="o">=</span> <span class="kt">Array</span><span class="x">([[</span><span class="n">x1s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="x">;</span> <span class="n">x2s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">M</span><span class="x">])</span>
+<span class="n">x1s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> <span class="n">x2s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> 
+<span class="n">append!</span><span class="x">(</span><span class="n">xt1s</span><span class="x">,</span> <span class="kt">Array</span><span class="x">([[</span><span class="n">x1s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">-</span> <span class="mi">5</span><span class="x">;</span> <span class="n">x2s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">-</span> <span class="mi">5</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">M</span><span class="x">]))</span>
+
+<span class="n">x1s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> <span class="n">x2s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> 
+<span class="n">xt0s</span> <span class="o">=</span> <span class="kt">Array</span><span class="x">([[</span><span class="n">x1s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="x">;</span> <span class="n">x2s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">-</span> <span class="mi">5</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">M</span><span class="x">])</span>
+<span class="n">x1s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> <span class="n">x2s</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">M</span><span class="x">)</span> <span class="o">*</span> <span class="mf">4.5</span><span class="x">;</span> 
+<span class="n">append!</span><span class="x">(</span><span class="n">xt0s</span><span class="x">,</span> <span class="kt">Array</span><span class="x">([[</span><span class="n">x1s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">-</span> <span class="mi">5</span><span class="x">;</span> <span class="n">x2s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">M</span><span class="x">]))</span>
+
+<span class="c"># Store all the data for later.</span>
+<span class="n">xs</span> <span class="o">=</span> <span class="x">[</span><span class="n">xt1s</span><span class="x">;</span> <span class="n">xt0s</span><span class="x">]</span>
+<span class="n">ts</span> <span class="o">=</span> <span class="x">[</span><span class="n">ones</span><span class="x">(</span><span class="mi">2</span><span class="o">*</span><span class="n">M</span><span class="x">);</span> <span class="n">zeros</span><span class="x">(</span><span class="mi">2</span><span class="o">*</span><span class="n">M</span><span class="x">)]</span>
+
+<span class="c"># Plot data points.</span>
+<span class="k">function</span><span class="nf"> plot_data</span><span class="x">()</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">map</span><span class="x">(</span><span class="n">e</span> <span class="o">-&gt;</span> <span class="n">e</span><span class="x">[</span><span class="mi">1</span><span class="x">],</span> <span class="n">xt1s</span><span class="x">)</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">map</span><span class="x">(</span><span class="n">e</span> <span class="o">-&gt;</span> <span class="n">e</span><span class="x">[</span><span class="mi">2</span><span class="x">],</span> <span class="n">xt1s</span><span class="x">)</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">map</span><span class="x">(</span><span class="n">e</span> <span class="o">-&gt;</span> <span class="n">e</span><span class="x">[</span><span class="mi">1</span><span class="x">],</span> <span class="n">xt0s</span><span class="x">)</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="n">map</span><span class="x">(</span><span class="n">e</span> <span class="o">-&gt;</span> <span class="n">e</span><span class="x">[</span><span class="mi">2</span><span class="x">],</span> <span class="n">xt0s</span><span class="x">)</span>
+
+    <span class="n">Plots</span><span class="o">.</span><span class="n">scatter</span><span class="x">(</span><span class="n">x1</span><span class="x">,</span><span class="n">y1</span><span class="x">,</span> <span class="n">color</span><span class="o">=</span><span class="s">"red"</span><span class="x">,</span> <span class="n">clim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">1</span><span class="x">))</span>
+    <span class="n">Plots</span><span class="o">.</span><span class="n">scatter!</span><span class="x">(</span><span class="n">x2</span><span class="x">,</span> <span class="n">y2</span><span class="x">,</span> <span class="n">color</span><span class="o">=</span><span class="s">"blue"</span><span class="x">,</span> <span class="n">clim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">1</span><span class="x">))</span>
+<span class="k">end</span>
+
+<span class="n">plot_data</span><span class="x">()</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/3_BayesNN_2_1.svg" alt="" /></p>
+
+<h2 id="building-a-neural-network">Building a Neural Network</h2>
+
+<p>The next step is to define a <a href="https://en.wikipedia.org/wiki/Feedforward_neural_network">feedforward neural network</a> where we express our parameters as distribtuions, and not single points as with traditional neural networks. The two functions below, <code class="highlighter-rouge">unpack</code> and <code class="highlighter-rouge">nn_forward</code> are helper functions we need when we specify our model in Turing.</p>
+
+<p><code class="highlighter-rouge">unpack</code> takes a vector of parameters and partitions them between weights and biases. <code class="highlighter-rouge">nn_forward</code> constructs a neural network with the variables generated in <code class="highlighter-rouge">unpack</code> and returns a prediction based on the weights provided.</p>
+
+<p>The <code class="highlighter-rouge">unpack</code> and <code class="highlighter-rouge">nn_forward</code> functions are explicity designed to create a neural network with two hidden layers and one output layer, as shown below.</p>
+
+<p><img width="320" alt="nn-diagram" src="https://user-images.githubusercontent.com/422990/47970321-bd172080-e038-11e8-9c6d-6c2bd790bd8a.png" /></p>
+
+<p>The end of this tutorial provides some code that can be used to generate more general network shapes.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Turn a vector into a set of weights and biases.</span>
+<span class="k">function</span><span class="nf"> unpack</span><span class="x">(</span><span class="n">nn_params</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">)</span>
+    <span class="n">W₁</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">1</span><span class="o">:</span><span class="mi">6</span><span class="x">],</span> <span class="mi">3</span><span class="x">,</span> <span class="mi">2</span><span class="x">);</span>   
+    <span class="n">b₁</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">7</span><span class="o">:</span><span class="mi">9</span><span class="x">],</span> <span class="mi">3</span><span class="x">)</span>
+    
+    <span class="n">W₂</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">10</span><span class="o">:</span><span class="mi">15</span><span class="x">],</span> <span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">);</span> 
+    <span class="n">b₂</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">16</span><span class="o">:</span><span class="mi">17</span><span class="x">],</span> <span class="mi">2</span><span class="x">)</span>
+    
+    <span class="n">Wₒ</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">18</span><span class="o">:</span><span class="mi">19</span><span class="x">],</span> <span class="mi">1</span><span class="x">,</span> <span class="mi">2</span><span class="x">);</span> 
+    <span class="n">bₒ</span> <span class="o">=</span> <span class="n">reshape</span><span class="x">(</span><span class="n">nn_params</span><span class="x">[</span><span class="mi">20</span><span class="o">:</span><span class="mi">20</span><span class="x">],</span> <span class="mi">1</span><span class="x">)</span>   
+    <span class="k">return</span> <span class="n">W₁</span><span class="x">,</span> <span class="n">b₁</span><span class="x">,</span> <span class="n">W₂</span><span class="x">,</span> <span class="n">b₂</span><span class="x">,</span> <span class="n">Wₒ</span><span class="x">,</span> <span class="n">bₒ</span>
+<span class="k">end</span>
+
+<span class="c"># Construct a neural network using Flux and return a predicted value.</span>
+<span class="k">function</span><span class="nf"> nn_forward</span><span class="x">(</span><span class="n">xs</span><span class="x">,</span> <span class="n">nn_params</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">)</span>
+    <span class="n">W₁</span><span class="x">,</span> <span class="n">b₁</span><span class="x">,</span> <span class="n">W₂</span><span class="x">,</span> <span class="n">b₂</span><span class="x">,</span> <span class="n">Wₒ</span><span class="x">,</span> <span class="n">bₒ</span> <span class="o">=</span> <span class="n">unpack</span><span class="x">(</span><span class="n">nn_params</span><span class="x">)</span>
+    <span class="n">nn</span> <span class="o">=</span> <span class="n">Chain</span><span class="x">(</span><span class="n">Dense</span><span class="x">(</span><span class="n">W₁</span><span class="x">,</span> <span class="n">b₁</span><span class="x">,</span> <span class="n">tanh</span><span class="x">),</span>
+               <span class="n">Dense</span><span class="x">(</span><span class="n">W₂</span><span class="x">,</span> <span class="n">b₂</span><span class="x">,</span> <span class="n">tanh</span><span class="x">),</span>
+               <span class="n">Dense</span><span class="x">(</span><span class="n">Wₒ</span><span class="x">,</span> <span class="n">bₒ</span><span class="x">,</span> <span class="n">σ</span><span class="x">))</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="x">(</span><span class="n">xs</span><span class="x">)</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>The probabalistic model specification below creates a <code class="highlighter-rouge">params</code> variable, which has 20 normally distributed variables. Each entry in the <code class="highlighter-rouge">params</code> vector represents weights and biases of our neural net.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a regularization term and a Gaussain prior variance term.</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.09</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">sqrt</span><span class="x">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">alpha</span><span class="x">)</span>
+
+<span class="c"># Specify the probabalistic model.</span>
+<span class="nd">@model</span> <span class="n">bayes_nn</span><span class="x">(</span><span class="n">xs</span><span class="x">,</span> <span class="n">ts</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Create the weight and bias vector.</span>
+    <span class="n">nn_params</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">zeros</span><span class="x">(</span><span class="mi">20</span><span class="x">),</span> <span class="n">sig</span> <span class="o">.*</span> <span class="n">ones</span><span class="x">(</span><span class="mi">20</span><span class="x">))</span>
+    
+    <span class="c"># Calculate predictions for the inputs given the weights</span>
+    <span class="c"># and biases in theta.</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">nn_forward</span><span class="x">(</span><span class="n">xs</span><span class="x">,</span> <span class="n">nn_params</span><span class="x">)</span>
+    
+    <span class="c"># Observe each prediction.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">ts</span><span class="x">)</span>
+        <span class="n">ts</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Bernoulli</span><span class="x">(</span><span class="n">preds</span><span class="x">[</span><span class="n">i</span><span class="x">])</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>Inference can now be performed by calling <code class="highlighter-rouge">sample</code>. We use the <code class="highlighter-rouge">HMC</code> sampler here.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Perform inference.</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="n">ch</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">bayes_nn</span><span class="x">(</span><span class="n">hcat</span><span class="x">(</span><span class="n">xs</span><span class="o">...</span><span class="x">),</span> <span class="n">ts</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="n">N</span><span class="x">,</span> <span class="mf">0.05</span><span class="x">,</span> <span class="mi">4</span><span class="x">));</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[HMC] Finished with
+  Running time        = 93.82825720999995;
+  Accept rate         = 0.9206;
+  #lf / sample        = 3.9992;
+  #evals / sample     = 5.999;
+  pre-cond. diag mat  = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0,....
+</code></pre></div></div>
+
+<p>Now we extract the weights and biases from the sampled chain. We’ll use these primarily in determining how good a classifier our model is.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Extract all weight and bias parameters.</span>
+<span class="n">theta</span> <span class="o">=</span> <span class="n">ch</span><span class="x">[</span><span class="o">:</span><span class="n">nn_params</span><span class="x">];</span>
+</code></pre></div></div>
+
+<h2 id="prediction-visualization">Prediction Visualization</h2>
+
+<p>We can use <a href="https://en.wikipedia.org/wiki/Maximum_a_posteriori_estimation">MAP estimation</a> to classify our population by using the set of weights that provided the highest log posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Plot the data we have.</span>
+<span class="n">plot_data</span><span class="x">()</span>
+
+<span class="c"># Find the index that provided the highest log posterior in the chain.</span>
+<span class="n">_</span><span class="x">,</span> <span class="n">i</span> <span class="o">=</span> <span class="n">findmax</span><span class="x">(</span><span class="n">ch</span><span class="x">[</span><span class="o">:</span><span class="n">lp</span><span class="x">])</span>
+
+<span class="c"># Plot the posterior distribution with a contour plot.</span>
+<span class="n">x_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">y_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="x">[</span><span class="n">nn_forward</span><span class="x">([</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">],</span> <span class="n">theta</span><span class="x">[</span><span class="n">i</span><span class="x">])[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">x</span><span class="o">=</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_range</span><span class="x">]</span>
+<span class="n">contour!</span><span class="x">(</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y_range</span><span class="x">,</span> <span class="n">Z</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/3_BayesNN_7_1.svg" alt="" /></p>
+
+<p>The contour plot above shows that the MAP method is not too bad at classifying our data.</p>
+
+<p>Now we can visualize our predictions.</p>
+
+<p>$$ 
+p(\tilde{x} | X, \alpha) = \int_{\theta} p(\tilde{x} | \theta) p(\theta | X, \alpha) \approx \sum_{\theta \sim p(\theta | X, \alpha)}f_{\theta}(\tilde{x}) 
+$$</p>
+
+<p>The <code class="highlighter-rouge">nn_predict</code> function takes the average predicted value from a network parameterized by weights drawn from the MCMC chain.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Return the average predicted value across</span>
+<span class="c"># multiple weights.</span>
+<span class="k">function</span><span class="nf"> nn_predict</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">theta</span><span class="x">,</span> <span class="n">num</span><span class="x">)</span>
+    <span class="n">mean</span><span class="x">([</span><span class="n">nn_forward</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">theta</span><span class="x">[</span><span class="n">i</span><span class="x">])[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="o">:</span><span class="n">num</span><span class="x">])</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>Next, we use the <code class="highlighter-rouge">nn_predict</code> function to predict the value at a sample of points where the <code class="highlighter-rouge">x</code> and <code class="highlighter-rouge">y</code> coordinates range between -6 and 6. As we can see below, we still have a satisfactory fit to our data.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Plot the average prediction.</span>
+<span class="n">plot_data</span><span class="x">()</span>
+
+<span class="n">n_end</span> <span class="o">=</span> <span class="mi">1500</span>
+<span class="n">x_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">y_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="x">[</span><span class="n">nn_predict</span><span class="x">([</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">],</span> <span class="n">theta</span><span class="x">,</span> <span class="n">n_end</span><span class="x">)[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">x</span><span class="o">=</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_range</span><span class="x">]</span>
+<span class="n">contour!</span><span class="x">(</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y_range</span><span class="x">,</span> <span class="n">Z</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/3_BayesNN_9_1.svg" alt="" /></p>
+
+<p>If you are interested in how the predictive power of our Bayesian neural network evolved between samples, the following graph displays an animation of the contour plot generated from the network weights in samples 1 to 1,000.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Number of iterations to plot.</span>
+<span class="n">n_end</span> <span class="o">=</span> <span class="mi">500</span>
+
+<span class="n">anim</span> <span class="o">=</span> <span class="nd">@animate</span> <span class="k">for</span> <span class="n">i</span><span class="o">=</span><span class="mi">1</span><span class="o">:</span><span class="n">n_end</span>
+    <span class="n">plot_data</span><span class="x">()</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="x">[</span><span class="n">nn_forward</span><span class="x">([</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">],</span> <span class="n">theta</span><span class="x">[</span><span class="n">i</span><span class="x">])[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">x</span><span class="o">=</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_range</span><span class="x">]</span>
+    <span class="n">contour!</span><span class="x">(</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y_range</span><span class="x">,</span> <span class="n">Z</span><span class="x">,</span> <span class="n">title</span><span class="o">=</span><span class="s">"Iteration </span><span class="si">$$</span><span class="s">i"</span><span class="x">,</span> <span class="n">clim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">1</span><span class="x">))</span>
+<span class="k">end</span> <span class="n">every</span> <span class="mi">5</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><img src="https://user-images.githubusercontent.com/422990/48957381-2e961080-ef0d-11e8-8c52-dbe35d812497.gif" alt="3_bayesnn_anim" /></p>
+
+<h2 id="generic-bayesian-neural-networks">Generic Bayesian Neural Networks</h2>
+
+<p>The below code is intended for use in more general applications, where you need to be able to change the basic network shape fluidly. The code above is highly rigid, and adapting it for other architectures would be time consuming. Currently the code below only supports networks of <code class="highlighter-rouge">Dense</code> layers.</p>
+
+<p>Here, we solve the same problem as above, but with three additional 2x2 <code class="highlighter-rouge">tanh</code> hidden layers. You can modify the <code class="highlighter-rouge">network_shape</code> variable to specify differing architectures. A tuple <code class="highlighter-rouge">(3,2, :tanh)</code> means you want to construct a <code class="highlighter-rouge">Dense</code> layer with 3 outputs, 2 inputs, and a <code class="highlighter-rouge">tanh</code> activation function. You can provide any activation function found in Flux by entering it as a <code class="highlighter-rouge">Symbol</code> (e.g., the <code class="highlighter-rouge">tanh</code> function is entered in the third part of the tuple as <code class="highlighter-rouge">:tanh</code>).</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Specify the network architecture.</span>
+<span class="n">network_shape</span> <span class="o">=</span> <span class="x">[</span>
+    <span class="x">(</span><span class="mi">3</span><span class="x">,</span><span class="mi">2</span><span class="x">,</span> <span class="o">:</span><span class="n">tanh</span><span class="x">),</span>
+    <span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">,</span> <span class="o">:</span><span class="n">tanh</span><span class="x">),</span> 
+    <span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">2</span><span class="x">,</span> <span class="o">:</span><span class="n">tanh</span><span class="x">),</span> 
+    <span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">2</span><span class="x">,</span> <span class="o">:</span><span class="n">tanh</span><span class="x">),</span> 
+    <span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">2</span><span class="x">,</span> <span class="o">:</span><span class="n">tanh</span><span class="x">),</span>
+    <span class="x">(</span><span class="mi">1</span><span class="x">,</span><span class="mi">2</span><span class="x">,</span> <span class="o">:</span><span class="n">σ</span><span class="x">)]</span>
+
+<span class="c"># Regularization, parameter variance, and total number of</span>
+<span class="c"># parameters.</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.09</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">sqrt</span><span class="x">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">alpha</span><span class="x">)</span>
+<span class="n">num_params</span> <span class="o">=</span> <span class="n">sum</span><span class="x">([</span><span class="n">i</span> <span class="o">*</span> <span class="n">o</span> <span class="o">+</span> <span class="n">i</span> <span class="k">for</span> <span class="x">(</span><span class="n">i</span><span class="x">,</span> <span class="n">o</span><span class="x">,</span> <span class="n">_</span><span class="x">)</span> <span class="k">in</span> <span class="n">network_shape</span><span class="x">])</span>
+
+<span class="c"># This modification of the unpack function generates a series of vectors</span>
+<span class="c"># given a network shape.</span>
+<span class="k">function</span><span class="nf"> unpack</span><span class="x">(</span><span class="n">parameters</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">,</span> <span class="n">network_shape</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Array</span><span class="x">{</span><span class="kt">Float64</span><span class="x">}}()</span>
+    <span class="n">biases</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Array</span><span class="x">{</span><span class="kt">Float64</span><span class="x">}}()</span>
+    <span class="n">θ</span> <span class="o">=</span> <span class="n">Tracker</span><span class="o">.</span><span class="n">collect</span><span class="x">(</span><span class="n">parameters</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="k">in</span> <span class="n">network_shape</span>
+        <span class="n">rows</span><span class="x">,</span> <span class="n">cols</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">layer</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">rows</span> <span class="o">*</span> <span class="n">cols</span>
+        <span class="n">last_index_w</span> <span class="o">=</span> <span class="n">size</span> <span class="o">+</span> <span class="n">index</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">last_index_b</span> <span class="o">=</span> <span class="n">last_index_w</span> <span class="o">+</span> <span class="n">rows</span>
+        <span class="n">push!</span><span class="x">(</span><span class="n">weights</span><span class="x">,</span> <span class="n">reshape</span><span class="x">(</span><span class="n">θ</span><span class="o">.</span><span class="n">data</span><span class="x">[</span><span class="n">index</span><span class="o">:</span><span class="n">last_index_w</span><span class="x">],</span> <span class="n">rows</span><span class="x">,</span> <span class="n">cols</span><span class="x">))</span>
+        <span class="n">push!</span><span class="x">(</span><span class="n">biases</span><span class="x">,</span> <span class="n">reshape</span><span class="x">(</span><span class="n">θ</span><span class="o">.</span><span class="n">data</span><span class="x">[</span><span class="n">last_index_w</span><span class="o">+</span><span class="mi">1</span><span class="o">:</span><span class="n">last_index_b</span><span class="x">],</span> <span class="n">rows</span><span class="x">))</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">last_index_b</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">weights</span><span class="x">,</span> <span class="n">biases</span>
+<span class="k">end</span>
+
+<span class="c"># Generate an abstract neural network given a shape, </span>
+<span class="c"># and return a prediction.</span>
+<span class="k">function</span><span class="nf"> nn_forward</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">θ</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">,</span> <span class="n">network_shape</span><span class="o">::</span><span class="kt">AbstractVector</span><span class="x">)</span>
+    <span class="n">weights</span><span class="x">,</span> <span class="n">biases</span> <span class="o">=</span> <span class="n">unpack</span><span class="x">(</span><span class="n">θ</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">)</span>
+    <span class="n">layers</span> <span class="o">=</span> <span class="x">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">eachindex</span><span class="x">(</span><span class="n">network_shape</span><span class="x">)</span>
+        <span class="n">push!</span><span class="x">(</span><span class="n">layers</span><span class="x">,</span> <span class="n">Dense</span><span class="x">(</span><span class="n">weights</span><span class="x">[</span><span class="n">i</span><span class="x">],</span>
+            <span class="n">biases</span><span class="x">[</span><span class="n">i</span><span class="x">],</span>
+            <span class="n">eval</span><span class="x">(</span><span class="n">network_shape</span><span class="x">[</span><span class="n">i</span><span class="x">][</span><span class="mi">3</span><span class="x">])))</span>
+    <span class="k">end</span>
+    <span class="n">nn</span> <span class="o">=</span> <span class="n">Chain</span><span class="x">(</span><span class="n">layers</span><span class="o">...</span><span class="x">)</span>
+    <span class="k">return</span> <span class="n">nn</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+<span class="k">end</span>
+
+<span class="c"># General Turing specification for a BNN model.</span>
+<span class="nd">@model</span> <span class="n">bayes_nn</span><span class="x">(</span><span class="n">xs</span><span class="x">,</span> <span class="n">ts</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">,</span> <span class="n">num_params</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">θ</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">zeros</span><span class="x">(</span><span class="n">num_params</span><span class="x">),</span> <span class="n">sig</span> <span class="o">.*</span> <span class="n">ones</span><span class="x">(</span><span class="n">num_params</span><span class="x">))</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">nn_forward</span><span class="x">(</span><span class="n">xs</span><span class="x">,</span> <span class="n">θ</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">ts</span><span class="x">)</span>
+        <span class="n">ts</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Bernoulli</span><span class="x">(</span><span class="n">preds</span><span class="x">[</span><span class="n">i</span><span class="x">])</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c"># Perform inference.</span>
+<span class="n">num_samples</span> <span class="o">=</span> <span class="mi">5000</span>
+<span class="n">ch2</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">bayes_nn</span><span class="x">(</span><span class="n">hcat</span><span class="x">(</span><span class="n">xs</span><span class="o">...</span><span class="x">),</span> <span class="n">ts</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">,</span> <span class="n">num_params</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="n">num_samples</span><span class="x">,</span> <span class="mf">0.05</span><span class="x">,</span> <span class="mi">4</span><span class="x">));</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[HMC] Finished with
+  Running time        = 10.684494601000013;
+  Accept rate         = 0.285;
+  #lf / sample        = 3.9992;
+  #evals / sample     = 5.999;
+  pre-cond. diag mat  = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0,....
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># This function makes predictions based on network shape.</span>
+<span class="k">function</span><span class="nf"> nn_predict</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">theta</span><span class="x">,</span> <span class="n">num</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">)</span>
+    <span class="n">mean</span><span class="x">([</span><span class="n">nn_forward</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">theta</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">network_shape</span><span class="x">)[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="mi">10</span><span class="o">:</span><span class="n">num</span><span class="x">])</span>
+<span class="k">end</span><span class="x">;</span>
+
+<span class="c"># Extract the θ parameters from the sampled chain.</span>
+<span class="n">params2</span> <span class="o">=</span> <span class="n">ch2</span><span class="x">[</span><span class="o">:</span><span class="n">θ</span><span class="x">]</span>
+
+<span class="n">plot_data</span><span class="x">()</span>
+
+<span class="n">x_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">y_range</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="o">-</span><span class="mi">6</span><span class="x">,</span><span class="n">stop</span><span class="o">=</span><span class="mi">6</span><span class="x">,</span><span class="n">length</span><span class="o">=</span><span class="mi">25</span><span class="x">))</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="x">[</span><span class="n">nn_predict</span><span class="x">([</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">],</span> <span class="n">params2</span><span class="x">,</span> <span class="n">num_samples</span><span class="x">,</span> <span class="n">network_shape</span><span class="x">)[</span><span class="mi">1</span><span class="x">]</span> <span class="k">for</span> <span class="n">x</span><span class="o">=</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_range</span><span class="x">]</span>
+<span class="n">contour!</span><span class="x">(</span><span class="n">x_range</span><span class="x">,</span> <span class="n">y_range</span><span class="x">,</span> <span class="n">Z</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/3_BayesNN_12_1.svg" alt="" /></p>
+
+<p>This has been an introduction to the applications of Turing and Flux in defining Bayesian neural networks.</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <a href="/tutorials/2-logisticregression/" class="pagination--pager prev" title="Bayesian Logistic Regression
+">Previous: Bayesian Logistic Regression
+</a>
+    
+    
+      <a href="/tutorials/4-bayeshmm/" class="pagination--pager next" title="Bayesian Hidden Markov Models
+">Next: Bayesian Hidden Markov Models
+</a>
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

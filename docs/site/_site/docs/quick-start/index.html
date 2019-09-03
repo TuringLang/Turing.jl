@@ -1,0 +1,453 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Probablistic Programming in Thirty Seconds - Turing.jl</title>
+<meta name="description" content="If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing’s syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Probablistic Programming in Thirty Seconds">
+<meta property="og:url" content="http://localhost:4000/docs/quick-start/">
+
+
+  <meta property="og:description" content="If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing’s syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/docs/quick-start/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Using Turing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/get-started/" class="">Getting Started</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/quick-start/" class="active">Quick Start</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/guide/" class="">Guide</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/advanced/" class="">Advanced Usage</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/autodiff/" class="">Automatic Differentiation</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/dynamichmc/" class="">Using DynamicHMC</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/sampler-viz/" class="">Sampler Visualization</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Library</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/library/" class="">Public</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Contributing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/contributing/" class="">How to Contribute</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/style-guide/" class="">Style Guide</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Probablistic Programming in Thirty Seconds">
+    <meta itemprop="description" content="If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing’s syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Probablistic Programming in Thirty Seconds
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+        <p>If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing’s syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.</p>
+
+<p>This example can be run on however you have Julia installed (see <a href="get-started.md">Getting Started</a>), but you will need to install the packages <code class="highlighter-rouge">Turing</code>, <code class="highlighter-rouge">Distributions</code>, <code class="highlighter-rouge">MCMCChains</code>, and <code class="highlighter-rouge">StatsPlots</code> if you have not done so already.</p>
+
+<p>This is an excerpt from a more formal example introducing probabalistic programming which can be found in Jupyter notebook form <a href="https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb">here</a> or as part of the documentation website <a href="../../tutorials/0-introduction/">here</a>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import libraries.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">StatsPlots</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Set the true probability of heads in a coin.</span>
+<span class="n">p_true</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+<span class="c"># Iterate from having seen 0 observations to 100 observations.</span>
+<span class="n">Ns</span> <span class="o">=</span> <span class="mi">0</span><span class="o">:</span><span class="mi">100</span><span class="x">;</span>
+
+<span class="c"># Draw data from a Bernoulli distribution, i.e. draw heads or tails.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">12</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">Bernoulli</span><span class="x">(</span><span class="n">p_true</span><span class="x">),</span> <span class="n">last</span><span class="x">(</span><span class="n">Ns</span><span class="x">))</span>
+
+<span class="c"># Declare our Turing model.</span>
+<span class="nd">@model</span> <span class="n">coinflip</span><span class="x">(</span><span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Our prior belief about the probability of heads in a coin.</span>
+    <span class="n">p</span> <span class="o">~</span><span class="err"> </span><span class="n">Beta</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="mi">1</span><span class="x">)</span>
+
+    <span class="c"># The number of observations.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">N</span>
+        <span class="c"># Heads or tails of a coin are drawn from a Bernoulli distribution.</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">n</span><span class="x">]</span> <span class="o">~</span> <span class="n">Bernoulli</span><span class="x">(</span><span class="n">p</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+
+<span class="c"># Settings of the Hamiltonian Monte Carlo (HMC) sampler.</span>
+<span class="n">iterations</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">ϵ</span> <span class="o">=</span> <span class="mf">0.05</span>
+<span class="n">τ</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="c"># Start sampling.</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">coinflip</span><span class="x">(</span><span class="n">data</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="n">iterations</span><span class="x">,</span> <span class="n">ϵ</span><span class="x">,</span> <span class="n">τ</span><span class="x">));</span>
+
+<span class="c"># Construct summary of the sampling process for the parameter p, i.e. the probability of heads in a coin.</span>
+<span class="n">psummary</span> <span class="o">=</span> <span class="n">Chains</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">p</span><span class="x">])</span>
+<span class="n">histogram</span><span class="x">(</span><span class="n">psummary</span><span class="x">)</span>
+</code></pre></div></div>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <a href="/docs/" class="pagination--pager prev" title="Turing Documentation
+">Previous: Turing Documentation
+</a>
+    
+    
+      <a href="/docs/sampler-viz/" class="pagination--pager next" title="Sampler Visualization
+">Next: Sampler Visualization
+</a>
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

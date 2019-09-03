@@ -9,32 +9,38 @@
                 {{ site.title }}
               </span>
             </a>
-        </label>        
+        </label>
 
         <ul class="md-nav__list" data-md-scrollfix="">
           <li class="md-nav__item md-nav__item--active">
-            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox" />             
+            <input class="md-toggle md-nav__toggle" data-md-toggle="toc" id="__toc" type="checkbox" />
 
             <nav class="md-nav md-nav--secondary">
 
                 <a class="" href="{{ site.url }}{{ site.baseurl }}/" title="{{ site.title }}">
-                  <label class="md-nav__title md-nav__title--site">            
+                  <label class="md-nav__title md-nav__title--site">
                     <span class="md-nav__button md-logo">
                       {{ site.title }}
-                    </span>            
-                  </label>  
-                </a>  
+                    </span>
+                  </label>
+                </a>
 
                 <div class="md-nav__source">
                     <a class="md-source" data-md-source="github" href="{{ site.repo }}" title="Go to repository">
-                    <div class="md-source__icon">
+                    <span class="md-source__icon">
                         <i class="fa fa-github fa-3x"></i>
-                    </div>                    
-                    <div class="md-source__repository">                        
+                    </span>
+                    <span class="md-source__repository">
                       {{ site.github_user }}/{{ site.github_repo }}
-                    </div></a>
-                  </div>
-                  
+                    </span></a>
+                </div>
+
+                <div class="md-nav__dropdown">
+                  <select id="version-selector">
+                    <!-- option value="#" selected="selected">v 0.5.1</option -->
+                  </select>
+                </div>
+
               <label class="md-nav__title" for="__drawer"></label>
 
               <ul class="md-nav__list" data-md-scrollfix="">
@@ -42,7 +48,7 @@
                 {% for section in site.data.toc %}
                 {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}
                 <li class="md-nav__item md-nav__item--nested navbar_bottom-border">
-                  <a class="md-nav__link pancakes-parent-mobile" 
+                  <a class="md-nav__link pancakes-parent-mobile"
                   id="pancakes-{{ section.title | slugify }}" title="{{ section.title }}">{{ section.title }}</a>
                   {% if section.children %}
                   <nav class="md-nav md-nav--secondary">
@@ -51,7 +57,7 @@
                       {% for child in section.children %}
                       <li class="md-nav__item navbar_bottom-border">
                         <a class="md-nav__link" href="{{ site.baseurl }}/{{ child.url }}"
-                            id="pancakes-{{ child.title | slugify }}" 
+                            id="pancakes-{{ child.title | slugify }}"
                             title="{{ child.title }}">{{ child.title }}</a>
                       </li>
                       {% endfor %}
@@ -70,13 +76,13 @@
           </li>{% endfor %}
 
           <!-- This navigation is completely for non mobile -->
-          {% assign paths = page.url | remove: "/docs/" | split: "/" %}
+          {% assign paths = page.url | remove: "/docs/" | split: "/" | where_exp: "i", "i.size > 0" %}
 
-         {% for section in site.data.toc %}         
-         {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}         
+         {% for section in site.data.toc %}
+         {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}
          <li class="md-nav__item md-nav__item--nested not-mobile-nav invisible">
-             <a class="md-nav__link pancakes-parent {% if sectionpaths.first == paths.first %}open-parent{% endif %}" 
-                id="pancakes-{{ section.title | slugify }}" 
+             <a class="md-nav__link pancakes-parent {% if sectionpaths.first == paths.first %}open-parent{% endif %}"
+                id="pancakes-{{ section.title | slugify }}"
                 title="{{ section.title }}">{{ section.title }}</a>
                 {% if section.children %}
                 <nav class="md-nav">
@@ -84,7 +90,7 @@
                         {% for child in section.children %}
                         {% assign childs = child.url | remove: "docs/" | split: "/" %}
                         <li class="md-nav__item">
-                        <a href="{% if child.external_url %}{{ child.external_url }}{% else %}{{ site.baseurl }}/{{ child.url }}{% endif %}" 
+                        <a href="{% if child.external_url %}{{ child.external_url }}{% else %}{{ site.baseurl }}/{{ child.url }}{% endif %}"
                            title="{{ child.title }}" {% if sectionpaths.first != paths.first %}style="display:none;"{% endif %}
                            {% if childs.last == paths.last %} style="color: red;"{% endif %}
                            class="md-nav__link pancakes-child">{{ child.title }}</a>
@@ -108,10 +114,10 @@
         <ul id="nav-toc" class="md-nav__list" data-md-scrollfix="">
         <!-- toc will be appended here!-->
         </ul>
-        <a href="https://twitter.com/intent/tweet?original_referer={{ site.repo }}/edit/master/docs/{{ page.path }}" title="Tweet this page" class="social-link"><i class="fa fa-twitter fa-1x"></i>Tweet this page</a>
+        <a href="https://twitter.com/intent/tweet?original_referer={{ site.repo }}/edit/master/docs/src{{ page.path  | remove: "_docs"}}" title="Tweet this page" class="social-link"><i class="fa fa-twitter fa-1x"></i>Tweet this page</a>
         <a href="https://discourse.julialang.org/c/domain/probprog" title="Ask questions" class="social-link"><i class="fa fa-stack-overflow fa-1x"></i>Ask questions</a>
-        <a href="{{ site.repo }}//issues/new?label=question&title=Question:&body=Question%20on:%20{{ site.repo }}/edit/master/docs/{{ page.path }}" title="Report issues" class="social-link"><i class="fa fa-comments fa-1x"></i>Report issues</a>        
-        <a href="{{ site.repo }}/edit/master/docs/{{ page.path }}" title="Edit this page on github"  class="social-link"><i class="fa fa-github fa-1x"></i> Edit me</a>
+        <a href="{{ site.repo }}//issues/new?label=question&title=Question:&body=Question%20on:%20{{ site.repo }}/edit/master/docs/{{ page.path }}" title="Report issues" class="social-link"><i class="fa fa-comments fa-1x"></i>Report issues</a>
+        <a href="{{ site.repo }}/edit/master/docs/src{{ page.path | remove: "_docs"}}" title="Edit this page on github"  class="social-link"><i class="fa fa-github fa-1x"></i> Edit me</a>
       </nav>
     </div>
   </div>

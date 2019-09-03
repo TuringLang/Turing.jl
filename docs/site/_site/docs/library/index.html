@@ -1,0 +1,995 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Library - Turing.jl</title>
+<meta name="description" content="">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Library">
+<meta property="og:url" content="http://localhost:4000/docs/library/">
+
+
+  <meta property="og:description" content="">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/docs/library/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Using Turing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/get-started/" class="">Getting Started</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/quick-start/" class="">Quick Start</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/guide/" class="">Guide</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/advanced/" class="">Advanced Usage</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/autodiff/" class="">Automatic Differentiation</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/dynamichmc/" class="">Using DynamicHMC</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/sampler-viz/" class="">Sampler Visualization</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Library</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/library/" class="active">Public</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Contributing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/contributing/" class="">How to Contribute</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/style-guide/" class="">Style Guide</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Library">
+    <meta itemprop="description" content="">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Library
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+          <aside class="sidebar__right ">
+            <nav class="toc">
+              <header><h4 class="nav__title"><i class="fas fa-list-ul"></i> Contents</h4></header>
+              <ul class="toc__menu">
+  <li><a href="#modelling">Modelling</a>
+    <ul>
+      <li><a href="#-turingcoremodel--macro"># Turing.Core.@model — Macro.</a></li>
+    </ul>
+  </li>
+  <li><a href="#samplers">Samplers</a>
+    <ul>
+      <li><a href="#-turingsampler--type"># Turing.Sampler — Type.</a></li>
+      <li><a href="#-turinginferencegibbs--type"># Turing.Inference.Gibbs — Type.</a></li>
+      <li><a href="#-turinginferencehmc--type"># Turing.Inference.HMC — Type.</a></li>
+      <li><a href="#-turinginferencehmcda--type"># Turing.Inference.HMCDA — Type.</a></li>
+      <li><a href="#-turinginferenceipmcmc--type"># Turing.Inference.IPMCMC — Type.</a></li>
+      <li><a href="#-turinginferencemh--type"># Turing.Inference.MH — Type.</a></li>
+      <li><a href="#-turinginferencenuts--type"># Turing.Inference.NUTS — Type.</a></li>
+      <li><a href="#-turinginferencepg--type"># Turing.Inference.PG — Type.</a></li>
+      <li><a href="#-turinginferencepmmh--type"># Turing.Inference.PMMH — Type.</a></li>
+      <li><a href="#-turinginferencesghmc--type"># Turing.Inference.SGHMC — Type.</a></li>
+      <li><a href="#-turinginferencesgld--type"># Turing.Inference.SGLD — Type.</a></li>
+      <li><a href="#-turinginferencesmc--type"># Turing.Inference.SMC — Type.</a></li>
+    </ul>
+  </li>
+  <li><a href="#data-structures">Data Structures</a></li>
+  <li><a href="#utilities">Utilities</a></li>
+  <li><a href="#index">Index</a></li>
+  <li><a href="#randommeasures">RandomMeasures</a>
+    <ul>
+      <li><a href="#-turingrandommeasureschineserestaurantprocess--type"># Turing.RandomMeasures.ChineseRestaurantProcess — Type.</a></li>
+      <li><a href="#-turingrandommeasuresdirichletprocess--type"># Turing.RandomMeasures.DirichletProcess — Type.</a></li>
+      <li><a href="#-turingrandommeasurespitmanyorprocess--type"># Turing.RandomMeasures.PitmanYorProcess — Type.</a></li>
+      <li><a href="#-turingrandommeasuressizebiasedsamplingprocess--type"># Turing.RandomMeasures.SizeBiasedSamplingProcess — Type.</a></li>
+      <li><a href="#-turingrandommeasuresstickbreakingprocess--type"># Turing.RandomMeasures.StickBreakingProcess — Type.</a></li>
+      <li><a href="#-turingrandommeasures_logpdf_table--method"># Turing.RandomMeasures._logpdf_table — Method.</a></li>
+    </ul>
+  </li>
+</ul>
+            </nav>
+          </aside>
+        
+        <p><a id="Modelling-1"></a></p>
+
+<h2 id="modelling">Modelling</h2>
+
+<h3 id="-turingcoremodel--macro"><a id="Turing.Core.@model" href="#Turing.Core.@model">#</a> <strong><code class="highlighter-rouge">Turing.Core.@model</code></strong> — <em>Macro</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span><span class="x">(</span><span class="n">body</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Macro to specify a probabilistic model.</p>
+
+<p>Example:</p>
+
+<p>Model definition:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">model_generator</span><span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">default_x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="o">...</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>Expanded model definition</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Allows passing arguments as kwargs</span>
+<span class="n">model_generator</span><span class="x">(;</span> <span class="n">x</span> <span class="o">=</span> <span class="nb">nothing</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">nothing</span><span class="x">))</span> <span class="o">=</span> <span class="n">model_generator</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span>
+<span class="k">function</span><span class="nf"> model_generator</span><span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="nb">nothing</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">nothing</span><span class="x">)</span>
+    <span class="n">pvars</span><span class="x">,</span> <span class="n">dvars</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">get_vars</span><span class="x">(</span><span class="n">Tuple</span><span class="x">{</span><span class="o">:</span><span class="n">x</span><span class="x">,</span> <span class="o">:</span><span class="n">y</span><span class="x">},</span> <span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="x">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">get_data</span><span class="x">(</span><span class="n">dvars</span><span class="x">,</span> <span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="x">))</span>
+    <span class="n">defaults</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">get_default_values</span><span class="x">(</span><span class="n">dvars</span><span class="x">,</span> <span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="n">default_x</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">nothing</span><span class="x">))</span>
+
+    <span class="n">inner_function</span><span class="x">(</span><span class="n">sampler</span><span class="o">::</span><span class="n">Turing</span><span class="o">.</span><span class="n">AbstractSampler</span><span class="x">,</span> <span class="n">model</span><span class="x">)</span> <span class="o">=</span> <span class="n">inner_function</span><span class="x">(</span><span class="n">model</span><span class="x">)</span>
+    <span class="k">function</span><span class="nf"> inner_function</span><span class="x">(</span><span class="n">model</span><span class="x">)</span>
+        <span class="k">return</span> <span class="n">inner_function</span><span class="x">(</span><span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">(),</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">(),</span> <span class="n">model</span><span class="x">)</span>
+    <span class="k">end</span>
+    <span class="k">function</span><span class="nf"> inner_function</span><span class="x">(</span><span class="n">vi</span><span class="o">::</span><span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">,</span> <span class="n">model</span><span class="x">)</span>
+        <span class="k">return</span> <span class="n">inner_function</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">(),</span> <span class="n">model</span><span class="x">)</span>
+    <span class="k">end</span>
+    <span class="c"># Define the main inner function</span>
+    <span class="k">function</span><span class="nf"> inner_function</span><span class="x">(</span><span class="n">vi</span><span class="o">::</span><span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">,</span> <span class="n">sampler</span><span class="o">::</span><span class="n">Turing</span><span class="o">.</span><span class="n">AbstractSampler</span><span class="x">,</span> <span class="n">model</span><span class="x">)</span>
+        <span class="kd">local</span> <span class="n">x</span>
+        <span class="k">if</span> <span class="n">isdefined</span><span class="x">(</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="x">,</span> <span class="o">:</span><span class="n">x</span><span class="x">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">x</span>
+        <span class="k">else</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">model_defaults</span><span class="o">.</span><span class="n">x</span>
+        <span class="k">end</span>
+        <span class="kd">local</span> <span class="n">y</span>
+        <span class="k">if</span> <span class="n">isdefined</span><span class="x">(</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="x">,</span> <span class="o">:</span><span class="n">y</span><span class="x">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">else</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">y</span>
+        <span class="k">end</span>
+
+        <span class="n">vi</span><span class="o">.</span><span class="n">logp</span> <span class="o">=</span> <span class="n">zero</span><span class="x">(</span><span class="n">Real</span><span class="x">)</span>
+        <span class="o">...</span>
+    <span class="k">end</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">Model</span><span class="x">{</span><span class="n">pvars</span><span class="x">,</span> <span class="n">dvars</span><span class="x">}(</span><span class="n">inner_function</span><span class="x">,</span> <span class="n">data</span><span class="x">,</span> <span class="n">defaults</span><span class="x">)</span>
+    <span class="k">return</span> <span class="n">model</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>Generating a model: <code class="highlighter-rouge">model_generator(x_value)::Model</code>.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/core/compiler.jl#L158-L214" class="documenter-source">source</a><br /></p>
+
+<p><a id="Samplers-1"></a></p>
+
+<h2 id="samplers">Samplers</h2>
+
+<h3 id="-turingsampler--type"><a id="Turing.Sampler" href="#Turing.Sampler">#</a> <strong><code class="highlighter-rouge">Turing.Sampler</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Sampler</span><span class="x">{</span><span class="n">T</span><span class="x">}</span>
+</code></pre></div></div>
+
+<p>Generic interface for implementing inference algorithms. An implementation of an algorithm should include the following:</p>
+
+<ol>
+  <li>A type specifying the algorithm and its parameters, derived from InferenceAlgorithm</li>
+  <li>A method of <code class="highlighter-rouge">sample</code> function that produces results of inference, which is where actual inference happens.</li>
+</ol>
+
+<p>Turing translates models to chunks that call the modelling functions at specified points. The dispatch is based on the value of a <code class="highlighter-rouge">sampler</code> variable. To include a new inference algorithm implements the requirements mentioned above in a separate file, then include that file at the end of this one.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/Turing.jl#L92-L105" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencegibbs--type"><a id="Turing.Inference.Gibbs" href="#Turing.Inference.Gibbs">#</a> <strong><code class="highlighter-rouge">Turing.Inference.Gibbs</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Gibbs</span><span class="x">(</span><span class="n">n_iters</span><span class="x">,</span> <span class="n">algs</span><span class="o">...</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Compositional MCMC interface. Gibbs sampling combines one or more sampling algorithms, each of which samples from a different set of variables in a model.</p>
+
+<p>Example:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">gibbs_example</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">v1</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">1</span><span class="x">)</span>
+    <span class="n">v2</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="mi">5</span><span class="x">)</span>
+        <span class="o">...</span>
+<span class="k">end</span>
+
+<span class="c"># Use PG for a 'v2' variable, and use HMC for the 'v1' variable.</span>
+<span class="c"># Note that v2 is discrete, so the PG sampler is more appropriate</span>
+<span class="c"># than is HMC.</span>
+<span class="n">alg</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="mf">0.2</span><span class="x">,</span> <span class="mi">3</span><span class="x">,</span> <span class="o">:</span><span class="n">v1</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1</span><span class="x">,</span> <span class="o">:</span><span class="n">v2</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p>Tips:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">HMC</code> and <code class="highlighter-rouge">NUTS</code> are fast samplers, and can throw off particle-based</li>
+</ul>
+
+<p>methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including more particles in the particle sampler.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/gibbs.jl#L5-L30" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencehmc--type"><a id="Turing.Inference.HMC" href="#Turing.Inference.HMC">#</a> <strong><code class="highlighter-rouge">Turing.Inference.HMC</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">HMC</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">ϵ</span><span class="o">::</span><span class="kt">Float64</span><span class="x">,</span> <span class="n">n_leapfrog</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Hamiltonian Monte Carlo sampler.</p>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : The number of samples to pull.</li>
+  <li><code class="highlighter-rouge">ϵ::Float64</code> : The leapfrog step size to use.</li>
+  <li><code class="highlighter-rouge">n_leapfrog::Int</code> : The number of leapfrop steps to use.</li>
+</ul>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.05</span><span class="x">,</span> <span class="mi">10</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Tips:</p>
+
+<ul>
+  <li>If you are receiving gradient errors when using <code class="highlighter-rouge">HMC</code>, try reducing the</li>
+</ul>
+
+<p><code class="highlighter-rouge">step_size</code> parameter.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Original step_size</span>
+<span class="n">sample</span><span class="x">(</span><span class="n">gdemo</span><span class="x">([</span><span class="mf">1.5</span><span class="x">,</span> <span class="mi">2</span><span class="x">]),</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">,</span> <span class="mi">10</span><span class="x">))</span>
+
+<span class="c"># Reduced step_size.</span>
+<span class="n">sample</span><span class="x">(</span><span class="n">gdemo</span><span class="x">([</span><span class="mf">1.5</span><span class="x">,</span> <span class="mi">2</span><span class="x">]),</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mi">10</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/hmc.jl#L5-L34" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencehmcda--type"><a id="Turing.Inference.HMCDA" href="#Turing.Inference.HMCDA">#</a> <strong><code class="highlighter-rouge">Turing.Inference.HMCDA</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">HMCDA</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_adapts</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">δ</span><span class="o">::</span><span class="kt">Float64</span><span class="x">,</span> <span class="n">λ</span><span class="o">::</span><span class="kt">Float64</span><span class="x">;</span> <span class="n">init_ϵ</span><span class="o">::</span><span class="kt">Float64</span><span class="o">=</span><span class="mf">0.1</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">HMCDA</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : Number of samples to pull.</li>
+  <li><code class="highlighter-rouge">n_adapts::Int</code> : Numbers of samples to use for adaptation.</li>
+  <li><code class="highlighter-rouge">δ::Float64</code> : Target acceptance rate. 65% is often recommended.</li>
+  <li><code class="highlighter-rouge">λ::Float64</code> : Target leapfrop length.</li>
+  <li><code class="highlighter-rouge">init_ϵ::Float64=0.1</code> : Inital step size; 0 means automatically search by Turing.</li>
+</ul>
+
+<p>For more information, please view the following paper (<a href="https://arxiv.org/abs/1111.4246">arXiv link</a>):</p>
+
+<ul>
+  <li>Hoffman, Matthew D., and Andrew Gelman. “The No-U-turn sampler: adaptively setting path lengths in Hamiltonian Monte Carlo.” Journal of Machine Learning Research 15, no. 1 (2014): 1593-1623.</li>
+</ul>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/hmc.jl#L65-L89" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferenceipmcmc--type"><a id="Turing.Inference.IPMCMC" href="#Turing.Inference.IPMCMC">#</a> <strong><code class="highlighter-rouge">Turing.Inference.IPMCMC</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">IPMCMC</span><span class="x">(</span><span class="n">n_particles</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_nodes</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_csmc_nodes</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Particle Gibbs sampler.</p>
+
+<p>Note that this method is particle-based, and arrays of variables must be stored in a <a href="@ref"><code class="highlighter-rouge">TArray</code></a> object.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">IPMCMC</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="mi">100</span><span class="x">,</span> <span class="mi">4</span><span class="x">,</span> <span class="mi">2</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_particles::Int</code> : Number of particles to use.</li>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : Number of iterations to employ.</li>
+  <li><code class="highlighter-rouge">n_nodes::Int</code> : The number of nodes running SMC and CSMC.</li>
+  <li><code class="highlighter-rouge">n_csmc_nodes::Int</code> : The number of CSMC nodes.</li>
+</ul>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+A paper on this can be found [here](https://arxiv.org/abs/1602.05128).
+
+
+&lt;a target='_blank' href='https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/AdvancedSMC.jl#L466-L489' class='documenter-source'&gt;source&lt;/a&gt;&lt;br&gt;
+
+### &lt;a id='Turing.Inference.IS' href='#Turing.Inference.IS'&gt;#&lt;/a&gt; **`Turing.Inference.IS`** &amp;mdash; *Type*.
+
+
+```julia
+IS(n_particles::Int)
+</code></pre></div></div>
+
+<p>Importance sampling algorithm.</p>
+
+<p>Note that this method is particle-based, and arrays of variables must be stored in a <a href="@ref"><code class="highlighter-rouge">TArray</code></a> object.</p>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_particles</code> is the number of particles to use.</li>
+</ul>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">IS</span><span class="x">(</span><span class="mi">1000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Define a simple Normal model with unknown mean and variance.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="o">.</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="n">x</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="o">.</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="n">x</span><span class="x">[</span><span class="mi">2</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="o">.</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="n">sample</span><span class="x">(</span><span class="n">gdemo</span><span class="x">([</span><span class="mf">1.5</span><span class="x">,</span> <span class="mi">2</span><span class="x">]),</span> <span class="n">IS</span><span class="x">(</span><span class="mi">1000</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/is.jl#L1-L33" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencemh--type"><a id="Turing.Inference.MH" href="#Turing.Inference.MH">#</a> <strong><code class="highlighter-rouge">Turing.Inference.MH</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MH</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Metropolis-Hastings sampler.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MH</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="x">(</span><span class="o">:</span><span class="n">m</span><span class="x">,</span> <span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">-&gt;</span> <span class="n">Normal</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">)))</span>
+</code></pre></div></div>
+
+<p>Example:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Define a simple Normal model with unknown mean and variance.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+  <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+  <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+  <span class="n">x</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+  <span class="n">x</span><span class="x">[</span><span class="mi">2</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+  <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="n">chn</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">gdemo</span><span class="x">([</span><span class="mf">1.5</span><span class="x">,</span> <span class="mi">2</span><span class="x">]),</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1000</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/mh.jl#L1-L26" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencenuts--type"><a id="Turing.Inference.NUTS" href="#Turing.Inference.NUTS">#</a> <strong><code class="highlighter-rouge">Turing.Inference.NUTS</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">NUTS</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_adapts</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">δ</span><span class="o">::</span><span class="kt">Float64</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>No-U-Turn Sampler (NUTS) sampler.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mi">200</span><span class="x">,</span> <span class="mf">0.6</span><span class="n">j_max</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : The number of samples to pull.</li>
+  <li><code class="highlighter-rouge">n_adapts::Int</code> : The number of samples to use with adapatation.</li>
+  <li><code class="highlighter-rouge">δ::Float64</code> : Target acceptance rate.</li>
+  <li><code class="highlighter-rouge">max_depth::Float64</code> : Maximum doubling tree depth.</li>
+  <li><code class="highlighter-rouge">Δ_max::Float64</code> : Maximum divergence during doubling tree.</li>
+  <li><code class="highlighter-rouge">init_ϵ::Float64</code> : Inital step size; 0 means automatically search by Turing.</li>
+</ul>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/hmc.jl#L137-L157" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencepg--type"><a id="Turing.Inference.PG" href="#Turing.Inference.PG">#</a> <strong><code class="highlighter-rouge">Turing.Inference.PG</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PG</span><span class="x">(</span><span class="n">n_particles</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Particle Gibbs sampler.</p>
+
+<p>Note that this method is particle-based, and arrays of variables must be stored in a <a href="@ref"><code class="highlighter-rouge">TArray</code></a> object.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PG</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="mi">100</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/AdvancedSMC.jl#L86-L99" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencepmmh--type"><a id="Turing.Inference.PMMH" href="#Turing.Inference.PMMH">#</a> <strong><code class="highlighter-rouge">Turing.Inference.PMMH</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PMMH</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">smc_alg</span><span class="o">:::</span><span class="n">SMC</span><span class="x">,</span> <span class="n">parameters_algs</span><span class="o">::</span><span class="n">Tuple</span><span class="x">{</span><span class="n">MH</span><span class="x">})</span>
+</code></pre></div></div>
+
+<p>Particle independant Metropolis–Hastings and Particle marginal Metropolis–Hastings samplers.</p>
+
+<p>Note that this method is particle-based, and arrays of variables must be stored in a <a href="@ref"><code class="highlighter-rouge">TArray</code></a> object.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">alg</span> <span class="o">=</span> <span class="n">PMMH</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="o">:</span><span class="n">v1</span><span class="x">),</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span><span class="o">:</span><span class="n">v2</span><span class="x">))</span>
+<span class="n">alg</span> <span class="o">=</span> <span class="n">PMMH</span><span class="x">(</span><span class="mi">100</span><span class="x">,</span> <span class="n">SMC</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="o">:</span><span class="n">v1</span><span class="x">),</span> <span class="n">MH</span><span class="x">(</span><span class="mi">1</span><span class="x">,(</span><span class="o">:</span><span class="n">v2</span><span class="x">,</span> <span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">-&gt;</span> <span class="n">Normal</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="mi">1</span><span class="x">))))</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : Number of iterations to run.</li>
+  <li><code class="highlighter-rouge">smc_alg:::SMC</code> : An <a href="/docs/library/#Turing.Inference.SMC"><code class="highlighter-rouge">SMC</code></a> algorithm to use.</li>
+  <li><code class="highlighter-rouge">parameters_algs::Tuple{MH}</code> : An <a href="/docs/library/#Turing.Inference.MH"><code class="highlighter-rouge">MH</code></a> algorithm, which includes a</li>
+</ul>
+
+<p>sample space specification.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/AdvancedSMC.jl#L275-L297" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencesghmc--type"><a id="Turing.Inference.SGHMC" href="#Turing.Inference.SGHMC">#</a> <strong><code class="highlighter-rouge">Turing.Inference.SGHMC</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SGHMC</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">learning_rate</span><span class="o">::</span><span class="kt">Float64</span><span class="x">,</span> <span class="n">momentum_decay</span><span class="o">::</span><span class="kt">Float64</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Stochastic Gradient Hamiltonian Monte Carlo sampler.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SGHMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.01</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : Number of samples to pull.</li>
+  <li><code class="highlighter-rouge">learning_rate::Float64</code> : The learning rate.</li>
+  <li><code class="highlighter-rouge">momentum_decay::Float64</code> : Momentum decay variable.</li>
+</ul>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/sghmc.jl#L10-L27" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencesgld--type"><a id="Turing.Inference.SGLD" href="#Turing.Inference.SGLD">#</a> <strong><code class="highlighter-rouge">Turing.Inference.SGLD</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SGLD</span><span class="x">(</span><span class="n">n_iters</span><span class="o">::</span><span class="kt">Int</span><span class="x">,</span> <span class="n">ϵ</span><span class="o">::</span><span class="kt">Float64</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Stochastic Gradient Langevin Dynamics sampler.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SGLD</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.5</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Arguments:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">n_iters::Int</code> : Number of samples to pull.</li>
+  <li><code class="highlighter-rouge">ϵ::Float64</code> : The scaling factor for the learing rate.</li>
+</ul>
+
+<p>Reference:</p>
+
+<p>Welling, M., &amp; Teh, Y. W. (2011).  Bayesian learning via stochastic gradient Langevin dynamics. In Proceedings of the 28th international conference on machine learning (ICML-11) (pp. 681-688).</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/sghmc.jl#L115-L135" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turinginferencesmc--type"><a id="Turing.Inference.SMC" href="#Turing.Inference.SMC">#</a> <strong><code class="highlighter-rouge">Turing.Inference.SMC</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SMC</span><span class="x">(</span><span class="n">n_particles</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Sequential Monte Carlo sampler.</p>
+
+<p>Note that this method is particle-based, and arrays of variables must be stored in a <a href="@ref"><code class="highlighter-rouge">TArray</code></a> object.</p>
+
+<p>Usage:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/inference/AdvancedSMC.jl#L9-L22" class="documenter-source">source</a><br /></p>
+
+<p><a id="Data-Structures-1"></a></p>
+
+<h2 id="data-structures">Data Structures</h2>
+
+<p>!!! warning “Missing docstring.”
+    Missing docstring for <code class="highlighter-rouge">TArray</code>. Check Documenter’s build log for details.</p>
+
+<p><a id="Utilities-1"></a></p>
+
+<h2 id="utilities">Utilities</h2>
+
+<p>!!! warning “Missing docstring.”
+    Missing docstring for <code class="highlighter-rouge">tzeros</code>. Check Documenter’s build log for details.</p>
+
+<p><a id="Index-1"></a></p>
+
+<h2 id="index">Index</h2>
+
+<ul>
+  <li><a href="/docs/library/#Turing.Inference.Gibbs"><code class="highlighter-rouge">Turing.Inference.Gibbs</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.HMC"><code class="highlighter-rouge">Turing.Inference.HMC</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.HMCDA"><code class="highlighter-rouge">Turing.Inference.HMCDA</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.IPMCMC"><code class="highlighter-rouge">Turing.Inference.IPMCMC</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.IS"><code class="highlighter-rouge">Turing.Inference.IS</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.MH"><code class="highlighter-rouge">Turing.Inference.MH</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.NUTS"><code class="highlighter-rouge">Turing.Inference.NUTS</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.PG"><code class="highlighter-rouge">Turing.Inference.PG</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.PMMH"><code class="highlighter-rouge">Turing.Inference.PMMH</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.SGHMC"><code class="highlighter-rouge">Turing.Inference.SGHMC</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.SGLD"><code class="highlighter-rouge">Turing.Inference.SGLD</code></a></li>
+  <li><a href="/docs/library/#Turing.Inference.SMC"><code class="highlighter-rouge">Turing.Inference.SMC</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures.ChineseRestaurantProcess"><code class="highlighter-rouge">Turing.RandomMeasures.ChineseRestaurantProcess</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures.DirichletProcess"><code class="highlighter-rouge">Turing.RandomMeasures.DirichletProcess</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures.PitmanYorProcess"><code class="highlighter-rouge">Turing.RandomMeasures.PitmanYorProcess</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures.SizeBiasedSamplingProcess"><code class="highlighter-rouge">Turing.RandomMeasures.SizeBiasedSamplingProcess</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures.StickBreakingProcess"><code class="highlighter-rouge">Turing.RandomMeasures.StickBreakingProcess</code></a></li>
+  <li><a href="/docs/library/#Turing.Sampler"><code class="highlighter-rouge">Turing.Sampler</code></a></li>
+  <li><a href="/docs/library/#Turing.RandomMeasures._logpdf_table-Union{Tuple{T}, Tuple{AbstractRandomProbabilityMeasure,T}} where T&lt;:AbstractArray{Int64,1}"><code class="highlighter-rouge">Turing.RandomMeasures._logpdf_table</code></a></li>
+  <li><a href="/docs/library/#Turing.Core.@model"><code class="highlighter-rouge">Turing.Core.@model</code></a></li>
+</ul>
+
+<p><a id="RandomMeasures-1"></a></p>
+
+<h2 id="randommeasures">RandomMeasures</h2>
+
+<h3 id="-turingrandommeasureschineserestaurantprocess--type"><a id="Turing.RandomMeasures.ChineseRestaurantProcess" href="#Turing.RandomMeasures.ChineseRestaurantProcess">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures.ChineseRestaurantProcess</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">ChineseRestaurantProcess</span><span class="x">(</span><span class="n">rpm</span><span class="x">,</span> <span class="n">m</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The <em>Chinese Restaurant Process</em> for random probability measures <code class="highlighter-rouge">rpm</code> with counts <code class="highlighter-rouge">m</code>.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L46-L50" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turingrandommeasuresdirichletprocess--type"><a id="Turing.RandomMeasures.DirichletProcess" href="#Turing.RandomMeasures.DirichletProcess">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures.DirichletProcess</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">DirichletProcess</span><span class="x">(</span><span class="n">α</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The <em>Dirichlet Process</em> with concentration parameter <code class="highlighter-rouge">α</code>. Samples from the Dirichlet process can be constructed via the following representations.</p>
+
+<p><em>Size-Biased Sampling Process</em></p>
+
+<script type="math/tex; mode=display">j_k \sim Beta(1, \alpha) * surplus</script>
+
+<p><em>Stick-Breaking Process</em></p>
+
+<script type="math/tex; mode=display">v_k \sim Beta(1, \alpha)</script>
+
+<p><em>Chinese Restaurant Process</em></p>
+
+<script type="math/tex; mode=display">p(z_n = k | z_{1:n-1}) \propto \begin{cases} 
+        \frac{m_k}{n-1+\alpha}, \text{if} m_k > 0\\ 
+        \frac{\alpha}{n-1+\alpha}
+    \end{cases}</script>
+
+<p>For more details see: https://www.stats.ox.ac.uk/~teh/research/npbayes/Teh2010a.pdf</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L92-L117" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turingrandommeasurespitmanyorprocess--type"><a id="Turing.RandomMeasures.PitmanYorProcess" href="#Turing.RandomMeasures.PitmanYorProcess">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures.PitmanYorProcess</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">PitmanYorProcess</span><span class="x">(</span><span class="n">d</span><span class="x">,</span> <span class="n">θ</span><span class="x">,</span> <span class="n">t</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The <em>Pitman-Yor Process</em> with discount <code class="highlighter-rouge">d</code>, concentration <code class="highlighter-rouge">θ</code> and <code class="highlighter-rouge">t</code> already drawn atoms. Samples from the <em>Pitman-Yor Process</em> can be constructed via the following representations.</p>
+
+<p><em>Size-Biased Sampling Process</em></p>
+
+<script type="math/tex; mode=display">j_k \sim Beta(1-d, \theta + t*d) * surplus</script>
+
+<p><em>Stick-Breaking Process</em></p>
+
+<script type="math/tex; mode=display">v_k \sim Beta(1-d, \theta + t*d)</script>
+
+<p><em>Chinese Restaurant Process</em></p>
+
+<script type="math/tex; mode=display">p(z_n = k | z_{1:n-1}) \propto \begin{cases} 
+        \frac{m_k - d}{n+\theta}, \text{if} m_k > 0\\ 
+        \frac{\theta + d*t}{n+\theta}
+    \end{cases}</script>
+
+<p>For more details see: https://en.wikipedia.org/wiki/Pitman–Yor_process</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L154-L179" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turingrandommeasuressizebiasedsamplingprocess--type"><a id="Turing.RandomMeasures.SizeBiasedSamplingProcess" href="#Turing.RandomMeasures.SizeBiasedSamplingProcess">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures.SizeBiasedSamplingProcess</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">SizeBiasedSamplingProcess</span><span class="x">(</span><span class="n">rpm</span><span class="x">,</span> <span class="n">surplus</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The <em>Size-Biased Sampling Process</em> for random probability measures <code class="highlighter-rouge">rpm</code> with a surplus mass of <code class="highlighter-rouge">surplus</code>.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L17-L21" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turingrandommeasuresstickbreakingprocess--type"><a id="Turing.RandomMeasures.StickBreakingProcess" href="#Turing.RandomMeasures.StickBreakingProcess">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures.StickBreakingProcess</code></strong> — <em>Type</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">StickBreakingProcess</span><span class="x">(</span><span class="n">rpm</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>The <em>Stick-Breaking Process</em> for random probability measures <code class="highlighter-rouge">rpm</code>.</p>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L32-L36" class="documenter-source">source</a><br /></p>
+
+<h3 id="-turingrandommeasures_logpdf_table--method"><a id="Turing.RandomMeasures._logpdf_table-Union{Tuple{T}, Tuple{AbstractRandomProbabilityMeasure,T}} where T&lt;:AbstractArray{Int64,1}" href="#Turing.RandomMeasures._logpdf_table-Union{Tuple{T}, Tuple{AbstractRandomProbabilityMeasure,T}} where T&lt;:AbstractArray{Int64,1}">#</a> <strong><code class="highlighter-rouge">Turing.RandomMeasures._logpdf_table</code></strong> — <em>Method</em>.</h3>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">_logpdf_table</span><span class="x">(</span><span class="n">d</span><span class="o">&lt;:</span><span class="n">AbstractRandomProbabilityMeasure</span><span class="x">,</span> <span class="n">m</span><span class="o">&lt;:</span><span class="kt">AbstractVector</span><span class="x">{</span><span class="kt">Int</span><span class="x">})</span>
+</code></pre></div></div>
+
+<p>Parameters:</p>
+
+<ul>
+  <li><code class="highlighter-rouge">d</code>: Random probability measure, e.g. DirichletProcess</li>
+  <li><code class="highlighter-rouge">m</code>: Cluster counts</li>
+</ul>
+
+<p><a target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e29f651dc7e7d1f7d9d32cc35ece57ae6adb7474/src/stdlib/RandomMeasures.jl#L57-L65" class="documenter-source">source</a><br /></p>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <a href="/docs/advanced/" class="pagination--pager prev" title="Advanced Usage
+">Previous: Advanced Usage
+</a>
+    
+    
+      <a href="/docs/autodiff/" class="pagination--pager next" title="Automatic Differentiation
+">Next: Automatic Differentiation
+</a>
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

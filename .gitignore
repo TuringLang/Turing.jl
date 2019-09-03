@@ -14,13 +14,10 @@ deps/deps.jl
 deps/build.log
 
 docs/build/
-docs/site/_tutorials/
-docs/site/_docs/
-docs/site/_site/
-docs/site/assets/
-docs/site/*.md
-docs/site/.sass-cache/
+docs/_docs/
+docs/_tutorials/
 docs/_site/
+docs/.gems/
 docs/Gemfile.lock
 
 .DS_Store

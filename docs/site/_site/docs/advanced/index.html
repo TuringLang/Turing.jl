@@ -1,0 +1,650 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Advanced Usage - Turing.jl</title>
+<meta name="description" content="">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Advanced Usage">
+<meta property="og:url" content="http://localhost:4000/docs/advanced/">
+
+
+  <meta property="og:description" content="">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/docs/advanced/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Using Turing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/get-started/" class="">Getting Started</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/quick-start/" class="">Quick Start</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/guide/" class="">Guide</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/advanced/" class="active">Advanced Usage</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/autodiff/" class="">Automatic Differentiation</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/dynamichmc/" class="">Using DynamicHMC</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/sampler-viz/" class="">Sampler Visualization</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Library</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/library/" class="">Public</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+      <li>
+        
+          <span class="nav__sub-title">Contributing</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/contributing/" class="">How to Contribute</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/docs/style-guide/" class="">Style Guide</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Advanced Usage">
+    <meta itemprop="description" content="">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Advanced Usage
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+          <aside class="sidebar__right sticky">
+            <nav class="toc">
+              <header><h4 class="nav__title"><i class="fas fa-list-ul"></i> Contents</h4></header>
+              <ul class="toc__menu">
+  <li><a href="#how-to-define-a-customized-distribution">How to Define a Customized Distribution</a>
+    <ul>
+      <li><a href="#1-define-the-distribution-type">1. Define the Distribution Type</a></li>
+      <li><a href="#2-implement-sampling-and-evaluation-of-the-log-pdf">2. Implement Sampling and Evaluation of the log-pdf</a></li>
+      <li><a href="#3-define-helper-functions">3. Define Helper Functions</a>
+        <ul>
+          <li><a href="#31-domain-transformation">3.1 Domain Transformation</a></li>
+          <li><a href="#32-vectorization-support">3.2 Vectorization Support</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#model-internals">Model Internals</a></li>
+  <li><a href="#task-copying">Task Copying</a></li>
+  <li><a href="#maximum-a-posteriori-estimation">Maximum a Posteriori Estimation</a></li>
+  <li><a href="#parallel-sampling">Parallel Sampling</a></li>
+</ul>
+            </nav>
+          </aside>
+        
+        <p><a id="How-to-Define-a-Customized-Distribution-1"></a></p>
+
+<h2 id="how-to-define-a-customized-distribution">How to Define a Customized Distribution</h2>
+
+<p>Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as subtypes of <code class="highlighter-rouge">Distribution</code> type of the Distributions.jl package, as well as corresponding functions.</p>
+
+<p>Below shows a workflow of how to define a customized distribution, using a flat prior as a simple example.</p>
+
+<p><a id=".-Define-the-Distribution-Type-1"></a></p>
+
+<h3 id="1-define-the-distribution-type">1. Define the Distribution Type</h3>
+
+<p>First, define a type of the distribution, as a subtype of a corresponding distribution type in the Distributions.jl package.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">Flat</span> <span class="o">&lt;:</span> <span class="n">ContinuousUnivariateDistribution</span>
+  <span class="n">…</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p><a id=".-Implement-Sampling-and-Evaluation-of-the-log-pdf-1"></a></p>
+
+<h3 id="2-implement-sampling-and-evaluation-of-the-log-pdf">2. Implement Sampling and Evaluation of the log-pdf</h3>
+
+<p>Second, define <code class="highlighter-rouge">rand()</code> and <code class="highlighter-rouge">logpdf()</code>, which will be used to run the model.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Distributions</span><span class="o">.</span><span class="n">rand</span><span class="x">(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">)</span> <span class="o">=</span> <span class="n">rand</span><span class="x">()</span>
+<span class="n">Distributions</span><span class="o">.</span><span class="n">logpdf</span><span class="x">{</span><span class="n">T</span><span class="o">&lt;:</span><span class="n">Real</span><span class="x">}(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">,</span> <span class="n">x</span><span class="o">::</span><span class="n">T</span><span class="x">)</span> <span class="o">=</span> <span class="n">zero</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><a id=".-Define-Helper-Functions-1"></a></p>
+
+<h3 id="3-define-helper-functions">3. Define Helper Functions</h3>
+
+<p>In most cases, it may be required to define helper functions, such as the <code class="highlighter-rouge">minimum</code>, <code class="highlighter-rouge">maximum</code>, <code class="highlighter-rouge">rand</code>, and <code class="highlighter-rouge">logpdf</code> functions, among others.</p>
+
+<p><a id=".1-Domain-Transformation-1"></a></p>
+
+<h4 id="31-domain-transformation">3.1 Domain Transformation</h4>
+
+<p>Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are <code class="highlighter-rouge">minimum()</code> and <code class="highlighter-rouge">maximum()</code>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Distributions</span><span class="o">.</span><span class="n">minimum</span><span class="x">(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">)</span> <span class="o">=</span> <span class="o">-</span><span class="nb">Inf</span>
+<span class="n">Distributions</span><span class="o">.</span><span class="n">maximum</span><span class="x">(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">)</span> <span class="o">=</span> <span class="o">+</span><span class="nb">Inf</span>
+</code></pre></div></div>
+
+<p>Functions for domain transformation which may be required by multivariate or matrix-variate distributions are <code class="highlighter-rouge">size(d)</code>, <code class="highlighter-rouge">link(d, x)</code> and <code class="highlighter-rouge">invlink(d, x)</code>. Please see Turing’s <a href="https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl"><code class="highlighter-rouge">transform.jl</code></a> for examples.</p>
+
+<p><a id=".2-Vectorization-Support-1"></a></p>
+
+<h4 id="32-vectorization-support">3.2 Vectorization Support</h4>
+
+<p>The vectorization syntax follows <code class="highlighter-rouge">rv ~ [distribution]</code>, which requires <code class="highlighter-rouge">rand()</code> and <code class="highlighter-rouge">logpdf()</code> to be called on multiple data points at once. An appropriate implementation for <code class="highlighter-rouge">Flat</code> are shown below.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Distributions</span><span class="o">.</span><span class="n">rand</span><span class="x">(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">,</span> <span class="n">n</span><span class="o">::</span><span class="kt">Int</span><span class="x">)</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">([</span><span class="n">rand</span><span class="x">()</span> <span class="k">for</span> <span class="n">_</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span><span class="x">])</span>
+<span class="n">Distributions</span><span class="o">.</span><span class="n">logpdf</span><span class="x">{</span><span class="n">T</span><span class="o">&lt;:</span><span class="n">Real</span><span class="x">}(</span><span class="n">d</span><span class="o">::</span><span class="n">Flat</span><span class="x">,</span> <span class="n">x</span><span class="o">::</span><span class="kt">Vector</span><span class="x">{</span><span class="n">T</span><span class="x">})</span> <span class="o">=</span> <span class="n">zero</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><a id="Model-Internals-1"></a></p>
+
+<h2 id="model-internals">Model Internals</h2>
+
+<p>The <code class="highlighter-rouge">@model</code> macro accepts a function definition and generates a <code class="highlighter-rouge">Turing.Model</code> struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the <code class="highlighter-rouge">gdemo</code> model as an example, the two code sections below (macro and macro-free) are equivalent.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Turing</span>
+
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+  <span class="c"># Set priors.</span>
+  <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+  <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+
+  <span class="c"># Observe each value of x.</span>
+  <span class="x">[</span><span class="n">x</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))]</span>
+<span class="k">end</span>
+
+<span class="n">sample</span><span class="x">(</span><span class="n">gdemo</span><span class="x">([</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">]),</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">,</span> <span class="mi">5</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Turing</span>
+
+<span class="c"># Initialize a NamedTuple containing our data variables.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">],)</span>
+
+<span class="c"># Create the model function.</span>
+<span class="n">mf</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">sampler</span><span class="x">,</span> <span class="n">model</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Set the accumulated logp to zero.</span>
+    <span class="n">vi</span><span class="o">.</span><span class="n">logp</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c"># If x is provided, use the provided values.</span>
+    <span class="c"># Otherwise, treat x as an empty vector with</span>
+    <span class="c"># two entries.</span>
+    <span class="k">if</span> <span class="n">isdefined</span><span class="x">(</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="x">,</span> <span class="o">:</span><span class="n">x</span><span class="x">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">x</span>
+    <span class="k">else</span> <span class="c"># x is a parameter</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">defaults</span><span class="o">.</span><span class="n">x</span>
+    <span class="k">end</span>
+
+    <span class="c"># Assume s has an InverseGamma distribution.</span>
+    <span class="n">s</span><span class="x">,</span> <span class="n">lp</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">assume</span><span class="x">(</span><span class="n">sampler</span><span class="x">,</span>
+                <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">),</span>
+                <span class="n">Turing</span><span class="o">.</span><span class="n">VarName</span><span class="x">([</span><span class="o">:</span><span class="n">c_s</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">],</span> <span class="s">""</span><span class="x">),</span> <span class="n">vi</span><span class="x">)</span>
+
+    <span class="c"># Add the lp to the accumulated logp.</span>
+    <span class="n">vi</span><span class="o">.</span><span class="n">logp</span> <span class="o">+=</span> <span class="n">lp</span>
+
+    <span class="c"># Assume m has a Normal distribution.</span>
+    <span class="n">m</span><span class="x">,</span> <span class="n">lp</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">assume</span><span class="x">(</span><span class="n">sampler</span><span class="x">,</span>
+                <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">)),</span>
+                <span class="n">Turing</span><span class="o">.</span><span class="n">VarName</span><span class="x">([</span><span class="o">:</span><span class="n">c_m</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">],</span> <span class="s">""</span><span class="x">),</span> <span class="n">vi</span><span class="x">)</span>
+
+    <span class="c"># Add the lp to the accumulated logp.</span>
+    <span class="n">vi</span><span class="o">.</span><span class="n">logp</span> <span class="o">+=</span> <span class="n">lp</span>
+
+    <span class="c"># Observe each value of x[i], according to a</span>
+    <span class="c"># Normal distribution.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+        <span class="n">vi</span><span class="o">.</span><span class="n">logp</span> <span class="o">+=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">observe</span><span class="x">(</span><span class="n">sampler</span><span class="x">,</span>
+                   <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">)),</span>
+                   <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">vi</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c"># Define the default value for x when missing</span>
+<span class="n">defaults</span> <span class="o">=</span> <span class="x">(</span><span class="n">x</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="mi">2</span><span class="x">),)</span>
+
+<span class="c"># Instantiate a Model object.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">Model</span><span class="x">{</span><span class="n">Tuple</span><span class="x">{</span><span class="o">:</span><span class="n">s</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">},</span> <span class="n">Tuple</span><span class="x">{</span><span class="o">:</span><span class="n">x</span><span class="x">}}(</span><span class="n">mf</span><span class="x">,</span> <span class="n">data</span><span class="x">,</span> <span class="n">defaults</span><span class="x">)</span>
+
+<span class="c"># Sample the model.</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.1</span><span class="x">,</span> <span class="mi">5</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p>Note that the <code class="highlighter-rouge">Turing.Model{Tuple{:s, :m}, Tuple{:x, :y}}</code> accepts two parameter tuples. The first set, <code class="highlighter-rouge">Tuple{:s, :m}</code>, represents parameter variables that will be generated by the model, while the second (<code class="highlighter-rouge">Tuple{:x}</code>) contains the variables to be observed.</p>
+
+<p><a id="Task-Copying-1"></a></p>
+
+<h2 id="task-copying">Task Copying</h2>
+
+<p>Turing <a href="https://github.com/JuliaLang/julia/issues/4085">copies</a> Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires we use the <code class="highlighter-rouge">CTask</code> facility which is provided by <a href="https://github.com/TuringLang/Libtask.jl">Libtask</a> to create tasks.</p>
+
+<p><a id="Maximum-a-Posteriori-Estimation-1"></a></p>
+
+<h2 id="maximum-a-posteriori-estimation">Maximum a Posteriori Estimation</h2>
+
+<p>Turing does not currently have built-in methods for calculating the <a href="https://en.wikipedia.org/wiki/Maximum_a_posteriori_estimation">maximum a posteriori</a> (MAP) for a model. This is a goal for Turing’s implementation (see <a href="https://github.com/TuringLang/Turing.jl/issues/605">this issue</a>), but for the moment, we present here a method for estimating the MAP using <a href="https://github.com/JuliaNLSolvers/Optim.jl">Optim.jl</a>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Turing</span>
+
+<span class="c"># Define the simple gdemo model.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+ <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+ <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+ <span class="n">x</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+ <span class="n">y</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+ <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="c"># Define our data points.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mf">1.5</span>
+<span class="n">y</span> <span class="o">=</span> <span class="mf">2.0</span>
+
+<span class="c"># Set up the model call, sample from the prior.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span>
+<span class="n">vi</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">()</span>
+<span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+
+<span class="c"># Define a function to optimize.</span>
+<span class="k">function</span><span class="nf"> nlogp</span><span class="x">(</span><span class="n">sm</span><span class="x">)</span>
+ <span class="n">vi</span><span class="o">.</span><span class="n">vals</span> <span class="o">.=</span> <span class="n">sm</span>
+ <span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">())</span>
+ <span class="o">-</span><span class="n">vi</span><span class="o">.</span><span class="n">logp</span>
+<span class="k">end</span>
+
+<span class="c"># Import Optim.jl.</span>
+<span class="k">using</span> <span class="n">Optim</span>
+
+<span class="c"># Create a starting point, call the optimizer.</span>
+<span class="n">sm_0</span> <span class="o">=</span> <span class="kt">Float64</span><span class="o">.</span><span class="x">(</span><span class="n">vi</span><span class="o">.</span><span class="n">vals</span><span class="x">)</span>
+<span class="n">lb</span> <span class="o">=</span> <span class="x">[</span><span class="mf">0.0</span><span class="x">,</span> <span class="o">-</span><span class="nb">Inf</span><span class="x">]</span>
+<span class="n">ub</span> <span class="o">=</span> <span class="x">[</span><span class="nb">Inf</span><span class="x">,</span> <span class="nb">Inf</span><span class="x">]</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">optimize</span><span class="x">(</span><span class="n">nlogp</span><span class="x">,</span> <span class="n">lb</span><span class="x">,</span> <span class="n">ub</span><span class="x">,</span> <span class="n">sm_0</span><span class="x">,</span> <span class="n">Fminbox</span><span class="x">())</span>
+</code></pre></div></div>
+
+<p><a id="Parallel-Sampling-1"></a></p>
+
+<h2 id="parallel-sampling">Parallel Sampling</h2>
+
+<p>Turing does not natively support parallel sampling. Currently, users must perform additional structual support. Note that running chains in parallel may cause unintended issues.</p>
+
+<p>Below is an example of how to run samplers in parallel. Note that each process must be given a separate seed, otherwise the samples generated by independent processes will be equivalent and unhelpful to inference.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Distributed</span>
+<span class="n">addprocs</span><span class="x">(</span><span class="mi">4</span><span class="x">)</span>
+<span class="nd">@everywhere</span> <span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Set the progress to false to avoid too many notifications.</span>
+<span class="nd">@everywhere</span> <span class="n">turnprogress</span><span class="x">(</span><span class="nb">false</span><span class="x">)</span>
+
+<span class="c"># Set a different seed for each process.</span>
+<span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">procs</span><span class="x">()</span>
+    <span class="nd">@fetch</span> <span class="nd">@spawnat</span> <span class="n">i</span> <span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="n">rand</span><span class="x">(</span><span class="kt">Int64</span><span class="x">))</span>
+<span class="k">end</span>
+
+<span class="c"># Define the model using @everywhere.</span>
+<span class="nd">@everywhere</span> <span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">eachindex</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+        <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c"># Sampling setup.</span>
+<span class="n">num_chains</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">sampler</span> <span class="o">=</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">gdemo</span><span class="x">([</span><span class="mf">1.2</span><span class="x">,</span> <span class="mf">3.5</span><span class="x">]</span>
+
+<span class="c"># Run all samples.</span>
+<span class="n">chns</span> <span class="o">=</span> <span class="n">reduce</span><span class="x">(</span><span class="n">chainscat</span><span class="x">,</span> <span class="n">pmap</span><span class="x">(</span><span class="n">x</span><span class="o">-&gt;</span><span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span><span class="n">sampler</span><span class="x">),</span><span class="mi">1</span><span class="o">:</span><span class="n">num_chains</span><span class="x">))</span>
+</code></pre></div></div>
+
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <!-- <a href="#" class="pagination--pager disabled">Previous</a> -->
+    
+    
+      <a href="/docs/library/" class="pagination--pager next" title="Library
+">Next: Library
+</a>
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

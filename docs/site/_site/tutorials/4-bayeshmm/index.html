@@ -1,0 +1,613 @@
+<!doctype html>
+<!--
+  Minimal Mistakes Jekyll Theme 4.13.0 by Michael Rose
+  Copyright 2013-2018 Michael Rose - mademistakes.com | @mmistakes
+  Free for personal and commercial use under the MIT license
+  https://github.com/mmistakes/minimal-mistakes/blob/master/LICENSE.txt
+-->
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+
+<!-- begin _includes/seo.html --><title>Bayesian Hidden Markov Models - Turing.jl</title>
+<meta name="description" content="This tutorial illustrates training Bayesian Hidden Markov Models (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see An introduction to Hidden Markov Models and Bayesian Networks (Ghahramani, 2001).">
+
+
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Turing.jl">
+<meta property="og:title" content="Bayesian Hidden Markov Models">
+<meta property="og:url" content="http://localhost:4000/tutorials/4-bayeshmm/">
+
+
+  <meta property="og:description" content="This tutorial illustrates training Bayesian Hidden Markov Models (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see An introduction to Hidden Markov Models and Bayesian Networks (Ghahramani, 2001).">
+
+
+
+
+
+
+
+  <meta property="article:published_time" content="2019-06-08T21:56:58-04:00">
+
+
+
+
+
+
+<link rel="canonical" href="http://localhost:4000/tutorials/4-bayeshmm/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- end _includes/seo.html -->
+
+
+
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
+
+
+<link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
+
+<link href="/feed.xml" type="application/atom+xml" rel="alternate" title="Turing.jl Feed">
+
+<!-- http://t.co/dKP3o1e -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script>
+  document.documentElement.className = document.documentElement.className.replace(/\bno-js\b/g, '') + ' js ';
+</script>
+
+<!-- For all browsers -->
+<link rel="stylesheet" href="/assets/css/main.css">
+<link rel="stylesheet" href="/assets/Documenter.css">
+
+<!--[if lte IE 9]>
+  <style>
+    /* old IE unsupported flexbox fixes */
+    .greedy-nav .site-title {
+      padding-right: 3em;
+    }
+    .greedy-nav button {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+    }
+  </style>
+<![endif]-->
+
+
+
+    <!-- start custom head snippets -->
+
+<!-- insert favicons. use https://realfavicongenerator.net/ -->
+
+<!-- end custom head snippets -->
+
+  </head>
+
+  <body class="layout--single">
+
+    <!--[if lt IE 9]>
+<div class="notice--danger align-center" style="margin: 0;">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</div>
+<![endif]-->
+
+
+    
+      <div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav">
+        <a class="site-title" href="/">Turing.jl </a>
+        <!-- Turing.jl -->
+        <ul class="visible-links"><li class="masthead__menu-item">
+              <a href="/" >Home</a>
+            </li><li class="masthead__menu-item">
+              <a href="/docs/" >Documentation</a>
+            </li><li class="masthead__menu-item">
+              <a href="/tutorials/" >Tutorials</a>
+            </li><li class="masthead__menu-item">
+              <a href="https://github.com/TuringLang/Turing.jl" >GitHub</a>
+            </li></ul>
+        
+        <button class="search__toggle" type="button">
+          <svg class="icon" width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.99 16">
+            <path d="M15.5,13.12L13.19,10.8a1.69,1.69,0,0,0-1.28-.55l-0.06-.06A6.5,6.5,0,0,0,5.77,0,6.5,6.5,0,0,0,2.46,11.59a6.47,6.47,0,0,0,7.74.26l0.05,0.05a1.65,1.65,0,0,0,.5,1.24l2.38,2.38A1.68,1.68,0,0,0,15.5,13.12ZM6.4,2A4.41,4.41,0,1,1,2,6.4,4.43,4.43,0,0,1,6.4,2Z" transform="translate(-.01)"></path>
+          </svg>
+        </button>
+        
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">Toggle Menu</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>
+
+    
+
+    <div class="initial-content">
+      
+
+
+
+<div id="main" role="main">
+  
+  <div class="sidebar sticky">
+  
+  
+    
+      
+      
+      
+    
+    
+      
+
+<nav class="nav__list">
+  
+  <input id="ac-toc" name="accordion-toc" type="checkbox" />
+  <label for="ac-toc">Toggle Menu</label>
+  <ul class="nav__items">
+    
+      <li>
+        
+          <span class="nav__sub-title">Tutorials</span>
+        
+
+        
+        <ul>
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/" class="">Home</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/0-introduction/" class="">Introduction to Turing</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/1-gaussianmixturemodel/" class="">Gaussian Mixture Models</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/2-logisticregression/" class="">Bayesian Logistic Regression</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/3-bayesnn/" class="">Bayesian Neural Networks</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/4-bayeshmm/" class="active">Hidden Markov Models</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/5-linearregression/" class="">Linear Regression</a></li>
+            </div>
+
+          
+            
+            
+
+            
+            
+
+            <div class="sidebar-link">
+            <li><a href="/tutorials/6-infinitemixturemodel/" class="">Infinite Mixture Models</a></li>
+            </div>
+
+          
+        </ul>
+        
+      </li>
+    
+  </ul>
+</nav>
+
+    
+  
+  </div>
+
+
+  <article class="page" itemscope itemtype="http://schema.org/CreativeWork">
+    <meta itemprop="headline" content="Bayesian Hidden Markov Models">
+    <meta itemprop="description" content="This tutorial illustrates training Bayesian Hidden Markov Models (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see An introduction to Hidden Markov Models and Bayesian Networks (Ghahramani, 2001).">
+    
+    
+
+    <div class="page__inner-wrap">
+      
+        <header>
+          <h1 id="page-title" class="page__title" itemprop="headline">Bayesian Hidden Markov Models
+</h1>
+          
+        </header>
+      
+
+      <section class="page__content" itemprop="text">
+        
+          <aside class="sidebar__right sticky">
+            <nav class="toc">
+              <header><h4 class="nav__title"><i class="fas fa-file-alt"></i> </h4></header>
+              <ul class="toc__menu">
+  <li><a href="#simple-state-detection">Simple State Detection</a></li>
+  <li><a href="#modifying-a-model-to-generate-synthetic-data">Modifying a Model to Generate Synthetic Data</a></li>
+</ul>
+            </nav>
+          </aside>
+        
+        <p>This tutorial illustrates training Bayesian <a href="https://en.wikipedia.org/wiki/Hidden_Markov_model">Hidden Markov Models</a> (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see <a href="http://mlg.eng.cam.ac.uk/zoubin/papers/ijprai.pdf">An introduction to Hidden Markov Models and Bayesian Networks</a> (Ghahramani, 2001).</p>
+
+<p>Let’s load the libraries we’ll need. We also set a random seed (for reproducibility) and the automatic differentiation backend to forward mode (more <a href="http://turing.ml/docs/autodiff/">here</a> on why this is useful).</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Load libraries.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Set a random seed and use the forward_diff AD mode.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">1234</span><span class="x">);</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">setadbackend</span><span class="x">(</span><span class="o">:</span><span class="n">forward_diff</span><span class="x">);</span>
+</code></pre></div></div>
+
+<h2 id="simple-state-detection">Simple State Detection</h2>
+
+<p>In this example, we’ll use something where the states and emission parameters are straightforward.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Define the emission parameter.</span>
+<span class="n">y</span> <span class="o">=</span> <span class="x">[</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span> <span class="x">];</span>
+<span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">);</span>  <span class="n">K</span> <span class="o">=</span> <span class="mi">3</span><span class="x">;</span>
+
+<span class="c"># Plot the data we just made.</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">xlim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">15</span><span class="x">),</span> <span class="n">ylim</span> <span class="o">=</span> <span class="x">(</span><span class="o">-</span><span class="mi">1</span><span class="x">,</span><span class="mi">5</span><span class="x">),</span> <span class="n">size</span> <span class="o">=</span> <span class="x">(</span><span class="mi">500</span><span class="x">,</span> <span class="mi">250</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/4_BayesHmm_2_1.svg" alt="" /></p>
+
+<p>We can see that we have three states, one for each height of the plot (1, 2, 3). This height is also our emission parameter, so state one produces a value of one, state two produces a value of two, and so on.</p>
+
+<p>Ultimately, we would like to understand three major parameters:</p>
+
+<ol>
+  <li>The transition matrix. This is a matrix that assigns a probability of switching from one state to any other state, including the state that we are already in.</li>
+  <li>The emission matrix, which describes a typical value emitted by some state. In the plot above, the emission parameter for state one is simply one.</li>
+  <li>The state sequence is our understanding of what state we were actually in when we observed some data. This is very important in more sophisticated HMM models, where the emission value does not equal our state.</li>
+</ol>
+
+<p>With this in mind, let’s set up our model. We are going to use some of our knowledge as modelers to provide additional information about our system. This takes the form of the prior on our emission parameter.</p>
+
+<p>$$
+m_i \sim Normal(i, 0.5), \space m = {1,2,3}
+$$</p>
+
+<p>Simply put, this says that we expect state one to emit values in a Normally distributed manner, where the mean of each state’s emissions is that state’s value. The variance of 0.5 helps the model converge more quickly — consider the case where we have a variance of 1 or 2. In this case, the likelihood of observing a 2 when we are in state 1 is actually quite high, as it is within a standard deviation of the true emission value. Applying the prior that we are likely to be tightly centered around the mean prevents our model from being too confused about the state that is generating our observations.</p>
+
+<p>The priors on our transition matrix are noninformative, using <code class="highlighter-rouge">T[i] ~ Dirichlet(ones(K)/K)</code>. The Dirichlet prior used in this way assumes that the state is likely to change to any other state with equal probability. As we’ll see, this transition matrix prior will be overwritten as we observe data.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Turing model definition.</span>
+<span class="nd">@model</span> <span class="n">BayesHmm</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Get observation length.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">)</span>
+
+    <span class="c"># State sequence.</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">tzeros</span><span class="x">(</span><span class="kt">Int</span><span class="x">,</span> <span class="n">N</span><span class="x">)</span>
+
+    <span class="c"># Emission matrix.</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span>
+
+    <span class="c"># Transition matrix.</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}}(</span><span class="n">undef</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span>
+
+    <span class="c"># Assign distributions to each element</span>
+    <span class="c"># of the transition matrix and the</span>
+    <span class="c"># emission matrix.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span>
+        <span class="n">T</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Dirichlet</span><span class="x">(</span><span class="n">ones</span><span class="x">(</span><span class="n">K</span><span class="x">)</span><span class="o">/</span><span class="n">K</span><span class="x">)</span>
+        <span class="n">m</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">i</span><span class="x">,</span> <span class="mf">0.5</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="c"># Observe each point of the input.</span>
+    <span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">K</span><span class="x">)</span>
+    <span class="n">y</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">2</span><span class="o">:</span><span class="n">N</span>
+        <span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">vec</span><span class="x">(</span><span class="n">T</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="x">]]))</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>We will use a combination of two samplers (<a href="http://turing.ml/docs/library/#Turing.HMC">HMC</a> and <a href="http://turing.ml/docs/library/#Turing.PG">Particle Gibbs</a>) by passing them to the <a href="http://turing.ml/docs/library/#Turing.Gibbs">Gibbs</a> sampler. The Gibbs sampler allows for compositional inference, where we can utilize different samplers on different parameters.</p>
+
+<p>In this case, we use HMC for <code class="highlighter-rouge">m</code> and <code class="highlighter-rouge">T</code>, representing the emission and transition matrices respectively. We use the Particle Gibbs sampler for <code class="highlighter-rouge">s</code>, the state sequence. You may wonder why it is that we are not assigning <code class="highlighter-rouge">s</code> to the HMC sampler, and why it is that we need compositional Gibbs sampling at all.</p>
+
+<p>The parameter <code class="highlighter-rouge">s</code> is not a continuous variable. It is a vector of <strong>integers</strong>, and thus Hamiltonian methods like HMC and <a href="http://turing.ml/docs/library/#-turingnuts--type">NUTS</a> won’t work correctly. Gibbs allows us to apply the right tools to the best effect. If you are a particularly advanced user interested in higher performance, you may benefit from setting up your Gibbs sampler to use <a href="http://turing.ml/docs/autodiff/#compositional-sampling-with-differing-ad-modes">different automatic differentiation</a> backends for each parameter space.</p>
+
+<p>Time to run our sampler.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">g</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="x">(</span><span class="mi">1000</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mf">0.001</span><span class="x">,</span> <span class="mi">7</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">,</span> <span class="o">:</span><span class="n">T</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="mi">1</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">))</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">BayesHmm</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="mi">3</span><span class="x">),</span> <span class="n">g</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>Let’s see how well our chain performed. Ordinarily, using the <code class="highlighter-rouge">describe</code> function from <a href="https://github.com/TuringLang/MCMCChains.jl">MCMCChains</a> would be a good first step, but we have generated a lot of parameters here (<code class="highlighter-rouge">s[1]</code>, <code class="highlighter-rouge">s[2]</code>, <code class="highlighter-rouge">m[1]</code>, and so on). It’s a bit easier to show how our model performed graphically.</p>
+
+<p>The code below generates an animation showing the graph of the data above, and the data our model generates in each sample.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import StatsPlots for animating purposes.</span>
+<span class="k">using</span> <span class="n">StatsPlots</span>
+
+<span class="c"># Extract our m and s parameters from the chain.</span>
+<span class="n">m_set</span> <span class="o">=</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">m</span><span class="x">]</span>
+<span class="n">s_set</span> <span class="o">=</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">s</span><span class="x">]</span>
+
+<span class="c"># Iterate through the MCMC samples.</span>
+<span class="n">Ns</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="mi">500</span>
+
+<span class="c"># Make an animation.</span>
+<span class="n">animation</span> <span class="o">=</span> <span class="nd">@animate</span> <span class="k">for</span> <span class="x">(</span><span class="n">i</span><span class="x">,</span> <span class="n">N</span><span class="x">)</span> <span class="k">in</span> <span class="n">enumerate</span><span class="x">(</span><span class="n">Ns</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m_set</span><span class="x">[</span><span class="n">N</span><span class="x">];</span> <span class="n">s</span> <span class="o">=</span> <span class="n">s_set</span><span class="x">[</span><span class="n">N</span><span class="x">];</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">plot</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">c</span> <span class="o">=</span> <span class="o">:</span><span class="n">red</span><span class="x">,</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="x">(</span><span class="mi">500</span><span class="x">,</span> <span class="mi">250</span><span class="x">),</span>
+        <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"Time"</span><span class="x">,</span>
+        <span class="n">ylabel</span> <span class="o">=</span> <span class="s">"State"</span><span class="x">,</span>
+        <span class="n">legend</span> <span class="o">=</span> <span class="o">:</span><span class="n">topright</span><span class="x">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s">"True data"</span><span class="x">,</span>
+        <span class="n">xlim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">15</span><span class="x">),</span>
+        <span class="n">ylim</span> <span class="o">=</span> <span class="x">(</span><span class="o">-</span><span class="mi">1</span><span class="x">,</span><span class="mi">5</span><span class="x">));</span>
+    <span class="n">plot!</span><span class="x">(</span><span class="n">p</span><span class="x">,</span> <span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">],</span> <span class="n">c</span> <span class="o">=</span> <span class="o">:</span><span class="n">blue</span><span class="x">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s">"Sample </span><span class="si">$$</span><span class="s">N"</span><span class="x">)</span>
+<span class="k">end</span> <span class="n">every</span> <span class="mi">10</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><img src="https://user-images.githubusercontent.com/422990/50612436-de588980-0e8e-11e9-8635-4e3e97c0d7f9.gif" alt="animation" /></p>
+
+<p>Looks like our model did a pretty good job, but we should also check to make sure our chain converges. A quick check is to examine whether the diagonal (representing the probability of remaining in the current state) of the transition matrix appears to be stationary. The code below extracts the diagonal and shows a traceplot of each persistence probability.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">T_diag_trace</span> <span class="o">=</span> <span class="x">[</span><span class="n">t</span><span class="x">[</span><span class="n">i</span><span class="x">][</span><span class="n">i</span><span class="x">]</span> <span class="k">for</span> <span class="n">t</span> <span class="k">in</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">T</span><span class="x">],</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span><span class="x">];</span>
+
+<span class="n">plot</span><span class="x">(</span><span class="n">T_diag_trace</span><span class="x">,</span> <span class="n">ylim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">1</span><span class="x">),</span>
+     <span class="n">label</span> <span class="o">=</span> <span class="x">[</span><span class="s">"T[</span><span class="si">$$</span><span class="s">i,</span><span class="si">$$</span><span class="s">i]"</span> <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span><span class="x">],</span>
+     <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"Sample"</span><span class="x">,</span> <span class="n">ylabel</span> <span class="o">=</span> <span class="s">"Persistence probability"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/4_BayesHmm_6_1.svg" alt="" /></p>
+
+<p>A cursory examination of the traceplot above indicates that at least <code class="highlighter-rouge">T[3,3]</code> and possibly <code class="highlighter-rouge">T[2,2]</code> have converged to something resembling stationary. <code class="highlighter-rouge">T[1,1]</code>, on the other hand, has a slight “wobble”, and seems less consistent than the others. We can use the diagnostic functions provided by <a href="https://github.com/TuringLang/MCMCChains.jl">MCMCChains</a> to engage in some formal tests, like the Heidelberg and Welch diagnostic:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">heideldiag</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Burn-in Stationarity p-value    Mean   Halfwidth Test
+ T[2][1]     500            0  0.0002    0.8246    0.0089    1
+ T[2][2]     500            0  0.0012    0.1497    0.0098    1
+ T[2][3]     200            1  0.1140    0.0249    0.0022    1
+  lf_num     500            0     NaN    7.0000    0.0000    1
+    s[4]     500            0     NaN    2.0000    0.0000    1
+    s[2]     500            0     NaN    2.0000    0.0000    1
+    s[9]     500            0     NaN    1.0000    0.0000    1
+    s[1]     500            0     NaN    2.0000    0.0000    1
+    s[6]     500            0     NaN    1.0000    0.0000    1
+   s[14]     500            0     NaN    2.0000    0.0000    1
+ T[1][1]     100            1  0.0969    0.6736    0.0257    1
+ T[1][2]       0            1  0.0898    0.2807    0.0216    1
+ T[1][3]     300            1  0.5218    0.0455    0.0034    1
+ elapsed     100            1  0.3724    0.0602    0.0038    1
+   s[12]     500            0     NaN    1.0000    0.0000    1
+    s[8]     500            0     NaN    1.0000    0.0000    1
+   s[11]     500            0     NaN    1.0000    0.0000    1
+ T[3][1]       0            1  0.3270    0.4755    0.0131    1
+ T[3][2]       0            1  0.3355    0.4547    0.0120    1
+ T[3][3]     500            0  0.0176    0.0612    0.0055    1
+ epsilon       0            1  1.0000    0.0010    0.0000    1
+    s[7]     500            0     NaN    1.0000    0.0000    1
+   s[10]     500            0     NaN    1.0000    0.0000    1
+    s[3]     500            0     NaN    2.0000    0.0000    1
+    m[1]     100            1  0.4358    2.3220    0.0191    1
+    m[2]     200            1  0.1679    1.0053    0.0120    1
+eval_num     500            0     NaN   18.0000    0.0000    1
+    s[5]     500            0     NaN    1.0000    0.0000    1
+   s[15]     500            0     NaN    2.0000    0.0000    1
+   s[13]     500            0     NaN    1.0000    0.0000    1
+      lp       0            1  0.1424 -138.8795   14.2975    0
+    m[3]     400            1  0.0697    0.0893    0.1523    0
+</code></pre></div></div>
+
+<p>The p-values on the test suggest that we cannot reject the hypothesis that the observed sequence comes from a stationary distribution, so we can be somewhat more confident that our transition matrix has converged to something reasonable.</p>
+
+<h2 id="modifying-a-model-to-generate-synthetic-data">Modifying a Model to Generate Synthetic Data</h2>
+
+<p>With our learned parameters, we can change our model to generate synthetic data. You can do this from the first time you specify a model, but it is conceptually easier to separate these tasks and avoid muddying the waters.</p>
+
+<p>In order to create a model that supports this synthetic generating feature, there are several changes to your typical model specification that need to be made. A general guide can be found <a href="http://turing.ml/docs/guide/#generating-vectors-of-quantities">here</a>.</p>
+
+<ol>
+  <li>Any parameter you were interested in learning before (<code class="highlighter-rouge">s</code>, <code class="highlighter-rouge">m</code>, <code class="highlighter-rouge">T</code>) needs to be moved to the argument line of the model.</li>
+  <li>Assign those parameters default values, such as <code class="highlighter-rouge">zeros(Real, 10)</code>, or whatever is appropriate.</li>
+  <li>Make sure you add a <code class="highlighter-rouge">return</code> line at the end of the model containing the variable(s) you want to generate. In our case, this is <code class="highlighter-rouge">y</code>.</li>
+</ol>
+
+<p>And that’s about it! The code below presents the original <code class="highlighter-rouge">BayesHmm</code> model with the necessary changes included.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generative model.</span>
+<span class="nd">@model</span> <span class="n">BayesHmm</span><span class="x">(</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="mi">15</span><span class="x">),</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}}(</span><span class="n">undef</span><span class="x">,</span> <span class="mi">3</span><span class="x">),</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="n">Real</span><span class="x">}(</span><span class="n">undef</span><span class="x">,</span> <span class="mi">3</span><span class="x">),</span>
+    <span class="n">K</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Get observation length.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">)</span>
+
+    <span class="c"># State sequence.</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">tzeros</span><span class="x">(</span><span class="kt">Int</span><span class="x">,</span> <span class="n">N</span><span class="x">)</span>
+
+    <span class="c"># Assign distributions to each element</span>
+    <span class="c"># of the transition matrix and the</span>
+    <span class="c"># emission matrix.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span>
+        <span class="n">T</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Dirichlet</span><span class="x">(</span><span class="n">ones</span><span class="x">(</span><span class="n">K</span><span class="x">)</span><span class="o">/</span><span class="n">K</span><span class="x">)</span>
+        <span class="n">m</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">i</span><span class="x">,</span> <span class="mf">0.5</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="c"># Observe each point of the input.</span>
+    <span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">K</span><span class="x">)</span>
+    <span class="n">y</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">2</span><span class="o">:</span><span class="n">N</span>
+        <span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">vec</span><span class="x">(</span><span class="n">T</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="x">]]))</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="k">return</span> <span class="n">y</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>Let’s extract the parameters we learned from our chain. We’re only using the samples starting from 200 to discard the burn-in period.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">learned_T</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">T</span><span class="x">][</span><span class="mi">200</span><span class="o">:</span><span class="k">end</span><span class="x">]);</span>
+<span class="n">learned_m</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">m</span><span class="x">][</span><span class="mi">200</span><span class="o">:</span><span class="k">end</span><span class="x">]);</span>
+</code></pre></div></div>
+
+<p>Finally, we can call our model by passing <code class="highlighter-rouge">nothing</code> into our parameter of interest, and taking a look at it. Note that we call our model using <code class="highlighter-rouge">BayesHmm(nothing, learned_T, learned_m, 3)()</code> with an extra set of parentheses at the end. For more on this behaviour, see <a href="http://turing.ml/docs/guide/#sampling-from-the-prior">this</a> section of the guide focusing on sampling from the prior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate a single sequence.</span>
+<span class="n">generated_data</span> <span class="o">=</span> <span class="n">BayesHmm</span><span class="x">(</span><span class="nb">nothing</span><span class="x">,</span> <span class="n">learned_T</span><span class="x">,</span> <span class="n">learned_m</span><span class="x">,</span> <span class="mi">3</span><span class="x">)()</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">generated_data</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="/tutorials/figures/4_BayesHmm_10_1.svg" alt="" /></p>
+
+<p>It doesn’t look exactly like our model, but it should have all the same properties. Notice that the spikes to level 3 are quite rare, not unlike our original data set.</p>
+
+        
+      </section>
+
+      <footer class="page__meta">
+        
+        
+
+
+        
+      </footer>
+
+      
+
+      
+  <nav class="pagination">
+    
+      <a href="/tutorials/3-bayesnn/" class="pagination--pager prev" title="Bayesian Neural Networks
+">Previous: Bayesian Neural Networks
+</a>
+    
+    
+      <a href="/tutorials/6-infinitemixturemodel/" class="pagination--pager next" title="Probabilistic Modelling using the Infinite Mixture Model
+">Next: Probabilistic Modelling using the Infinite Mixture Model
+</a>
+    
+  </nav>
+
+
+    </div>
+
+    
+  </article>
+
+  
+  
+</div>
+    </div>
+
+    
+      <div class="search-content">
+        <div class="search-content__inner-wrap"><input type="text" id="search" class="search-input" tabindex="-1" placeholder="Enter your search term..." />
+    <div id="results" class="results"></div></div>
+      </div>
+    
+
+    <div class="page__footer">
+      <footer>
+        <!-- start custom footer snippets -->
+
+<!-- end custom footer snippets -->
+        <!-- 
+<div class="page__footer-copyright">&copy; 2019 Turing.jl
+ -->
+      </footer>
+    </div>
+
+    
+  <script src="/assets/js/main.min.js"></script>
+  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+
+
+
+
+<script src="/assets/js/lunr/lunr.min.js"></script>
+<script src="/assets/js/lunr/lunr-store.js"></script>
+<script src="/assets/js/lunr/lunr-en.js"></script>
+
+
+
+
+
+  </body>
+</html>

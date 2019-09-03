@@ -4,22 +4,22 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="content-language" content="en">
-  
+
     <meta name="viewport" content="width=device-width, initial-scale=1">
-  
+
     <title>{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}</title>
     <meta name="description" content="{% if page.excerpt %}{{ page.excerpt | strip_html | strip_newlines | truncate: 160 }}{% else %}{{ site.description }}{% endif %}">
     {% if site.author %}<meta name="author" content="{{ site.author }}">{% endif %}
-    <meta name="theme-color" content="{{ site.themeColor }}">    
+    <meta name="theme-color" content="{{ site.themeColor }}">
     <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  
+
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
     <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
-  
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="canonical" href="{{ page.url | replace:'index.html','' | prepend: site.baseurl | prepend: site.url }}">
     <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="{{ "/feed.xml" | prepend: site.baseurl | prepend: site.url }}">
-    <meta name="lang:clipboard.copy" content="Copy to clipboard">      
+    <meta name="lang:clipboard.copy" content="Copy to clipboard">
     <meta name="lang:clipboard.copied" content="Copied to clipboard">
     <meta name="lang:search.language" content="en">
     <meta name="lang:search.pipeline.stopwords" content="True">
@@ -27,25 +27,27 @@
     <meta name="lang:search.result.none" content="No matching documents">
     <meta name="lang:search.result.one" content="1 matching document">
     <meta name="lang:search.result.other" content="# matching documents">
-    <meta name="lang:search.tokenizer" content="[\s\-]+">  
+    <meta name="lang:search.tokenizer" content="[\s\-]+">
+    <script src="/versions.js"></script>
     <script src="{{ site.baseurl }}/assets/js/modernizr.74668098.js"></script>
-    <link rel="shortcut icon" href="{{ site.baseurl }}/assets/img/favicon.ico"> 
+    <link rel="shortcut icon" href="{{ site.baseurl }}/assets/img/favicon.ico">
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/main.css">
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/palette.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/header.css">
 
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-  
+
     {% if page.url == "/" %}
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/index.css">
     {% endif %}
 
-  </head> 
+  </head>
 
   <body dir="ltr" data-md-color-primary="{{ site.themeColor }}" data-md-color-accent="{{ site.accentColor }}">
     {% include navigation.html %}
 
-    <div class="md-container">         
+    <div class="md-container">
         <main class="md-main">
             <div class="md-main__inner md-grid full-width" data-md-component="container">
             {% include sidebar.html %}
@@ -55,7 +57,7 @@
             </div>
         </main>
     </div>
-    
+
     {% include footer.html %}
 
     <script src="{{ site.baseurl }}/assets/js/application.js"></script>
@@ -68,7 +70,8 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="{{ site.baseurl }}/assets/js/index.js"></script>
     {% endif %}
-    
+    <script src="{{ site.baseurl }}/assets/js/version-switch.js"></script>
+
     {% include headers.html %}
     {% include tags.html %}
     {% include scrolltop.html %}
