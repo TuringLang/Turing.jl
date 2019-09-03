@@ -6,7 +6,7 @@ Wraps the given VI algorithm `alg` to perform computations batch-wise rather tha
 using the full dataset.
 
 When using mini-batches for gradient estimation rather than the entire dataset,
-the method is sometimes referred to as _Stochastic Variational Inference (SVI)_.
+the method is sometimes referred to as _Stochastic Variational Inference (SVI)_.[1, 2]
 
 This will also, when possible, compute whatever objective batch-wise. For example,
 if one runs `elbo(svi, ...)` rather than `elbo(advi, ...)` we will compute the
@@ -72,6 +72,10 @@ We can also evaluate the `elbo` batch-wise after fitting:
 # compute ELBO using 1000 samples
 elbo(svi, q, m, 1000)
 ```
+
+# References
+[1] Hoffman, M., Blei, D. M., Wang, C., & Paisley, J., Stochastic Variational Inference, CoRR, (),  (2012). 
+[2] Zhang, C., Butepage, J., Kjellstrom, H., & Mandt, S., Advances in variational inference, CoRR, (),  (2017). 
 """
 struct SVI{AD, A, D, F} <: VariationalInference{AD} where {A <: VariationalInference{AD}, D, F}
     alg::A
