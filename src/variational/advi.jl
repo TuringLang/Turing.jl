@@ -66,7 +66,7 @@ function (elbo::ELBO)(
 end
 
 function (elbo::ELBO)(
-    alg::ADVI,
+    alg::VariationalInference,
     q::TransformedDistribution{<: TuringDiagNormal},
     model::Model,
     num_samples

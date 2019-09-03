@@ -8,6 +8,8 @@ function SVI(alg::A, data::D, batch::F, n::Int) where {AD, A <: VariationalInfer
     return SVI{AD, A, D, F}(alg, data, batch, n)
 end
 
+SVI(alg, data, batch) = SVI(alg, data, batch, size(first(data))[end])
+
 alg_str(alg::SVI) = "SVI{$(alg_str(alg.alg))}"
 
 function optimize!(
@@ -22,8 +24,18 @@ function optimize!(
     samples_per_step = svi.alg.samples_per_step
     max_iters = svi.alg.max_iters
 
-    s = first(keys(svi.data))
-    total_iters = Integer(floor(length(svi.data[s]) / length(model.data[s]))) * max_iters
+    s = first(keys(svi.data))  # one of the symbols to be changed in the batch
+    n = svi.n # total number of samples
+    batch_size = size(model.data[s])[end]
+
+    # total number of iterations needed to get through a full dataset once
+    total_iters = Integer(floor(n / batch_size)) * max_iters
+
+    # fail we're not going through the entire dataset
+    a = length(svi.data[s]) / length(model.data[s])
+    if !((a - Integer(floor(a))) == 0.0)
+        @warn "number of samples $n is not an integer multiple of $batch_size"
+    end
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
@@ -44,9 +56,9 @@ function optimize!(
     # add criterion? A running mean maybe?
     time_elapsed = @elapsed while (i < max_iters) # & converged
 
-        for batch in svi.batch(model, svi.data)
+        for batch in svi.batch(svi.data, batch_size)
             update_data!(model, batch)
-            grad!(vo, svi.alg, q, model, θ, diff_result, samples_per_step, svi.n / length(batch))
+            grad!(vo, svi.alg, q, model, θ, diff_result, samples_per_step, n / length(batch))
 
             # apply update rule
             Δ = DiffResults.gradient(diff_result)
@@ -71,10 +83,19 @@ function (elbo::ELBO)(
     θ::AbstractVector{T},
     num_samples
 ) where T <: Real
+    # get the batch-size
+    s = first(keys(svi.data))
+    n = svi.n
+    batch_size = size(model.data[s])[end]
+
+    # weight to ensure we're only adding 1 × entropy(q) rather than n × entropy(q)
+    w = n / batch_size
+
     elbo_acc = 0.0
-    for batch in svi.batch(model, svi.data)
+
+    for batch in svi.batch(svi.data, batch_size)
         update_data!(model, batch)
-        elbo_acc += elbo(svi.alg, q, model, θ, num_samples)
+        elbo_acc += elbo(svi.alg, q, model, θ, num_samples, w) / w
     end
 
     return elbo_acc

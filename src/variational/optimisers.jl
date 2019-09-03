@@ -9,7 +9,7 @@ mutable struct TruncatedADAGrad
     acc::IdDict
 end
 
-function TruncatedADAGrad(η = 0.1, τ = 1.0, n = 100)
+function TruncatedADAGrad(η = 0.1, τ = 1.0, n = 10)
     TruncatedADAGrad(η, τ, n, IdDict(), IdDict())
 end
 
