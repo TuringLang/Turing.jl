@@ -49,3 +49,52 @@ end
 function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer})
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
 end
+
+
+struct OrderedLogistic{T1, T2<:AbstractVector} <: DiscreteUnivariateDistribution
+   η::T1
+   cutpoints::T2
+
+   function OrderedLogistic(η, cutpoints)
+        if !issorted(cutpoints)
+            error("cutpoints are not sorted")
+        end
+        return new{typeof(η), typeof(cutpoints)}(η, cutpoints)
+   end
+
+end
+
+function Distributions.logpdf(d::OrderedLogistic, k::Int)
+
+    K = length(d.cutpoints)+1
+
+    c =  d.cutpoints
+
+    if k==1
+        logp= - softplus(-(c[k]-d.η))  #logp= log(logistic(c[k]-d.η))
+    elseif k<K
+        logp= log(logistic(c[k]-d.η) - logistic(c[k-1]-d.η))
+    else
+        logp= - softplus(c[k-1]-d.η)  #logp= log(1-logistic(c[k-1]-d.η))
+    end
+
+    return logp
+end
+
+function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
+    cutpoints = d.cutpoints
+    η = d.η
+
+    K = length(cutpoints)+1
+    c = vcat(-Inf, cutpoints, Inf)
+
+    ps = [logistic(η - i[1]) - logistic(η - i[2]) for i in zip(c[1:(end-1)],c[2:end])]
+
+    k = rand(rng, Categorical(ps))
+
+    if all(ps.>0)
+        return(k)
+    else
+        return(-Inf)
+    end
+end

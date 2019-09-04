@@ -187,7 +187,7 @@ export  @model,                 # modelling
         PIMH,
         PMMH,
         IPMCMC,
-        
+
         vi,                    # variational inference
         ADVI,
 
@@ -204,6 +204,7 @@ export  @model,                 # modelling
         Flat,
         FlatPos,
         BinomialLogit,
-        VecBinomialLogit
+        VecBinomialLogit,
+        OrderedLogistic
 
 end
