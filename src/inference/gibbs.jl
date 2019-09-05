@@ -39,17 +39,19 @@ end
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
 transition_type(spl::Sampler{<:Gibbs}) = typeof(transition(spl))
 
-mutable struct GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}, T<:NamedTuple} <: AbstractSamplerState
+"""
+    GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}}
+
+Stores a `VarInfo` for use in sampling, and a `Tuple` of `Samplers` that
+the `Gibbs` sampler iterates through for each `step!`.
+"""
+mutable struct GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}} <: AbstractSamplerState
     vi::V
     samplers::S
-    subsamples::T
 end
 
 function GibbsState(model::Model, samplers::S) where S<:Tuple{Vararg{Sampler}}
-    ids = tuple([Symbol(s.selector.gid) for s in samplers]...)
-    refs = tuple([Ref{transition_type(s)}() for s in samplers]...)
-    nt = NamedTuple{ids}(refs)
-    return GibbsState(VarInfo(model), samplers, nt)
+    return GibbsState(VarInfo(model), samplers)
 end
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
