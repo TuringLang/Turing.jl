@@ -12,6 +12,6 @@ Turing's sampling interface presents several structures and functions that one n
 
 The interface methods with exlamation points are those that are intended to allow for some state mutation. Any mutating function is meant to allow mutation where needed -- you might use 
 
-- `sample_init!` to run some kind of sampler preparation, before sampling begins. This could mutate a sampler's state or a
+- `sample_init!` to run some kind of sampler preparation, before sampling begins. This could mutate a sampler's state.
 - `step!` might mutate a sampler flag after each sample. MH does this for example by using a `violating_support` flag.
 - `sample_end!` contains any wrap-up you might need to do. If you were sampling in a transformed space, this might be where you convert everything back to a constrained space.
