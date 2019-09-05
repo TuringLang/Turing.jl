@@ -135,6 +135,9 @@ function sample_init!(
             spl.alg.n_adapts = 0
         end
     end
+    
+    # Ensure h.metric has the same dim as θ.
+    spl.state.h = update(spl.state.h, spl.state.vi[spl])
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
@@ -499,8 +502,8 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian, dim::Int; ϵ=alg.ϵ)
-    pc = AHMC.Preconditioner(getmetricT(alg), dim)
+function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
+    pc = AHMC.Preconditioner(getmetricT(alg))
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
     if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(pc, da)
@@ -557,7 +560,7 @@ function HMCState(
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, length(θ_init); ϵ=ϵ), t.z)
+    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), t.z)
 end
 
 #######################################################
