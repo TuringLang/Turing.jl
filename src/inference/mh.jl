@@ -1,8 +1,8 @@
-mutable struct MHState <: AbstractSamplerState
+mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
     proposal_ratio        ::   Float64
     prior_prob            ::   Float64
     violating_support     ::   Bool
-    vi                    ::   TypedVarInfo
+    vi                    ::   V
 end
 
 MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
@@ -36,7 +36,7 @@ mutable struct MH{space} <: InferenceAlgorithm
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
 
-transition_type(::Sampler{<:MH}) = Transition
+transition_type(spl::Sampler{<:MH}) = typeof(transition(spl))
 alg_str(::Sampler{<:MH}) = "MH"
 
 function MH(proposals::Dict{Symbol, Any}, space::Tuple)
