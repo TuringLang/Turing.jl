@@ -83,7 +83,7 @@ transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 HMC(args...) = HMC{ADBackend()}(args...)
-function HMC{AD}( ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
+function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
     return HMC{AD, space, metricT}(ϵ, n_leapfrog)
 end
 function HMC{AD}(
@@ -346,7 +346,7 @@ function step!(
         Turing.DEBUG && @debug "X-> R..."
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
-        # Update Hamiltonian 
+        # Update Hamiltonian
         metric = gen_metric(length(spl.state.vi[spl]), spl)
         ∂logπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
         logπ = gen_logπ(spl.state.vi, spl, model)
