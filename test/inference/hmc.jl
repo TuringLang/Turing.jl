@@ -55,10 +55,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model_f = hmcmatrixsup()
         vs = []
         chain = nothing
-        n_adapts, n_samples = 1_000, 2_000
+        # n_adapts, n_samples = 1_000, 2_000
+        n_samples = 1_000
         for _ in 1:3
-            chain = sample(model_f, NUTS(n_adapts, 0.8), n_samples)
-            r = reshape(chain[:v].value, n_samples - n_adapts, 2, 2)
+            chain = sample(model_f, HMC(0.15, 7), n_samples)
+            r = reshape(chain[:v].value, n_samples, 2, 2)
             push!(vs, reshape(mean(r, dims = [1]), 2, 2))
         end
 
