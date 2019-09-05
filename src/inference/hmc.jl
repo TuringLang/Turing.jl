@@ -3,16 +3,17 @@
 ###
 
 mutable struct HMCState{
-    TTraj<:AHMC.AbstractTrajectory,
-    TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     TV <: TypedVarInfo,
+    TTraj<:AHMC.AbstractTrajectory,
+    HamType<:AHMC.Hamiltonian,
+    TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     PhType <: AHMC.PhasePoint
 } <: AbstractSamplerState
     vi       :: TV
     eval_num :: Int
     i        :: Int
     traj     :: TTraj
-    h        :: AHMC.Hamiltonian
+    h        :: HamType
     adaptor  :: TAdapt
     z        :: PhType
 end
@@ -24,7 +25,7 @@ end
 function transition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
     theta = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
-    return HamiltonianTransition{typeof(theta), typeof(t.stat), typeof(lp)}(theta, lp, t.stat)
+    return HamiltonianTransition(theta, lp, t.stat)
 end
 
 struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTransition
@@ -33,7 +34,7 @@ struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTra
     stat :: NT
 end
 
-transition_type(::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
+transition_type(spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
     HamiltonianTransition
 
 function additional_parameters(::Type{<:HamiltonianTransition})
