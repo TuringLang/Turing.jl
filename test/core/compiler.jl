@@ -50,7 +50,7 @@ priors = 0 # See "new grammar" test.
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
-        chn_g = sample(testbb(obs), gibbs, 1500) ############ not linked somewhere XXX:
+        chn_g = sample(testbb(obs), gibbs, 1500)
 
         check_numerical(chn_s, [:p], [meanp], eps=0.05)
         check_numerical(chn_p, [:x], [meanp], eps=0.1)
@@ -269,7 +269,7 @@ priors = 0 # See "new grammar" test.
         @test res_is.logevidence ≈ 2 * log(0.5)
 
         @test all(res_smc[:x].value .== 1)
-        @test res_smc.logevidence ≈ 2 * log(0.5) # LOGEVIDENCE POSTIVE, WRONG .25 VS. -1.38
+        @test res_smc.logevidence ≈ 2 * log(0.5)
 
         @test all(res_pg[:x].value .== 1)
     end
