@@ -108,7 +108,6 @@ function sample_init!(
     model::Model,
     spl::Sampler{<:Hamiltonian},
     N::Integer;
-    adaptor=AHMCAdaptor(spl.alg),
     verbose::Bool=true,
     resume_from=nothing,
     kwargs...
@@ -304,16 +303,16 @@ function Sampler(
 ) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
-    state_bad = SamplerState(VarInfo(model))
+    initial_state = SamplerState(VarInfo(model))
 
     # Create an initial sampler, to get all the initialization out of the way.
-    spl_bad = Sampler(alg, info, s, state_bad)
+    initial_spl = Sampler(alg, info, s, initial_state)
 
     # Create the actual state based on the alg type.
-    state = HMCState(model, spl_bad, GLOBAL_RNG)
+    state = HMCState(model, initial_spl, GLOBAL_RNG)
 
     # Create a real sampler after getting all the types/running the init phase.
-    return Sampler(alg, spl_bad.info, spl_bad.selector, state)
+    return Sampler(alg, initial_spl.info, initial_spl.selector, state)
 end
 
 
