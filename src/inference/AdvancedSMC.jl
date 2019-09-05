@@ -12,7 +12,8 @@ struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
     weight::F
 end
 
-transition_type(::Sampler{<:ParticleInference}) = ParticleTransition
+transition_type(spl::Sampler{<:ParticleInference}) = 
+    typeof(transition(tonamedtuple(spl.state.vi), getlogp(spl.state.vi), 0.0, 0.0))
 
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
@@ -26,7 +27,6 @@ function transition(
 ) where {T, F<:AbstractFloat}
     return ParticleTransition{T, F}(theta, lp, le, weight)
 end
-
 
 ####
 #### Generic Sequential Monte Carlo sampler.
@@ -65,10 +65,10 @@ function SMC(space::Symbol...)
     SMC(resample_systematic, 0.5, space)
 end
 
-mutable struct SMCState <: AbstractSamplerState
-    vi                   ::   TypedVarInfo
+mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                   ::   V
     # The logevidence after aggregating all samples together.
-    average_logevidence  ::   Float64
+    average_logevidence  ::   F
     particles            ::   ParticleContainer
 end
 
@@ -86,7 +86,7 @@ end
 function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
     dict = Dict{Symbol, Any}()
     state = SMCState(model)
-    return Sampler{T,SMCState}(alg, dict, s, state)
+    return Sampler(alg, dict, s, state)
 end
 
 function sample_init!(
@@ -169,10 +169,10 @@ end
 
 alg_str(spl::Sampler{PG}) = "PG"
 
-mutable struct PGState <: AbstractSamplerState
-    vi                   ::   TypedVarInfo
+mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                   ::   V
     # The logevidence after aggregating all samples together.
-    average_logevidence  ::   Float64
+    average_logevidence  ::   F
 end
 
 function PGState(model::M) where {M<:Model}
@@ -190,7 +190,7 @@ Return a `Sampler` object for the PG algorithm.
 function Sampler(alg::T, model::Model, s::Selector) where T<:PG
     info = Dict{Symbol, Any}()
     state = PGState(model)
-    return Sampler{T,PGState}(alg, info, s, state)
+    return Sampler(alg, info, s, state)
 end
 
 function step!(
@@ -419,10 +419,3 @@ function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
     end
     return indx
 end
-
-
-#############################
-# Common particle functions #
-#############################
-
-vnames(vi::VarInfo) = Symbol.(collect(keys(vi)))
