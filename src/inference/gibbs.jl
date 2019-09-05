@@ -37,19 +37,19 @@ mutable struct Gibbs{A} <: InferenceAlgorithm
 end
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(spl::Sampler{<:Gibbs}) = Transition
+transition_type(spl::Sampler{<:Gibbs}) = typeof(transition(spl))
 
-mutable struct GibbsState{T<:NamedTuple} <: AbstractSamplerState
-    vi::TypedVarInfo
-    samplers::Array{Sampler}
+mutable struct GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}, T<:NamedTuple} <: AbstractSamplerState
+    vi::V
+    samplers::S
     subsamples::T
 end
 
-function GibbsState(model::Model, samplers::Array{Sampler})
+function GibbsState(model::Model, samplers::S) where S<:Tuple{Vararg{Sampler}}
     ids = tuple([Symbol(s.selector.gid) for s in samplers]...)
     refs = tuple([Ref{transition_type(s)}() for s in samplers]...)
     nt = NamedTuple{ids}(refs)
-    return GibbsState{typeof(nt)}(VarInfo(model), samplers, nt)
+    return GibbsState(VarInfo(model), samplers, nt)
 end
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
@@ -79,7 +79,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     end
 
     # Create a state variable.
-    state = GibbsState(model, samplers)
+    state = GibbsState(model, tuple(samplers...))
 
     # Create the sampler.
     spl = Sampler(alg, info, s, state)
@@ -89,7 +89,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         vns = getfield(spl.state.vi.metadata, sym).vns
         for vn in vns
             # Update the gid for the Gibbs sampler.
-            Turing.RandomVariables.updategid_forced!(spl.state.vi, vn, spl)
+            Turing.RandomVariables.updategid!(spl.state.vi, vn, spl)
             
             # Try to store each subsampler's gid in the VarInfo.
             for local_spl in spl.state.samplers
