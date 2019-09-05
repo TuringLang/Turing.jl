@@ -43,7 +43,7 @@ ISState(model::Model) = ISState(VarInfo(model), 0.0)
 function Sampler(alg::IS, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
     state = ISState(model)
-    Sampler(alg, info, s, state)
+    return Sampler(alg, info, s, state)
 end
 
 function step!(
@@ -68,6 +68,7 @@ function sample_end!(
     kwargs...
 ) where {SamplerType<:AbstractSampler}
     # Calculate evidence.
+    println([x.p for x in ts])
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
 

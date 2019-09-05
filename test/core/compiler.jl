@@ -286,7 +286,7 @@ priors = 0 # See "new grammar" test.
         end
 
         alg = HMC(0.01, 5)
-        x = randn(1000)
+        x = randn(100)
         res = sample(vdemo1(x), alg, 250)
 
         D = 2
@@ -296,7 +296,7 @@ priors = 0 # See "new grammar" test.
         end
 
         alg = HMC(0.01, 5)
-        res = sample(vdemo2(randn(D,1000)), alg, 250)
+        res = sample(vdemo2(randn(D,100)), alg, 250)
 
         # Vector assumptions
         N = 10

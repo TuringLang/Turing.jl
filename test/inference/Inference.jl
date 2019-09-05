@@ -1,5 +1,5 @@
 using Turing, Random, Test
-using Turing.Inference.InterfaceExtensions: split_var_str
+using Turing.Inference: split_var_str
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")

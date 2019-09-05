@@ -5,7 +5,6 @@
 mutable struct HMCState{
     TV <: TypedVarInfo,
     TTraj<:AHMC.AbstractTrajectory,
-    HamType<:AHMC.Hamiltonian,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     PhType <: AHMC.PhasePoint
 } <: AbstractSamplerState
@@ -13,7 +12,7 @@ mutable struct HMCState{
     eval_num :: Int
     i        :: Int
     traj     :: TTraj
-    h        :: HamType
+    h        :: AHMC.Hamiltonian
     adaptor  :: TAdapt
     z        :: PhType
 end

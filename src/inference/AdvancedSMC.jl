@@ -13,7 +13,7 @@ struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
 end
 
 transition_type(spl::Sampler{<:ParticleInference}) = 
-    typeof(transition(tonamedtuple(spl.state.vi), getlogp(spl.state.vi), 0.0, 0.0))
+    ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]

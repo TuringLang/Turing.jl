@@ -12,7 +12,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
-using ..Interface
+using ..Turing.Interface
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 
