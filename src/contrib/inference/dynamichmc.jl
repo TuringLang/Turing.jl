@@ -18,9 +18,9 @@ function DynamicNUTS{AD}(space::Symbol...) where AD
     DynamicNUTS{AD, space}()
 end
 
-mutable struct DynamicNUTSState <: AbstractSamplerState
-    vi::VarInfo
-    draws::Vector
+mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
+    vi::V
+    draws::Vector{D}
 end
 
 getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space
