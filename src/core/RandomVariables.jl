@@ -689,6 +689,16 @@ end
 # VarInfo
 
 """
+    has_eval_num(spl::T)
+
+Checks whether `T` is a `Sampler` and has a field called `eval_num` in its state variable.
+"""
+function has_eval_num(spl::T) where T<:AbstractSampler
+    return !(T <: Union{SampleFromPrior, SampleFromUniform}) && 
+           :eval_num in fieldnames(typeof(spl.state))
+end
+
+"""
 `runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler)`
 
 Samples from `model` using the sampler `spl` storing the sample and log joint
@@ -700,11 +710,8 @@ function runmodel!(
     spl::T = SampleFromPrior()
 ) where T<:AbstractSampler
     setlogp!(vi, 0)
-    if !(T <: Union{SampleFromPrior, SampleFromUniform})
-        # Check that the sampler has the state field.
-        if :eval_num in fieldnames(typeof(spl.state ))
-            spl.state.eval_num += 1
-        end
+    if has_eval_num(spl)
+        spl.state.eval_num += 1
     end
     model(vi, spl)
     return vi
@@ -980,18 +987,14 @@ function islinked(vi::UntypedVarInfo, spl::Sampler)
 end
 function islinked(vi::TypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
-    return _islinked(vi.metadata, vi, vns, getspaceval(spl))
+    return _islinked(vi, vns)
 end
-function _islinked(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
+@generated function _islinked(vi, vns::NamedTuple{names}) where {names}
+    out = []
     for f in names
-        if f in space || isempty(space)
-            f_vns = vi.metadata[f].vns
-            if length(f_vns) > 0
-                return istrans(vi, f_vns[1])
-            end
-        end
+        push!(out, :(length(vns.$f) == 0 ? false : istrans(vi, vns.$f[1])))
     end
-    return false
+    return Expr(:||, false, out...)
 end
 
 # The default getindex & setindex!() for get & set values
@@ -1103,20 +1106,6 @@ end
     return expr
 end
 
-function getparams(vi::TypedVarInfo, spl::Union{SampleFromPrior, Sampler})
-    # Gets the vns as a NamedTuple
-    vns = _getvns(vi, spl)
-    return _getparams(vns, vi)
-end
-# Recursively builds a tuple of the parameter values of all the symbols
-@generated function _getparams(vns::NamedTuple{names}, vi) where {names}
-    expr = Expr(:tuple)
-    for f in names
-        push!(expr.args, :($f = getindex(vi, vns.$f)))
-        # push!(expr.args, :($f = findvns(vi, vns.$f)))
-    end
-    return expr
-end
 @inline function findvns(vi, f_vns)
     if length(f_vns) == 0
         throw("Unidentified error, please report this error in an issue.")
@@ -1343,18 +1332,9 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if getsym(vn) in getspace(spl.alg)
+    if vn in getspace(spl.alg)
         setgid!(vi, spl.selector, vn)
     end
 end
-"""
-`updategid_forced!(vi::VarInfo, vn::VarName, spl::Sampler)`
-
-Forces a sampler to add its `gid` to a `vn`. Currently only used for the Gibbs sampler.
-"""
-function updategid_forced!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    setgid!(vi, spl.selector, vn)
-end
-
 
 end # end of module
