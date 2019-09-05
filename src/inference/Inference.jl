@@ -2,7 +2,7 @@ module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
-    getparams, islinked, invlink!, getlogp, tonamedtuple
+    islinked, invlink!, getlogp, tonamedtuple
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -99,7 +99,7 @@ function transition(spl::Sampler, nt::NamedTuple=NamedTuple())
     return Transition{typeof(theta), typeof(lp)}(theta, lp)
 end
 
-function additional_parameters(::Type{Transition})
+function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
 
