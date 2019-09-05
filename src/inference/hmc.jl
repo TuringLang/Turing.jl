@@ -436,7 +436,6 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-using Tracker
 function assume(spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
@@ -521,10 +520,11 @@ AHMCAdaptor(alg::Hamiltonian; kwargs...) = AHMC.Adaptation.NoAdaptation()
 # HMC State Constructors #
 ##########################
 
-function HMCState(model::Model,
-        spl::Sampler{<:Hamiltonian},
-        rng::AbstractRNG;
-        kwargs...
+function HMCState(
+    model::Model,
+    spl::Sampler{<:Hamiltonian},
+    rng::AbstractRNG;
+    kwargs...
 )
     # Reuse the VarInfo.
     vi = spl.state.vi
