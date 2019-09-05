@@ -64,11 +64,10 @@ function sample_end!(
     ::Model,
     spl::Sampler{<:IS},
     N::Integer,
-    ts::Vector{Transition};
+    ts::Vector{<:Transition};
     kwargs...
 ) where {SamplerType<:AbstractSampler}
     # Calculate evidence.
-    println([x.p for x in ts])
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
 
