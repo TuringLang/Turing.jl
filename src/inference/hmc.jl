@@ -422,10 +422,7 @@ function gen_logπ(vi::VarInfo, spl::Sampler, model)
 end
 
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}) = AHMC.UnitEuclideanMetric(dim)
-gen_metric(dim::Int, ::AHMC.UnitPreconditioner)   = AHMC.UnitEuclideanMetric(dim)
-gen_metric(::Int, pc::AHMC.DiagPreconditioner)    = AHMC.DiagEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(::Int, pc::AHMC.DensePreconditioner)   = AHMC.DenseEuclideanMetric(AHMC.getM⁻¹(pc))
-gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = gen_metric(dim, spl.state.adaptor.pc)
+gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}) = AHMC.renew(spl.state.h.metric, AHMC.getM⁻¹(spl.state.adaptor.pc))
 
 gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
 gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
@@ -502,8 +499,8 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
-    pc = AHMC.Preconditioner(getmetricT(alg))
+function AHMCAdaptor(alg::AdaptiveHamiltonian, dim::Int; ϵ=alg.ϵ)
+    pc = AHMC.Preconditioner(getmetricT(alg), dim)
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
     if getmetricT(alg) == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(pc, da)
@@ -513,7 +510,7 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
     return adaptor
 end
 
-AHMCAdaptor(alg::Hamiltonian; kwargs...) = AHMC.Adaptation.NoAdaptation()
+AHMCAdaptor(::Hamiltonian, ::Int; kwargs...) = AHMC.Adaptation.NoAdaptation()
 
 ##########################
 # HMC State Constructors #
@@ -560,7 +557,7 @@ function HMCState(
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), t.z)
+    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, length(θ_init); ϵ=ϵ), t.z)
 end
 
 #######################################################
