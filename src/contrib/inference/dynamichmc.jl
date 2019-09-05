@@ -1,4 +1,4 @@
-using ..Core.Interface: init_callback, NoCallback
+using ..Turing.Interface: init_callback, NoCallback
 
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
@@ -84,7 +84,7 @@ function Sampler(
 end
 
 # Disable the callback for DynamicHMC, since it has it's own progress meter.
-function init_callback(
+function Turing.Interface.init_callback(
     rng::AbstractRNG,
     model::Model,
     s::Sampler{<:DynamicNUTS},
