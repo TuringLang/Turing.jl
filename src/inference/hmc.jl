@@ -48,7 +48,7 @@ end
 """
     HMC(ϵ::Float64, n_leapfrog::Int)
 
-Hamiltonian Monte Carlo sampler.
+Hamiltonian Monte Carlo sampler with static trajectory.
 
 Arguments:
 
@@ -64,7 +64,7 @@ HMC(0.05, 10)
 Tips:
 
 - If you are receiving gradient errors when using `HMC`, try reducing the
-`step_size` parameter.
+`step_size` parameter, e.g.
 
 ```julia
 # Original step_size
