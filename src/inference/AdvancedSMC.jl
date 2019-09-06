@@ -5,6 +5,16 @@
 #######################
 # Particle Transition #
 #######################
+
+"""
+    ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+
+Fields:
+- `θ`: The parameters for any given sample.
+- `lp`: The log pdf for the sample's parameters.
+- `le`: The log evidence retrieved from the particle.
+- `weight`: The weight of the particle the sample was retrieved from.
+"""
 struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
     θ::T
     lp::F
@@ -12,8 +22,7 @@ struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
     weight::F
 end
 
-transition_type(spl::Sampler{<:ParticleInference}) = 
-    ParticleTransition
+transition_type(spl::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
@@ -40,24 +49,30 @@ Sequential Monte Carlo sampler.
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Usage:
+Fields: 
+- `resampler`: A function used to sample particles from the particle container. 
+  Defaults to `resample_systematic`.
+- `resampler_threshold`: The threshold at which resampling terminates -- defaults to 0.5. If 
+  the `ess` <= `resampler_threshold` * `n_particles`, the resampling step is completed.
+
+  Usage:
 
 ```julia
 SMC()
 ```
 """
-mutable struct SMC{space, F} <: ParticleInference
-    resampler             ::  F
-    resampler_threshold   ::  Float64
+struct SMC{space, RT<:AbstractFloat} <: ParticleInference
+    resampler             ::  Function
+    resampler_threshold   ::  RT
 end
 
 alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
-    resampler::F,
-    resampler_threshold::Float64,
+    resampler::Function,
+    resampler_threshold::RT,
     space::Tuple
-) where {F}
-    return SMC{space, F}(resampler, resampler_threshold)
+) where {RT<:AbstractFloat}
+    return SMC(resampler, resampler_threshold)
 end
 SMC() = SMC(resample_systematic, 0.5, ())
 SMC(::Tuple{}) = SMC()
@@ -90,10 +105,10 @@ function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
 end
 
 function sample_init!(
-    ::AbstractRNG, # Note: This function does not use the range argument.
+    ::AbstractRNG, 
     model::Turing.Model,
     spl::Sampler{<:SMC},
-    N::Integer; # Note: This function doesn't use the N argument.
+    N::Integer;
     kwargs...
 )
     # Set the parameters to a starting value.
@@ -126,6 +141,9 @@ function step!(
     iteration=-1,
     kwargs...
 )
+    # Check that we received a real iteration number.
+    @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
+
     ## Grab the weights.
     Ws, _ = weights(spl.state.particles)
 
@@ -155,12 +173,12 @@ Usage:
 PG(100, 100)
 ```
 """
-mutable struct PG{space, F} <: ParticleInference
+struct PG{space} <: ParticleInference
   n_particles           ::    Int         # number of particles used
-  resampler             ::    F           # function to resample
+  resampler             ::    Function    # function to resample
 end
-function PG(n_particles::Int, resampler::F, space::Tuple) where F
-    return PG{space, F}(n_particles, resampler)
+function PG(n_particles::Int, resampler::Function, space::Tuple)
+    return PG{space}(n_particles, resampler)
 end
 PG(n1::Int, ::Tuple{}) = PG(n1)
 function PG(n1::Int, space::Symbol...)
@@ -194,10 +212,10 @@ function Sampler(alg::T, model::Model, s::Selector) where T<:PG
 end
 
 function step!(
-    ::AbstractRNG, # Note: This function does not use the range argument for now.
+    ::AbstractRNG,
     model::Turing.Model,
     spl::Sampler{<:PG},
-    ::Integer; # Note: This function doesn't use the N argument.
+    ::Integer;
     kwargs...
 )
     particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
@@ -246,18 +264,17 @@ function sample_end!(
     resume_from = get(kwargs, :resume_from, nothing)
 
     # Exponentiate the average log evidence.
-    loge = exp(mean([t.le for t in ts]))
+    # loge = exp(mean([t.le for t in ts]))
+    loge = mean(t.le for t in ts)
 
     # If we already had a chain, grab the logevidence.
     if resume_from != nothing   # concat samples
         @assert resume_from isa Chains "resume_from needs to be a Chains object."
         # pushfirst!(samples, resume_from.info[:samples]...)
-        pre_loge = exp.(resume_from.logevidence)
+        pre_loge = resume_from.logevidence
         # Calculate new log-evidence
         pre_n = length(resume_from)
-        loge = (log(pre_loge) * pre_n + log(loge) * N) / (pre_n + N)
-    else
-        loge = log(loge)
+        loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
     end
 
     # Store the logevidence.
