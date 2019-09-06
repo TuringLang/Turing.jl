@@ -136,8 +136,8 @@ function sample_init!(
         end
     end
     
-    # Ensure h.metric has the same dim as θ.
-    spl.state.h = update(spl.state.h, spl.state.vi[spl])
+    # Ensure AHMC has the same dimensions as θ.
+    AHMC.resize!(spl.state.adaptor.pc, spl.state.vi[spl])
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
@@ -365,7 +365,9 @@ function step!(
 
     # Adaptation
     if T <: AdaptiveHamiltonian
-        spl.state.h, spl.state.traj, isadapted = AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
+        spl.state.h, spl.state.traj, isadapted = 
+            AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, 
+                        spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
     end
 
     Turing.DEBUG && @debug "decide whether to accept..."
