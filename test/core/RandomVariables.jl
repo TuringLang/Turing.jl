@@ -161,7 +161,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         #    link!, invlink!, istrans
         @model gdemo(x, y) = begin
             s ~ InverseGamma(2,3)
-            m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
+            m ~ Uniform(0, 2)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
         end
