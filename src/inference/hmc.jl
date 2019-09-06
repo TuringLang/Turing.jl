@@ -136,8 +136,10 @@ function sample_init!(
         end
     end
     
-    # Ensure AHMC has the same dimensions as θ.
-    AHMC.resize!(spl.state.adaptor.pc, spl.state.vi[spl])
+    # Ensure AHMC has the same dim as θ.
+    if :pc in fieldnames(typeof(spl.state.adaptor))
+        AHMC.resize!(spl.state.adaptor.pc, spl.state.vi[spl])
+    end
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
@@ -515,7 +517,7 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
     return adaptor
 end
 
-AHMCAdaptor(::Hamiltonian, ::Int; kwargs...) = AHMC.Adaptation.NoAdaptation()
+AHMCAdaptor(::Hamiltonian; kwargs...) = AHMC.Adaptation.NoAdaptation()
 
 ##########################
 # HMC State Constructors #
