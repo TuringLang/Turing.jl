@@ -112,6 +112,7 @@ function sample_init!(
     resume_from=nothing,
     kwargs...
 ) where T<:Hamiltonian
+
     # Resume the sampler.
     set_resume!(spl; resume_from=resume_from, kwargs...)
 
@@ -135,9 +136,6 @@ function sample_init!(
             spl.alg.n_adapts = 0
         end
     end
-    
-    # Ensure AHMC has the same dim as θ.
-    spl.state.h = AHMC.update(spl.state.h, spl.state.vi[spl])
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
@@ -504,10 +502,10 @@ observe(spl::Sampler{<:Hamiltonian},
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
-    pc = AHMC.Preconditioner(getmetricT(alg))
+function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
+    pc = AHMC.Preconditioner(metric)
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
-    if getmetricT(alg) == AHMC.UnitEuclideanMetric
+    if metric == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(pc, da)
     else
         adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, pc, da)
@@ -515,7 +513,7 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian; ϵ=alg.ϵ)
     return adaptor
 end
 
-AHMCAdaptor(::Hamiltonian; kwargs...) = AHMC.Adaptation.NoAdaptation()
+AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...) = AHMC.Adaptation.NoAdaptation()
 
 ##########################
 # HMC State Constructors #
@@ -557,12 +555,12 @@ function HMCState(
     traj = gen_traj(spl.alg, ϵ)
 
     # Generate a phasepoint. Replaced during sample_init!
-    h, t = AHMC.sample_init(rng, h, θ_init)
+    h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
 
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg; ϵ=ϵ), t.z)
+    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end
 
 #######################################################
