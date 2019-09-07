@@ -36,7 +36,7 @@ mutable struct MH{space} <: InferenceAlgorithm
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
 
-transition_type(spl::Sampler{<:MH}) = typeof(transition(spl))
+transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
 alg_str(::Sampler{<:MH}) = "MH"
 
 function MH(proposals::Dict{Symbol, Any}, space::Tuple)
@@ -92,7 +92,7 @@ function step!(
     ::Integer;
     kwargs...
 )
-    return transition(spl)
+    return Transition(spl)
 end
 
 # Every step after the first.
@@ -125,7 +125,7 @@ function step!(
         setlogp!(spl.state.vi, old_logp)  # reset logp
     end
 
-    return transition(spl)
+    return Transition(spl)
 end
 
 function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)

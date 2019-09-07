@@ -93,7 +93,7 @@ struct Transition{T, F<:AbstractFloat} <: AbstractTransition
     lp :: F
 end
 
-function transition(spl::Sampler, nt::NamedTuple=NamedTuple())
+function Transition(spl::Sampler, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
     return Transition{typeof(theta), typeof(lp)}(theta, lp)

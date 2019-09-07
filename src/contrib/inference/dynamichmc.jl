@@ -68,7 +68,7 @@ function step!(
     # Pop the next draw off the vector.
     draw = popfirst!(spl.state.draws)
     spl.state.vi[spl] = draw.q
-    return transition(spl)
+    return Transition(spl)
 end
 
 function Sampler(

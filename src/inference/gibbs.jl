@@ -37,7 +37,7 @@ mutable struct Gibbs{A} <: InferenceAlgorithm
 end
 
 alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(spl::Sampler{<:Gibbs}) = typeof(transition(spl))
+transition_type(spl::Sampler{<:Gibbs}) = typeof(Transition(spl))
 
 """
     GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}}
@@ -172,7 +172,7 @@ function step!(
         time_elapsed += time_elapsed_thin
     end
 
-    return transition(spl)
+    return Transition(spl)
 end
 
 # Steps 2:N
@@ -216,5 +216,5 @@ function step!(
         time_elapsed += time_elapsed_thin
     end
 
-    return transition(spl)
+    return Transition(spl)
 end

@@ -21,16 +21,16 @@ end
 # Hamiltonian Transition #
 ##########################
 
-function transition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
-    theta = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
-    return HamiltonianTransition(theta, lp, t.stat)
-end
-
 struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTransition
     θ    :: T
     lp   :: F
     stat :: NT
+end
+
+function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
+    theta = tonamedtuple(spl.state.vi)
+    lp = getlogp(spl.state.vi)
+    return HamiltonianTransition(theta, lp, t.stat)
 end
 
 transition_type(spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
@@ -384,7 +384,7 @@ function step!(
     Turing.DEBUG && @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
-    return transition(spl, t)
+    return HamiltonianTransition(spl, t)
 end
 
 

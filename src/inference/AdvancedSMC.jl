@@ -28,15 +28,6 @@ function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
 end
 
-function transition(
-    theta::T,
-    lp::F,
-    le::F,
-    weight::F
-) where {T, F<:AbstractFloat}
-    return ParticleTransition{T, F}(theta, lp, le, weight)
-end
-
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -152,7 +143,7 @@ function step!(
     params = tonamedtuple(particle.vi)
     lp = getlogp(particle.vi)
 
-    return transition(params, lp, spl.state.particles.logE, Ws[iteration])
+    return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])
 end
 
 ####
@@ -249,7 +240,7 @@ function step!(
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return transition(params, lp, particles.logE, 1.0)
+    return ParticleTransition(params, lp, particles.logE, 1.0)
 end
 
 function sample_end!(
