@@ -44,7 +44,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], eps=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
-        alg = HMC(0.15, 10)
+        alg = HMC(0.1, 10)
         res = sample(gdemo_default, alg, 4000)
         check_gdemo(res, eps=0.1)
     end
