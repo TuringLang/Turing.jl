@@ -72,7 +72,7 @@ function SMC(
     resampler_threshold::RT,
     space::Tuple
 ) where {RT<:AbstractFloat}
-    return SMC(resampler, resampler_threshold)
+    return SMC{space}(resampler, resampler_threshold)
 end
 SMC() = SMC(resample_systematic, 0.5, ())
 SMC(::Tuple{}) = SMC()
