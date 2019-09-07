@@ -137,9 +137,7 @@ function sample_init!(
     end
     
     # Ensure AHMC has the same dim as θ.
-    if :pc in fieldnames(typeof(spl.state.adaptor))
-        AHMC.resize!(spl.state.adaptor.pc, spl.state.vi[spl])
-    end
+    spl.state.h = AHMC.update(spl.state.h, spl.state.vi[spl])
 
     # Convert to transformed space if we're using
     # non-Gibbs sampling.

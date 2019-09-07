@@ -1,5 +1,6 @@
 using Turing, Random, Test
 using Turing: Sampler, NUTS
+using MCMCChains: Chains
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -172,5 +173,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @test size(c1, 1) == 400
         @test size(c2, 1) == 500
+    end
+    @turing_testset "AHMC resize" begin
+        alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s))
+        alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s))
+        alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s))
+        @test sample(gdemo_default, alg1, 300) isa Chains
+        @test sample(gdemo_default, alg2, 300) isa Chains
+        @test sample(gdemo_default, alg3, 300) isa Chains
     end
 end
