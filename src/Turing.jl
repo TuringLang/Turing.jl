@@ -197,7 +197,6 @@ export  @model,                 # modelling
         ADVI,
         
         sample,                 # inference
-        psample,
         setchunksize,
         resume,
 

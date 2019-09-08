@@ -1,11 +1,8 @@
 module Interface
 
-using Distributed
-using Random
-
 import Distributions: sample, Sampleable
 import Random: GLOBAL_RNG, AbstractRNG
-import MCMCChains: Chains, chainscat
+import MCMCChains: Chains
 import ProgressMeter
 
 export AbstractSampler,
@@ -18,7 +15,6 @@ export AbstractSampler,
        sample_init!,
        sample_end!,
        sample,
-       psample,
        Sampleable,
        AbstractRNG,
        Chains,
@@ -403,44 +399,5 @@ Return the type of `AbstractTransition` that is to be returned by an
 `AbstractSampler`.
 """
 transition_type(s::SamplerType) where {SamplerType<:AbstractSampler} = AbstractTransition
-
-########################
-# Distributed sampling #
-########################
-
-function psample(
-    ℓ::ModelType,
-    s::SamplerType,
-    Nsamples::Integer,
-    Nchains::Integer;
-    kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return psample(GLOBAL_RNG, ℓ, s, Nsamples, Nchains; kwargs...)
-end
-
-function psample(
-    rng::AbstractRNG,
-    ℓ::ModelType,
-    s::SamplerType,
-    Nsamples::Integer,
-    Nchains::Integer;
-    kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    # Give a separate seed to each worker.
-    for worker in procs()
-        newseed = rand(Int64)
-        @spawnat worker Random.seed!(newseed)
-    end
-
-    # Run the chains in parallel.
-    chain = @distributed (chainscat) for _ in 1:Nchains
-        sample(rng, ℓ, s, Nsamples)
-    end
-
-    return chain
-
-    # Run parallel chains.
-    return reduce(chainscat, pmap(x->sample(rng, ℓ, s, Nsamples), 1:Nchains))
-end
 
 end # module Interface
