@@ -119,6 +119,35 @@ const TURING_INTERNAL_VARS =
 # Default definitions for the interface #
 #########################################
 
+function Interface.psample(
+    rng::AbstractRNG,
+    model::ModelType,
+    alg::AlgType,
+    N::Integer,
+    NChains::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return psample(rng, model, Sampler(alg, model), N, NChains; progress=false, kwargs...)
+end
+
+function Interface.psample(
+    model::ModelType,
+    alg::AlgType,
+    N::Integer,
+    NChains::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return psample(model, Sampler(alg, model), N, NChains; progress=false, kwargs...)
+end
+
 function Interface.sample(
     rng::AbstractRNG,
     model::ModelType,
