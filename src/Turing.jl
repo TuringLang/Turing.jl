@@ -119,7 +119,7 @@ mutable struct Sampler{T, S<:AbstractSamplerState} <: AbstractSampler
 end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
-# Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
+Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
 
 include("utilities/Utilities.jl")
 using .Utilities
@@ -195,7 +195,7 @@ export  @model,                 # modelling
 
         vi,                    # variational inference
         ADVI,
-        
+
         sample,                 # inference
         setchunksize,
         resume,

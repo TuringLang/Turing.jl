@@ -979,7 +979,7 @@ end
 """
     islinked(vi::VT, spl::Sampler) where VT<:VarInfo
 
-Returns `true` if a `VarInfo` is linked for a particular sampler `spl`.
+Returns `true` if a `VarInfo` is in the transformed space for a particular sampler `spl`.
 """
 function islinked(vi::UntypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)

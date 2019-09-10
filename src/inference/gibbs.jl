@@ -3,7 +3,7 @@
 ###
 
 """
-    Gibbs(tuple, algs...)
+    Gibbs(algs...)
 
 Compositional MCMC interface. Gibbs sampling combines one or more
 sampling algorithms, each of which samples from a different set of
@@ -31,7 +31,6 @@ more particles in the particle sampler.
 mutable struct Gibbs{A} <: InferenceAlgorithm
     algs      ::  A   # component sampling algorithms
     function Gibbs(algs...)
-        algs = algs isa Tuple ? algs : (algs, )
         return new{typeof(algs)}(algs)
     end
 end
@@ -187,7 +186,9 @@ function step!(
     Turing.DEBUG && @debug "Gibbs stepping..."
 
     time_elapsed = 0.0
-    lp = nothing; ϵ = nothing; eval_num = nothing
+    lp = nothing 
+    ϵ = nothing
+    eval_num = nothing
 
     # Iterate through each of the samplers.
     for local_spl in spl.state.samplers

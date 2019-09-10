@@ -36,8 +36,10 @@ c = sample(
 	gdemo(1.5, 2),
   	Gibbs(
     	HMC{Turing.ForwardDiffAD{1}}(0.1, 5, :m),
-    	HMC{Turing.TrackerAD}(0.1, 5, :s)),
-    1000)
+        HMC{Turing.TrackerAD}(0.1, 5, :s)
+    ),
+    1000
+)
 ```
 
 

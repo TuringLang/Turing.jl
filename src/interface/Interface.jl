@@ -91,6 +91,7 @@ end
 
 DefaultCallback(N::Int) = DefaultCallback(ProgressMeter.Progress(N, 1))
 
+
 function init_callback(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -101,22 +102,28 @@ function init_callback(
     return DefaultCallback(N)
 end
 
-"""
-    sample(
-        ℓ::ModelType,
-        s::SamplerType,
-        N::Integer;
-        kwargs...)
 
+
+"""
     sample(
         rng::AbstractRNG,
+        ℓ::Sampleable,
+        s::AbstractSampler,
+        N::Integer;
+        kwargs...
+    )
+
+    sample(
         ℓ::ModelType,
         s::SamplerType,
         N::Integer;
-        kwargs...)
+        kwargs...
+    )
 
-A generic interface for samplers.
+`sample` returns an `MCMCChains.Chains` object containing `N` samples from a given model and
+sampler. You may pass in any additional arguments through the use of keyword arguments.
 """
+
 function sample(
     ℓ::ModelType,
     s::SamplerType,
@@ -126,18 +133,6 @@ function sample(
     return sample(GLOBAL_RNG, ℓ, s, N; kwargs...)
 end
 
-"""
-    sample(
-        rng::AbstractRNG,
-        ℓ::ModelType,
-        s::SamplerType,
-        N::Integer;
-        kwargs...
-    )
-
-`sample` returns an `MCMCChains.Chains` object containing `N` samples from a given model and
-sampler.
-"""
 function sample(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -182,7 +177,11 @@ end
         kwargs...
     )
 
-Performs whatever initial setup is required for your sampler.
+Performs whatever initial setup is required for your sampler. This function is not intended
+to return any value -- any set up should utate the sampler or the model type in-place.
+
+A common use for `sample_init!` might be to instantiate a particle field for later use,
+or find an initial step size for a Hamiltonian sampler.
 """
 function sample_init!(
     rng::AbstractRNG,
@@ -207,7 +206,12 @@ end
         kwargs...
     )
 
-Performs whatever finalizing the sampler requires.
+Performs whatever finalizing the sampler requires. This function is not intended
+to return any value -- any set up should utate the sampler or the model type in-place.
+
+`sample_end!` is useful in cases where you might like to perform some transformation 
+on your vector of `AbstractTransitions`, save your sampler struct to disk, or otherwise
+perform any clean-up or finalization.
 """
 function sample_end!(
     rng::AbstractRNG,
@@ -230,14 +234,37 @@ end
 """
     step!(
         rng::AbstractRNG,
-        ℓ::ModelType,
-        s::SamplerType,
+        ℓ::Sampleable,
+        s::AbstractSampler,
         N::Integer;
         kwargs...
     )
 
-Returns a single `AbstractTransition` drawn using the model and sampler type.
-This is a unique step function called the first time a sampler runs.
+    step!(
+        rng::AbstractRNG,
+        ℓ::Sampleable,
+        s::AbstractSampler;
+        kwargs...
+    )
+
+    step!(
+        rng::AbstractRNG,
+        ℓ::Sampleable,
+        s::AbstractSampler,
+        N::Integer,
+        t::AbstractTransition;
+        kwargs...
+    )
+
+Returns a single `AbstractTransition` drawn using the provided random number generator, 
+model, and sampler. `step!` is the function that performs inference, and it is how
+a model moves from one sample to another.
+
+`step!` may modify the model or the sampler in-place. As an example, you may have a state
+variable in your sampler that contains a vector of particles or some other value that
+does not need to be included in the `AbstractTransition` struct returned.
+
+Every `step!` call after the first has access to the previous `AbstractTransition`.
 """
 function step!(
     rng::AbstractRNG,
@@ -260,18 +287,6 @@ function step!(
     return step!(rng, ℓ, s, 1; kwargs...)
 end
 
-"""
-    step!(
-        rng::AbstractRNG,
-        ℓ::ModelType,
-        s::SamplerType,
-        N::Integer,
-        t::TransitionType;
-        kwargs...
-    )
-
-Returns a single `AbstractTransition` drawn using the model and sampler type.
-"""
 function step!(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -289,18 +304,6 @@ function step!(
     return step!(rng, ℓ, s, N; kwargs...)
 end
 
-"""
-    step!(
-        rng::AbstractRNG,
-        ℓ::ModelType,
-        s::SamplerType,
-        N::Integer,
-        t::Nothing;
-        kwargs...
-    )
-
-Returns a single `AbstractTransition` drawn using the model and sampler type.
-"""
 function step!(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -393,11 +396,11 @@ function callback(
 end
 
 """
-    transition_type(s::SamplerType)
+    transition_type(s::AbstractSampler)
 
 Return the type of `AbstractTransition` that is to be returned by an 
-`AbstractSampler`.
+`AbstractSampler` after each `step!` call. 
 """
-transition_type(s::SamplerType) where {SamplerType<:AbstractSampler} = AbstractTransition
+transition_type(s::AbstractSampler) = AbstractTransition
 
 end # module Interface

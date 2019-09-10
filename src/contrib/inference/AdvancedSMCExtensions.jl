@@ -27,8 +27,8 @@ Arguments:
 sample space specification.
 """
 mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
-    n_iters               ::    Int               # number of iterations
-    algs                  ::    A                 # Proposals for state & parameters
+    n_iters::Int               # number of iterations
+    algs::A                 # Proposals for state & parameters
 end
 function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
     return PMMH{space, A}(n_iters, algs)
@@ -57,17 +57,24 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
             error("[$alg_str] unsupport base sampling algorithm $alg")
         end
         if typeof(sub_alg) == MH && sub_alg.n_iters != 1
-            warn("[$alg_str] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
+            warn(
+                "[$alg_str] number of iterations greater than 1" * 
+                "is useless for MH since it is only used for its proposal"
+            )
         end
         space = union(space, sub_alg.space)
     end
 
     # Sanity check for space
     if !isempty(space)
-        @assert issubset(Set(get_pvars(model)), space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(Set(get_pvars(model))))"
+        @assert issubset(Set(get_pvars(model)), space) "[$alg_str] symbols specified to samplers ($space)" * "
+            doesn't cover the model parameters ($(Set(get_pvars(model))))"
 
         if Set(get_pvars(model)) != space
-            warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, Set(get_pvars(model))))")
+            warn(
+                "[$alg_str] extra parameters specified by samplers" * 
+                "don't exist in model: $(setdiff(space, Set(get_pvars(model))))"
+            )
         end
     end
 
@@ -219,12 +226,12 @@ Arguments:
 A paper on this can be found [here](https://arxiv.org/abs/1602.05128).
 """
 mutable struct IPMCMC{T, F} <: InferenceAlgorithm
-  n_particles           ::    Int         # number of particles used
-  n_iters               ::    Int         # number of iterations
-  n_nodes               ::    Int         # number of nodes running SMC and CSMC
-  n_csmc_nodes          ::    Int         # number of nodes CSMC
-  resampler             ::    F           # function to resample
-  space                 ::    Set{T}      # sampling space, emtpy means all
+  n_particles::Int         # number of particles used
+  n_iters::Int         # number of iterations
+  n_nodes::Int         # number of nodes running SMC and CSMC
+  n_csmc_nodes::Int         # number of nodes CSMC
+  resampler::F           # function to resample
+  space::Set{T}      # sampling space, emtpy means all
 end
 IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16, resample_systematic, Set())
 IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)), resample_systematic, Set())

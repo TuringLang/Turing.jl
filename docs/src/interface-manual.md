@@ -8,9 +8,9 @@ Turing's sampling interface presents several structures and functions that one n
 4. A function `sample_init!` which performs any necessary set up. 
 5. A function `step!` which returns an `AbstractTransition`.
 6. A function `sample_end!` which handles any sampler wrap-up.
-7. A function `MCMCChains.Chains` which accepts an `Array{AbstractTransition, 1}` and returns an `MCMCChains` object.
+7. A function `MCMCChains.Chains` which accepts an `Vector{<:AbstractTransition}` and returns an `MCMCChains` object.
 
-The interface methods with exlamation points are those that are intended to allow for some state mutation. Any mutating function is meant to allow mutation where needed -- you might use 
+The interface methods with exclamation points are those that are intended to allow for some state mutation. Any mutating function is meant to allow mutation where needed -- you might use 
 
 - `sample_init!` to run some kind of sampler preparation, before sampling begins. This could mutate a sampler's state.
 - `step!` might mutate a sampler flag after each sample. MH does this for example by using a `violating_support` flag.
