@@ -980,6 +980,11 @@ end
     islinked(vi::VT, spl::Sampler) where VT<:VarInfo
 
 Returns `true` if a `VarInfo` is in the transformed space for a particular sampler `spl`.
+
+Turing's Hamiltonian samplers use the `link` and `invlink` functions from 
+[Bijectors.jl](https://github.com/TuringLang/Bijectors.jl) to map a constrained variable
+(for example, one bounded to the space `[0, 1]`) from its constrained space to the set of 
+real numbers. `islinked` checks if the number is in the constrained space or the real space.
 """
 function islinked(vi::UntypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
