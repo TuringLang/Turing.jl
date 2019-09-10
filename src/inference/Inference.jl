@@ -207,19 +207,41 @@ end
 ##########################
 
 function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransition}
-    local names
-    vals  = Vector{Vector{Real}}()
+    names = Set{String}()
+    dicts = Vector{Dict{String, Any}}()
+
+    # Extract the parameter names and values from each transition.
     for t in ts
-        names, vs = flatten_namedtuple(t.θ)
-        push!(vals, vs)
+        nms, vs = flatten_namedtuple(t.θ)
+        push!(names, nms...)
+
+        # Convert the names and values to a single dictionary.
+        d = Dict{String, Any}()
+        for (k, v) in zip(nms, vs)
+            d[k] = v
+        end
+        push!(dicts, d)
     end
     
-    return string.(names), vals
+    # Convert the set to an ordered vector so the parameter ordering 
+    # is deterministic.
+    ordered_names = collect(names)
+    vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
+
+    # Place each element of all dicts into the returned value matrix.
+    for i in eachindex(dicts)
+        for (j, key) in enumerate(ordered_names)
+            vals[i,j] = get(dicts[i], key, missing)
+        end
+    end
+
+    return ordered_names, vals
 end
 
 function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
-    vals  = Vector{Real}()
+    vals = Vector{Real}()
     names = Vector{AbstractString}()
+
     for k in pnames
         v = nt[k]
         if length(v) == 1
@@ -230,6 +252,7 @@ function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
             end
         end
     end
+
     return names, vals
 end
 
@@ -272,10 +295,18 @@ function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
     # Get the values of the extra parameters.
     local extra_names
     all_vals = []
+
+    # Iterate through each transition.
     for t in ts
         extra_names = String[]
         vals = []
+
+        # Iterate through each of the additional field names
+        # in the struct.
         for p in extra_params
+            # Check whether the field contains a NamedTuple,
+            # in which case we need to iterate through each
+            # key/value pair.
             prop = getproperty(t, p)
             if prop isa NamedTuple
                 for (k, v) in pairs(prop)
@@ -290,7 +321,10 @@ function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
         push!(all_vals, vals)
     end
 
-    return extra_names, vcat(all_vals)
+    # Convert the vector-of-vectors to a matrix.
+    valmat = [all_vals[i][j] for i in 1:length(ts), j in 1:length(all_vals[1])]
+
+    return extra_names, valmat
 end
 
 # Default Chains constructor.
@@ -318,7 +352,7 @@ function Chains(
 
     # Extract names & construct param array.
     nms = string.(vcat(nms..., string.(extra_params)...))
-    parray = vcat([hcat(vals[i]..., extra_values[i]...) for i in 1:length(ts)]...)
+    parray = hcat(vals, extra_values)
 
     # If the state field has average_logevidence or final_logevidence, grab that.
     le = missing
@@ -344,7 +378,7 @@ function Chains(
 
     # Chain construction.
     return Chains(
-        convert(Array{Real}, parray),
+        parray,
         string.(nms),
         deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
