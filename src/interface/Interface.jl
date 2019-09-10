@@ -91,7 +91,6 @@ end
 
 DefaultCallback(N::Int) = DefaultCallback(ProgressMeter.Progress(N, 1))
 
-
 function init_callback(
     rng::AbstractRNG,
     ℓ::ModelType,
@@ -102,7 +101,45 @@ function init_callback(
     return DefaultCallback(N)
 end
 
+"""
+    _generate_callback(
+        rng::AbstractRNG,
+        ℓ::ModelType,
+        s::SamplerType,
+        N::Integer;
+        progress_style=:default,
+        kwargs...
+    )
 
+`_generate_callback` uses a `progress_style` keyword argument to determine
+which progress meter style should be used. This function is strictly internal
+and is not meant to be overloaded. If you intend to add a custom `AbstractCallback`,
+you should overload `init_callback` instead.
+
+Options for `progress_style` include:
+
+    - `:default` which returns the result of `init_callback`
+    - `false` or `:disable` which returns a `NoCallback`
+    - `:plain` which returns the default, simple `DefaultCallback`.
+"""
+function _generate_callback(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer;
+    progress_style=:default,
+    kwargs...
+) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+    if progress_style == :default
+        return init_callback(rng, ℓ, s, N; kwargs...)
+    elseif progress_style == false || progress_style == :disable
+        return NoCallback()
+    elseif progress_style == :plain
+        return DefaultCallback(N)
+    else
+        throw(ArgumentError("Keyword argument $progress_style is not recognized."))
+    end
+end
 
 """
     sample(
@@ -148,7 +185,7 @@ function sample(
     ts = transitions_init(rng, ℓ, s, N; kwargs...)
 
     # Add a progress meter.
-    cb = progress ? init_callback(rng, ℓ, s, N; kwargs...) : nothing
+    cb = progress ? _generate_callback(rng, ℓ, s, N; kwargs...) : nothing
 
     # Step through the sampler.
     for i=1:N
