@@ -54,8 +54,10 @@ end
 DecayedADAGrad(η = 0.1, pre = 1.0, post = 0.9) = DecayedADAGrad(η, pre, post, IdDict())
 
 function apply!(o::DecayedADAGrad, x, Δ)
-  η = o.eta
-  acc = get!(o.acc, x, fill(ϵ, size(x)))::typeof(Tracker.data(x))
-  @. acc = o.post * acc + o.pre * Δ^2
-  @. Δ *= η / (√acc + ϵ)
+    T = typeof(Tracker.data(x))
+
+    η = o.eta
+    acc = get!(o.acc, x, convert(T, fill(ϵ, size(x))))::T
+    @. acc = o.post * acc + o.pre * Δ^2
+    @. Δ *= η / (√acc + ϵ)
 end
