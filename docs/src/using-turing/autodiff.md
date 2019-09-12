@@ -32,10 +32,14 @@ using Turing
 end
 
 # Sample using Gibbs and varying autodiff backends.
-c = sample(gdemo(1.5, 2),
-  Gibbs(1000,
-    HMC{Turing.ForwardDiffAD{1}}(2, 0.1, 5, :m),
-    HMC{Turing.TrackerAD}(2, 0.1, 5, :s)))
+c = sample(
+	gdemo(1.5, 2),
+  	Gibbs(
+    	HMC{Turing.ForwardDiffAD{1}}(0.1, 5, :m),
+        HMC{Turing.TrackerAD}(0.1, 5, :s)
+    ),
+    1000
+)
 ```
 
 

@@ -65,7 +65,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ∇E = gradient_logp_reverse(x, vi, ad_test_f)[2]
         grad_Turing = sort(∇E)
 
-        dist_s = InverseGamma(2, 3)
+        dist_s = InverseGamma(2,3)
 
         # Hand-written logp
         function logp(x::Vector)
@@ -73,7 +73,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
           # s = invlink(dist_s, s)
           m = x[1]
           lik_dist = Normal(m, sqrt(s))
-          lp = logpdf(dist_s, s) + logpdf(Normal(0, sqrt(s)), m)
+          lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
           lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
           lp
         end
@@ -108,7 +108,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
             s = x[2]
             m = x[1]
             lik_dist = Normal(m, sqrt(s))
-            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0, sqrt(s)), m, false)
+            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt(s)), m, false)
             lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
             return lp
         end
@@ -306,19 +306,19 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(dir(), HMC(1000, 0.01, 1));
+        sample(dir(), HMC(0.01, 1), 1000);
     end
     @testset "PDMatDistribution Tracker AD" begin
         @model wishart() = begin
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(wishart(), HMC(1000, 0.01, 1));
+        sample(wishart(), HMC(0.01, 1), 1000);
 
         @model invwishart() = begin
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(invwishart(), HMC(1000, 0.01, 1));
+        sample(invwishart(), HMC(0.01, 1), 1000);
     end
 end

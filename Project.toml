@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.6.23"
+version = "0.6.24"
 
 [deps]
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
@@ -25,7 +25,9 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-AdvancedHMC = ">= 0.2.3"
+AdvancedHMC = ">= 0.2.4"
+DynamicHMC = "^1"
+MCMCChains = ">= 0.3.12"
 julia = ">= 1.0"
 
 [extras]

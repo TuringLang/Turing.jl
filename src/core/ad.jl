@@ -379,6 +379,7 @@ struct TuringDiagNormal{Tm<:AbstractVector, Tσ<:AbstractVector} <: ContinuousMu
 end
 
 Distributions.dim(d::TuringDiagNormal) = length(d.m)
+Base.length(d::TuringDiagNormal) = length(d.m)
 function Distributions.rand(rng::Random.AbstractRNG, d::TuringDiagNormal)
     return d.m .+ d.σ .* randn(rng, dim(d))
 end

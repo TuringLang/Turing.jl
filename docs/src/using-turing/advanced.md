@@ -88,7 +88,7 @@ using Turing
   [x ~ Normal(m, sqrt(s))]
 end
 
-sample(gdemo([1.5, 2.0]), HMC(1000, 0.1, 5))
+sample(gdemo([1.5, 2.0]), HMC(0.1, 5), 1000)
 ```
 
 
@@ -144,7 +144,7 @@ defaults = (x = Vector{Real}(undef, 2),)
 model = Turing.Model{Tuple{:s, :m}, Tuple{:x}}(mf, data, defaults)
 
 # Sample the model.
-chain = sample(model, HMC(1000, 0.1, 5))
+chain = sample(model, HMC(0.1, 5), 1000)
 ```
 
 
@@ -240,9 +240,9 @@ end
 
 # Sampling setup.
 num_chains = 4
-sampler = NUTS(1000, 0.65)
+sampler = NUTS(0.65)
 model = gdemo([1.2, 3.5]
 
 # Run all samples.
-chns = reduce(chainscat, pmap(x->sample(model,sampler),1:num_chains))
+chns = reduce(chainscat, pmap(x->sample(model,sampler, 1000),1:num_chains))
 ```

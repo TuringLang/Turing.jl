@@ -1,19 +1,15 @@
 """
-    IS(n_particles::Int)
+    IS()
 
 Importance sampling algorithm.
 
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Arguments:
-
-- `n_particles` is the number of particles to use.
-
 Usage:
 
 ```julia
-IS(1000)
+IS()
 ```
 
 Example:
@@ -21,40 +17,58 @@ Example:
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt.(s))
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt.(s))
     x[1] ~ Normal(m, sqrt.(s))
     x[2] ~ Normal(m, sqrt.(s))
     return s, m
 end
 
-sample(gdemo([1.5, 2]), IS(1000))
+sample(gdemo([1.5, 2]), IS(), 1000)
 ```
 """
-mutable struct IS <: InferenceAlgorithm
-    n_particles ::  Int
+struct IS{space} <: InferenceAlgorithm end
+
+IS() = IS{()}()
+transition_type(spl::Sampler{<:IS}) = typeof(Transition(spl))
+alg_str(::Sampler{<:IS}) = "IS"
+
+mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                 ::  V
+    final_logevidence  ::  F
 end
 
-function Sampler(alg::IS, s::Selector)
+ISState(model::Model) = ISState(VarInfo(model), 0.0)
+
+function Sampler(alg::IS, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    Sampler(alg, info, s)
+    state = ISState(model)
+    return Sampler(alg, info, s, state)
 end
 
-function sample(model::Model, alg::IS)
-    spl = Sampler(alg);
-    samples = Array{Sample}(undef, alg.n_particles)
+function step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:IS},
+    ::Integer;
+    kwargs...
+)
+    empty!(spl.state.vi)
+    model(spl.state.vi, spl)
 
-    n = spl.alg.n_particles
-    vi = VarInfo(model)
-    for i = 1:n
-        empty!(vi)
-        model(vi, spl)
-        samples[i] = Sample(vi)
-    end
+    return Transition(spl)
+end
 
-    le = logsumexp(map(x->x[:lp], samples)) - log(n)
-
-    Chain(le, samples)
+function sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    spl::Sampler{<:IS},
+    N::Integer,
+    ts::Vector{<:Transition};
+    kwargs...
+) where {SamplerType<:AbstractSampler}
+    # Calculate evidence.
+    spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
 
 function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)

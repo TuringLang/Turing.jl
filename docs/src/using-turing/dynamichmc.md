@@ -29,6 +29,6 @@ using LogDensityProblems, DynamicHMC, Turing
 end
 
 # Pull 2,000 samples using DynamicNUTS.
-chn = sample(gdemo(1.5, 2.0), DynamicNUTS(2000))
+chn = sample(gdemo(1.5, 2.0), DynamicNUTS(), 2000)
 ```
 

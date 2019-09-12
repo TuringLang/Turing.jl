@@ -1,3 +1,11 @@
+mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
+    proposal_ratio        ::   Float64
+    prior_prob            ::   Float64
+    violating_support     ::   Bool
+    vi                    ::   V
+end
+
+MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
 """
     MH(n_iters::Int)
 
@@ -14,8 +22,8 @@ Example:
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
+  s ~ InverseGamma(2,3)
+  m ~ Normal(0,sqrt(s))
   x[1] ~ Normal(m, sqrt(s))
   x[2] ~ Normal(m, sqrt(s))
   return s, m
@@ -25,14 +33,17 @@ chn = sample(gdemo([1.5, 2]), MH(1000))
 ```
 """
 mutable struct MH{space} <: InferenceAlgorithm
-    n_iters   ::  Int       # number of iterations
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
-function MH(n_iters::Int, proposals::Dict{Symbol, Any}, space::Tuple) 
-    return MH{space}(n_iters, proposals)
+
+transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
+alg_str(::Sampler{<:MH}) = "MH"
+
+function MH(proposals::Dict{Symbol, Any}, space::Tuple)
+    return MH{space}(proposals)
 end
 
-function MH(n_iters::Int, space...)
+function MH(space...)
     new_space = ()
     proposals = Dict{Symbol,Any}()
 
@@ -46,7 +57,7 @@ function MH(n_iters::Int, space...)
             proposals[element[1]] = element[2]
         end
     end
-    MH(n_iters, proposals, new_space)
+    return MH(proposals, new_space)
 end
 
 function Sampler(alg::MH, model::Model, s::Selector)
@@ -61,119 +72,60 @@ function Sampler(alg::MH, model::Model, s::Selector)
     end
 
     info = Dict{Symbol, Any}()
-    info[:proposal_ratio] = 0.0
-    info[:prior_prob] = 0.0
-    info[:violating_support] = false
+    state = MHState(model)
 
-    return Sampler(alg, info, s)
+    return Sampler(alg, info, s, state)
 end
 
 function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
-    spl.info[:proposal_ratio] = 0.0
-    spl.info[:prior_prob] = 0.0
-    spl.info[:violating_support] = false
-    return runmodel!(model, vi ,spl)
+    spl.state.proposal_ratio = 0.0
+    spl.state.prior_prob = 0.0
+    spl.state.violating_support = false
+    return runmodel!(model, spl.state.vi, spl)
 end
 
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
-    return vi, true
+# First step always returns a value.
+function step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    ::Integer;
+    kwargs...
+)
+    return Transition(spl)
 end
 
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector.tag != :default # Recompute joint in logp
-    runmodel!(model, vi)
-  end
-  old_θ = copy(vi[spl])
-  old_logp = getlogp(vi)
-
-  Turing.DEBUG && @debug "Propose new parameters from proposals..."
-  propose(model, spl, vi)
-
-  Turing.DEBUG && @debug "computing accept rate α..."
-  is_accept, _ = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
-
-  Turing.DEBUG && @debug "decide wether to accept..."
-  if is_accept && !spl.info[:violating_support]  # accepted
-    is_accept = true
-  else                      # rejected
-    is_accept = false
-    vi[spl] = old_θ         # reset Θ
-    setlogp!(vi, old_logp)  # reset logp
-  end
-
-  return vi, is_accept
-end
-
-function sample(model::Model, alg::MH;
-                save_state=false,         # flag for state saving
-                resume_from=nothing,      # chain to continue
-                reuse_spl_n=0,            # flag for spl re-using
-                )
-
-  spl = reuse_spl_n > 0 ?
-        resume_from.info[:spl] :
-        Sampler(alg, model)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
+# Every step after the first.
+function step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    ::Integer,
+    ::Transition;
+    kwargs...
+)
+    if spl.selector.tag != :default # Recompute joint in logp
+        runmodel!(model, spl.state.vi)
     end
-  alg_str = "MH"
+    old_θ = copy(spl.state.vi[spl])
+    old_logp = getlogp(spl.state.vi)
 
-  # Initialization
-  time_total = 0.0
-  n = reuse_spl_n > 0 ?
-      reuse_spl_n :
-      alg.n_iters
-  samples = Array{Sample}(undef, n)
-  weight = 1 / n
-  for i = 1:n
-    samples[i] = Sample(weight, Dict{Symbol, Any}())
-  end
+    Turing.DEBUG && @debug "Propose new parameters from proposals..."
+    propose(model, spl, spl.state.vi)
 
-    vi = if resume_from == nothing
-        VarInfo(model)
-    else
-        resume_from.info[:vi]
+    Turing.DEBUG && @debug "computing accept rate α..."
+    is_accept, _ = mh_accept(-old_logp, -getlogp(spl.state.vi), spl.state.proposal_ratio)
+
+    Turing.DEBUG && @debug "decide wether to accept..."
+    if is_accept && !spl.state.violating_support  # accepted
+        is_accept = true
+    else                      # rejected
+        is_accept = false
+        spl.state.vi[spl] = old_θ         # reset Θ
+        setlogp!(spl.state.vi, old_logp)  # reset logp
     end
 
-  if spl.selector.tag == :default
-    runmodel!(model, vi, spl)
-  end
-
-  # MH steps
-  accept_his = Bool[]
-  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-  for i = 1:n
-    Turing.DEBUG && @debug "$alg_str stepping..."
-
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
-    time_total += time_elapsed
-
-    if is_accept # accepted => store the new predcits
-        samples[i].value = Sample(vi, spl).value
-    else         # rejected => store the previous predcits
-        samples[i] = samples[i - 1]
-    end
-
-    samples[i].value[:elapsed] = time_elapsed
-    push!(accept_his, is_accept)
-
-    PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
-  end
-
-  println("[$alg_str] Finished with")
-  println("  Running time        = $time_total;")
-  accept_rate = sum(accept_his) / n  # calculate the accept rate
-  println("  Accept rate         = $accept_rate;")
-
-  if resume_from != nothing   # concat samples
-    pushfirst!(samples, resume_from.info[:samples]...)
-  end
-  c = Chain(0.0, samples)       # wrap the result by Chain
-  if save_state               # save state
-    c = save(c, spl, model, vi, samples)
-  end
-
-  c
+    return Transition(spl)
 end
 
 function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
@@ -190,25 +142,25 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
                 stdG = Normal()
                 r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
                 # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
-                spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
-                spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
+                spl.state.proposal_ratio += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
+                spl.state.proposal_ratio -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
             else # Other than Gaussian proposal
                 r = rand(proposal)
                 if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
-                    spl.info[:violating_support] = true
+                    spl.state.violating_support = true
                     r = old_val
                 end
-                spl.info[:proposal_ratio] -= logpdf(proposal, r) # accumulate pdf of proposal
+                spl.state.proposal_ratio -= logpdf(proposal, r) # accumulate pdf of proposal
                 reverse_proposal = spl.alg.proposals[vn.sym](r)
-                spl.info[:proposal_ratio] += logpdf(reverse_proposal, old_val)
+                spl.state.proposal_ratio += logpdf(reverse_proposal, old_val)
             end
 
         else # Prior as proposal
             r = rand(dist)
-            spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
+            spl.state.proposal_ratio += (logpdf(dist, old_val) - logpdf(dist, r))
         end
 
-        spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
+        spl.state.prior_prob += logpdf(dist, r) # accumulate prior for PMMH
         vi[vn] = vectorize(dist, r)
         setgid!(vi, spl.selector, vn)
     else

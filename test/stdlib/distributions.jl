@@ -115,7 +115,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                             x ~ dist
                         end
 
-                        chn = sample(m(), HMC(n_samples, 0.2, 1))
+                        chn = sample(m(), HMC(0.2, 1), n_samples)
 
                         # Numerical tests.
                         check_dist_numerical(dist,
