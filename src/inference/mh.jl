@@ -146,7 +146,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
                 spl.state.proposal_ratio -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
             else # Other than Gaussian proposal
                 r = rand(proposal)
-                if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
+                if !(insupport(dist, r)) # check if value lies in support
                     spl.state.violating_support = true
                     r = old_val
                 end
