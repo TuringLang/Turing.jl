@@ -215,7 +215,7 @@ end
     )
 
 Performs whatever initial setup is required for your sampler. This function is not intended
-to return any value -- any set up should utate the sampler or the model type in-place.
+to return any value -- any set up should mutate the sampler or the model type in-place.
 
 A common use for `sample_init!` might be to instantiate a particle field for later use,
 or find an initial step size for a Hamiltonian sampler.
@@ -244,7 +244,7 @@ end
     )
 
 Performs whatever finalizing the sampler requires. This function is not intended
-to return any value -- any set up should utate the sampler or the model type in-place.
+to return any value -- any set up should mutate the sampler or the model type in-place.
 
 `sample_end!` is useful in cases where you might like to perform some transformation 
 on your vector of `AbstractTransitions`, save your sampler struct to disk, or otherwise
