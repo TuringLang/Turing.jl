@@ -42,24 +42,22 @@ function (elbo::ELBO)(
 
     # update the variational posterior
     q = update(q, μ, softplus.(ω))
-    
-    # sample from variational posterior
-    # TODO: when batch computation is supported by Bijectors.jl use `forward` instead.
-    samples = Distributions.rand(q, num_samples)
 
     # rescaling due to loglikelihood weight and samples used
     c = weight / num_samples
 
+    # If f: supp(p(z | x)) → ℝ then
     # ELBO = 𝔼[log p(x, z) - log q(z)]
-    #      = 𝔼[log p(x, f⁻¹(y)) + logabsdet(J(f⁻¹(y)))] + H(q(z))
-    z = samples[:, 1]
-    res = (logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
+    #      = 𝔼[log p(x, f⁻¹(z̃)) + logabsdet(J(f⁻¹(z̃)))] + ℍ(q̃(z̃))
+    #      = 𝔼[og p(x, z) - logabsdetjac(J(f(z)))] + ℍ(q̃(z̃))
+    _, z, logjac, _ = forward(q)
+    res = (logdensity(model, varinfo, z) - logjac) * c
 
     res += entropy(q)
     
     for i = 2:num_samples
-        z = samples[:, i]
-        res += (logdensity(model, varinfo, z) + logabsdetjacinv(q, z)) * c
+        _, z, logjac, _ = forward(q)
+        res += (logdensity(model, varinfo, z) - logjac) * c
     end
 
     return res
