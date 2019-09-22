@@ -110,6 +110,9 @@ Turing translates models to chunks that call the modelling functions at specifie
 The dispatch is based on the value of a `sampler` variable.
 To include a new inference algorithm implements the requirements mentioned above in a separate file,
 then include that file at the end of this one.
+
+If no overload of `Sampler(alg, model, s)` is provided, the `Sampler.state` field
+defaults to containing a `SamplerState(model)` struct, which only contains a `VarInfo`.
 """
 mutable struct Sampler{T, S<:AbstractSamplerState} <: AbstractSampler
     alg      ::  T
@@ -119,7 +122,7 @@ mutable struct Sampler{T, S<:AbstractSamplerState} <: AbstractSampler
 end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
-Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
+Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s, SamplerState(model))
 
 include("utilities/Utilities.jl")
 using .Utilities

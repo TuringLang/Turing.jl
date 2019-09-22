@@ -700,9 +700,11 @@ end
 
 """
 `runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler)`
+`runmodel!(model::Model, spl::AbstractSampler)`
 
 Samples from `model` using the sampler `spl` storing the sample and log joint
-probability in `vi`.
+probability in `vi`. If `spl` is not `SampleFromPrior` or `SampleFromUniform`,
+you may simply call `runmodel!(model, spl)`.
 """
 function runmodel!(
     model::Model,
@@ -715,6 +717,13 @@ function runmodel!(
     end
     model(vi, spl)
     return vi
+end
+
+function Distributions.logpdf(model::Model, spl::T, θ::P) where {T<:AbstractSampler, P}
+    vi = copy(spl.state.vi)
+    vi[spl] = θ
+    runmodel!(model, vi, spl)
+    return getlogp(vi)
 end
 
 VarInfo(meta=Metadata()) = VarInfo(meta, Ref{Real}(0.0), Ref(0))
@@ -1091,8 +1100,8 @@ end
 """
     tonamedtuple(vi::Turing.VarInfo)
 
-Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values and 
-indexing string of the variable. For example, a model that had a vector of vector-valued
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values,  
+indexing string, and `VarName` of the variable. For example, a model that had a vector of vector-valued
 variables `x` would return
 
 ```julia
@@ -1106,7 +1115,9 @@ end
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
-        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns, all=false))))
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), 
+                                         string.(metadata.$f.vns, all=false), 
+                                         metadata.$f.vns)))
     end
     return expr
 end

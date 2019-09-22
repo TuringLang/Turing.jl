@@ -56,7 +56,8 @@ export  InferenceAlgorithm,
         get_covar,
         add_sample!,
         reset!,
-        step!
+        step!,
+        SamplerState
 
 #######################
 # Sampler abstraction #
@@ -93,10 +94,25 @@ struct Transition{T, F<:AbstractFloat} <: AbstractTransition
     lp :: F
 end
 
+"""
+    Transition(spl::Sampler, nt::NamedTuple=NamedTuple())
+    Transition(model::Model, spl::Sampler, θ::T, nt::NamedTuple=NamedTuple()) where T
+
+Return a `Transition` using either the values already in `spl.state.vi`, or pass
+in the model and a `θ` which copies the `VarInfo` and recalculates the log density.
+"""
+function Transition(model::Model, spl::Sampler, θ::T, nt::NamedTuple=NamedTuple()) where T
+    vi = copy(spl.state.vi)
+    theta = merge(tonamedtuple(vi), nt)
+    runmodel!(model, vi, spl)
+    lp = getlogp(vi)
+    return Transition(theta, lp)
+end
+
 function Transition(spl::Sampler, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp)
+    return Transition(theta, lp)
 end
 
 function additional_parameters(::Type{<:Transition})
@@ -453,6 +469,14 @@ A blank `AbstractSamplerState` that contains only `VarInfo` information.
 mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
     vi :: VIType
 end
+
+"""
+    SamplerState(model::Model)
+
+Build a defualt sampler state that only has a `VarInfo` field from a provided
+`Model`.
+"""
+SamplerState(model::Model) = SamplerState(VarInfo(model))
 
 #######################################
 # Concrete algorithm implementations. #

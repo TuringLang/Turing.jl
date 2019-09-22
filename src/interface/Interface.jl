@@ -58,8 +58,9 @@ abstract type AbstractTransition end
 """
     AbstractCallback
 
-An `AbstractCallback` types is a supertype to be inherited from if you want to use custom callback 
-functionality. This is used to report sampling progress such as parameters calculated, remaining
+An `AbstractCallback` types is a supertype to be inherited from if you
+want to use custom callback functionality. This is used to report sampling
+progress such as parameters calculated, remaining
 samples to run, or even plot graphs if you so choose.
 
 In order to implement callback functionality, you need the following:
@@ -312,7 +313,8 @@ function step!(
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
     # Do nothing.
-    debug && @warn "No step! function has been implemented for objects of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
+    debug && @warn "No step! function has been implemented for objects" *
+                    "of types \n- $(typeof(ℓ)) \n- $(typeof(s))"
 end
 
 function step!(
@@ -375,7 +377,7 @@ function transitions_init(
     N::Integer;
     kwargs...
 ) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
-    return Vector{transition_type(s)}(undef, N)
+    return Vector{transition_type(ℓ, s)}(undef, N)
 end
 
 """
@@ -433,10 +435,14 @@ end
 
 """
     transition_type(s::AbstractSampler)
+    transition_type(ℓ::M, s::AbstractSampler)
 
 Return the type of `AbstractTransition` that is to be returned by an 
-`AbstractSampler` after each `step!` call. 
+`AbstractSampler` after each `step!` call. This can be constructed by passing 
+in the model type as well, but if no model is passed in, only the sampler
+will be used to construct the transition type.
 """
 transition_type(s::AbstractSampler) = AbstractTransition
+transition_type(ℓ::M, s::AbstractSampler) where M<:Sampleable = transition_type(s)
 
 end # module Interface
