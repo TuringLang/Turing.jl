@@ -1,6 +1,12 @@
 import Random: AbstractRNG
 
 # No info
+"""
+    Flat <: ContinuousUnivariateDistribution
+
+A distribution with support and density of one
+everywhere.
+"""
 struct Flat <: ContinuousUnivariateDistribution end
 
 Distributions.rand(rng::AbstractRNG, d::Flat) = rand(rng)
@@ -11,7 +17,12 @@ Distributions.maximum(d::Flat) = +Inf
 # For vec support
 Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 
-# Pos
+"""
+    FlatPos(l::Real)
+
+A distribution with a lower bound of `l` and a density
+of one at every `x` above `l`.
+"""
 struct FlatPos{T<:Real} <: ContinuousUnivariateDistribution
     l::T
 end
@@ -26,12 +37,21 @@ function Distributions.logpdf(d::FlatPos, x::AbstractVector{<:Real})
     return any(x .<= d.l) ? -Inf : zero(x)
 end
 
-# Binomial with logit
+"""
+    BinomialLogit(n<:Real, I<:Integer)
+
+A univariate binomial logit distribution. 
+"""
 struct BinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
     n::I
     logitp::T
 end
 
+"""
+    BinomialLogit(n<:Real, I<:Integer)
+
+A multivariate binomial logit distribution. 
+"""
 struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
     n::Vector{I}
     logitp::Vector{T}
@@ -50,7 +70,11 @@ function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer}
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
 end
 
+"""
+    OrderedLogistic(η::Any, cutpoints<:AbstractVector)
 
+An ordered logistic distribution.
+"""
 struct OrderedLogistic{T1, T2<:AbstractVector} <: DiscreteUnivariateDistribution
    η::T1
    cutpoints::T2
@@ -65,17 +89,15 @@ struct OrderedLogistic{T1, T2<:AbstractVector} <: DiscreteUnivariateDistribution
 end
 
 function Distributions.logpdf(d::OrderedLogistic, k::Int)
-
     K = length(d.cutpoints)+1
-
     c =  d.cutpoints
 
     if k==1
-        logp= - softplus(-(c[k]-d.η))  #logp= log(logistic(c[k]-d.η))
+        logp= -softplus(-(c[k]-d.η))  #logp= log(logistic(c[k]-d.η))
     elseif k<K
         logp= log(logistic(c[k]-d.η) - logistic(c[k-1]-d.η))
     else
-        logp= - softplus(c[k-1]-d.η)  #logp= log(1-logistic(c[k-1]-d.η))
+        logp= -softplus(c[k-1]-d.η)  #logp= log(1-logistic(c[k-1]-d.η))
     end
 
     return logp
