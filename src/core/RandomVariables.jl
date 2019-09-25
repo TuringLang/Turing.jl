@@ -1100,9 +1100,8 @@ end
 """
     tonamedtuple(vi::Turing.VarInfo)
 
-Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values,  
-indexing string, and `VarName` of the variable. For example, a model that had a vector of vector-valued
-variables `x` would return
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values, and `VarName` of the variable. 
+For example, a model that had a vector of vector-valued variables `x` would return
 
 ```julia
 (x = ([1.5, 2.0], [3.0, 1.0], ["x[1]", "x[2]"]), )
@@ -1116,7 +1115,6 @@ end
     expr = Expr(:tuple)
     map(names) do f
         push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), 
-                                         string.(metadata.$f.vns, all=false), 
                                          metadata.$f.vns)))
     end
     return expr
