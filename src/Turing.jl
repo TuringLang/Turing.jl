@@ -123,6 +123,7 @@ end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
 Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s, SamplerState(model))
+Sampler(alg, model::Model, s::Selector, state::AbstractSamplerState) = Sampler(alg, Dict{Symbol, Any}(), s, state)
 
 include("utilities/Utilities.jl")
 using .Utilities
