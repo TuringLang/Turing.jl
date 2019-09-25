@@ -2,7 +2,7 @@ module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple
+    islinked, invlink!, getlogp, tonamedtuple, setval!, setlogp!
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -57,7 +57,8 @@ export  InferenceAlgorithm,
         add_sample!,
         reset!,
         step!,
-        SamplerState
+        SamplerState,
+        parameters!
 
 #######################
 # Sampler abstraction #
@@ -102,10 +103,10 @@ Return a `Transition` using either the values already in `spl.state.vi`, or pass
 in the model and a `θ` which copies the `VarInfo` and recalculates the log density.
 """
 function Transition(model::Model, spl::Sampler, θ::T, nt::NamedTuple=NamedTuple()) where T
-    vi = copy(spl.state.vi)
-    theta = merge(tonamedtuple(vi), nt)
-    runmodel!(model, vi, spl)
-    lp = getlogp(vi)
+    spl.state.vi[spl] = θ
+    spl.state.vi = runmodel!(model, spl.state.vi, spl)
+    theta = merge(tonamedtuple(spl.state.vi), nt)
+    lp = getlogp(spl.state.vi)
     return Transition(theta, lp)
 end
 
@@ -117,6 +118,25 @@ end
 
 function additional_parameters(::Type{<:Transition})
     return [:lp]
+end
+
+function parameters!(spl::Sampler, t::T) where T<:Transition
+    for (key, (params, vns)) in pairs(t.θ)
+        for i in 1:length(params)
+            spl.state.vi[vns[i]] = [params[i]]
+        end
+    end
+
+    # if link && !islinked(spl.state.vi, spl)
+    #     link!(spl.state.vi, spl)
+    #     vals = spl.state.vi[spl]
+    #     println(vals)
+    #     invlink!(spl.state.vi, spl)
+    #     return vals
+    # else
+    #     return spl.state.vi[spl]
+    # end
+    return spl.state.vi[spl]
 end
 
 Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
@@ -259,7 +279,8 @@ function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
     names = Vector{AbstractString}()
 
     for k in pnames
-        v = nt[k]
+        vv = nt[k]
+        v = (vv[1], string.(vv[2], all=false))
         if length(v) == 1
             flatten(names, vals, string(k), v)
         else
@@ -528,7 +549,7 @@ error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 function assume(spl::A,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo) where {A<:AbstractSampler}#{A<:Union{SampleFromPrior, SampleFromUniform}}
 
     if haskey(vi, vn)
         r = vi[vn]
@@ -541,14 +562,13 @@ function assume(spl::A,
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
-
 end
 
 function assume(spl::A,
     dists::Vector{T},
     vn::VarName,
     var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo) where {T<:Distribution, A<:AbstractSampler}#{T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
@@ -600,7 +620,7 @@ observe(::Nothing,
 function observe(spl::A,
     dist::Distribution,
     value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo) where {A<:AbstractSampler} #Union{SampleFromPrior, SampleFromUniform}}
 
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
@@ -613,7 +633,7 @@ end
 function observe(spl::A,
     dists::Vector{T},
     value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo) where {T<:Distribution, A<:AbstractSampler} #Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
