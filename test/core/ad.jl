@@ -6,7 +6,6 @@ using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
 const FDM = FiniteDifferences
-using Combinatorics
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
