@@ -23,9 +23,8 @@ n_samples = 10_000
 n_adapts = 1_000
 
 # Sampling
-bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
+LOG_DATA = @tbenchmark_expr("NUTS(Leapfrog(...))",
                              sample(hlr_nuts(x, y, 1/0.01),
                              NUTS(n_samples, n_adapts, 0.65)));
 
-LOG_DATA = build_log_data("[NUTS] HierarchicalLogisticRegression-Benchmark", bench_res...)
 print_log(LOG_DATA)

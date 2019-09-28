@@ -22,9 +22,8 @@ n_samples = 10_000
 n_adapts = 1_000
 
 # Sampling
-bench_res = @tbenchmark_expr("NUTS(Leapfrog(...))",
+LOG_DATA = @tbenchmark_expr("NUTS(Leapfrog(...))",
                              sample(lr_nuts(x, y, 100),
                              NUTS(n_samples, n_adapts, 0.65)));
 
-LOG_DATA = build_log_data("[NUTS] LogisticRegression-Benchmark", bench_res...)
 print_log(LOG_DATA)
