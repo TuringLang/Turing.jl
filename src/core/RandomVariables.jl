@@ -41,7 +41,8 @@ export  VarName,
         istrans,
         link!,
         invlink!,
-        tonamedtuple
+        tonamedtuple,
+        variables
 
 ####
 #### Types for typed and untyped VarInfo
@@ -168,7 +169,7 @@ symbols have been observed. `VarInfo{<:NamedTuple}` is aliased `TypedVarInfo`.
 
 Note: It is the user's responsibility to ensure that each "symbol" is visited at least
 once whenever the model is called, regardless of any stochastic branching. Each symbol
-refers to a Julia variable and can be a hierarchical array of many random variables, e.g. `x[1] ~ ...` and `x[2] ~ ...` both have the same symbol `x`.
+refers to a Julia variable and can be a hierarchical array of many random 7, e.g. `x[1] ~ ...` and `x[2] ~ ...` both have the same symbol `x`.
 """
 struct VarInfo{Tmeta, Tlogp} <: AbstractVarInfo
     metadata::Tmeta
@@ -519,6 +520,13 @@ end
     # Get all the idcs of the vns
     return filter((i) -> isempty(f_meta.gids[i]), 1:length(f_meta.gids))
 end
+
+"""
+    variables(spl::AbstractSampler)
+
+Returns a vector of the `VarName`s that `spl` has access to.
+"""
+variables(spl::AbstractSampler) = vcat([v for (_, v) in pairs(_getvns(spl.state.vi, spl))]...)
 
 # Get all vns of variables belonging to spl
 _getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, spl))
