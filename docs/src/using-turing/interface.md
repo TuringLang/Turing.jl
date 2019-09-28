@@ -35,6 +35,8 @@ The motivation for the interface is to allow Julia's fantastic probabilistic pro
 
 [Metropolis-Hastings](https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) is often the first sampling method that people are exposed to. It is a very straightforward algorithm and is accordingly the easiest to implement, so it makes for a good example. In this section, you will learn how to use the types and functions listed above to implement the Metropolis-Hastings sampler using the MCMC interface.
 
+The full code for this implementation can be found [here](https://github.com/cpfiffer/MetropolisHastings/blob/master/mh-implementation.jl).
+
 ### Imports
 
 Let's begin by importing the relevant libraries. We'll import `Turing.Interface`, which contains the interface framework we'll fill out. We also need `Distributions` and `Random`.
@@ -349,6 +351,8 @@ Third, you no longer explicitly construct an `AbstractSampler` -- Turing has a d
 Fourth, instead of manually generating a proposal the way before, we will be using the `assume` interface. Turing uses an `observe`/`assume` style, where provided data is `observe`d and parameters are `assume`d. When you declare a model with `@model`, every line with a `~` is replaced with `observe` or `assume`. We'll get into that a little more in the following sections.
 
 Fifth, you don't have to have a `Chains` function anymore. Turing has a good default one.
+
+The full code for this implementation can be found [here](https://github.com/cpfiffer/MetropolisHastings/blob/master/mh-implementation-turing.jl).
 
 ### Imports
 
