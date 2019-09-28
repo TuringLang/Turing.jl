@@ -20,7 +20,10 @@
     url: "docs/using-turing/dynamichmc"
 
   - title: "Sampler Visualization"
-    url: "docs/using-turing/sampler-viz"
+    url: "docs/using-turing/sampler-viz" 
+
+  - title: "Interface Developer Guide"
+    url: "docs/using-turing/interface"
 
 - title: "TUTORIALS"
   url: "tutorials"
@@ -55,7 +58,7 @@
 - title: "LIBRARY"
   url: "docs/library"
   children:
-    - title: "Public"
+    - title: "API"
       url: "docs/library"
 
 - title: "CONTRIBUTING"

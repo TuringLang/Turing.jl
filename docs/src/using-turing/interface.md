@@ -1,10 +1,15 @@
-# The Sampling Interface
+---
+title: Interface Developer Guide
+toc: true
+---
+
+# The sampling interface
 
 Turing implements a sampling interface that is intended to provide a common framework for Markov Chain Monte Carlo samplers. The interface presents several structures and functions that one needs to overload in order to implement an interface-compatible sampler. 
 
 This guide will demonstrate how to implement the interface without Turing, and then demonstrate how to implement the same model with Turing.
 
-## Interface Overview
+## Interface overview
 
 Any implementation of an inference method that uses Turing's MCMC interface should implement some combination of the following types and functions:
 
@@ -21,6 +26,10 @@ The interface methods with exclamation points are those that are intended to all
 - `sample_init!` to run some kind of sampler preparation, before sampling begins. This could mutate a sampler's state.
 - `step!` might mutate a sampler flag after each sample. MH does this for example by using a `violating_support` flag.
 - `sample_end!` contains any wrap-up you might need to do. If you were sampling in a transformed space, this might be where you convert everything back to a constrained space.
+
+## Why do you have an interface?
+
+The motivation for the interface is to allow Julia's fantastic probabilistic programming language community to have a set of standards and common implementations so we can all thrive together. Markov-Chain Monte Carlo methods tend to have a very similar framework to one another, and so a common interface should help more great inference methods built in single-purpose packages to experience more use among the community. 
 
 ## Implementing Metropolis-Hastings without Turing
 
@@ -327,3 +336,287 @@ Quantiles
 
 It looks like we're extremely close to our true parameters of `Normal(5,3)`, though with a fairly high variance due to the low sample size.
 
+## Metropolis-Hastings and Turing
+
+If you are more interested in how you can build your sampler to use Turing's tools, this is the section for you. Turing provides an API for interacting with it's modelling language that is typically highly performant.
+
+The first major difference between the vanilla interface implementation in the prior section and this section is the `VarInfo` type. `VarInfo` is a struct that contains all the information needed to manipulate a model -- it stores parameter values, distributions, log densities, and performs various record-keeping functions to make sure that the samplers can cooperate with one another. By default, all the parameters in `VarInfo` are initialized from the prior distributions. `VarInfo` is the workhorse of Turing and one of the major determinants of Turing's speed. The inclusion of this particularly struct changes the structure of the sampler slightly. Importantly, we will use a combination of immutable `Transition` structs and the mutable `VarInfo`.
+
+Second, variables in `VarInfo` can be accessed using another type called a `VarName`, which refers to a specific variable in a `VarInfo`. As an example, if you have a `VarInfo` called `vi` and a `VarName` called `vn`, you can call `vi[vn]` to retrieve the value of the `VarName` that is currently store in `vi`. This can be set as well using `vi[vn] = foo`. We won't work too much with this in our sampler implementation, but this kind of thing is happening all the time in the background. 
+
+Third, you no longer explicitly construct an `AbstractSampler` -- Turing has a default `Sampler` that stores an `InferenceAlgorithm`.
+
+Fourth, instead of manually generating a proposal the way before, we will be using the `assume` interface. Turing uses an `observe`/`assume` style, where provided data is `observe`d and parameters are `assume`d. When you declare a model with `@model`, every line with a `~` is replaced with `observe` or `assume`. We'll get into that a little more in the following sections.
+
+Fifth, you don't have to have a `Chains` function anymore. Turing has a good default one.
+
+### Imports
+
+As before, let's import the libraries and functions we'll need.
+
+```julia
+# Import the relevant libraries.
+using Turing
+using Turing.Interface
+using Distributions
+
+# Import specific functions and types to use or overload.
+import Distributions: VariateForm, ValueSupport, variate_form, value_support, Sampleable, insupport
+import MCMCChains: Chains
+import Turing: Model, Sampler, Selector
+import Turing.Interface: step!, AbstractTransition, transition_type
+import Turing.Inference: InferenceAlgorithm, Transition, parameters!, 
+                         getspace, assume, parameter
+import Turing.RandomVariables: VarInfo, VarName, variables
+```
+
+The new functions we have imported from `Turing.Inference` include
+
+- `InferenceAlgorithm`, which is a generic term for a struct that is stored inside a sampler. In our case, we'll be defining `MetropolisHastings <: InferenceAlgorithm`.
+- `Transition` is Turing's default `AbstractTransition` struct, that contains a parameterization in the field `θ` and the log density of that parameterization in a field `lp`.
+- `parameters!` is a function with the signature `parameters!(spl::Sampler, t::Transition)`, which accepts a `Transition` and updates the `VarInfo` to contain the parameters in the `Transition`. It returns a vector of the parameters if you would prefer to work with vectors instead of `NamedTuples`, which is how paramters are stored in a `Transition`.
+- `getspace`, which defines the symbols that a sampler is allowed to operate on. This is required for all new `InferenceAlgorithm` types.
+- `assume` is the function we have to overload to allow for custom `assume` statements.
+- `parameter` accepts a `Transition` and a `VarName`, and returns the value of the variable stored in `Transition`.
+
+We have also imported a couple of things from `Turing.RandomVariables`, which is the module containing all the tools for working with a `VarInfo` struct:
+
+- `VarInfo` imports definitions for the `VarInfo` struct.
+- `VarName` imports definitions for the `VarName` struct.
+- `variables(spl::Sampler)` is a function that returns a vector containing the `VarNames` of a sampler, so you can retrieve or set information about them in a `VarInfo`.
+
+### `InferenceAlgorithm`
+
+```julia
+# Define an InferenceAlgorithm type.
+struct MetropolisHastings{space} <: InferenceAlgorithm 
+    proposal :: Function
+end
+
+# Default constructors.
+MetropolisHastings(space=Tuple{}()) = MetropolisHastings{space}(x -> Normal(x, 1))
+MetropolisHastings(f::Function, space=Tuple{}()) = MetropolisHastings{space}(f)
+
+# These functions are required for your sampler to function with Turing,
+# and they return the variables that a sampler has ownership of.
+getspace(::MetropolisHastings{space}) where {space} = space
+getspace(::Type{<:MetropolisHastings{space}}) where {space} = space
+```
+
+We define a subtype of `InferenceAlgorithm` called `MetropolisHastings`. By default, Turing will bundle this up into a `Sampler` for us and give us a default `state` struct that carries a `VarInfo`.
+
+`MetropolisHastings` accepts a custom proposal function, which returns a proposal distribution to draw from. By default, it will use a `Normal(x, 1)` proposal distribution. It also accepts a tuple called `space`, which is used if you want to only sample a subset of the variables in your model.
+
+`getspace` returns the value of `space` -- if you build your own inference algorithm, you can just copy these two functions and replace `MetropolisHastings` with the name of your inference algorithm.
+
+### `transition_type`
+
+We need to tell the interface what type our `Transition` is going to be, and in this case we know exactly what the type is because of how handy the `VarInfo` is.
+
+```julia
+# Tell the interface what transition type we would like to use. We can use the default
+# Turing.Inference.Transition struct, and the Transition(spl) functions it 
+# provides.
+function transition_type(model::Model, spl::Sampler{<:MetropolisHastings})
+    return typeof(Transition(spl))
+end
+```
+
+`Transition(spl)` simply takes the values in `spl.state.vi` and bundles them up into a `Transition` for later use.
+
+### `proposal` and `assume`
+
+Since our model definitions can be significantly more complex in Turing-land, we need to have a more robust `proposal` function.
+
+```julia
+# Define a function that makes a basic proposal. This function runs the model and
+# bundles the results up. In this case, the actual proposal occurs during
+# the assume function.
+function proposal(spl::Sampler{<:MetropolisHastings}, model::Model, t::Transition)
+    return Transition(model, spl, parameters!(spl, t))
+end
+```
+
+This function takes the model, a sampler, and a vector of parameters (`parameters!` returns the vector of parameters that `t` contains). `Transition` will then run the model with the given parameters, and generate a new `Transition` containing the parameterization. The proposal is now generated in the `assume` statement:
+
+```julia
+function assume(
+    spl::Sampler{<:MetropolisHastings},
+    dist::Distribution,
+    vn::VarName,
+    vi::VarInfo
+)
+    # Retrieve the current parameter value.
+    old_r = vi[vn]
+
+    # Generate a proposal value.
+    r = rand(spl.alg.proposal(vi[vn]))
+
+    # Check if the proposal is in the distribution's support.
+    if insupport(dist, r)
+        # If the value is good, make sure to store it back in the VarInfo.
+        vi[vn] = [r]
+        return r, logpdf(dist, r)
+    else
+        # Otherwise return the previous value.
+        return old_r, logpdf(dist, old_r)
+    end
+end
+```
+
+`assume` does the following for all parameters:
+
+1. Get the value for each parameter.
+2. Make a proposal distribution using the function stored in `spl`, and draw a random value from it.
+3. Check if the new value is in the support of the parameter's distribution. This is necessary for constrained distributions like `Beta` or `InverseGamma` -- a more sophisticated `assume` statement would only draw from the bounds of the distribution, but for right now we'll keep it simple.
+    a. If the new value is in the support, set the parameter in the `VarInfo` to be the proposal, and return a tuple with the draw and it's density.
+    b. Otherwise, return the old value and it's density. This is an implicit sample rejection.
+
+### `step!`
+
+The step functions are almost entirely unchanged from the vanilla interface implementation:
+
+```julia
+# Define the first step! function, which is called the 
+# beginning of sampling. Return the initial parameter used
+# to define the sampler.
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MetropolisHastings},
+    N::Integer;
+    kwargs...
+)
+    return Transition(spl)
+end
+
+# Define the other step functions. Returns a Transition containing
+# either a new proposal (if accepted) or the previous proposal 
+# (if not accepted).
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MetropolisHastings},
+    ::Integer,
+    θ_prev::T;
+    kwargs...
+) where {
+    T <: Transition
+}
+    # Generate a new proposal.
+    θ = proposal(spl, model, θ_prev)
+    
+    # Calculate the log acceptance probability.
+    α = θ.lp - θ_prev.lp + q(spl, θ_prev, θ)
+
+    # Decide whether to return the previous θ or the new one.
+    if log(rand()) < min(α, 0.0)
+        return θ
+    else
+        return θ_prev
+    end
+end
+```
+
+The biggest different is the log acceptance probability calculation here:
+
+```julia
+# Calculate the log acceptance probability.
+α = θ.lp - θ_prev.lp + q(spl, θ_prev, θ)
+```
+
+`q` now calculates whole proposal ratio instead of the numerator and denominator separately.
+
+### `q`
+
+The `q` function is now the last piece of the puzzle:
+
+```julia
+# Calculate the logpdf ratio of one proposal given another proposal.
+function q(spl::Sampler{<:MetropolisHastings}, t1::Transition, t2::Transition)
+    # Preallocate the ratio.
+    ratio = 0.0
+
+    # Iterate through each variable in the sampler.
+    for vn in variables(spl)
+        # Get the parameter from the Transition and the distribution 
+        # associated with each variable.
+        p1 = parameter(t1, vn)
+        d1 = spl.alg.proposal(p1)
+
+        p2 = parameter(t2, vn)
+        d2 = spl.alg.proposal(p2)
+
+        # Increment the log ratio.
+        ratio += logpdf(d2, p1) - logpdf(d1, p2)
+    end
+
+    return ratio
+end
+```
+
+This function accepts a sampler and two different transitions. It then iterates through the variables sotres in the sampler, retrieves the values stored in each `Transition`, calculates proposal distributions for each, and then aggregates their log densities.
+
+### Testing our algorithm
+
+Testing this algorithm is the same as using any other Turing model. Here, we'll use the `gdemo` model to determine the mean and standard deviation of a normal distribution.
+
+```julia
+# Model declaration.
+@model gdemo(xs) = begin
+    σ ~ InverseGamma(2,3)
+    μ ~ Normal(0, sqrt(σ))
+    for i in 1:length(xs)
+        xs[i] ~ Normal(μ, σ)
+    end
+end
+
+# Generate a set of data from the posterior we want to estimate.
+data = rand(Normal(5,3), 50)
+
+# Construct a DensityModel.
+model = gdemo(data)
+
+# Set up our sampler. Normal(x, 1.0) by default.
+spl = MetropolisHastings()
+
+# Sample from the posterior.
+chain = sample(model, spl, 100000)
+```
+
+Once the sampling is complete, we end up with the following results:
+
+```
+Object of type Chains, with data of type 100000×3×1 Array{Union{Missing, Real},3}
+
+Iterations        = 1:100000
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 100000
+internals         = lp
+parameters        = μ, σ
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+
+│ Row │ parameters │ mean    │ std      │ naive_se   │ mcse       │ ess     │ r_hat   │
+│     │ Symbol     │ Float64 │ Float64  │ Float64    │ Float64    │ Any     │ Any     │
+├─────┼────────────┼─────────┼──────────┼────────────┼────────────┼─────────┼─────────┤
+│ 1   │ μ          │ 4.22902 │ 0.526566 │ 0.00166515 │ 0.00518738 │ 10453.9 │ 1.00019 │
+│ 2   │ σ          │ 3.80514 │ 0.386095 │ 0.00122094 │ 0.00337472 │ 13253.7 │ 1.00011 │
+
+Quantiles
+
+│ Row │ parameters │ 2.5%    │ 25.0%   │ 50.0%   │ 75.0%   │ 97.5%   │
+│     │ Symbol     │ Float64 │ Float64 │ Float64 │ Float64 │ Float64 │
+├─────┼────────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ 1   │ μ          │ 3.1806  │ 3.89145 │ 4.23491 │ 4.57381 │ 5.24438 │
+│ 2   │ σ          │ 3.14229 │ 3.5346  │ 3.76932 │ 4.04328 │ 4.66065 │
+```
+
+Looks good to me! 
+
+## Conclusion
+
+We've seen how to implement the sampling interface in general terms (for those who don't want Turing's great tools) and in Turing (for those who love great tools). The developer interface is ever-improving, so please open an [issue on GitHub](https://github.com/TuringLang/Turing.jl/issues) with any bugs or feature requests.
