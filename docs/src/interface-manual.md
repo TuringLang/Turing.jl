@@ -204,8 +204,8 @@ proposal(spl::MetropolisHastings, model::DensityModel, θ::Vector{<:Real}) = Tra
 proposal(spl::MetropolisHastings, model::DensityModel, t::Transition) = proposal(spl, model, t.θ)
 
 # Calculate the logpdf of one proposal given another proposal.
-q(spl::MetropolisHastings, θ1::Real, θ2::Real) = logpdf(Normal(θ2, 1.0), θ2)
-q(spl::MetropolisHastings, θ1::Vector{<:Real}, θ2::Vector{<:Real}) = logpdf(MvNormal(θ2, 1.0), θ2)
+q(spl::MetropolisHastings, θ1::Real, θ2::Real) = logpdf(Normal(θ1, 1.0), θ2)
+q(spl::MetropolisHastings, θ1::Vector{<:Real}, θ2::Vector{<:Real}) = logpdf(MvNormal(θ1, 1.0), θ2)
 q(spl::MetropolisHastings, t1::Transition, t2::Transition) = q(spl, t1.θ, t2.θ)
 
 # Define the other step function. Returns a Transition containing
@@ -326,3 +326,4 @@ Quantiles
 ```
 
 It looks like we're extremely close to our true parameters of `Normal(5,3)`, though with a fairly high variance due to the low sample size.
+
