@@ -121,6 +121,12 @@ function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
 
+"""
+    parameters!(spl::Sampler, t::T)
+
+Sets the `VarInfo` in a sampler's state to the values of the `Transition`
+struct, and returns a vector-form parameterization.
+"""
 function parameters!(spl::Sampler, t::T) where T<:Transition
     for (key, (params, vns)) in pairs(t.θ)
         for i in 1:length(params)
@@ -131,6 +137,12 @@ function parameters!(spl::Sampler, t::T) where T<:Transition
     return copy(spl.state.vi[spl])
 end
 
+"""
+    parameter(t::T, vn::VarName)
+
+Retrieves the value of `vn` from `Transition` `t`, or `missing` if the `VarName`
+is not in `t`.
+"""
 function parameter(t::T, vn::VarName) where T<:Transition
     for (_, xs) in pairs(t.θ)
         for (v, x) in zip(xs[1], xs[2])
