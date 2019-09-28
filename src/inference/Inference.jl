@@ -561,10 +561,12 @@ observe(spl::Sampler, weight::Float64) =
 error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
-function assume(spl::A,
+function assume(
+    spl::A,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:AbstractSampler}#{A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo
+) where {A<:AbstractSampler}
 
     if haskey(vi, vn)
         r = vi[vn]
@@ -579,11 +581,13 @@ function assume(spl::A,
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::A,
+function assume(
+    spl::A,
     dists::Vector{T},
     vn::VarName,
     var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:AbstractSampler}#{T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo
+) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]

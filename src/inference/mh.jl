@@ -125,7 +125,6 @@ function step!(
         setlogp!(spl.state.vi, old_logp)  # reset logp
     end
 
-    println(Transition(spl))
     return Transition(spl)
 end
 
