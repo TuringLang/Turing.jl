@@ -244,5 +244,5 @@ sampler = NUTS(0.65)
 model = gdemo([1.2, 3.5]
 
 # Run all samples.
-chns = reduce(chainscat, pmap(x->sample(model,sampler, 1000),1:num_chains))
+chns = reduce(chainscat, pmap(x->sample(model, sampler, 1000), 1:num_chains))
 ```
