@@ -58,7 +58,8 @@ export  InferenceAlgorithm,
         reset!,
         step!,
         SamplerState,
-        parameters!
+        parameters!,
+        parameter
 
 #######################
 # Sampler abstraction #
@@ -127,16 +128,18 @@ function parameters!(spl::Sampler, t::T) where T<:Transition
         end
     end
 
-    # if link && !islinked(spl.state.vi, spl)
-    #     link!(spl.state.vi, spl)
-    #     vals = spl.state.vi[spl]
-    #     println(vals)
-    #     invlink!(spl.state.vi, spl)
-    #     return vals
-    # else
-    #     return spl.state.vi[spl]
-    # end
-    return spl.state.vi[spl]
+    return copy(spl.state.vi[spl])
+end
+
+function parameter(t::T, vn::VarName) where T<:Transition
+    for (_, xs) in pairs(t.θ)
+        for (v, x) in zip(xs[1], xs[2])
+            if x == vn
+                return v
+            end
+        end
+    end
+    return missing
 end
 
 Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
@@ -611,16 +614,27 @@ function assume(spl::A,
 
 end
 
+# If no observe statement is given, default to accumulating the
+# log density from the prior.
+function observe(spl::Sampler, d::Distribution, value::Any, vi::VarInfo)
+    return observe(nothing, d, value, vi)
+end
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
+function observe(
+    ::Nothing,
+    dist::T,
+    value::Any,
+    vi::VarInfo
+) where T
+    return observe(SampleFromPrior(), dist, value, vi)
+end
 
-function observe(spl::A,
+function observe(
+    spl::A,
     dist::Distribution,
     value::Any,
-    vi::VarInfo) where {A<:AbstractSampler} #Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo
+) where A<:Union{SampleFromPrior, SampleFromUniform}
 
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
@@ -633,7 +647,8 @@ end
 function observe(spl::A,
     dists::Vector{T},
     value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:AbstractSampler} #Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo
+) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
