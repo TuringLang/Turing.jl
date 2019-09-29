@@ -9,6 +9,7 @@ using ..Turing: Turing, Model, runmodel!,
 using Zygote: Zygote
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
+import Bijectors: link, invlink
 using DistributionsAD
 
 include("RandomVariables.jl")
