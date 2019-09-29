@@ -38,10 +38,10 @@ function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
     end
 
     # Check that forwards-pass produces the correct answer.
-    @test y ≈ y_tracker
+    @test isapprox(y, y_tracker, atol=atol, rtol=rtol)
 
     # Check that reverse-mode sensitivities are correct.
-    @test all([x̄_tracker ≈ x̄_fdm for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
+    @test all([isapprox(x̄_tracker ≈ x̄_fdm, atol=atol, rtol=rtol) for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
 end
 
 # See `test_reverse_mode_ad` for details.
