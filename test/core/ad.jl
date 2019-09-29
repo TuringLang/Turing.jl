@@ -11,47 +11,7 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 _to_cov(B) = B * B' + Matrix(I, size(B)...)
-
 @testset "ad.jl" begin
-    @turing_testset "AD compatibility" begin
-
-        # Real
-        x_real = randn(5)
-        dists = [Normal(0, 1)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            ForwardDiff.gradient(f, x_real)
-        end
-
-        # Postive
-        x_positive = randn(5).^2
-        dists = [Gamma(2, 3)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            g = x -> ForwardDiff.gradient(f, x)
-        end
-
-        # Test AD.
-        test_ad(p->binomlogpdf(10, p, 3))
-        test_ad(p->logpdf(Binomial(10, p), 3))
-        test_ad(p->Turing.poislogpdf(p, 1))
-        test_ad(p->logpdf(Poisson(p), 3))
-        test_ad(p->Turing.nbinomlogpdf(5, p, 1))
-        test_ad(p->logpdf(NegativeBinomial(5, p), 3))
-        test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
-        test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
-        test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
-        test_ad(m->logpdf(MvNormal(m, 1.0), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3]), [1.0, 1.0]), [1.0, 1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3:4]), [1.0, 1.0]), [1.0, 1.0, 1.0, 1.0])
-        s = rand(2,2); s = s' * s
-        test_ad(m->logpdf(MvNormal(m, s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
-        ms = [[0.0, 0.0]; s[:]]
-        test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
-        test_ad(logsumexp, [1.0, 1.0])
-    end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo()
