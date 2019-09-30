@@ -14,14 +14,16 @@ function TruncatedADAGrad(η = 0.1, τ = 1.0, n = 100)
 end
 
 function apply!(o::TruncatedADAGrad, x, Δ)
+    T = eltype(Tracker.data(Δ))
+    
     η = o.eta
     τ = o.tau
 
     g² = get!(
         o.acc,
         x,
-        [fill(0.0, size(x)) for j = 1:o.n]
-    )::Array{typeof(Tracker.data(x)), 1}
+        [zeros(T, size(x)) for j = 1:o.n]
+    )::Array{typeof(Tracker.data(Δ)), 1}
     i = get!(o.iters, x, 1)::Int
 
     # Example: suppose i = 12 and o.n = 10
@@ -54,8 +56,10 @@ end
 DecayedADAGrad(η = 0.1, pre = 1.0, post = 0.9) = DecayedADAGrad(η, pre, post, IdDict())
 
 function apply!(o::DecayedADAGrad, x, Δ)
-  η = o.eta
-  acc = get!(o.acc, x, fill(ϵ, size(x)))::typeof(Tracker.data(x))
-  @. acc = o.post * acc + o.pre * Δ^2
-  @. Δ *= η / (√acc + ϵ)
+    T = eltype(Tracker.data(Δ))
+    
+    η = o.eta
+    acc = get!(o.acc, x, fill(T(ϵ), size(x)))::typeof(Tracker.data(x))
+    @. acc = o.post * acc + o.pre * Δ^2
+    @. Δ *= η / (√acc + ϵ)
 end
