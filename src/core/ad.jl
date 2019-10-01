@@ -403,6 +403,11 @@ end
 function _logpdf(d::TuringDiagNormal, x::AbstractMatrix)
     return -(dim(d) * log(2π) .+ 2 * sum(log.(d.σ)) .+ sum(abs2, (x .- d.m) ./ d.σ, dims=1)') ./ 2
 end
+using Tracker: TrackedMatrix
+# HACK: the above impl can turn `TrackedMatrix` into `Array{TrackedReal}`; this converts back into `TrackedArray`
+function _logpdf(d::TuringDiagNormal, x::TrackedMatrix)
+    return Tracker.collect(-(dim(d) * log(2π) .+ 2 * sum(log.(d.σ)) .+ sum(abs2, (x .- d.m) ./ d.σ, dims=1)') ./ 2)
+end
 function _logpdf(d::TuringMvNormal, x::AbstractVector)
     return -(dim(d) * log(2π) + logdet(d.C) + sum(abs2, zygote_ldiv(d.C.U', x .- d.m))) / 2
 end
