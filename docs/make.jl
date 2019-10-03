@@ -1,4 +1,4 @@
-using Documenter, DocumenterMarkdown, DynamicHMC, Turing
+using Documenter, DocumenterMarkdown, Turing
 using LibGit2: clone
 
 # Include the utility functions.
