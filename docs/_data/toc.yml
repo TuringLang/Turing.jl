@@ -52,7 +52,7 @@
   - title: "Bayesian Poisson Regression"
     url: "tutorials/7-poissonregression"
 
-- title: "LIBRARY"
+- title: "API"
   url: "docs/library"
   children:
     - title: "Public"
