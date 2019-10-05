@@ -25,7 +25,7 @@ in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
 baseurl = "/dev"
 if get(ENV, "TRAVIS_TAG", "") != ""
-    baseurl = ENV["TRAVIS_TAG"]
+    baseurl = "/" * ENV["TRAVIS_TAG"]
 end
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)
