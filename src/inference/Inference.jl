@@ -163,7 +163,7 @@ function Interface.psample(
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=PROGRESS[], kwargs...)
+    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
 end
 
 function Interface.psample(
@@ -178,7 +178,7 @@ function Interface.psample(
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
-    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=PROGRESS[], kwargs...)
+    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
 end
 
 function Interface.sample_init!(
