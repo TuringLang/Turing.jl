@@ -632,7 +632,7 @@ end
 
 # If no observe statement is given, default to accumulating the
 # log density from the prior.
-function observe(spl::Sampler, d::Distribution, value::Any, vi::VarInfo)
+function observe(spl::Sampler{A}, d::Distribution, value::Any, vi::VarInfo) where A<:AbstractSampler
     return observe(nothing, d, value, vi)
 end
 
