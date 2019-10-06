@@ -13,9 +13,9 @@ using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
+
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
-
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
