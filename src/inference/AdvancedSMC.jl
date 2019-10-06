@@ -272,11 +272,12 @@ function sample_end!(
     spl.state.average_logevidence = loge
 end
 
-function assume(  spl::Sampler{T},
-                  dist::Distribution,
-                  vn::VarName,
-                  _::VarInfo
-                ) where T<:Union{PG,SMC}
+function assume(  
+    spl::Sampler{T},
+    dist::Distribution,
+    vn::VarName,
+    _::VarInfo
+) where T<:Union{PG,SMC}
 
     vi = current_trace().vi
     if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
@@ -305,12 +306,16 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
-function assume(  spl::Sampler{A},
-                  dists::Vector{D},
-                  vn::VarName,
-                  var::Any,
-                  vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+function assume(  
+    spl::Sampler{A},
+    dists::Vector{D},
+    vn::VarName,
+    var::Any,
+    vi::VarInfo
+) where {
+    A<:Union{PG,SMC},
+    D<:Distribution
+}
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 end
 
@@ -319,11 +324,12 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     return zero(Real)
 end
 
-function observe( spl::Sampler{A},
-                  ds::Vector{D},
-                  value::Any,
-                  vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+function observe( 
+    spl::Sampler{A},
+    ds::Vector{D},
+    value::Any,
+    vi::VarInfo
+) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
 end
 
