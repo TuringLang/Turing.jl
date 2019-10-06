@@ -1,7 +1,7 @@
 module Interface
 
 import Distributions: sample, Sampleable
-import Random: GLOBAL_RNG, AbstractRNG
+import Random: GLOBAL_RNG, AbstractRNG, seed!
 import MCMCChains: Chains, chainscat
 import ProgressMeter
 
@@ -475,23 +475,32 @@ function psample(
     SamplerType <: AbstractSampler
 }
     # Set up a chains vector.
-    chains = Chains[]
+    chains = []
 
     # Create a thread lock. Used to add append chains to the vector.
     c_lock = Threads.SpinLock()
 
-    Threads.@threads for _ in 1:n_chains
+    # Create a seed for each chain using rng.
+    seeds = rand(rng, UInt, n_chains)
+
+    Threads.@threads for i in 1:n_chains
+        # Generate a new RNG using the pre-made seeds.
+        sub_rng = seed!(seeds[i])
+
         # Sample a chain.
-        chain = sample(rng, deepcopy(ℓ), deepcopy(s), N; progress=false, kwargs...)
+        chain = sample(sub_rng, deepcopy(ℓ), deepcopy(s), N; progress=false, kwargs...)
         
         # Acquire the lock, add the chain to the vector.
         lock(c_lock) do
-            push!(chains, chain)
+            push!(chains, (order=i, chain=chain))
         end
     end
 
+    # Sort the chains by seed order, to ensure that all chains are always in the same order.
+    sort!(chains, by=x -> x.order)
+
     # Concatenate the chains together.
-    return chainscat(chains...)
+    return chainscat([c.chain for c in chains]...)
 end
 
 end # module Interface
