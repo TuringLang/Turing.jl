@@ -5,7 +5,20 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "io.jl" begin
-    # Numerical failures -- misorderdered variables?
+    @testset "threaded sampling" begin
+        # Only test threading if 1.3+.
+        if VERSION > v"1.2"
+            # Test that chains with the same seed will sample identically.
+            chain1 = psample(Random.seed!(5), gdemo_default, HMC(0.1, 7), 1000, 4)
+            chain2 = psample(Random.seed!(5), gdemo_default, HMC(0.1, 7), 1000, 4)
+            @test all(chain1.value .== chain2.value)
+            check_gdemo(chain1)
+
+            # Smoke test for default psample call.
+            chain = psample(gdemo_default, HMC(0.1, 7), 1000, 4)
+            check_gdemo(chain)
+        end
+    end
     @testset "chain save/resume" begin
         Random.seed!(1234)
 

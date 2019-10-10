@@ -1,8 +1,8 @@
 module Interface
 
 import Distributions: sample, Sampleable
-import Random: GLOBAL_RNG, AbstractRNG
-import MCMCChains: Chains
+import Random: GLOBAL_RNG, AbstractRNG, seed!
+import MCMCChains: Chains, chainscat
 import ProgressMeter
 
 export AbstractSampler,
@@ -15,6 +15,7 @@ export AbstractSampler,
        sample_init!,
        sample_end!,
        sample,
+       psample,
        Sampleable,
        AbstractRNG,
        Chains,
@@ -438,5 +439,68 @@ Return the type of `AbstractTransition` that is to be returned by an
 `AbstractSampler` after each `step!` call. 
 """
 transition_type(s::AbstractSampler) = AbstractTransition
+
+"""
+    psample(ℓ::ModelType, s::SamplerType, N::Integer, n_chains::Integer; kwargs...)
+    psample(rng::AbstractRNG, ℓ::ModelType, s::SamplerType, N::Integer, n_chains::Integer; kwargs...)
+
+Samples `n_chains` using the threads available, and combines the returned chains into a single 
+`Chains` struct.
+
+By default, the model and sampler types are deep copied for each thread to prevent contamination
+between threads. 
+"""
+function psample(
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer,
+    n_chains::Integer;
+    kwargs...
+) where {
+    ModelType <: Sampleable,
+    SamplerType <: AbstractSampler
+}
+    return psample(GLOBAL_RNG, ℓ, s, N, n_chains; kwargs...)
+end
+
+function psample(
+    rng::AbstractRNG,
+    ℓ::ModelType,
+    s::SamplerType,
+    N::Integer,
+    n_chains::Integer;
+    kwargs...
+) where {
+    ModelType <: Sampleable,
+    SamplerType <: AbstractSampler
+}
+    # Set up a chains vector.
+    chains = []
+
+    # Create a thread lock. Used to add append chains to the vector.
+    c_lock = Threads.SpinLock()
+
+    # Create a seed for each chain using rng.
+    seeds = rand(rng, UInt, n_chains)
+
+    Threads.@threads for i in 1:n_chains
+        # Generate a new RNG using the pre-made seeds.
+        sub_rng = seed!(seeds[i])
+
+        # Sample a chain.
+        chain = sample(sub_rng, deepcopy(ℓ), deepcopy(s), N; progress=false, kwargs...)
+        
+        # Acquire the lock, add the chain to the vector.
+        lock(c_lock) do
+            push!(chains, (order=i, chain=chain))
+        end
+    end
+
+    # Sort the chains by seed order, to ensure that all chains are always in the same order.
+    sort!(chains, by=x -> x.order)
+
+    # Concatenate the chains together.
+    return chainscat([c.chain for c in chains]...)
+end
 
 end # module Interface

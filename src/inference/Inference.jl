@@ -13,15 +13,15 @@ using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
+
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
-
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
 import ..Interface: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
-    callback, init_callback, AbstractCallback
+    callback, init_callback, AbstractCallback, psample
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -149,6 +149,36 @@ function Interface.sample(
     else
         return resume(resume_from, N)
     end
+end
+
+
+function Interface.psample(
+    model::ModelType,
+    alg::AlgType,
+    N::Integer,
+    n_chains::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
+end
+
+function Interface.psample(
+    rng::AbstractRNG,
+    model::ModelType,
+    alg::AlgType,
+    N::Integer,
+    n_chains::Integer;
+    kwargs...
+) where {
+    ModelType<:Sampleable,
+    SamplerType<:AbstractSampler,
+    AlgType<:InferenceAlgorithm
+}
+    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
 end
 
 function Interface.sample_init!(

@@ -158,25 +158,24 @@ sample(model_function(10), SMC(), 100)
 
 ### Sampling Multiple Chains
 
+If you have Julia 1.3 or greater, you may use `psample` to sample multiple chains in a multithreaded way:
 
-If you wish to run multiple chains, you can do so with the `mapreduce` function:
+```julia
+# Generate 4 chains, each with 1,000 samples.
+chains = psample(model, sampler, 1000, 4)
+```
+
+For older versions of Julia, `psample` may not function correctly. If you wish to run multiple chains, you can do so with the `mapreduce` function:
 
 
 ```julia
 # Replace num_chains below with however many chains you wish to sample.
-chains = mapreduce(c -> sample(model_fun, sampler), chainscat, 1:num_chains)
+chains = mapreduce(c -> sample(model_fun, sampler, 1000), chainscat, 1:num_chains)
 ```
-
 
 The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
 
-
 Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
-
-
-Please note that Turing does not have native support for chains sampled in parallel.
-
-
 
 ### Sampling from an Unconditional Distribution (The Prior)
 
