@@ -1,7 +1,7 @@
 using Turing: gradient_logp_forward, gradient_logp_reverse
 using Test
 
-function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
+function test_ad(f, at = 0.5; rtol = 1e-6, atol = 1e-6)
     isarr = isa(at, AbstractArray)
     reverse = Tracker.data(Tracker.gradient(f, at)[1])
     if isarr
@@ -16,13 +16,13 @@ function test_ad(f, at = 0.5; rtol = 1e-8, atol = 1e-8)
 end
 
 """
-    test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
+    test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
 
 Check that the reverse-mode sensitivities produced by an AD library are correct for `f`
 at `x...`, given sensitivity `ȳ` w.r.t. `y = f(x...)` up to `rtol` and `atol`.
 `forward` should be either `Tracker.forward` or `Zygote.forward`.
 """
-function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
+function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
 
     # Perform a regular forwards-pass.
     y = f(x...)
@@ -38,14 +38,14 @@ function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-8, atol=1e-8)
     end
 
     # Check that forwards-pass produces the correct answer.
-    @test y ≈ y_tracker
+    @test isapprox(y, Tracker.data(y_tracker), atol=atol, rtol=rtol)
 
     # Check that reverse-mode sensitivities are correct.
-    @test all([x̄_tracker ≈ x̄_fdm for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
+    @test all([isapprox(Tracker.data(x̄_tracker), x̄_fdm, atol=atol, rtol=rtol) for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
 end
 
 # See `test_reverse_mode_ad` for details.
-function test_tracker_ad(f, ȳ, x...; rtol=1e-8, atol=1e-8)
+function test_tracker_ad(f, ȳ, x...; rtol=1e-6, atol=1e-6)
     return test_reverse_mode_ad(Tracker.forward, f, ȳ, x...; rtol=rtol, atol=atol)
 end
 

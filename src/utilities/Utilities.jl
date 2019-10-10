@@ -13,7 +13,9 @@ export  vectorize,
         Chain,
         init,
         vectorize,
-        set_resume!
+        set_resume!,
+        namedtuple,
+        ntmerge
 
 include("helper.jl")
 include("robustinit.jl")

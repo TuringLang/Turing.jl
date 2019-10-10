@@ -371,7 +371,7 @@ function build_output(model_info)
             Expr(:tuple, QuoteNode.(tent_dvars_list)...), 
             Expr(:curly, :Tuple, [:(Turing.Core.get_type($x)) for x in tent_dvars_list]...)
         )
-        tent_dvars_nt = Expr(:call, nt_type, Expr(:tuple, tent_dvars_list...))
+        tent_dvars_nt = Expr(:call, :(Turing.namedtuple), nt_type, Expr(:tuple, tent_dvars_list...))
     end
     #= Does the following for each of the tentative dvars
         local x
@@ -486,7 +486,7 @@ end
     length(dvars) === 0 && return NamedTuple()
     n = dvars[1]
     f = getfield(nt, n)
-    return merge(NamedTuple{(n,), Tuple{get_type(f)}}((f,)), _get_data(Base.tail(dvars), nt))
+    return ntmerge(namedtuple(NamedTuple{(n,), Tuple{get_type(f)}}, (f,)), _get_data(Base.tail(dvars), nt))
 end
 
 function warn_empty(body)
