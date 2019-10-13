@@ -646,11 +646,11 @@ function observe(
 end
 
 function observe(
-    spl::A,
+    spl::AbstractSampler,
     dist::Distribution,
     value::Any,
     vi::VarInfo
-) where A<:Union{SampleFromPrior, SampleFromUniform}
+)# where A<:Union{SampleFromPrior, SampleFromUniform}
 
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
