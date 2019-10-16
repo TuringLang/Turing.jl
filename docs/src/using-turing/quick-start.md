@@ -48,8 +48,7 @@ iterations = 1000
 # Start sampling.
 chain = sample(coinflip(data), HMC(ϵ, τ), iterations);
 
-# Construct summary of the sampling process for the parameter p, i.e. the probability of heads in a coin.
-psummary = Chains(chain[:p])
-histogram(psummary)
+# Plot a summary of the sampling process for the parameter p, i.e. the probability of heads in a coin.
+histogram(chain[:p])
 ```
 
