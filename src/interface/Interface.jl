@@ -161,7 +161,6 @@ end
 `sample` returns an `MCMCChains.Chains` object containing `N` samples from a given model and
 sampler. You may pass in any additional arguments through the use of keyword arguments.
 """
-
 function sample(
     ℓ::ModelType,
     s::SamplerType,
