@@ -231,7 +231,6 @@ Arguments:
 - `ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
 
 """
-
 mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
     n_adapts    ::  Int         # number of samples with adaption for ϵ
     δ           ::  Float64     # target accept rate
