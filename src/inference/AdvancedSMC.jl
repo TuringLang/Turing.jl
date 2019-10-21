@@ -140,7 +140,7 @@ function step!(
 
     # update the master vi.
     particle = spl.state.particles.vals[iteration]
-    params = tonamedtuple(particle.vi)
+    params = parameters(particle.vi)
     lp = getlogp(particle.vi)
 
     return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])
@@ -235,7 +235,7 @@ function step!(
     indx = randcat(Ws)
 
     # Extract the VarInfo from the retained particle.
-    params = tonamedtuple(spl.state.vi)
+    params = parameters(spl.state.vi)
     spl.state.vi = particles[indx].vi
     lp = getlogp(spl.state.vi)
 

@@ -28,7 +28,7 @@ struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTra
 end
 
 function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
-    theta = tonamedtuple(spl.state.vi)
+    theta = parameters(spl.state.vi)
     lp = getlogp(spl.state.vi)
     return HamiltonianTransition(theta, lp, t.stat)
 end

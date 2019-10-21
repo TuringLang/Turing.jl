@@ -1128,6 +1128,52 @@ end
     return expr
 end
 
+"""
+parameters(vi::Turing.VarInfo)
+
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values. This
+version does _not_ contain each variable's `VarName`, use `tonamedtuple` if you need 
+to retrieve all the `VarName`s as well.
+
+```julia
+tonamedtuple_simple(vi)
+# (x = [1.5, 2.0],)
+```
+"""
+function parameters(vi::VarInfo)
+    return parameters(vi.metadata, vi)
+end
+@generated function parameters(metadata::NamedTuple{names}, vi::VarInfo) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns))))
+    end
+    return expr
+end
+
+"""
+    parameters!(vi::VarInfo, nt::NamedTuple)
+
+Sets the values of `vi` to the values of `nt`. Uses the keys of the named tuple
+to access the `metadata` field of the `VarInfo`.
+"""
+function parameters!(vi::VarInfo, nt::NamedTuple)
+    return parameters!(vi, vi.metadata, nt)
+end
+function parameters!(vi::VarInfo, metadata::NamedTuple{md_names}, nt::NamedTuple{nt_keys}) where {md_names, nt_keys}
+    for key in nt_keys
+        if key in md_names
+            for (k, v) in zip(metadata[key].vns, nt[key])
+                vi[k] = v isa Array ? v : [v]
+            end
+        else
+            throw(ArgumentError("Key $key not found in VarInfo metadata, acceptable values are $md_names"))
+        end
+    end
+end
+
+
 @inline function findvns(vi, f_vns)
     if length(f_vns) == 0
         throw("Unidentified error, please report this error in an issue.")
@@ -1167,6 +1213,30 @@ function show(io::IO, vi::UntypedVarInfo)
     \\=======================================================================
     """
     print(io, vi_str)
+end
+
+function show(io::IO, vi::TypedVarInfo)
+    vns = vcat([vi.metadata[k].vns for k in keys(vi.metadata)]...)
+    rngs = vcat([vi.metadata[k].ranges for k in keys(vi.metadata)]...)
+    gids = vcat([vi.metadata[k].gids for k in keys(vi.metadata)]...)
+    orders = vcat([vi.metadata[k].orders for k in keys(vi.metadata)]...)
+    flags = vcat([vi.metadata[k].flags for k in keys(vi.metadata)]...)
+    vals = [vi[vn] for vn in vns]
+    vi_str = """
+    /=======================================================================
+    | VarInfo
+    |-----------------------------------------------------------------------
+    | Varnames  :   $(string(vns))
+    | Range     :   $(rngs)
+    | Vals      :   $(parameters(vi))
+    | GIDs      :   $(gids)
+    | Orders    :   $(orders)
+    | Logp      :   $(vi.logp)
+    | #produce  :   $(vi.num_produce)
+    | flags     :   $(flags)
+    \\=======================================================================
+    """
+    println(io, vi_str)
 end
 
 # Add a new entry to VarInfo

@@ -19,6 +19,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
 import Distributions: sample
 import ..Core: getchunksize, getADtype
+import ..Core.RandomVariables: parameters!, parameters
 import ..Interface: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback
@@ -59,7 +60,7 @@ export  InferenceAlgorithm,
         step!,
         SamplerState,
         parameters!,
-        parameter
+        parameters
 
 #######################
 # Sampler abstraction #
@@ -106,13 +107,13 @@ in the model and a `θ` which copies the `VarInfo` and recalculates the log dens
 function Transition(model::Model, spl::Sampler, θ::T, nt::NamedTuple=NamedTuple()) where T
     spl.state.vi[spl] = θ
     spl.state.vi = runmodel!(model, spl.state.vi, spl)
-    theta = merge(tonamedtuple(spl.state.vi), nt)
+    theta = merge(parameters(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
     return Transition(theta, lp)
 end
 
 function Transition(spl::Sampler, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(spl.state.vi), nt)
+    theta = merge(parameters(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
     return Transition(theta, lp)
 end
@@ -128,13 +129,8 @@ Sets the `VarInfo` in a sampler's state to the values of the `Transition`
 struct, and returns a vector-form parameterization.
 """
 function parameters!(spl::Sampler, t::T) where T<:Transition
-    for (key, (params, vns)) in pairs(t.θ)
-        for i in 1:length(params)
-            spl.state.vi[vns[i]] = [params[i]]
-        end
-    end
-
-    return copy(spl.state.vi[spl])
+    parameters!(spl.state.vi, t.θ)
+    return spl.state.vi[spl]
 end
 
 """
@@ -263,7 +259,7 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransit
 
     # Extract the parameter names and values from each transition.
     for t in ts
-        nms, vs = flatten_namedtuple(t.θ)
+        nms, vs = flatten_namedtuple(t.θ, spl.state.vi.metadata)
         push!(names, nms...)
 
         # Convert the names and values to a single dictionary.
@@ -289,13 +285,13 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransit
     return ordered_names, vals
 end
 
-function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
+function flatten_namedtuple(nt::NamedTuple{pnames}, metadata::NamedTuple{mdnames}) where {pnames, mdnames}
     vals = Vector{Real}()
     names = Vector{AbstractString}()
 
     for k in pnames
-        vv = nt[k]
-        v = (vv[1], string.(vv[2], all=false))
+        vv = metadata[k].vns
+        v = (nt[k], string.(vv, all=false))
         if length(v) == 1
             flatten(names, vals, string(k), v)
         else
