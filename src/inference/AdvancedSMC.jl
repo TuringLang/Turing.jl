@@ -141,6 +141,7 @@ function step!(
     # update the master vi.
     particle = spl.state.particles.vals[iteration]
     params = parameters(particle.vi)
+    spl.state.vi = particle.vi
     lp = getlogp(particle.vi)
 
     return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])

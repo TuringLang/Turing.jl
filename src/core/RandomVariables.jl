@@ -1165,7 +1165,7 @@ function parameters!(vi::VarInfo, metadata::NamedTuple{md_names}, nt::NamedTuple
     for key in nt_keys
         if key in md_names
             for (k, v) in zip(metadata[key].vns, nt[key])
-                vi[k] = v isa Array ? v : [v]
+                vi[k] = v isa AbstractArray ? v : [v]
             end
         else
             throw(ArgumentError("Key $key not found in VarInfo metadata, acceptable values are $md_names"))
