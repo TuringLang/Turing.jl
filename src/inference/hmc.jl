@@ -68,10 +68,10 @@ Tips:
 
 ```julia
 # Original step_size
-sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
+sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 
 # Reduced step_size.
-sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
+sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
 mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
@@ -224,7 +224,7 @@ NUTS(200, 0.6j_max)
 
 Arguments:
 
-- `n_adapts::Int` : The number of samples to use with adapatation.
+- `n_adapts::Int` : The number of samples to use with adaptation.
 - `δ::Float64` : Target acceptance rate.
 - `max_depth::Float64` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.

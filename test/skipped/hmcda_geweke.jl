@@ -31,8 +31,8 @@ end
 end
 
 fw = PG(50, NSamples)
-# bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = HMCDA(50, 0.65, 0.2);
+# bk = Gibbs(10, PG(10,10, :s, :y), HMC(0.25, 5, :m));
+bk = HMCDA(0.65, 0.2);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)

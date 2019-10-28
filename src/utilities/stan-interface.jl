@@ -45,17 +45,17 @@ function sample(mf::T,
     if adapt.engaged == false
         if isa(alg.engine, CmdStan.Static)   # hmc
             stepnum = Int(round(alg.engine.int_time / alg.stepsize))
-            sample(mf, HMC(num_samples, alg.stepsize, stepnum); adaptor=NUTSAdaptor(adapt))
+            sample(mf, HMC(alg.stepsize, stepnum), num_samples; adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # error
             error("[Turing.sample] CmdStan.Nuts cannot be used with adapt.engaged set as false")
         end
     else
         if isa(alg.engine, CmdStan.Static)   # hmcda
-            sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time);
+            sample(mf, HMCDA(num_warmup, adapt.delta, alg.engine.int_time), num_samples;
                     adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # nuts
             if isa(alg.metric, CmdStan.diag_e)
-                sample(mf, NUTS(num_samples, num_warmup, adapt.delta);
+                sample(mf, NUTS(num_warmup, adapt.delta), num_samples;
                         adaptor=NUTSAdaptor(adapt))
             else # TODO: reove the following since Turing support this feature now.
                 @warn("[Turing.sample] Turing does not support full covariance matrix for pre-conditioning yet.")

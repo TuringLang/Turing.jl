@@ -4,7 +4,7 @@ using Turing, Test
 N = 10
 beta = [0.5, 0.5]
 setchunksize(N*length(beta))
-alg = HMC(3000, 0.2, 4)
+alg = HMC(0.2, 4)
 
 # Test for vectorize UnivariateDistribution
 @model vdemo() = begin

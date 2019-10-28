@@ -6,7 +6,7 @@ include("gdemo.jl")
 # Turing
 
 mf = gdemo()
-chn = sample(mf, HMC(2000, 0.05, 5))
+chn = sample(mf, HMC(0.05, 5), 2000)
 
 println("mean of s: $(mean(chn[1000:end, :s, :].value))")
 println("mean of m: $(mean(chn[1000:end, :m, :].value))")

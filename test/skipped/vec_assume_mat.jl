@@ -2,7 +2,7 @@ using Turing, Test
 
 N = 5
 setchunksize(4*N)
-alg = HMC(1000, 0.2, 4)
+alg = HMC(0.2, 4, 1000)
 
 @model vdemo(::Type{T}=Float64) where {T} = begin
   v = Vector{Matrix{T}}(undef, N)

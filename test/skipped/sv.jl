@@ -20,7 +20,7 @@ sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
 
 mf = sv_model(data=sv_data[1])
-chain_nuts = sample(mf, HMC(2000, 0.05, 10))
+chain_nuts = sample(mf, HMC(0.05, 10), 2000)
 
 println("mean of m: $(mean(chn[1000:end, :μ, :].value))")
 
