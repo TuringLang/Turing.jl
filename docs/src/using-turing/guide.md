@@ -80,7 +80,7 @@ The arguments for each sampler are:
   * HMC: leapfrog step size, leapfrog step numbers.
   * Gibbs: component sampler 1, component sampler 2, ...
   * HMCDA: total leapfrog length, target accept ratio.
-  * NUTS: Number of adaptation steps (optional), target accept ratio.
+  * NUTS: number of adaptation steps (optional), target accept ratio.
 
 
 For detailed information on the samplers, please review Turing.jl's [API]({{site.baseurl}}/docs/library) documentation.
