@@ -1,6 +1,19 @@
 using StatsFuns
-using Turing.Core: update
+using DistributionsAD
 using Bijectors
+
+update(d::TuringDiagNormal, μ, σ) = TuringDiagNormal(μ, σ)
+update(td::TransformedDistribution, θ...) = transformed(update(td.dist, θ...), td.transform)
+
+# TODO: add these to DistributionsAD.jl and remove from here
+Distributions.params(d::TuringDiagNormal) = (d.m, d.σ)
+Distributions.length(d::TuringDiagNormal) = length(d.m)
+
+import StatsBase: entropy
+function entropy(d::TuringDiagNormal)
+    T = eltype(d.σ)
+    return (length(d) * (T(log2π) + one(T)) / 2 + sum(log.(d.σ)))
+end
 
 """
     ADVI(samples_per_step = 1, max_iters = 1000)
