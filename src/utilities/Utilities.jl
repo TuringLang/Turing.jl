@@ -12,10 +12,12 @@ export  vectorize,
         Sample,
         Chain,
         init,
-        vectorize
+        vectorize,
+        set_resume!,
+        namedtuple,
+        ntmerge
 
 include("helper.jl")
 include("robustinit.jl")
-include("io.jl")           # I/O
 
 end # module

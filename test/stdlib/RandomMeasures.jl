@@ -65,11 +65,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = crpimm(data, rpm)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 1000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)
@@ -223,11 +223,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = sbimm(data, rpm, 10)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 10000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)
@@ -301,11 +301,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = sbsimm(data, rpm, 100)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 1000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)

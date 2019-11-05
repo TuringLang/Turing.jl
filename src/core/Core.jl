@@ -8,6 +8,9 @@ using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 using Zygote: Zygote
 using LinearAlgebra: copytri!
+using Bijectors: PDMatDistribution
+import Bijectors: link, invlink
+using DistributionsAD
 
 include("RandomVariables.jl")
 @reexport using .RandomVariables
@@ -34,15 +37,15 @@ export  @model,
         increase_logweight,
         inrease_logevidence,
         resample!,
-        getsample, 
+        getsample,
         ADBackend,
-        setadbackend, 
-        setadsafe, 
-        ForwardDiffAD, 
+        setadbackend,
+        setadsafe,
+        ForwardDiffAD,
         TrackerAD,
         value,
         gradient_logp,
-        CHUNKSIZE, 
+        CHUNKSIZE,
         ADBACKEND,
         setchunksize,
         verifygrad,

@@ -1,3 +1,31 @@
+############################################
+# Julia 1.2 temporary fix - Julia PR 33303 #
+############################################
+if VERSION == v"1.2"
+    @eval function namedtuple(::Type{NamedTuple{names, T}}, args::Tuple) where {names, T <: Tuple}
+        if length(args) != length(names)
+            throw(ArgumentError("Wrong number of arguments to named tuple constructor."))
+        end
+        # Note T(args) might not return something of type T; e.g.
+        # Tuple{Type{Float64}}((Float64,)) returns a Tuple{DataType}
+        $(Expr(:splatnew, :(NamedTuple{names,T}), :(T(args))))
+    end
+    @generated function ntmerge(nt1::NamedTuple{names1, T1}, nt2::NamedTuple{names2, T2}) where {names1, T1 <: Tuple, names2, T2 <: Tuple}
+        names = (names1..., names2...)
+        T = Tuple{T1.types..., T2.types...}
+        f = :(NamedTuple{$names, $T})
+        args = :((Tuple(nt1)..., Tuple(nt2)...))
+        quote
+            $(Expr(:splatnew, f, args))
+        end
+    end
+else
+    function namedtuple(::Type{NamedTuple{names, T}}, args::Tuple) where {names, T <: Tuple}
+        return NamedTuple{names, T}(args)
+    end
+    ntmerge(nt1::NamedTuple, nt2::NamedTuple) = merge(nt1, nt2)
+end
+
 #####################################################
 # Helper functions for vectorize/reconstruct values #
 #####################################################

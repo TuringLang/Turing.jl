@@ -1,12 +1,13 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.6.23"
+version = "0.7.2"
 
 [deps]
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+DistributionsAD = "ced4e74d-a319-5a8a-b0ac-84af2272839c"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Libtask = "6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -25,10 +26,29 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-AdvancedHMC = ">= 0.2.3"
-julia = ">= 1.0"
+julia = "1"
+Libtask = "0.3.1"
+Bijectors = "0.4.0"
+MCMCChains = "0.3.12"
+AdvancedHMC = "0.2.4"
+DistributionsAD = "0.1.0"
+Zygote = "~0.3.4"
+DynamicHMC = "1"
+BinaryProvider = "0.5.6"
+Distributions = "0.21.1"
+ForwardDiff = "0.10.3"
+MacroTools = "0.5.1"
+PDMats = "0.9.9"
+ProgressMeter = "1.0.0"
+Reexport = "0.2.0"
+Requires = "0.5.2"
+SpecialFunctions = "0.7.2"
+StatsFuns = "0.8.0"
+Tracker = "0.2.3"
 
 [extras]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CmdStan = "593b3428-ca2f-500c-ae53-031589ec8ddd"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
@@ -38,4 +58,4 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [targets]
-test = ["UnicodePlots", "StatsBase", "SpecialFunctions", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools"]
+test = ["Pkg", "Test", "UnicodePlots", "StatsBase", "SpecialFunctions", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools"]

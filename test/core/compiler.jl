@@ -16,11 +16,11 @@ priors = 0 # See "new grammar" test.
             x, y
         end
 
-        smc = SMC(10000)
-        pg = PG(10,1000)
+        smc = SMC()
+        pg = PG(10)
 
-        res1 = sample(test_assume(), smc)
-        res2 = sample(test_assume(), pg)
+        res1 = sample(test_assume(), smc, 1000)
+        res2 = sample(test_assume(), pg, 1000)
 
         check_numerical(res1, [:y], [0.5], eps=0.1)
         check_numerical(res2, [:y], [0.5], eps=0.1)
@@ -44,13 +44,13 @@ priors = 0 # See "new grammar" test.
             p, x
         end
 
-        smc = SMC(10000)
-        pg = PG(100,1000)
-        gibbs = Gibbs(1500, HMC(1, 0.2, 3, :p), PG(100, 1, :x))
+        smc = SMC()
+        pg = PG(10)
+        gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
 
-        chn_s = sample(testbb(obs), smc)
-        chn_p = sample(testbb(obs), pg)
-        chn_g = sample(testbb(obs), gibbs)
+        chn_s = sample(testbb(obs), smc, 1000)
+        chn_p = sample(testbb(obs), pg, 2000)
+        chn_g = sample(testbb(obs), gibbs, 1500)
 
         check_numerical(chn_s, [:p], [meanp], eps=0.05)
         check_numerical(chn_p, [:x], [meanp], eps=0.1)
@@ -61,8 +61,8 @@ priors = 0 # See "new grammar" test.
         # xx = 1
 
         @model fggibbstest(xs) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
             # xx ~ Normal(m, sqrt(s)) # this is illegal
 
             for i = 1:length(xs)
@@ -73,8 +73,8 @@ priors = 0 # See "new grammar" test.
             s, m
         end
 
-        gibbs = Gibbs(2, PG(10, 2, :s), HMC(1, 0.4, 8, :m))
-        chain = sample(fggibbstest(xs), gibbs);
+        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m))
+        chain = sample(fggibbstest(xs), gibbs, 2);
     end
     @testset "model macro" begin
         model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
@@ -84,8 +84,8 @@ priors = 0 # See "new grammar" test.
         @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
 
         @model testmodel_comp(x, y) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
@@ -120,8 +120,8 @@ priors = 0 # See "new grammar" test.
 
         # test if we get the correct return values
         @model testmodel1(x1, x2) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ Normal(m, sqrt(s))
@@ -137,8 +137,8 @@ priors = 0 # See "new grammar" test.
 
         # Test for assertions in observe statements.
         @model brokentestmodel_observe1(x1, x2) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ x1 + 2
@@ -150,8 +150,8 @@ priors = 0 # See "new grammar" test.
         @test_throws ArgumentError btest()
 
         @model brokentestmodel_observe2(x) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x = Vector{Float64}(undef, 2)
             x ~ [Normal(m, sqrt(s)), 2.0]
@@ -164,8 +164,8 @@ priors = 0 # See "new grammar" test.
 
         # Test for assertions in assume statements.
         @model brokentestmodel_assume1() = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x1 ~ Normal(m, sqrt(s))
             x2 ~ x1 + 2
@@ -177,8 +177,8 @@ priors = 0 # See "new grammar" test.
         @test_throws ArgumentError btest()
 
         @model brokentestmodel_assume2() = begin
-            s ~ InverseGamma(2, 3)
-            m ~ Normal(0, sqrt(s))
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0,sqrt(s))
 
             x = Vector{Float64}(undef, 2)
             x ~ [Normal(m, sqrt(s)), 2.0]
@@ -194,7 +194,7 @@ priors = 0 # See "new grammar" test.
 
         @model gauss(x) = begin
             priors = TArray{Float64}(2)
-            priors[1] ~ InverseGamma(2, 3)         # s
+            priors[1] ~ InverseGamma(2,3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
@@ -202,12 +202,12 @@ priors = 0 # See "new grammar" test.
             priors
         end
 
-        chain = sample(gauss(x), PG(10, 10))
-        chain = sample(gauss(x), SMC(10))
+        chain = sample(gauss(x), PG(10), 10)
+        chain = sample(gauss(x), SMC(), 10)
 
         @model gauss2(x, ::Type{TV}=Vector{Float64}) where {TV} = begin
             priors = TV(undef, 2)
-            priors[1] ~ InverseGamma(2, 3)         # s
+            priors[1] ~ InverseGamma(2,3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
@@ -215,10 +215,10 @@ priors = 0 # See "new grammar" test.
             priors
         end
 
-        chain = sample(gauss2(x), PG(10, 10))
-        chain = sample(gauss2(x=x, TV=Vector{Float64}), PG(10, 10))
-        chain = sample(gauss2(x), SMC(10))
-        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(10))
+        chain = sample(gauss2(x), PG(10), 10)
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), PG(10), 10)
+        chain = sample(gauss2(x), SMC(), 10)
+        chain = sample(gauss2(x=x, TV=Vector{Float64}), SMC(), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -231,19 +231,21 @@ priors = 0 # See "new grammar" test.
           p
         end
 
-        chain = sample(newinterface(obs),
-            HMC{Turing.ForwardDiffAD{2}}(100, 0.75, 3, :p, :x))
+        chain = sample(
+            newinterface(obs),
+            HMC{Turing.ForwardDiffAD{2}}(0.75, 3, :p, :x),
+            100)
     end
     @testset "no return" begin
         @model noreturn(x) = begin
-            s ~ InverseGamma(2, 3)
+            s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
             for i in 1:length(x)
                 x[i] ~ Normal(m, sqrt(s))
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(3000, 0.15, 6))
+        chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6), 1000)
         check_numerical(chain, [:s, :m], [49/24, 7/6])
     end
     @testset "observe" begin
@@ -255,13 +257,13 @@ priors = 0 # See "new grammar" test.
           x
         end
 
-        is  = IS(10000)
-        smc = SMC(10000)
-        pg  = PG(100,10)
+        is  = IS()
+        smc = SMC()
+        pg  = PG(10)
 
-        res_is = sample(test(), is)
-        res_smc = sample(test(), smc)
-        res_pg = sample(test(), pg)
+        res_is = sample(test(), is, 10000)
+        res_smc = sample(test(), smc, 1000)
+        res_pg = sample(test(), pg, 100)
 
         @test all(res_is[:x].value .== 1)
         @test res_is.logevidence ≈ 2 * log(0.5)
@@ -272,20 +274,20 @@ priors = 0 # See "new grammar" test.
         @test all(res_pg[:x].value .== 1)
     end
     @testset "sample" begin
-        alg = Gibbs(1000, HMC(1, 0.2, 3, :m), PG(10, 1, :s))
-        chn = sample(gdemo_default, alg);
+        alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
+        chn = sample(gdemo_default, alg, 1000);
     end
     @testset "vectorization" begin
         @model vdemo1(x) = begin
-            s ~ InverseGamma(2, 3)
+            s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
             x ~ [Normal(m, sqrt(s))]
             return s, m
         end
 
-        alg = HMC(250, 0.01, 5)
-        x = randn(1000)
-        res = sample(vdemo1(x), alg)
+        alg = HMC(0.01, 5)
+        x = randn(100)
+        res = sample(vdemo1(x), alg, 250)
 
         D = 2
         @model vdemo2(x) = begin
@@ -293,13 +295,13 @@ priors = 0 # See "new grammar" test.
             x ~ [MvNormal(μ, ones(D))]
         end
 
-        alg = HMC(250, 0.01, 5)
-        res = sample(vdemo2(randn(D,1000)), alg)
+        alg = HMC(0.01, 5)
+        res = sample(vdemo2(randn(D,100)), alg, 250)
 
         # Vector assumptions
         N = 10
         setchunksize(N)
-        alg = HMC(1000, 0.2, 4)
+        alg = HMC(0.2, 4)
 
         @model vdemo3() = begin
             x = Vector{Real}(undef, N)
@@ -308,7 +310,7 @@ priors = 0 # See "new grammar" test.
             end
         end
 
-        t_loop = @elapsed res = sample(vdemo3(), alg)
+        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
         # Test for vectorize UnivariateDistribution
         @model vdemo4() = begin
@@ -316,13 +318,13 @@ priors = 0 # See "new grammar" test.
           x ~ [Normal(0, 2)]
         end
 
-        t_vec = @elapsed res = sample(vdemo4(), alg)
+        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
 
         @model vdemo5() = begin
             x ~ MvNormal(zeros(N), 2 * ones(N))
         end
 
-        t_mv = @elapsed res = sample(vdemo5(), alg)
+        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
 
         println("Time for")
         println("  Loop : $t_loop")
@@ -335,12 +337,12 @@ priors = 0 # See "new grammar" test.
             x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo6(), alg)    
+        sample(vdemo6(), alg, 1000)
     end
     @testset "Type parameters" begin
         N = 10
         setchunksize(N)
-        alg = HMC(250, 0.01, 5)
+        alg = HMC(0.01, 5)
         x = randn(1000)
         @model vdemo1(::Type{T}=Float64) where {T} = begin
             x = Vector{T}(undef, N)
@@ -349,27 +351,27 @@ priors = 0 # See "new grammar" test.
             end
         end
 
-        t_loop = @elapsed res = sample(vdemo1(), alg)
-        t_loop = @elapsed res = sample(vdemo1(Float64), alg)
-        t_loop = @elapsed res = sample(vdemo1(T=Float64), alg)
+        t_loop = @elapsed res = sample(vdemo1(), alg, 250)
+        t_loop = @elapsed res = sample(vdemo1(Float64), alg, 250)
+        t_loop = @elapsed res = sample(vdemo1(T=Float64), alg, 250)
 
         @model vdemo2(::Type{T}=Float64) where {T <: Real} = begin
             x = Vector{T}(undef, N)
             x ~ [Normal(0, 2)]
         end
 
-        t_vec = @elapsed res = sample(vdemo2(), alg)
-        t_vec = @elapsed res = sample(vdemo2(Float64), alg)
-        t_vec = @elapsed res = sample(vdemo2(T=Float64), alg)
+        t_vec = @elapsed res = sample(vdemo2(), alg, 250)
+        t_vec = @elapsed res = sample(vdemo2(Float64), alg, 250)
+        t_vec = @elapsed res = sample(vdemo2(T=Float64), alg, 250)
 
         @model vdemo3(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
             x = TV(undef, N)
             x ~ [InverseGamma(2, 3)]
         end
 
-        sample(vdemo3(), alg)
-        sample(vdemo3(Vector{Float64}), alg)
-        sample(vdemo3(TV=Vector{Float64}), alg)        
+        sample(vdemo3(), alg, 250)
+        sample(vdemo3(Vector{Float64}), alg, 250)
+        sample(vdemo3(TV=Vector{Float64}), alg, 250)
     end
     @testset "tilde" begin
         model_info = Dict(

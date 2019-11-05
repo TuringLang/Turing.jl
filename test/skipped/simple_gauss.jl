@@ -6,7 +6,7 @@ using Turing
 
 @model simple_gauss() = begin
     s = 1
-    m ~ Normal(0, sqrt(s))
+    m ~ Normal(0,sqrt(s))
     2.0 ~ Normal(m, sqrt(s))
     2.5 ~ Normal(m, sqrt(s))
 end

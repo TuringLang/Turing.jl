@@ -26,8 +26,10 @@ $(document).ready(function(){
         });
     }
 
+    var current_ver = url_parts[2].replace(/\.0+$/, '');
+
     $.each(DOC_VERSIONS, function(index, value) {
-        if(value == url_parts[2]) {
+        if(value == current_ver) {
             // mobile
             $("select#version-selector").append(
                 $('<option value="' + value + '" selected="selected">' + value + '</option>'));

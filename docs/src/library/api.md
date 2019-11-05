@@ -1,11 +1,15 @@
 ---
-title: Library
+title: API
 permalink: /docs/library/
 toc: true
 ---
 
 ```@meta
 CurrentModule = Turing
+```
+## Index
+
+```@index
 ```
 
 ## Modelling
@@ -32,6 +36,17 @@ SGLD
 SMC
 ```
 
+## Distributions
+
+```@docs
+Flat
+FlatPos
+BinomialLogit
+VecBinomialLogit
+OrderedLogistic
+```
+
+
 ## Data Structures
 ```@docs
 TArray
@@ -42,7 +57,3 @@ TArray
 tzeros
 ```
 
-## Index
-
-```@index
-```

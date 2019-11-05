@@ -2,83 +2,148 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+#######################
+# Particle Transition #
+#######################
+
+"""
+    ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+
+Fields:
+- `θ`: The parameters for any given sample.
+- `lp`: The log pdf for the sample's parameters.
+- `le`: The log evidence retrieved from the particle.
+- `weight`: The weight of the particle the sample was retrieved from.
+"""
+struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+    θ::T
+    lp::F
+    le::F
+    weight::F
+end
+
+transition_type(spl::Sampler{<:ParticleInference}) = ParticleTransition
+
+function additional_parameters(::Type{<:ParticleTransition})
+    return [:lp,:le, :weight]
+end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
 
 """
-    SMC(n_particles::Int)
+    SMC()
 
 Sequential Monte Carlo sampler.
 
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Usage:
+Fields: 
+- `resampler`: A function used to sample particles from the particle container. 
+  Defaults to `resample_systematic`.
+- `resampler_threshold`: The threshold at which resampling terminates -- defaults to 0.5. If 
+  the `ess` <= `resampler_threshold` * `n_particles`, the resampling step is completed.
+
+  Usage:
 
 ```julia
-SMC(1000)
+SMC()
 ```
 """
-mutable struct SMC{space, F} <: InferenceAlgorithm
-    n_particles           ::  Int
-    resampler             ::  F
-    resampler_threshold   ::  Float64
-end
-function SMC(n_particles::Int, resampler::F, resampler_threshold::Float64, space::Tuple) where {F}
-    return SMC{space, F}(n_particles, resampler, resampler_threshold)
-end
-SMC(n) = SMC(n, resample_systematic, 0.5, ())
-SMC(n_particles::Int, ::Tuple{}) = SMC(n_particles)
-function SMC(n_particles::Int, space::Symbol...)
-    SMC(n_particles, resample_systematic, 0.5, space)
+struct SMC{space, RT<:AbstractFloat} <: ParticleInference
+    resampler             ::  Function
+    resampler_threshold   ::  RT
 end
 
-function Sampler(alg::SMC, s::Selector)
-    info = Dict{Symbol, Any}()
-    info[:logevidence] = []
-    return Sampler(alg, info, s)
+alg_str(spl::Sampler{SMC}) = "SMC"
+function SMC(
+    resampler::Function,
+    resampler_threshold::RT,
+    space::Tuple
+) where {RT<:AbstractFloat}
+    return SMC{space, RT}(resampler, resampler_threshold)
+end
+SMC() = SMC(resample_systematic, 0.5, ())
+SMC(::Tuple{}) = SMC()
+function SMC(space::Symbol...)
+    SMC(resample_systematic, 0.5, space)
 end
 
-function step(model, spl::Sampler{<:SMC}, vi::VarInfo)
+mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                   ::   V
+    # The logevidence after aggregating all samples together.
+    average_logevidence  ::   F
+    particles            ::   ParticleContainer
+end
+
+function SMCState(
+    model::M, 
+) where {
+    M<:Model
+}
+    vi = VarInfo(model)
     particles = ParticleContainer{Trace}(model)
-    vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
 
-    push!(particles, spl.alg.n_particles, spl, vi)
-
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
-    end
-
-    ## pick a particle to be retained.
-    Ws, _ = weights(particles)
-    indx = randcat(Ws)
-    push!(spl.info[:logevidence], particles.logE)
-
-    return particles[indx].vi, true
+    return SMCState(vi, 0.0, particles)
 end
 
-## wrapper for smc: run the sampler, collect results.
-function sample(model::Model, alg::SMC)
-    spl = Sampler(alg)
+function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
+    dict = Dict{Symbol, Any}()
+    state = SMCState(model)
+    return Sampler(alg, dict, s, state)
+end
 
-    particles = ParticleContainer{Trace}(model)
-    push!(particles, spl.alg.n_particles, spl, empty!(VarInfo(model)))
+function sample_init!(
+    ::AbstractRNG, 
+    model::Turing.Model,
+    spl::Sampler{<:SMC},
+    N::Integer;
+    kwargs...
+)
+    # Set the parameters to a starting value.
+    initialize_parameters!(spl; kwargs...)
 
-    while consume(particles) != Val{:done}
-      ess = effectiveSampleSize(particles)
-      if ess <= spl.alg.resampler_threshold * length(particles)
-        resample!(particles,spl.alg.resampler)
-      end
+    # Update the particle container now that the sampler type
+    # is defined.
+    spl.state.particles = ParticleContainer{Trace{typeof(spl),
+        typeof(spl.state.vi), typeof(model)}}(model)
+
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
+    set_retained_vns_del_by_spl!(spl.state.vi, spl)
+    resetlogp!(spl.state.vi)
+
+    push!(spl.state.particles, N, spl, empty!(spl.state.vi))
+
+    while consume(spl.state.particles) != Val{:done}
+        ess = effectiveSampleSize(spl.state.particles)
+        if ess <= spl.alg.resampler_threshold * length(spl.state.particles)
+            resample!(spl.state.particles, spl.alg.resampler)
+        end
     end
-    w, samples = getsample(particles)
-    res = Chain(log(w), samples)
-    return res
+end
+
+function step!(
+    ::AbstractRNG, 
+    model::Turing.Model,
+    spl::Sampler{<:SMC},
+    ::Integer;
+    iteration=-1,
+    kwargs...
+)
+    # Check that we received a real iteration number.
+    @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
+
+    ## Grab the weights.
+    Ws, _ = weights(spl.state.particles)
+
+    # update the master vi.
+    particle = spl.state.particles.vals[iteration]
+    params = tonamedtuple(particle.vi)
+    lp = getlogp(particle.vi)
+
+    return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])
 end
 
 ####
@@ -86,7 +151,7 @@ end
 ####
 
 """
-    PG(n_particles::Int, n_iters::Int)
+    PG(n_particles::Int)
 
 Particle Gibbs sampler.
 
@@ -99,44 +164,65 @@ Usage:
 PG(100, 100)
 ```
 """
-mutable struct PG{space, F} <: InferenceAlgorithm
+struct PG{space} <: ParticleInference
   n_particles           ::    Int         # number of particles used
-  n_iters               ::    Int         # number of iterations
-  resampler             ::    F           # function to resample
+  resampler             ::    Function    # function to resample
 end
-function PG(n_particles::Int, n_iters::Int, resampler::F, space::Tuple) where F
-    return PG{space, F}(n_particles, n_iters, resampler)
+function PG(n_particles::Int, resampler::Function, space::Tuple)
+    return PG{space}(n_particles, resampler)
 end
-PG(n1::Int, n2::Int, ::Tuple{}) = PG(n1, n2)
-function PG(n1::Int, n2::Int, space::Symbol...)
-    PG(n1, n2, resample_systematic, space)
+PG(n1::Int, ::Tuple{}) = PG(n1)
+function PG(n1::Int, space::Symbol...)
+    PG(n1, resample_systematic, space)
+end
+
+alg_str(spl::Sampler{PG}) = "PG"
+
+mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                   ::   V
+    # The logevidence after aggregating all samples together.
+    average_logevidence  ::   F
+end
+
+function PGState(model::M) where {M<:Model}
+    vi = VarInfo(model)
+    return PGState(vi, 0.0)
 end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-function Sampler(alg::PG, s::Selector)
+"""
+    Sampler(alg::PG, model::Model, s::Selector)
+
+Return a `Sampler` object for the PG algorithm.
+"""
+function Sampler(alg::T, model::Model, s::Selector) where T<:PG
     info = Dict{Symbol, Any}()
-    info[:logevidence] = []
-    Sampler(alg, info, s)
+    state = PGState(model)
+    return Sampler(alg, info, s, state)
 end
 
-step(model, spl::Sampler{<:PG}, vi::VarInfo, _) = step(model, spl, vi)
+function step!(
+    ::AbstractRNG,
+    model::Turing.Model,
+    spl::Sampler{<:PG},
+    ::Integer;
+    kwargs...
+)
+    particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
 
-function step(model, spl::Sampler{<:PG}, vi::VarInfo)
-    particles = ParticleContainer{Trace{typeof(spl), typeof(vi), typeof(model)}}(model)
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep.
+    ref_particle = isempty(spl.state.vi) ?
+              nothing :
+              forkr(Trace(model, spl, spl.state.vi))
 
-    vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    ref_particle = isempty(vi) ?
-                  nothing :
-                  forkr(Trace(model, spl, vi))
-
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+    set_retained_vns_del_by_spl!(spl.state.vi, spl)
+    resetlogp!(spl.state.vi)
 
     if ref_particle == nothing
-        push!(particles, spl.alg.n_particles, spl, vi)
+        push!(particles, spl.alg.n_particles, spl, spl.state.vi)
     else
-        push!(particles, spl.alg.n_particles-1, spl, vi)
+        push!(particles, spl.alg.n_particles-1, spl, spl.state.vi)
         push!(particles, ref_particle)
     end
 
@@ -147,72 +233,43 @@ function step(model, spl::Sampler{<:PG}, vi::VarInfo)
     ## pick a particle to be retained.
     Ws, _ = weights(particles)
     indx = randcat(Ws)
-    push!(spl.info[:logevidence], particles.logE)
 
-    return particles[indx].vi, true
+    # Extract the VarInfo from the retained particle.
+    params = tonamedtuple(spl.state.vi)
+    spl.state.vi = particles[indx].vi
+    lp = getlogp(spl.state.vi)
+
+    # update the master vi.
+    return ParticleTransition(params, lp, particles.logE, 1.0)
 end
 
-function sample(  model::Model,
-                  alg::PG;
-                  save_state=false,         # flag for state saving
-                  resume_from=nothing,      # chain to continue
-                  reuse_spl_n=0             # flag for spl re-using
-                )
+function sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    spl::Sampler{<:ParticleInference},
+    N::Integer,
+    ts::Vector{ParticleTransition};
+    kwargs...
+)
+    # Set the default for resuming the sampler.
+    resume_from = get(kwargs, :resume_from, nothing)
 
-    spl = reuse_spl_n > 0 ?
-          resume_from.info[:spl] :
-          Sampler(alg)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-    @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+    # Exponentiate the average log evidence.
+    # loge = exp(mean([t.le for t in ts]))
+    loge = mean(t.le for t in ts)
 
-    n = reuse_spl_n > 0 ?
-        reuse_spl_n :
-        alg.n_iters
-    samples = Vector{Sample}()
-
-    ## custom resampling function for pgibbs
-    ## re-inserts reteined particle after each resampling step
-    time_total = zero(Float64)
-
-    vi = resume_from == nothing ?
-        empty!(VarInfo(model)) :
-        resume_from.info[:vi]
-
-    pm = nothing
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[PG] Sampling...", 0))
-
-    for i = 1:n
-        time_elapsed = @elapsed vi, _ = step(model, spl, vi)
-        push!(samples, Sample(vi))
-        samples[i].value[:elapsed] = time_elapsed
-
-        time_total += time_elapsed
-
-        if PROGRESS[] && spl.selector.tag == :default
-            ProgressMeter.next!(spl.info[:progress])
-        end
-    end
-
-    @info("[PG] Finished with")
-    @info("  Running time    = $time_total;")
-
-    loge = exp.(mean(spl.info[:logevidence]))
+    # If we already had a chain, grab the logevidence.
     if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.info[:samples]...)
-        pre_loge = exp.(resume_from.logevidence)
+        @assert resume_from isa Chains "resume_from needs to be a Chains object."
+        # pushfirst!(samples, resume_from.info[:samples]...)
+        pre_loge = resume_from.logevidence
         # Calculate new log-evidence
-        pre_n = length(resume_from.info[:samples])
-        loge = (log(pre_loge) * pre_n + log(loge) * n) / (pre_n + n)
-    end
-    c = Chain(loge, samples)       # wrap the result by Chain
-
-    if save_state               # save state
-        c = save(c, spl, model, vi, samples)
+        pre_n = length(resume_from)
+        loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
     end
 
-    return c
+    # Store the logevidence.
+    spl.state.average_logevidence = loge
 end
 
 function assume(  spl::Sampler{T},
@@ -268,340 +325,6 @@ function observe( spl::Sampler{A},
                   vi::VarInfo
                 ) where {A<:Union{PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
-end
-
-
-####
-#### Particle marginal Metropolis-Hastings sampler.
-####
-
-"""
-    PMMH(n_iters::Int, smc_alg:::SMC, parameters_algs::Tuple{MH})
-
-Particle independant Metropolis–Hastings and
-Particle marginal Metropolis–Hastings samplers.
-
-Note that this method is particle-based, and arrays of variables
-must be stored in a [`TArray`](@ref) object.
-
-Usage:
-
-```julia
-alg = PMMH(100, SMC(20, :v1), MH(1,:v2))
-alg = PMMH(100, SMC(20, :v1), MH(1,(:v2, (x) -> Normal(x, 1))))
-```
-
-Arguments:
-
-- `n_iters::Int` : Number of iterations to run.
-- `smc_alg:::SMC` : An [`SMC`](@ref) algorithm to use.
-- `parameters_algs::Tuple{MH}` : An [`MH`](@ref) algorithm, which includes a
-sample space specification.
-"""
-mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
-    n_iters               ::    Int               # number of iterations
-    algs                  ::    A                 # Proposals for state & parameters
-end
-function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
-    return PMMH{space, A}(n_iters, algs)
-end
-function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
-    return PMMH(n_iters, tuple(parameter_algs..., smc_alg), ())
-end
-
-PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), ())
-
-function Sampler(alg::PMMH, model::Model, s::Selector)
-    info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s)
-
-    alg_str = "PMMH"
-    n_samplers = length(alg.algs)
-    samplers = Array{Sampler}(undef, n_samplers)
-
-    space = Set{Symbol}()
-
-    for i in 1:n_samplers
-        sub_alg = alg.algs[i]
-        if isa(sub_alg, Union{SMC, MH})
-            samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
-        else
-            error("[$alg_str] unsupport base sampling algorithm $alg")
-        end
-        if typeof(sub_alg) == MH && sub_alg.n_iters != 1
-            @warn("[$alg_str] number of iterations greater than 1 is useless for MH since it is only used for its proposal")
-        end
-        space = (space..., getspace(sub_alg)...)
-    end
-
-    # Sanity check for space
-    if !isempty(space)
-        @assert issubset(get_pvars(model), space) "[$alg_str] symbols specified to samplers ($space) doesn't cover the model parameters ($(get_pvars(model)))"
-
-        if !(issetequal(get_pvars(model), space))
-            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
-        end
-    end
-
-    info[:old_likelihood_estimate] = -Inf # Force to accept first proposal
-    info[:old_prior_prob] = 0.0
-    info[:samplers] = samplers
-
-    return spl
-end
-
-function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
-    violating_support = false
-    proposal_ratio = 0.0
-    new_prior_prob = 0.0
-    new_likelihood_estimate = 0.0
-    old_θ = copy(vi[spl])
-
-    Turing.DEBUG && @debug "Propose new parameters from proposals..."
-    for local_spl in spl.info[:samplers][1:end-1]
-        Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(getspace(local_spl.alg))..."
-        propose(model, local_spl, vi)
-        if local_spl.info[:violating_support] violating_support=true; break end
-        new_prior_prob += local_spl.info[:prior_prob]
-        proposal_ratio += local_spl.info[:proposal_ratio]
-    end
-
-    if !violating_support # do not run SMC if going to refuse anyway
-        Turing.DEBUG && @debug "Propose new state with SMC..."
-        vi, _ = step(model, spl.info[:samplers][end], vi)
-        new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
-
-        Turing.DEBUG && @debug "computing accept rate α..."
-        is_accept, _ = mh_accept(
-          -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
-          -(new_likelihood_estimate + new_prior_prob),
-          proposal_ratio,
-        )
-    end
-
-    Turing.DEBUG && @debug "decide whether to accept..."
-    if !violating_support && is_accept # accepted
-        is_accept = true
-        spl.info[:old_likelihood_estimate] = new_likelihood_estimate
-        spl.info[:old_prior_prob] = new_prior_prob
-    else                      # rejected
-        is_accept = false
-        vi[spl] = old_θ
-    end
-
-    return vi, is_accept
-end
-
-function sample(  model::Model,
-                  alg::PMMH;
-                  save_state=false,         # flag for state saving
-                  resume_from=nothing,      # chain to continue
-                  reuse_spl_n=0             # flag for spl re-using
-                )
-
-    spl = Sampler(alg, model)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-    alg_str = "PMMH"
-
-    # Number of samples to store
-    sample_n = spl.alg.n_iters
-
-    # Init samples
-    time_total = zero(Float64)
-    samples = Array{Sample}(undef, sample_n)
-    weight = 1 / sample_n
-    for i = 1:sample_n
-        samples[i] = Sample(weight, Dict{Symbol, Any}())
-    end
-
-    # Init parameters
-    vi = if resume_from == nothing
-        vi_ = VarInfo(model)
-    else
-        resume_from.info[:vi]
-    end
-    n = spl.alg.n_iters
-
-    # PMMH steps
-    accept_his = Bool[]
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-    for i = 1:n
-      Turing.DEBUG && @debug "$alg_str stepping..."
-      time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i==1)
-
-      if is_accept # accepted => store the new predcits
-          samples[i].value = Sample(vi, spl).value
-      else         # rejected => store the previous predcits
-          samples[i] = samples[i - 1]
-      end
-
-      time_total += time_elapsed
-      push!(accept_his, is_accept)
-      if PROGRESS[]
-        haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
-      end
-    end
-
-    println("[$alg_str] Finished with")
-    println("  Running time    = $time_total;")
-    accept_rate = sum(accept_his) / n  # calculate the accept rate
-    println("  Accept rate         = $accept_rate;")
-
-    if resume_from != nothing   # concat samples
-      pushfirst!(samples, resume_from.info[:samples]...)
-    end
-    c = Chain(-Inf, samples)       # wrap the result by Chain
-
-    if save_state               # save state
-      c = save(c, spl, model, vi, samples)
-    end
-
-    c
-end
-
-
-####
-#### IMCMC Sampler.
-####
-
-"""
-    IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int)
-
-Particle Gibbs sampler.
-
-Note that this method is particle-based, and arrays of variables
-must be stored in a [`TArray`](@ref) object.
-
-Usage:
-
-```julia
-IPMCMC(100, 100, 4, 2)
-```
-
-Arguments:
-
-- `n_particles::Int` : Number of particles to use.
-- `n_iters::Int` : Number of iterations to employ.
-- `n_nodes::Int` : The number of nodes running SMC and CSMC.
-- `n_csmc_nodes::Int` : The number of CSMC nodes.
-```
-
-A paper on this can be found [here](https://arxiv.org/abs/1602.05128).
-"""
-mutable struct IPMCMC{space, F} <: InferenceAlgorithm
-  n_particles           ::    Int         # number of particles used
-  n_iters               ::    Int         # number of iterations
-  n_nodes               ::    Int         # number of nodes running SMC and CSMC
-  n_csmc_nodes          ::    Int         # number of nodes CSMC
-  resampler             ::    F           # function to resample
-end
-function IPMCMC(n_particles::Int, n_iters::Int, n_nodes::Int, n_csmc_nodes::Int, resampler::F, space::Tuple) where {F}
-    return IPMCMC{space, F}(n_particles, n_iters, n_nodes, n_csmc_nodes, resampler)
-end
-IPMCMC(n1::Int, n2::Int) = IPMCMC(n1, n2, 32, 16)
-IPMCMC(n1::Int, n2::Int, n3::Int) = IPMCMC(n1, n2, n3, Int(ceil(n3/2)))
-IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, ::Tuple{}) = IPMCMC(n1, n2, n3, n4)
-function IPMCMC(n1::Int, n2::Int, n3::Int, n4::Int, space::Symbol...)
-  IPMCMC(n1, n2, n3, n4, resample_systematic, space)
-end
-
-function Sampler(alg::IPMCMC, s::Selector)
-  info = Dict{Symbol, Any}()
-  spl = Sampler(alg, info, s)
-  # Create SMC and CSMC nodes
-  samplers = Array{Sampler}(undef, alg.n_nodes)
-  # Use resampler_threshold=1.0 for SMC since adaptive resampling is invalid in this setting
-  default_CSMC = CSMC(alg.n_particles, 1, alg.resampler, getspace(alg))
-  default_SMC = SMC(alg.n_particles, alg.resampler, 1.0, getspace(alg))
-
-  for i in 1:alg.n_csmc_nodes
-    samplers[i] = Sampler(default_CSMC, Selector(Symbol(typeof(default_CSMC))))
-  end
-  for i in (alg.n_csmc_nodes+1):alg.n_nodes
-    samplers[i] = Sampler(default_SMC, Selector(Symbol(typeof(default_CSMC))))
-  end
-
-  info[:samplers] = samplers
-
-  return spl
-end
-
-function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first::Bool)
-    # Initialise array for marginal likelihood estimators
-    log_zs = zeros(spl.alg.n_nodes)
-
-    # Run SMC & CSMC nodes
-    for j in 1:spl.alg.n_nodes
-        VarInfos[j].num_produce = 0
-        VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])[1]
-        log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
-    end
-
-    # Resampling of CSMC nodes indices
-    conditonal_nodes_indices = collect(1:spl.alg.n_csmc_nodes)
-    unconditonal_nodes_indices = collect(spl.alg.n_csmc_nodes+1:spl.alg.n_nodes)
-    for j in 1:spl.alg.n_csmc_nodes
-        # Select a new conditional node by simulating cj
-        log_ksi = vcat(log_zs[unconditonal_nodes_indices], log_zs[j])
-        ksi = exp.(log_ksi .- maximum(log_ksi))
-        c_j = wsample(ksi) # sample from Categorical with unormalized weights
-
-        if c_j < length(log_ksi) # if CSMC node selects another index than itself
-            conditonal_nodes_indices[j] = unconditonal_nodes_indices[c_j]
-            unconditonal_nodes_indices[c_j] = j
-        end
-    end
-    nodes_permutation = vcat(conditonal_nodes_indices, unconditonal_nodes_indices)
-
-    VarInfos[nodes_permutation]
-end
-
-function sample(model::Model, alg::IPMCMC)
-
-  spl = Sampler(alg)
-
-  # Number of samples to store
-  sample_n = alg.n_iters * alg.n_csmc_nodes
-
-  # Init samples
-  time_total = zero(Float64)
-  samples = Array{Sample}(undef, sample_n)
-  weight = 1 / sample_n
-  for i = 1:sample_n
-    samples[i] = Sample(weight, Dict{Symbol, Any}())
-  end
-
-  # Init parameters
-  vi = empty!(VarInfo(model))
-  VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
-  for j in 1:spl.alg.n_nodes
-    VarInfos[j] = deepcopy(vi)
-  end
-  n = spl.alg.n_iters
-
-  # IPMCMC steps
-  if PROGRESS[] spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
-  for i = 1:n
-    Turing.DEBUG && @debug "IPMCMC stepping..."
-    time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
-
-    # Save each CSMS retained path as a sample
-    for j in 1:spl.alg.n_csmc_nodes
-      samples[(i-1)*alg.n_csmc_nodes+j].value = Sample(VarInfos[j], spl).value
-    end
-
-    time_total += time_elapsed
-    if PROGRESS[]
-      haskey(spl.info, :progress) && ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
-    end
-  end
-
-  println("[IPMCMC] Finished with")
-  println("  Running time    = $time_total;")
-
-  Chain(0.0, samples) # wrap the result by Chain
 end
 
 ####

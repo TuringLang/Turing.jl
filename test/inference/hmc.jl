@@ -1,5 +1,6 @@
 using Turing, Random, Test
 using Turing: Sampler, NUTS
+using MCMCChains: Chains
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -18,7 +19,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         chain = sample(
             constrained_test(obs),
-            HMC(1000, 1.5, 3)) # using a large step size (1.5)
+            HMC(1.5, 3),# using a large step size (1.5)
+            1000)
 
         check_numerical(chain, [:p], [10/14], eps=0.1)
     end
@@ -27,6 +29,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @model constrained_simplex_test(obs12) = begin
             ps ~ Dirichlet(2, 3)
+            pd ~ Dirichlet(4, 1)
             for i = 1:length(obs12)
                 obs12[i] ~ Categorical(ps)
             end
@@ -35,28 +38,29 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         chain = sample(
             constrained_simplex_test(obs12),
-            HMC(1000, 0.75, 2))
+            HMC(0.75, 2),
+            1000)
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], eps=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
-        alg = HMC(4000, 0.15, 10)
-        res = sample(gdemo_default, alg)
+        alg = HMC(0.1, 10)
+        res = sample(gdemo_default, alg, 4000)
         check_gdemo(res, eps=0.1)
     end
     @turing_testset "matrix support" begin
         @model hmcmatrixsup() = begin
             v ~ Wishart(7, [1 0.5; 0.5 1])
-            v
         end
 
         model_f = hmcmatrixsup()
         vs = []
         chain = nothing
-        τ = 3000
-        for _ in 1:5
-            chain = sample(model_f, HMC(τ, 0.1, 3))
-            r = reshape(chain[:v].value, τ, 2, 2)
+        # n_adapts, n_samples = 1_000, 2_000
+        n_samples = 1_000
+        for _ in 1:3
+            chain = sample(model_f, HMC(0.15, 7), n_samples)
+            r = reshape(chain[:v].value, n_samples, 2, 2)
             push!(vs, reshape(mean(r, dims = [1]), 2, 2))
         end
 
@@ -88,19 +92,19 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # Define model
 
-        alpha = 0.16            # regularizatin term
-        var = sqrt(1.0 / alpha) # variance of the Gaussian prior
+        alpha = 0.16                  # regularizatin term
+        var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
         @model bnn(ts) = begin
-            b1 ~ MvNormal([0 ;0; 0],
-                [var 0 0; 0 var 0; 0 0 var])
-            w11 ~ MvNormal([0; 0], [var 0; 0 var])
-            w12 ~ MvNormal([0; 0], [var 0; 0 var])
-            w13 ~ MvNormal([0; 0], [var 0; 0 var])
-            bo ~ Normal(0, var)
+            b1 ~ MvNormal([0. ;0.; 0.],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
+            w11 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w12 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w13 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal([0; 0; 0],
-                [var 0 0; 0 var 0; 0 0 var])
+            wo ~ MvNormal([0.; 0; 0],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
             for i = rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)
@@ -109,19 +113,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         # Sampling
-        chain = sample(bnn(ts), HMC(10, 0.1, 5))
+        chain = sample(bnn(ts), HMC(0.1, 5), 10)
     end
     Random.seed!(123)
     @numerical_testset "hmcda inference" begin
-        alg1 = HMCDA(3000, 1000, 0.8, 0.015)
+        alg1 = HMCDA(1000, 0.8, 0.015)
         # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
-        alg3 = Gibbs(500,
-            PG(30, 10, :s),
-            HMCDA(1, 500, 0.8, 0.005, :m))
+        alg3 = Gibbs(PG(10, :s), HMCDA(200, 0.8, 0.005, :m))
         # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
-        res1 = sample(gdemo_default, alg1)
+        res1 = sample(gdemo_default, alg1, 3000)
         check_gdemo(res1)
 
         # res2 = sample(gdemo([1.5, 2.0]), alg2)
@@ -129,47 +131,55 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # @test mean(res2[:s]) ≈ 49/24 atol=0.2
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
 
-        res3 = sample(gdemo_default, alg3)
+        res3 = sample(gdemo_default, alg3, 1000)
         check_gdemo(res3)
     end
     @turing_testset "hmcda constructor" begin
-        alg = HMCDA(1000, 0.8, 0.75)
+        alg = HMCDA(0.8, 0.75)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
-        alg = HMCDA(1000, 200, 0.8, 0.75)
+        alg = HMCDA(200, 0.8, 0.75)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
-        alg = HMCDA(1000, 200, 0.8, 0.75, :s)
+        alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
-        sampler = Sampler(alg)
+        sampler = Sampler(alg, gdemo_default)
 
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
     @numerical_testset "nuts inference" begin
-        alg = NUTS(6000, 1000, 0.8)
-        res = sample(gdemo_default, alg)
+        alg = NUTS(1000, 0.8)
+        res = sample(gdemo_default, alg, 6000)
         check_gdemo(res)
     end
     @turing_testset "nuts constructor" begin
-        alg = NUTS(1000, 200, 0.65)
-        sampler = Sampler(alg)
+        alg = NUTS(200, 0.65)
+        sampler = Sampler(alg, gdemo_default)
 
-        alg = NUTS(1000, 0.65)
-        sampler = Sampler(alg)
+        alg = NUTS(0.65)
+        sampler = Sampler(alg, gdemo_default)
 
-        alg = NUTS(1000, 200, 0.65, :m)
-        sampler = Sampler(alg)
+        alg = NUTS(200, 0.65, :m)
+        sampler = Sampler(alg, gdemo_default)
     end
     @turing_testset "check discard" begin
-        alg = NUTS(500, 100, 0.8)
+        alg = NUTS(100, 0.8)
 
-        c1 = sample(gdemo_default, alg, discard_adapt = true)
-        c2 = sample(gdemo_default, alg, discard_adapt = false)
+        c1 = sample(gdemo_default, alg, 500, discard_adapt = true)
+        c2 = sample(gdemo_default, alg, 500, discard_adapt = false)
 
         @test size(c1, 1) == 400
         @test size(c2, 1) == 500
+    end
+    @turing_testset "AHMC resize" begin
+        alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s))
+        alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s))
+        alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s))
+        @test sample(gdemo_default, alg1, 300) isa Chains
+        @test sample(gdemo_default, alg2, 300) isa Chains
+        @test sample(gdemo_default, alg3, 300) isa Chains
     end
 end

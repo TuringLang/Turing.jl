@@ -1,9 +1,9 @@
 using Turing, Random
-using Turing: Selector, reconstruct, invlink, CACHERESET, 
+using Turing: Selector, reconstruct, invlink, CACHERESET,
     SampleFromPrior, Sampler, runmodel!, SampleFromUniform
 using Turing.RandomVariables
 using Turing.RandomVariables: uid, _getidcs,
-    set_retained_vns_del_by_spl!, is_flagged, 
+    set_retained_vns_del_by_spl!, is_flagged,
     set_flag!, unset_flag!, VarInfo, TypedVarInfo,
     getlogp, setlogp!, resetlogp!, acclogp!
 using Distributions
@@ -18,7 +18,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 @testset "RandomVariables.jl" begin
     @turing_testset "TypedVarInfo" begin
         @model gdemo(x, y) = begin
-            s ~ InverseGamma(2, 3)
+            s ~ InverseGamma(2,3)
             m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
@@ -103,7 +103,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                 vn4 = genvn(:(z[1][1]))
                 vn5 = genvn(:(z[2]))
                 vn6 = genvn(:z)
-    
+
                 @test in(vn1, space)
                 @test in(vn2, space)
                 @test in(vn3, space)
@@ -122,15 +122,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @model testmodel() = begin
             x ~ Normal()
         end
-        alg = HMC(1000, 0.1, 5)
-        spl = Sampler(alg)
+        alg = HMC(0.1, 5)
+        spl = Sampler(alg, testmodel())
         vi = VarInfo()
         m = testmodel()
         m(vi)
         runmodel!(m, vi, spl)
-        @test spl.info[:eval_num] == 1
+        @test spl.state.eval_num == 1
         runmodel!(m, vi, spl)
-        @test spl.info[:eval_num] == 2
+        @test spl.state.eval_num == 2
     end
     @turing_testset "flags" begin
         # Test flag setting:
@@ -160,8 +160,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test linking spl and vi:
         #    link!, invlink!, istrans
         @model gdemo(x, y) = begin
-            s ~ InverseGamma(2, 3)
-            m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
+            s ~ InverseGamma(2,3)
+            m ~ Uniform(0, 2)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
         end
@@ -171,8 +171,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model(vi, SampleFromUniform())
 
         @test all(i->~istrans(vi, vi.vns[i]), 1:length(vi.vns))
-        alg = HMC(1000, 0.1, 5)
-        spl = Sampler(alg)
+        alg = HMC(0.1, 5)
+        spl = Sampler(alg, model)
         v = copy(vi.vals)
         link!(vi, spl)
         @test all(i->istrans(vi, vi.vns[i]), 1:length(vi.vns))
@@ -181,8 +181,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test vi.vals == v
 
         vi = TypedVarInfo(vi)
-        alg = HMC(1000, 0.1, 5)
-        spl = Sampler(alg)
+        alg = HMC(0.1, 5)
+        spl = Sampler(alg, model)
         @test all(i->~istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
         @test all(i->~istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
         v_s = copy(vi.metadata.s.vals)
@@ -245,8 +245,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vi = VarInfo()
         dists = [Categorical([0.7, 0.3]), Normal()]
 
-        spl1 = Turing.Sampler(PG(5,5))
-        spl2 = Turing.Sampler(PG(5,5))
+        spl1 = Turing.Sampler(PG(5), empty_model())
+        spl2 = Turing.Sampler(PG(5), empty_model())
 
         # First iteration, variables are added to vi
         # variables samples in order: z1,a1,z2,a2,z3
@@ -335,7 +335,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         # Sampling
-        chain = sample(priorsinarray(xs), HMC(10, 0.01, 10))
+        chain = sample(priorsinarray(xs), HMC(0.01, 10), 10)
     end
     @turing_testset "varname" begin
         csym = gensym()
@@ -371,7 +371,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
             p
         end
-        chain = sample(mat_name_test(), HMC(1000, 0.2, 4))
+        chain = sample(mat_name_test(), HMC(0.2, 4), 1000)
         check_numerical(chain, ["p[1, 1]"], [0], eps = 0.25)
 
         # Multi array
@@ -388,7 +388,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             p
         end
 
-        chain = sample(marr_name_test(), HMC(1000, 0.2, 4))
+        chain = sample(marr_name_test(), HMC(0.2, 4), 1000)
         check_numerical(chain, ["p[1][1]"], [0], eps = 0.25)
     end
     @turing_testset "varinfo" begin
@@ -402,7 +402,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             resetlogp!(vi)
             @test getlogp(vi) == 0
 
-            spl2 = Turing.Sampler(PG(5,5))
+            spl2 = Turing.Sampler(PG(5, :w, :u), empty_model())
             vn_w = VarName(gensym(), :w, "", 1)
             randr(vi, vn_w, dists[1], spl2, true)
 
@@ -411,7 +411,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             vn_z = VarName(gensym(), :z, "", 1)
             vns = [vn_x, vn_y, vn_z]
 
-            spl1 = Turing.Sampler(PG(5,5))
+            spl1 = Turing.Sampler(PG(5, :x, :y, :z), empty_model())
             for i = 1:3
                 r = randr(vi, vns[i], dists[i], spl1, false)
                 val = vi[vns[i]]
@@ -450,33 +450,40 @@ include(dir*"/test/test_utils/AllUtils.jl")
         test_varinfo!(empty!(TypedVarInfo(vi)))
 
         @model igtest() = begin
-          x ~ InverseGamma(2, 3)
-          y ~ InverseGamma(2, 3)
-          z ~ InverseGamma(2, 3)
-          w ~ InverseGamma(2, 3)
-          u ~ InverseGamma(2, 3)
+            x ~ InverseGamma(2,3)
+            y ~ InverseGamma(2,3)
+            z ~ InverseGamma(2,3)
+            w ~ InverseGamma(2,3)
+            u ~ InverseGamma(2,3)
         end
 
         # Test the update of group IDs
         g_demo_f = igtest()
 
-        g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g_demo_f)
-        pg, hmc = g.info[:samplers]
+
+        # This test section no longer seems as applicable, considering the
+        # user will never end up using an UntypedVarInfo. The `VarInfo`
+        # Varible is also not passed around in the same way as it used to be.
+        g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
+        pg, hmc = g.state.samplers
         vi = VarInfo()
         g_demo_f(vi, SampleFromPrior())
-        vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
-        @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                        Set{Selector}(), Set{Selector}()]
+        Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
+        vi1 = pg.state.vi
+        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+            [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set{Selector}(), Set{Selector}()]
 
-        g_demo_f(vi, hmc)
-        @test vi.gids == [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]),
-                        Set([hmc.selector]), Set([hmc.selector])]
+        g_demo_f(vi1, hmc)
+        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+            [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set([hmc.selector]), Set([hmc.selector])]
 
-        g = Turing.Sampler(Gibbs(1000, PG(10, 2, :x, :y, :z), HMC(1, 0.4, 8, :w, :u)), g_demo_f)
-        pg, hmc = g.info[:samplers]
+        g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
+        pg, hmc = g.state.samplers
         vi = empty!(TypedVarInfo(vi))
         g_demo_f(vi, SampleFromPrior())
-        vi, _ = Turing.Inference.step(g_demo_f, pg, vi)
+        pg.state.vi = vi
+        Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
+        vi = pg.state.vi
         g_demo_f(vi, hmc)
         @test vi.metadata.x.gids[1] == Set([pg.selector])
         @test vi.metadata.y.gids[1] == Set([pg.selector])

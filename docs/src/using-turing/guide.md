@@ -19,7 +19,7 @@ To specify distributions of random variables, Turing programs should use the `~`
 `x ~ distr` where `x` is a symbol and `distr` is a distribution. If `x` is undefined in the model function, inside the probabilistic program, this puts a random variable named `x`, distributed according to `distr`, in the current scope. `distr` can be a value of any type that implements `rand(distr)`, which samples a value from the distribution `distr`. If `x` is defined, this is used for conditioning in a style similar to [Anglican](https://probprog.github.io/anglican/index.html) (another PPL). In this case, `x` is an observed value, assumed to have been drawn from the distribution `distr`. The likelihood is computed using `logpdf(distr,y)`. The observe statements should be arranged so that every possible run traverses all of them in exactly the same order. This is equivalent to demanding that they are not placed inside stochastic control flow.
 
 
-Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC), Hamiltonian Monte Carlo with Dual Averaging (HMCDA) and The No-U-Turn Sampler (NUTS).
+Available inference methods include Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC), Hamiltonian Monte Carlo with Dual Averaging (HMCDA) and The No-U-Turn Sampler (NUTS).
 
 
 ### Simple Gaussian Demo
@@ -50,12 +50,12 @@ We can perform inference by using the `sample` function, the first argument of w
 
 ```julia
 #  Run sampler, collect results.
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+c1 = sample(gdemo(1.5, 2), SMC(), 1000)
+c2 = sample(gdemo(1.5, 2), PG(10), 1000)
+c3 = sample(gdemo(1.5, 2), HMC(0.1, 5), 1000)
+c4 = sample(gdemo(1.5, 2), Gibbs(PG(10, :m), HMC(0.1, 5, :s)), 1000)
+c5 = sample(gdemo(1.5, 2), HMCDA(0.15, 0.65), 1000)
+c6 = sample(gdemo(1.5, 2), NUTS(0.65), 1000)
 ```
 
 
@@ -136,7 +136,7 @@ Turing does not have a declarative form. More generally, the order in which you 
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
@@ -151,32 +151,31 @@ But if we switch the `s ~ Poisson(1)` and `y ~ Normal(s, 1)` lines, the model wi
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
 
 ### Sampling Multiple Chains
 
+If you have Julia 1.3 or greater, you may use `psample` to sample multiple chains in a multithreaded way:
 
-If you wish to run multiple chains, you can do so with the `mapreduce` function:
+```julia
+# Generate 4 chains, each with 1,000 samples.
+chains = psample(model, sampler, 1000, 4)
+```
+
+For older versions of Julia, `psample` may not function correctly. If you wish to run multiple chains, you can do so with the `mapreduce` function:
 
 
 ```julia
 # Replace num_chains below with however many chains you wish to sample.
-chains = mapreduce(c -> sample(model_fun, sampler), chainscat, 1:num_chains)
+chains = mapreduce(c -> sample(model_fun, sampler, 1000), chainscat, 1:num_chains)
 ```
-
 
 The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
 
-
 Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
-
-
-Please note that Turing does not have native support for chains sampled in parallel.
-
-
 
 ### Sampling from an Unconditional Distribution (The Prior)
 
@@ -200,8 +199,8 @@ Assign the function without inputs to a variable, and Turing will produce a samp
 
 ```julia
 # Samples from p(x,y)
-g_prior_sampler = gdemo()
-g_prior_sampler()
+g_prior_sample = gdemo()
+g_prior_sample()
 ```
 
 
@@ -233,7 +232,7 @@ end
 
 # Treat x as a vector of missing values.
 model = gdemo(fill(missing, 2))
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -254,7 +253,7 @@ end
 
 # Warning: This will provide an error!
 model = gdemo([missing, 2.4])
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -272,7 +271,7 @@ end
 
 # Equivalent to sampling p( x1 | x2 = 1.5).
 model = gdemo(missing, 1.5)
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
@@ -314,7 +313,7 @@ This model can be called in a traditional fashion, with an argument vector of an
 ```julia
 # The values 1.5 and 2.0 will be observed by the sampler.
 m = generative([1.5,2.0])
-chain = sample(m, HMC(1000, 0.01, 5))
+chain = sample(m, HMC(0.01, 5), 1000)
 ```
 
 
@@ -324,7 +323,7 @@ We can generate observations by providing no arguments in the `sample` call.
 ```julia
 # This call will generate a vector of 10 values
 # every sampler iteration.
-generated = sample(generative(), HMC(1000, 0.01, 5))
+generated = sample(generative(), HMC(0.01, 5), 1000)
 ```
 
 
@@ -422,7 +421,7 @@ end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
 
-chn = sample(simple_choice_f, Gibbs(1000, HMC(1, 0.2, 3, :p), PG(20, 1, :z)))
+chn = sample(simple_choice_f, Gibbs(HMC(0.2, 3, :p), PG(20, :z)), 1000)
 ```
 
 

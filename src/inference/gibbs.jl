@@ -1,9 +1,9 @@
 ###
-### Gibbs samplers / compositional samplers. 
+### Gibbs samplers / compositional samplers.
 ###
 
 """
-    Gibbs(n_iters, algs...)
+    Gibbs(algs...)
 
 Compositional MCMC interface. Gibbs sampling combines one or more
 sampling algorithms, each of which samples from a different set of
@@ -14,8 +14,8 @@ Example:
 @model gibbs_example(x) = begin
     v1 ~ Normal(0,1)
     v2 ~ Categorical(5)
-        ...
 end
+```
 
 # Use PG for a 'v2' variable, and use HMC for the 'v1' variable.
 # Note that v2 is discrete, so the PG sampler is more appropriate
@@ -29,17 +29,34 @@ methods like Particle Gibbs. You can increase the effectiveness of particle samp
 more particles in the particle sampler.
 """
 mutable struct Gibbs{A} <: InferenceAlgorithm
-    n_iters   ::  Int     # number of Gibbs iterations
     algs      ::  A   # component sampling algorithms
-    thin      ::  Bool    # if thinning to output only after a whole Gibbs sweep
+    function Gibbs(algs...)
+        return new{typeof(algs)}(algs)
+    end
 end
-Gibbs(n_iters::Int, algs...; thin=true) = Gibbs(n_iters, algs, thin)
+
+alg_str(::Sampler{<:Gibbs}) = "Gibbs"
+transition_type(spl::Sampler{<:Gibbs}) = typeof(Transition(spl))
+
+"""
+    GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}}
+
+Stores a `VarInfo` for use in sampling, and a `Tuple` of `Samplers` that
+the `Gibbs` sampler iterates through for each `step!`.
+"""
+mutable struct GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}} <: AbstractSamplerState
+    vi::V
+    samplers::S
+end
+
+function GibbsState(model::Model, samplers::S) where S<:Tuple{Vararg{Sampler}}
+    return GibbsState(VarInfo(model), samplers)
+end
 
 const GibbsComponent = Union{Hamiltonian,MH,PG}
 
 function Sampler(alg::Gibbs, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s)
 
     n_samplers = length(alg.algs)
     samplers = Array{Sampler}(undef, n_samplers)
@@ -50,7 +67,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         if isa(sub_alg, GibbsComponent)
             samplers[i] = Sampler(sub_alg, model, Selector(Symbol(typeof(sub_alg))))
         else
-            @error("[Gibbs] unsupport base sampling algorithm $alg")
+            @error("[Gibbs] Unsupported sampling algorithm $sub_alg")
         end
         space = (space..., getspace(sub_alg)...)
     end
@@ -62,140 +79,143 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
     end
 
-    info[:samplers] = samplers
+    # Create a state variable.
+    state = GibbsState(model, tuple(samplers...))
+
+    # Create the sampler.
+    spl = Sampler(alg, info, s, state)
+
+    # Add Gibbs to gids for all variables.
+    for sym in keys(spl.state.vi.metadata)
+        vns = getfield(spl.state.vi.metadata, sym).vns
+        for vn in vns
+            # Update the gid for the Gibbs sampler.
+            Turing.RandomVariables.updategid!(spl.state.vi, vn, spl)
+            
+            # Try to store each subsampler's gid in the VarInfo.
+            for local_spl in spl.state.samplers
+                Turing.RandomVariables.updategid!(spl.state.vi, vn, local_spl)
+            end
+        end
+    end
 
     return spl
 end
 
-function sample(
-                model::Model,
-                alg::Gibbs;
-                save_state=false,         # flag for state saving
-                resume_from=nothing,      # chain to continue
-                reuse_spl_n=0             # flag for spl re-using
-                )
-
-    # Init the (master) Gibbs sampler
-    if reuse_spl_n > 0
-        spl = resume_from.info[:spl]
-    else
-        spl = Sampler(alg, model)
-        if resume_from != nothing
-            spl.selector = resume_from.info[:spl].selector
-            for i in 1:length(spl.info[:samplers])
-                spl.info[:samplers][i].selector = resume_from.info[:spl].info[:samplers][i].selector
-            end
-        end
+# Initialize the Gibbs sampler.
+function sample_init!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    # Initialize each local sampler.
+    for local_spl in spl.state.samplers
+        sample_init!(rng, model, local_spl, N; kwargs...)
     end
-    @assert typeof(spl.alg) == typeof(alg) "[Turing] alg type mismatch; please use resume() to re-use spl"
+end
 
-    # Initialize samples
-    sub_sample_n = []
-    for sub_alg in alg.algs
-        if isa(sub_alg, GibbsComponent)
-            push!(sub_sample_n, sub_alg.n_iters)
-        else
-            @error("[Gibbs] unsupport base sampling algorithm $alg")
-        end
+# Finalize the Gibbs sampler.
+function sample_end!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    # Finalize each local sampler.
+    for local_spl in spl.state.samplers
+        sample_end!(rng, model, local_spl, N; kwargs...)
     end
+end
 
-    # Compute the number of samples to store
-    n = reuse_spl_n > 0 ? reuse_spl_n : alg.n_iters
-    sample_n = n * (alg.thin ? 1 : sum(sub_sample_n))
 
-    # Init samples
-    time_total = zero(Float64)
-    samples = Array{Sample}(undef, sample_n)
-    weight = 1 / sample_n
-    for i = 1:sample_n
-        samples[i] = Sample(weight, Dict{Symbol, Any}())
-    end
+# First step.
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    Turing.DEBUG && @debug "Gibbs stepping..."
 
-    # Init parameters
-    varInfo = if resume_from == nothing
-        VarInfo(model)
-    else
-        resume_from.info[:vi]
-    end
+    time_elapsed = 0.0
+    lp = nothing; ϵ = nothing; eval_num = nothing
 
-    n = spl.alg.n_iters; i_thin = 1
+    # Iterate through each of the samplers.
+    for local_spl in spl.state.samplers
+        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
 
-    # Gibbs steps
-    PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[Gibbs] Sampling...", 0))
-    for i = 1:n
-        Turing.DEBUG && @debug "Gibbs stepping..."
+        Turing.DEBUG && @debug "recording old θ..."
 
-        time_elapsed = zero(Float64)
-        lp = nothing; ϵ = nothing; eval_num = nothing
+        # Update the sampler's VarInfo.
+        local_spl.state.vi = spl.state.vi
 
-        for local_spl in spl.info[:samplers]
-            last_spl = local_spl
-      # PROGRESS[] && haskey(spl.info, :progress) && (local_spl.info[:progress] = spl.info[:progress])
+        # Step through the local sampler.
+        time_elapsed_thin =
+            @elapsed step!(rng, model, local_spl, N; kwargs...)
 
-            Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+        # After the step, update the master varinfo.
+        spl.state.vi = local_spl.state.vi
 
-            if isa(local_spl.alg, GibbsComponent)
-                for _ = 1:local_spl.alg.n_iters
-                    Turing.DEBUG && @debug "recording old θ..."
-                    time_elapsed_thin = @elapsed varInfo, is_accept = step(model, local_spl, varInfo, Val(i==1))
+        # Uncomment when developing thinning functionality.
+        # Retrieve symbol to store this subsample.
+        # symbol_id = Symbol(local_spl.selector.gid)
+        
+        # # Store the subsample.
+        # spl.state.subsamples[symbol_id][] = trans
 
-                    if ~spl.alg.thin
-                        samples[i_thin].value = Sample(varInfo).value
-                        samples[i_thin].value[:elapsed] = time_elapsed_thin
-                        if ~isa(local_spl.alg, Hamiltonian)
-                            # If statement below is true if there is a HMC component which provides lp and ϵ
-                            if lp != nothing samples[i_thin].value[:lp] = lp end
-                            if ϵ != nothing samples[i_thin].value[:ϵ] = ϵ end
-                            if eval_num != nothing samples[i_thin].value[:eval_num] = eval_num end
-                        end
-                        i_thin += 1
-                    end
-                    time_elapsed += time_elapsed_thin
-                end
-
-                if isa(local_spl.alg, Hamiltonian)
-                    lp = getlogp(varInfo)
-                    if local_spl.alg isa AdaptiveHamiltonian
-                        ϵ = AHMC.getϵ(local_spl.info[:adaptor])
-                    else
-                        ϵ = local_spl.alg.ϵ
-                    end
-                    eval_num = local_spl.info[:eval_num]
-                end
-            else
-                @error("[Gibbs] unsupport base sampler $local_spl")
-            end
-        end
-
-        time_total += time_elapsed
-
-        if spl.alg.thin
-            samples[i].value = Sample(varInfo).value
-            samples[i].value[:elapsed] = time_elapsed
-            # If statement below is true if there is a HMC component which provides lp and ϵ
-            if lp != nothing samples[i].value[:lp] = lp end
-            if ϵ != nothing samples[i].value[:ϵ] = ϵ end
-            if eval_num != nothing samples[i].value[:eval_num] = eval_num end
-        end
-
-        if PROGRESS[]
-            if haskey(spl.info, :progress)
-                ProgressMeter.update!(spl.info[:progress], spl.info[:progress].counter + 1)
-            end
-        end
+        # Record elapsed time.
+        time_elapsed += time_elapsed_thin
     end
 
-    @info("[Gibbs] Finished with")
-    @info("  Running time    = $time_total;")
+    return Transition(spl)
+end
 
-    if resume_from != nothing   # concat samples
-        pushfirst!(samples, resume_from.info[:samples]...)
+# Steps 2:N
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    N::Integer,
+    t::TransitionType;
+    kwargs...
+) where TransitionType<:AbstractTransition
+    Turing.DEBUG && @debug "Gibbs stepping..."
+
+    time_elapsed = 0.0
+    lp = nothing 
+    ϵ = nothing
+    eval_num = nothing
+
+    # Iterate through each of the samplers.
+    for local_spl in spl.state.samplers
+        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+
+        Turing.DEBUG && @debug "recording old θ..."
+
+        # Update the sampler's VarInfo.
+        local_spl.state.vi = spl.state.vi
+
+        # Step through the local sampler.
+        time_elapsed_thin =
+            @elapsed trans = step!(rng, model, local_spl, N, t; kwargs...)
+
+        # After the step, update the master varinfo.
+        spl.state.vi = local_spl.state.vi
+
+        # Uncomment when developing thinning functionality.
+        # Retrieve symbol to store this subsample.
+        # symbol_id = Symbol(local_spl.selector.gid)
+        #
+        # # Store the subsample.
+        # spl.state.subsamples[symbol_id][] = trans
+
+        # Record elapsed time.
+        time_elapsed += time_elapsed_thin
     end
-    c = Chain(0.0, samples)       # wrap the result by Chain
 
-    if save_state               # save state
-        c = save(c, spl, model, varInfo, samples)
-    end
-
-    return c
+    return Transition(spl)
 end

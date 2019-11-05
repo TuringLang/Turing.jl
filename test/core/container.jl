@@ -20,8 +20,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "particle container" begin
         n = Ref(0)
 
-        alg = PG(5, 1)
-        spl = Turing.Sampler(alg)
+        alg = PG(5)
+        spl = Turing.Sampler(alg, empty_model())
         dist = Normal(0, 1)
 
         function fpc()
@@ -67,8 +67,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "trace" begin
         n = Ref(0)
 
-        alg = PG(5, 1)
-        spl = Turing.Sampler(alg)
+        alg = PG(5)
+        spl = Turing.Sampler(alg, empty_model())
         dist = Normal(0, 1)
         function f2()
             t = TArray(Int, 1);
