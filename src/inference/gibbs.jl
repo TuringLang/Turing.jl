@@ -20,7 +20,7 @@ end
 # Use PG for a 'v2' variable, and use HMC for the 'v1' variable.
 # Note that v2 is discrete, so the PG sampler is more appropriate
 # than is HMC.
-alg = Gibbs(1000, HMC(1, 0.2, 3, :v1), PG(20, 1, :v2))
+alg = Gibbs(HMC(0.2, 3, :v1), PG(20, 1, :v2))
 ```
 
 Tips:

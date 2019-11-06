@@ -77,10 +77,10 @@ The arguments for each sampler are:
 
   * SMC: number of particles.
   * PG: number of particles, number of iterations.
-  * HMC: number of samples, leapfrog step size, leapfrog step numbers.
-  * Gibbs: number of samples, component sampler 1, component sampler 2, ...
-  * HMCDA: number of samples, total leapfrog length, target accept ratio.
-  * NUTS: number of samples, target accept ratio.
+  * HMC: leapfrog step size, leapfrog step numbers.
+  * Gibbs: component sampler 1, component sampler 2, ...
+  * HMCDA: total leapfrog length, target accept ratio.
+  * NUTS: number of adaptation steps (optional), target accept ratio.
 
 
 For detailed information on the samplers, please review Turing.jl's [API]({{site.baseurl}}/docs/library) documentation.
@@ -373,7 +373,7 @@ end
 ```
 
 
-If we are trying to generate random random values from the `generator` model and we call `sample(generator(), HMC(1000, 0.01, 5))`, we will receive an error. This is because there is no way to determine `length(x)`, whether `x` is a vector, and the type of the values in `x`.
+If we are trying to generate random random values from the `generator` model and we call `sample(generator(), HMC(0.01, 5), 1000)`, we will receive an error. This is because there is no way to determine `length(x)`, whether `x` is a vector, and the type of the values in `x`.
 
 
 A sensible default value might be:

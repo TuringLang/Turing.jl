@@ -118,9 +118,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
     Random.seed!(123)
     @numerical_testset "hmcda inference" begin
         alg1 = HMCDA(1000, 0.8, 0.015)
-        # alg2 = Gibbs(3000, HMCDA(1, 200, 0.8, 0.35, :m), HMC(1, 0.25, 3, :s))
+        # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m), HMC(0.25, 3, :s))
         alg3 = Gibbs(PG(10, :s), HMCDA(200, 0.8, 0.005, :m))
-        # alg3 = Gibbs(2000, HMC(1, 0.25, 3, :m), PG(30, 3, :s))
+        # alg3 = Gibbs(HMC(0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
         res1 = sample(gdemo_default, alg1, 3000)
