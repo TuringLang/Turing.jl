@@ -372,7 +372,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             p
         end
         chain = sample(mat_name_test(), HMC(0.2, 4), 1000)
-        check_numerical(chain, ["p[1, 1]"], [0], eps = 0.25)
+        check_numerical(chain, ["p[1, 1]"], [0], atol = 0.25)
 
         # Multi array
         v_arrarr = eval(varname(:(x[i][j]))[1])
@@ -389,7 +389,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         chain = sample(marr_name_test(), HMC(0.2, 4), 1000)
-        check_numerical(chain, ["p[1][1]"], [0], eps = 0.25)
+        check_numerical(chain, ["p[1][1]"], [0], atol = 0.25)
     end
     @turing_testset "varinfo" begin
         dists = [Normal(0, 1), MvNormal([0; 0], [1.0 0; 0 1.0]), Wishart(7, [1 0.5; 0.5 1])]

@@ -21,12 +21,12 @@ end
 #     @numerical_testset "pmmh inference" begin
 #         alg = PMMH(2000, SMC(20, :m), MH(1, (:s, GKernel(1))))
 #         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain, eps=0.1)
+#         check_gdemo(chain, atol = 0.1)
 #
 #         # PMMH with prior as proposal
 #         alg = PMMH(2000, SMC(20, :m), MH(1, :s))
 #         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain, eps=0.1)
+#         check_gdemo(chain, atol = 0.1)
 #
 #         # PIMH
 #         alg = PIMH(2000, SMC())
@@ -39,7 +39,7 @@ end
 #             MH(1, :mu1, :mu2))
 #         chain = sample(MoGtest_default, pmmh)
 #
-#         check_MoGtest_default(chain, eps = 0.1)
+#         check_MoGtest_default(chain, atol = 0.1)
 #     end
 # end
 
@@ -61,7 +61,7 @@ end
 #
 #         alg2 = IPMCMC(15, 100, 10)
 #         chain2 = sample(MoGtest_default, alg2)
-#         check_MoGtest_default(chain2, eps=0.2)
+#         check_MoGtest_default(chain2, atol = 0.2)
 #     end
 # end
 

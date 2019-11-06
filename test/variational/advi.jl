@@ -21,6 +21,6 @@ include("../test_utils/AllUtils.jl")
         chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
 
         # TODO: uhmm, seems like a large `eps` here...
-        check_gdemo(chn, eps = 0.5)
+        check_gdemo(chn, atol = 0.5)
     end
 end
