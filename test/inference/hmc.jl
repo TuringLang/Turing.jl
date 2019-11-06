@@ -22,7 +22,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             HMC(1.5, 3),# using a large step size (1.5)
             1000)
 
-        check_numerical(chain, [:p], [10/14], eps=0.1)
+        check_numerical(chain, [:p], [10/14], atol=0.1)
     end
     @numerical_testset "contrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
@@ -41,12 +41,12 @@ include(dir*"/test/test_utils/AllUtils.jl")
             HMC(0.75, 2),
             1000)
 
-        check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], eps=0.015)
+        check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], atol=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
         alg = HMC(0.1, 10)
         res = sample(gdemo_default, alg, 4000)
-        check_gdemo(res, eps=0.1)
+        check_gdemo(res, rtol=0.1)
     end
     @turing_testset "matrix support" begin
         @model hmcmatrixsup() = begin

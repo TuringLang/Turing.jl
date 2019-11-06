@@ -41,25 +41,26 @@ end
 function check_numerical(chain,
                         symbols::Vector,
                         exact_vals::Vector;
-                        eps=0.2)
+                        atol=0.2,
+                        rtol=0.0)
     for (sym, val) in zip(symbols, exact_vals)
         E = val isa Real ?
             mean(chain[sym].value) :
             vec(mean(chain[sym].value, dims=[1]))
         @info (symbol=sym, exact=val, evaluated=E)
-        @test E ≈ val atol=eps
+        @test E ≈ val atol=atol rtol=rtol
     end
 end
 
 # Wrapper function to quickly check gdemo accuracy.
-function check_gdemo(chain; eps = 0.2)
-    check_numerical(chain, [:s, :m], [49/24, 7/6], eps=eps)
+function check_gdemo(chain; atol=0.2, rtol=0.0)
+    check_numerical(chain, [:s, :m], [49/24, 7/6], atol=atol, rtol=rtol)
 end
 
 # Wrapper function to check MoGtest.
-function check_MoGtest_default(chain; eps = 0.2)
+function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
     check_numerical(chain,
         [:z1, :z2, :z3, :z4, :mu1, :mu2],
         [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
-        eps=eps)
+        atol=atol, rtol=rtol)
 end

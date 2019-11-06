@@ -22,8 +22,8 @@ priors = 0 # See "new grammar" test.
         res1 = sample(test_assume(), smc, 1000)
         res2 = sample(test_assume(), pg, 1000)
 
-        check_numerical(res1, [:y], [0.5], eps=0.1)
-        check_numerical(res2, [:y], [0.5], eps=0.1)
+        check_numerical(res1, [:y], [0.5], atol=0.1)
+        check_numerical(res2, [:y], [0.5], atol=0.1)
 
         # Check that all xs are 1.
         @test all(res1[:x].value .== 1)
@@ -52,9 +52,9 @@ priors = 0 # See "new grammar" test.
         chn_p = sample(testbb(obs), pg, 2000)
         chn_g = sample(testbb(obs), gibbs, 1500)
 
-        check_numerical(chn_s, [:p], [meanp], eps=0.05)
-        check_numerical(chn_p, [:x], [meanp], eps=0.1)
-        check_numerical(chn_g, [:x], [meanp], eps=0.1)
+        check_numerical(chn_s, [:p], [meanp], atol=0.05)
+        check_numerical(chn_p, [:x], [meanp], atol=0.1)
+        check_numerical(chn_g, [:x], [meanp], atol=0.1)
     end
     @testset "forbid global" begin
         xs = [1.5 2.0]

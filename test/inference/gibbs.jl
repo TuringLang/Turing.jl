@@ -32,11 +32,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
             CSMC(10, :s),
             HMC(0.2, 4, :m))
         chain = sample(gdemo(1.5, 2.0), alg, 3000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], eps=0.1)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = CSMC(10)
         chain = sample(gdemo(1.5, 2.0), alg, 5000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], eps=0.1)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         setadsafe(true)
 
@@ -45,7 +45,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             PG(10, :z1, :z2, :z3, :z4),
             HMC(0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, eps = 0.1)
+        check_MoGtest_default(chain, atol = 0.1)
 
         setadsafe(false)
     end
