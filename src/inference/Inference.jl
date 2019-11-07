@@ -109,11 +109,26 @@ Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
 # Internal variable names for MCMCChains #
 ##########################################
 
-const TURING_INTERNAL_VARS =
-    (internals = ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le",
-                  "acceptance_rate", "hamiltonian_energy", "is_accept", 
-                  "log_density", "n_steps", "numerical_error", "step_size",
-                  "tree_depth"],)
+const TURING_INTERNAL_VARS = (internals = [
+    "elapsed",
+    "eval_num",
+    "lf_eps",
+    "lp",
+    "weight",
+    "le",
+    "acceptance_rate",
+    "hamiltonian_energy",
+    "hamiltonian_energy_error",
+    "max_hamiltonian_energy_error",
+    "is_accept",
+    "log_density",
+    "n_steps",
+    "numerical_error",
+    "step_size",
+    "nom_step_size",
+    "tree_depth",
+    "is_adapt",
+],)
 
 #########################################
 # Default definitions for the interface #
