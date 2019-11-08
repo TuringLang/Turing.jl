@@ -1,6 +1,7 @@
 name: CompatHelper
 
 on:
+  push:
   schedule:
     - cron: '00 * * * *'
 
