@@ -1,6 +1,7 @@
 using StatsFuns
 using DistributionsAD
 using Bijectors
+using Bijectors: TransformedDistribution
 
 update(d::TuringDiagNormal, μ, σ) = TuringDiagNormal(μ, σ)
 update(td::TransformedDistribution, θ...) = transformed(update(td.dist, θ...), td.transform)
@@ -15,20 +16,41 @@ function entropy(d::TuringDiagNormal)
     return (length(d) * (T(log2π) + one(T)) / 2 + sum(log.(d.σ)))
 end
 
-"""
-    ADVI(samples_per_step = 1, max_iters = 1000)
+import Bijectors: bijector
+function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) where {sym2ranges}
+    varinfo = Turing.VarInfo(model)
+    num_params = sum([size(varinfo.metadata[sym].vals, 1)
+                      for sym ∈ keys(varinfo.metadata)])
 
-Automatic Differentiation Variational Inference (ADVI) for a given model.
-"""
-struct ADVI{AD} <: VariationalInference{AD}
-    samples_per_step # number of samples used to estimate the ELBO in each optimization step
-    max_iters        # maximum number of gradient steps used in optimization
+    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
+
+    num_ranges = sum([length(varinfo.metadata[sym].ranges)
+                      for sym ∈ keys(varinfo.metadata)])
+    ranges = Vector{UnitRange{Int}}(undef, num_ranges)
+    idx = 0
+    range_idx = 1
+
+    # ranges might be discontinuous => values are vectors of ranges rather than just ranges
+    sym_lookup = Dict{Symbol, Vector{UnitRange{Int}}}()
+    for sym ∈ keys(varinfo.metadata)
+        sym_lookup[sym] = Vector{UnitRange{Int}}()
+        for r ∈ varinfo.metadata[sym].ranges
+            ranges[range_idx] = idx .+ r
+            push!(sym_lookup[sym], ranges[range_idx])
+            range_idx += 1
+        end
+
+        idx += varinfo.metadata[sym].ranges[end][end]
+    end
+
+    bs = inv.(bijector.(tuple(dists...)))
+
+    if sym2ranges
+        return Stacked(bs, ranges), sym_lookup
+    else
+        return Stacked(bs, ranges)
+    end
 end
-
-ADVI(args...) = ADVI{ADBackend()}(args...)
-ADVI() = ADVI(1, 1000)
-
-alg_str(::ADVI) = "ADVI"
 
 """
     meanfield(model::Model)
@@ -69,6 +91,21 @@ function meanfield(model::Model)
 
     return transformed(d, b)
 end
+
+"""
+    ADVI(samples_per_step = 1, max_iters = 1000)
+
+Automatic Differentiation Variational Inference (ADVI) for a given model.
+"""
+struct ADVI{AD} <: VariationalInference{AD}
+    samples_per_step # number of samples used to estimate the ELBO in each optimization step
+    max_iters        # maximum number of gradient steps used in optimization
+end
+
+ADVI(args...) = ADVI{ADBackend()}(args...)
+ADVI() = ADVI(1, 1000)
+
+alg_str(::ADVI) = "ADVI"
 
 
 function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
