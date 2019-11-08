@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [stable, lts]
+        julia-version: [1.0.4, 1.2]
         julia-arch: [x64, x86]
         os: [ubuntu-latest, windows-latest, macOS-latest]
         exclude:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1.0.0
-      - uses: julia-actions/setup-julia@v0.2
+      - uses: julia-actions/setup-julia@v0.2.1
         with:
           version: ${{ matrix.julia-version }}
       - run: julia -e 'println("Hello, World!")'
