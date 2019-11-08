@@ -19,4 +19,4 @@ jobs:
       - uses: julia-actions/setup-julia@v0.2
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/julia-runtest@master
+      - run: julia -e 'println("Hello, World!")'
