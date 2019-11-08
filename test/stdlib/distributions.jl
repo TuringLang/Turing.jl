@@ -7,7 +7,7 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "distributions.jl" begin
-    @turing_testset "distributions functions" begin
+    @turing_testset "Binomial logit functions" begin
         ns = 10
         logitp = randn()
         d1 = BinomialLogit(ns, logitp)
@@ -16,7 +16,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test logpdf(d1, k) ≈ logpdf(d2, k)
     end
 
-    @turing_testset "distributions functions" begin
+    @turing_testset "Ordered logistic functions" begin
 
         d = OrderedLogistic(-2, [-1, 1])
 
@@ -25,7 +25,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         K = length(d.cutpoints) + 1
         p = [mean(y .== k) for k in 1:K]          # empirical probs
         pmf = [exp(logpdf(d, k)) for k in 1:K]
-        
+
         @test sum(abs.(p - pmf) .< 0.001) == K
 
     end

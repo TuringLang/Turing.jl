@@ -38,23 +38,13 @@ function Distributions.logpdf(d::FlatPos, x::AbstractVector{<:Real})
 end
 
 """
-    BinomialLogit(n<:Real, I<:Integer)
+    BinomialLogit(n<:Int, logitp<:Real)
 
-A univariate binomial logit distribution. 
+A univariate binomial logit distribution with `n` trials and logit values of `logitp`.
 """
-struct BinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
+struct BinomialLogit{T<:Real, I<:Int} <: DiscreteUnivariateDistribution
     n::I
     logitp::T
-end
-
-"""
-    BinomialLogit(n<:Real, I<:Integer)
-
-A multivariate binomial logit distribution. 
-"""
-struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
-    n::Vector{I}
-    logitp::Vector{T}
 end
 
 function logpdf_binomial_logit(n, logitp, k)
@@ -66,8 +56,28 @@ function Distributions.logpdf(d::BinomialLogit{<:Real}, k::Int)
     return logpdf_binomial_logit(d.n, d.logitp, k)
 end
 
-function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer})
+function Distributions.rand(rng::AbstractRNG, d::BinomialLogit)
+    return rand(rng, Binomial(d.n, StatsFuns.logistic(d.logitp)))
+end
+
+"""
+    MvBinomialLogit(n::Vector{<:Int}, logpitp::Vector{<:Real})
+
+A multivariate binomial logit distribution with `n` trials and logit values of `logitp`.
+"""
+struct MvBinomialLogit{T<:Real, I<:Int} <: DiscreteMultivariateDistribution
+    n::Vector{I}
+    logitp::Vector{T}
+end
+
+Distributions.length(d::MvBinomialLogit) = length(d.n)
+
+function Distributions.logpdf(d::MvBinomialLogit{<:Real}, ks::Vector{<:Integer})
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
+end
+
+function Distributions.rand(rng::AbstractRNG, d::MvBinomialLogit)
+    return rand.(Ref(rng), Binomial.(d.n, StatsFuns.logistic.(d.logitp)))
 end
 
 """

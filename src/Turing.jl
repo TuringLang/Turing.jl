@@ -162,9 +162,10 @@ end
     include("contrib/inference/dynamichmc.jl")
 end
 
-# Random probability measures.
+# load additional distributions.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
+include("stdlib/dpp.jl")
 
 ###########
 # Exports #
@@ -207,10 +208,10 @@ export  @model,                 # modelling
 
         turnprogress,           # debugging
 
-        Flat,
+        Flat,                   # additional distributions
         FlatPos,
         BinomialLogit,
-        VecBinomialLogit,
+        MvBinomialLogit,
         OrderedLogistic
 
 end
