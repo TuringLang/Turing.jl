@@ -56,7 +56,8 @@ export  InferenceAlgorithm,
         get_covar,
         add_sample!,
         reset!,
-        step!
+        step!,
+        resume
 
 #######################
 # Sampler abstraction #
@@ -438,15 +439,20 @@ end
 
 function resume(c::Chains, n_iter::Int; kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
-    return sample(
+
+    # Sample a new chain.
+    newchain = sample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
-        n_iter;    # this is actually not used
+        n_iter;
         resume_from=c,
         reuse_spl_n=n_iter,
         kwargs...
     )
+
+    # Stick the new samples at the end of the old chain.
+    return vcat(c, newchain)
 end
 
 function set_resume!(
