@@ -185,12 +185,19 @@ function Libtask.consume(pc :: ParticleContainer)
     res
 end
 
-function weights(pc :: ParticleContainer)
+function weights(pc::ParticleContainer)
     @assert pc.num_particles == length(pc)
+
+    # compute the normalized weights
     logWs = pc.logWs
-    Ws = exp.(logWs .- maximum(logWs))
-    logZ = log(sum(Ws)) + maximum(logWs)
-    Ws = Ws ./ sum(Ws)
+    maximum_logWs = maximum(logWs)
+    Ws = @. exp(logWs - maximum_logWs)
+    sum_Ws = sum(Ws)
+    ldiv!(sum_Ws, Ws)
+
+    # compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
+    logZ = log(sum_Ws) + maximum_logWs
+
     return Ws, logZ
 end
 
