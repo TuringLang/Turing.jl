@@ -219,7 +219,7 @@ function step!(
     set_retained_vns_del_by_spl!(spl.state.vi, spl)
     resetlogp!(spl.state.vi)
 
-    if ref_particle == nothing
+    if ref_particle === nothing
         push!(particles, spl.alg.n_particles, spl, spl.state.vi)
     else
         push!(particles, spl.alg.n_particles-1, spl, spl.state.vi)
@@ -259,7 +259,7 @@ function sample_end!(
     loge = mean(t.le for t in ts)
 
     # If we already had a chain, grab the logevidence.
-    if resume_from != nothing   # concat samples
+    if resume_from !== nothing   # concat samples
         @assert resume_from isa Chains "resume_from needs to be a Chains object."
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = resume_from.logevidence

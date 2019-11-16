@@ -228,7 +228,7 @@ function initialize_parameters!(
     kwargs...
 )
     # Get `init_theta`
-    if init_theta != nothing
+    if init_theta !== nothing
         verbose && @info "Using passed-in initial variable values" init_theta
         # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
         init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
@@ -455,7 +455,7 @@ function set_resume!(
     kwargs...
 )
     # If we're resuming, grab the sampler info.
-    if resume_from != nothing
+    if resume_from !== nothing
         s = resume_from.info[:spl]
     end
 end
@@ -463,7 +463,7 @@ end
 function split_var_str(var_str)
     ind = findfirst(c -> c == '[', var_str)
     inds = Vector{String}[]
-    if ind == nothing
+    if ind === nothing
         return var_str, inds
     end
     sym = var_str[1:ind-1]
