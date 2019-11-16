@@ -11,6 +11,7 @@ using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
 using DistributionsAD
+using StatsFuns: logsumexp, softmax
 
 include("RandomVariables.jl")
 @reexport using .RandomVariables
