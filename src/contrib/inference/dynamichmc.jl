@@ -31,7 +31,7 @@ end
     DynamicNUTS()
 
 Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package. To use it, make
-sure you have the DynamicHMC package (version `2.*`) is loaded:
+sure you have the DynamicHMC package (version `2.*`) loaded:
 
 ```julia
 using DynamicHMC
