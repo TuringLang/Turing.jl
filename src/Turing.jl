@@ -157,7 +157,7 @@ include("stdlib/RandomMeasures.jl")
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
-        @VarName,
+        @varname,
 
         MH,                     # classic sampling
         Gibbs,

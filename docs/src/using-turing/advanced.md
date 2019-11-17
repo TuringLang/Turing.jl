@@ -115,7 +115,7 @@ mf(vi, sampler, model) = begin
     # Assume s has an InverseGamma distribution.
     s, lp = Turing.assume(sampler,
                 InverseGamma(2, 3),
-                Turing.VarName([:c_s, :s], ""), vi)
+                Turing.@varname(s), vi)
 
     # Add the lp to the accumulated logp.
     vi.logp += lp
@@ -123,7 +123,7 @@ mf(vi, sampler, model) = begin
     # Assume m has a Normal distribution.
     m, lp = Turing.assume(sampler,
                 Normal(0, sqrt(s)),
-                Turing.VarName([:c_m, :m], ""), vi)
+                Turing.@varname(m), vi)
 
     # Add the lp to the accumulated logp.
     vi.logp += lp

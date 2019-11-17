@@ -53,12 +53,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         #   string, Symbol, ==, hash, in, keys, haskey, isempty, push!, empty!,
         #   getindex, setindex!, getproperty, setproperty!
         csym = gensym()
-        vn1 = VarName(csym, :x, "[1][2]", 1)
-        @test string(vn1) == "{$csym,x[1][2]}:1"
-        @test string(vn1, all=false) == "x[1][2]"
+        vn1 = @varname x[1][2]
+        @test string(vn1) == "x[1][2]"
         @test Symbol(vn1) == Symbol("x[1][2]")
 
-        vn2 = VarName(csym, :x, "[1][2]", 1)
+        vn2 = @varname x[1][2]
         @test vn2 == vn1
         @test hash(vn2) == hash(vn1)
         @test in(vn1, (:x,))
@@ -68,7 +67,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             @test vi.logp == 0
             @test vi.num_produce == 0
 
-            vn = VarName(gensym(), :x, "", 1)
+            vn = @varname x
             dist = Normal(0, 1)
             r = rand(dist)
             gid = Selector()
@@ -97,12 +96,12 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
             function test_in()
                 space = (:x, :y, :(z[1]))
-                vn1 = genvn(:x)
-                vn2 = genvn(:y)
-                vn3 = genvn(:(x[1]))
-                vn4 = genvn(:(z[1][1]))
-                vn5 = genvn(:(z[2]))
-                vn6 = genvn(:z)
+                vn1 = @varname x
+                vn2 = @varname y
+                vn3 = @varname x[1]
+                vn4 = @varname z[1][1]
+                vn5 = @varname z[2]
+                vn6 = @varname z
 
                 @test in(vn1, space)
                 @test in(vn2, space)
@@ -136,7 +135,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test flag setting:
         #    is_flagged, set_flag!, unset_flag!
         function test_varinfo!(vi)
-            vn_x = VarName(gensym(), :x, "", 1)
+            vn_x = @varname x
             dist = Normal(0, 1)
             r = rand(dist)
             gid = Selector()
@@ -198,7 +197,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
     @turing_testset "setgid!" begin
         vi = VarInfo()
-        vn = VarName(gensym(), :x, "", 1)
+        vn = @varname x
         dist = Normal(0, 1)
         r = rand(dist)
         gid1 = Selector()
@@ -234,13 +233,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         csym = gensym() # unique per model
-        vn_z1 = VarName(csym, :z, "[1]", 1)
-        vn_z2 = VarName(csym, :z, "[2]", 1)
-        vn_z3 = VarName(csym, :z, "[3]", 1)
-        vn_z4 = VarName(csym, :z, "[4]", 1)
-        vn_a1 = VarName(csym, :a, "[1]", 1)
-        vn_a2 = VarName(csym, :a, "[2]", 1)
-        vn_b = VarName(csym, :b, "", 1)
+        vn_z1 = @varname z[1]
+        vn_z2 = @varname z[2]
+        vn_z3 = @varname z[3]
+        vn_z4 = @varname z[4]
+        vn_a1 = @varname a[1]
+        vn_a2 = @varname a[2]
+        vn_b = @varname b
 
         vi = VarInfo()
         dists = [Categorical([0.7, 0.3]), Normal()]
@@ -338,31 +337,26 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chain = sample(priorsinarray(xs), HMC(0.01, 10), 10)
     end
     @turing_testset "varname" begin
-        csym = gensym()
-        vn1 = VarName(csym, :x, "[1]", 1)
-        @test vn1 == VarName{:x}(csym, "[1]", 1)
-        @test vn1 == VarName{:x}(csym, "[1]")
-        @test vn1 == VarName([csym, :x], "[1]")
-        vn2 = VarName(csym, :x, "[2]", 1)
-        @test vn2 == VarName(vn1, "[2]")
+        vn1 = @varname x[1]
+        @test vn1 == VarName{:x}("[1]")
 
         # Symbol
         v_sym = string(:x)
         @test v_sym == "x"
 
         # Array
-        v_arr = eval(varname(:(x[i]))[1])
-        @test v_arr == "[1]"
+        v_arr = @varname x[i]
+        @test v_arr.indexing == "[1]"
 
         # Matrix
-        v_mat = eval(varname(:(x[i,j]))[1])
-        @test v_mat== "[1,2]"
+        v_mat = @varname x[i,j]
+        @test v_mat.indexing == "[1,2]"
 
-        v_mat = eval(varname(:(x[i,j,k]))[1])
-        @test v_mat== "[1,2,3]"
+        v_mat = @varname x[i,j,k]
+        @test v_mat.indexing == "[1,2,3]"
 
-        v_mat = eval(varname(:((x[1,2][1+5][45][3][i])))[1])
-        @test v_mat == "[1,2][6][45][3][1]"
+        v_mat = @varname x[1,2][1+5][45][3][i]
+        @test v_mat.indexing == "[1,2][6][45][3][1]"
 
         @model mat_name_test() = begin
             p = Array{Any}(undef, 2, 2)
@@ -372,11 +366,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
             p
         end
         chain = sample(mat_name_test(), HMC(0.2, 4), 1000)
-        check_numerical(chain, ["p[1, 1]"], [0], atol = 0.25)
+        check_numerical(chain, ["p[1,1]"], [0], atol = 0.25)
 
         # Multi array
-        v_arrarr = eval(varname(:(x[i][j]))[1])
-        @test v_arrarr == "[1][2]"
+        v_arrarr = @varname x[i][j]
+        @test v_arrarr.indexing == "[1][2]"
 
         @model marr_name_test() = begin
             p = Array{Array{Any}}(undef, 2)
@@ -403,12 +397,12 @@ include(dir*"/test/test_utils/AllUtils.jl")
             @test getlogp(vi) == 0
 
             spl2 = Turing.Sampler(PG(5, :w, :u), empty_model())
-            vn_w = VarName(gensym(), :w, "", 1)
+            vn_w = @varname w
             randr(vi, vn_w, dists[1], spl2, true)
 
-            vn_x = VarName(gensym(), :x, "", 1)
-            vn_y = VarName(gensym(), :y, "", 1)
-            vn_z = VarName(gensym(), :z, "", 1)
+            vn_x = @varname x
+            vn_y = @varname y
+            vn_z = @varname z
             vns = [vn_x, vn_y, vn_z]
 
             spl1 = Turing.Sampler(PG(5, :x, :y, :z), empty_model())
@@ -434,7 +428,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
             @test length(vi[spl2]) == 1
 
-            vn_u = VarName(gensym(), :u, "", 1)
+            vn_u = @varname u
             randr(vi, vn_u, dists[1], spl2, true)
 
             idcs = _getidcs(vi, spl2)

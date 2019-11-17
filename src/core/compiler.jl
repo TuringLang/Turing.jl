@@ -2,32 +2,42 @@ using Base.Meta: parse
 
 # TODO: Replace this macro, see issue #514
 """
-Usage: @VarName x[1,2][1+5][45][3]
-  return: (:x,[1,2],6,45,3)
+Usage: @varname x[1,2][1+5][45][3]
+  return: VarName{:x}("[1,2][6][45][3]")
 """
-macro VarName(expr::Union{Expr, Symbol})
+macro varname(expr::Union{Expr, Symbol})
     ex = deepcopy(expr)
-    isa(ex, Symbol) && return var_tuple(ex)
+    (ex isa Symbol) && return quote
+        Turing.VarName{$(QuoteNode(ex))}("")
+    end
     (ex.head == :ref) || throw("VarName: Mis-formed variable name $(expr)!")
     inds = :(())
     while ex.head == :ref
         if length(ex.args) >= 2
             strs = map(x -> :(string($x)), ex.args[2:end])
-            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ", ") * "]"))
+            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ",") * "]"))
         end
         ex = ex.args[1]
-        isa(ex, Symbol) && return var_tuple(ex, inds)
+        isa(ex, Symbol) && return esc(quote
+            Turing.VarName{$(QuoteNode(ex))}(foldl(*, $inds, init = ""))
+        end)
     end
     throw("VarName: Mis-formed variable name $(expr)!")
 end
-function var_tuple(sym::Symbol, inds::Expr=:(()))
-    return esc(:($(QuoteNode(sym)), $inds, $(QuoteNode(gensym()))))
-end
-
 
 function wrong_dist_errormsg(l)
     return "Right-hand side of a ~ must be subtype of Distribution or a vector of " *
         "Distributions on line $(l)."
+end
+function assert_dist(dist; msg)
+    isdist = if isa(dist, AbstractVector)
+        # Check if the right-hand side is a vector of distributions.
+        all(d -> isa(d, Distribution), dist)
+    else
+        # Check if the right-hand side is a distribution.
+        isa(dist, Distribution)
+    end
+    isdist || throw(ArgumentError(msg))
 end
 
 """
@@ -41,14 +51,7 @@ function generate_observe(observation, dist, model_info)
     vi = main_body_names[:vi]
     sampler = main_body_names[:sampler]
     return quote
-        isdist = if isa($dist, AbstractVector)
-            # Check if the right-hand side is a vector of distributions.
-            all(d -> isa(d, Distribution), $dist)
-        else
-            # Check if the right-hand side is a distribution.
-            isa($dist, Distribution)
-        end
-        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
+        Turing.Core.assert_dist($dist, msg = $(wrong_dist_errormsg(@__LINE__)))
         $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
     end
 end
@@ -63,38 +66,11 @@ function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
     main_body_names = model_info[:main_body_names]
     vi = main_body_names[:vi]
     sampler = main_body_names[:sampler]
-
     varname = gensym(:varname)
-    sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
-    csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
-
-    if var isa Symbol
-        varname_expr = quote
-            $sym, $idcs, $csym = Turing.@VarName $var
-            $csym = Symbol($(QuoteNode(model_info[:name])), $csym)
-            $varname = Turing.VarName{$sym}($csym, "")
-        end
-    else
-        varname_expr = quote
-            $sym, $idcs, $csym = Turing.@VarName $var
-            $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
-            $indexing = foldl(*, $idcs, init = "")
-            $varname = Turing.VarName{$sym}(Symbol($csym_str), $indexing)
-        end
-    end
-
     lp = gensym(:lp)
     return quote
-        $varname_expr
-        isdist = if isa($dist, AbstractVector)
-            # Check if the right-hand side is a vector of distributions.
-            all(d -> isa(d, Distribution), $dist)
-        else
-            # Check if the right-hand side is a distribution.
-            isa($dist, Distribution)
-        end
-        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
+        $varname = Turing.@varname $var
+        Turing.Core.assert_dist($dist, msg = $(wrong_dist_errormsg(@__LINE__)))
         ($var, $lp) = if isa($dist, AbstractVector)
             Turing.assume($sampler, $dist, $varname, $var, $vi)
         else
