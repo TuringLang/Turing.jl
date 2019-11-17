@@ -21,7 +21,7 @@ include("container.jl")
 include("ad.jl")
 
 export  @model,
-        @VarName,
+        @varname,
         generate_observe,
         translate_tilde!,
         get_vars,

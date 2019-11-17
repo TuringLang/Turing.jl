@@ -30,10 +30,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
             t[1] = 0;
             while true
                 ct = current_trace()
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 produce(0)
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 t[1] = 1 + t[1]
             end
@@ -70,10 +70,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
             t[1] = 0;
             while true
                 ct = current_trace()
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 produce(t[1]);
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 t[1] = 1 + t[1]
             end
