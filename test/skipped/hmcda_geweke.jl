@@ -53,7 +53,7 @@ Base.CoreLogging.with_logger(simple_logger) do
   end
 end
 
-s2 = vcat(s_bk...);
+s2 = reduce(vcat, s_bk);
 # describe(s2)
 
 

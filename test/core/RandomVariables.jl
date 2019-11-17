@@ -470,11 +470,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         g_demo_f(vi, SampleFromPrior())
         Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
         vi1 = pg.state.vi
-        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+        @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set{Selector}(), Set{Selector}()]
 
         g_demo_f(vi1, hmc)
-        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+        @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set([hmc.selector]), Set([hmc.selector])]
 
         g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
