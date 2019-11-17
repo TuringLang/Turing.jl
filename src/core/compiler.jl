@@ -1,6 +1,5 @@
 using Base.Meta: parse
 
-# TODO: Replace this macro, see issue #514
 """
 Usage: @varname x[1,2][1+5][45][3]
   return: VarName{:x}("[1,2][6][45][3]")

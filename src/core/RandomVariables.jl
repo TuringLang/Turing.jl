@@ -67,9 +67,9 @@ Examples:
 
 - `x[1] ~ Normal()` will generate a `VarName` with `sym == :x` and `indexing == "[1]"`.
 - `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName` with `sym == :x` and
- `indexing == "[Colon(), 1]"`.
+ `indexing == "[Colon(),1]"`.
 - `x[:,1][2] ~ Normal()` will generate a `VarName` with `sym == :x` and
- `indexing == "[Colon(), 1][2]"`.
+ `indexing == "[Colon(),1][2]"`.
 """
 struct VarName{sym}
     indexing::String # indexing
