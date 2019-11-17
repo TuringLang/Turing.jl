@@ -47,7 +47,7 @@ SpecialFunctions = "0.7.2, 0.8"
 StatsFuns = "0.8.0"
 Tracker = "0.2.3"
 Zygote = "~0.3.4"
-ZygoteRules = "0.1"
+ZygoteRules = "0.1, 0.2"
 julia = "1"
 
 [extras]
