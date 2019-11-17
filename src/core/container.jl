@@ -226,7 +226,9 @@ function resample!(
     # fork particles
     empty!(pc)
     num_children = zeros(Int,n1)
-    map(i->num_children[i]+=1, indx)
+    for i in indx
+        num_children[i] += 1
+    end
     for i = 1:n1
         is_ref = particles[i] == ref
         p = is_ref ? fork(particles[i], is_ref) : particles[i]
