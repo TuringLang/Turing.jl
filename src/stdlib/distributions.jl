@@ -48,7 +48,7 @@ struct BinomialLogit{T<:Real, I<:Int} <: DiscreteUnivariateDistribution
 end
 
 function logpdf_binomial_logit(n, logitp, k)
-    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.lbeta(n - k + 1, k + 1)
+    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.logbeta(n - k + 1, k + 1)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
