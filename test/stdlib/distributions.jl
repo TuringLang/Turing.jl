@@ -25,8 +25,16 @@ include(dir*"/test/test_utils/AllUtils.jl")
         K = length(d.cutpoints) + 1
         p = [mean(y .== k) for k in 1:K]          # empirical probs
         pmf = [exp(logpdf(d, k)) for k in 1:K]
-        
+
         @test sum(abs.(p - pmf) .< 0.001) == K
+
+    end
+
+    @turing_testset "distributions functions" begin
+        λ = .01:.01:5
+        LLp = @. logpdf(Poisson(λ),1)
+        LLlp = @. logpdf(LogPoisson(log(λ)),1)
+        @test LLp ≈ LLlp atol = .0001
 
     end
 

@@ -194,6 +194,7 @@ export  @model,                 # modelling
         FlatPos,
         BinomialLogit,
         VecBinomialLogit,
-        OrderedLogistic
+        OrderedLogistic,
+        LogPoisson
 
 end

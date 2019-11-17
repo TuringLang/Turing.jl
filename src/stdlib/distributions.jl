@@ -120,3 +120,15 @@ function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
         return(-Inf)
     end
 end
+
+"""
+Numerically stable Poisson log likelihood.
+* `logλ`: log of rate parameter
+"""
+struct LogPoisson{T<:Real} <: DiscreteUnivariateDistribution
+    logλ::T
+end
+
+function Distributions.logpdf(lp::LogPoisson, k::Int)
+    return k * lp.logλ - exp(lp.logλ) - loggamma(k + 1)
+end
