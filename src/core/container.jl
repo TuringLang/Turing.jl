@@ -126,10 +126,10 @@ function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :
 end
 
 # clears the container but keep params, logweight etc.
-function Base.empty!(pc :: ParticleContainer)
+function Base.empty!(pc::ParticleContainer)
     pc.num_particles = 0
-    pc.vals  = Vector{Particle}()
-    pc.logWs = Vector{Float64}()
+    pc.vals  = eltype(pc.vals)[]
+    pc.logWs = Float64[]
     pc
 end
 
