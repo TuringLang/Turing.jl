@@ -1,31 +1,22 @@
-mutable struct Trace{Tspl <: AbstractSampler, Tvi <: AbstractVarInfo, Tmodel <: Model}
-    task  ::  Task
-    vi    ::  Tvi
-    spl   ::  Tspl
-    model ::  Tmodel
-    Trace{Tspl, Tvi, Tmodel}() where {Tspl, Tvi, Tmodel} = new()
-    function Trace{SampleFromPrior}(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
-        res = new{SampleFromPrior, typeof(vi), typeof(m)}()
-        res.vi = vi
-        res.model = m
-        res.spl = SampleFromPrior()
-        return res
+mutable struct Trace{Tspl<:AbstractSampler, Tvi<:AbstractVarInfo, Tmodel<:Model}
+    model::Tmodel
+    spl::Tspl
+    vi::Tvi
+    task::Task
+
+    function Trace{SampleFromPrior}(model::Model, spl::AbstractSampler, vi::AbstractVarInfo)
+        return new{SampleFromPrior,typeof(vi),typeof(model)}(model, SampleFromPrior(), vi)
     end
-    function Trace{T}(m::Model, spl::AbstractSampler, vi::AbstractVarInfo) where T <: Sampler
-        res = new{T, typeof(vi), typeof(m)}()
-        res.model = m
-        res.spl = spl
-        res.vi = vi
-        return res
+    function Trace{S}(model::Model, spl::S, vi::AbstractVarInfo) where S<:Sampler
+        return new{S,typeof(vi),typeof(model)}(model, spl, vi)
     end
 end
+
 function Base.copy(trace::Trace)
-    newtrace = typeof(trace)()
-    newtrace.vi = deepcopy(trace.vi)
-    newtrace.task = Base.copy(trace.task)
-    newtrace.spl = trace.spl
-    newtrace.model = trace.model
-    return newtrace
+    vi = deepcopy(trace.vi)
+    res = Trace{typeof(trace.spl)}(trace.model, trace.spl, vi)
+    res.task = copy(trace.task)
+    return res
 end
 
 # NOTE: this function is called by `forkr`
@@ -143,17 +134,14 @@ function Base.empty!(pc::ParticleContainer)
 end
 
 # clones a theta-particle
-function Base.copy(pc :: ParticleContainer)
-    particles = collect(pc)
-    newpc     = similar(pc)
-    for p in particles
-        newp = fork(p)
-        push!(newpc, newp)
-    end
-    newpc.logE        = pc.logE
-    newpc.logWs       = deepcopy(pc.logWs)
-    newpc.n_consume   = pc.n_consume
-    newpc
+function Base.copy(pc::ParticleContainer)
+    # fork particles
+    vals = eltype(pc.vals)[fork(p) for p in pc.vals]
+
+    # copy weights
+    logWs = copy(pc.logWs)
+
+    ParticleContainer(pc.model, pc.num_particles, vals, logWs, pc.logE, pc.n_consume)
 end
 
 # run particle filter for one step, return incremental likelihood
