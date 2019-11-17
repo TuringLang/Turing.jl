@@ -105,23 +105,32 @@ Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
 
 # registers a new x-particle in the container
-function Base.push!(pc :: ParticleContainer, p :: Particle)
+function Base.push!(pc::ParticleContainer, p::Particle)
     pc.num_particles += 1
     push!(pc.vals, p)
-    push!(pc.logWs, 0)
+    push!(pc.logWs, 0.0)
     pc
 end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
-function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-    vals  = Vector{eltype(pc.vals)}(undef,n)
-    logWs = zeros(eltype(pc.logWs), n)
-    for i=1:n
-        vals[i]  = Trace(pc.model, spl, varInfo)
+function Base.push!(pc::ParticleContainer, n::Int, spl::Sampler, varInfo::VarInfo)
+    vals = pc.vals
+    logWs = pc.logWs
+    model = pc.model
+    num_particles = pc.num_particles
+
+    # update number of particles
+    num_particles_new = num_particles + n
+    pc.num_particles = num_particles_new
+
+    # add additional particles and weights
+    resize!(vals, num_particles_new)
+    resize!(logWs, num_particles_new)
+    @inbounds for i in (num_particles + 1):num_particles_new
+        vals[i] = Trace(model, spl, varInfo)
+        logWs[i] = 0.0
     end
-    append!(pc.vals, vals)
-    append!(pc.logWs, logWs)
-    pc.num_particles += n
+
     pc
 end
 
