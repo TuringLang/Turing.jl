@@ -26,8 +26,8 @@ priors = 0 # See "new grammar" test.
         check_numerical(res2, [:y], [0.5], atol=0.1)
 
         # Check that all xs are 1.
-        @test all(res1[:x].value .== 1)
-        @test all(res2[:x].value .== 1)
+        @test all(isone, res1[:x].value)
+        @test all(isone, res2[:x].value)
     end
     @testset "beta binomial" begin
         prior = Beta(2,2)
@@ -109,7 +109,7 @@ priors = 0 # See "new grammar" test.
             return x
         end
         f0_mm = testmodel0()
-        @test all(isapprox.(mean(f0_mm() for _ in 1:1000), 0., atol=0.1))
+        @test all(x -> isapprox(x, 0; atol = 0.1), mean(f0_mm() for _ in 1:1000))
 
         @model testmodel01(x) = begin
             x ~ Bernoulli(0.5)
@@ -265,13 +265,13 @@ priors = 0 # See "new grammar" test.
         res_smc = sample(test(), smc, 1000)
         res_pg = sample(test(), pg, 100)
 
-        @test all(res_is[:x].value .== 1)
+        @test all(isone, res_is[:x].value)
         @test res_is.logevidence ≈ 2 * log(0.5)
 
-        @test all(res_smc[:x].value .== 1)
+        @test all(isone, res_smc[:x].value)
         @test res_smc.logevidence ≈ 2 * log(0.5)
 
-        @test all(res_pg[:x].value .== 1)
+        @test all(isone, res_pg[:x].value)
     end
     @testset "sample" begin
         alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
