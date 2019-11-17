@@ -81,19 +81,20 @@ Data structure for particle filters
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-mutable struct ParticleContainer{T<:Particle, F, Tvals <: Array{T}, TlogW <: Array{Float64}}
-    model :: F
-    num_particles :: Int
-    vals  :: Tvals
-    logWs :: TlogW       # Log weights (Trace) or incremental likelihoods (ParticleContainer)
-    logE  :: Float64     # Log model evidence
-    # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
-    conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
-    n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
+mutable struct ParticleContainer{T<:Particle, F}
+    model::F
+    num_particles::Int
+    vals::Vector{T}
+    # logarithmic weights (Trace) or incremental log-likelihoods (ParticleContainer)
+    logWs::Vector{Float64}
+    # log model evidence
+    logE::Float64
+    # helpful for rejuvenation steps, e.g. in SMC2
+    n_consume::Int
 end
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
 function ParticleContainer{T}(m, n::Int) where {T}
-    ParticleContainer(m, n, Vector{T}(), Vector{Float64}(), 0.0, nothing, 0)
+    ParticleContainer(m, n, T[], Float64[], 0.0, 0)
 end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
@@ -142,7 +143,6 @@ function Base.copy(pc :: ParticleContainer)
     end
     newpc.logE        = pc.logE
     newpc.logWs       = deepcopy(pc.logWs)
-    newpc.conditional = deepcopy(pc.conditional)
     newpc.n_consume   = pc.n_consume
     newpc
 end

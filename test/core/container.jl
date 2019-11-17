@@ -15,7 +15,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @test newpc.logE        == pc.logE
         @test newpc.logWs       == pc.logWs
-        @test newpc.conditional == pc.conditional
         @test newpc.n_consume   == pc.n_consume
     end
     @turing_testset "particle container" begin
