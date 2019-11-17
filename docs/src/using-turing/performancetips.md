@@ -4,12 +4,12 @@ title: Performance Tips
 
 # Performance Tips
 
-This section briefly summarieses a few common techniques to ensure good performance when using Turing.
+This section briefly summarises a few common techniques to ensure good performance when using Turing.
 We refer to [julialang.org](https://docs.julialang.org/en/v1/manual/performance-tips/index.html) for general techniques to ensure good performance of Julia programs.
 
 ## Use multivariate distributions
 
-It is generally preferable to use mutlivariate distributions if possible.
+It is generally preferable to use multivariate distributions if possible.
 
 The following example:
 
@@ -21,7 +21,6 @@ The following example:
     end
 end
 ```
-
 can be directly expressed more efficiently using a simple transformation:
 
 ```julia
@@ -30,8 +29,17 @@ can be directly expressed more efficiently using a simple transformation:
     x ~ MvNormal(fill(m, length(x)), 0.2)
 end
 ```
+## Choose your AD backend
+Turing currently provides support for two different automatic differentiation (AD) backends. 
+Generally, try to use `:forward_diff` for models with few parameters and `:reverse_diff` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
 
-### Make your model type-stable
+## Special care for `reverse_diff`
+
+In case of `reverse_diff` it is necessary to avoid loops for now.
+This is mainly due to the reverse-mode AD backend `Tracker` which is inefficient for such cases.
+Therefore, it is often recommended to write a [custom distribution](advanced) which implements a multivariate version of the prior distribution.
+
+## Make your model type-stable
 
 For efficient gradient-based inference, e.g. using HMC, NUTS or ADVI, it is important to ensure the model is type-stable.
 We refer to [julialang.org](https://docs.julialang.org/en/v1/manual/performance-tips/index.html#Write-"type-stable"-functions-1) for a general discussion on type-stability.
@@ -50,8 +58,7 @@ The following example:
     y ~ MvNormal(a, 1.0)
 end
 ```
-
-can be transformed into the th following type-stable representation:
+can be transformed into the following type-stable representation:
 
 ```julia
 @model tmodel(x, y, ::Type{T}=Vector{Float64}) where {T} = begin
@@ -65,4 +72,3 @@ can be transformed into the th following type-stable representation:
     y ~ MvNormal(a, 1.0)
 end
 ```
-
