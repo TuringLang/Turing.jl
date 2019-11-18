@@ -2,6 +2,7 @@ using Turing, Random
 using Turing: ParticleContainer, weights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
+using Turing.Core: logZ
 using Test
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
@@ -47,22 +48,22 @@ include(dir*"/test/test_utils/AllUtils.jl")
         tr = Trace(pc.model, model, spl, Turing.VarInfo())
         push!(pc, tr)
 
-        Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
-        Base.@assert weights(pc)[2] ≈ log(3)
-        Base.@assert pc.logE ≈ log(1)
+        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test logZ(pc) ≈ log(3)
+        @test pc.logE ≈ log(1)
 
-        Base.@assert consume(pc) == log(1)
+        @test consume(pc) == log(1)
 
         resample!(pc)
-        Base.@assert pc.num_particles == length(pc)
-        Base.@assert weights(pc)[1] == [1/3, 1/3, 1/3]
-        Base.@assert weights(pc)[2] ≈ log(3)
-        Base.@assert pc.logE ≈ log(1)
-        Base.@assert effectiveSampleSize(pc) == 3
+        @test pc.num_particles == length(pc)
+        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test logZ(pc) ≈ log(3)
+        @test pc.logE ≈ log(1)
+        @test effectiveSampleSize(pc) == 3
 
-        Base.@assert consume(pc) ≈ log(1)
+        @test consume(pc) ≈ log(1)
         resample!(pc)
-        Base.@assert consume(pc) ≈ log(1)
+        @test consume(pc) ≈ log(1)
     end
     @turing_testset "trace" begin
         n = Ref(0)
@@ -92,7 +93,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         a = fork(tr);
         consume(a); consume(a)
 
-        Base.@assert consume(tr) == 2
-        Base.@assert consume(a) == 4
+        @test consume(tr) == 2
+        @test consume(a) == 4
     end
 end

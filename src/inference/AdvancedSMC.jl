@@ -136,7 +136,7 @@ function step!(
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
 
     ## Grab the weights.
-    Ws, _ = weights(spl.state.particles)
+    Ws = weights(spl.state.particles)
 
     # update the master vi.
     particle = spl.state.particles.vals[iteration]
@@ -231,7 +231,7 @@ function step!(
     end
 
     ## pick a particle to be retained.
-    Ws, _ = weights(particles)
+    Ws = weights(particles)
     indx = randcat(Ws)
 
     # Extract the VarInfo from the retained particle.

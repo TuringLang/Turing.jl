@@ -151,7 +151,7 @@ end
 function Libtask.consume(pc :: ParticleContainer)
     @assert pc.num_particles == length(pc)
     # normalisation factor: 1/N
-    _, z1      = weights(pc)
+    z1 = logZ(pc)
     n = length(pc.vals)
 
     particles = collect(pc)
@@ -176,7 +176,7 @@ function Libtask.consume(pc :: ParticleContainer)
         error("[consume]: mis-aligned execution traces, num_particles= $(n), num_done=$(num_done).")
     else
         # update incremental likelihoods
-        _, z2      = weights(pc)
+        z2 = logZ(pc)
         res = increase_logevidence(pc, z2 - z1)
         pc.n_consume += 1
         # res = increase_loglikelihood(pc, z2 - z1)
@@ -185,18 +185,16 @@ function Libtask.consume(pc :: ParticleContainer)
     res
 end
 
-function weights(pc :: ParticleContainer)
-    @assert pc.num_particles == length(pc)
-    logWs = pc.logWs
-    Ws = exp.(logWs .- maximum(logWs))
-    logZ = log(sum(Ws)) + maximum(logWs)
-    Ws = Ws ./ sum(Ws)
-    return Ws, logZ
-end
+# compute the normalized weights
+weights(pc::ParticleContainer) = softmax(pc.logWs)
 
+# compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
+logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
+
+# compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights
 function effectiveSampleSize(pc :: ParticleContainer)
-    Ws, _ = weights(pc)
-    ess = 1.0 / sum(Ws .^ 2) # sum(Ws) ^ 2 = 1.0, because weights are normalised
+    Ws = weights(pc)
+    return inv(sum(abs2, Ws))
 end
 
 increase_logweight(pc :: ParticleContainer, t :: Int, logw :: Float64) =
@@ -215,7 +213,7 @@ function resample!(
     @assert n1 == length(particles)
 
     # resample
-    Ws, _ = weights(pc)
+    Ws = weights(pc)
 
     # check that weights are not NaN
     @assert !any(isnan.(Ws))
@@ -244,22 +242,4 @@ function resample!(
     end
 
     pc
-end
-
-
-########### Auxilary Functions ###################
-
-# ParticleContainer: particles ==> (weight, results)
-function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
-    p = pc.vals[i]
-    predicts = Sample(p.vi).value
-    predicts[:le] = pc.logE
-    return Sample(w, predicts)
-end
-
-function getsample(pc :: ParticleContainer)
-    w = pc.logE
-    Ws, z = weights(pc)
-    s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))
-    return exp.(w), s
 end
