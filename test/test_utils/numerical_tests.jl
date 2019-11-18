@@ -6,7 +6,7 @@ function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol
         # Check means.
         dist_mean = mean(dist)
         mean_shape = size(dist_mean)
-        if !all(isnan.(dist_mean)) && !all(isinf.(dist_mean))
+        if !all(isnan, dist_mean) && !all(isinf, dist_mean)
             chn_mean = Array(mean(chn_xs, dims=1))
             chn_mean = length(chn_mean) == 1 ?
                 chn_mean[1] :
@@ -23,7 +23,7 @@ function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol
             # Variance
             dist_var = var(dist)
             var_shape = size(dist_var)
-            if !all(isnan.(dist_var)) && !all(isinf.(dist_var))
+            if !all(isnan, dist_var) && !all(isinf, dist_var)
                 chn_var = Array(var(chn_xs, dims=1))
                 chn_var = length(chn_var) == 1 ?
                     chn_var[1] :

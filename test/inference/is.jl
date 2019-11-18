@@ -58,7 +58,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
             @test exact[:samples][i][:b] == t_vals.b[i]
             @test exact[:lp][i] == t_vals.lp[i]
         end
-        @test all(exact[:lp] .== t_vals.lp)
       end
     end
 end

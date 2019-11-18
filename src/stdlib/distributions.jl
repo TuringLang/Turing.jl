@@ -114,7 +114,7 @@ function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
 
     k = rand(rng, Categorical(ps))
 
-    if all(ps.>0)
+    if all(x -> x > zero(x), ps)
         return(k)
     else
         return(-Inf)
