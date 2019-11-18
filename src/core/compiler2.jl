@@ -112,39 +112,34 @@ Expanded model definition
 
 ```julia
 # Allows passing arguments as kwargs
-model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
-function model_generator(x = nothing, y = nothing)
+model_generator(; x, y)) = model_generator(x, y)
+function model_generator(x, y)
     inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
-    function inner_function(model)
-        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
-    end
-    function inner_function(vi::Turing.VarInfo, model)
-        return inner_function(vi, Turing.SampleFromPrior(), model)
-    end
+    inner_function(model) = inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
+    inner_function(vi::Turing.VarInfo, model) = inner_function(vi, Turing.SampleFromPrior(), model)
     # Define the main inner function
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
         local x
-        if isdefined(model.data, :x)
-            if model.data.x isa Type && (model.data.x <: AbstractFloat || model.data.x <: AbstractArray)
-                x = Turing.Core.get_matching_type(sampler, vi, model.data.x)
+        if isdefined(model.args, :x)
+            if model.args.x isa Type && (model.args.x <: AbstractFloat || model.args.x <: AbstractArray)
+                x = Turing.Core.get_matching_type(sampler, vi, model.args.x)
             else
-                x = model.data.x
+                x = model.args.x
             end
         end
         local y
-        if isdefined(model.data, :y)
-            if model.data.y isa Type && (model.data.y <: AbstractFloat || model.data.y <: AbstractArray)
-                y = Turing.Core.get_matching_type(sampler, vi, model.data.y)
+        if isdefined(model.args, :y)
+            if model.args.y isa Type && (model.args.y <: AbstractFloat || model.args.y <: AbstractArray)
+                y = Turing.Core.get_matching_type(sampler, vi, model.args.y)
             else
-                y = model.data.y
+                y = model.args.y
             end
         end
 
-        vi.logp = zero(Real)
+        vi.logp = 0
         ...
     end
-    model = Turing.Model{pvars, dvars}(inner_function, data, defaults)
-    return model
+    return Turing.Model(inner_function, (x = x, y = y))
 end
 ```
 
