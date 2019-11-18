@@ -64,9 +64,7 @@ Parameters:
 * `m`: Cluster counts
 
 """
-function _logpdf_table(d::AbstractRandomProbabilityMeasure, m::AbstractVector{Int})
-    throw(MethodError(_logpdf_table(), (d, m)))
-end
+function _logpdf_table end
 
 function logpdf(d::ChineseRestaurantProcess, x::Int)
     if insupport(d, x)
@@ -143,8 +141,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
 
     # pre-calculations
     dα = d.α
-    z = log(sum_m) - 1 + dα
-    table_zero = log(dα) - z
+    z = log(sum_m - 1 + dα)
 
     # construct the table
     K = length(m)
@@ -157,7 +154,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
             if contains_zero
                 table[i] = -Inf
             else
-                table[i] = table_zero
+                table[i] = log(dα) - z
                 contains_zero = true
             end
         else
@@ -166,7 +163,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     if !contains_zero
-        push!(table, table_zero)
+        push!(table, log(dα) - z)
     end
 
     return table
@@ -231,7 +228,6 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
     dθ = d.θ
     dd = d.d
     z = log(sum_m + dθ)
-    table_zero = log(dθ + dd * d.t) - z
 
     # construct the table
     K = length(m)
@@ -244,7 +240,7 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
             if contains_zero
                 table[i] = -Inf
             else
-                table[i] = a
+                table[i] = log(dθ + dd * d.t) - z
                 contains_zero = true
             end
         else
@@ -253,7 +249,7 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     if !contains_zero
-        push!(table, table_zero)
+        push!(table, log(dθ + dd * d.t) - z)
     end
 
     return table
