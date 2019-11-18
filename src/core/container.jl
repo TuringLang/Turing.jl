@@ -33,7 +33,7 @@ function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo) where {T <: A
     res = Trace{T}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
-    if isa(res.task.storage, Nothing)
+    if res.task.storage === nothing
         res.task.storage = IdDict()
     end
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
@@ -44,7 +44,7 @@ function Trace(m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSample
     # CTask(()->f());
     res.vi.num_produce = 0
     res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )
-    if isa(res.task.storage, Nothing)
+    if res.task.storage === nothing
         res.task.storage = IdDict()
     end
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
@@ -218,8 +218,8 @@ function resample!(
     # check that weights are not NaN
     @assert !any(isnan, Ws)
 
-    n2    = isa(ref, Nothing) ? n1 : n1-1
-    indx  = randcat(Ws, n2)
+    n2 = ref === nothing ? n1 : n1 - 1
+    indx = randcat(Ws, n2)
 
     # fork particles
     empty!(pc)

@@ -25,7 +25,7 @@ function remove_yaml(file, key=nothing)
     if !isempty(yaml)
         open(file, "w+") do f
             # write back YAML lines.
-            if key != nothing
+            if key !== nothing
                 for line in yaml
                     startswith(line, key * ":") || write(f, line)
                 end
