@@ -72,3 +72,26 @@ can be transformed into the following type-stable representation:
     y ~ MvNormal(a, 1.0)
 end
 ```
+
+Note that you can use `@code_warntype` to find type instabilities in your model definition.
+
+For example consider the following simple program
+
+```julia
+@model tmodel(x) = begin
+	p = Vector{Real}(undef, 1); 
+	p[1] ~ Normal()
+	p = p .+ 1
+	x ~ Normal(p[1])
+end
+```
+we can use
+
+```julia
+m = tmodel(1.0);
+varinfo = Turing.VarInfo(model);
+spl = Turing.SampleFromPrior();
+
+@code_warntype model.f(varinfo, spl, model);
+```
+to inspect the type instabilities in the model.
