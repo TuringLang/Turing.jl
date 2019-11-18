@@ -65,19 +65,6 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
         space = union(space, sub_alg.space)
     end
 
-    # Sanity check for space
-    if !isempty(space)
-        @assert issubset(Set(get_pvars(model)), space) "[$alg_str] symbols specified to samplers ($space)" * "
-            doesn't cover the model parameters ($(Set(get_pvars(model))))"
-
-        if Set(get_pvars(model)) != space
-            warn(
-                "[$alg_str] extra parameters specified by samplers" * 
-                "don't exist in model: $(setdiff(space, Set(get_pvars(model))))"
-            )
-        end
-    end
-
     info[:old_likelihood_estimate] = -Inf # Force to accept first proposal
     info[:old_prior_prob] = 0.0
     info[:samplers] = samplers

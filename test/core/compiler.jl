@@ -77,12 +77,6 @@ priors = 0 # See "new grammar" test.
         chain = sample(fggibbstest(xs), gibbs, 2);
     end
     @testset "model macro" begin
-        model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
-        # unit test model macro
-        expr = Turing.generate_observe(:x, :y, model_info)
-        @test expr.head == :block
-        @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
-
         @model testmodel_comp(x, y) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0,sqrt(s))
@@ -95,7 +89,7 @@ priors = 0 # See "new grammar" test.
         testmodel_comp(1.0, 1.2)
 
         # check if drawing from the prior works
-        @model testmodel0(x) = begin
+        @model testmodel0(x = missing) = begin
             x ~ Normal()
             return x
         end
@@ -103,7 +97,10 @@ priors = 0 # See "new grammar" test.
         @test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
         # Test #544
-        @model testmodel0(x = Vector{Float64}(undef, 2)) = begin
+        @model testmodel0(x = missing) = begin
+            if ismissing(x)
+                x = Vector{Float64}(undef, 2)
+            end
             x[1] ~ Normal()
             x[2] ~ Normal()
             return x
@@ -111,7 +108,7 @@ priors = 0 # See "new grammar" test.
         f0_mm = testmodel0()
         @test all(x -> isapprox(x, 0; atol = 0.1), mean(f0_mm() for _ in 1:1000))
 
-        @model testmodel01(x) = begin
+        @model testmodel01(x = missing) = begin
             x ~ Bernoulli(0.5)
             return x
         end
@@ -372,31 +369,5 @@ priors = 0 # See "new grammar" test.
         sample(vdemo3(), alg, 250)
         sample(vdemo3(Vector{Float64}), alg, 250)
         sample(vdemo3(TV=Vector{Float64}), alg, 250)
-    end
-    @testset "tilde" begin
-        model_info = Dict(
-            :name => "model",
-            :main_body_names => Dict(:model => :model,
-                                    :vi => :vi,
-                                    :sampler => :sampler),
-            :arg_syms => [],
-            :tent_pvars_list => [])
-
-        ex = :(y ~ Normal(1,1))
-        model_info[:main_body] = ex
-        translate_tilde!(model_info)
-        res = model_info[:main_body]
-        Base.@assert res.head == :block
-
-        ex = quote
-            x = 1
-            y = rand()
-            y ~ Normal(0,1)
-        end
-
-        model_info[:main_body] = ex
-        translate_tilde!(model_info)
-        res = model_info[:main_body]
-        Base.@assert res.head == :block
     end
 end

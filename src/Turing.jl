@@ -38,38 +38,30 @@ using .Interface
 import .Interface: AbstractSampler
 
 """
-    struct Model{pvars, dvars, F, TData, TDefaults}
-        f::F
-        data::TData
-        defaults::TDefaults
-    end
-
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner
-function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
-"""
-struct Model{pvars,
-    dvars,
-    F,
-    TData,
-    TDefaults
-} <: Sampleable{VariateForm,ValueSupport} # May need to find better types
+struct Model{F, Targs <: NamedTuple}
     f::F
-    data::TData
-    defaults::TDefaults
+    args::TData
 end
-function Model{pvars, dvars}(f::F, data::TD, defaults::TDefaults) where {pvars, dvars, F, TD, TDefaults}
-    return Model{pvars, dvars, F, TD, TDefaults}(f, data, defaults)
-end
-get_pvars(m::Model{params}) where {params} = Tuple(params.types)
-get_dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
-get_defaults(m::Model) = m.defaults
-@generated function in_pvars(::Val{sym}, ::Model{params}) where {sym, params}
-    return sym in params.types ? :(true) : :(false)
-end
-@generated function in_dvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
-    return sym in data.types ? :(true) : :(false)
+
+A `Model` struct with arguments `args` and inner function `f`.
+"""
+struct Model{F, Targs <: NamedTuple} <: Sampleable{VariateForm,ValueSupport} # May need to find better types
+    f::F
+    args::Targs
 end
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
+function Base.getproperty(m::Model, f::Symbol)
+    f === :missing && return _getmissing(m.args)
+    return getfield(m, f)
+end
+@generated function _getmissing(args::NamedTuple{names, ttuple}) where {names, ttuple}
+    minds = filter(1:length(names)) do i
+        ttuple.types[i] == Missing
+    end
+    mnames = names[minds]
+    return :(Val{$mnames}())
+end
+
 function runmodel! end
 function getspace end
 

@@ -16,7 +16,7 @@ using StatsFuns: logsumexp, softmax
 include("RandomVariables.jl")
 @reexport using .RandomVariables
 
-include("compiler.jl")
+include("compiler2.jl")
 include("container.jl")
 include("ad.jl")
 

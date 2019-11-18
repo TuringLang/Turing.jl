@@ -6,10 +6,9 @@ using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo,
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Model, runmodel!, get_pvars, get_dvars,
+using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState
-using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface

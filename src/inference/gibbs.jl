@@ -72,13 +72,6 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         space = (space..., getspace(sub_alg)...)
     end
 
-    # Sanity check for space
-    @assert issubset(get_pvars(model), space) "[Gibbs] symbols specified to samplers ($space) doesn't cover the model parameters ($(get_pvars(model)))"
-
-    if !(issetequal(get_pvars(model), space))
-        @warn("[Gibbs] extra parameters specified by samplers don't exist in model: $(setdiff(space, get_pvars(model)))")
-    end
-
     # Create a state variable.
     state = GibbsState(model, tuple(samplers...))
 

@@ -63,14 +63,6 @@ end
 function Sampler(alg::MH, model::Model, s::Selector)
     alg_str = "MH"
 
-    # Sanity check for space
-    if (s.tag == :default) && !isempty(getspace(alg))
-        @assert issubset(get_pvars(model), getspace(alg)) "[$alg_str] symbols specified to samplers ($getspace(alg)) doesn't cover the model parameters ($(get_pvars(model)))"
-        if !(issetequal(get_pvars(model), getspace(alg)))
-            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(getspace(alg), get_pvars(model)))")
-        end
-    end
-
     info = Dict{Symbol, Any}()
     state = MHState(model)
 
