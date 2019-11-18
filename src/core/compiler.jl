@@ -146,7 +146,7 @@ end
 Generating a model: `model_generator(x_value)::Model`.
 """
 macro model(input_expr)
-    build_model_info(input_expr) |> translate_tilde! |> build_output
+    build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> build_output
 end
 
 """
@@ -220,11 +220,24 @@ function build_model_info(input_expr)
 end
 
 """
-    translate_tilde!(model_info)
+    replace_vi!(model_info)
 
-Translates ~ expressions to observation or assumption expressions, updating `model_info`.
+Replaces @vi() expressions to the VarInfo instance.
 """
-function translate_tilde!(model_info)
+function replace_vi!(model_info)
+    ex = model_info[:main_body]
+    vi = model_info[:main_body_names][:vi]
+    ex = MacroTools.postwalk(x -> @capture(x, @vi()) ? vi : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+
+"""
+    replace_tilde!(model_info)
+
+Replaces ~ expressions to observation or assumption expressions, updating `model_info`.
+"""
+function replace_tilde!(model_info)
     ex = model_info[:main_body]
     ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
     model_info[:main_body] = ex
