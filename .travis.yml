@@ -6,7 +6,6 @@ matrix:
 jobs:
   allow_failures:
     - env: STAGE=numerical
-    - env: STAGE=stan
     - env: STAGE=benchmark
   include:
     - stage: test
@@ -65,24 +64,6 @@ jobs:
       if: branch = master
       os: osx
       env: STAGE=test
-      script:
-        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;
-                   Pkg.test("Turing"; coverage=true)'
-    - stage: stan
-      allow_failures: true
-      os: linux
-      julia: 1.0
-      env: STAGE=stan
-      script:
-        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-        - julia --check-bounds=yes -e 'using Pkg;
-                   Pkg.test("Turing"; coverage=true)'
-    - stage: stan
-      allow_failures: true
-      os: linux
-      julia: 1.1
-      env: STAGE=stan
       script:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
