@@ -140,3 +140,11 @@ end
 function Distributions.logpdf(lp::LogPoisson, k::Int)
     return k * lp.logλ - exp(lp.logλ) - loggamma(k + 1)
 end
+
+"""
+A named distribution that carries the name of the random variable with it.
+"""
+struct NamedDist{variate, support, Td <: Distribution{variate, support}, Tn} <: Distribution{variate, support}
+    dist::Td
+    name::Tn
+end

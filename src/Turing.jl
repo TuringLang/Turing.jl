@@ -31,6 +31,10 @@ const CACHERANGES = 0b01
 
 const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 
+# Random probability measures.
+include("stdlib/distributions.jl")
+include("stdlib/RandomMeasures.jl")
+
 # Include the interface. Temporary until the interface is moved
 # to MCMCChains. CSP 2019-05-12
 include("interface/Interface.jl")
@@ -139,10 +143,6 @@ using .Variational
     include("contrib/inference/dynamichmc.jl")
 end
 
-# Random probability measures.
-include("stdlib/distributions.jl")
-include("stdlib/RandomMeasures.jl")
-
 ###########
 # Exports #
 ###########
@@ -189,6 +189,7 @@ export  @model,                 # modelling
         BinomialLogit,
         VecBinomialLogit,
         OrderedLogistic,
-        LogPoisson
+        LogPoisson,
+        NamedDist
 
 end

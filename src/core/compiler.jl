@@ -1,4 +1,4 @@
-using Base.Meta: parse
+using ..Turing: NamedDist
 
 """
 Usage: @varname x[1,2][1+5][45][3]
@@ -39,6 +39,42 @@ function vsym(expr::Union{Expr, Symbol})
         isa(ex, Symbol) && return QuoteNode(ex)
     end
     throw("VarName: Mis-formed variable name $(expr)!")
+end
+
+function split_var_str(var_str, inds_as = Vector)
+    ind = findfirst(c -> c == '[', var_str)
+    if inds_as === String
+        if ind === nothing
+            return var_str, ""
+        else
+            return var_str[1:ind-1], var_str[ind:end]
+        end
+    end
+    @assert inds_as === Vector
+    inds = Vector{String}[]
+    if ind === nothing
+        return var_str, inds
+    end
+    sym = var_str[1:ind-1]
+    ind = length(sym)
+    while ind < length(var_str)
+        ind += 1
+        @assert var_str[ind] == '['
+        push!(inds, String[])
+        while var_str[ind] != ']'
+            ind += 1
+            if var_str[ind] == '['
+                ind2 = findnext(c -> c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2]))
+                ind = ind2+1
+            else
+                ind2 = findnext(c -> c == ',' || c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2-1]))
+                ind = ind2
+            end
+        end
+    end
+    return sym, inds
 end
 
 function assert_dist(dist; msg)
@@ -278,6 +314,21 @@ function tilde(left, right, model_info)
     return ex
 end
 assume_or_observe(sampler, right, left::VarName, vi) = Turing.assume(sampler, right, left, vi)
+function assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
+    name = right.name
+    if name isa String
+        sym_str, inds = split_var_str(name, String)
+        sym = Symbol(sym_str)
+        vn = VarName{sym}(inds)
+    elseif name isa Symbol
+        vn = VarName{name}("")
+    elseif name isa VarName
+        vn = name
+    else
+        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
+    end
+    Turing.assume(sampler, right.dist, vn, vi)
+end
 assume_or_observe(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
 
 """

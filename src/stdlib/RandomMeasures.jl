@@ -1,6 +1,6 @@
 module RandomMeasures
 
-using ..Core, ..Core.RandomVariables, ..Utilities
+#using ..Utilities
 using Distributions
 using LinearAlgebra
 using StatsFuns: logsumexp, softmax!
