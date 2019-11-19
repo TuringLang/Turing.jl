@@ -313,7 +313,9 @@ function tilde(left, right, model_info)
     end
     return ex
 end
-assume_or_observe(sampler, right, left::VarName, vi) = Turing.assume(sampler, right, left, vi)
+function assume_or_observe(sampler, right, left::VarName, vi)
+    return Turing.assume(sampler, right, left, vi)
+end
 function assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
     name = right.name
     if name isa String
@@ -327,7 +329,7 @@ function assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
     else
         throw("Unsupported variable name. Please use either a string, symbol or VarName.")
     end
-    Turing.assume(sampler, right.dist, vn, vi)
+    return Turing.assume(sampler, right.dist, vn, vi)
 end
 assume_or_observe(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
 
