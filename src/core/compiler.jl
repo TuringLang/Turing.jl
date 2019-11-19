@@ -349,7 +349,12 @@ function build_output(model_info)
                 if $model.args.$var isa Type && ($model.args.$var <: AbstractFloat || $model.args.$var <: AbstractArray)
                     $var = Turing.Core.get_matching_type($sampler, $vi, $model.args.$var)
                 else
-                    $var = $model.args.$var
+                    if Missing <: eltype(typeof($model.args.$var))
+                        # Not to overwrite the missing in the original data
+                        $var = copy($model.args.$var)
+                    else
+                        $var = $model.args.$var
+                    end
                 end
             end
         end)
