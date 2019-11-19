@@ -2,14 +2,15 @@ module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple
+    islinked, invlink!, getlogp, tonamedtuple, VarName
 using ..Core: split_var_str
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, AbstractSamplerState
+    Selector, AbstractSamplerState, DefaultContext, 
+    LikelihoodContext, NamedDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
@@ -510,6 +511,41 @@ getspace(::Type{<:Gibbs}) = Tuple{}()
 # utility funcs for querying sampler information
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
+
+# assume
+function assume_or_observe(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
+    val, lp = _assume_or_observe(sampler, right, left, vi)
+    return val, zero(lp)
+end
+# observe
+function assume_or_observe(ctx::LikelihoodContext, sampler, right, left, vi)
+    _assume_or_observe(sampler, right, left, vi)
+end
+
+function assume_or_observe(ctx::DefaultContext, sampler, right, left, vi)
+    return _assume_or_observe(sampler, right, left, vi)
+end
+# assume
+function _assume_or_observe(sampler, right, left::VarName, vi)
+    return Turing.assume(sampler, right, left, vi)
+end
+function _assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
+    name = right.name
+    if name isa String
+        sym_str, inds = split_var_str(name, String)
+        sym = Symbol(sym_str)
+        vn = VarName{sym}(inds)
+    elseif name isa Symbol
+        vn = VarName{name}("")
+    elseif name isa VarName
+        vn = name
+    else
+        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
+    end
+    return _assume_or_observe(sampler, right.dist, vn, vi)
+end
+# observe
+_assume_or_observe(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
 
 assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")

@@ -2,7 +2,7 @@ module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
     AbstractSampler, Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, getspace
+    Selector, getspace, AbstractContext, DefaultContext
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution, link, invlink
 using Distributions
@@ -670,7 +670,7 @@ function has_eval_num(spl::T) where T<:AbstractSampler
 end
 
 """
-`runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler)`
+`runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler, ctx::AbstractContext)`
 
 Samples from `model` using the sampler `spl` storing the sample and log joint
 probability in `vi`.
@@ -678,13 +678,14 @@ probability in `vi`.
 function runmodel!(
     model::Model,
     vi::AbstractVarInfo,
-    spl::T = SampleFromPrior()
+    spl::T = SampleFromPrior(),
+    ctx::AbstractContext = DefaultContext()
 ) where T<:AbstractSampler
     setlogp!(vi, 0)
     if has_eval_num(spl)
         spl.state.eval_num += 1
     end
-    model(vi, spl)
+    model(vi, spl, ctx)
     return vi
 end
 

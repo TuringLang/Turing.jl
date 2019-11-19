@@ -53,6 +53,8 @@ struct Model{F, Targs <: NamedTuple} <: Sampleable{VariateForm,ValueSupport} # M
     f::F
     args::Targs
 end
+(model::Model)(vi) = model(vi, SampleFromPrior())
+(model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 function Base.getproperty(m::Model, f::Symbol)
     f === :missing && return _getmissing(m.args)
@@ -116,6 +118,10 @@ end
 Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
 Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
+
+abstract type AbstractContext end
+struct DefaultContext <: AbstractContext end
+struct LikelihoodContext <: AbstractContext end
 
 include("utilities/Utilities.jl")
 using .Utilities

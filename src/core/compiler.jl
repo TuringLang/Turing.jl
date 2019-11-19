@@ -1,5 +1,3 @@
-using ..Turing: NamedDist
-
 """
 Usage: @varname x[1,2][1+5][45][3]
   return: VarName{:x}("[1,2][6][45][3]")
@@ -244,6 +242,7 @@ function build_model_info(input_expr)
         :args => args,
         :whereparams => modeldef[:whereparams],
         :main_body_names => Dict(
+            :ctx => gensym(:ctx),
             :vi => gensym(:vi),
             :sampler => gensym(:sampler),
             :model => gensym(:model),
@@ -289,6 +288,7 @@ function tilde(left, right, model_info)
     arg_syms = Val((model_info[:arg_syms]...,))
     model = model_info[:main_body_names][:model]
     vi = model_info[:main_body_names][:vi]
+    ctx = model_info[:main_body_names][:ctx]
     sampler = model_info[:main_body_names][:sampler]
     out = gensym(:out)
     lp = gensym(:lp)
@@ -296,7 +296,7 @@ function tilde(left, right, model_info)
     if left isa Symbol || left isa Expr
         ex = quote
             $assert_ex
-            $out = Turing.Core.assume_or_observe($sampler, $right, Turing.Core.@preprocess($arg_syms, $model.missing, $left), $vi)
+            $out = Turing.Inference.assume_or_observe($ctx, $sampler, $right, Turing.Core.@preprocess($arg_syms, $model.missing, $left), $vi)
             if $out isa Tuple
                 $left, $lp = $out
                 $vi.logp += $lp
@@ -313,25 +313,6 @@ function tilde(left, right, model_info)
     end
     return ex
 end
-function assume_or_observe(sampler, right, left::VarName, vi)
-    return Turing.assume(sampler, right, left, vi)
-end
-function assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
-    name = right.name
-    if name isa String
-        sym_str, inds = split_var_str(name, String)
-        sym = Symbol(sym_str)
-        vn = VarName{sym}(inds)
-    elseif name isa Symbol
-        vn = VarName{name}("")
-    elseif name isa VarName
-        vn = name
-    else
-        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
-    end
-    return Turing.assume(sampler, right.dist, vn, vi)
-end
-assume_or_observe(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
 
 """
     build_output(model_info)
@@ -341,6 +322,7 @@ Builds the output expression.
 function build_output(model_info)
     # Construct user-facing function
     main_body_names = model_info[:main_body_names]
+    ctx = main_body_names[:ctx]
     vi = main_body_names[:vi]
     model = main_body_names[:model]
     sampler = main_body_names[:sampler]
@@ -375,23 +357,11 @@ function build_output(model_info)
     return esc(quote
         # Allows passing arguments as kwargs
         $outer_function(;$(args...)) = $outer_function($(arg_syms...))
-        
         function $outer_function($(args...))
-            # Define fallback inner functions
-            function $inner_function($sampler::Turing.AbstractSampler, $model)
-                return $inner_function($model)
-            end
-            function $inner_function($model)
-                return $inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), $model)
-            end
-            function $inner_function($vi::Turing.VarInfo, $model)
-                return $inner_function($vi, Turing.SampleFromPrior(), $model)
-            end
-
-            # Define the main inner function
             function $inner_function(
                 $vi::Turing.VarInfo,
                 $sampler::Turing.AbstractSampler,
+                $ctx::Turing.AbstractContext,
                 $model
                 )
 
