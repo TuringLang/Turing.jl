@@ -513,6 +513,15 @@ require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
 # assume
+function assume_or_observe(ctx::BatchContext, sampler, right, left::VarName, vi)
+    return assume_or_observe(ctx.ctx, sampler, right, left, vi)
+end
+# observe
+function assume_or_observe(ctx::BatchContext, sampler, right, left, vi)
+    return ctx.loglike_scalar * assume_or_observe(ctx.ctx, sampler, right, left, vi)
+end
+
+# assume
 function assume_or_observe(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
     val, lp = _assume_or_observe(sampler, right, left, vi)
     return val, zero(lp)

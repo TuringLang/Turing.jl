@@ -122,6 +122,11 @@ Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
 abstract type AbstractContext end
 struct DefaultContext <: AbstractContext end
 struct LikelihoodContext <: AbstractContext end
+struct BatchContext{Tctx, T} <: AbstractContext
+    ctx::Tctx
+    loglike_scalar::T
+end
+BatchContext(ctx; batch_size, npoints) = BatchContext(ctx, npoints/batch_size)
 
 include("utilities/Utilities.jl")
 using .Utilities
