@@ -343,18 +343,19 @@ function build_output(model_info)
 
     unwrap_data_expr = Expr(:block)
     for var in arg_syms
+        temp_var = gensym(:temp_var)
+        varT = gensym(:varT)
         push!(unwrap_data_expr.args, quote
             local $var
             if isdefined($model.args, $(QuoteNode(var)))
-                if $model.args.$var isa Type && ($model.args.$var <: AbstractFloat || $model.args.$var <: AbstractArray)
-                    $var = Turing.Core.get_matching_type($sampler, $vi, $model.args.$var)
+                $temp_var = $model.args.$var
+                $varT = typeof($temp_var)
+                if $temp_var isa Type && ($temp_var <: AbstractFloat || $temp_var <: AbstractArray)
+                    $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
+                elseif $varT <: Array && Missing <: eltype($varT)
+                    $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
                 else
-                    if Missing <: eltype(typeof($model.args.$var))
-                        # Not to overwrite the missing in the original data
-                        $var = copy($model.args.$var)
-                    else
-                        $var = $model.args.$var
-                    end
+                    $var = $temp_var
                 end
             end
         end)
