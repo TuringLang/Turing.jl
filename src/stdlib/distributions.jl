@@ -148,3 +148,16 @@ struct NamedDist{variate, support, Td <: Distribution{variate, support}, Tn} <: 
     dist::Td
     name::Tn
 end
+
+struct NoDist{variate, support, Td <: Distribution{variate, support}} <: Distribution{variate, support}
+    dist::Td
+end
+Distributions.rand(d::NoDist) = rand(d.dist)
+Distributions.logpdf(d::NoDist{<:Univariate}, ::Real) = 0
+Distributions.logpdf(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}) = 0
+Distributions.logpdf(d::NoDist{<:Multivariate}, x::AbstractMatrix{<:Real}) = zeros(Int, size(x, 2))
+Distributions.logpdf(d::NoDist{<:Matrixvariate}, ::AbstractMatrix{<:Real}) = 0
+Bijectors.logpdf_with_trans(d::NoDist{<:Univariate}, ::Real) = 0
+Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}) = 0
+Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, x::AbstractMatrix{<:Real}) = zeros(Int, size(x, 2))
+Bijectors.logpdf_with_trans(d::NoDist{<:Matrixvariate}, ::AbstractMatrix{<:Real}) = 0

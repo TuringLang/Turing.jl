@@ -10,7 +10,7 @@ using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, 
-    LikelihoodContext, BatchContext, NamedDist
+    LikelihoodContext, BatchContext, NamedDist, NoDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
@@ -523,12 +523,14 @@ end
 
 # assume
 function assume_or_observe(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
-    val, lp = _assume_or_observe(sampler, right, left, vi)
-    return val, zero(lp)
+    return _assume_or_observe(sampler, NoDist(right), left, vi)
+end
+function assume_or_observe(ctx::LikelihoodContext, sampler, right::NamedDist, left::VarName, vi)
+    return _assume_or_observe(sampler, NamedDist(NoDist(right.dist), right.name), left, vi)
 end
 # observe
 function assume_or_observe(ctx::LikelihoodContext, sampler, right, left, vi)
-    _assume_or_observe(sampler, right, left, vi)
+    return _assume_or_observe(sampler, right, left, vi)
 end
 
 function assume_or_observe(ctx::DefaultContext, sampler, right, left, vi)
@@ -578,14 +580,13 @@ function assume(spl::A,
     #       r is genereated from some uniform distribution which is different from the prior
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
-
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
 function assume(spl::A,
     dists::Vector{T},
     vn::VarName,
-    var::Any,
+    var,
     vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
 
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
@@ -625,8 +626,7 @@ function assume(spl::A,
 
     # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
-
+    return var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
 
@@ -645,7 +645,7 @@ function observe(spl::A,
     Turing.DEBUG && @debug "value = $value"
 
     # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
+    return logpdf(dist, value)
 end
 
 function observe(spl::A,
@@ -659,12 +659,11 @@ function observe(spl::A,
         isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
-        sum(logpdf.(Ref(dist), value))
+        return sum(logpdf.(Ref(dist), value))
     else
         # acclogp!(vi, sum(logpdf(dist, value)))
-        sum(logpdf(dist, value))
+        return sum(logpdf(dist, value))
     end
-
 end
 
 
