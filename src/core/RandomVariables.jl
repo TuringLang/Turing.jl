@@ -175,9 +175,10 @@ const TypedVarInfo = VarInfo{<:NamedTuple}
 
 function VarInfo(model::Model)
     vi = VarInfo()
-    model(vi, SampleFromUniform())
+    model(vi)
     return TypedVarInfo(vi)
 end
+(model::Model)() = model(Turing.VarInfo(), SampleFromPrior())
 
 function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     new_vi = deepcopy(old_vi)
