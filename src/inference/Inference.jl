@@ -10,7 +10,7 @@ using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, 
-    LikelihoodContext, NamedDist
+    LikelihoodContext, BatchContext, NamedDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface

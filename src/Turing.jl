@@ -126,7 +126,7 @@ struct BatchContext{Tctx, T} <: AbstractContext
     ctx::Tctx
     loglike_scalar::T
 end
-BatchContext(ctx; batch_size, npoints) = BatchContext(ctx, npoints/batch_size)
+BatchContext(ctx = DefaultContext(); batch_size, npoints) = BatchContext(ctx, npoints/batch_size)
 
 include("utilities/Utilities.jl")
 using .Utilities
