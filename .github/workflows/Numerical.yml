@@ -1,4 +1,4 @@
-name: CI
+name: Numerical
 
 on: [push] # [push, pull_request]
 
@@ -7,12 +7,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.0.5, 1.2.0]
-        julia-arch: [x64, x86]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        exclude:
-          - os: macOS-latest
-            julia-arch: x86
+        julia-version: [1.2.0]
+        julia-arch: [x64]
+        os: [ubuntu-latest]
+
 
     steps:
       - uses: actions/checkout@v1.0.0
@@ -20,3 +18,5 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-runtest@master
+        env:
+          STAGE: numerical
