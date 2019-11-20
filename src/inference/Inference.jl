@@ -613,14 +613,13 @@ function dot_tilde(ctx::BatchContext, sampler, right, left, vn::VarName, vi)
     return dot_tilde(ctx.ctx, sampler, right, left, vn, vi)
 end
 
-# Distributions.jl broadcasting convention
 function _dot_tilde(sampler, right, left, vn::VarName, vi)
     return dot_assume(sampler, right, vn, left, vi)
 end
 
 # Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
 function _dot_tilde(sampler, right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, left::AbstractMatrix{>:AbstractVector}, vn::VarName, vi)
-    throw("Ambiguous `lhs .~ rhs` syntax. The broadcasting can either be column-wise (or by last index) following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `rhs` to eliminate ambiguity.")
+    throw("Ambiguous `lhs .~ rhs` syntax. The broadcasting can either be column-wise following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
 end
 function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName, vi)
     name = right.name
