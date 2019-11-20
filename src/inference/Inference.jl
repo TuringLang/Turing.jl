@@ -554,10 +554,6 @@ function tilde(ctx::BatchContext, sampler, right, left, vi)
 end
 
 _tilde(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
-function _tilde(sampler, right::AbstractArray, left::AbstractArray, vi)
-    @assert size(right) == size(left)
-    return sum(_tilde.(Ref(sampler), right, left, Ref(vi)))
-end
 
 assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
