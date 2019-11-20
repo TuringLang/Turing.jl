@@ -9,14 +9,14 @@ alg = HMC(0.2, 4)
 # Test for vectorize UnivariateDistribution
 @model vdemo() = begin
   phi = Vector{Vector{Real}}(undef, N)
-  phi ~ [Dirichlet(beta)]
+  phi .~ [Dirichlet(beta)]
 end
 
 ch_vec, t_vec, m_vec, gctime, memallocs = @timed res_vec = sample(vdemo(), alg)
 
 @model vdemo() = begin
   phi = Matrix(undef, 2, N)
-  phi ~ [Dirichlet(beta)]
+  phi .~ [Dirichlet(beta)]
 end
 
 ch_vec_mat, t_vec_mat, m_vec_mat, gctime, memallocs = @timed res_vec_mat = sample(vdemo(), alg)

@@ -6,7 +6,7 @@ alg = HMC(0.2, 4, 1000)
 
 @model vdemo(::Type{T}=Float64) where {T} = begin
   v = Vector{Matrix{T}}(undef, N)
-  v ~ [Wishart(7, [1 0.5; 0.5 1])]
+  v .~ [Wishart(7, [1 0.5; 0.5 1])]
 end
 
 t_vec = @elapsed res_vec = sample(vdemo(), alg)
