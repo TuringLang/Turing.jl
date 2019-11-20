@@ -152,6 +152,8 @@ end
 struct NoDist{variate, support, Td <: Distribution{variate, support}} <: Distribution{variate, support}
     dist::Td
 end
+NoDist(dist::NamedDist) = NamedDist(NoDist(dist.dist), dist.name)
+
 Distributions.rand(d::NoDist) = rand(d.dist)
 Distributions.logpdf(d::NoDist{<:Univariate}, ::Real) = 0
 Distributions.logpdf(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}) = 0
