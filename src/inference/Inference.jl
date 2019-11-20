@@ -679,8 +679,6 @@ end
         r = vi[vn]
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        # NOTE: The importance weight is not correctly computed here because
-        #   r is genereated from some uniform distribution which is different from the prior
         push!(vi, vn, r, dist, spl)
     end
     return r
