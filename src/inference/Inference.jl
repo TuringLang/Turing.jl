@@ -601,11 +601,10 @@ end
 
 # .~ functions
 
-function dot_tilde(ctx::DefaultContext, sampler, right, left, maybe_vn, vi)
-    return _dot_tilde(sampler, right, left, maybe_vn, vi)
-end
-
 # assume
+function dot_tilde(ctx::DefaultContext, sampler, right, left, vn::VarName, vi)
+    return _dot_tilde(sampler, right, left, vn, vi)
+end
 function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vn::VarName, vi)
     return _dot_tilde(sampler, NoDist(right), left, vn, vi)
 end
@@ -710,6 +709,9 @@ end
 end
 
 # observe
+function dot_tilde(ctx::DefaultContext, sampler, right, left, _, vi)
+    return _dot_tilde(sampler, right, left, vi)
+end
 function dot_tilde(ctx::LikelihoodContext, sampler, right, left, _, vi)
     return _dot_tilde(sampler, right, left, vi)
 end

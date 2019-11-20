@@ -151,7 +151,7 @@ priors = 0 # See "new grammar" test.
             m ~ Normal(0,sqrt(s))
 
             x = Vector{Float64}(undef, 2)
-            x .~ [Normal(m, sqrt(s)), 2.0]
+            x ~ [Normal(m, sqrt(s)), 2.0]
 
             return x
         end
@@ -178,7 +178,7 @@ priors = 0 # See "new grammar" test.
             m ~ Normal(0,sqrt(s))
 
             x = Vector{Float64}(undef, 2)
-            x .~ [Normal(m, sqrt(s)), 2.0]
+            x ~ [Normal(m, sqrt(s)), 2.0]
 
             return x
         end
@@ -278,7 +278,7 @@ priors = 0 # See "new grammar" test.
         @model vdemo1(x) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
-            x .~ [Normal(m, sqrt(s))]
+            x .~ Normal(m, sqrt(s))
             return s, m
         end
 
@@ -289,7 +289,7 @@ priors = 0 # See "new grammar" test.
         D = 2
         @model vdemo2(x) = begin
             μ ~ MvNormal(zeros(D), ones(D))
-            x .~ [MvNormal(μ, ones(D))]
+            x .~ MvNormal(μ, ones(D))
         end
 
         alg = HMC(0.01, 5)
@@ -312,7 +312,7 @@ priors = 0 # See "new grammar" test.
         # Test for vectorize UnivariateDistribution
         @model vdemo4() = begin
           x = Vector{Real}(undef, N)
-          x .~ [Normal(0, 2)]
+          x .~ Normal(0, 2)
         end
 
         t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
@@ -331,7 +331,7 @@ priors = 0 # See "new grammar" test.
         # Transformed test
         @model vdemo6() = begin
             x = Vector{Real}(undef, N)
-            x .~ [InverseGamma(2, 3)]
+            x .~ InverseGamma(2, 3)
         end
 
         sample(vdemo6(), alg, 1000)
@@ -354,7 +354,7 @@ priors = 0 # See "new grammar" test.
 
         @model vdemo2(::Type{T}=Float64) where {T <: Real} = begin
             x = Vector{T}(undef, N)
-            x .~ [Normal(0, 2)]
+            x .~ Normal(0, 2)
         end
 
         t_vec = @elapsed res = sample(vdemo2(), alg, 250)
@@ -363,7 +363,7 @@ priors = 0 # See "new grammar" test.
 
         @model vdemo3(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
             x = TV(undef, N)
-            x .~ [InverseGamma(2, 3)]
+            x .~ InverseGamma(2, 3)
         end
 
         sample(vdemo3(), alg, 250)
