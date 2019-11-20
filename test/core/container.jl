@@ -54,7 +54,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test consume(pc) == log(1)
 
         resample!(pc)
-        @test pc.num_particles == length(pc)
         @test weights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)
         @test pc.logE ≈ log(1)

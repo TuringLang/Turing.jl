@@ -74,7 +74,6 @@ Data structure for particle filters
 """
 mutable struct ParticleContainer{T<:Particle, F}
     model::F
-    num_particles::Int
     vals::Vector{T}
     # logarithmic weights (Trace) or incremental log-likelihoods (ParticleContainer)
     logWs::Vector{Float64}
@@ -85,7 +84,7 @@ mutable struct ParticleContainer{T<:Particle, F}
 end
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
 function ParticleContainer{T}(m, n::Int) where {T}
-    ParticleContainer(m, n, T[], Float64[], 0.0, 0)
+    ParticleContainer(m, Vector{T}(undef, n), Float64[], 0.0, 0)
 end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
@@ -97,7 +96,6 @@ Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
 # registers a new x-particle in the container
 function Base.push!(pc::ParticleContainer, p::Particle)
-    pc.num_particles += 1
     push!(pc.vals, p)
     push!(pc.logWs, 0.0)
     pc
@@ -105,19 +103,17 @@ end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
 function Base.push!(pc::ParticleContainer, n::Int, spl::Sampler, varInfo::VarInfo)
+    # compute total number of particles number of particles
+    n0 = length(pc)
+    ntotal = n0 + n
+
+    # add additional particles and weights
     vals = pc.vals
     logWs = pc.logWs
     model = pc.model
-    num_particles = pc.num_particles
-
-    # update number of particles
-    num_particles_new = num_particles + n
-    pc.num_particles = num_particles_new
-
-    # add additional particles and weights
-    resize!(vals, num_particles_new)
-    resize!(logWs, num_particles_new)
-    @inbounds for i in (num_particles + 1):num_particles_new
+    resize!(vals, ntotal)
+    resize!(logWs, ntotal)
+    @inbounds for i in (n0 + 1):ntotal
         vals[i] = Trace(model, spl, varInfo)
         logWs[i] = 0.0
     end
@@ -127,7 +123,6 @@ end
 
 # clears the container but keep params, logweight etc.
 function Base.empty!(pc::ParticleContainer)
-    pc.num_particles = 0
     pc.vals  = eltype(pc.vals)[]
     pc.logWs = Float64[]
     pc
@@ -141,20 +136,19 @@ function Base.copy(pc::ParticleContainer)
     # copy weights
     logWs = copy(pc.logWs)
 
-    ParticleContainer(pc.model, pc.num_particles, vals, logWs, pc.logE, pc.n_consume)
+    ParticleContainer(pc.model, vals, logWs, pc.logE, pc.n_consume)
 end
 
 # run particle filter for one step, return incremental likelihood
 function Libtask.consume(pc :: ParticleContainer)
-    @assert pc.num_particles == length(pc)
     # normalisation factor: 1/N
     z1 = logZ(pc)
-    n = length(pc.vals)
+    n = length(pc)
 
     particles = collect(pc)
     num_done = 0
     for i=1:n
-        p = pc.vals[i]
+        p = particles[i]
         score = Libtask.consume(p)
         if score isa Real
             score += getlogp(p.vi)
@@ -167,7 +161,7 @@ function Libtask.consume(pc :: ParticleContainer)
         end
     end
 
-    if num_done == length(pc)
+    if num_done == n
         res = Val{:done}
     elseif num_done != 0
         error("[consume]: mis-aligned execution traces, num_particles= $(n), num_done=$(num_done).")
@@ -206,39 +200,53 @@ function resample!(
     randcat :: Function = Turing.Inference.resample_systematic,
     ref :: Union{Particle, Nothing} = nothing
 )
-    n1, particles = pc.num_particles, collect(pc)
-    @assert n1 == length(particles)
-
-    # resample
+    # compute weights
     Ws = weights(pc)
 
     # check that weights are not NaN
     @assert !any(isnan, Ws)
 
-    n2 = ref === nothing ? n1 : n1 - 1
-    indx = randcat(Ws, n2)
+    # sample ancestor indices
+    n = length(pc)
+    nresamples = ref === nothing ? n : n - 1
+    indx = randcat(Ws, nresamples)
 
-    # fork particles
-    empty!(pc)
-    num_children = zeros(Int,n1)
-    for i in indx
+    # count number of children for each particle
+    num_children = zeros(Int, n)
+    @inbounds for i in indx
         num_children[i] += 1
     end
-    for i = 1:n1
-        is_ref = particles[i] == ref
-        p = is_ref ? fork(particles[i], is_ref) : particles[i]
-        num_children[i] > 0 && push!(pc, p)
-        for k=1:num_children[i]-1
-            newp = fork(p, is_ref)
-            push!(pc, newp)
+
+    # fork particles
+    particles = collect(pc)
+    children = similar(particles)
+    j = 0
+    @inbounds for i in 1:n
+        ni = num_children[i]
+
+        if ni > 0
+            # fork first child
+            pi = particles[i]
+            isref = pi === ref
+            p = isref ? fork(pi, isref) : pi
+            children[j += 1] = p
+
+            # fork additional children
+            for _ in 2:ni
+                children[j += 1] = fork(p, isref)
+            end
         end
     end
 
-    if isa(ref, Particle)
+    if ref !== nothing
         # Insert the retained particle. This is based on the replaying trick for efficiency
-        #  reasons. If we implement PG using task copying, we need to store Nx * T particles!
-        push!(pc, ref)
+        # reasons. If we implement PG using task copying, we need to store Nx * T particles!
+        @inbounds children[n] = ref
     end
+
+    # replace particles and log weights in the container with new particles and weights
+    pc.vals = children
+    pc.logWs = zeros(n)
 
     pc
 end
