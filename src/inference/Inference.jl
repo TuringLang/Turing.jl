@@ -544,20 +544,6 @@ function _tilde(sampler, right::NamedDist, left::VarName, vi)
     end
     return _tilde(sampler, right.dist, vn, vi)
 end
-function _tilde(sampler, right::AbstractArray, left::VarName, vi)
-    getvn = i -> VarName(left, left.indexing * "[" * join(Tuple(i), ",") * "]")
-    inds = CartesianIndices(right)
-    val, total_lp = _tilde(sampler, first(right), getvn(first(inds)), vi)
-    vals = similar(right, typeof(val))
-    vals[1] = val
-    for i in 2:length(inds)
-        ind = inds[i]
-        val, lp = _tilde(sampler, right[ind], getvn(ind), vi)
-        vals[ind] = val
-        total_lp += lp
-    end
-    return vals, total_lp
-end
 
 # observe
 function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
@@ -656,18 +642,6 @@ function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName,
     return _dot_tilde(sampler, right.dist, left, vn, vi)
 end
 
-# observe
-function dot_tilde(ctx::LikelihoodContext, sampler, right, left, _, vi)
-    return _dot_tilde(sampler, right, left, vi)
-end
-function dot_tilde(ctx::BatchContext, sampler, right, left, _, vi)
-    return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
-end
-
-function _dot_tilde(sampler, right, left::AbstractArray, vi)
-    return dot_observe(sampler, right, left, vi)
-end
-
 function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
@@ -740,6 +714,18 @@ end
         end
     end
     return r
+end
+
+# observe
+function dot_tilde(ctx::LikelihoodContext, sampler, right, left, _, vi)
+    return _dot_tilde(sampler, right, left, vi)
+end
+function dot_tilde(ctx::BatchContext, sampler, right, left, _, vi)
+    return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
+end
+
+function _dot_tilde(sampler, right, left::AbstractArray, vi)
+    return dot_observe(sampler, right, left, vi)
 end
 
 dot_observe(::Nothing,
