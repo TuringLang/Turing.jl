@@ -51,6 +51,7 @@ export  @model,
         setchunksize,
         verifygrad,
         gradient_logp_forward,
-        gradient_logp_reverse
+        gradient_logp_reverse,
+        @varinfo
 
 end # module

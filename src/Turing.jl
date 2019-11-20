@@ -44,7 +44,7 @@ import .Interface: AbstractSampler
 """
 struct Model{F, Targs <: NamedTuple}
     f::F
-    args::TData
+    args::Targs
 end
 
 A `Model` struct with arguments `args` and inner function `f`.
@@ -56,10 +56,7 @@ end
 (model::Model)(vi) = model(vi, SampleFromPrior())
 (model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
-function Base.getproperty(m::Model, f::Symbol)
-    f === :missing && return _getmissing(m.args)
-    return getfield(m, f)
-end
+getmissing(model::Model) = _getmissing(model.args)
 @generated function _getmissing(args::NamedTuple{names, ttuple}) where {names, ttuple}
     minds = filter(1:length(names)) do i
         ttuple.types[i] == Missing
@@ -161,6 +158,7 @@ end
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
         @varname,
+        @varinfo,
 
         MH,                     # classic sampling
         Gibbs,

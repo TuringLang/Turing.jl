@@ -1,3 +1,5 @@
+macro varinfo() end
+
 """
 Usage: @varname x[1,2][1+5][45][3]
   return: VarName{:x}("[1,2][6][45][3]")
@@ -75,15 +77,12 @@ function split_var_str(var_str, inds_as = Vector)
     return sym, inds
 end
 
-function assert_dist(dist; msg)
-    isdist = if isa(dist, AbstractVector)
-        # Check if the right-hand side is a vector of distributions.
-        all(d -> isa(d, Distribution), dist)
-    else
         # Check if the right-hand side is a distribution.
-        isa(dist, Distribution)
+function assert_dist(dist; msg)
+    isa(dist, Distribution) || throw(ArgumentError(msg))
     end
-    isdist || throw(ArgumentError(msg))
+function assert_dist(dist::AbstractVector; msg)
+    all(d -> isa(d, Distribution), dist) || throw(ArgumentError(msg))
 end
 
 function wrong_dist_errormsg(l)
@@ -148,27 +147,17 @@ Expanded model definition
 # Allows passing arguments as kwargs
 model_generator(; x, y)) = model_generator(x, y)
 function model_generator(x, y)
-    inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
-    inner_function(model) = inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
-    inner_function(vi::Turing.VarInfo, model) = inner_function(vi, Turing.SampleFromPrior(), model)
-    # Define the main inner function
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
-        local x
-        if isdefined(model.args, :x)
             if model.args.x isa Type && (model.args.x <: AbstractFloat || model.args.x <: AbstractArray)
                 x = Turing.Core.get_matching_type(sampler, vi, model.args.x)
             else
                 x = model.args.x
             end
-        end
-        local y
-        if isdefined(model.args, :y)
             if model.args.y isa Type && (model.args.y <: AbstractFloat || model.args.y <: AbstractArray)
                 y = Turing.Core.get_matching_type(sampler, vi, model.args.y)
             else
                 y = model.args.y
             end
-        end
 
         vi.logp = 0
         ...
@@ -257,12 +246,12 @@ end
 """
     replace_vi!(model_info)
 
-Replaces @vi() expressions to the VarInfo instance.
+Replaces @varinfo() expressions to the VarInfo instance.
 """
 function replace_vi!(model_info)
     ex = model_info[:main_body]
     vi = model_info[:main_body_names][:vi]
-    ex = MacroTools.postwalk(x -> @capture(x, @vi()) ? vi : x, ex)
+    ex = MacroTools.postwalk(x -> @capture(x, @varinfo()) ? vi : x, ex)
     model_info[:main_body] = ex
     return model_info
 end
@@ -275,6 +264,7 @@ Replaces ~ expressions to observation or assumption expressions, updating `model
 function replace_tilde!(model_info)
     ex = model_info[:main_body]
     ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
+    ex = MacroTools.postwalk(x -> @capture(x, L_ .~ R_) ? dot_tilde(L, R, model_info) : x, ex)
     model_info[:main_body] = ex
     return model_info
 end
@@ -346,8 +336,6 @@ function build_output(model_info)
         temp_var = gensym(:temp_var)
         varT = gensym(:varT)
         push!(unwrap_data_expr.args, quote
-            local $var
-            if isdefined($model.args, $(QuoteNode(var)))
                 $temp_var = $model.args.$var
                 $varT = typeof($temp_var)
                 if $temp_var isa Type && ($temp_var <: AbstractFloat || $temp_var <: AbstractArray)
@@ -357,7 +345,6 @@ function build_output(model_info)
                 else
                     $var = $temp_var
                 end
-            end
         end)
     end
     return esc(quote
