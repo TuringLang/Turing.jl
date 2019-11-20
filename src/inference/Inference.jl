@@ -1,5 +1,6 @@
 module Inference
 
+using FillArrays: Fill
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName
@@ -513,35 +514,22 @@ getspace(::Type{<:Gibbs}) = Tuple{}()
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
-# assume
-function assume_or_observe(ctx::BatchContext, sampler, right, left::VarName, vi)
-    return assume_or_observe(ctx.ctx, sampler, right, left, vi)
-end
-# observe
-function assume_or_observe(ctx::BatchContext, sampler, right, left, vi)
-    return ctx.loglike_scalar * assume_or_observe(ctx.ctx, sampler, right, left, vi)
+function tilde(ctx::DefaultContext, sampler, right, left, vi)
+    return _tilde(sampler, right, left, vi)
 end
 
 # assume
-function assume_or_observe(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
-    return _assume_or_observe(sampler, NoDist(right), left, vi)
+function tilde(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
+    return _tilde(sampler, NoDist(right), left, vi)
 end
-function assume_or_observe(ctx::LikelihoodContext, sampler, right::NamedDist, left::VarName, vi)
-    return _assume_or_observe(sampler, NamedDist(NoDist(right.dist), right.name), left, vi)
-end
-# observe
-function assume_or_observe(ctx::LikelihoodContext, sampler, right, left, vi)
-    return _assume_or_observe(sampler, right, left, vi)
+function tilde(ctx::BatchContext, sampler, right, left::VarName, vi)
+    return tilde(ctx.ctx, sampler, right, left, vi)
 end
 
-function assume_or_observe(ctx::DefaultContext, sampler, right, left, vi)
-    return _assume_or_observe(sampler, right, left, vi)
-end
-# assume
-function _assume_or_observe(sampler, right, left::VarName, vi)
+function _tilde(sampler, right, left::VarName, vi)
     return Turing.assume(sampler, right, left, vi)
 end
-function _assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
+function _tilde(sampler, right::NamedDist, left::VarName, vi)
     name = right.name
     if name isa String
         sym_str, inds = split_var_str(name, String)
@@ -554,10 +542,36 @@ function _assume_or_observe(sampler, right::NamedDist, left::VarName, vi)
     else
         throw("Unsupported variable name. Please use either a string, symbol or VarName.")
     end
-    return _assume_or_observe(sampler, right.dist, vn, vi)
+    return _tilde(sampler, right.dist, vn, vi)
 end
+function _tilde(sampler, right::AbstractArray, left::VarName, vi)
+    getvn = i -> VarName(left, left.indexing * "[" * join(Tuple(i), ",") * "]")
+    inds = CartesianIndices(right)
+    val, total_lp = _tilde(sampler, first(right), getvn(first(inds)), vi)
+    vals = similar(right, typeof(val))
+    vals[1] = val
+    for i in 2:length(inds)
+        ind = inds[i]
+        val, lp = _tilde(sampler, right[ind], getvn(ind), vi)
+        vals[ind] = val
+        total_lp += lp
+    end
+    return vals, total_lp
+end
+
 # observe
-_assume_or_observe(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
+function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
+    return _tilde(sampler, right, left, vi)
+end
+function tilde(ctx::BatchContext, sampler, right, left, vi)
+    return ctx.loglike_scalar * tilde(ctx.ctx, sampler, right, left, vi)
+end
+
+_tilde(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
+function _tilde(sampler, right::AbstractArray, left::AbstractArray, vi)
+    @assert size(right) == size(left)
+    return sum(_tilde.(Ref(sampler), right, left, Ref(vi)))
+end
 
 assume(spl::Sampler, dist::Distribution) =
 error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
@@ -566,10 +580,15 @@ observe(spl::Sampler, weight::Float64) =
 error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 
 ## Default definitions for assume, observe, when sampler = nothing.
-function assume(spl::A,
+assume(::Nothing,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
+    vi::VarInfo) = assume(SampleFromPrior(), dist, vn, vi)
+
+function assume(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::Distribution,
+    vn::VarName,
+    vi::VarInfo)
 
     if haskey(vi, vn)
         r = vi[vn]
@@ -584,87 +603,176 @@ function assume(spl::A,
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::A,
-    dists::Vector{T},
-    vn::VarName,
-    var,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
+observe(::Nothing,
+        dist::Distribution,
+        value,
+        vi::VarInfo) = observe(SampleFromPrior(), dist, value, vi)
 
-    @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
+function observe(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::Distribution,
+    value,
+    vi::VarInfo)
 
-    vns = map(i -> VarName(vn, "[$i]"), 1:n)
-
-    if haskey(vi, vns[1])
-        rs = vi[vns]
-    else
-        rs = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
-
-        if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[i], dist, spl)
-            end
-            @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-            var = rs
-        elseif isa(dist, MultivariateDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist, spl)
-            end
-            if isa(var, Vector)
-                @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
-                for i = 1:n
-                    var[i] = rs[:,i]
-                end
-            elseif isa(var, Matrix)
-                @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-                var = rs
-            else
-                @error("Turing.assume: unsupported variable container"); error()
-            end
-        end
-    end
-
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    return var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    vi.num_produce += one(vi.num_produce)
+    return logpdf(dist, value)
 end
 
+# .~ functions
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
+function dot_tilde(ctx::DefaultContext, sampler, right, left, maybe_vn, vi)
+    return _dot_tilde(sampler, right, left, maybe_vn, vi)
+end
 
-function observe(spl::A,
+# assume
+function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vn::VarName, vi)
+    return _dot_tilde(sampler, NoDist(right), left, vn, vi)
+end
+function dot_tilde(ctx::BatchContext, sampler, right, left, vn::VarName, vi)
+    return dot_tilde(ctx.ctx, sampler, right, left, vn, vi)
+end
+
+# Distributions.jl broadcasting convention
+function _dot_tilde(sampler, right, left, vn::VarName, vi)
+    return dot_assume(sampler, right, vn, left, vi)
+end
+
+# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
+function _dot_tilde(sampler, right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, left::AbstractMatrix{>:AbstractVector}, vn::VarName, vi)
+    throw("Ambiguous `lhs .~ rhs` syntax. The broadcasting can either be column-wise (or by last index) following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `rhs` to eliminate ambiguity.")
+end
+function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName, vi)
+    name = right.name
+    if name isa String
+        sym_str, inds = split_var_str(name, String)
+        sym = Symbol(sym_str)
+        vn = VarName{sym}(inds)
+    elseif name isa Symbol
+        vn = VarName{name}("")
+    elseif name isa VarName
+        vn = name
+    else
+        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
+    end
+    return _dot_tilde(sampler, right.dist, left, vn, vi)
+end
+
+# observe
+function dot_tilde(ctx::LikelihoodContext, sampler, right, left, _, vi)
+    return _dot_tilde(sampler, right, left, vi)
+end
+function dot_tilde(ctx::BatchContext, sampler, right, left, _, vi)
+    return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
+end
+
+function _dot_tilde(sampler, right, left::AbstractArray, vi)
+    return dot_observe(sampler, right, left, vi)
+end
+
+function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
-    value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
+    vn::VarName,
+    var::AbstractArray,
+    vi::VarInfo)
+
+    return dot_assume(spl, Fill(dist, size(var)), vn, var, vi)
+end
+function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::MultivariateDistribution,
+    vn::VarName,
+    var::AbstractMatrix,
+    vi::VarInfo)
+
+    @assert dim(dist) == size(var, 1)
+    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
+    vns = getvn.(1:size(var, 1))
+    r = get_and_set_val!(vi, vns, dist, spl)
+    lp = sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    var .= r
+    return var, lp
+end
+function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::AbstractArray{<:Distribution},
+    vn::VarName,
+    var::AbstractArray,
+    vi::VarInfo)
+
+    @assert size(var) == size(dists)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    vns = vec(getvn.(CartesianIndices(var)))
+    r = get_and_set_val!(vi, vns, dists, spl)
+    lp = sum(logpdf_with_trans.(dists, r, Ref(istrans(vi, vns[1]))))
+    var .= r
+    return var, lp
+end
+
+@inline function get_and_set_val!(vi, vn::VarName, dist::Distribution, spl)
+    if haskey(vi, vn)
+        r = vi[vn]
+    else
+        r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
+        # NOTE: The importance weight is not correctly computed here because
+        #   r is genereated from some uniform distribution which is different from the prior
+        push!(vi, vn, r, dist, spl)
+    end
+    return r
+end
+@inline function get_and_set_val!(vi, vns::AbstractVector{<:VarName}, dist::MultivariateDistribution, spl)
+    n = length(vns)
+    if haskey(vi, vns[1])
+        r = vi[vns]
+    else
+        r = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
+        for i in 1:n
+            push!(vi, vns[i], r[:,i], dist, spl)
+        end
+    end
+    return r
+end
+@inline function get_and_set_val!(vi, vns::AbstractArray{<:VarName}, dists::AbstractArray{<:Distribution}, spl)
+    @assert size(vns) == size(dists)
+    s = size(vns)
+    if haskey(vi, vns[1])
+        r = vi[vns]
+    else
+        r = isa(spl, SampleFromUniform) ? init.(dists) : rand.(dists)
+        for i in 1:length(vns)
+            push!(vi, vns[i], r[i], dists[i], spl)
+        end
+    end
+    return r
+end
+
+dot_observe(::Nothing,
+        dist::Union{Distribution, AbstractArray{<:Distribution}},
+        value, vi::VarInfo) = dot_observe(SampleFromPrior(), dist, value, vi)
+
+function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::Distribution,
+    value::AbstractArray,
+    vi::VarInfo)
+
+    return dot_observe(spl, Fill(dist, size(value)), value, vi)
+end
+function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::MultivariateDistribution,
+    value::AbstractMatrix,
+    vi::VarInfo)
 
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
-
-    # acclogp!(vi, logpdf(dist, value))
-    return logpdf(dist, value)
+    return sum(logpdf(dist, value))
 end
+function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::AbstractArray{<:Distribution},
+    value::AbstractArray,
+    vi::VarInfo)
 
-function observe(spl::A,
-    dists::Vector{T},
-    value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
-    @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || 
-        isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
-    if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
-        # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
-        return sum(logpdf.(Ref(dist), value))
-    else
-        # acclogp!(vi, sum(logpdf(dist, value)))
-        return sum(logpdf(dist, value))
-    end
+    @assert size(dist) == size(value)
+    vi.num_produce += one(vi.num_produce)
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "value = $value"
+    return sum(logpdf.(dist, value))
 end
 
 

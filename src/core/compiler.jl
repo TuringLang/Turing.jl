@@ -77,10 +77,10 @@ function split_var_str(var_str, inds_as = Vector)
     return sym, inds
 end
 
-        # Check if the right-hand side is a distribution.
+# Check if the right-hand side is a distribution.
 function assert_dist(dist; msg)
     isa(dist, Distribution) || throw(ArgumentError(msg))
-    end
+end
 function assert_dist(dist::AbstractVector; msg)
     all(d -> isa(d, Distribution), dist) || throw(ArgumentError(msg))
 end
@@ -148,16 +148,16 @@ Expanded model definition
 model_generator(; x, y)) = model_generator(x, y)
 function model_generator(x, y)
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
-            if model.args.x isa Type && (model.args.x <: AbstractFloat || model.args.x <: AbstractArray)
-                x = Turing.Core.get_matching_type(sampler, vi, model.args.x)
-            else
-                x = model.args.x
-            end
-            if model.args.y isa Type && (model.args.y <: AbstractFloat || model.args.y <: AbstractArray)
-                y = Turing.Core.get_matching_type(sampler, vi, model.args.y)
-            else
-                y = model.args.y
-            end
+        if model.args.x isa Type && (model.args.x <: AbstractFloat || model.args.x <: AbstractArray)
+            x = Turing.Core.get_matching_type(sampler, vi, model.args.x)
+        else
+            x = model.args.x
+        end
+        if model.args.y isa Type && (model.args.y <: AbstractFloat || model.args.y <: AbstractArray)
+            y = Turing.Core.get_matching_type(sampler, vi, model.args.y)
+        else
+            y = model.args.y
+        end
 
         vi.logp = 0
         ...
@@ -286,7 +286,7 @@ function tilde(left, right, model_info)
     if left isa Symbol || left isa Expr
         ex = quote
             $assert_ex
-            $out = Turing.Inference.assume_or_observe($ctx, $sampler, $right, Turing.Core.@preprocess($arg_syms, $model.missing, $left), $vi)
+            $out = Turing.Inference.tilde($ctx, $sampler, $right, Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left), $vi)
             if $out isa Tuple
                 $left, $lp = $out
                 $vi.logp += $lp
@@ -298,6 +298,38 @@ function tilde(left, right, model_info)
         ex = quote
             $assert_ex
             $out = Turing.observe($sampler, $right, $left, $vi)
+            $vi.logp += $out
+        end
+    end
+    return ex
+end
+
+function dot_tilde(left, right, model_info)
+    arg_syms = Val((model_info[:arg_syms]...,))
+    model = model_info[:main_body_names][:model]
+    vi = model_info[:main_body_names][:vi]
+    ctx = model_info[:main_body_names][:ctx]
+    sampler = model_info[:main_body_names][:sampler]
+    out = gensym(:out)
+    temp = gensym(:temp)
+    lp = gensym(:lp)
+    assert_ex = :(Turing.Core.assert_dist($right, msg = $(wrong_dist_errormsg(@__LINE__))))
+    if left isa Symbol || left isa Expr
+        ex = quote
+            $assert_ex
+            $out = Turing.Inference.dot_tilde($ctx, $sampler, $right, $left, Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left), $vi)
+            if $out isa Tuple
+                $temp, $lp = $out
+                $left .= $temp
+                $vi.logp += $lp
+            else
+                $vi.logp += $out
+            end
+        end
+    else
+        ex = quote
+            $assert_ex
+            $out = Turing.dot_observe($sampler, $right, $left, $vi)
             $vi.logp += $out
         end
     end
@@ -336,15 +368,15 @@ function build_output(model_info)
         temp_var = gensym(:temp_var)
         varT = gensym(:varT)
         push!(unwrap_data_expr.args, quote
-                $temp_var = $model.args.$var
-                $varT = typeof($temp_var)
-                if $temp_var isa Type && ($temp_var <: AbstractFloat || $temp_var <: AbstractArray)
-                    $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
-                elseif $varT <: Array && Missing <: eltype($varT)
-                    $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
-                else
-                    $var = $temp_var
-                end
+            $temp_var = $model.args.$var
+            $varT = typeof($temp_var)
+            if $temp_var isa Type && ($temp_var <: AbstractFloat || $temp_var <: AbstractArray)
+                $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
+            elseif $varT <: Array && Missing <: eltype($varT)
+                $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
+            else
+                $var = $temp_var
+            end
         end)
     end
     return esc(quote

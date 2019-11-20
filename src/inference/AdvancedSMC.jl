@@ -305,25 +305,25 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
-function assume(  spl::Sampler{A},
-                  dists::Vector{D},
+function dot_assume(  spl::Sampler{<:Union{PG,SMC}},
+                  dists,
                   vn::VarName,
-                  var::Any,
+                  var,
                   vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+                )
     error("[Turing] PG and SMC doesn't support vectorizing assume statement")
 end
 
-function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PG,SMC}
+function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
     return zero(Real)
 end
 
-function observe( spl::Sampler{A},
-                  ds::Vector{D},
-                  value::Any,
+function dot_observe( spl::Sampler{<:Union{PG,SMC}},
+                  ds,
+                  value::AbstractArray,
                   vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+                )
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
 end
 

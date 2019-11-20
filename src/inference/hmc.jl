@@ -450,51 +450,49 @@ function assume(spl::Sampler{<:Hamiltonian},
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::Sampler{<:Hamiltonian},
-    dists::Vector{<:Distribution},
+function dot_assume(spl::Sampler{<:Hamiltonian},
+    dist::Distribution,
     vn::VarName,
-    var::Any,
-    vi::VarInfo
-)
-    @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
+    var::AbstractArray,
+    vi::VarInfo)
 
-    vns = map(i -> VarName(vn, "[$i]"), 1:n)
+    return dot_assume(spl, Fill(dist, size(vals)))
+end
+function dot_assume(spl::Sampler{<:Hamiltonian},
+    dist::MultivariateDistribution,
+    vn::VarName,
+    var::AbstractMatrix,
+    vi::VarInfo)
 
-    rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
+    @assert dim(dist) == size(vals, 1)
+    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
+    vns = getvn.(1:size(vals, 1))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans(dist, var, istrans(vi, vns[1])))
+end
+function dot_assume(spl::Sampler{<:Hamiltonian},
+    dists::AbstractArray{<:Distribution},
+    vn::VarName,
+    var::AbstractArray,
+    vi::VarInfo)
 
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-        @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-        var = rs
-    elseif isa(dist, MultivariateDistribution)
-        if isa(var, Vector)
-            @assert length(var) == size(rs)[2] "Turing.assume variable and random number dimension unmatched"
-            for i = 1:n
-                var[i] = rs[:,i]
-            end
-        elseif isa(var, Matrix)
-            @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-            var = rs
-        else
-            error("[Turing] unsupported variable container")
-        end
-    end
-
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    @assert size(var) == size(dists)
+    getvn = i -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    vns = getvn.(1:length(var))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans.(dists, var, Ref(istrans(vi, vns[1]))))
 end
 
 observe(spl::Sampler{<:Hamiltonian},
     d::Distribution,
-    value::Any,
+    value,
     vi::VarInfo) = observe(nothing, d, value, vi)
 
-observe(spl::Sampler{<:Hamiltonian},
-    ds::Vector{<:Distribution},
-    value::Any,
-    vi::VarInfo) = observe(nothing, ds, value, vi)
+dot_observe(spl::Sampler{<:Hamiltonian},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray, vi::VarInfo) = dot_observe(nothing, ds, value, vi)
 
 
 ####
