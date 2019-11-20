@@ -1,4 +1,10 @@
-macro varinfo() end
+macro varinfo()
+    :(throw(_error_msg()))
+end
+macro logpdf()
+    :(throw(_error_msg()))
+end
+_error_msg() = "This macro is only for use in the `Turing.@model` macro and not for external use."
 
 """
 Usage: @varname x[1,2][1+5][45][3]
@@ -169,7 +175,8 @@ end
 Generating a model: `model_generator(x_value)::Model`.
 """
 macro model(input_expr)
-    build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> build_output
+    build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> 
+        replace_logpdf! |> build_output
 end
 
 """
@@ -252,6 +259,19 @@ function replace_vi!(model_info)
     ex = model_info[:main_body]
     vi = model_info[:main_body_names][:vi]
     ex = MacroTools.postwalk(x -> @capture(x, @varinfo()) ? vi : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+
+"""
+    replace_logpdf!(model_info)
+
+Replaces @logpdf() expressions to the VarInfo instance.
+"""
+function replace_logpdf!(model_info)
+    ex = model_info[:main_body]
+    vi = model_info[:main_body_names][:vi]
+    ex = MacroTools.postwalk(x -> @capture(x, @logpdf()) ? :($vi.logp) : x, ex)
     model_info[:main_body] = ex
     return model_info
 end

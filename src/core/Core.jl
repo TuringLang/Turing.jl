@@ -52,6 +52,7 @@ export  @model,
         verifygrad,
         gradient_logp_forward,
         gradient_logp_reverse,
-        @varinfo
+        @varinfo,
+        @logpdf
 
 end # module
