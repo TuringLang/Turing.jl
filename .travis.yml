@@ -1,5 +1,10 @@
 language: julia
 
+# avoids duplicate tests in PRs
+branches:
+  only:
+    - master
+
 matrix:
   fast_finish: true
 
