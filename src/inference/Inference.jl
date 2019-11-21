@@ -652,7 +652,7 @@ function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
 
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 1))
+    vns = getvn.(1:size(var, 2))
     r = get_and_set_val!(vi, vns, dist, spl)
     lp = sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
     var .= r
@@ -668,7 +668,7 @@ function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = vec(getvn.(CartesianIndices(var)))
     r = get_and_set_val!(vi, vns, dists, spl)
-    lp = sum(logpdf_with_trans.(dists, r, Ref(istrans(vi, vns[1]))))
+    lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
     var .= r
     return var, lp
 end
