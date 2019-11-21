@@ -33,15 +33,14 @@ function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
 
     # Use finite differencing to compute reverse-mode sensitivities.
     x̄s_fdm = FDM.j′vp(central_fdm(5, 1), f, ȳ, x...)
-    if length(x) == 1
-        x̄s_fdm = (x̄s_fdm,)
-    end
 
     # Check that forwards-pass produces the correct answer.
     @test isapprox(y, Tracker.data(y_tracker), atol=atol, rtol=rtol)
 
     # Check that reverse-mode sensitivities are correct.
-    @test all([isapprox(Tracker.data(x̄_tracker), x̄_fdm, atol=atol, rtol=rtol) for (x̄_tracker, x̄_fdm) in zip(x̄s_tracker, x̄s_fdm)])
+    @test all(zip(x̄s_tracker, x̄s_fdm)) do (x̄_tracker, x̄_fdm)
+        isapprox(Tracker.data(x̄_tracker), x̄_fdm; atol=atol, rtol=rtol)
+    end
 end
 
 # See `test_reverse_mode_ad` for details.

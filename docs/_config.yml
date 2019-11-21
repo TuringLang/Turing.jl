@@ -18,7 +18,7 @@ title: Turing.jl
 email: support@turing.jl
 author: The Turing Team
 description: > # this means to ignore newlines until "baseurl:"
-  Turing is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.
+  Turing: A robust, efficient and modular library for general-purpose probabilistic programming.
 
 # the subpath of your site, e.g. /blog
 baseurl: "/dev"

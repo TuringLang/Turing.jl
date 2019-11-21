@@ -16,6 +16,9 @@
   - title: "Automatic Differentiation"
     url: "docs/using-turing/autodiff"
 
+  - title: "Performance Tips"
+    url: "docs/using-turing/performancetips"
+
   - title: "Using DynamicHMC"
     url: "docs/using-turing/dynamichmc"
 
