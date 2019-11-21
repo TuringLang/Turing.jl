@@ -33,9 +33,6 @@ function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
 
     # Use finite differencing to compute reverse-mode sensitivities.
     x̄s_fdm = FDM.j′vp(central_fdm(5, 1), f, ȳ, x...)
-    if length(x) == 1
-        x̄s_fdm = (x̄s_fdm,)
-    end
 
     # Check that forwards-pass produces the correct answer.
     @test isapprox(y, Tracker.data(y_tracker), atol=atol, rtol=rtol)
