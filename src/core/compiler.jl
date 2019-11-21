@@ -300,25 +300,29 @@ function tilde(left, right, model_info)
     vi = model_info[:main_body_names][:vi]
     ctx = model_info[:main_body_names][:ctx]
     sampler = model_info[:main_body_names][:sampler]
+    temp_right = gensym(:temp_right)
     out = gensym(:out)
     lp = gensym(:lp)
+    preprocessed = gensym(:preprocessed)
     assert_ex = :(Turing.Core.assert_dist($right, msg = $(wrong_dist_errormsg(@__LINE__))))
     if left isa Symbol || left isa Expr
         ex = quote
+            $temp_right = $right
             $assert_ex
-            $out = Turing.Inference.tilde($ctx, $sampler, $right, Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left), $vi)
-            if $out isa Tuple
-                $left, $lp = $out
-                $vi.logp += $lp
+            $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
+            if $preprocessed isa Turing.VarName
+                $out = Turing.Inference.tilde($ctx, $sampler, $temp_right, $preprocessed, $vi)
+                $left = $out[1]
+                $vi.logp += $out[2]
             else
-                $vi.logp += $out
+                $vi.logp += Turing.Inference.tilde($ctx, $sampler, $temp_right, $preprocessed, $vi)
             end
         end
     else
         ex = quote
+            $temp_right = $right
             $assert_ex
-            $out = Turing.observe($sampler, $right, $left, $vi)
-            $vi.logp += $out
+            $vi.logp += Turing.Inference.tilde($ctx, $sampler, $temp_right, $left, $vi)
         end
     end
     return ex
@@ -331,26 +335,33 @@ function dot_tilde(left, right, model_info)
     ctx = model_info[:main_body_names][:ctx]
     sampler = model_info[:main_body_names][:sampler]
     out = gensym(:out)
-    temp = gensym(:temp)
+    temp_left = gensym(:temp_left)
+    temp_right = gensym(:temp_right)
+    preprocessed = gensym(:preprocessed)
     lp = gensym(:lp)
-    assert_ex = :(Turing.Core.assert_dist($right, msg = $(wrong_dist_errormsg(@__LINE__))))
+    assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
     if left isa Symbol || left isa Expr
         ex = quote
+            $temp_right = $right
             $assert_ex
-            $out = Turing.Inference.dot_tilde($ctx, $sampler, $right, $left, Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left), $vi)
-            if $out isa Tuple
-                $temp, $lp = $out
-                $left .= $temp
+            $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
+            if $preprocessed isa Turing.VarName
+                $temp_left = $left
+                $out = Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $preprocessed, $vi)
+                $lp = $out[2]
+                $left .= $out[1]
                 $vi.logp += $lp
             else
-                $vi.logp += $out
+                $temp_left = $preprocessed
+                $vi.logp += Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vi)
             end
         end
     else
         ex = quote
+            $temp_left = $left
+            $temp_right = $right
             $assert_ex
-            $out = Turing.dot_observe($sampler, $right, $left, $vi)
-            $vi.logp += $out
+            $vi.logp += Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vi)
         end
     end
     return ex
