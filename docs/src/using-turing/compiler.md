@@ -179,8 +179,8 @@ The second branch of the `if`-block is to handle partially missing data converti
 
 In order to track random variables in the sampling process, `Turing` uses the struct `VarName{sym}` which acts as a random variable identifier generated at runtime. The `VarName` of a random variable is generated from the expression on the LHS of a `~` statement when the symbol on the LHS is in `P`. Every `vn::VarName{sym}` has a symbol `sym` which is the symbol of the Julia variable in the model that the random variable belongs to. For example, `x[1] ~ Normal()` will generate an instance of `VarName{:x}` assuming `x` is in `P`. Every `vn::VarName` also has a field `indexing` which stores the indices requires to access the random variable from the Julia variable indicated by `sym`. For example, `x[1] ~ Normal()` will generate a `vn::VarName{:x}` with `vn.indexing == "[1]"`. `VarName` also supports hierarchical arrays and range indexing. Some more examples:
 - `x[1] ~ Normal()` will generate a `VarName{:x}` with `indexing == "[1]"`.
-- `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName{:x}` with `indexing == "[Colon(), 1]"`.
-- `x[:,1][2] ~ Normal()` will generate a `VarName{:x}` with `indexing == "[Colon(), 1][2]"`.
+- `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName{:x}` with `indexing == "[Colon(),1]"`.
+- `x[:,1][2] ~ Normal()` will generate a `VarName{:x}` with `indexing == "[Colon(),1][2]"`.
 
 # `VarInfo`
 
