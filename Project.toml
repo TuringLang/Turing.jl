@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.7.2"
+version = "0.7.3"
 
 [deps]
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
@@ -36,8 +36,8 @@ DistributionsAD = "0.1.0"
 FiniteDifferences = "0.9"
 ForwardDiff = "0.10.3"
 Libtask = "0.3.1"
+MCMCChains = "0.3.15"
 LogDensityProblems = "^0.9"
-MCMCChains = "0.3.12"
 MacroTools = "0.5.1"
 PDMats = "0.9.9"
 ProgressMeter = "1.0.0"
