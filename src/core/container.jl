@@ -1,31 +1,22 @@
-mutable struct Trace{Tspl <: AbstractSampler, Tvi <: AbstractVarInfo, Tmodel <: Model}
-    task  ::  Task
-    vi    ::  Tvi
-    spl   ::  Tspl
-    model ::  Tmodel
-    Trace{Tspl, Tvi, Tmodel}() where {Tspl, Tvi, Tmodel} = new()
-    function Trace{SampleFromPrior}(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
-        res = new{SampleFromPrior, typeof(vi), typeof(m)}()
-        res.vi = vi
-        res.model = m
-        res.spl = SampleFromPrior()
-        return res
+mutable struct Trace{Tspl<:AbstractSampler, Tvi<:AbstractVarInfo, Tmodel<:Model}
+    model::Tmodel
+    spl::Tspl
+    vi::Tvi
+    task::Task
+
+    function Trace{SampleFromPrior}(model::Model, spl::AbstractSampler, vi::AbstractVarInfo)
+        return new{SampleFromPrior,typeof(vi),typeof(model)}(model, SampleFromPrior(), vi)
     end
-    function Trace{T}(m::Model, spl::AbstractSampler, vi::AbstractVarInfo) where T <: Sampler
-        res = new{T, typeof(vi), typeof(m)}()
-        res.model = m
-        res.spl = spl
-        res.vi = vi
-        return res
+    function Trace{S}(model::Model, spl::S, vi::AbstractVarInfo) where S<:Sampler
+        return new{S,typeof(vi),typeof(model)}(model, spl, vi)
     end
 end
+
 function Base.copy(trace::Trace)
-    newtrace = typeof(trace)()
-    newtrace.vi = deepcopy(trace.vi)
-    newtrace.task = Base.copy(trace.task)
-    newtrace.spl = trace.spl
-    newtrace.model = trace.model
-    return newtrace
+    vi = deepcopy(trace.vi)
+    res = Trace{typeof(trace.spl)}(trace.model, trace.spl, vi)
+    res.task = copy(trace.task)
+    return res
 end
 
 # NOTE: this function is called by `forkr`
@@ -33,7 +24,7 @@ function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo) where {T <: A
     res = Trace{T}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
-    if isa(res.task.storage, Nothing)
+    if res.task.storage === nothing
         res.task.storage = IdDict()
     end
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
@@ -44,7 +35,7 @@ function Trace(m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSample
     # CTask(()->f());
     res.vi.num_produce = 0
     res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )
-    if isa(res.task.storage, Nothing)
+    if res.task.storage === nothing
         res.task.storage = IdDict()
     end
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
@@ -81,19 +72,20 @@ Data structure for particle filters
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-mutable struct ParticleContainer{T<:Particle, F, Tvals <: Array{T}, TlogW <: Array{Float64}}
-    model :: F
-    num_particles :: Int
-    vals  :: Tvals
-    logWs :: TlogW       # Log weights (Trace) or incremental likelihoods (ParticleContainer)
-    logE  :: Float64     # Log model evidence
-    # conditional :: Union{Nothing,Conditional} # storing parameters, helpful for implementing rejuvenation steps
-    conditional :: Nothing # storing parameters, helpful for implementing rejuvenation steps
-    n_consume :: Int # helpful for rejuvenation steps, e.g. in SMC2
+mutable struct ParticleContainer{T<:Particle, F}
+    model::F
+    num_particles::Int
+    vals::Vector{T}
+    # logarithmic weights (Trace) or incremental log-likelihoods (ParticleContainer)
+    logWs::Vector{Float64}
+    # log model evidence
+    logE::Float64
+    # helpful for rejuvenation steps, e.g. in SMC2
+    n_consume::Int
 end
 ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
 function ParticleContainer{T}(m, n::Int) where {T}
-    ParticleContainer(m, n, Vector{T}(), Vector{Float64}(), 0.0, nothing, 0)
+    ParticleContainer(m, n, T[], Float64[], 0.0, 0)
 end
 
 Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
@@ -104,54 +96,59 @@ Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
 
 
 # registers a new x-particle in the container
-function Base.push!(pc :: ParticleContainer, p :: Particle)
+function Base.push!(pc::ParticleContainer, p::Particle)
     pc.num_particles += 1
     push!(pc.vals, p)
-    push!(pc.logWs, 0)
+    push!(pc.logWs, 0.0)
     pc
 end
 Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
 
-function Base.push!(pc :: ParticleContainer, n :: Int, spl :: Sampler, varInfo :: VarInfo)
-    vals  = Vector{eltype(pc.vals)}(undef,n)
-    logWs = zeros(eltype(pc.logWs), n)
-    for i=1:n
-        vals[i]  = Trace(pc.model, spl, varInfo)
+function Base.push!(pc::ParticleContainer, n::Int, spl::Sampler, varInfo::VarInfo)
+    vals = pc.vals
+    logWs = pc.logWs
+    model = pc.model
+    num_particles = pc.num_particles
+
+    # update number of particles
+    num_particles_new = num_particles + n
+    pc.num_particles = num_particles_new
+
+    # add additional particles and weights
+    resize!(vals, num_particles_new)
+    resize!(logWs, num_particles_new)
+    @inbounds for i in (num_particles + 1):num_particles_new
+        vals[i] = Trace(model, spl, varInfo)
+        logWs[i] = 0.0
     end
-    append!(pc.vals, vals)
-    append!(pc.logWs, logWs)
-    pc.num_particles += n
+
     pc
 end
 
 # clears the container but keep params, logweight etc.
-function Base.empty!(pc :: ParticleContainer)
+function Base.empty!(pc::ParticleContainer)
     pc.num_particles = 0
-    pc.vals  = Vector{Particle}()
-    pc.logWs = Vector{Float64}()
+    pc.vals  = eltype(pc.vals)[]
+    pc.logWs = Float64[]
     pc
 end
 
 # clones a theta-particle
-function Base.copy(pc :: ParticleContainer)
-    particles = collect(pc)
-    newpc     = similar(pc)
-    for p in particles
-        newp = fork(p)
-        push!(newpc, newp)
-    end
-    newpc.logE        = pc.logE
-    newpc.logWs       = deepcopy(pc.logWs)
-    newpc.conditional = deepcopy(pc.conditional)
-    newpc.n_consume   = pc.n_consume
-    newpc
+function Base.copy(pc::ParticleContainer)
+    # fork particles
+    vals = eltype(pc.vals)[fork(p) for p in pc.vals]
+
+    # copy weights
+    logWs = copy(pc.logWs)
+
+    ParticleContainer(pc.model, pc.num_particles, vals, logWs, pc.logE, pc.n_consume)
 end
 
 # run particle filter for one step, return incremental likelihood
 function Libtask.consume(pc :: ParticleContainer)
     @assert pc.num_particles == length(pc)
     # normalisation factor: 1/N
-    _, z1      = weights(pc)
+    z1 = logZ(pc)
     n = length(pc.vals)
 
     particles = collect(pc)
@@ -176,7 +173,7 @@ function Libtask.consume(pc :: ParticleContainer)
         error("[consume]: mis-aligned execution traces, num_particles= $(n), num_done=$(num_done).")
     else
         # update incremental likelihoods
-        _, z2      = weights(pc)
+        z2 = logZ(pc)
         res = increase_logevidence(pc, z2 - z1)
         pc.n_consume += 1
         # res = increase_loglikelihood(pc, z2 - z1)
@@ -185,18 +182,16 @@ function Libtask.consume(pc :: ParticleContainer)
     res
 end
 
-function weights(pc :: ParticleContainer)
-    @assert pc.num_particles == length(pc)
-    logWs = pc.logWs
-    Ws = exp.(logWs .- maximum(logWs))
-    logZ = log(sum(Ws)) + maximum(logWs)
-    Ws = Ws ./ sum(Ws)
-    return Ws, logZ
-end
+# compute the normalized weights
+weights(pc::ParticleContainer) = softmax(pc.logWs)
 
+# compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
+logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
+
+# compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights
 function effectiveSampleSize(pc :: ParticleContainer)
-    Ws, _ = weights(pc)
-    ess = 1.0 / sum(Ws .^ 2) # sum(Ws) ^ 2 = 1.0, because weights are normalised
+    Ws = weights(pc)
+    return inv(sum(abs2, Ws))
 end
 
 increase_logweight(pc :: ParticleContainer, t :: Int, logw :: Float64) =
@@ -215,18 +210,20 @@ function resample!(
     @assert n1 == length(particles)
 
     # resample
-    Ws, _ = weights(pc)
+    Ws = weights(pc)
 
     # check that weights are not NaN
-    @assert !any(isnan.(Ws))
+    @assert !any(isnan, Ws)
 
-    n2    = isa(ref, Nothing) ? n1 : n1-1
-    indx  = randcat(Ws, n2)
+    n2 = ref === nothing ? n1 : n1 - 1
+    indx = randcat(Ws, n2)
 
     # fork particles
     empty!(pc)
     num_children = zeros(Int,n1)
-    map(i->num_children[i]+=1, indx)
+    for i in indx
+        num_children[i] += 1
+    end
     for i = 1:n1
         is_ref = particles[i] == ref
         p = is_ref ? fork(particles[i], is_ref) : particles[i]
@@ -244,22 +241,4 @@ function resample!(
     end
 
     pc
-end
-
-
-########### Auxilary Functions ###################
-
-# ParticleContainer: particles ==> (weight, results)
-function getsample(pc :: ParticleContainer, i :: Int, w :: Float64 = 0.)
-    p = pc.vals[i]
-    predicts = Sample(p.vi).value
-    predicts[:le] = pc.logE
-    return Sample(w, predicts)
-end
-
-function getsample(pc :: ParticleContainer)
-    w = pc.logE
-    Ws, z = weights(pc)
-    s = map((i)->getsample(pc, i, Ws[i]), 1:length(pc))
-    return exp.(w), s
 end

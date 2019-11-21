@@ -135,7 +135,7 @@ function sample(  model::Model,
                 )
 
     spl = Sampler(alg, model)
-    if resume_from != nothing
+    if resume_from !== nothing
         spl.selector = resume_from.info[:spl].selector
     end
     alg_str = "PMMH"
@@ -152,7 +152,7 @@ function sample(  model::Model,
     end
 
     # Init parameters
-    vi = if resume_from == nothing
+    vi = if resume_from === nothing
         vi_ = VarInfo(model)
     else
         resume_from.info[:vi]
@@ -184,7 +184,7 @@ function sample(  model::Model,
     accept_rate = sum(accept_his) / n  # calculate the accept rate
     println("  Accept rate         = $accept_rate;")
 
-    if resume_from != nothing   # concat samples
+    if resume_from !== nothing   # concat samples
       pushfirst!(samples, resume_from.info[:samples]...)
     end
     c = Chain(-Inf, samples)       # wrap the result by Chain

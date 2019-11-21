@@ -170,29 +170,29 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vi = VarInfo()
         model(vi, SampleFromUniform())
 
-        @test all(i->~istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        @test all(x -> ~istrans(vi, x), vi.vns)
         alg = HMC(0.1, 5)
         spl = Sampler(alg, model)
         v = copy(vi.vals)
         link!(vi, spl)
-        @test all(i->istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        @test all(x -> istrans(vi, x), vi.vns)
         invlink!(vi, spl)
-        @test all(i->~istrans(vi, vi.vns[i]), 1:length(vi.vns))
+        @test all(x -> ~istrans(vi, x), vi.vns)
         @test vi.vals == v
 
         vi = TypedVarInfo(vi)
         alg = HMC(0.1, 5)
         spl = Sampler(alg, model)
-        @test all(i->~istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
-        @test all(i->~istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        @test all(x -> ~istrans(vi, x), vi.metadata.s.vns)
+        @test all(x -> ~istrans(vi, x), vi.metadata.m.vns)
         v_s = copy(vi.metadata.s.vals)
         v_m = copy(vi.metadata.m.vals)
         link!(vi, spl)
-        @test all(i->istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
-        @test all(i->istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        @test all(x -> istrans(vi, x), vi.metadata.s.vns)
+        @test all(x -> istrans(vi, x), vi.metadata.m.vns)
         invlink!(vi, spl)
-        @test all(i->~istrans(vi, vi.metadata.s.vns[i]), 1:length(vi.metadata.s.vns))
-        @test all(i->~istrans(vi, vi.metadata.m.vns[i]), 1:length(vi.metadata.m.vns))
+        @test all(x -> ~istrans(vi, x), vi.metadata.s.vns)
+        @test all(x -> ~istrans(vi, x), vi.metadata.m.vns)
         @test vi.metadata.s.vals == v_s
         @test vi.metadata.m.vals == v_m
     end
@@ -470,11 +470,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
         g_demo_f(vi, SampleFromPrior())
         Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
         vi1 = pg.state.vi
-        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+        @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set{Selector}(), Set{Selector}()]
 
         g_demo_f(vi1, hmc)
-        @test vcat([getfield(vi1.metadata, sym).gids for sym in keys(vi1.metadata)]...) == 
+        @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set([hmc.selector]), Set([hmc.selector])]
 
         g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)

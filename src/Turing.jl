@@ -140,25 +140,10 @@ using .Variational
 #     end
 # end
 
-@init @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
-    using ..Turing.LogDensityProblems: LogDensityProblems, AbstractLogDensityProblem, ValueGradient
-    struct FunctionLogDensity{F} <: AbstractLogDensityProblem
-        dimension::Int
-        f::F
-    end
-
-    LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
-
-    function LogDensityProblems.logdensity(
-        ::Type{ValueGradient},
-        ℓ::FunctionLogDensity,
-        x::AbstractVector,
-    )
-        return ℓ.f(x)::ValueGradient
-    end
-end
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
-    using ..Turing.DynamicHMC: DynamicHMC, NUTS_init_tune_mcmc
+    using Pkg; 
+    Pkg.installed()["DynamicHMC"] < v"2.0" && error("Please upgdate your DynamicHMC, v1.x is no longer supported")
+    using ..Turing.DynamicHMC: DynamicHMC, mcmc_with_warmup
     include("contrib/inference/dynamichmc.jl")
 end
 
@@ -211,6 +196,7 @@ export  @model,                 # modelling
         FlatPos,
         BinomialLogit,
         VecBinomialLogit,
-        OrderedLogistic
+        OrderedLogistic,
+        LogPoisson
 
 end

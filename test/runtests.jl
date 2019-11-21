@@ -19,8 +19,9 @@ include("test_utils/AllUtils.jl")
 
     @testset "inference" begin
         @testset "samplers" begin
-            # DynamicHMC version 1 has a bug on 32bit pllatforms
-            if Int === Int64 && Pkg.installed()["DynamicHMC"] < v"2"
+            # FIXME: DynamicHMC version 1 has (??) a bug on 32bit platforms (but we were too
+            # lazy to open an issue so Tamas doesn't know about it), retest with 2.0
+            if Int === Int64 && Pkg.installed()["DynamicHMC"].major == 2
                 include("contrib/inference/dynamichmc.jl")
             end
             include("inference/gibbs.jl")

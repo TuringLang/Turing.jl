@@ -4,8 +4,8 @@ function get_stage()
         return "nonnumeric"
     end
 
-    # Handle Travis specially.
-    if get(ENV, "TRAVIS", "") == "true"
+    # Handle Travis and Github Actions specially.
+    if get(ENV, "TRAVIS", "") == "true" || get(ENV, "GITHUB_ACTIONS", "") == "true"
         if "STAGE" in keys(ENV)
             return ENV["STAGE"]
         else

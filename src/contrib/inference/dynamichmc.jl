@@ -5,12 +5,37 @@ using ..Turing.Interface: init_callback, NoCallback
 ###
 struct DynamicNUTS{AD, space} <: Hamiltonian{AD} end
 
+using LogDensityProblems: LogDensityProblems
+
+struct FunctionLogDensity{F}
+    dimension::Int
+    f::F
+end
+
+LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
+
+function LogDensityProblems.capabilities(::Type{<:FunctionLogDensity})
+    LogDensityProblems.LogDensityOrder{1}()
+end
+
+function LogDensityProblems.logdensity(ℓ::FunctionLogDensity, x::AbstractVector)
+    first(ℓ.f(x))
+end
+
+function LogDensityProblems.logdensity_and_gradient(ℓ::FunctionLogDensity,
+                                                    x::AbstractVector)
+    ℓ.f(x)
+end
+
 """
     DynamicNUTS()
 
-Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package.
-To use it, make sure you have the DynamicHMC package installed.
+Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package. To use it, make
+sure you have the DynamicHMC package (version `2.*`) loaded:
 
+```julia
+using DynamicHMC
+``
 """
 DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
 DynamicNUTS{AD}() where AD = DynamicNUTS{AD, ()}()
@@ -35,8 +60,7 @@ function sample_init!(
 )
     # Set up lp function.
     function _lp(x)
-        value, deriv = gradient_logp(x, spl.state.vi, model, spl)
-        return ValueGradient(value, deriv)
+        gradient_logp(x, spl.state.vi, model, spl)
     end
 
     runmodel!(model, spl.state.vi, SampleFromUniform())
@@ -49,13 +73,16 @@ function sample_init!(
     # Set the parameters to a starting value.
     initialize_parameters!(spl; kwargs...)
 
-    spl.state.draws, _ = NUTS_init_tune_mcmc(
+    results = mcmc_with_warmup(
+        rng,
         FunctionLogDensity(
             length(spl.state.vi[spl]),
             _lp
         ),
         N
     )
+
+    spl.state.draws = results.chain
 end
 
 function step!(
@@ -67,7 +94,7 @@ function step!(
 )
     # Pop the next draw off the vector.
     draw = popfirst!(spl.state.draws)
-    spl.state.vi[spl] = draw.q
+    spl.state.vi[spl] = draw
     return Transition(spl)
 end
 
