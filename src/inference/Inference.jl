@@ -709,13 +709,13 @@ end
 end
 
 # observe
-function dot_tilde(ctx::DefaultContext, sampler, right, left, _, vi)
+function dot_tilde(ctx::DefaultContext, sampler, right, left, vi)
     return _dot_tilde(sampler, right, left, vi)
 end
-function dot_tilde(ctx::LikelihoodContext, sampler, right, left, _, vi)
+function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vi)
     return _dot_tilde(sampler, right, left, vi)
 end
-function dot_tilde(ctx::BatchContext, sampler, right, left, _, vi)
+function dot_tilde(ctx::BatchContext, sampler, right, left, vi)
     return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
 end
 
