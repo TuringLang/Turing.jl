@@ -618,7 +618,7 @@ end
 
 # Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
 function _dot_tilde(sampler, right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, left::AbstractMatrix{>:AbstractVector}, vn::VarName, vi)
-    throw("Ambiguous `lhs .~ rhs` syntax. The broadcasting can either be column-wise following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
+    throw("Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be column-wise following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
 end
 function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName, vi)
     name = right.name
