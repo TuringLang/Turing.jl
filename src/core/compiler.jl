@@ -348,9 +348,8 @@ function dot_tilde(left, right, model_info)
             if $preprocessed isa Turing.VarName
                 $temp_left = $left
                 $out = Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $preprocessed, $vi)
-                $lp = $out[2]
                 $left .= $out[1]
-                $vi.logp += $lp
+                $vi.logp += $out[2]
             else
                 $temp_left = $preprocessed
                 $vi.logp += Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vi)
@@ -366,6 +365,12 @@ function dot_tilde(left, right, model_info)
     end
     return ex
 end
+
+isnumbertype(T::Type{<:AbstractFloat}) = true
+isnumbertype(T::Type{<:AbstractArray}) = true
+isnumbertype(T) = false
+hasmissing(T::Type{<:AbstractArray{>:Missing}}) = true
+hasmissing(T) = false
 
 """
     build_output(model_info)
@@ -399,11 +404,12 @@ function build_output(model_info)
         temp_var = gensym(:temp_var)
         varT = gensym(:varT)
         push!(unwrap_data_expr.args, quote
+            local $var
             $temp_var = $model.args.$var
             $varT = typeof($temp_var)
-            if $temp_var isa Type && ($temp_var <: AbstractFloat || $temp_var <: AbstractArray)
+            if Turing.Core.isnumbertype($temp_var)
                 $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
-            elseif $varT <: Array && Missing <: eltype($varT)
+            elseif Turing.Core.hasmissing($varT)
                 $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
             else
                 $var = $temp_var
