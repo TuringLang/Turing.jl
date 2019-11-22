@@ -19,11 +19,11 @@ The following terminology will be used in this section:
 
 The following are the main jobs of the `@model` macro:
 1. Parse `~` lines, e.g. `y ~ Normal(c*x, 1.0)`
-2. Figure out the set of symbols comprising the data `D` and the set of symbols comprising the parameters `P`
+2. Figure out if a variable belongs to the data `D` and or to the parameters `P`
 3. Enable the handling of missing data variables in `D` when defining a `Model` and treating them as parameter variables in `P` instead
 4. Enable the tracking of random variables using the data structures `VarName` and `VarInfo`
-5. Change `~` lines with a variable in `P` on the LHS to a call to the `assume` function
-6. Change `~` lines with a variable in `D` on the LHS to a call to the `observe` function
+5. Change `~` lines with a variable in `P` on the LHS to a call to an `assume`-block
+6. Change `~` lines with a variable in `D` on the LHS to a call to an `observe`-block
 7. Enable type stable automatic differentiation of the model using type parameters
 
 Let's take the following model as an example:
@@ -35,7 +35,7 @@ Let's take the following model as an example:
     p = TV(undef, 2)
     p[1] ~ InverseGamma(2, 3)
     p[2] ~ Normal(0, 1.0)
-    x[1:2] .~ Normal(p[2], sqrt(p[1]))
+    @. x[1:2] ~ Normal(p[2], sqrt(p[1]))
     x[3] ~ Normal()
     y ~ Normal(p[2], sqrt(p[1]))
 end
@@ -68,7 +68,7 @@ and returns it as a dictionary called `model_info`.
 
 ## `replace_tilde!`
 
-After some model information have been extracted, `replace_tilde!` replaces the `L ~ R` lines in the model with the output of `tilde(L, R, model_info)` where `L` and `R` are either expressions or symbols. `L` can also be a constant literal. The `replace_tilde!` function also replaces expressions of the form `L .~ R` with the output of `dot_tilde(L, R, model_info)`.
+After some model information have been extracted, `replace_tilde!` replaces the `L ~ R` lines in the model with the output of `tilde(L, R, model_info)` where `L` and `R` are either expressions or symbols. `L` can also be a constant literal. The `replace_tilde!` function also replaces expressions of the form `@. L ~ R` with the output of `dot_tilde(L, R, model_info)`.
 
 In the above example, `p[1] ~ InverseGamma(2, 3)` is replaced with:
 ```julia
@@ -93,7 +93,7 @@ If `@preprocess` treats `p[1]` as a random variable, it will return a variable i
 
 When the output of `@preprocess` is a `VarName`, i.e. `p[1]` is a random variable, the `Turing.Inference.tilde` function will dispatch to a different method than when the output is of another type, i.e `p[1]` is an observation. In the former case, `Turing.Inference.tilde` returns 2 outputs, the value of the random variable and the `log` probability, while in the latter case, only the `log` probability is returned. The `log` probabilities then get accumulated and if `p[1]` is a random variable, the first returned output by `Turing.Inference.tilde` gets assigned to it.
 
-The `dot_tilde!` function does something similar for expressions of the form `L .~ R`. Let's take `x[1:2] .~ Normal(p[2], sqrt(p[1]))` as an example. This expressions replaced with:
+The `dot_tilde!` function does something similar for expressions of the form `@. L ~ R` (and `L .~ R` in Julia 1.1 and above). Let's take `@. x[1:2] ~ Normal(p[2], sqrt(p[1]))` as an example. This expressions replaced with:
 ```julia
 temp_right = Normal(p[2], sqrt(p[1]))
 Turing.Core.assert_dist(temp_right, msg = ...)
@@ -108,7 +108,7 @@ else
     vi.logp += Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vi)
 end
 ```
-The main difference in the expanded code between `~` and `.~` is that the former doesn't assume whatever on the LHS of `~` to be defined, it can be a new Julia variable in the scope, while `.~` assume the LHS already exists. The LHS is also always input to the `dot_tilde` function but not the `tilde` function.
+The main difference in the expanded code between `L ~ R` and `@. L ~ R` is that the former doesn't assume `L` to be defined, it can be a new Julia variable in the scope, while the latter assumes `L` already exists. `L` is also always input to the `dot_tilde` function but not the `tilde` function.
 
 ## `replace_vi!` and `replace_logpdf!`
 
@@ -150,7 +150,7 @@ The above 2 methods enable constructing the model using positional or keyword ar
 
 ## `inner_function`
 
-The main method `inner_function` does some pre-processing defining all the input variables from the model definition, `x`, `y` and `TV` in the example above. Then the rest of the model body is run as normal Julia code with the `~` and `.~` lines replaced with the calls to `Inference.tilde` and `Inference.dot_tilde` respectively as shown earlier.
+The main method `inner_function` does some pre-processing defining all the input variables from the model definition, `x`, `y` and `TV` in the example above. Then the rest of the model body is run as normal Julia code with the `L ~ R` and `@. L ~ R` lines replaced with the calls to `Inference.tilde` and `Inference.dot_tilde` respectively as shown earlier.
 ```julia
 function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx::AbstractContext, model)
     temp_x = model.args.x
@@ -173,7 +173,7 @@ end
 ```
 As one can see above, `x`, `y` and `TV` are defined in the method body using an `if`-block followed by the rest of the code. The first branch of this `if`-block is run if the variable is a number or array type, such as `TV = Vector{Float64}`. One of the purposes of `get_matching_type` is to check if `sampler` requires automatic differentiation, and to modify `TV` accordingly. For example, when using `ForwardDiff` for automatic differentiation, `TV` will be defined as some concrete subtype of `Vector{<:ForwardDiff.Dual}`. This same function is also used to replace `Array` with `Libtask.TArray` types when a particle sampler is used.
 
-The second branch of the `if`-block is to handle partially missing data converting the type of the input vector to another type befitting of the sampler used, whether it is for automatic differentiation or for particle samplers. Finally, the third branch is the one that will be run for `x` and `y` above simply assigning these names to `model.args.x` and `model.args.y` respectively. The main model body is then the same model body passed in by the user after replacing `~`, `.~`, `@varinfo()` and `@logpdf()` as explained eariler.
+The second branch of the `if`-block is to handle partially missing data converting the type of the input vector to another type befitting of the sampler used, whether it is for automatic differentiation or for particle samplers. Finally, the third branch is the one that will be run for `x` and `y` above simply assigning these names to `model.args.x` and `model.args.y` respectively. The main model body is then the same model body passed in by the user after replacing `L ~ R`, `@. L ~ R`, `@varinfo()` and `@logpdf()` as explained eariler.
 
 # `VarName`
 
