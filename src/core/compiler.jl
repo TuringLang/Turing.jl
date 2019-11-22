@@ -366,11 +366,12 @@ function dot_tilde(left, right, model_info)
     return ex
 end
 
-isnumbertype(T::Type{<:AbstractFloat}) = true
-isnumbertype(T::Type{<:AbstractArray}) = true
-isnumbertype(T) = false
+is_number_or_array_type(T::Type{<:AbstractFloat}) = true
+is_number_or_array_type(T::Type{<:AbstractArray}) = true
+is_number_or_array_type(T) = false
+hasmissing(T::Type{<:AbstractArray{TA}}) where {TA <: AbstractArray} = hasmissing(TA)
 hasmissing(T::Type{<:AbstractArray{>:Missing}}) = true
-hasmissing(T) = false
+hasmissing(T::Type) = false
 
 """
     build_output(model_info)
@@ -407,7 +408,7 @@ function build_output(model_info)
             local $var
             $temp_var = $model.args.$var
             $varT = typeof($temp_var)
-            if Turing.Core.isnumbertype($temp_var)
+            if Turing.Core.is_number_or_array_type($temp_var)
                 $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
             elseif Turing.Core.hasmissing($varT)
                 $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)

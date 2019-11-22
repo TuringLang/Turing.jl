@@ -155,9 +155,9 @@ The main method `inner_function` does some pre-processing defining all the input
 function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx::AbstractContext, model)
     temp_x = model.args.x
     xT = typeof(temp_x)
-    if temp_x isa Type && (temp_x <: AbstractFloat || temp_x <: AbstractArray)
+    if Turing.Core.is_number_or_array_type(temp_x)
         x = Turing.Core.get_matching_type(sampler, vi, temp_x)
-    elseif xT <: Array && Missing <: eltype(xT)
+    elseif Turing.Core.hasmissing(xT)
         x = Turing.Core.get_matching_type(sampler, vi, xT)(temp_x)
     else
         x = temp_x
@@ -171,7 +171,7 @@ function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx
     ... # Main model body
 end
 ```
-As one can see above, `x`, `y` and `TV` are defined in the method body using an `if`-block followed by the rest of the code. The first branch of this `if`-block is run if the variable is a type, such as `TV = Vector{Float64}`. The purpose of `get_matching_type` is to check if `sampler` requires automatic differentiation, and to modify `TV` accordingly. For example, when using `ForwardDiff` for automatic differentiation, `TV` will be defined as some concrete subtype of `Vector{<:ForwardDiff.Dual}`. This same function is also used to replace `Array` with `Libtask.TArray` types when a particle sampler is used.
+As one can see above, `x`, `y` and `TV` are defined in the method body using an `if`-block followed by the rest of the code. The first branch of this `if`-block is run if the variable is a number or array type, such as `TV = Vector{Float64}`. One of the purposes of `get_matching_type` is to check if `sampler` requires automatic differentiation, and to modify `TV` accordingly. For example, when using `ForwardDiff` for automatic differentiation, `TV` will be defined as some concrete subtype of `Vector{<:ForwardDiff.Dual}`. This same function is also used to replace `Array` with `Libtask.TArray` types when a particle sampler is used.
 
 The second branch of the `if`-block is to handle partially missing data converting the type of the input vector to another type befitting of the sampler used, whether it is for automatic differentiation or for particle samplers. Finally, the third branch is the one that will be run for `x` and `y` above simply assigning these names to `model.args.x` and `model.args.y` respectively. The main model body is then the same model body passed in by the user after replacing `~`, `.~`, `@varinfo()` and `@logpdf()` as explained eariler.
 
