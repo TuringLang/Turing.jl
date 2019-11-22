@@ -251,21 +251,21 @@ function replace_logpdf!(model_info)
     return model_info
 end
 
-replace_tilde_body = """
+"""
 \"""
     replace_tilde!(model_info)
 
-Replaces ~ expressions to observation or assumption expressions, updating `model_info`.
+Replaces ~ expressions with observation or assumption expressions, updating `model_info`.
 \"""
 function replace_tilde!(model_info)
     ex = model_info[:main_body]
-    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
+    ex = MacroTools.postwalk(x -> @capture(x, @. L_ ~ R_) ? dot_tilde(L, R, model_info) : x, ex)
     $(VERSION >= v"1.1" ? "ex = MacroTools.postwalk(x -> @capture(x, L_ .~ R_) ? dot_tilde(L, R, model_info) : x, ex)" : "")
+    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
     model_info[:main_body] = ex
     return model_info
 end
-"""
-eval(Meta.parse(replace_tilde_body))
+""" |> Meta.parse |> eval
 
 """
     tilde(left, right, model_info)
@@ -282,7 +282,7 @@ function tilde(left, right, model_info)
     out = gensym(:out)
     lp = gensym(:lp)
     preprocessed = gensym(:preprocessed)
-    assert_ex = :(Turing.Core.assert_dist($right, msg = $(wrong_dist_errormsg(@__LINE__))))
+    assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
     if left isa Symbol || left isa Expr
         ex = quote
             $temp_right = $right
