@@ -147,32 +147,7 @@ Model definition:
 end
 ```
 
-Expanded model definition
-
-```julia
-# Allows passing arguments as kwargs
-model_generator(; x, y)) = model_generator(x, y)
-function model_generator(x, y)
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
-        if model.args.x isa Type && (model.args.x <: AbstractFloat || model.args.x <: AbstractArray)
-            x = Turing.Core.get_matching_type(sampler, vi, model.args.x)
-        else
-            x = model.args.x
-        end
-        if model.args.y isa Type && (model.args.y <: AbstractFloat || model.args.y <: AbstractArray)
-            y = Turing.Core.get_matching_type(sampler, vi, model.args.y)
-        else
-            y = model.args.y
-        end
-
-        vi.logp = 0
-        ...
-    end
-    return Turing.Model(inner_function, (x = x, y = y))
-end
-```
-
-Generating a model: `model_generator(x_value)::Model`.
+To generate a `Turing.Model`, call `model_generator(x_value)`.
 """
 macro model(input_expr)
     build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> 
