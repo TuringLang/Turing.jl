@@ -145,7 +145,7 @@ function step!(
     # update the master vi
     particle = pc.vals[iteration]
     params = tonamedtuple(particle.vi)
-    lp = getlogp(pc.vi)
+    lp = getlogp(particle.vi)
 
     return ParticleTransition(params, lp, pc.logE, Ws[iteration])
 end
