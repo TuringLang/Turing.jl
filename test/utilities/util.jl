@@ -21,7 +21,4 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @test isinf(StatsFuns.logit(1.0))
     @test !isnan(StatsFuns.logit(0.0))
     @test isinf(StatsFuns.logit(0.0))
-
-    @test Turing.Core.data(Dict(:y => 1, :x => 2, :z => 1), [:x, :y]) ==
-        (x = 2, y = 1)
 end

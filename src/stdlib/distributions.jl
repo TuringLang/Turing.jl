@@ -1,11 +1,17 @@
 import Random: AbstractRNG
 
-@static if isdefined(SpecialFunctions, :logbeta)
-    const logbeta = SpecialFunctions.logbeta
-elseif isdefined(SpecialFunctions, :lbeta)
-    const logbeta = SpecialFunctions.lbeta
-else
-    throw("Incompatible version of SpecialFunctions.")
+for f in (:beta, :gamma)
+    logfunc = Symbol(:log, f)
+    lfunc = Symbol(:l, f)
+    @eval begin
+        @static if isdefined(SpecialFunctions, $(QuoteNode(logfunc)))
+            const $logfunc = SpecialFunctions.$logfunc
+        elseif isdefined(SpecialFunctions, $(QuoteNode(lfunc)))
+            const $logfunc = SpecialFunctions.$lfunc
+        else
+            throw("Incompatible version of SpecialFunctions.")
+        end
+    end
 end
 
 # No info
