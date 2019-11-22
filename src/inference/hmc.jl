@@ -467,6 +467,7 @@ function dot_assume(spl::Sampler{<:Hamiltonian},
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
     vns = getvn.(1:size(var, 2))
+    updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans(dist, var, istrans(vi, vns[1])))
@@ -480,6 +481,7 @@ function dot_assume(spl::Sampler{<:Hamiltonian},
     @assert size(var) == size(dists)
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = vec(getvn.(CartesianIndices(var)))
+    updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans.(dists, var, istrans(vi, vns[1])))
