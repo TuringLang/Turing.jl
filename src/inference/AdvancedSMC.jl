@@ -84,7 +84,7 @@ function SMCState(
     M<:Model
 }
     vi = VarInfo(model)
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer(model, Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
@@ -117,7 +117,7 @@ function sample_init!(
     particles = T[Trace(model, spl, vi) for _ in 1:N]
 
     # create a new particle container
-    spl.state.particles = pc = ParticleContainer(model, particles, zeros(N), 0.0, 0)
+    spl.state.particles = pc = ParticleContainer(model, particles)
 
     while consume(pc) !== Val{:done}
         ess = effectiveSampleSize(pc)
@@ -236,7 +236,7 @@ function step!(
     end
 
     # create a new particle container
-    pc = ParticleContainer(model, particles, zeros(num_particles), 0.0, 0)
+    pc = ParticleContainer(model, particles)
 
     # run the particle filter
     while consume(pc) !== Val{:done}

@@ -10,12 +10,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "container.jl" begin
     @turing_testset "copy particle container" begin
-        pc = ParticleContainer{Trace}(x -> x * x)
+        pc = ParticleContainer(x -> x * x, Trace[])
         newpc = copy(pc)
 
         @test newpc.logE        == pc.logE
         @test newpc.logWs       == pc.logWs
         @test newpc.n_consume   == pc.n_consume
+        @test typeof(pc) === typeof(newpc)
     end
     @turing_testset "particle container" begin
         n = Ref(0)
@@ -38,14 +39,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
         end
 
-        pc = ParticleContainer{Trace}(fpc)
         model = Turing.Model{(:x,),()}(fpc, NamedTuple(), NamedTuple())
-        tr = Trace(pc.model, model, spl, Turing.VarInfo())
-        push!(pc, tr)
-        tr = Trace(pc.model, model, spl, Turing.VarInfo())
-        push!(pc, tr)
-        tr = Trace(pc.model, model, spl, Turing.VarInfo())
-        push!(pc, tr)
+        particles = [Trace(fpc, model, spl, Turing.VarInfo()) for _ in 1:3]
+        pc = ParticleContainer(fpc, particles)
 
         @test weights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)

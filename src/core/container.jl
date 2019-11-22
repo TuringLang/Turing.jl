@@ -82,49 +82,18 @@ mutable struct ParticleContainer{T<:Particle, F}
     # helpful for rejuvenation steps, e.g. in SMC2
     n_consume::Int
 end
-ParticleContainer{T}(m) where T = ParticleContainer{T}(m, 0)
-function ParticleContainer{T}(m, n::Int) where {T}
-    ParticleContainer(m, Vector{T}(undef, n), Float64[], 0.0, 0)
-end
 
-Base.collect(pc :: ParticleContainer) = pc.vals # prev: Dict, now: Array
-Base.length(pc :: ParticleContainer)  = length(pc.vals)
-Base.similar(pc :: ParticleContainer{T}) where T = ParticleContainer{T}(pc.model, 0)
-# pc[i] returns the i'th particle
-Base.getindex(pc :: ParticleContainer, i :: Real) = pc.vals[i]
+ParticleContainer(model, particles::Vector{<:Particle}) =
+    ParticleContainer(model, particles, zeros(length(particles)), 0.0, 0)
 
+Base.collect(pc::ParticleContainer) = pc.vals
+Base.length(pc::ParticleContainer) = length(pc.vals)
+Base.@propagate_inbounds Base.getindex(pc::ParticleContainer, i::Int) = pc.vals[i]
 
 # registers a new x-particle in the container
 function Base.push!(pc::ParticleContainer, p::Particle)
     push!(pc.vals, p)
     push!(pc.logWs, 0.0)
-    pc
-end
-Base.push!(pc :: ParticleContainer) = Base.push!(pc, eltype(pc.vals)(pc.model))
-
-function Base.push!(pc::ParticleContainer, n::Int, spl::Sampler, varInfo::VarInfo)
-    # compute total number of particles number of particles
-    n0 = length(pc)
-    ntotal = n0 + n
-
-    # add additional particles and weights
-    vals = pc.vals
-    logWs = pc.logWs
-    model = pc.model
-    resize!(vals, ntotal)
-    resize!(logWs, ntotal)
-    @inbounds for i in (n0 + 1):ntotal
-        vals[i] = Trace(model, spl, varInfo)
-        logWs[i] = 0.0
-    end
-
-    pc
-end
-
-# clears the container but keep params, logweight etc.
-function Base.empty!(pc::ParticleContainer)
-    pc.vals  = eltype(pc.vals)[]
-    pc.logWs = Float64[]
     pc
 end
 
