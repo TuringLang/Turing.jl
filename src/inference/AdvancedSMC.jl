@@ -302,7 +302,7 @@ function assume(  spl::Sampler{T},
         end
         acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     end
-    return r, zero(Real)
+    return r, 0
 end
 
 function dot_assume(  spl::Sampler{<:Union{PG,SMC}},
@@ -316,7 +316,7 @@ end
 
 function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
-    return zero(Real)
+    return 0
 end
 
 function dot_observe( spl::Sampler{<:Union{PG,SMC}},
