@@ -113,16 +113,13 @@ function step!(
     Turing.DEBUG && @debug "Propose new parameters from proposals..."
     propose(model, spl, spl.state.vi)
 
-    Turing.DEBUG && @debug "computing accept rate α..."
-    is_accept, _ = mh_accept(-old_logp, -getlogp(spl.state.vi), spl.state.proposal_ratio)
+    Turing.DEBUG && @debug "Decide wether to accept..."
+    accepted = !spl.state.violating_support && mh_accept(old_logp, getlogp(spl.state.vi), spl.state.proposal_ratio)
 
-    Turing.DEBUG && @debug "decide wether to accept..."
-    if is_accept && !spl.state.violating_support  # accepted
-        is_accept = true
-    else                      # rejected
-        is_accept = false
-        spl.state.vi[spl] = old_θ         # reset Θ
-        setlogp!(spl.state.vi, old_logp)  # reset logp
+    # reset Θ and logp if the proposal is rejected
+    if !accepted
+        spl.state.vi[spl] = old_θ
+        setlogp!(spl.state.vi, old_logp)
     end
 
     return Transition(spl)

@@ -101,30 +101,30 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         proposal_ratio += local_spl.info[:proposal_ratio]
     end
 
-    if !violating_support # do not run SMC if going to refuse anyway
+    if violating_support
+        # do not run SMC if going to refuse anyway
+        accepted = false
+    else
         Turing.DEBUG && @debug "Propose new state with SMC..."
         vi, _ = step(model, spl.info[:samplers][end], vi)
         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
-        Turing.DEBUG && @debug "computing accept rate α..."
-        is_accept, _ = mh_accept(
-          -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
-          -(new_likelihood_estimate + new_prior_prob),
+        Turing.DEBUG && @debug "Decide whether to accept..."
+        accepted = mh_accept(
+          spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob],
+          new_likelihood_estimate + new_prior_prob,
           proposal_ratio,
         )
     end
 
-    Turing.DEBUG && @debug "decide whether to accept..."
-    if !violating_support && is_accept # accepted
-        is_accept = true
+    if accepted
         spl.info[:old_likelihood_estimate] = new_likelihood_estimate
         spl.info[:old_prior_prob] = new_prior_prob
     else                      # rejected
-        is_accept = false
         vi[spl] = old_θ
     end
 
-    return vi, is_accept
+    return vi, accepted
 end
 
 function sample(  model::Model,
