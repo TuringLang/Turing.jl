@@ -1,7 +1,7 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
+using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo,
     islinked, invlink!, getlogp, tonamedtuple
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
@@ -11,7 +11,7 @@ using ..Turing: Model, runmodel!, get_pvars, get_dvars,
     Selector, AbstractSamplerState
 using ..Turing: in_pvars, in_dvars, Turing
 using StatsFuns: logsumexp
-using Random: GLOBAL_RNG, AbstractRNG
+using Random: GLOBAL_RNG, AbstractRNG, randexp
 using ..Turing.Interface
 
 import MCMCChains: Chains
@@ -32,6 +32,7 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
+        ESS,
         Gibbs,      # classic sampling
         HMC,
         SGLD,
@@ -273,8 +274,8 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransit
         end
         push!(dicts, d)
     end
-    
-    # Convert the set to an ordered vector so the parameter ordering 
+
+    # Convert the set to an ordered vector so the parameter ordering
     # is deterministic.
     ordered_names = collect(names)
     vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
@@ -514,6 +515,7 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
@@ -526,7 +528,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :Gibbs)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)

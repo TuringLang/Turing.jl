@@ -11,6 +11,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         s3 = Gibbs(PG(3, :s), HMC( 0.4, 8, :m))
         s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m))
         s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m))
+        s6 = Gibbs(HMC(0.1, 5, :s), ESS(:m))
 
 
         c1 = sample(gdemo_default, s1, N)
@@ -18,6 +19,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         c3 = sample(gdemo_default, s3, N)
         c4 = sample(gdemo_default, s4, N)
         c5 = sample(gdemo_default, s5, N)
+        c6 = sample(gdemo_default, s6, N)
 
         # Test gid of each samplers
         g = Turing.Sampler(s3, gdemo_default)
@@ -48,5 +50,12 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_MoGtest_default(chain, atol = 0.1)
 
         setadsafe(false)
+
+        Random.seed!(200)
+        gibbs = Gibbs(
+            PG(10, :z1, :z2, :z3, :z4),
+            ESS(:mu1), ESS(:mu2))
+        chain = sample(MoGtest_default, gibbs, 1500)
+        check_MoGtest_default(chain, atol = 0.1)
     end
 end

@@ -2,7 +2,7 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-const GibbsComponent = Union{Hamiltonian,MH,PG}
+const GibbsComponent = Union{Hamiltonian,MH,ESS,PG}
 
 """
     Gibbs(algs...)
@@ -157,7 +157,7 @@ function step!(
         # Uncomment when developing thinning functionality.
         # Retrieve symbol to store this subsample.
         # symbol_id = Symbol(local_spl.selector.gid)
-        
+
         # # Store the subsample.
         # spl.state.subsamples[symbol_id][] = trans
 

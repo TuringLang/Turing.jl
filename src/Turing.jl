@@ -158,6 +158,7 @@ export  @model,                 # modelling
         @VarName,
 
         MH,                     # classic sampling
+        ESS,
         Gibbs,
 
         HMC,                    # Hamiltonian-like sampling
