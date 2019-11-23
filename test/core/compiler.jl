@@ -406,6 +406,13 @@ priors = 0 # See "new grammar" test.
             end
 
             sample(vdemo6(), alg, 1000)
+
+            @model vdemo7() = begin
+                x = Array{Real}(undef, N, N)
+                x .~ [InverseGamma(2, 3) for i in 1:N]
+            end
+    
+            sample(vdemo7(), alg, 1000)
         end
         """ |> Meta.parse |> eval
     end
