@@ -530,11 +530,10 @@ end
 getspace(::Gibbs) = Tuple{}()
 
 @inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-@inline floatof(::Type) = Real
 
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{<:AbstractFloat}) = floatof(eltype(vi, spl))
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = TArray{T, N}
 
 ## Fallback functions
 
