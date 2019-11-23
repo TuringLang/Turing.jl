@@ -664,9 +664,8 @@ function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     var::AbstractArray,
     vi::VarInfo)
 
-    @assert size(var) == size(dists)
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = vec(getvn.(CartesianIndices(var)))
+    vns = getvn.(CartesianIndices(var))
     r = get_and_set_val!(vi, vns, dists, spl)
     lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
     var .= r
@@ -695,15 +694,12 @@ end
     return r
 end
 @inline function get_and_set_val!(vi, vns::AbstractArray{<:VarName}, dists::AbstractArray{<:Distribution}, spl)
-    @assert size(vns) == size(dists)
-    s = size(vns)
     if haskey(vi, vns[1])
-        r = vi[vns]
+        r = reshape(vi[vec(vns)], size(vns))
     else
-        r = isa(spl, SampleFromUniform) ? init.(dists) : rand.(dists)
-        for i in 1:length(vns)
-            push!(vi, vns[i], r[i], dists[i], spl)
-        end
+        f(vn, dist) = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
+        r = f.(vns, dists)
+        push!.(Ref(vi), vns, r, dists, Ref(spl))
     end
     return r
 end
@@ -745,15 +741,14 @@ function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
     return sum(logpdf(dist, value))
 end
 function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
-    dist::AbstractArray{<:Distribution},
+    dists::AbstractArray{<:Distribution},
     value::AbstractArray,
     vi::VarInfo)
 
-    @assert size(dist) == size(value)
     vi.num_produce += one(vi.num_produce)
-    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "dists = $dists"
     Turing.DEBUG && @debug "value = $value"
-    return sum(logpdf.(dist, value))
+    return sum(logpdf.(dists, value))
 end
 
 
