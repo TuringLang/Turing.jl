@@ -55,6 +55,9 @@ priors = 0 # See "new grammar" test.
         check_numerical(chn_p, [:x], [meanp], atol=0.1)
         check_numerical(chn_g, [:x], [meanp], atol=0.1)
     end
+    @testset "forbid missing inputs" begin
+
+    end
     @testset "forbid global" begin
         xs = [1.5 2.0]
         # xx = 1
@@ -184,6 +187,13 @@ priors = 0 # See "new grammar" test.
 
         btest = brokentestmodel_assume2()
         @test_throws ArgumentError btest()
+
+        # Test missing input arguments
+        @model testmodel01(x) = begin
+            x ~ Bernoulli(0.5)
+            return x
+        end
+        @test_throws UndefKeywordError testmodel01()
     end
     @testset "new grammar" begin
         x = Float64[1 2]
