@@ -1,4 +1,5 @@
 using Turing, Random, MacroTools, Distributions, Test
+using Turing.Core: split_var_str
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -189,11 +190,31 @@ priors = 0 # See "new grammar" test.
         @test_throws ArgumentError btest()
 
         # Test missing input arguments
-        @model testmodel01(x) = begin
+        @model testmodel(x) = begin
             x ~ Bernoulli(0.5)
             return x
         end
-        @test_throws UndefKeywordError testmodel01()
+        @test_throws UndefKeywordError testmodel()
+
+        # Test missing initialization for vector observation turned parameter
+        @model testmodel(x) = begin
+            x[1] ~ Bernoulli(0.5)
+            return x
+        end
+        @test_throws MethodError testmodel(missing)()
+
+        # Test @varinfo() and @logpdf()
+        @model testmodel(x) = begin
+            x[1] ~ Bernoulli(0.5)
+            global _varinfo = @varinfo()
+            global lp = @logpdf()
+            return x
+        end
+        model = testmodel([1.0])
+        varinfo = Turing.VarInfo(model)
+        model(varinfo)
+        @test varinfo.logp == lp
+        @test varinfo === _varinfo
     end
     @testset "new grammar" begin
         x = Float64[1 2]
@@ -345,6 +366,7 @@ priors = 0 # See "new grammar" test.
 
         sample(vdemo6(), alg, 1000)
 
+        N = 3
         @model vdemo7() = begin
             x = Array{Real}(undef, N, N)
             @. x ~ [InverseGamma(2, 3) for i in 1:N]
@@ -460,5 +482,55 @@ priors = 0 # See "new grammar" test.
         sample(vdemo3(), alg, 250)
         sample(vdemo3(Vector{Float64}), alg, 250)
         sample(vdemo3(TV=Vector{Float64}), alg, 250)
+    end
+    @testset "split var string" begin
+        var_str = "x"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds == Vector{String}[]
+
+        var_str = "x[1,1][2,3]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["1", "1"]
+        @test inds[2] == ["2", "3"]
+
+        var_str = "x[Colon(),1][2,Colon()]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["Colon()", "1"]
+        @test inds[2] == ["2", "Colon()"]
+
+        var_str = "x[2:3,1][2,1:2]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "1"]
+        @test inds[2] == ["2", "1:2"]
+
+        var_str = "x[2:3,2:3][[1,2],[1,2]]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "2:3"]
+        @test inds[2] == ["[1,2]", "[1,2]"]
+    end
+    @testset "user-defined variable name" begin
+        @model f1() = begin
+            x ~ NamedDist(Normal(), :y)
+        end
+        @model f2() = begin
+            x ~ NamedDist(Normal(), Turing.@varname(y[2][:,1]))
+        end
+        @model f3() = begin
+            x ~ NamedDist(Normal(), "y[1]")
+        end
+        vi1 = Turing.VarInfo(f1())
+        vi2 = Turing.VarInfo(f2())
+        vi3 = Turing.VarInfo(f3())
+        @test haskey(vi1.metadata, :y)
+        @test vi1.metadata.y.vns[1] == Turing.VarName{:y}("")
+        @test haskey(vi2.metadata, :y)
+        @test vi2.metadata.y.vns[1] == Turing.VarName{:y}("[2][Colon(),1]")
+        @test haskey(vi3.metadata, :y)
+        @test vi3.metadata.y.vns[1] == Turing.VarName{:y}("[1]")
     end
 end
