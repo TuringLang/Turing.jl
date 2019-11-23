@@ -6,15 +6,17 @@ mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
 end
 
 MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
+
 """
-    MH(n_iters::Int)
+    MH()
 
 Metropolis-Hastings sampler.
 
 Usage:
 
 ```julia
-MH(100, (:m, (x) -> Normal(x, 0.1)))
+MH(:m)
+MH((:m, x -> Normal(x, 0.1)))
 ```
 
 Example:
@@ -22,14 +24,13 @@ Example:
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   x[1] ~ Normal(m, sqrt(s))
   x[2] ~ Normal(m, sqrt(s))
-  return s, m
 end
 
-chn = sample(gdemo([1.5, 2]), MH(1000))
+chn = sample(gdemo([1.5, 2]), MH(), 1000)
 ```
 """
 mutable struct MH{space} <: InferenceAlgorithm
@@ -52,7 +53,7 @@ function MH(space...)
         if isa(element, Symbol)
             new_space = (new_space..., element)
         else
-            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
+            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH((:m, x -> Normal(x, 0.1)))"
             new_space = (new_space..., element[1])
             proposals[element[1]] = element[2]
         end
