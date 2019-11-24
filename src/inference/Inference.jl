@@ -530,7 +530,7 @@ end
 getspace(::Gibbs) = ()
 
 floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-floatof(::Type{Any}) = Real # fallback if type inference failed
+floatof(::Type) = Real # fallback if type inference failed
 
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{<:AbstractFloat}) = floatof(eltype(vi, spl))
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
