@@ -75,14 +75,21 @@ getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
 """
-    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
+    mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
-
-Note: This function is only used in PMMH.
+Decide if a proposal ``x'`` with log probability ``\\log p(x') = logp_proposal`` and
+log proposal ratio ``\\log k(x', x) - \\log k(x, x') = log_proposal_ratio`` in a
+Metropolis-Hastings algorithm with Markov kernel ``k(x_t, x_{t+1})`` and current state
+``x`` with log probability ``\\log p(x) = logp_current`` is accepted by evaluating the
+Metropolis-Hastings acceptance criterion
+```math
+\\log U \\leq \\log p(x') - \\log p(x) + \\log k(x', x) - \\log k(x, x')
+```
+for a uniform random number ``U \\in [0, 1)``.
 """
-function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
-    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
+    # replacing log(rand()) with -randexp() yields test errors
+    return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
 ######################
