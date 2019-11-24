@@ -546,18 +546,21 @@ transition_type(spl::Sampler) = typeof(Transition(spl))
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
-assume(spl::Sampler, dist::Distribution) =
-error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+function assume(spl::Sampler, dist)
+    error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+end
 
-observe(spl::Sampler, weight::Float64) =
-error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+function observe(spl::Sampler, weight)
+    error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+end
 
 ## Default definitions for assume, observe, when sampler = nothing.
-function assume(spl::A,
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    vi::VarInfo
+)
     if haskey(vi, vn)
         r = vi[vn]
     else
@@ -569,15 +572,15 @@ function assume(spl::A,
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
-
 end
 
-function assume(spl::A,
-    dists::Vector{T},
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Vector{<:Distribution},
     vn::VarName,
-    var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    var,
+    vi::VarInfo
+)
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
     n = size(var)[end]
@@ -616,20 +619,16 @@ function assume(spl::A,
     # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
-
 end
 
+observe(dist, value, vi::VarInfo) = observe(SampleFromPrior(), dist, value, vi)
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
-
-function observe(spl::A,
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
-    value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    value,
+    vi::VarInfo
+)
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
@@ -638,14 +637,15 @@ function observe(spl::A,
     logpdf(dist, value)
 end
 
-function observe(spl::A,
-    dists::Vector{T},
-    value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Vector{<:Distribution},
+    value,
+    vi::VarInfo
+)
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || 
+    @assert isa(dist, UnivariateDistribution) ||
         isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))

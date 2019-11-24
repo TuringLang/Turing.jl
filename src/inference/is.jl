@@ -75,7 +75,7 @@ function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo
     r, zero(Real)
 end
 
-function observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo)
+function observe(spl::Sampler{<:IS}, dist::Distribution, value, vi::VarInfo)
     # acclogp!(vi, logpdf(dist, value))
     logpdf(dist, value)
 end
