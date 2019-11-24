@@ -1,8 +1,8 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple
+using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo,
+    islinked, invlink!, getlogp, tonamedtuple, _getidcs
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
@@ -14,6 +14,7 @@ using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
 
+include("../../../AdvancedPS/src/AdvancedPS.jl"); const APS = AdvancedPS # I know this is very hacky...
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
@@ -268,8 +269,8 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransit
         end
         push!(dicts, d)
     end
-    
-    # Convert the set to an ordered vector so the parameter ordering 
+
+    # Convert the set to an ordered vector so the parameter ordering
     # is deterministic.
     ordered_names = collect(names)
     vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
@@ -644,7 +645,7 @@ function observe(spl::A,
 
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || 
+    @assert isa(dist, UnivariateDistribution) ||
         isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
