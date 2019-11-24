@@ -114,7 +114,7 @@ function step!(
     Turing.DEBUG && @debug "Propose new parameters from proposals..."
     propose(model, spl, spl.state.vi)
 
-    Turing.DEBUG && @debug "Decide wether to accept..."
+    Turing.DEBUG && @debug "Decide whether to accept..."
     accepted = !spl.state.violating_support && mh_accept(old_logp, getlogp(spl.state.vi), spl.state.proposal_ratio)
 
     # reset Θ and logp if the proposal is rejected
