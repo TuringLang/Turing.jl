@@ -30,8 +30,6 @@ sample(gdemo([1.5, 2]), IS(), 1000)
 struct IS{space} <: InferenceAlgorithm end
 
 IS() = IS{()}()
-transition_type(spl::Sampler{<:IS}) = typeof(Transition(spl))
-alg_str(::Sampler{<:IS}) = "IS"
 
 mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V

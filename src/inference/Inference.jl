@@ -104,8 +104,6 @@ function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
 
-Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
-
 ##########################################
 # Internal variable names for MCMCChains #
 ##########################################
@@ -540,6 +538,9 @@ getspace(::Type{<:Gibbs}) = Tuple{}()
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
 
 ## Fallback functions
+
+alg_str(spl::Sampler) = string(nameof(typeof(spl.alg)))
+transition_type(spl::Sampler) = typeof(Transition(spl))
 
 # utility funcs for querying sampler information
 require_gradient(spl::Sampler) = false

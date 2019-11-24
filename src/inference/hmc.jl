@@ -79,7 +79,6 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 HMC(args...) = HMC{ADBackend()}(args...)

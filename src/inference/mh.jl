@@ -36,9 +36,6 @@ mutable struct MH{space} <: InferenceAlgorithm
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
 
-transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
-alg_str(::Sampler{<:MH}) = "MH"
-
 function MH(proposals::Dict{Symbol, Any}, space::Tuple)
     return MH{space}(proposals)
 end

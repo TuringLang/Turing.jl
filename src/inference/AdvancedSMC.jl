@@ -57,7 +57,6 @@ struct SMC{space, RT<:AbstractFloat} <: ParticleInference
     resampler_threshold   ::  RT
 end
 
-alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
     resampler::Function,
     resampler_threshold::RT,
@@ -175,8 +174,6 @@ PG(n1::Int, ::Tuple{}) = PG(n1)
 function PG(n1::Int, space::Symbol...)
     PG(n1, resample_systematic, space)
 end
-
-alg_str(spl::Sampler{PG}) = "PG"
 
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
