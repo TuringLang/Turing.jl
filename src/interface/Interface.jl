@@ -432,12 +432,12 @@ function callback(
 end
 
 """
-    transition_type(s::AbstractSampler)
+    transition_type(::AbstractSampler)
 
-Return the type of `AbstractTransition` that is to be returned by an 
-`AbstractSampler` after each `step!` call. 
+Return the type of `AbstractTransition` that is to be returned by an
+`AbstractSampler` after each `step!` call.
 """
-transition_type(s::AbstractSampler) = AbstractTransition
+transition_type(::AbstractSampler) = AbstractTransition
 
 """
     psample(ℓ::ModelType, s::SamplerType, N::Integer, n_chains::Integer; kwargs...)
