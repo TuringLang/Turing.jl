@@ -528,21 +528,18 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
-    @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
-getspace(::Gibbs) = Tuple{}()
-getspace(::Type{<:Gibbs}) = Tuple{}()
+getspace(::Gibbs) = ()
 
-@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-@inline floatof(::Type) = Real
+floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+floatof(::Type) = Real # fallback if type inference failed
 
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{<:AbstractFloat}) = floatof(eltype(vi, spl))
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = TArray{T, N}
 
 ## Fallback functions
 
@@ -669,8 +666,6 @@ end
 # Utilities  #
 ##############
 
-getspace(spl::Sampler) = getspace(typeof(spl))
-getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
-
+getspace(spl::Sampler) = getspace(spl.alg)
 
 end # module
