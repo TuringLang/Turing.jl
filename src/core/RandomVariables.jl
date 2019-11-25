@@ -450,7 +450,7 @@ Returns a tuple of the unique symbols of random variables sampled in `vi`.
 syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
 syms(vi::TypedVarInfo) = keys(vi.metadata)
 
-getspaceval(alg::T) where T = Val(getspace(T))
+getspaceval(alg) = Val(getspace(alg))
 
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to

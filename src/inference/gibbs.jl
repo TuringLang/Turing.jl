@@ -35,9 +35,6 @@ mutable struct Gibbs{A} <: InferenceAlgorithm
     end
 end
 
-alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(spl::Sampler{<:Gibbs}) = typeof(Transition(spl))
-
 """
     GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}}
 

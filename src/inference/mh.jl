@@ -6,15 +6,17 @@ mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
 end
 
 MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
+
 """
-    MH(n_iters::Int)
+    MH()
 
 Metropolis-Hastings sampler.
 
 Usage:
 
 ```julia
-MH(100, (:m, (x) -> Normal(x, 0.1)))
+MH(:m)
+MH((:m, x -> Normal(x, 0.1)))
 ```
 
 Example:
@@ -22,22 +24,18 @@ Example:
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model gdemo(x) = begin
-  s ~ InverseGamma(2,3)
-  m ~ Normal(0,sqrt(s))
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
   x[1] ~ Normal(m, sqrt(s))
   x[2] ~ Normal(m, sqrt(s))
-  return s, m
 end
 
-chn = sample(gdemo([1.5, 2]), MH(1000))
+chn = sample(gdemo([1.5, 2]), MH(), 1000)
 ```
 """
 mutable struct MH{space} <: InferenceAlgorithm
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
-
-transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
-alg_str(::Sampler{<:MH}) = "MH"
 
 function MH(proposals::Dict{Symbol, Any}, space::Tuple)
     return MH{space}(proposals)
@@ -52,7 +50,7 @@ function MH(space...)
         if isa(element, Symbol)
             new_space = (new_space..., element)
         else
-            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
+            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH((:m, x -> Normal(x, 0.1)))"
             new_space = (new_space..., element[1])
             proposals[element[1]] = element[2]
         end
@@ -113,16 +111,13 @@ function step!(
     Turing.DEBUG && @debug "Propose new parameters from proposals..."
     propose(model, spl, spl.state.vi)
 
-    Turing.DEBUG && @debug "computing accept rate α..."
-    is_accept, _ = mh_accept(-old_logp, -getlogp(spl.state.vi), spl.state.proposal_ratio)
+    Turing.DEBUG && @debug "Decide whether to accept..."
+    accepted = !spl.state.violating_support && mh_accept(old_logp, getlogp(spl.state.vi), spl.state.proposal_ratio)
 
-    Turing.DEBUG && @debug "decide wether to accept..."
-    if is_accept && !spl.state.violating_support  # accepted
-        is_accept = true
-    else                      # rejected
-        is_accept = false
-        spl.state.vi[spl] = old_θ         # reset Θ
-        setlogp!(spl.state.vi, old_logp)  # reset logp
+    # reset Θ and logp if the proposal is rejected
+    if !accepted
+        spl.state.vi[spl] = old_θ
+        setlogp!(spl.state.vi, old_logp)
     end
 
     return Transition(spl)
@@ -171,23 +166,15 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function assume(  spl::Sampler{<:MH},
-                  dists::Vector{D},
-                  vn::VarName,
-                  var::Any,
-                  vi::VarInfo
-                ) where D<:Distribution
+function assume(::Sampler{<:MH}, ::Vector{<:Distribution}, ::VarName, ::Any, ::VarInfo)
     error("[Turing] MH doesn't support vectorizing assume statement")
 end
 
-function observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo)
-    return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
-end
-
-function observe( spl::Sampler{<:MH},
-                  ds::Vector{D},
-                  value::Any,
-                  vi::VarInfo
-                )  where D<:Distribution
-    return observe(nothing, ds, value, vi) # accumulate pdf of likelihood
+function observe(
+    spl::Sampler{<:MH},
+    d::Union{Distribution,Vector{<:Distribution}},
+    value,
+    vi::VarInfo
+)
+    return observe(d, value, vi)  # accumulate pdf of likelihood
 end

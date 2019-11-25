@@ -89,8 +89,6 @@ struct SampleFromUniform <: AbstractSampler end
 struct SampleFromPrior <: AbstractSampler end
 
 getspace(::Union{SampleFromPrior, SampleFromUniform}) = ()
-getspace(::Type{<:SampleFromPrior}) = ()
-getspace(::Type{<:SampleFromUniform}) = ()
 
 """
 An abstract type that mutable sampler state structs inherit from.

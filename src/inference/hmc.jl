@@ -79,7 +79,6 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 HMC(args...) = HMC{ADBackend()}(args...)
@@ -434,7 +433,8 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function assume(spl::Sampler{<:Hamiltonian},
+function assume(
+    spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
     vi::VarInfo
@@ -450,10 +450,11 @@ function assume(spl::Sampler{<:Hamiltonian},
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::Sampler{<:Hamiltonian},
+function assume(
+    spl::Sampler{<:Hamiltonian},
     dists::Vector{<:Distribution},
     vn::VarName,
-    var::Any,
+    var,
     vi::VarInfo
 )
     @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
@@ -486,16 +487,14 @@ function assume(spl::Sampler{<:Hamiltonian},
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{<:Hamiltonian},
-    d::Distribution,
-    value::Any,
-    vi::VarInfo) = observe(nothing, d, value, vi)
-
-observe(spl::Sampler{<:Hamiltonian},
-    ds::Vector{<:Distribution},
-    value::Any,
-    vi::VarInfo) = observe(nothing, ds, value, vi)
-
+function observe(
+    ::Sampler{<:Hamiltonian},
+    d::Union{Distribution,Vector{<:Distribution}},
+    value,
+    vi::VarInfo
+)
+    return observe(d, value, vi)
+end
 
 ####
 #### Default HMC stepsize and mass matrix adaptor

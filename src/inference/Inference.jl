@@ -75,14 +75,21 @@ getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
 """
-    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
+    mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
-
-Note: This function is only used in PMMH.
+Decide if a proposal ``x'`` with log probability ``\\log p(x') = logp_proposal`` and
+log proposal ratio ``\\log k(x', x) - \\log k(x, x') = log_proposal_ratio`` in a
+Metropolis-Hastings algorithm with Markov kernel ``k(x_t, x_{t+1})`` and current state
+``x`` with log probability ``\\log p(x) = logp_current`` is accepted by evaluating the
+Metropolis-Hastings acceptance criterion
+```math
+\\log U \\leq \\log p(x') - \\log p(x) + \\log k(x', x) - \\log k(x, x')
+```
+for a uniform random number ``U \\in [0, 1)``.
 """
-function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
-    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
+    # replacing log(rand()) with -randexp() yields test errors
+    return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
 ######################
@@ -103,8 +110,6 @@ end
 function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
-
-Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
 
 ##########################################
 # Internal variable names for MCMCChains #
@@ -523,40 +528,43 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 
 for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
-    @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
-getspace(::Gibbs) = Tuple{}()
-getspace(::Type{<:Gibbs}) = Tuple{}()
+getspace(::Gibbs) = ()
 
-@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-@inline floatof(::Type) = Real
+floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+floatof(::Type) = Real # fallback if type inference failed
 
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{<:AbstractFloat}) = floatof(eltype(vi, spl))
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{Array{T,N}}) where {T, N} = TArray{T, N}
 
 ## Fallback functions
+
+alg_str(spl::Sampler) = string(nameof(typeof(spl.alg)))
+transition_type(spl::Sampler) = typeof(Transition(spl))
 
 # utility funcs for querying sampler information
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
-assume(spl::Sampler, dist::Distribution) =
-error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+function assume(spl::Sampler, dist)
+    error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+end
 
-observe(spl::Sampler, weight::Float64) =
-error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+function observe(spl::Sampler, weight)
+    error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+end
 
 ## Default definitions for assume, observe, when sampler = nothing.
-function assume(spl::A,
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    vi::VarInfo
+)
     if haskey(vi, vn)
         r = vi[vn]
     else
@@ -568,15 +576,15 @@ function assume(spl::A,
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
     r, logpdf_with_trans(dist, r, istrans(vi, vn))
-
 end
 
-function assume(spl::A,
-    dists::Vector{T},
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Vector{<:Distribution},
     vn::VarName,
-    var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    var,
+    vi::VarInfo
+)
     @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
     dist = dists[1]
     n = size(var)[end]
@@ -615,20 +623,16 @@ function assume(spl::A,
     # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
 
     var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
-
 end
 
+observe(dist, value, vi::VarInfo) = observe(SampleFromPrior(), dist, value, vi)
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
-
-function observe(spl::A,
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
-    value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    value,
+    vi::VarInfo
+)
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
@@ -637,14 +641,15 @@ function observe(spl::A,
     logpdf(dist, value)
 end
 
-function observe(spl::A,
-    dists::Vector{T},
-    value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Vector{<:Distribution},
+    value,
+    vi::VarInfo
+)
     @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
     dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || 
+    @assert isa(dist, UnivariateDistribution) ||
         isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
     if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
         # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
@@ -661,8 +666,6 @@ end
 # Utilities  #
 ##############
 
-getspace(spl::Sampler) = getspace(typeof(spl))
-getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
-
+getspace(spl::Sampler) = getspace(spl.alg)
 
 end # module
