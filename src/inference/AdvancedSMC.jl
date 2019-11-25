@@ -83,7 +83,7 @@ function SMCState(
     M<:Model
 }
     vi = VarInfo(model)
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer(model, Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
@@ -95,54 +95,58 @@ function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
 end
 
 function sample_init!(
-    ::AbstractRNG, 
+    ::AbstractRNG,
     model::Turing.Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
 )
-    # Set the parameters to a starting value.
+    # set the parameters to a starting value
     initialize_parameters!(spl; kwargs...)
 
-    # Update the particle container now that the sampler type
-    # is defined.
-    spl.state.particles = ParticleContainer{Trace{typeof(spl),
-        typeof(spl.state.vi), typeof(model)}}(model)
+    # reset the VarInfo
+    vi = spl.state.vi
+    vi.num_produce = 0
+    set_retained_vns_del_by_spl!(vi, spl)
+    resetlogp!(vi)
+    empty!(vi)
 
-    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(spl.state.vi, spl)
-    resetlogp!(spl.state.vi)
+    # create a new set of particles
+    T = Trace{typeof(spl),typeof(vi),typeof(model)}
+    particles = T[Trace(model, spl, vi) for _ in 1:N]
 
-    push!(spl.state.particles, N, spl, empty!(spl.state.vi))
+    # create a new particle container
+    spl.state.particles = pc = ParticleContainer(model, particles)
 
-    while consume(spl.state.particles) != Val{:done}
-        ess = effectiveSampleSize(spl.state.particles)
-        if ess <= spl.alg.resampler_threshold * length(spl.state.particles)
-            resample!(spl.state.particles, spl.alg.resampler)
+    while consume(pc) !== Val{:done}
+        ess = effectiveSampleSize(pc)
+        if ess <= spl.alg.resampler_threshold * N
+            resample!(pc, spl.alg.resampler)
         end
     end
 end
 
 function step!(
-    ::AbstractRNG, 
+    ::AbstractRNG,
     model::Turing.Model,
     spl::Sampler{<:SMC},
     ::Integer;
     iteration=-1,
     kwargs...
 )
-    # Check that we received a real iteration number.
+    # check that we received a real iteration number
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
 
-    ## Grab the weights.
-    Ws = weights(spl.state.particles)
+    # grab the weights
+    pc = spl.state.particles
+    Ws = weights(pc)
 
-    # update the master vi.
-    particle = spl.state.particles.vals[iteration]
+    # update the master vi
+    particle = pc.vals[iteration]
     params = tonamedtuple(particle.vi)
     lp = getlogp(particle.vi)
 
-    return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])
+    return ParticleTransition(params, lp, pc.logE, Ws[iteration])
 end
 
 ####
@@ -206,38 +210,47 @@ function step!(
     ::Integer;
     kwargs...
 )
-    particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
+    # obtain or create reference particle
+    vi = spl.state.vi
+    ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
 
-    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep.
-    ref_particle = isempty(spl.state.vi) ?
-              nothing :
-              forkr(Trace(model, spl, spl.state.vi))
+    # reset the VarInfo before new sweep
+    vi.num_produce = 0
+    set_retained_vns_del_by_spl!(vi, spl)
+    resetlogp!(vi)
 
-    set_retained_vns_del_by_spl!(spl.state.vi, spl)
-    resetlogp!(spl.state.vi)
-
+    # create a new set of particles
+    num_particles = spl.alg.n_particles
+    T = Trace{typeof(spl),typeof(vi),typeof(model)}
     if ref_particle === nothing
-        push!(particles, spl.alg.n_particles, spl, spl.state.vi)
+        particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
     else
-        push!(particles, spl.alg.n_particles-1, spl, spl.state.vi)
-        push!(particles, ref_particle)
+        particles = Vector{T}(undef, num_particles)
+        @inbounds for i in 1:(num_particles - 1)
+            particles[i] = Trace(model, spl, vi)
+        end
+        @inbounds particles[num_particles] = ref_particle
     end
 
-    while consume(particles) != Val{:done}
-        resample!(particles, spl.alg.resampler, ref_particle)
+    # create a new particle container
+    pc = ParticleContainer(model, particles)
+
+    # run the particle filter
+    while consume(pc) !== Val{:done}
+        resample!(pc, spl.alg.resampler, ref_particle)
     end
 
-    ## pick a particle to be retained.
-    Ws = weights(particles)
+    # pick a particle to be retained.
+    Ws = weights(pc)
     indx = randcat(Ws)
 
-    # Extract the VarInfo from the retained particle.
-    params = tonamedtuple(spl.state.vi)
-    spl.state.vi = particles[indx].vi
+    # extract the VarInfo from the retained particle.
+    params = tonamedtuple(vi)
+    spl.state.vi = pc.vals[indx].vi
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return ParticleTransition(params, lp, particles.logE, 1.0)
+    return ParticleTransition(params, lp, pc.logE, 1.0)
 end
 
 function sample_end!(
