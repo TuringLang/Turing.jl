@@ -2,7 +2,7 @@ module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo,
-    islinked, invlink!, getlogp, tonamedtuple, _getidcs
+    islinked, invlink!, getlogp, tonamedtuple, _getvns, getorder
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler

@@ -41,7 +41,8 @@ export  VarName,
         istrans,
         link!,
         invlink!,
-        tonamedtuple
+        tonamedtuple,
+        getorder
 
 ####
 #### Types for typed and untyped VarInfo
@@ -694,7 +695,7 @@ end
 Checks whether `T` is a `Sampler` and has a field called `eval_num` in its state variable.
 """
 function has_eval_num(spl::T) where T<:AbstractSampler
-    return !(T <: Union{SampleFromPrior, SampleFromUniform}) && 
+    return !(T <: Union{SampleFromPrior, SampleFromUniform}) &&
            :eval_num in fieldnames(typeof(spl.state))
 end
 
@@ -981,9 +982,9 @@ end
 
 Returns `true` if a `VarInfo` is in the transformed space for a particular sampler `spl`.
 
-Turing's Hamiltonian samplers use the `link` and `invlink` functions from 
+Turing's Hamiltonian samplers use the `link` and `invlink` functions from
 [Bijectors.jl](https://github.com/TuringLang/Bijectors.jl) to map a constrained variable
-(for example, one bounded to the space `[0, 1]`) from its constrained space to the set of 
+(for example, one bounded to the space `[0, 1]`) from its constrained space to the set of
 real numbers. `islinked` checks if the number is in the constrained space or the real space.
 """
 function islinked(vi::UntypedVarInfo, spl::Sampler)
@@ -1091,7 +1092,7 @@ end
 """
     tonamedtuple(vi::Turing.VarInfo)
 
-Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values and 
+Convert a `vi` into a `NamedTuple` where each variable symbol maps to the values and
 indexing string of the variable. For example, a model that had a vector of vector-valued
 variables `x` would return
 
@@ -1244,12 +1245,31 @@ function setorder!(vi::UntypedVarInfo, vn::VarName, index::Int)
     end
     return vi
 end
+
+
 function setorder!(mvi::TypedVarInfo, vn::VarName{sym}, index::Int) where {sym}
     vi = getfield(mvi.metadata, sym)
     if vi.orders[vi.idcs[vn]] != index
         vi.orders[vi.idcs[vn]] = index
     end
     return mvi
+end
+
+"""
+`getorder(vi::VarInfo, vn::VarName)`
+
+Some proper checks are missing!!
+"""
+
+
+function getorder(vi::UntypedVarInfo, vn::VarName)
+    return vi.orders[vi.idcs[vn]]
+end
+
+
+function getorder(mvi::TypedVarInfo, vn::VarName{sym}, index::Int) where {sym}
+    vi = getfield(mvi.metadata, sym)
+    return vi.orders[vi.idcs[vn]]
 end
 
 #######################################

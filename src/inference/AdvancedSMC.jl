@@ -25,7 +25,7 @@ end
 transition_type(spl::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le, :weight]
+    return [:lp, :le, :weight]
 end
 
 ####
@@ -290,6 +290,164 @@ end
 
 
 
+####
+#### Particle Gibbs with Ancestor Sampling sampler.
+####
+
+"""
+    PGAS(n_particles::Int, joint_logp::Function)
+
+Particle Gibbs with Ancestor Sampling sampler.
+
+Note that this method is particle-based, and arrays of variables
+must be stored in a [`TArray`](@ref) object.
+
+Fields:
+- `joint_logp`: A function which takes a Dict{Symbol,Any} as input
+and returns the log pdf corresponding to log p(x_{0:T}) from the
+original paper. The Symobls of the dict must be contained in vi!
+
+
+Usage:
+
+```julia
+PG(100, 100)
+```
+"""
+struct PGAS{space} <: ParticleInference
+  n_particles           ::    Int         # number of particles used
+  resampler             ::    Function    # function to resample
+  ps_alg!               ::    Function    # particle sampling algorithm
+  joint_logp            ::    Union{Function,Nothing} #Joint log pdf function of the transistions
+end
+function PGAS(n_particles::Int, resampler::Function, joint_logp::Function, space::Tuple)
+    ps_alg! = APS.samplePGAS!
+    return PGAS{space}(n_particles, resampler,ps_alg!,joint_logp)
+end
+PGAS(n1::Int, ::Tuple{}) = PGAS(n1)
+function PGAS(n1::Int, space::Symbol...)
+    PG(n1, APS.resample_systematic, nothing,   space)
+end
+function PGAS(n1::Int, joint_logp::Union{Function,Nothing}, space::Symbol...)
+    PGAS(n1, APS.resample_systematic, joint_logp,   space)
+end
+
+alg_str(spl::Sampler{PGAS}) = "PGAS"
+
+mutable struct PGASState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                   ::   V
+    # The logevidence after aggregating all samples together.
+    average_logevidence  ::   F
+end
+
+function PGASState(model::M) where {M<:Model}
+    vi = VarInfo(model)
+    return PGASState(vi, 0.0)
+end
+
+
+"""
+    Sampler(alg::PG, model::Model, s::Selector)
+
+Return a `Sampler` object for the PG algorithm.
+"""
+function Sampler(alg::T, model::Model, s::Selector) where T<:PGAS
+    info = Dict{Symbol, Any}()
+    state = PGASState(model)
+    return Sampler(alg, info, s, state)
+end
+
+function step!(
+    ::AbstractRNG,
+    model::Turing.Model,
+    spl::Sampler{<:PGAS},
+    ::Integer;
+    kwargs...
+)
+    vi = spl.state.vi
+    task = CTask( () -> begin vi_new=model(vi,spl); produce(Val{:done}); vi_new; end )
+
+    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep.
+
+    # This is very inefficient because the state will be copied twice!.
+    # However, this is not a problem to change.
+    ref_particle = isempty(spl.state.vi) ?
+              nothing :
+              deepcopy(spl.state.vi)
+    if ref_particle === nothing
+        taskinfo = APS.PGASTaskInfo(0.0, 0.0,false)
+    else
+        taskinfo = APS.PGASTaskInfo(0.0, 0.0,true)
+    end
+    
+    particles = APS.ParticleContainer{typeof(vi), typeof(taskinfo)}()
+
+    particles.manipulators["set_retained_vns_del_by_spl!"] = get_srvndbs(spl)
+    particles.manipulators["copy"] = Turing.deepcopy
+    particles.manipulators["merge_traj"] = generate_merge_traj(spl)
+
+
+
+
+    set_retained_vns_del_by_spl!(spl.state.vi, spl)
+    resetlogp!(spl.state.vi)
+
+    if ref_particle === nothing
+        APS.extend!(particles, spl.alg.n_particles, spl.state.vi, task , taskinfo)
+        spl.alg.ps_alg!(particles,spl.alg.resampler)
+
+    else
+        APS.extend!(particles, spl.alg.n_particles-1, spl.state.vi, task , taskinfo)
+        APS.extend!(particles, 1, ref_particle, task, taskinfo)
+        spl.alg.ps_alg!(particles,spl.alg.resampler, particles[spl.alg.n_particles],spl.alg.joint_logp)
+    end
+
+    ## pick a particle to be retained.
+    Ws = APS.weights(particles)
+    indx = APS.randcat(Ws)
+
+    # Extract the VarInfo from the retained particle.
+    params = tonamedtuple(spl.state.vi)
+    spl.state.vi = particles[indx].vi
+
+    ## This is kind of weired... what excalty do we want?
+    # Original : lp = getlogp(spl.state.vi)
+    # update the master vi.
+    return ParticleTransition(params, particles[indx].taskinfo.logp, particles.logE, 1.0)
+end
+
+function sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    spl::Sampler{<:ParticleInference},
+    N::Integer,
+    ts::Vector{ParticleTransition};
+    kwargs...
+)
+    # Set the default for resuming the sampler.
+    resume_from = get(kwargs, :resume_from, nothing)
+
+    # Exponentiate the average log evidence.
+    # loge = exp(mean([t.le for t in ts]))
+    loge = mean(t.le for t in ts)
+
+    # If we already had a chain, grab the logevidence.
+    if resume_from !== nothing   # concat samples
+        @assert resume_from isa Chains "resume_from needs to be a Chains object."
+        # pushfirst!(samples, resume_from.info[:samples]...)
+        pre_loge = resume_from.logevidence
+        # Calculate new log-evidence
+        pre_n = length(resume_from)
+        loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
+    end
+
+    # Store the logevidence.
+    spl.state.average_logevidence = loge
+end
+
+
+
+
 
 function assume(  spl::Sampler{T},
                   dist::Distribution,
@@ -304,9 +462,7 @@ function assume(  spl::Sampler{T},
 
 
 
-
             r = rand(dist)
-
 
 
 
@@ -316,22 +472,17 @@ function assume(  spl::Sampler{T},
             unset_flag!(vi, vn, "del")
 
 
-
-
-
             r = rand(dist)
-
-
-
-
 
             taskinfo.logpseq += logpdf(dist,r)
             vi[vn] = vectorize(dist, r)
             setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, vi.num_produce)
         else
+            # Ancestor sampling will make use of this.
             updategid!(vi, vn, spl)
             r = vi[vn]
+            taskinfo.logpseq += logpdf(dist,r)
         end
     else # vn belongs to other sampler <=> conditionning on vn
         if haskey(vi, vn)
@@ -345,12 +496,15 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
+
+
+
 function assume(  spl::Sampler{A},
                   dists::Vector{D},
                   vn::VarName,
                   var::Any,
                   vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+                ) where {A<:Union{PG,SMC,PGAS},D<:Distribution}
     error("[Turing] PG and SMC don't support vectorizing assume statement")
 end
 
@@ -358,12 +512,25 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     produce(logpdf(dist, value))
     return zero(Real)
 end
+function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PG,SMC,PGAS}
+    produce(logpdf(dist, value))
+
+    # In order to prevent copying, we need to have a high level of synchorinty in ancestor sampling...
+    if APS.current_trace().taskinfo.hold
+        produce(0.0)
+    end
+
+    return zero(Real)
+end
+
+
+
 
 function observe( spl::Sampler{A},
                   ds::Vector{D},
                   value::Any,
                   vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
+                ) where {A<:Union{PG,SMC,PGAS},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
 end
 
@@ -375,7 +542,22 @@ function get_srvndbs(spl::Sampler{A}) where A<:Union{PG,SMC}
 end
 
 #This is used for ancestor sampling. We simply merge the two trajectories.
-function create_merge_traj(spl)
-    function merge_traj(ref_traj::VarInfo, vi::VarInfo )
+function generate_merge_traj(spl)
+    ## Extends the vi trajectory by the ref_traj!
+    function merge_traj!(vi::VarInfo, ref_traj::VarInfo,num_produce::Int64=-1)
+        # We go trough all the variables in the space
+        for vn in _getvns(ref_traj,spl)
+            if num_consume === -1 || getorder(ref_traj,vn) <= num_produce
+                # And copy all the missing variables.
+                if ~haskey(vi, vn)
+                    push!(vi, vn, ref_traj[vn], dist, spl)
+                elseif is_flagged(vi, vn, "del")
+                    unset_flag!(vi, vn, "del")
+                    vi[vn] = ref_traj[vn]
+                    setgid!(vi, spl.selector, vn)
+                    setorder!(vi, vn, vi.num_produce)
+                end
+            end
+        end
     end
 end
