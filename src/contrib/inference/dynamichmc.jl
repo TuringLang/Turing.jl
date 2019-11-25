@@ -48,8 +48,7 @@ mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
     draws::Vector{D}
 end
 
-getspace(::Type{<:DynamicNUTS{<:Any, space}}) where {space} = space
-getspace(alg::DynamicNUTS{<:Any, space}) where {space} = space
+getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
 function sample_init!(
     rng::AbstractRNG,

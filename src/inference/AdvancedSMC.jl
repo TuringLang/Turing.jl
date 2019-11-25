@@ -57,7 +57,6 @@ struct SMC{space, RT<:AbstractFloat} <: ParticleInference
     resampler_threshold   ::  RT
 end
 
-alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
     resampler::Function,
     resampler_threshold::RT,
@@ -176,8 +175,6 @@ function PG(n1::Int, space::Symbol...)
     PG(n1, resample_systematic, space)
 end
 
-alg_str(spl::Sampler{PG}) = "PG"
-
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
     # The logevidence after aggregating all samples together.
@@ -272,12 +269,7 @@ function sample_end!(
     spl.state.average_logevidence = loge
 end
 
-function assume(  spl::Sampler{T},
-                  dist::Distribution,
-                  vn::VarName,
-                  _::VarInfo
-                ) where T<:Union{PG,SMC}
-
+function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, ::VarInfo)
     vi = current_trace().vi
     if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
         if ~haskey(vi, vn)
@@ -305,26 +297,23 @@ function assume(  spl::Sampler{T},
     return r, zero(Real)
 end
 
-function assume(  spl::Sampler{A},
-                  dists::Vector{D},
-                  vn::VarName,
-                  var::Any,
-                  vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
-    error("[Turing] PG and SMC doesn't support vectorizing assume statement")
+function assume(
+    spl::Sampler{<:Union{PG,SMC}},
+    ::Vector{<:Distribution},
+    ::VarName,
+    ::Any,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
 end
 
-function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PG,SMC}
+function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
     return zero(Real)
 end
 
-function observe( spl::Sampler{A},
-                  ds::Vector{D},
-                  value::Any,
-                  vi::VarInfo
-                ) where {A<:Union{PG,SMC},D<:Distribution}
-    error("[Turing] PG and SMC doesn't support vectorizing observe statement")
+function observe(spl::Sampler{<:Union{PG,SMC}}, ::Vector{<:Distribution}, ::Any, ::VarInfo)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
 end
 
 ####

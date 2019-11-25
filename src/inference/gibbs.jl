@@ -42,9 +42,6 @@ function Gibbs(algs::GibbsComponent...)
     Gibbs{space, typeof(algs)}(algs)
 end
 
-alg_str(::Sampler{<:Gibbs}) = "Gibbs"
-transition_type(spl::Sampler{<:Gibbs}) = typeof(Transition(spl))
-
 """
     GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}}
 
