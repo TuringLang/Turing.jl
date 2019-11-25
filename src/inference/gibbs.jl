@@ -36,8 +36,7 @@ end
 
 function Gibbs(algs::GibbsComponent...)
     # obtain space of sampling algorithms
-    spacearray = collect(Iterators.flatten(getspace(alg) for alg in algs))::Vector{Symbol}
-    space = ntuple(i -> spacearray[i], length(spacearray))
+    space = Tuple(union(getspace.(algs)...))
 
     Gibbs{space, typeof(algs)}(algs)
 end
