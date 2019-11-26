@@ -526,13 +526,12 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
 end
-getspace(::Gibbs) = ()
 
 floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
 floatof(::Type) = Real # fallback if type inference failed
