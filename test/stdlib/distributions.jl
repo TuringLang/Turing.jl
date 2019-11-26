@@ -17,17 +17,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
 
     @turing_testset "distributions functions" begin
+        Random.seed!(1)
 
         d = OrderedLogistic(-2, [-1, 1])
 
-        n = 1e+6
-        y = [rand(d) for i in 1:n]
+        n = 1_000_000
+        y = rand(d, n)
         K = length(d.cutpoints) + 1
-        p = [mean(y .== k) for k in 1:K]          # empirical probs
+        p = [mean(==(k), y) for k in 1:K]          # empirical probs
         pmf = [exp(logpdf(d, k)) for k in 1:K]
 
-        @test sum(abs.(p - pmf) .< 0.001) == K
-
+        @test all(((x, y),) -> abs(x - y) < 0.001, zip(p, pmf))
     end
 
     @turing_testset "distributions functions" begin
