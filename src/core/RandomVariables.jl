@@ -1272,6 +1272,12 @@ function getorder(mvi::TypedVarInfo, vn::VarName{sym}, index::Int) where {sym}
     return vi.orders[vi.idcs[vn]]
 end
 
+## Why do we need index???
+function getorder(mvi::TypedVarInfo, vn::VarName{sym}) where {sym}
+    vi = getfield(mvi.metadata, sym)
+    return vi.orders[vi.idcs[vn]]
+end
+
 #######################################
 # Rand & replaying method for VarInfo #
 #######################################

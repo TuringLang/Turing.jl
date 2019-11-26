@@ -395,7 +395,6 @@ function step!(
     if ref_particle === nothing
         APS.extend!(particles, spl.alg.n_particles, spl.state.vi, task , taskinfo)
         spl.alg.ps_alg!(particles,spl.alg.resampler)
-
     else
         APS.extend!(particles, spl.alg.n_particles-1, spl.state.vi, task , taskinfo)
         APS.extend!(particles, 1, ref_particle, task, taskinfo)
@@ -453,7 +452,7 @@ function assume(  spl::Sampler{T},
                   dist::Distribution,
                   vn::VarName,
                   _::VarInfo
-                ) where T<:Union{PG,SMC}
+                ) where T<:Union{PG,SMC,PGAS}
 
     vi = APS.current_trace().vi
     taskinfo = APS.current_trace().taskinfo
@@ -512,12 +511,11 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     produce(logpdf(dist, value))
     return zero(Real)
 end
-function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PGAS}
+function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:PGAS
     produce(logpdf(dist, value))
 
     # In order to prevent an excessive amount of copying, we need to have a high level of synchorinty in ancestor sampling...
     if APS.current_trace().taskinfo.hold
-
         produce(0.0)
     end
 
@@ -548,17 +546,19 @@ function generate_merge_traj(spl::Sampler{A}) where A<:Union{PG,SMC,PGAS}
     function merge_traj!(vi::VarInfo, ref_traj::VarInfo,num_produce::Int64=-1)
         # We go trough all the variables in the space
         for vn in _getvns(ref_traj,spl)
-            if num_consume === -1 || getorder(ref_traj,vn) <= num_produce
+            # Please check this !!!
+            if num_produce == -1 || getorder(ref_traj,vn[1]) <= num_produce
                 # And copy all the missing variables.
-                if ~haskey(vi, vn)
-                    push!(vi, vn, ref_traj[vn], dist, spl)
-                elseif is_flagged(vi, vn, "del")
-                    unset_flag!(vi, vn, "del")
-                    vi[vn] = ref_traj[vn]
-                    setgid!(vi, spl.selector, vn)
-                    setorder!(vi, vn, vi.num_produce)
+                if ~haskey(vi, vn[1])
+                    push!(vi, vn, ref_traj[vn], getdist(ref_traj,vn), spl)
+                elseif is_flagged(vi, vn[1], "del")
+                    unset_flag!(vi, vn[1], "del")
+                    vi[vn[1]] = ref_traj[vn]
+                    setgid!(vi, spl.selector, vn[1])
+                    setorder!(vi, vn[1], vi.num_produce)
                 end
             end
         end
+        vi
     end
 end
