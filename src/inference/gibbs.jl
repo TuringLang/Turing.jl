@@ -67,10 +67,8 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     end
 
     # create tuple of samplers
-    samplers = let algs=alg.algs, model=model
-        ntuple(length(algs)) do i
-            Sampler(algs[i], model, Selector(Symbol(typeof(algs[i]))))
-        end
+    samplers = map(alg.algs) do alg
+        Sampler(alg, model, Selector(Symbol(typeof(alg))))
     end
 
     # create a state variable
