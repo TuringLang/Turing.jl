@@ -320,13 +320,13 @@ struct PGAS{space} <: ParticleInference
   ps_alg!               ::    Function    # particle sampling algorithm
   joint_logp            ::    Union{Function,Nothing} #Joint log pdf function of the transistions
 end
-function PGAS(n_particles::Int, resampler::Function, joint_logp::Function, space::Tuple)
+function PGAS(n_particles::Int, resampler::Function, joint_logp::Union{Function,Nothing}, space::Tuple)
     ps_alg! = APS.samplePGAS!
     return PGAS{space}(n_particles, resampler,ps_alg!,joint_logp)
 end
 PGAS(n1::Int, ::Tuple{}) = PGAS(n1)
 function PGAS(n1::Int, space::Symbol...)
-    PG(n1, APS.resample_systematic, nothing,   space)
+    PGAS(n1, APS.resample_systematic, nothing,   space)
 end
 function PGAS(n1::Int, joint_logp::Union{Function,Nothing}, space::Symbol...)
     PGAS(n1, APS.resample_systematic, joint_logp,   space)
@@ -379,7 +379,7 @@ function step!(
     else
         taskinfo = APS.PGASTaskInfo(0.0, 0.0,true)
     end
-    
+
     particles = APS.ParticleContainer{typeof(vi), typeof(taskinfo)}()
 
     particles.manipulators["set_retained_vns_del_by_spl!"] = get_srvndbs(spl)
@@ -512,11 +512,12 @@ function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{
     produce(logpdf(dist, value))
     return zero(Real)
 end
-function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PG,SMC,PGAS}
+function observe(spl::Sampler{T}, dist::Distribution, value, vi) where T<:Union{PGAS}
     produce(logpdf(dist, value))
 
-    # In order to prevent copying, we need to have a high level of synchorinty in ancestor sampling...
+    # In order to prevent an excessive amount of copying, we need to have a high level of synchorinty in ancestor sampling...
     if APS.current_trace().taskinfo.hold
+
         produce(0.0)
     end
 
@@ -530,19 +531,19 @@ function observe( spl::Sampler{A},
                   ds::Vector{D},
                   value::Any,
                   vi::VarInfo
-                ) where {A<:Union{PG,SMC,PGAS},D<:Distribution}
+                ) where {A<:Union{PGAS,PG,SMC},D<:Distribution}
     error("[Turing] PG and SMC doesn't support vectorizing observe statement")
 end
 
 
-function get_srvndbs(spl::Sampler{A}) where A<:Union{PG,SMC}
+function get_srvndbs(spl::Sampler{A}) where A<:Union{PG,SMC,PGAS}
     function srvdbs(x::VarInfo)
         set_retained_vns_del_by_spl!(x,spl)
     end
 end
 
 #This is used for ancestor sampling. We simply merge the two trajectories.
-function generate_merge_traj(spl)
+function generate_merge_traj(spl::Sampler{A}) where A<:Union{PG,SMC,PGAS}
     ## Extends the vi trajectory by the ref_traj!
     function merge_traj!(vi::VarInfo, ref_traj::VarInfo,num_produce::Int64=-1)
         # We go trough all the variables in the space

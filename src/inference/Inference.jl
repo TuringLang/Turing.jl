@@ -44,6 +44,7 @@ export  InferenceAlgorithm,
         SMC,
         CSMC,
         PG,
+        PGAS,
         PIMH,
         PMMH,
         IPMCMC,  # particle-based sampling
@@ -522,7 +523,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
+for alg in (:SMC, :PG, :PGAS, :PMMH, :IPMCMC, :MH, :IS)
     @eval getspace(::$alg{space}) where {space} = space
     @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
@@ -538,7 +539,7 @@ getspace(::Type{<:Gibbs}) = Tuple{}()
 
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
 @inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC, PGAS}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
 
 ## Fallback functions
 
