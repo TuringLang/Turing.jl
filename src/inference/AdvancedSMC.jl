@@ -56,8 +56,6 @@ end
 SMC(::Tuple{}) = SMC()
 SMC(space::Symbol...) = SMC(space)
 
-alg_str(spl::Sampler{SMC}) = "SMC"
-
 mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
     # The logevidence after aggregating all samples together.
@@ -66,7 +64,7 @@ mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
 end
 
 function SMCState(
-    model::M, 
+    model::M,
 ) where {
     M<:Model
 }
@@ -106,8 +104,8 @@ function sample_init!(
     # create a new particle container
     spl.state.particles = pc = ParticleContainer(model, particles)
 
-    while consume(spl.state.particles) !== Val{:done}
-        resample!(spl.state.particles, spl.alg.resampler)
+    while consume(pc) !== Val{:done}
+        resample!(pc, spl.alg.resampler)
     end
 end
 
@@ -124,7 +122,7 @@ function step!(
 
     # grab the weights
     pc = spl.state.particles
-    Ws = weights(pc)
+    Ws = getweights(pc)
 
     # update the master vi
     particle = pc.vals[iteration]
@@ -226,7 +224,7 @@ function step!(
     end
 
     # pick a particle to be retained.
-    Ws = weights(pc)
+    Ws = getweights(pc)
     indx = randcat(Ws)
 
     # extract the VarInfo from the retained particle.

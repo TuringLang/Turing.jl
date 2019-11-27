@@ -146,14 +146,14 @@ function Libtask.consume(pc :: ParticleContainer)
 end
 
 # compute the normalized weights
-weights(pc::ParticleContainer) = softmax(pc.logWs)
+getweights(pc::ParticleContainer) = softmax(pc.logWs)
 
 # compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
 logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
 
 # compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights
 function effectiveSampleSize(pc :: ParticleContainer)
-    Ws = weights(pc)
+    Ws = getweights(pc)
     return inv(sum(abs2, Ws))
 end
 
@@ -168,7 +168,7 @@ function resample!(
     pc :: ParticleContainer,
     randcat :: Function = Turing.Inference.resample_systematic,
     ref :: Union{Particle, Nothing} = nothing;
-    weights = weights(pc)
+    weights = getweights(pc)
 )
     # check that weights are not NaN
     @assert !any(isnan, weights)
@@ -232,9 +232,9 @@ function resample!(
     pc::ParticleContainer,
     resampler::ResampleWithESSThreshold,
     ref::Union{Particle,Nothing} = nothing;
-    weights = weights(pc)
+    weights = getweights(pc)
 )
-    # compute the effective sample size ``1 / ∑ wᵢ²`` with normalized weights ``wᵢ``
+    # Compute the effective sample size ``1 / ∑ wᵢ²`` with normalized weights ``wᵢ``
     ess = inv(sum(abs2, weights))
 
     if ess ≤ resampler.threshold * length(pc)
