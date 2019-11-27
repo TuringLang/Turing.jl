@@ -2,7 +2,7 @@ module Inference
 
 using FillArrays: Fill
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, VarInfo, 
+using ..Core.RandomVariables: Metadata, _tail, VarInfo, TypedVarInfo,
     islinked, invlink!, getlogp, tonamedtuple, VarName
 using ..Core: split_var_str
 using Distributions, Libtask, Bijectors
