@@ -79,7 +79,6 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 HMC(args...) = HMC{ADBackend()}(args...)
@@ -434,7 +433,8 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function assume(spl::Sampler{<:Hamiltonian},
+function assume(
+    spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
     vi::VarInfo
@@ -450,12 +450,13 @@ function assume(spl::Sampler{<:Hamiltonian},
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function dot_assume(spl::Sampler{<:Hamiltonian},
+function dot_assume(
+    spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     return dot_assume(spl, Fill(dist, size(var)), vn, var, vi)
 end
 function dot_assume(spl::Sampler{<:Hamiltonian},
@@ -486,15 +487,22 @@ function dot_assume(spl::Sampler{<:Hamiltonian},
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{<:Hamiltonian},
+function observe(
+    spl::Sampler{<:Hamiltonian},
     d::Distribution,
     value,
-    vi::VarInfo) = observe(nothing, d, value, vi)
+    vi::VarInfo
+)
+    return observe(nothing, d, value, vi)
+end
 
-dot_observe(spl::Sampler{<:Hamiltonian},
+function dot_observe(
+    spl::Sampler{<:Hamiltonian},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
-    value::AbstractArray, vi::VarInfo) = dot_observe(nothing, ds, value, vi)
-
+    value::AbstractArray, vi::VarInfo
+)
+    return dot_observe(nothing, ds, value, vi)
+end
 
 ####
 #### Default HMC stepsize and mass matrix adaptor

@@ -57,7 +57,6 @@ struct SMC{space, RT<:AbstractFloat} <: ParticleInference
     resampler_threshold   ::  RT
 end
 
-alg_str(spl::Sampler{SMC}) = "SMC"
 function SMC(
     resampler::Function,
     resampler_threshold::RT,
@@ -84,7 +83,7 @@ function SMCState(
     M<:Model
 }
     vi = VarInfo(model)
-    particles = ParticleContainer{Trace}(model)
+    particles = ParticleContainer(model, Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
@@ -96,54 +95,58 @@ function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
 end
 
 function sample_init!(
-    ::AbstractRNG, 
+    ::AbstractRNG,
     model::Turing.Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
 )
-    # Set the parameters to a starting value.
+    # set the parameters to a starting value
     initialize_parameters!(spl; kwargs...)
 
-    # Update the particle container now that the sampler type
-    # is defined.
-    spl.state.particles = ParticleContainer{Trace{typeof(spl),
-        typeof(spl.state.vi), typeof(model)}}(model)
+    # reset the VarInfo
+    vi = spl.state.vi
+    vi.num_produce = 0
+    set_retained_vns_del_by_spl!(vi, spl)
+    resetlogp!(vi)
+    empty!(vi)
 
-    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep\.
-    set_retained_vns_del_by_spl!(spl.state.vi, spl)
-    resetlogp!(spl.state.vi)
+    # create a new set of particles
+    T = Trace{typeof(spl),typeof(vi),typeof(model)}
+    particles = T[Trace(model, spl, vi) for _ in 1:N]
 
-    push!(spl.state.particles, N, spl, empty!(spl.state.vi))
+    # create a new particle container
+    spl.state.particles = pc = ParticleContainer(model, particles)
 
-    while consume(spl.state.particles) != Val{:done}
-        ess = effectiveSampleSize(spl.state.particles)
-        if ess <= spl.alg.resampler_threshold * length(spl.state.particles)
-            resample!(spl.state.particles, spl.alg.resampler)
+    while consume(pc) !== Val{:done}
+        ess = effectiveSampleSize(pc)
+        if ess <= spl.alg.resampler_threshold * N
+            resample!(pc, spl.alg.resampler)
         end
     end
 end
 
 function step!(
-    ::AbstractRNG, 
+    ::AbstractRNG,
     model::Turing.Model,
     spl::Sampler{<:SMC},
     ::Integer;
     iteration=-1,
     kwargs...
 )
-    # Check that we received a real iteration number.
+    # check that we received a real iteration number
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
 
-    ## Grab the weights.
-    Ws = weights(spl.state.particles)
+    # grab the weights
+    pc = spl.state.particles
+    Ws = weights(pc)
 
-    # update the master vi.
-    particle = spl.state.particles.vals[iteration]
+    # update the master vi
+    particle = pc.vals[iteration]
     params = tonamedtuple(particle.vi)
     lp = getlogp(particle.vi)
 
-    return ParticleTransition(params, lp, spl.state.particles.logE, Ws[iteration])
+    return ParticleTransition(params, lp, pc.logE, Ws[iteration])
 end
 
 ####
@@ -176,8 +179,6 @@ function PG(n1::Int, space::Symbol...)
     PG(n1, resample_systematic, space)
 end
 
-alg_str(spl::Sampler{PG}) = "PG"
-
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
     # The logevidence after aggregating all samples together.
@@ -209,38 +210,47 @@ function step!(
     ::Integer;
     kwargs...
 )
-    particles = ParticleContainer{Trace{typeof(spl), typeof(spl.state.vi), typeof(model)}}(model)
+    # obtain or create reference particle
+    vi = spl.state.vi
+    ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
 
-    spl.state.vi.num_produce = 0;  # Reset num_produce before new sweep.
-    ref_particle = isempty(spl.state.vi) ?
-              nothing :
-              forkr(Trace(model, spl, spl.state.vi))
+    # reset the VarInfo before new sweep
+    vi.num_produce = 0
+    set_retained_vns_del_by_spl!(vi, spl)
+    resetlogp!(vi)
 
-    set_retained_vns_del_by_spl!(spl.state.vi, spl)
-    resetlogp!(spl.state.vi)
-
+    # create a new set of particles
+    num_particles = spl.alg.n_particles
+    T = Trace{typeof(spl),typeof(vi),typeof(model)}
     if ref_particle === nothing
-        push!(particles, spl.alg.n_particles, spl, spl.state.vi)
+        particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
     else
-        push!(particles, spl.alg.n_particles-1, spl, spl.state.vi)
-        push!(particles, ref_particle)
+        particles = Vector{T}(undef, num_particles)
+        @inbounds for i in 1:(num_particles - 1)
+            particles[i] = Trace(model, spl, vi)
+        end
+        @inbounds particles[num_particles] = ref_particle
     end
 
-    while consume(particles) != Val{:done}
-        resample!(particles, spl.alg.resampler, ref_particle)
+    # create a new particle container
+    pc = ParticleContainer(model, particles)
+
+    # run the particle filter
+    while consume(pc) !== Val{:done}
+        resample!(pc, spl.alg.resampler, ref_particle)
     end
 
-    ## pick a particle to be retained.
-    Ws = weights(particles)
+    # pick a particle to be retained.
+    Ws = weights(pc)
     indx = randcat(Ws)
 
-    # Extract the VarInfo from the retained particle.
-    params = tonamedtuple(spl.state.vi)
-    spl.state.vi = particles[indx].vi
+    # extract the VarInfo from the retained particle.
+    params = tonamedtuple(vi)
+    spl.state.vi = pc.vals[indx].vi
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return ParticleTransition(params, lp, particles.logE, 1.0)
+    return ParticleTransition(params, lp, pc.logE, 1.0)
 end
 
 function sample_end!(
@@ -272,12 +282,7 @@ function sample_end!(
     spl.state.average_logevidence = loge
 end
 
-function assume(  spl::Sampler{T},
-                  dist::Distribution,
-                  vn::VarName,
-                  _::VarInfo
-                ) where T<:Union{PG,SMC}
-
+function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, ::VarInfo)
     vi = current_trace().vi
     if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
         if ~haskey(vi, vn)
@@ -305,13 +310,14 @@ function assume(  spl::Sampler{T},
     return r, 0
 end
 
-function dot_assume(  spl::Sampler{<:Union{PG,SMC}},
-                  dists,
-                  vn::VarName,
-                  var,
-                  vi::VarInfo
-                )
-    error("[Turing] PG and SMC doesn't support vectorizing assume statement")
+function dot_assume(
+    spl::Sampler{<:Union{PG,SMC}},
+    ::Any,
+    ::VarName,
+    ::Any,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
 end
 
 function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
@@ -319,12 +325,13 @@ function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     return 0
 end
 
-function dot_observe( spl::Sampler{<:Union{PG,SMC}},
-                  ds,
-                  value::AbstractArray,
-                  vi::VarInfo
-                )
-    error("[Turing] PG and SMC doesn't support vectorizing observe statement")
+function dot_observe(
+    spl::Sampler{<:Union{PG,SMC}},
+    ::Any,
+    ::AbstractArray,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
 end
 
 ####
@@ -387,43 +394,93 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     return append!(indx1, rand(Distributions.sampler(Categorical(w)), M_rdn))
 end
 
-function resample_stratified(w::AbstractVector{<:Real}, num_particles::Integer)
+"""
+    resample_stratified(weights, n)
 
-    Q, N = cumsum(w), num_particles
+Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
+generated by stratified resampling.
 
-    T = Array{Float64}(undef, N + 1)
-    for i=1:N,
-        T[i] = rand() / N + (i - 1) / N
-    end
-    T[N+1] = 1
+In stratified resampling `n` ordered random numbers `u₁`, ..., `uₙ` are generated, where
+``uₖ \\sim U[(k - 1) / n, k / n)``. Based on these numbers the samples `x₁`, ..., `xₙ`
+are selected according to the multinomial distribution defined by the normalized `weights`,
+i.e., `xᵢ = j` if and only if
+``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
+"""
+function resample_stratified(weights::AbstractVector{<:Real}, n::Integer)
+    # check input
+    m = length(weights)
+    m > 0 || error("weight vector is empty")
 
-    indx, i, j = Array{Int}(undef, N), 1, 1
-    while i <= N
-        if T[i] < Q[j]
-            indx[i] = j
-            i += 1
-        else
-            j += 1
+    # pre-calculations
+    @inbounds v = n * weights[1]
+
+    # generate all samples
+    samples = Array{Int}(undef, n)
+    sample = 1
+    @inbounds for i in 1:n
+        # sample next `u` (scaled by `n`)
+        u = oftype(v, i - 1 + rand())
+
+        # as long as we have not found the next sample
+        while v < u
+            # increase and check the sample
+            sample += 1
+            sample > m &&
+                error("sample could not be selected (are the weights normalized?)")
+
+            # update the cumulative sum of weights (scaled by `n`)
+            v += n * weights[sample]
         end
+
+        # save the next sample
+        samples[i] = sample
     end
-    return indx
+
+    return samples
 end
 
-function resample_systematic(w::AbstractVector{<:Real}, num_particles::Integer)
+"""
+    resample_systematic(weights, n)
 
-    Q, N = cumsum(w), num_particles
+Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
+generated by systematic resampling.
 
-    T = collect(range(0, stop = maximum(Q)-1/N, length = N)) .+ rand()/N
-    push!(T, 1)
+In systematic resampling a random number ``u \\sim U[0, 1)`` is used to generate `n` ordered
+numbers `u₁`, ..., `uₙ` where ``uₖ = (u + k − 1) / n``. Based on these numbers the samples
+`x₁`, ..., `xₙ` are selected according to the multinomial distribution defined by the
+normalized `weights`, i.e., `xᵢ = j` if and only if
+``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
+"""
+function resample_systematic(weights::AbstractVector{<:Real}, n::Integer)
+    # check input
+    m = length(weights)
+    m > 0 || error("weight vector is empty")
 
-    indx, i, j = Array{Int}(undef, N), 1, 1
-    while i <= N
-        if T[i] < Q[j]
-            indx[i] = j
-            i += 1
-        else
-            j += 1
+    # pre-calculations
+    @inbounds v = n * weights[1]
+    u = oftype(v, rand())
+
+    # find all samples
+    samples = Array{Int}(undef, n)
+    sample = 1
+    @inbounds for i in 1:n
+        # as long as we have not found the next sample
+        while v < u
+            # increase and check the sample
+            sample += 1
+            sample > m &&
+                error("sample could not be selected (are the weights normalized?)")
+
+            # update the cumulative sum of weights (scaled by `n`)
+            v += n * weights[sample]
         end
+
+        # save the next sample
+        samples[i] = sample
+
+        # update `u`
+        u += one(u)
     end
-    return indx
+
+    return samples
 end

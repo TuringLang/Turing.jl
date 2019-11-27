@@ -2,7 +2,7 @@ module Inference
 
 using FillArrays: Fill
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
+using ..Core.RandomVariables: Metadata, _tail, VarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName
 using ..Core: split_var_str
 using Distributions, Libtask, Bijectors
@@ -58,7 +58,8 @@ export  InferenceAlgorithm,
         get_covar,
         add_sample!,
         reset!,
-        step!
+        step!,
+        resume
 
 #######################
 # Sampler abstraction #
@@ -76,14 +77,21 @@ getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
 getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
 
 """
-    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
+    mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
-
-Note: This function is only used in PMMH.
+Decide if a proposal ``x'`` with log probability ``\\log p(x') = logp_proposal`` and
+log proposal ratio ``\\log k(x', x) - \\log k(x, x') = log_proposal_ratio`` in a
+Metropolis-Hastings algorithm with Markov kernel ``k(x_t, x_{t+1})`` and current state
+``x`` with log probability ``\\log p(x) = logp_current`` is accepted by evaluating the
+Metropolis-Hastings acceptance criterion
+```math
+\\log U \\leq \\log p(x') - \\log p(x) + \\log k(x', x) - \\log k(x, x')
+```
+for a uniform random number ``U \\in [0, 1)``.
 """
-function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
-    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
+    # replacing log(rand()) with -randexp() yields test errors
+    return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
 ######################
@@ -104,8 +112,6 @@ end
 function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
-
-Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
 
 ##########################################
 # Internal variable names for MCMCChains #
@@ -440,15 +446,20 @@ end
 
 function resume(c::Chains, n_iter::Int; kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
-    return sample(
+
+    # Sample a new chain.
+    newchain = sample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
-        n_iter;    # this is actually not used
+        n_iter;
         resume_from=c,
         reuse_spl_n=n_iter,
         kwargs...
     )
+
+    # Stick the new samples at the end of the old chain.
+    return vcat(c, newchain)
 end
 
 function set_resume!(
@@ -489,26 +500,25 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
-    @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
-getspace(::Gibbs) = Tuple{}()
-getspace(::Type{<:Gibbs}) = Tuple{}()
 
-@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-@inline floatof(::Type) = Real
+floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+floatof(::Type) = Real # fallback if type inference failed
 
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: Union{Missing, AbstractFloat}} = Union{Missing, floatof(eltype(vi, spl))}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+@inline Turing.Core.get_matching_type(spl::AbstractSampler, vi::VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
+@inline Turing.Core.get_matching_type(spl::AbstractSampler, vi::VarInfo, ::Type{T}) where {T <: Union{Missing, AbstractFloat}} = Union{Missing, floatof(eltype(vi, spl))}
+@inline Turing.Core.get_matching_type(spl::Sampler{<:Hamiltonian}, vi::VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
+@inline Turing.Core.get_matching_type(spl::Sampler{<:Union{PG, SMC}}, vi::VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
 
 ## Fallback functions
+
+alg_str(spl::Sampler) = string(nameof(typeof(spl.alg)))
+transition_type(spl::Sampler) = typeof(Transition(spl))
 
 # utility funcs for querying sampler information
 require_gradient(spl::Sampler) = false
@@ -555,23 +565,29 @@ end
 
 _tilde(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
 
-assume(spl::Sampler, dist::Distribution) =
-error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+function assume(spl::Sampler, dist)
+    error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+end
 
-observe(spl::Sampler, weight::Float64) =
-error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+function observe(spl::Sampler, weight)
+    error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+end
 
 ## Default definitions for assume, observe, when sampler = nothing.
-assume(::Nothing,
+function assume(
+    ::Nothing,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) = assume(SampleFromPrior(), dist, vn, vi)
-
-function assume(spl::Union{SampleFromPrior, SampleFromUniform},
+    vi::VarInfo
+)
+    return assume(SampleFromPrior(), dist, vn, vi)
+end
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     if haskey(vi, vn)
         r = vi[vn]
     else
@@ -585,16 +601,20 @@ function assume(spl::Union{SampleFromPrior, SampleFromUniform},
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-observe(::Nothing,
-        dist::Distribution,
-        value,
-        vi::VarInfo) = observe(SampleFromPrior(), dist, value, vi)
-
-function observe(spl::Union{SampleFromPrior, SampleFromUniform},
+function observe(
+    ::Nothing,
     dist::Distribution,
     value,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
+    return observe(SampleFromPrior(), dist, value, vi)
+end
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::Distribution,
+    value,
+    vi::VarInfo
+)
     vi.num_produce += one(vi.num_produce)
     return logpdf(dist, value)
 end
@@ -636,12 +656,13 @@ function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName,
     return _dot_tilde(sampler, right.dist, left, vn, vi)
 end
 
-function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
+function dot_assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     return dot_assume(spl, Fill(dist, size(var)), vn, var, vi)
 end
 function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
@@ -740,11 +761,12 @@ function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
     Turing.DEBUG && @debug "value = $value"
     return sum(logpdf(dist, value))
 end
-function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
+function dot_observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dists::AbstractArray{<:Distribution},
     value::AbstractArray,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dists = $dists"
     Turing.DEBUG && @debug "value = $value"
@@ -756,8 +778,6 @@ end
 # Utilities  #
 ##############
 
-getspace(spl::Sampler) = getspace(typeof(spl))
-getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
-
+getspace(spl::Sampler) = getspace(spl.alg)
 
 end # module
