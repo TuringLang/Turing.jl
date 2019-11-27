@@ -72,6 +72,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         varinfo2 = deepcopy(varinfo1)
         model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
         model(varinfo2, Turing.SampleFromPrior(), Turing.BatchContext(Turing.LikelihoodContext(), 10))
-        @test varinfo2.logp / varinfo1.logp == 10
+        @test isapprox(varinfo2.logp / varinfo1.logp, 10)
     end
 end
