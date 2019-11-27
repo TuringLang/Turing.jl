@@ -15,7 +15,7 @@ using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using ..Turing.Interface
 
-include("../../../AdvancedPS/src/AdvancedPS.jl"); const APS = AdvancedPS # I know this is very hacky...
+using AdvancedPS; const APS = AdvancedPS # I know this is very hacky...
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
