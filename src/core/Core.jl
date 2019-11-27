@@ -53,6 +53,7 @@ export  @model,
         gradient_logp_forward,
         gradient_logp_reverse,
         @varinfo,
-        @logpdf
+        @logpdf,
+        @sampler
 
 end # module

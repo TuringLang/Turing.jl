@@ -158,6 +158,7 @@ export  @model,                 # modelling
         @varname,
         @varinfo,
         @logpdf,
+        @sampler,
 
         MH,                     # classic sampling
         Gibbs,

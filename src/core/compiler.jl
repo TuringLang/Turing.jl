@@ -4,6 +4,9 @@ end
 macro logpdf()
     :(throw(_error_msg()))
 end
+macro sampler()
+    :(throw(_error_msg()))
+end
 _error_msg() = "This macro is only for use in the `Turing.@model` macro and not for external use."
 
 """
@@ -151,7 +154,7 @@ To generate a `Turing.Model`, call `model_generator(x_value)`.
 """
 macro model(input_expr)
     build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> 
-        replace_logpdf! |> build_output
+        replace_logpdf! |> replace_sampler! |> build_output
 end
 
 """
@@ -247,6 +250,19 @@ function replace_logpdf!(model_info)
     ex = model_info[:main_body]
     vi = model_info[:main_body_names][:vi]
     ex = MacroTools.postwalk(x -> @capture(x, @logpdf()) ? :($vi.logp) : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+
+"""
+    replace_sampler!(model_info)
+
+Replaces @sampler() expressions to the VarInfo instance.
+"""
+function replace_sampler!(model_info)
+    ex = model_info[:main_body]
+    spl = model_info[:main_body_names][:sampler]
+    ex = MacroTools.postwalk(x -> @capture(x, @sampler()) ? spl : x, ex)
     model_info[:main_body] = ex
     return model_info
 end

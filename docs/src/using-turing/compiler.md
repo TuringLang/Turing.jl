@@ -52,7 +52,7 @@ The `@model` macro is defined as:
 ```julia
 macro model(input_expr)
     build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> 
-        replace_logpdf! |> build_output
+        replace_logpdf! |> replace_sampler! |> build_output
 end
 ```
 
@@ -110,9 +110,9 @@ end
 ```
 The main difference in the expanded code between `L ~ R` and `@. L ~ R` is that the former doesn't assume `L` to be defined, it can be a new Julia variable in the scope, while the latter assumes `L` already exists. `L` is also always input to the `dot_tilde` function but not the `tilde` function.
 
-## `replace_vi!` and `replace_logpdf!`
+## `replace_vi!`, `replace_logpdf!` and `replace_sampler!`
 
-Using `@varinfo()` inside the model body will give the user access to the `vi::VarInfo` object used inside the model. The function `replace_vi!` therefore finds and replaces every use of `@varinfo()` with the handle to the `VarInfo` instance used inside the model. The `@logpdf()` macro will return `vi.logp` which is the accumumlated `log` probability that the model is computing. What this means exactly can change depending on the context, `ctx` used when running the model.
+Using `@varinfo()` inside the model body will give the user access to the `vi::VarInfo` object used inside the model. The function `replace_vi!` therefore finds and replaces every use of `@varinfo()` with the handle to the `VarInfo` instance used inside the model. The `@logpdf()` macro will return `vi.logp` which is the accumumlated `log` probability that the model is computing. What this means can change depending on the context, `ctx`, used when running the model. Finally, `replace_sampler!` will replace `@sampler()` with the `sampler` input to the model.
 
 ## `Turing.Model`
 
