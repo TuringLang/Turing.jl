@@ -22,7 +22,7 @@ function varname(expr)
     inds = :(())
     while ex.head == :ref
         if length(ex.args) >= 2
-            strs = map(x -> :(string($x)), ex.args[2:end])
+            strs = map(x -> :($x === : ? "Colon()" : string($x)), ex.args[2:end])
             pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ",") * "]"))
         end
         ex = ex.args[1]
