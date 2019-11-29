@@ -1,13 +1,5 @@
 import Random: AbstractRNG
 
-@static if isdefined(SpecialFunctions, :logbeta)
-    const logbeta = SpecialFunctions.logbeta
-elseif isdefined(SpecialFunctions, :lbeta)
-    const logbeta = SpecialFunctions.lbeta
-else
-    throw("Incompatible version of SpecialFunctions.")
-end
-
 # No info
 """
     Flat <: ContinuousUnivariateDistribution
@@ -66,7 +58,7 @@ struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
 end
 
 function logpdf_binomial_logit(n, logitp, k)
-    logcomb = -StatsFuns.log1p(n) - logbeta(n - k + 1, k + 1)
+    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.logbeta(n - k + 1, k + 1)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
