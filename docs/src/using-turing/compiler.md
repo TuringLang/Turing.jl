@@ -68,7 +68,7 @@ and returns it as a dictionary called `model_info`.
 
 ## `replace_tilde!`
 
-After some model information have been extracted, `replace_tilde!` replaces the `L ~ R` lines in the model with the output of `tilde(L, R, model_info)` where `L` and `R` are either expressions or symbols. `L` can also be a constant literal. The `replace_tilde!` function also replaces expressions of the form `@. L ~ R` with the output of `dot_tilde(L, R, model_info)`.
+After some model information have been extracted, `replace_tilde!` replaces the `L ~ R` lines in the model with the output of `Core.tilde(L, R, model_info)` where `L` and `R` are either expressions or symbols. `L` can also be a constant literal. The `replace_tilde!` function also replaces expressions of the form `@. L ~ R` with the output of `dot_tilde(L, R, model_info)`.
 
 In the above example, `p[1] ~ InverseGamma(2, 3)` is replaced with:
 ```julia
@@ -92,6 +92,8 @@ where `ctx::AbstractContext`, `sampler::AbstractSampler` and `vi::VarInfo` will 
 If `@preprocess` treats `p[1]` as a random variable, it will return a variable identifier `vn::VarName = Turing.@varname p[1]`. Otherwise, it returns the value of `p[1]`. `Turing.@varname` and `VarName` wil be explained later. The above checks by `@preprocess` were carefully written to make sure that the Julia compiler can compile them away so no checks happen at runtime and only the correct branch is run straight away. 
 
 When the output of `@preprocess` is a `VarName`, i.e. `p[1]` is a random variable, the `Turing.Inference.tilde` function will dispatch to a different method than when the output is of another type, i.e `p[1]` is an observation. In the former case, `Turing.Inference.tilde` returns 2 outputs, the value of the random variable and the `log` probability, while in the latter case, only the `log` probability is returned. The `log` probabilities then get accumulated and if `p[1]` is a random variable, the first returned output by `Turing.Inference.tilde` gets assigned to it.
+
+Note that `Core.tilde` is different from `Inference.tilde`. `Core.tilde` returns the expression block that will be run instead of the `~` line. A part of this expression block is a call to `Inference.tilde` as shown above. `Core.tilde` is defined in the `compiler.jl` file, while `Inference.tilde` is defined in the `Inference.jl` file.
 
 The `dot_tilde!` function does something similar for expressions of the form `@. L ~ R` (and `L .~ R` in Julia 1.1 and above). Let's take `@. x[1:2] ~ Normal(p[2], sqrt(p[1]))` as an example. This expressions replaced with:
 ```julia
