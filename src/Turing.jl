@@ -12,6 +12,7 @@ using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
+using AbstractMCMC
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
 
@@ -31,12 +32,6 @@ const CACHERANGES = 0b01
 
 const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 
-# Include the interface. Temporary until the interface is moved
-# to MCMCChains. CSP 2019-05-12
-include("interface/Interface.jl")
-using .Interface
-import .Interface: AbstractSampler
-
 """
     struct Model{pvars, dvars, F, TData, TDefaults}
         f::F
@@ -52,7 +47,7 @@ struct Model{pvars,
     F,
     TData,
     TDefaults
-} <: Sampleable{VariateForm,ValueSupport} # May need to find better types
+} <: AbstractModel
     f::F
     data::TData
     defaults::TDefaults
