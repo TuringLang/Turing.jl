@@ -13,14 +13,13 @@ using ..Turing: Model, runmodel!, Turing,
     LikelihoodContext, BatchContext, NamedDist, NoDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
-using ..Turing.Interface
+using AbstractMCMC
 
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
-import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Interface: AbstractTransition, sample, step!, sample_init!,
+import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
 
@@ -141,28 +140,28 @@ const TURING_INTERNAL_VARS = (internals = [
 # Default definitions for the interface #
 #########################################
 
-function Interface.sample(
+function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::ModelType,
     alg::AlgType,
     N::Integer;
     kwargs...
 ) where {
-    ModelType<:Sampleable,
+    ModelType<:AbstractModel,
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
     return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
 end
 
-function Interface.sample(
+function AbstractMCMC.sample(
     model::ModelType,
     alg::AlgType,
     N::Integer;
     resume_from=nothing,
     kwargs...
 ) where {
-    ModelType<:Sampleable,
+    ModelType<:AbstractModel,
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
@@ -174,21 +173,21 @@ function Interface.sample(
 end
 
 
-function Interface.psample(
+function AbstractMCMC.psample(
     model::ModelType,
     alg::AlgType,
     N::Integer,
     n_chains::Integer;
     kwargs...
 ) where {
-    ModelType<:Sampleable,
+    ModelType<:AbstractModel,
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
     return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
 end
 
-function Interface.psample(
+function AbstractMCMC.psample(
     rng::AbstractRNG,
     model::ModelType,
     alg::AlgType,
@@ -196,14 +195,14 @@ function Interface.psample(
     n_chains::Integer;
     kwargs...
 ) where {
-    ModelType<:Sampleable,
+    ModelType<:AbstractModel,
     SamplerType<:AbstractSampler,
     AlgType<:InferenceAlgorithm
 }
     return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
 end
 
-function Interface.sample_init!(
+function AbstractMCMC.sample_init!(
     ::AbstractRNG,
     model::Model,
     spl::Sampler,
@@ -217,7 +216,7 @@ function Interface.sample_init!(
     initialize_parameters!(spl; kwargs...)
 end
 
-function Interface.sample_end!(
+function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
     spl::AbstractSampler,
@@ -380,7 +379,7 @@ function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
 end
 
 # Default Chains constructor.
-function Chains(
+function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
     model::ModelType,
     spl::Sampler,
@@ -389,7 +388,7 @@ function Chains(
     discard_adapt::Bool=true,
     save_state=false,
     kwargs...
-) where {ModelType<:Sampleable, T<:AbstractTransition}
+) where {ModelType<:AbstractModel, T<:AbstractTransition}
     # Check if we have adaptation samples.
     if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
         ts = ts[(spl.alg.n_adapts+1):end]

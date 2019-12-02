@@ -12,6 +12,7 @@ using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
+using AbstractMCMC
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
 
@@ -35,12 +36,6 @@ const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 
-# Include the interface. Temporary until the interface is moved
-# to MCMCChains. CSP 2019-05-12
-include("interface/Interface.jl")
-using .Interface
-import .Interface: AbstractSampler
-
 """
 struct Model{F, Targs <: NamedTuple}
     f::F
@@ -49,7 +44,8 @@ end
 
 A `Model` struct with arguments `args` and inner function `f`.
 """
-struct Model{F, Targs <: NamedTuple} <: Sampleable{VariateForm,ValueSupport} # May need to find better types
+
+struct Model{F, Targs <: NamedTuple} <: AbstractModel
     f::F
     args::Targs
 end

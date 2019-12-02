@@ -13,6 +13,9 @@
   - title: "Advanced Usage"
     url: "docs/using-turing/advanced"
 
+  - title: "Interface Guide"
+    url: "docs/using-turing/interface"
+
   - title: "Automatic Differentiation"
     url: "docs/using-turing/autodiff"
 

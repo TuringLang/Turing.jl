@@ -1,4 +1,4 @@
-using ..Turing.Interface: init_callback, NoCallback
+using AbstractMCMC: init_callback, NoCallback
 
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
