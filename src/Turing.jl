@@ -44,7 +44,6 @@ end
 
 A `Model` struct with arguments `args` and inner function `f`.
 """
-
 struct Model{F, Targs <: NamedTuple} <: AbstractModel
     f::F
     args::Targs
