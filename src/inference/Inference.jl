@@ -1,6 +1,5 @@
 module Inference
 
-using FillArrays: Fill
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, VarInfo, TypedVarInfo,
     islinked, invlink!, getlogp, tonamedtuple, VarName
@@ -658,19 +657,11 @@ end
 
 function dot_assume(
     spl::Union{SampleFromPrior, SampleFromUniform},
-    dist::Distribution,
-    vn::VarName,
-    var::AbstractArray,
-    vi::VarInfo
-)
-    return dot_assume(spl, Fill(dist, size(var)), vn, var, vi)
-end
-function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
     vns = getvn.(1:size(var, 2))
@@ -679,18 +670,28 @@ function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
     var .= r
     return var, lp
 end
-function dot_assume(spl::Union{SampleFromPrior, SampleFromUniform},
-    dists::AbstractArray{<:Distribution},
+function dot_assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo)
-
+    vi::VarInfo
+)
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
     r = get_and_set_val!(vi, vns, dists, spl)
     lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
     var .= r
     return var, lp
+end
+function dot_assume(
+    spl::Sampler,
+    ::Any,
+    ::VarName,
+    ::Any,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
 end
 
 @inline function get_and_set_val!(vi, vn::VarName, dist::Distribution, spl)
@@ -714,7 +715,7 @@ end
     end
     return r
 end
-@inline function get_and_set_val!(vi, vns::AbstractArray{<:VarName}, dists::AbstractArray{<:Distribution}, spl)
+@inline function get_and_set_val!(vi, vns::AbstractArray{<:VarName}, dists::Union{Distribution, AbstractArray{<:Distribution}}, spl)
     if haskey(vi, vns[1])
         r = reshape(vi[vec(vns)], size(vns))
     else
@@ -740,18 +741,16 @@ function _dot_tilde(sampler, right, left::AbstractArray, vi)
     return dot_observe(sampler, right, left, vi)
 end
 
-dot_observe(::Nothing,
-        dist::Union{Distribution, AbstractArray{<:Distribution}},
-        value, vi::VarInfo) = dot_observe(SampleFromPrior(), dist, value, vi)
-
-function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
-    dist::Distribution,
-    value::AbstractArray,
-    vi::VarInfo)
-
-    return dot_observe(spl, Fill(dist, size(value)), value, vi)
+function dot_observe(
+    ::Nothing,
+    dist::Union{Distribution, AbstractArray{<:Distribution}},
+    value, 
+    vi::VarInfo
+)
+    return dot_observe(SampleFromPrior(), dist, value, vi)
 end
-function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
+function dot_observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::MultivariateDistribution,
     value::AbstractMatrix,
     vi::VarInfo)
@@ -763,7 +762,7 @@ function dot_observe(spl::Union{SampleFromPrior, SampleFromUniform},
 end
 function dot_observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
-    dists::AbstractArray{<:Distribution},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo
 )
@@ -772,7 +771,14 @@ function dot_observe(
     Turing.DEBUG && @debug "value = $value"
     return sum(logpdf.(dists, value))
 end
-
+function dot_observe(
+    spl::Sampler,
+    ::Any,
+    ::AbstractArray,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
+end
 
 ##############
 # Utilities  #

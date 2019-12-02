@@ -158,15 +158,6 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function dot_assume(
-    ::Sampler{<:MH},
-    ::Any,
-    ::VarName,
-    ::Any,
-    ::VarInfo
-)
-    error("[Turing] MH doesn't support vectorizing assume statement")
-end
 function observe(spl::Sampler{<:MH}, d::Distribution, value, vi::VarInfo)
     return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 end

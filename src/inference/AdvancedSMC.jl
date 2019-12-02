@@ -310,28 +310,9 @@ function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, 
     return r, 0
 end
 
-function dot_assume(
-    spl::Sampler{<:Union{PG,SMC}},
-    ::Any,
-    ::VarName,
-    ::Any,
-    ::VarInfo
-)
-    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
-end
-
 function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
     return 0
-end
-
-function dot_observe(
-    spl::Sampler{<:Union{PG,SMC}},
-    ::Any,
-    ::AbstractArray,
-    ::VarInfo
-)
-    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
 end
 
 ####
