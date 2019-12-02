@@ -110,13 +110,34 @@ Sampler(alg, model::Model) = Sampler(alg, model, Selector())
 Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
 
 abstract type AbstractContext end
+
+"""
+    struct DefaultContext <: AbstractContext end
+
+The `DefaultContext` is used by default to compute log the joint probability of the data and parameters when running the model.
+"""
 struct DefaultContext <: AbstractContext end
+
+"""
+    struct LikelihoodContext <: AbstractContext end
+
+The `LikelihoodContext` enables the computation of the log likelihood of the data when running the model.
+"""
 struct LikelihoodContext <: AbstractContext end
-struct BatchContext{Tctx, T} <: AbstractContext
+
+"""
+    struct MiniBatchContext{Tctx, T} <: AbstractContext
+        ctx::Tctx
+        loglike_scalar::T
+    end
+
+The `MiniBatchContext` enables the computation of `log(prior) + s * log(likelihood of a batch)` when running the model, where `s` is the `loglike_scalar` field, typically equal to `the number of data points / batch size`. This is useful in batch-based stochastic gradient descent algorithms to be optimizing `log(prior) + log(likelihood of all the data points)` in the expectation.
+"""
+struct MiniBatchContext{Tctx, T} <: AbstractContext
     ctx::Tctx
     loglike_scalar::T
 end
-BatchContext(ctx = DefaultContext(); batch_size, npoints) = BatchContext(ctx, npoints/batch_size)
+MiniBatchContext(ctx = DefaultContext(); batch_size, npoints) = MiniBatchContext(ctx, npoints/batch_size)
 
 include("utilities/Utilities.jl")
 using .Utilities

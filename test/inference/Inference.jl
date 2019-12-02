@@ -62,7 +62,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model(varinfo, Turing.SampleFromPrior(), Turing.LikelihoodContext())
         @test varinfo.logp == loglike
 
-        # Test BatchContext
+        # Test MiniBatchContext
         @model testmodel(x) = begin
             a ~ Beta()
             x[1] ~ Bernoulli(a)
@@ -71,7 +71,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         varinfo1 = Turing.VarInfo(model)
         varinfo2 = deepcopy(varinfo1)
         model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
-        model(varinfo2, Turing.SampleFromPrior(), Turing.BatchContext(Turing.LikelihoodContext(), 10))
+        model(varinfo2, Turing.SampleFromPrior(), Turing.MiniBatchContext(Turing.LikelihoodContext(), 10))
         @test isapprox(varinfo2.logp / varinfo1.logp, 10)
     end
 end

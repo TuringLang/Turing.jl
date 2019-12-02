@@ -10,7 +10,7 @@ using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, 
-    LikelihoodContext, BatchContext, NamedDist, NoDist
+    LikelihoodContext, MiniBatchContext, NamedDist, NoDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
 using AbstractMCMC
@@ -530,7 +530,7 @@ end
 function tilde(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
     return _tilde(sampler, NoDist(right), left, vi)
 end
-function tilde(ctx::BatchContext, sampler, right, left::VarName, vi)
+function tilde(ctx::MiniBatchContext, sampler, right, left::VarName, vi)
     return tilde(ctx.ctx, sampler, right, left, vi)
 end
 
@@ -557,7 +557,7 @@ end
 function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
     return _tilde(sampler, right, left, vi)
 end
-function tilde(ctx::BatchContext, sampler, right, left, vi)
+function tilde(ctx::MiniBatchContext, sampler, right, left, vi)
     return ctx.loglike_scalar * tilde(ctx.ctx, sampler, right, left, vi)
 end
 
@@ -626,7 +626,7 @@ end
 function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vn::VarName, vi)
     return _dot_tilde(sampler, NoDist(right), left, vn, vi)
 end
-function dot_tilde(ctx::BatchContext, sampler, right, left, vn::VarName, vi)
+function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vn::VarName, vi)
     return dot_tilde(ctx.ctx, sampler, right, left, vn, vi)
 end
 
@@ -732,7 +732,7 @@ end
 function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vi)
     return _dot_tilde(sampler, right, left, vi)
 end
-function dot_tilde(ctx::BatchContext, sampler, right, left, vi)
+function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vi)
     return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
 end
 
