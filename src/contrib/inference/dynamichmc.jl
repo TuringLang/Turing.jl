@@ -110,7 +110,7 @@ function Sampler(
 end
 
 # Disable the callback for DynamicHMC, since it has it's own progress meter.
-function Turing.Interface.init_callback(
+function AbstractMCMC.init_callback(
     rng::AbstractRNG,
     model::Model,
     s::Sampler{<:DynamicNUTS},
