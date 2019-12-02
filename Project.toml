@@ -1,8 +1,9 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.7.3"
+version = "0.7.4"
 
 [deps]
+AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
@@ -27,6 +28,7 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
+AbstractMCMC = "~0.1"
 AdvancedHMC = "0.2.4"
 Bijectors = "0.4.0"
 BinaryProvider = "0.5.6"
@@ -35,8 +37,8 @@ DistributionsAD = "0.1.0"
 FiniteDifferences = "0.9"
 ForwardDiff = "0.10.3"
 Libtask = "0.3.1"
-MCMCChains = "0.3.15"
 LogDensityProblems = "^0.9"
+MCMCChains = "~0.4.0"
 MacroTools = "0.5.1"
 PDMats = "0.9.9"
 ProgressMeter = "1.0.0"
