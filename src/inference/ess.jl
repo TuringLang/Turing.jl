@@ -124,7 +124,7 @@ function assume(spl::Sampler{<:ESS}, dist::Distribution, vn::VarName, vi::VarInf
     space = getspace(spl)
     if space === () || space === (vn.sym,)
         isnormal(dist) ||
-            error("[ESS] does only support normally distributed prior distributions")
+            error("[ESS] only supports normally distributed prior distributions")
 
         r = rand(dist)
         vi[vn] = vectorize(dist, r)
