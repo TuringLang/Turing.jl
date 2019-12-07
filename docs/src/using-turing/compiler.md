@@ -157,7 +157,7 @@ The main method `inner_function` does some pre-processing defining all the input
 function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx::AbstractContext, model)
     temp_x = model.args.x
     xT = typeof(temp_x)
-    if Turing.Core.is_number_or_array_type(temp_x)
+    if temp_x isa Turing.Core.FloatOrArrayType
         x = Turing.Core.get_matching_type(sampler, vi, temp_x)
     elseif Turing.Core.hasmissing(xT)
         x = Turing.Core.get_matching_type(sampler, vi, xT)(temp_x)

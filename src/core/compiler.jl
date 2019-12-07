@@ -391,9 +391,7 @@ function dot_tilde(left, right, model_info)
     return ex
 end
 
-is_number_or_array_type(T::Type{<:AbstractFloat}) = true
-is_number_or_array_type(T::Type{<:AbstractArray}) = true
-is_number_or_array_type(T) = false
+const FloatOrArrayType = Type{<:Union{AbstractFloat, AbstractArray}}
 hasmissing(T::Type{<:AbstractArray{TA}}) where {TA <: AbstractArray} = hasmissing(TA)
 hasmissing(T::Type{<:AbstractArray{>:Missing}}) = true
 hasmissing(T::Type) = false
@@ -433,7 +431,7 @@ function build_output(model_info)
             local $var
             $temp_var = $model.args.$var
             $varT = typeof($temp_var)
-            if Turing.Core.is_number_or_array_type($temp_var)
+            if $temp_var isa Turing.Core.FloatOrArrayType
                 $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
             elseif Turing.Core.hasmissing($varT)
                 $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
@@ -451,7 +449,7 @@ function build_output(model_info)
                 $sampler::Turing.AbstractSampler,
                 $ctx::Turing.AbstractContext,
                 $model
-                )
+            )
                 $unwrap_data_expr
                 $vi.logp = 0
                 $main_body
