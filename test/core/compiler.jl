@@ -101,7 +101,7 @@ priors = 0 # See "new grammar" test.
 
         # Test #544
         @model testmodel0(x = missing) = begin
-            if ismissing(x)
+            if x === missing
                 x = Vector{Float64}(undef, 2)
             end
             x[1] ~ Normal()

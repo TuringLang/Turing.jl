@@ -116,7 +116,7 @@ macro preprocess(data_vars, missing_vars, ex::Union{Symbol, Expr})
             if Turing.Core.inparams($sym, $data_vars)
                 # Evaluate the lhs
                 $lhs = $ex
-                if ismissing($lhs)
+                if $lhs === missing
                     $(varname(ex))
                 else
                     $lhs

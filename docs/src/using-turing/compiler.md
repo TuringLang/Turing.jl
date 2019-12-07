@@ -29,7 +29,7 @@ The following are the main jobs of the `@model` macro:
 Let's take the following model as an example:
 ```julia
 @model gauss(x = missing, y = 1.0, ::Type{TV} = Vector{Float64}) where {TV <: AbstractVector} = begin
-    if ismissing(x)
+    if x === missing
         x = TV(undef, 3)
     end
     p = TV(undef, 2)
@@ -42,7 +42,7 @@ end
 ```
 A `model::Model` can be defined using `gauss(rand(3), 1.0)` or `gauss(x = rand(3), y = 1.0)`. While constructing the model, if an argument is not passed in, it will be assigned to its default value. If there is no default value given, an error will be thrown. If an argument has a default value `missing`, when not passed in, it will be treated as a random variable. For variables which require an intialization because we need to loop or broadcast over its elements, such as `x` above, the following needs to be done:
 ```julia
-if ismissing(x)
+if x === missing
     x = ...
 end
 ```
