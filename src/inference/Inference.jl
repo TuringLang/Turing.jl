@@ -576,7 +576,7 @@ function assume(
     ::Nothing,
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo
+    vi::VarInfo,
 )
     return assume(SampleFromPrior(), dist, vn, vi)
 end
@@ -584,7 +584,7 @@ function assume(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo
+    vi::VarInfo,
 )
     if haskey(vi, vn)
         r = vi[vn]
@@ -603,7 +603,7 @@ function observe(
     ::Nothing,
     dist::Distribution,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
     return observe(SampleFromPrior(), dist, value, vi)
 end
@@ -611,7 +611,7 @@ function observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
     vi.num_produce += one(vi.num_produce)
     return logpdf(dist, value)
@@ -635,8 +635,17 @@ function _dot_tilde(sampler, right, left, vn::VarName, vi)
 end
 
 # Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
-function _dot_tilde(sampler, right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, left::AbstractMatrix{>:AbstractVector}, vn::VarName, vi)
-    throw("Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be column-wise following the convention of Distributions.jl or element-wise following Julia's general broadcasting semantics. Please make sure that the element type of `lhs` is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
+function _dot_tilde(
+    sampler, 
+    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, 
+    left::AbstractMatrix{>:AbstractVector}, 
+    vn::VarName, 
+    vi,
+)
+    throw("Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
+    column-wise following the convention of Distributions.jl or element-wise following 
+    Julia's general broadcasting semantics. Please make sure that the element type of `lhs` 
+    is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
 end
 function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName, vi)
     name = right.name
@@ -659,7 +668,7 @@ function dot_assume(
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
-    vi::VarInfo
+    vi::VarInfo,
 )
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
@@ -674,7 +683,7 @@ function dot_assume(
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo
+    vi::VarInfo,
 )
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
@@ -693,7 +702,7 @@ function dot_assume(
     error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
 end
 
-@inline function get_and_set_val!(vi, vn::VarName, dist::Distribution, spl)
+function get_and_set_val!(vi, vn::VarName, dist::Distribution, spl)
     if haskey(vi, vn)
         r = vi[vn]
     else
@@ -702,7 +711,12 @@ end
     end
     return r
 end
-@inline function get_and_set_val!(vi, vns::AbstractVector{<:VarName}, dist::MultivariateDistribution, spl)
+function get_and_set_val!(
+    vi, 
+    vns::AbstractVector{<:VarName}, 
+    dist::MultivariateDistribution, 
+    spl
+)
     n = length(vns)
     if haskey(vi, vns[1])
         r = vi[vns]
@@ -714,7 +728,12 @@ end
     end
     return r
 end
-@inline function get_and_set_val!(vi, vns::AbstractArray{<:VarName}, dists::Union{Distribution, AbstractArray{<:Distribution}}, spl)
+function get_and_set_val!(
+    vi, 
+    vns::AbstractArray{<:VarName}, 
+    dists::Union{Distribution, AbstractArray{<:Distribution}}, 
+    spl
+)
     if haskey(vi, vns[1])
         r = reshape(vi[vec(vns)], size(vns))
     else
@@ -744,7 +763,7 @@ function dot_observe(
     ::Nothing,
     dist::Union{Distribution, AbstractArray{<:Distribution}},
     value, 
-    vi::VarInfo
+    vi::VarInfo,
 )
     return dot_observe(SampleFromPrior(), dist, value, vi)
 end
@@ -752,8 +771,8 @@ function dot_observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::MultivariateDistribution,
     value::AbstractMatrix,
-    vi::VarInfo)
-
+    vi::VarInfo,
+)
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
@@ -763,7 +782,7 @@ function dot_observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
-    vi::VarInfo
+    vi::VarInfo,
 )
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dists = $dists"
@@ -774,7 +793,7 @@ function dot_observe(
     spl::Sampler,
     ::Any,
     ::AbstractArray,
-    ::VarInfo
+    ::VarInfo,
 )
     error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
 end

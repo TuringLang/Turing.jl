@@ -166,7 +166,7 @@ function dot_observe(
     spl::Sampler{<:MH},
     ds,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
     return dot_observe(nothing, ds, value, vi) # accumulate pdf of likelihood
 end

@@ -56,9 +56,6 @@ priors = 0 # See "new grammar" test.
         check_numerical(chn_p, [:x], [meanp], atol=0.1)
         check_numerical(chn_g, [:x], [meanp], atol=0.1)
     end
-    @testset "forbid missing inputs" begin
-
-    end
     @testset "forbid global" begin
         xs = [1.5 2.0]
         # xx = 1

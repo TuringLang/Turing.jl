@@ -114,14 +114,16 @@ abstract type AbstractContext end
 """
     struct DefaultContext <: AbstractContext end
 
-The `DefaultContext` is used by default to compute log the joint probability of the data and parameters when running the model.
+The `DefaultContext` is used by default to compute log the joint probability of the data 
+and parameters when running the model.
 """
 struct DefaultContext <: AbstractContext end
 
 """
     struct LikelihoodContext <: AbstractContext end
 
-The `LikelihoodContext` enables the computation of the log likelihood of the data when running the model.
+The `LikelihoodContext` enables the computation of the log likelihood of the data when 
+running the model.
 """
 struct LikelihoodContext <: AbstractContext end
 
@@ -131,14 +133,19 @@ struct LikelihoodContext <: AbstractContext end
         loglike_scalar::T
     end
 
-The `MiniBatchContext` enables the computation of `log(prior) + s * log(likelihood of a batch)` when running the model, where `s` is the `loglike_scalar` field, typically equal to `the number of data points / batch size`. This is useful in batch-based stochastic gradient descent algorithms to be optimizing `log(prior) + log(likelihood of all the data points)` in the expectation.
+The `MiniBatchContext` enables the computation of 
+`log(prior) + s * log(likelihood of a batch)` when running the model, where `s` is the 
+`loglike_scalar` field, typically equal to `the number of data points / batch size`. 
+This is useful in batch-based stochastic gradient descent algorithms to be optimizing 
+`log(prior) + log(likelihood of all the data points)` in the expectation.
 """
 struct MiniBatchContext{Tctx, T} <: AbstractContext
     ctx::Tctx
     loglike_scalar::T
 end
-MiniBatchContext(ctx = DefaultContext(); batch_size, npoints) = MiniBatchContext(ctx, npoints/batch_size)
-
+function MiniBatchContext(ctx = DefaultContext(); batch_size, npoints)
+    return MiniBatchContext(ctx, npoints/batch_size)
+end
 include("utilities/Utilities.jl")
 using .Utilities
 include("core/Core.jl")

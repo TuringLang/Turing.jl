@@ -7,11 +7,14 @@ end
 macro sampler()
     :(throw(_error_msg()))
 end
-_error_msg() = "This macro is only for use in the `Turing.@model` macro and not for external use."
+function _error_msg()
+    return "This macro is only for use in the `Turing.@model` macro and not for external use."
+end
 
 """
-Usage: @varname x[1,2][1+5][45][3]
-  return: VarName{:x}("[1,2][6][45][3]")
+    @varname(var)
+
+A macro that returns an instance of `VarName` given the symbol or expression of a Julia variable, e.g. `@varname x[1,2][1+5][45][3]` returns `VarName{:x}("[1,2][6][45][3]")`.
 """
 macro varname(expr::Union{Expr, Symbol})
     expr |> varname |> esc
@@ -39,6 +42,12 @@ end
 macro vsym(expr::Union{Expr, Symbol})
     expr |> vsym
 end
+
+"""
+    vsym(expr::Union{Expr, Symbol})
+
+Returns the variable symbol given the input variable expression `expr`. For example, if the input `expr = :(x[1])`, the output is `:x`.
+"""
 function vsym(expr::Union{Expr, Symbol})
     ex = deepcopy(expr)
     (ex isa Symbol) && return QuoteNode(ex)
@@ -50,6 +59,11 @@ function vsym(expr::Union{Expr, Symbol})
     throw("VarName: Mis-formed variable name $(expr)!")
 end
 
+"""
+    split_var_str(var_str, inds_as = Vector)
+
+This function splits a variable string, e.g. `"x[1:3,1:2][3,2]"` to the variable's symbol `"x"` and the indexing `"[1:3,1:2][3,2]"`. If `inds_as = String`, the indices are returned as a string, e.g. `"[1:3,1:2][3,2]"`. If `inds_as = Vector`, the indices are returned as a vector of vectors of strings, e.g. `[["1:3", "1:2"], ["3", "2"]]`.
+"""
 function split_var_str(var_str, inds_as = Vector)
     ind = findfirst(c -> c == '[', var_str)
     if inds_as === String
@@ -99,6 +113,16 @@ function wrong_dist_errormsg(l)
         "Distributions on line $(l)."
 end
 
+"""
+    @preprocess(data_vars, missing_vars, ex)
+
+Let `ex` be `x[1]`. This macro returns `@varname x[1]` in any of the following cases:
+    1. `x` was not among the input data to the model,
+    2. `x` was among the input data to the model but with a value `missing`, or
+    3. `x` was among the input data to the model with a value other than missing, 
+    but `x[1] === missing`.
+Otherwise, the value of `x[1]` is returned.
+"""
 macro preprocess(data_vars, missing_vars, ex)
     ex
 end
@@ -231,7 +255,7 @@ end
 """
     replace_vi!(model_info)
 
-Replaces @varinfo() expressions to the VarInfo instance.
+Replaces `@varinfo()` expressions with a handle to the `VarInfo` struct.
 """
 function replace_vi!(model_info)
     ex = model_info[:main_body]
@@ -244,7 +268,7 @@ end
 """
     replace_logpdf!(model_info)
 
-Replaces @logpdf() expressions to the VarInfo instance.
+Replaces `@logpdf()` expressions with the value of the accumulated `logpdf` in the `VarInfo` struct.
 """
 function replace_logpdf!(model_info)
     ex = model_info[:main_body]
@@ -257,7 +281,7 @@ end
 """
     replace_sampler!(model_info)
 
-Replaces @sampler() expressions to the VarInfo instance.
+Replaces `@sampler()` expressions with a handle to the sampler struct.
 """
 function replace_sampler!(model_info)
     ex = model_info[:main_body]
@@ -267,11 +291,12 @@ function replace_sampler!(model_info)
     return model_info
 end
 
+# The next function is defined that way because .~ gives a parsing error in Julia 1.0
 """
 \"""
     replace_tilde!(model_info)
 
-Replaces ~ expressions with observation or assumption expressions, updating `model_info`.
+Replaces `~` expressions with observation or assumption expressions, updating `model_info`.
 \"""
 function replace_tilde!(model_info)
     ex = model_info[:main_body]
@@ -286,7 +311,8 @@ end
 """
     tilde(left, right, model_info)
 
-The `tilde` function generates observation expression for data variables and assumption expressions for parameter variables, updating `model_info` in the process.
+The `tilde` function generates `observe` expression for data variables and `assume` 
+expressions for parameter variables, updating `model_info` in the process.
 """
 function tilde(left, right, model_info)
     arg_syms = Val((model_info[:arg_syms]...,))
@@ -322,6 +348,11 @@ function tilde(left, right, model_info)
     return ex
 end
 
+"""
+    dot_tilde(left, right, model_info)
+
+This function returns the expression that replaces `left .~ right` in the model body. If `preprocessed isa VarName`, then a `dot_assume` block will be run. Otherwise, a `dot_observe` block will be run.
+"""
 function dot_tilde(left, right, model_info)
     arg_syms = Val((model_info[:arg_syms]...,))
     model = model_info[:main_body_names][:model]
@@ -421,7 +452,6 @@ function build_output(model_info)
                 $ctx::Turing.AbstractContext,
                 $model
                 )
-
                 $unwrap_data_expr
                 $vi.logp = 0
                 $main_body

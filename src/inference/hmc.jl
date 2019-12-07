@@ -455,7 +455,7 @@ function dot_assume(
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
-    vi::VarInfo
+    vi::VarInfo,
 )
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
@@ -470,7 +470,7 @@ function dot_assume(
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo
+    vi::VarInfo,
 )
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
@@ -484,7 +484,7 @@ function observe(
     spl::Sampler{<:Hamiltonian},
     d::Distribution,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
     return observe(nothing, d, value, vi)
 end
@@ -493,7 +493,7 @@ function dot_observe(
     spl::Sampler{<:Hamiltonian},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
-    vi::VarInfo
+    vi::VarInfo,
 )
     return dot_observe(nothing, ds, value, vi)
 end

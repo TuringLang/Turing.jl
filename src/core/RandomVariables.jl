@@ -72,7 +72,7 @@ Examples:
  `indexing == "[Colon(),1][2]"`.
 """
 struct VarName{sym}
-    indexing::String # indexing
+    indexing::String
 end
 
 abstract type AbstractVarInfo end
