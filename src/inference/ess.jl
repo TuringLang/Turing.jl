@@ -65,6 +65,12 @@ function step!(
         runmodel!(model, vi, spl)
     end
 
+    # obtain mean of distribution
+    vns = _getvns(vi, spl)
+    length(vns) == 1 || error("[ESS] does only support one parameter")
+    dist = getdist(vi, vns[1][1])
+    μ = vectorize(dist, mean(dist))
+
     # obtain previous sample
     f = copy(vi[spl])
 
@@ -85,9 +91,12 @@ function step!(
         sinθ, cosθ = sincos(θ)
         @. vi[spl] = f * cosθ + ν * sinθ
 
+        # apply correction for distributions with nonzero mean
+        a = 1 - (sinθ + cosθ)
+        @. vi[spl] += μ * a
+
         # recompute log-likelihood and check if threshold is reached
-        resetlogp!(vi)
-        model(vi, spl)
+        runmodel!(model, vi, spl)
         if getlogp(vi) > threshold
             break
         end

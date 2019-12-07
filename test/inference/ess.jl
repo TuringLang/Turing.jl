@@ -29,9 +29,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_numerical(chain, [:m], [0.8], atol = 0.1)
 
         Random.seed!(100)
-        alg = Gibbs(CSMC(15, :s), ESS(:m))
+        alg = Gibbs(CSMC(50, :s), ESS(:m))
         chain = sample(gdemo_default, alg, 5_000)
-        @test_broken check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         # MoGtest
         Random.seed!(125)
