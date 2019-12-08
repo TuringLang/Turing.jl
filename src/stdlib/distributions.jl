@@ -1,19 +1,5 @@
 import Random: AbstractRNG
 
-for f in (:beta, :gamma)
-    logfunc = Symbol(:log, f)
-    lfunc = Symbol(:l, f)
-    @eval begin
-        @static if isdefined(SpecialFunctions, $(QuoteNode(logfunc)))
-            const $logfunc = SpecialFunctions.$logfunc
-        elseif isdefined(SpecialFunctions, $(QuoteNode(lfunc)))
-            const $logfunc = SpecialFunctions.$lfunc
-        else
-            throw("Incompatible version of SpecialFunctions.")
-        end
-    end
-end
-
 # No info
 """
     Flat <: ContinuousUnivariateDistribution
@@ -72,7 +58,7 @@ struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
 end
 
 function logpdf_binomial_logit(n, logitp, k)
-    logcomb = -StatsFuns.log1p(n) - logbeta(n - k + 1, k + 1)
+    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.logbeta(n - k + 1, k + 1)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
@@ -144,7 +130,7 @@ struct LogPoisson{T<:Real} <: DiscreteUnivariateDistribution
 end
 
 function Distributions.logpdf(lp::LogPoisson, k::Int)
-    return k * lp.logλ - exp(lp.logλ) - loggamma(k + 1)
+    return k * lp.logλ - exp(lp.logλ) - SpecialFunctions.loggamma(k + 1)
 end
 
 """
