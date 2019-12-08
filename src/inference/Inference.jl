@@ -18,7 +18,7 @@ using AbstractMCMC
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 import ..Turing: getspace
-import ..Core: getchunksize, getADtype
+import ..Core: getchunksize, getADtype, get_matching_type
 import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
@@ -508,10 +508,48 @@ end
 floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
 floatof(::Type) = Real # fallback if type inference failed
 
-@inline Turing.Core.get_matching_type(spl::AbstractSampler, vi::VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::AbstractSampler, vi::VarInfo, ::Type{T}) where {T <: Union{Missing, AbstractFloat}} = Union{Missing, floatof(eltype(vi, spl))}
-@inline Turing.Core.get_matching_type(spl::Sampler{<:Hamiltonian}, vi::VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Sampler{<:Union{PG, SMC}}, vi::VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+function get_matching_type(
+    spl::AbstractSampler, 
+    vi::VarInfo, 
+    ::Type{T},
+) where {T}
+    return T
+end
+function get_matching_type(
+    spl::AbstractSampler, 
+    vi::VarInfo, 
+    ::Type{T},
+) where {T <: AbstractFloat}
+    return floatof(eltype(vi, spl))
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{T},
+) where {T <: Union{Missing, AbstractFloat}}
+    return Union{Missing, floatof(eltype(vi, spl))}
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{<:AbstractFloat},
+)
+    return floatof(eltype(vi, spl))
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{TV},
+) where {T, N, TV <: Array{T, N}}
+    return Array{Turing.Core.get_matching_type(spl, vi, T), N}
+end
+function get_matching_type(
+    spl::Sampler{<:Union{PG, SMC}}, 
+    vi::VarInfo, 
+    ::Type{TV},
+) where {T, N, TV <: Array{T, N}}
+    return TArray{T, N}
+end
 
 ## Fallback functions
 
