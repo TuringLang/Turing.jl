@@ -21,7 +21,7 @@ include("container.jl")
 include("ad.jl")
 
 export  @model,
-        @VarName,
+        @varname,
         generate_observe,
         translate_tilde!,
         get_vars,
@@ -51,6 +51,9 @@ export  @model,
         setchunksize,
         verifygrad,
         gradient_logp_forward,
-        gradient_logp_reverse
+        gradient_logp_reverse,
+        @varinfo,
+        @logpdf,
+        @sampler
 
 end # module

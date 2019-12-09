@@ -2,7 +2,7 @@ module RandomVariables
 
 using ...Turing: Turing, CACHERESET, CACHEIDCS, CACHERANGES, Model,
     AbstractSampler, Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, getspace
+    Selector, getspace, AbstractContext, DefaultContext
 using ...Utilities: vectorize, reconstruct, reconstruct!
 using Bijectors: SimplexDistribution, link, invlink
 using Distributions
@@ -54,30 +54,25 @@ export  VarName,
 """
 ```
 struct VarName{sym}
-    csym      ::    Symbol
     indexing  ::    String
-    counter   ::    Int
 end
 ```
 
-A variable identifier. Every variable has a symbol `sym`, indices `indexing`, and
-internal fields: `csym` and `counter`. The Julia variable in the model corresponding to
-`sym` can refer to a single value or to a hierarchical array structure of univariate,
-multivariate or matrix variables. `indexing` stores the indices that can access the
-random variable from the Julia variable.
+A variable identifier. Every variable has a symbol `sym` and `indices `indexing`. 
+The Julia variable in the model corresponding to `sym` can refer to a single value or 
+to a hierarchical array structure of univariate, multivariate or matrix variables. `indexing` stores the indices that can access the random variable from the Julia 
+variable.
 
 Examples:
 
 - `x[1] ~ Normal()` will generate a `VarName` with `sym == :x` and `indexing == "[1]"`.
 - `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName` with `sym == :x` and
- `indexing == "[Colon(), 1]"`.
+ `indexing == "[Colon(),1]"`.
 - `x[:,1][2] ~ Normal()` will generate a `VarName` with `sym == :x` and
- `indexing == "[Colon(), 1][2]"`.
+ `indexing == "[Colon(),1][2]"`.
 """
 struct VarName{sym}
-    csym      ::    Symbol        # symbol generated in compilation time
-    indexing  ::    String        # indexing
-    counter   ::    Int           # counter of same {csym, uid}
+    indexing::String
 end
 
 abstract type AbstractVarInfo end
@@ -180,9 +175,10 @@ const TypedVarInfo = VarInfo{<:NamedTuple}
 
 function VarInfo(model::Model)
     vi = VarInfo()
-    model(vi, SampleFromUniform())
+    model(vi)
     return TypedVarInfo(vi)
 end
+(model::Model)() = model(Turing.VarInfo(), SampleFromPrior())
 
 function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     new_vi = deepcopy(old_vi)
@@ -591,63 +587,39 @@ end
 # VarName
 
 """
-`VarName(csym, sym, indexing, counter)`
-`VarName{sym}(csym::Symbol, indexing::String)`
+`VarName(sym, indexing)`
+`VarName{sym}(indexing::String)`
 
 Constructs a new instance of `VarName{sym}`
 """
-VarName(csym, sym, indexing, counter) = VarName{sym}(csym, indexing, counter)
-function VarName(csym::Symbol, sym::Symbol, indexing::String)
-    # TODO: update this method when implementing the sanity check
-    return VarName{sym}(csym, indexing, 1)
-end
-function VarName{sym}(csym::Symbol, indexing::String) where {sym}
-    # TODO: update this method when implementing the sanity check
-    return VarName{sym}(csym, indexing, 1)
-end
-
-"""
-`VarName(syms::Vector{Symbol}, indexing::String)`
-
-Constructs a new instance of `VarName{syms[2]}`
-"""
-function VarName(syms::Vector{Symbol}, indexing::String) where {sym}
-    # TODO: update this method when implementing the sanity check
-    return VarName{syms[2]}(syms[1], indexing, 1)
-end
+VarName(sym, indexing) = VarName{sym}(indexing)
 
 """
 `VarName(vn::VarName, indexing::String)`
 
 Returns a copy of `vn` with a new index `indexing`.
 """
-function VarName(vn::VarName, indexing::String)
-    return VarName(vn.csym, vn.sym, indexing, vn.counter)
+function VarName(vn::VarName{sym}, indexing::String) where {sym}
+    return VarName{sym}(indexing)
 end
 
 function getproperty(vn::VarName{sym}, f::Symbol) where {sym}
     return f === :sym ? sym : getfield(vn, f)
 end
 
-# NOTE: VarName should only be constructed by VarInfo internally due to the nature of the counter field.
-
 """
 `uid(vn::VarName)`
 
 Returns a unique tuple identifier for `vn`.
 """
-uid(vn::VarName) = (vn.csym, vn.sym, vn.indexing, vn.counter)
+uid(vn::VarName) = (vn.sym, vn.indexing)
 
 hash(vn::VarName) = hash(uid(vn))
 
 ==(x::VarName, y::VarName) = hash(uid(x)) == hash(uid(y))
 
-function string(vn::VarName; all = true)
-    if all
-        return "{$(vn.csym),$(vn.sym)$(vn.indexing)}:$(vn.counter)"
-    else
-        return "$(vn.sym)$(vn.indexing)"
-    end
+function string(vn::VarName)
+    return "$(vn.sym)$(vn.indexing)"
 end
 function string(vns::Vector{<:VarName})
     return replace(string(map(vn -> string(vn), vns)), "String" => "")
@@ -658,7 +630,7 @@ end
 
 Returns a `Symbol` represenation of the variable identifier `VarName`.
 """
-Symbol(vn::VarName) = Symbol(string(vn, all=false))  # simplified symbol
+Symbol(vn::VarName) = Symbol(string(vn))  # simplified symbol
 
 """
 `in(vn::VarName, space::Set)`
@@ -670,7 +642,7 @@ function in(vn::VarName, space::Tuple)::Bool
         return true
     else
         # String representation of `vn`
-        vn_str = string(vn, all=false)
+        vn_str = string(vn)
         return _in(vn_str, space)
     end
 end
@@ -699,7 +671,7 @@ function has_eval_num(spl::T) where T<:AbstractSampler
 end
 
 """
-`runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler)`
+`runmodel!(model::Model, vi::AbstractVarInfo, spl::AbstractSampler, ctx::AbstractContext)`
 
 Samples from `model` using the sampler `spl` storing the sample and log joint
 probability in `vi`.
@@ -707,13 +679,14 @@ probability in `vi`.
 function runmodel!(
     model::Model,
     vi::AbstractVarInfo,
-    spl::T = SampleFromPrior()
+    spl::T = SampleFromPrior(),
+    ctx::AbstractContext = DefaultContext()
 ) where T<:AbstractSampler
     setlogp!(vi, 0)
     if has_eval_num(spl)
         spl.state.eval_num += 1
     end
-    model(vi, spl)
+    model(vi, spl, ctx)
     return vi
 end
 
@@ -1106,7 +1079,7 @@ end
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
-        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns, all=false))))
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns), string.(metadata.$f.vns))))
     end
     return expr
 end

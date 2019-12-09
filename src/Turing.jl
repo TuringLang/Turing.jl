@@ -32,39 +32,34 @@ const CACHERANGES = 0b01
 
 const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
 
-"""
-    struct Model{pvars, dvars, F, TData, TDefaults}
-        f::F
-        data::TData
-        defaults::TDefaults
-    end
+# Random probability measures.
+include("stdlib/distributions.jl")
+include("stdlib/RandomMeasures.jl")
 
-A `Model` struct with parameter variables `pvars`, data variables `dvars`, inner
-function `f`, `data::NamedTuple` and `defaults::NamedTuple`.
 """
-struct Model{pvars,
-    dvars,
-    F,
-    TData,
-    TDefaults
-} <: AbstractModel
+struct Model{F, Targs <: NamedTuple}
     f::F
-    data::TData
-    defaults::TDefaults
+    args::Targs
 end
-function Model{pvars, dvars}(f::F, data::TD, defaults::TDefaults) where {pvars, dvars, F, TD, TDefaults}
-    return Model{pvars, dvars, F, TD, TDefaults}(f, data, defaults)
+
+A `Model` struct with arguments `args` and inner function `f`.
+"""
+struct Model{F, Targs <: NamedTuple} <: AbstractModel
+    f::F
+    args::Targs
 end
-get_pvars(m::Model{params}) where {params} = Tuple(params.types)
-get_dvars(m::Model{params, data}) where {params, data} = Tuple(data.types)
-get_defaults(m::Model) = m.defaults
-@generated function in_pvars(::Val{sym}, ::Model{params}) where {sym, params}
-    return sym in params.types ? :(true) : :(false)
-end
-@generated function in_dvars(::Val{sym}, ::Model{params, data}) where {sym, params, data}
-    return sym in data.types ? :(true) : :(false)
-end
+(model::Model)(vi) = model(vi, SampleFromPrior())
+(model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
+getmissing(model::Model) = _getmissing(model.args)
+@generated function _getmissing(args::NamedTuple{names, ttuple}) where {names, ttuple}
+    minds = filter(1:length(names)) do i
+        ttuple.types[i] == Missing
+    end
+    mnames = names[minds]
+    return :(Val{$mnames}())
+end
+
 function runmodel! end
 function getspace end
 
@@ -114,6 +109,43 @@ Sampler(alg) = Sampler(alg, Selector())
 Sampler(alg, model::Model) = Sampler(alg, model, Selector())
 Sampler(alg, model::Model, s::Selector) = Sampler(alg, model, s)
 
+abstract type AbstractContext end
+
+"""
+    struct DefaultContext <: AbstractContext end
+
+The `DefaultContext` is used by default to compute log the joint probability of the data 
+and parameters when running the model.
+"""
+struct DefaultContext <: AbstractContext end
+
+"""
+    struct LikelihoodContext <: AbstractContext end
+
+The `LikelihoodContext` enables the computation of the log likelihood of the data when 
+running the model.
+"""
+struct LikelihoodContext <: AbstractContext end
+
+"""
+    struct MiniBatchContext{Tctx, T} <: AbstractContext
+        ctx::Tctx
+        loglike_scalar::T
+    end
+
+The `MiniBatchContext` enables the computation of 
+`log(prior) + s * log(likelihood of a batch)` when running the model, where `s` is the 
+`loglike_scalar` field, typically equal to `the number of data points / batch size`. 
+This is useful in batch-based stochastic gradient descent algorithms to be optimizing 
+`log(prior) + log(likelihood of all the data points)` in the expectation.
+"""
+struct MiniBatchContext{Tctx, T} <: AbstractContext
+    ctx::Tctx
+    loglike_scalar::T
+end
+function MiniBatchContext(ctx = DefaultContext(); batch_size, npoints)
+    return MiniBatchContext(ctx, npoints/batch_size)
+end
 include("utilities/Utilities.jl")
 using .Utilities
 include("core/Core.jl")
@@ -140,17 +172,16 @@ using .Variational
     include("contrib/inference/dynamichmc.jl")
 end
 
-# Random probability measures.
-include("stdlib/distributions.jl")
-include("stdlib/RandomMeasures.jl")
-
 ###########
 # Exports #
 ###########
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
-        @VarName,
+        @varname,
+        @varinfo,
+        @logpdf,
+        @sampler,
 
         MH,                     # classic sampling
         Gibbs,
@@ -190,6 +221,7 @@ export  @model,                 # modelling
         BinomialLogit,
         VecBinomialLogit,
         OrderedLogistic,
-        LogPoisson
+        LogPoisson,
+        NamedDist
 
 end

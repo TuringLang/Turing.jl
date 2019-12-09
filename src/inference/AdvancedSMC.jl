@@ -307,26 +307,12 @@ function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, 
         end
         acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     end
-    return r, zero(Real)
-end
-
-function assume(
-    spl::Sampler{<:Union{PG,SMC}},
-    ::Vector{<:Distribution},
-    ::VarName,
-    ::Any,
-    ::VarInfo
-)
-    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
+    return r, 0
 end
 
 function observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
-    return zero(Real)
-end
-
-function observe(spl::Sampler{<:Union{PG,SMC}}, ::Vector{<:Distribution}, ::Any, ::VarInfo)
-    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
+    return 0
 end
 
 ####

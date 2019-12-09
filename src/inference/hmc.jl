@@ -450,50 +450,52 @@ function assume(
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(
+function dot_assume(
     spl::Sampler{<:Hamiltonian},
-    dists::Vector{<:Distribution},
+    dist::MultivariateDistribution,
     vn::VarName,
-    var,
-    vi::VarInfo
+    var::AbstractMatrix,
+    vi::VarInfo,
 )
-    @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
-
-    vns = map(i -> VarName(vn, "[$i]"), 1:n)
-
-    rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
-
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-        @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-        var = rs
-    elseif isa(dist, MultivariateDistribution)
-        if isa(var, Vector)
-            @assert length(var) == size(rs)[2] "Turing.assume variable and random number dimension unmatched"
-            for i = 1:n
-                var[i] = rs[:,i]
-            end
-        elseif isa(var, Matrix)
-            @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-            var = rs
-        else
-            error("[Turing] unsupported variable container")
-        end
-    end
-
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    @assert dim(dist) == size(var, 1)
+    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
+    vns = getvn.(1:size(var, 2))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+end
+function dot_assume(
+    spl::Sampler{<:Hamiltonian},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    vn::VarName,
+    var::AbstractArray,
+    vi::VarInfo,
+)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    vns = getvn.(CartesianIndices(var))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = reshape(vi[vec(vns)], size(var))
+    var .= r
+    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
 function observe(
-    ::Sampler{<:Hamiltonian},
-    d::Union{Distribution,Vector{<:Distribution}},
+    spl::Sampler{<:Hamiltonian},
+    d::Distribution,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
-    return observe(d, value, vi)
+    return observe(nothing, d, value, vi)
+end
+
+function dot_observe(
+    spl::Sampler{<:Hamiltonian},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray,
+    vi::VarInfo,
+)
+    return dot_observe(nothing, ds, value, vi)
 end
 
 ####
