@@ -168,56 +168,6 @@ using Turing
 end
 
 function get_nlogp(model)
-    # Set up the model call, sample from the prior.
-    vi = Turing.VarInfo(model)
-
-    # Define a function to optimize.
-    function nlogp(sm)
-        spl = Turing.SampleFromPrior()
-        new_vi = Turing.VarInfo(vi, spl, sm)
-        model(new_vi, spl)
-        -new_vi.logp
-    end
-
-    return nlogp
-end
-
-# Define our data points.
-x = 1.5
-y = 2.0
-model = gdemo(x, y)
-nlogp = get_nlogp(model)
-
-# Import Optim.jl.
-using Optim
-
-# Create a starting point, call the optimizer.
-sm_0 = [1.0, 1.0]
-lb = [0.0, -Inf]
-ub = [Inf, Inf]
-result = optimize(nlogp, lb, ub, sm_0, Fminbox())
-```
-
-
-## Maximum a Posteriori Estimation
-
-
-Turing does not currently have built-in methods for calculating the [maximum a posteriori](https://en.wikipedia.org/wiki/Maximum_a_posteriori_estimation) (MAP) for a model. This is a goal for Turing's implementation (see [this issue](https://github.com/TuringLang/Turing.jl/issues/605)), but for the moment, we present here a method for estimating the MAP using [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl).
-
-
-```julia
-using Turing
-
-# Define the simple gdemo model.
-@model gdemo(x, y) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
-    return s, m
-end
-
-function get_nlogp(model)
     # Construct a trace struct
     vi = Turing.VarInfo(model)
 
@@ -247,57 +197,6 @@ lb = [0.0, -Inf]
 ub = [Inf, Inf]
 result = optimize(nlogp, lb, ub, sm_0, Fminbox())
 ```
-
-
-## Maximum Likelihood Estimation
-
-
-Much like the MAP example above, one can use Turing's syntax to define a model and ignore the prior distributions to perform [maximum likelihood estimation](https://en.wikipedia.org/wiki/Maximum_likelihood_estimation) (MLE).
-
-```julia
-using Turing
-
-# Define the simple gdemo model.
-@model gdemo(x, y) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
-    return s, m
-end
-
-function get_nloglike(model)
-    # Construct a trace struct
-    vi = Turing.VarInfo(model)
-
-    # Define a function to optimize.
-    function nloglike(sm)
-        ctx = Turing.LikelihoodContext()
-        spl = Turing.SampleFromPrior()
-        new_vi = Turing.VarInfo(vi, spl, sm)
-        model(new_vi, spl, ctx)
-        -new_vi.logp
-    end
-
-    return nloglike
-end
-
-# Define our data points.
-x = 1.5
-y = 2.0
-model = gdemo(x, y)
-nlogp = get_nloglike(model)
-
-# Import Optim.jl.
-using Optim
-
-# Create a starting point, call the optimizer.
-sm_0 = [1.0, 1.0]
-lb = [0.0, -Inf]
-ub = [Inf, Inf]
-result = optimize(nlogp, lb, ub, sm_0, Fminbox())
-```
-
 
 ## Parallel Sampling
 
