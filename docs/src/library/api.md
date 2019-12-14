@@ -10,6 +10,7 @@ CurrentModule = Turing
 ## Index
 
 ```@index
+Modules = [Turing, Turing.Core, Turing.Inference, Libtask]
 ```
 
 ## Modelling
@@ -25,14 +26,10 @@ Sampler
 Gibbs
 HMC
 HMCDA
-IPMCMC
 IS
 MH
 NUTS
 PG
-PMMH
-SGHMC
-SGLD
 SMC
 ```
 

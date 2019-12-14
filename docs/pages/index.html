@@ -136,6 +136,31 @@ support:
   </div>
 </div>
 
+<!-- A Quick Example -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-xl-2"></div>
+      <div class="col-sm-6 col-md-8 col-xl-6">
+        <div class="archive__item-body  text-left">
+          <h2 class="archive__item-title" >News feed</h2>
+          <div class="archive__item-excerpt">
+            
+          </div>
+          {% for post in site.posts limit:10 %}
+              <div class="post-preview">
+              <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }} —
+              <span class="post-date">{{ post.date | date: "%B %d, %Y" }}</span></a> <br>
+              </div>
+              <hr>
+          {% endfor %}
+          <p><a href="{{ site.baseurl}}/news" class="btn btn-default">News</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Large Sampling Library -->
  <div class="swimlane">
   <div class="container">
