@@ -63,6 +63,10 @@
   children:
     - title: "Public"
       url: "docs/library"
+    - title: "AdvancedHMC"
+      url: "docs/library/advancedhmc/"
+    - title: "Bijectors"
+      url: "docs/library/bijectors/"
 
 - title: "CONTRIBUTING"
   url: "docs/contributing/guide"
