@@ -433,7 +433,8 @@ function AbstractMCMC.bundle_samples(
         string.(nms),
         deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
-        info=info
+        info=info,
+        sorted=true
     )
 end
 
