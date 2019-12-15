@@ -24,8 +24,11 @@ end
 in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
 baseurl = "/dev"
+ghref = get(ENV, "GITHUB_REF", "")
 if get(ENV, "TRAVIS_TAG", "") != ""
     baseurl = "/" * ENV["TRAVIS_TAG"]
+elseif ghref != "" && ghref != "master"
+    baseurl = "/" * ghref
 end
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)
