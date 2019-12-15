@@ -7,6 +7,7 @@ title: Performance Tips
 This section briefly summarises a few common techniques to ensure good performance when using Turing.
 We refer to [julialang.org](https://docs.julialang.org/en/v1/manual/performance-tips/index.html) for general techniques to ensure good performance of Julia programs.
 
+
 ## Use multivariate distributions
 
 It is generally preferable to use multivariate distributions if possible.
@@ -29,15 +30,19 @@ can be directly expressed more efficiently using a simple transformation:
     x ~ MvNormal(fill(m, length(x)), 0.2)
 end
 ```
+
+
 ## Choose your AD backend
 Turing currently provides support for two different automatic differentiation (AD) backends. 
 Generally, try to use `:forward_diff` for models with few parameters and `:reverse_diff` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
+
 
 ## Special care for `reverse_diff`
 
 In case of `reverse_diff` it is necessary to avoid loops for now.
 This is mainly due to the reverse-mode AD backend `Tracker` which is inefficient for such cases.
 Therefore, it is often recommended to write a [custom distribution](advanced) which implements a multivariate version of the prior distribution.
+
 
 ## Make your model type-stable
 
@@ -95,3 +100,39 @@ spl = Turing.SampleFromPrior();
 @code_warntype model.f(varinfo, spl, model);
 ```
 to inspect the type instabilities in the model.
+
+
+## Reuse Computations in Gibbs Sampling
+
+Often when performing Gibbs sampling, one can save computational time by caching the output of expensive functions. The cached values can then be reused in future Gibbs sub-iterations which do not change the inputs to this expensive function. For example in the following model:
+```julia
+@model demo(x) = begin
+    a ~ Gamma()
+    b ~ Normal()
+    c = function1(a)
+    d = function2(b)
+    x .~ Normal(c, d)
+end
+alg = Gibbs(MH(:a), MH(:b))
+sample(demo(zeros(10)), alg, 1000)
+```
+when only updating `a` in a Gibbs sub-iteration, keeping `b` the same, the value of `d` doesn't change. And when only updating `b`, the value of `c` doesn't change. However, if `function1` and `function2` are expensive and are both run in every Gibbs sub-iteration, a lot of time would be spent computing values that we already computed before. Such a problem can be overcome using `Memoization.jl`. Memoizing a function lets us store and reuse the output of the function for every input it is called with. This has a slight time overhead but for expensive functions, the savings will be far greater. 
+
+To use `Memoization.jl`, simply define memoized versions of `function1` and `function2` as such:
+```julia
+using Memoization
+
+@memoize memoized_function1(args...) = function1(args...)
+@memoize memoized_function2(args...) = function2(args...)
+```
+Then define the `Turing` model using the new functions as such:
+```julia
+@model demo(x) = begin
+    a ~ Gamma()
+    b ~ Normal()
+    c = memoized_function1(a)
+    d = memoized_function2(b)
+    x .~ Normal(c, d)
+end
+```
+
