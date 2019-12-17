@@ -51,10 +51,6 @@ jobs:
       env: STAGE=benchmark
       script:
         - julia ./benchmarks/runbenchmarks.jl
-after_success:
-  - julia -e 'if get(ENV, "STAGE", "") == "test"
-                using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
-              end'
 # comment out due to https://github.com/JuliaWeb/MbedTLS.jl/issues/193
 # using Coverage; Coveralls.submit(process_folder())
 
