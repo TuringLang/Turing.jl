@@ -36,21 +36,16 @@ jobs:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
-    - stage: documentation
-      julia: 1.1
-      os: linux
-      if: (tag =~ ^v) OR (branch = master)
-      env: STAGE=documentation
-      script:
-        - julia -e 'using Pkg; Pkg.update();'
-        - julia -e 'using Pkg; Pkg.add("Documenter"), Pkg.add("DocumenterMarkdown")'
-        - julia ./docs/make.jl
     - stage: benchmark
       julia: 1.1
       os: linux
       env: STAGE=benchmark
       script:
         - julia ./benchmarks/runbenchmarks.jl
+after_success:
+    - julia -e 'if get(ENV, "STAGE", "") == "test"
+                using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
+                end'
 # comment out due to https://github.com/JuliaWeb/MbedTLS.jl/issues/193
 # using Coverage; Coveralls.submit(process_folder())
 
