@@ -229,7 +229,7 @@ support:
                 <div class="card-body">
                   <h4>{{ f.title }}</h4>
 
-                  <p class="card-summary">{{ f.text }}</p>                  
+                  <p class="card-summary">{{ f.text | markdownify }}</p>                  
                 </div>
                 <a href="{{ f.url }}" class="btn btn-default" target="_blank">Go to {{ f.title }}</a>
               </div>

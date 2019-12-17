@@ -239,7 +239,7 @@ sub a {
     border-bottom: solid #ffffff;
 }
 
-.ecosystem-card a, .resource-card a {
+.ecosystem-card .btn, .resource-card .btn {
     width: 50%;
     position: absolute;
     bottom: 1rem;
