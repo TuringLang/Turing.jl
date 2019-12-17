@@ -218,16 +218,17 @@ No-U-Turn Sampler (NUTS) sampler.
 Usage:
 
 ```julia
-NUTS(200, 0.6j_max)
+NUTS()            # Use default NUTS configuration. 
+NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
 ```
 
 Arguments:
 
 - `n_adapts::Int` : The number of samples to use with adaptation.
-- `δ::Float64` : Target acceptance rate.
+- `δ::Float64` : Target acceptance rate for dual averaging.
 - `max_depth::Float64` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
-- `ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
+- `ϵ::Float64` : Inital step size; 0 means automatically searching using a heuristic procedure.
 
 """
 mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
@@ -239,6 +240,7 @@ mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamilt
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
+
 function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
