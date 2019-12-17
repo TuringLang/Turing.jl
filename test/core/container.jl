@@ -1,5 +1,5 @@
 using Turing, Random
-using Turing: ParticleContainer, weights, resample!,
+using Turing: ParticleContainer, getweights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
 using Turing.Core: logZ
@@ -43,14 +43,14 @@ include(dir*"/test/test_utils/AllUtils.jl")
         particles = [Trace(fpc, model, spl, Turing.VarInfo()) for _ in 1:3]
         pc = ParticleContainer(fpc, particles)
 
-        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test getweights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)
         @test pc.logE ≈ log(1)
 
         @test consume(pc) == log(1)
 
         resample!(pc)
-        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test getweights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)
         @test pc.logE ≈ log(1)
         @test effectiveSampleSize(pc) == 3

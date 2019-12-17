@@ -40,35 +40,21 @@ Sequential Monte Carlo sampler.
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Fields: 
-- `resampler`: A function used to sample particles from the particle container. 
-  Defaults to `resample_systematic`.
-- `resampler_threshold`: The threshold at which resampling terminates -- defaults to 0.5. If 
-  the `ess` <= `resampler_threshold` * `n_particles`, the resampling step is completed.
-
-  Usage:
+Usage:
 
 ```julia
 SMC()
 ```
 """
-struct SMC{space, RT<:AbstractFloat} <: ParticleInference
-    resampler             ::  Function
-    resampler_threshold   ::  RT
+struct SMC{space, R} <: ParticleInference
+    resampler::R
 end
 
-function SMC(
-    resampler::Function,
-    resampler_threshold::RT,
-    space::Tuple
-) where {RT<:AbstractFloat}
-    return SMC{space, RT}(resampler, resampler_threshold)
+function SMC(resampler = Turing.Core.ResampleWithESSThreshold(), space::Tuple = ())
+    SMC{space, typeof(resampler)}(resampler)
 end
-SMC() = SMC(resample_systematic, 0.5, ())
 SMC(::Tuple{}) = SMC()
-function SMC(space::Symbol...)
-    SMC(resample_systematic, 0.5, space)
-end
+SMC(space::Symbol...) = SMC(space)
 
 mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
@@ -78,7 +64,7 @@ mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
 end
 
 function SMCState(
-    model::M, 
+    model::M,
 ) where {
     M<:Model
 }
@@ -119,10 +105,7 @@ function sample_init!(
     spl.state.particles = pc = ParticleContainer(model, particles)
 
     while consume(pc) !== Val{:done}
-        ess = effectiveSampleSize(pc)
-        if ess <= spl.alg.resampler_threshold * N
-            resample!(pc, spl.alg.resampler)
-        end
+        resample!(pc, spl.alg.resampler)
     end
 end
 
@@ -139,7 +122,7 @@ function step!(
 
     # grab the weights
     pc = spl.state.particles
-    Ws = weights(pc)
+    Ws = getweights(pc)
 
     # update the master vi
     particle = pc.vals[iteration]
@@ -241,7 +224,7 @@ function step!(
     end
 
     # pick a particle to be retained.
-    Ws = weights(pc)
+    Ws = getweights(pc)
     indx = randcat(Ws)
 
     # extract the VarInfo from the retained particle.

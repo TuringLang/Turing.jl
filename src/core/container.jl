@@ -146,14 +146,14 @@ function Libtask.consume(pc :: ParticleContainer)
 end
 
 # compute the normalized weights
-weights(pc::ParticleContainer) = softmax(pc.logWs)
+getweights(pc::ParticleContainer) = softmax(pc.logWs)
 
 # compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
 logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
 
 # compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights
 function effectiveSampleSize(pc :: ParticleContainer)
-    Ws = weights(pc)
+    Ws = getweights(pc)
     return inv(sum(abs2, Ws))
 end
 
@@ -167,18 +167,16 @@ increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
 function resample!(
     pc :: ParticleContainer,
     randcat :: Function = Turing.Inference.resample_systematic,
-    ref :: Union{Particle, Nothing} = nothing
+    ref :: Union{Particle, Nothing} = nothing;
+    weights = getweights(pc)
 )
-    # compute weights
-    Ws = weights(pc)
-
     # check that weights are not NaN
-    @assert !any(isnan, Ws)
+    @assert !any(isnan, weights)
 
     # sample ancestor indices
     n = length(pc)
     nresamples = ref === nothing ? n : n - 1
-    indx = randcat(Ws, nresamples)
+    indx = randcat(weights, nresamples)
 
     # count number of children for each particle
     num_children = zeros(Int, n)
@@ -216,6 +214,32 @@ function resample!(
     # replace particles and log weights in the container with new particles and weights
     pc.vals = children
     pc.logWs = zeros(n)
+
+    pc
+end
+
+struct ResampleWithESSThreshold{R, T<:Real}
+    resampler::R
+    threshold::T
+end
+
+function ResampleWithESSThreshold()
+    ResampleWithESSThreshold(Turing.Inference.resample_systematic)
+end
+ResampleWithESSThreshold(resampler) = ResampleWithESSThreshold(resampler, 0.5)
+
+function resample!(
+    pc::ParticleContainer,
+    resampler::ResampleWithESSThreshold,
+    ref::Union{Particle,Nothing} = nothing;
+    weights = getweights(pc)
+)
+    # Compute the effective sample size ``1 / ∑ wᵢ²`` with normalized weights ``wᵢ``
+    ess = inv(sum(abs2, weights))
+
+    if ess ≤ resampler.threshold * length(pc)
+        resample!(pc, resampler.resampler, ref; weights = weights)
+    end
 
     pc
 end
