@@ -386,7 +386,7 @@ function AbstractMCMC.bundle_samples(
     N::Integer,
     ts::Vector{T};
     discard_adapt::Bool=true,
-    save_state=false,
+    save_state=true,
     kwargs...
 ) where {ModelType<:AbstractModel, T<:AbstractTransition}
     # Check if we have adaptation samples.
@@ -419,12 +419,10 @@ function AbstractMCMC.bundle_samples(
     end
 
     # Set up the info tuple.
-    info = if save_state
-        (range = rng,
-        model = model,
-        spl = spl)
+    if save_state
+        info = (range = rng, model = model, spl = spl, vi = spl.state.vi)
     else
-        NamedTuple()
+        info = NamedTuple()
     end
 
     # Chain construction.

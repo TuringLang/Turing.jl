@@ -498,7 +498,12 @@ function build_output(model_info)
     outer_function = gensym(model_info[:name])
     # Main body of the model
     main_body = model_info[:main_body]
-
+    model_gen_constructor = quote
+        Turing.Core.ModelGen{$(Tuple(arg_syms))}(
+            $outer_function, 
+            $defaults_nt,
+        )
+    end
     unwrap_data_expr = Expr(:block)
     for var in arg_syms
         temp_var = gensym(:temp_var)
@@ -530,12 +535,9 @@ function build_output(model_info)
                 $vi.logp = 0
                 $main_body
             end
-            return Turing.Model($inner_function, $args_nt)
+            return Turing.Model($inner_function, $args_nt, $model_gen_constructor)
         end
-        $model_gen = Turing.Core.ModelGen{$(Tuple(arg_syms))}(
-            $outer_function, 
-            $defaults_nt,
-        )
+        $model_gen = $model_gen_constructor
     end)
 end
 

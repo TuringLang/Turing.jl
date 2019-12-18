@@ -37,20 +37,22 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 
 """
-struct Model{F, Targs <: NamedTuple, Tmissings <: Val}
+struct Model{F, Targs <: NamedTuple, Tmissings <: Val, Tmodelgen}
     f::F
     args::Targs
     missings::Tmissings
+    modelgen::Tmodelgen
 end
 
 A `Model` struct with arguments `args` and inner function `f`.
 """
-struct Model{F, Targs <: NamedTuple, Tmissings <: Val} <: AbstractModel
+struct Model{F, Targs <: NamedTuple, Tmissings <: Val, Tmodelgen} <: AbstractModel
     f::F
     args::Targs
+    modelgen::Tmodelgen
     missings::Tmissings
 end
-Model(f, args::NamedTuple) = Model(f, args, getmissing(args))
+Model(f, args::NamedTuple, modelgen) = Model(f, args, modelgen, getmissing(args))
 (model::Model)(vi) = model(vi, SampleFromPrior())
 (model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)

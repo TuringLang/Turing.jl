@@ -26,10 +26,7 @@ function get_exprs(str::String)
 end
 
 function logprob(ex1, ex2)
-	@assert isdefined(ex2, :model)
-	modelgen = ex2.model
-	ptype = probtype(ex1, ex2, modelgen, modelgen.defaults)
-	vi = isdefined(ex2, :varinfo) ? ex2.varinfo : nothing
+	ptype, modelgen, vi = probtype(ex1, ex2)
 	if ptype isa Val{:prior}
 		return logprior(ex1, modelgen, vi)
 	elseif ptype isa Val{:likelihood}
@@ -37,6 +34,46 @@ function logprob(ex1, ex2)
 	end
 end
 
+function probtype(ntl::NamedTuple{namesl}, ntr::NamedTuple{namesr}) where {namesl, namesr}
+	if :chain in namesr
+		if isdefined(ntr.chain.info, :model)
+			model = ntr.chain.info.model
+			@assert model isa Turing.Model
+			modelgen = model.modelgen
+		elseif isdefined(ntr, :model)
+			modelgen = ntr.model
+		else
+			throw("The model is not defined. Please make sure the model is either saved in the chain or passed on the RHS of |.")
+		end
+		if isdefined(ntr.chain.info, :vi)
+			_vi = ntr.chain.info.vi
+			@assert _vi isa Turing.VarInfo
+			vi = TypedVarInfo(_vi)
+		elseif isdefined(ntr, :varinfo)
+			_vi = ntr.varinfo
+			@assert _vi isa Turing.VarInfo
+			vi = TypedVarInfo(_vi)
+		else
+			vi = nothing
+		end
+		defaults = modelgen.defaults
+		valid_arg(arg) = isdefined(ntl, arg) || isdefined(ntr, arg) || 
+			isdefined(defaults, arg) && !(getfield(defaults, arg) isa Missing)
+		@assert all(valid_arg.(modelgen.args))
+		return Val(:likelihood), modelgen, vi
+	else
+		@assert isdefined(ntr, :model)
+		modelgen = ntr.model
+		if isdefined(ntr, :varinfo)
+			_vi = ntr.varinfo
+			@assert _vi isa Turing.VarInfo
+			vi = TypedVarInfo(_vi)
+		else
+			vi = nothing
+		end
+		return probtype(ntl, ntr, modelgen, modelgen.defaults), modelgen, vi
+	end
+end
 function probtype(
 	ntl::NamedTuple{namesl},
 	ntr::NamedTuple{namesr},
@@ -132,9 +169,10 @@ function loglikelihood(
 	vi = _vi === nothing ? VarInfo(deepcopy(model)) : _vi
 	if isdefined(right, :chain)
 		# Element-wise likelihood for each value in chain
+		chain = right.chain
 		ctx = LikelihoodContext()
-		return map(1:length(right.chain)) do i
-			c = right.chain[i]
+		return map(1:length(chain)) do i
+			c = chain[i]
 			_setval!(vi, c)
 			model(vi, SampleFromPrior(), ctx)
 			vi.logp

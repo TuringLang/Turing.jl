@@ -710,6 +710,7 @@ function TypedVarInfo(vi::UntypedVarInfo)
     nt = NamedTuple{syms_tuple}(Tuple(new_metas))
     return VarInfo(nt, Ref(logp), Ref(num_produce))
 end
+TypedVarInfo(vi::TypedVarInfo) = vi
 
 function getproperty(vi::VarInfo, f::Symbol)
     f === :logp && return getfield(vi, :logp)[]
