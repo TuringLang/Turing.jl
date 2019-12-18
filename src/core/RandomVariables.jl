@@ -173,9 +173,9 @@ end
 const UntypedVarInfo = VarInfo{<:Metadata}
 const TypedVarInfo = VarInfo{<:NamedTuple}
 
-function VarInfo(model::Model)
+function VarInfo(model::Model, ctx = DefaultContext())
     vi = VarInfo()
-    model(vi)
+    model(vi, SampleFromPrior(), ctx)
     return TypedVarInfo(vi)
 end
 (model::Model)() = model(Turing.VarInfo(), SampleFromPrior())

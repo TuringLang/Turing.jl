@@ -1,15 +1,15 @@
 module Inference
 
 using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, VarInfo, TypedVarInfo,
-    islinked, invlink!, getlogp, tonamedtuple, VarName, getsym
+using ..Core.RandomVariables: Metadata, _tail, VarInfo, islinked, invlink!, 
+    getlogp, tonamedtuple, VarName, getsym, vectorize, settrans!
 using ..Core: split_var_str
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, CACHERESET, AbstractSampler
 using ..Turing: Model, runmodel!, Turing,
     Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, AbstractSamplerState, DefaultContext, 
+    Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, NamedDist, NoDist
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG
@@ -561,22 +561,35 @@ transition_type(spl::Sampler) = typeof(Transition(spl))
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
-function tilde(ctx::DefaultContext, sampler, right, left, vi)
-    return _tilde(sampler, right, left, vi)
-end
+_getindex(x, inds::Tuple) = _getindex(x[first(inds)...], Base.tail(inds))
+_getindex(x, inds::Tuple{}) = x
 
 # assume
-function tilde(ctx::LikelihoodContext, sampler, right, left::VarName, vi)
-    return _tilde(sampler, NoDist(right), left, vi)
+function tilde(ctx::DefaultContext, sampler, right, vn::VarName, _, vi)
+    return _tilde(sampler, right, vn, vi)
 end
-function tilde(ctx::MiniBatchContext, sampler, right, left::VarName, vi)
-    return tilde(ctx.ctx, sampler, right, left, vi)
+function tilde(ctx::PriorContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
+    if !(ctx.vars isa Nothing)
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
+        settrans!(vi, false, vn)
+    end
+    return _tilde(sampler, right, vn, vi)
+end
+function tilde(ctx::LikelihoodContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
+    if !(ctx.vars isa Nothing)
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
+        settrans!(vi, false, vn)
+    end
+    return _tilde(sampler, NoDist(right), vn, vi)
+end
+function tilde(ctx::MiniBatchContext, sampler, right, left::VarName, inds, vi)
+    return tilde(ctx.ctx, sampler, right, left, inds, vi)
 end
 
-function _tilde(sampler, right, left::VarName, vi)
-    return Turing.assume(sampler, right, left, vi)
+function _tilde(sampler, right, vn::VarName, vi)
+    return Turing.assume(sampler, right, vn, vi)
 end
-function _tilde(sampler, right::NamedDist, left::VarName, vi)
+function _tilde(sampler, right::NamedDist, vn::VarName, vi)
     name = right.name
     if name isa String
         sym_str, inds = split_var_str(name, String)
@@ -593,6 +606,12 @@ function _tilde(sampler, right::NamedDist, left::VarName, vi)
 end
 
 # observe
+function tilde(ctx::DefaultContext, sampler, right, left, vi)
+    return _tilde(sampler, right, left, vi)
+end
+function tilde(ctx::PriorContext, sampler, right, left, vi) where {s}
+    return 0
+end
 function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
     return _tilde(sampler, right, left, vi)
 end
@@ -642,35 +661,54 @@ end
 # .~ functions
 
 # assume
-function dot_tilde(ctx::DefaultContext, sampler, right, left, vn::VarName, vi)
-    return _dot_tilde(sampler, right, left, vn, vi)
+function dot_tilde(ctx::DefaultContext, sampler, right, left, vn::VarName, _, vi)
+    vns, dist = get_vns_and_dist(right, left, vn)
+    return _dot_tilde(sampler, dist, left, vns, vi)
 end
-function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vn::VarName, vi)
-    return _dot_tilde(sampler, NoDist(right), left, vn, vi)
-end
-function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vn::VarName, vi)
-    return dot_tilde(ctx.ctx, sampler, right, left, vn, vi)
-end
-
-function _dot_tilde(sampler, right, left, vn::VarName, vi)
-    return dot_assume(sampler, right, vn, left, vi)
-end
-
-# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
-function _dot_tilde(
-    sampler, 
-    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}}, 
-    left::AbstractMatrix{>:AbstractVector}, 
-    vn::VarName, 
+function dot_tilde(
+    ctx::LikelihoodContext,
+    sampler,
+    right,
+    left,
+    vn::VarName{s},
+    inds,
     vi,
-)
-    throw("Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
-    column-wise following the convention of Distributions.jl or element-wise following 
-    Julia's general broadcasting semantics. Please make sure that the element type of `lhs` 
-    is not a supertype of the support type of `AbstractVector` to eliminate ambiguity.")
+) where {s}
+    if !(ctx.vars isa Nothing)
+        var = _getindex(getfield(ctx.vars, s), inds)
+        vns, dist = get_vns_and_dist(right, var, vn)
+        set_val!(vi, vns, dist, var)
+        settrans!.(Ref(vi), false, vns)
+    else
+        vns, dist = get_vns_and_dist(right, left, vn)
+    end
+    return _dot_tilde(sampler, NoDist(dist), left, vns, vi)
 end
-function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName, vi)
-    name = right.name
+function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vn::VarName, inds, vi)
+    return dot_tilde(ctx.ctx, sampler, right, left, vn, inds, vi)
+end
+function dot_tilde(
+    ctx::PriorContext,
+    sampler,
+    right,
+    left,
+    vn::VarName{s},
+    inds,
+    vi,
+) where {s}
+    if !(ctx.vars isa Nothing)
+        var = _getindex(getfield(ctx.vars, s), inds)
+        vns, dist = get_vns_and_dist(right, var, vn)
+        set_val!(vi, vns, dist, var)
+        settrans!.(Ref(vi), false, vns)
+    else
+        vns, dist = get_vns_and_dist(right, left, vn)
+    end
+    return _dot_tilde(sampler, dist, left, vns, vi)
+end
+
+function get_vns_and_dist(dist::NamedDist, var, vn::VarName)
+    name = dist.name
     if name isa String
         sym_str, inds = split_var_str(name, String)
         sym = Symbol(sym_str)
@@ -682,19 +720,44 @@ function _dot_tilde(sampler, right::NamedDist, left::AbstractArray, vn::VarName,
     else
         throw("Unsupported variable name. Please use either a string, symbol or VarName.")
     end
-    return _dot_tilde(sampler, right.dist, left, vn, vi)
+    return get_vns_and_dist(dist.dist, var, vn)
+end
+function get_vns_and_dist(dist::MultivariateDistribution, var::AbstractMatrix, vn::VarName)
+    getvn = i -> VarName(vn, vn.indexing * "[Colon(),$i]")
+    return getvn.(1:size(var, 2)), dist
+end
+function get_vns_and_dist(
+    dist::Union{Distribution, AbstractArray{<:Distribution}}, 
+    var::AbstractArray, 
+    vn::VarName
+)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    return getvn.(CartesianIndices(var)), dist
+end
+
+function _dot_tilde(sampler, right, left, vns::AbstractArray{<:VarName}, vi)
+    return dot_assume(sampler, right, vns, left, vi)
+end
+
+# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
+function _dot_tilde(
+    sampler::AbstractSampler,
+    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}},
+    left::AbstractMatrix{>:AbstractVector},
+    vn::AbstractVector{<:VarName},
+    vi::VarInfo,
+)
+    throw(ambiguity_error_msg())
 end
 
 function dot_assume(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::MultivariateDistribution,
-    vn::VarName,
+    vns::AbstractVector{<:VarName},
     var::AbstractMatrix,
     vi::VarInfo,
 )
     @assert dim(dist) == size(var, 1)
-    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 2))
     r = get_and_set_val!(vi, vns, dist, spl)
     lp = sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
     var .= r
@@ -703,12 +766,10 @@ end
 function dot_assume(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
-    vn::VarName,
+    vns::AbstractArray{<:VarName},
     var::AbstractArray,
     vi::VarInfo,
 )
-    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = getvn.(CartesianIndices(var))
     r = get_and_set_val!(vi, vns, dists, spl)
     lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
     var .= r
@@ -717,27 +778,18 @@ end
 function dot_assume(
     spl::Sampler,
     ::Any,
-    ::VarName,
+    ::AbstractArray{<:VarName},
     ::Any,
     ::VarInfo
 )
     error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
 end
 
-function get_and_set_val!(vi, vn::VarName, dist::Distribution, spl)
-    if haskey(vi, vn)
-        r = vi[vn]
-    else
-        r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
-        push!(vi, vn, r, dist, spl)
-    end
-    return r
-end
 function get_and_set_val!(
-    vi, 
-    vns::AbstractVector{<:VarName}, 
-    dist::MultivariateDistribution, 
-    spl
+    vi::VarInfo,
+    vns::AbstractVector{<:VarName},
+    dist::MultivariateDistribution,
+    spl::AbstractSampler,
 )
     n = length(vns)
     if haskey(vi, vns[1])
@@ -751,10 +803,10 @@ function get_and_set_val!(
     return r
 end
 function get_and_set_val!(
-    vi, 
-    vns::AbstractArray{<:VarName}, 
-    dists::Union{Distribution, AbstractArray{<:Distribution}}, 
-    spl
+    vi::VarInfo,
+    vns::AbstractArray{<:VarName},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    spl::AbstractSampler,
 )
     if haskey(vi, vns[1])
         r = reshape(vi[vec(vns)], size(vns))
@@ -766,9 +818,38 @@ function get_and_set_val!(
     return r
 end
 
+function set_val!(
+    vi::VarInfo,
+    vns::AbstractVector{<:VarName},
+    dist::MultivariateDistribution,
+    val::AbstractMatrix,
+)
+    @assert size(val, 2) == length(vns)
+    foreach(enumerate(vns)) do (i, vn)
+        vi[vn] = val[:,i]
+    end
+    return val
+end
+function set_val!(
+    vi::VarInfo,
+    vns::AbstractArray{<:VarName},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    val::AbstractArray,
+)
+    @assert size(val) == size(vns)
+    foreach(CartesianIndices(val)) do ind
+        dist = dists isa AbstractArray ? dists[ind] : dists
+        vi[vns[ind]] = vectorize(dist, val[ind])
+    end
+    return val
+end
+
 # observe
 function dot_tilde(ctx::DefaultContext, sampler, right, left, vi)
     return _dot_tilde(sampler, right, left, vi)
+end
+function dot_tilde(ctx::PriorContext, sampler, right, left, vi)
+    return 0
 end
 function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vi)
     return _dot_tilde(sampler, right, left, vi)
@@ -779,6 +860,15 @@ end
 
 function _dot_tilde(sampler, right, left::AbstractArray, vi)
     return dot_observe(sampler, right, left, vi)
+end
+# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
+function _dot_tilde(
+    sampler::AbstractSampler,
+    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}},
+    left::AbstractMatrix{>:AbstractVector},
+    vi::VarInfo,
+)
+    throw(ambiguity_error_msg())
 end
 
 function dot_observe(
@@ -806,7 +896,7 @@ end
 function dot_observe(
     spl::Sampler,
     ::Any,
-    ::AbstractArray,
+    ::Any,
     ::VarInfo,
 )
     error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
@@ -817,5 +907,11 @@ end
 ##############
 
 getspace(spl::Sampler) = getspace(spl.alg)
+function ambiguity_error_msg()
+    return "Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
+    column-wise following the convention of Distributions.jl or element-wise following 
+    Julia's general broadcasting semantics. Please make sure that the element type of `lhs` 
+    is not a supertype of the support type of `AbstractVector` to eliminate ambiguity."
+end
 
 end # module

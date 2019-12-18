@@ -37,22 +37,27 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 
 """
-struct Model{F, Targs <: NamedTuple}
+struct Model{F, Targs <: NamedTuple, Tmissings <: Val}
     f::F
     args::Targs
+    missings::Tmissings
 end
 
 A `Model` struct with arguments `args` and inner function `f`.
 """
-struct Model{F, Targs <: NamedTuple} <: AbstractModel
+struct Model{F, Targs <: NamedTuple, Tmissings <: Val} <: AbstractModel
     f::F
     args::Targs
+    missings::Tmissings
 end
+Model(f, args::NamedTuple) = Model(f, args, getmissing(args))
 (model::Model)(vi) = model(vi, SampleFromPrior())
 (model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
-getmissing(model::Model) = _getmissing(model.args)
-@generated function _getmissing(args::NamedTuple{names, ttuple}) where {names, ttuple}
+
+getmissing(model::Model) = model.missings
+@generated function getmissing(args::NamedTuple{names, ttuple}) where {names, ttuple}
+    length(names) == 0 && return :(Val{()}())
     minds = filter(1:length(names)) do i
         ttuple.types[i] == Missing
     end
@@ -120,12 +125,31 @@ and parameters when running the model.
 struct DefaultContext <: AbstractContext end
 
 """
-    struct LikelihoodContext <: AbstractContext end
+    struct PriorContext{Tvars} <: AbstractContext
+        vars::Tvars
+    end
 
-The `LikelihoodContext` enables the computation of the log likelihood of the data when 
+The `PriorContext` enables the computation of the log prior of the parameters `vars` when 
 running the model.
 """
-struct LikelihoodContext <: AbstractContext end
+struct PriorContext{Tvars} <: AbstractContext
+    vars::Tvars
+end
+PriorContext() = PriorContext(nothing)
+
+"""
+    struct LikelihoodContext{Tvars} <: AbstractContext
+        vars::Tvars
+    end
+
+The `LikelihoodContext` enables the computation of the log likelihood of the data when 
+running the model. `vars` can be used to evaluate the log likelihood for specific values 
+of the model's parameters. If `vars` is `nothing`, the parameter values inside the `VarInfo` will be used by default.
+"""
+struct LikelihoodContext{Tvars} <: AbstractContext
+    vars::Tvars
+end
+LikelihoodContext() = LikelihoodContext(nothing)
 
 """
     struct MiniBatchContext{Tctx, T} <: AbstractContext
@@ -209,6 +233,8 @@ export  @model,                 # modelling
         psample,
         setchunksize,
         resume,
+        @logprob_str,
+        @prob_str,
 
         auto_tune_chunk_size!,  # helper
         setadbackend,

@@ -1,3 +1,14 @@
+struct ModelGen{Targs, F, Tdefaults} <: Function
+    f::F
+    defaults::Tdefaults
+end
+ModelGen{Targs}(args...) where {Targs} = ModelGen{Targs, typeof.(args)...}(args...)
+(m::ModelGen)(args...; kwargs...) = m.f(args...; kwargs...)
+function Base.getproperty(m::ModelGen{Targs}, f::Symbol) where {Targs}
+    f === :args && return Targs
+    return Base.getfield(m, f)
+end
+
 macro varinfo()
     :(throw(_error_msg()))
 end
@@ -55,6 +66,22 @@ function vsym(expr::Union{Expr, Symbol})
     while ex.head == :ref
         ex = ex.args[1]
         isa(ex, Symbol) && return QuoteNode(ex)
+    end
+    throw("VarName: Mis-formed variable name $(expr)!")
+end
+
+macro vinds(expr::Union{Expr, Symbol})
+    expr |> vinds |> esc
+end
+function vinds(expr::Union{Expr, Symbol})
+    ex = deepcopy(expr)
+    inds = Expr(:tuple)
+    (ex isa Symbol) && return inds
+    (ex.head == :ref) || throw("VarName: Mis-formed variable name $(expr)!")
+    while ex.head == :ref
+        pushfirst!(inds.args, Expr(:tuple, ex.args[2:end]...))
+        ex = ex.args[1]
+        isa(ex, Symbol) && return inds
     end
     throw("VarName: Mis-formed variable name $(expr)!")
 end
@@ -135,13 +162,13 @@ macro preprocess(data_vars, missing_vars, ex::Union{Symbol, Expr})
         # This branch should compile nicely in all cases except for partial missing data
         # For example, when `ex` is `x[i]` and `x isa Vector{Union{Missing, Float64}}`
         if !Turing.Core.inparams($sym, $data_vars) || Turing.Core.inparams($sym, $missing_vars)
-            $(varname(ex))
+            $(varname(ex)), $(vinds(ex))
         else
             if Turing.Core.inparams($sym, $data_vars)
                 # Evaluate the lhs
                 $lhs = $ex
                 if $lhs === missing
-                    $(varname(ex))
+                    $(varname(ex)), $(vinds(ex))
                 else
                     $lhs
                 end
@@ -201,6 +228,9 @@ function build_model_info(input_expr)
         # @model demo(::Type{T}) where {T}
         elseif MacroTools.@capture(arg, ::Type{T_} = Tval_)
             T
+        # @model demo(x::T = 1)
+        elseif MacroTools.@capture(arg, x_::T_ = val_)
+            x
         # @model demo(x = 1)
         elseif MacroTools.@capture(arg, x_ = val_)
             x
@@ -232,11 +262,33 @@ function build_model_info(input_expr)
             arg
         end
     end
+    args_nt = to_nt_expr(arg_syms)
+
+    default_syms = []
+    default_vals = [] 
+    foreach(modeldef[:args]) do arg
+        # @model demo(::Type{T}) where {T}
+        if MacroTools.@capture(arg, ::Type{T_} = Tval_)
+            push!(default_syms, T)
+            push!(default_vals, Tval)
+        # @model demo(x::T = 1)
+        elseif MacroTools.@capture(arg, x_::T_ = val_)
+            push!(default_syms, x)
+            push!(default_vals, val)
+        # @model demo(x = 1)
+        elseif MacroTools.@capture(arg, x_ = val_)
+            push!(default_syms, x)
+            push!(default_vals, val)
+        end
+    end
+    defaults_nt = to_nt_expr(default_syms, default_vals)
+
     model_info = Dict(
         :name => modeldef[:name],
         :main_body => modeldef[:body],
         :arg_syms => arg_syms,
         :args_nt => args_nt,
+        :defaults_nt => defaults_nt,
         :args => args,
         :whereparams => modeldef[:whereparams],
         :main_body_names => Dict(
@@ -250,6 +302,19 @@ function build_model_info(input_expr)
     )
 
     return model_info
+end
+
+function to_nt_expr(syms::Vector, vals = syms)
+    if length(syms) == 0
+        nt = :(NamedTuple())
+    else
+        nt_type = Expr(:curly, :NamedTuple, 
+            Expr(:tuple, QuoteNode.(syms)...), 
+            Expr(:curly, :Tuple, [:(Turing.Core.get_type($x)) for x in vals]...)
+        )
+        nt = Expr(:call, :(Turing.namedtuple), nt_type, Expr(:tuple, vals...))
+    end
+    return nt
 end
 
 """
@@ -323,6 +388,8 @@ function tilde(left, right, model_info)
     temp_right = gensym(:temp_right)
     out = gensym(:out)
     lp = gensym(:lp)
+    vn = gensym(:vn)
+    inds = gensym(:inds)
     preprocessed = gensym(:preprocessed)
     assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
     if left isa Symbol || left isa Expr
@@ -330,8 +397,9 @@ function tilde(left, right, model_info)
             $temp_right = $right
             $assert_ex
             $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
-            if $preprocessed isa Turing.VarName
-                $out = Turing.Inference.tilde($ctx, $sampler, $temp_right, $preprocessed, $vi)
+            if $preprocessed isa Tuple
+                $vn, $inds = $preprocessed
+                $out = Turing.Inference.tilde($ctx, $sampler, $temp_right, $vn, $inds, $vi)
                 $left = $out[1]
                 $vi.logp += $out[2]
             else
@@ -364,15 +432,18 @@ function dot_tilde(left, right, model_info)
     temp_right = gensym(:temp_right)
     preprocessed = gensym(:preprocessed)
     lp = gensym(:lp)
+    vn = gensym(:vn)
+    inds = gensym(:inds)
     assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
     if left isa Symbol || left isa Expr
         ex = quote
             $temp_right = $right
             $assert_ex
             $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
-            if $preprocessed isa Turing.VarName
+            if $preprocessed isa Tuple
+                $vn, $inds = $preprocessed
                 $temp_left = $left
-                $out = Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $preprocessed, $vi)
+                $out = Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vn, $inds, $vi)
                 $left .= $out[1]
                 $vi.logp += $out[2]
             else
@@ -417,9 +488,14 @@ function build_output(model_info)
     # Arguments namedtuple
     args_nt = model_info[:args_nt]
     # Default values of the arguments
+    # Arguments namedtuple
+    defaults_nt = model_info[:defaults_nt]
+    # Where parameters
     whereparams = model_info[:whereparams]
     # Model generator name
-    outer_function = model_info[:name]
+    model_gen = model_info[:name]
+    # Outer function name
+    outer_function = gensym(model_info[:name])
     # Main body of the model
     main_body = model_info[:main_body]
 
@@ -456,6 +532,10 @@ function build_output(model_info)
             end
             return Turing.Model($inner_function, $args_nt)
         end
+        $model_gen = Turing.Core.ModelGen{$(Tuple(arg_syms))}(
+            $outer_function, 
+            $defaults_nt,
+        )
     end)
 end
 
