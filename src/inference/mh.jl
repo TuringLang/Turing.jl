@@ -159,7 +159,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
 end
 
 function observe(spl::Sampler{<:MH}, d::Distribution, value, vi::VarInfo)
-    return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
+    return observe(d, value, vi)  # accumulate pdf of likelihood
 end
 
 function dot_observe(
@@ -168,5 +168,5 @@ function dot_observe(
     value,
     vi::VarInfo,
 )
-    return dot_observe(nothing, ds, value, vi) # accumulate pdf of likelihood
+    return dot_observe(ds, value, vi) # accumulate pdf of likelihood
 end
