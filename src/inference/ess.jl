@@ -17,7 +17,7 @@ Mean
 │ Row │ parameters │ mean     │
 │     │ Symbol     │ Float64  │
 ├─────┼────────────┼──────────┤
-│ 1   │ m          │ 0.811555 │
+│ 1   │ m          │ 0.824853 │
 ```
 """
 struct ESS{space} <: InferenceAlgorithm end
