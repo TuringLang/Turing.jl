@@ -29,25 +29,30 @@ mutable struct ESSState{V<:VarInfo} <: AbstractSamplerState
     vi::V
 end
 
-ESSState(model::Model) = ESSState(VarInfo(model))
-
 function Sampler(alg::ESS, model::Model, s::Selector)
     # sanity check
+    vi = VarInfo(model)
     space = getspace(alg)
-    if isempty(space)
-        pvars = get_pvars(model)
-        length(pvars) == 1 ||
-            error("[ESS] no symbol specified to sampler although there is not exactly one model parameter ($pvars)")
-    end
+    vns = _getvns(vi, s, Val(space))
+    length(vns) == 1 ||
+        error("[ESS] does only support one variable ($(length(vns)) variables specified)")
+    dist = getdist(vi, vns[1][1])
+    isgaussian(dist) ||
+        error("[ESS] only supports Gaussian prior distributions")
 
-    state = ESSState(model)
+    state = ESSState(vi)
     info = Dict{Symbol, Any}()
 
     return Sampler(alg, info, s, state)
 end
 
+isgaussian(dist) = false
+isgaussian(::Normal) = true
+isgaussian(::NormalCanon) = true
+isgaussian(::AbstractMvNormal) = true
+
 # always accept in the first step
-function step!(::AbstractRNG, ::Model, spl::Sampler{<:ESS}, ::Integer; kwargs...)
+function step!(::AbstractRNG, model::Model, spl::Sampler{<:ESS}, ::Integer; kwargs...)
     return Transition(spl)
 end
 
@@ -59,27 +64,26 @@ function step!(
     ::Transition;
     kwargs...
 )
-    # recompute log-likelihood in logp
-    vi = spl.state.vi
-    if spl.selector.tag !== :default
-        runmodel!(model, vi, spl)
-    end
-
     # obtain mean of distribution
-    vns = _getvns(vi, spl)
-    length(vns) == 1 || error("[ESS] does only support one parameter")
-    dist = getdist(vi, vns[1][1])
+    vi = spl.state.vi
+    vn = _getvns(vi, spl)[1][1]
+    dist = getdist(vi, vn)
     μ = vectorize(dist, mean(dist))
 
     # obtain previous sample
-    f = copy(vi[spl])
+    f = vi[vn]
+
+    # recompute log-likelihood in logp
+    if spl.selector.tag !== :default
+        runmodel!(model, vi, spl)
+    end
+    setgid!(vi, spl.selector, vn)
 
     # sample log-likelihood threshold for the next sample
     threshold = getlogp(vi) - randexp(rng)
 
     # sample from the prior
-    runmodel!(model, vi, spl)
-    ν = copy(vi[spl])
+    ν = vectorize(dist, rand(rng, dist))
 
     # sample initial angle
     θ = 2 * π * rand(rng)
@@ -87,13 +91,10 @@ function step!(
     θₘₐₓ = θ
 
     while true
-        # compute proposal
+        # compute proposal and apply correction for distributions with nonzero mean
         sinθ, cosθ = sincos(θ)
-        @. vi[spl] = f * cosθ + ν * sinθ
-
-        # apply correction for distributions with nonzero mean
         a = 1 - (sinθ + cosθ)
-        @. vi[spl] += μ * a
+        vi[vn] = @. f * cosθ + ν * sinθ + μ * a
 
         # recompute log-likelihood and check if threshold is reached
         runmodel!(model, vi, spl)
@@ -115,24 +116,16 @@ function step!(
     return Transition(spl)
 end
 
-isnormal(dist) = false
-isnormal(::Normal) = true
-isnormal(::NormalCanon) = true
-isnormal(::AbstractMvNormal) = true
-
 function assume(spl::Sampler{<:ESS}, dist::Distribution, vn::VarName, vi::VarInfo)
+    # don't sample
+    r = vi[vn]
+
+    # avoid possibly costly computation of the prior probability
     space = getspace(spl)
     if space === () || space === (vn.sym,)
-        isnormal(dist) ||
-            error("[ESS] only supports normally distributed prior distributions")
-
-        r = rand(dist)
-        vi[vn] = vectorize(dist, r)
-        setgid!(vi, spl.selector, vn)
         return r, zero(Base.promote_eltype(dist, r))
     else
-        r = vi[vn]
-        return r, logpdf(dist, r)
+        return r, logpdf_with_trans(dist, r, istrans(vi, vn))
     end
 end
 
