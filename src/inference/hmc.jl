@@ -488,7 +488,7 @@ function observe(
     value,
     vi::VarInfo,
 )
-    return observe(nothing, d, value, vi)
+    return observe(d, value, vi)
 end
 
 function dot_observe(
@@ -497,7 +497,7 @@ function dot_observe(
     value::AbstractArray,
     vi::VarInfo,
 )
-    return dot_observe(nothing, ds, value, vi)
+    return dot_observe(ds, value, vi)
 end
 
 ####

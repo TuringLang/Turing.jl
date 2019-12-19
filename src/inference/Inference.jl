@@ -612,9 +612,8 @@ function observe(spl::Sampler, weight)
     error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 end
 
-## Default definitions for assume, observe, when sampler = nothing.
+## Default definitions for assume and observe without sampler.
 function assume(
-    ::Nothing,
     dist::Distribution,
     vn::VarName,
     vi::VarInfo,
@@ -641,7 +640,6 @@ function assume(
 end
 
 function observe(
-    ::Nothing,
     dist::Distribution,
     value,
     vi::VarInfo,
@@ -801,7 +799,6 @@ function _dot_tilde(sampler, right, left::AbstractArray, vi)
 end
 
 function dot_observe(
-    ::Nothing,
     dist::Union{Distribution, AbstractArray{<:Distribution}},
     value, 
     vi::VarInfo,
