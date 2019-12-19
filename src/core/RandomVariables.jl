@@ -186,7 +186,7 @@ function VarInfo(old_vi::UntypedVarInfo, spl, x::AbstractVector)
     return new_vi
 end
 function VarInfo(old_vi::TypedVarInfo, spl, x::AbstractVector)
-    md = newmetadata(old_vi.metadata, getspaceval(spl), x)
+    md = newmetadata(old_vi.metadata, Val(getspace(spl)), x)
     VarInfo(md, Base.RefValue{eltype(x)}(old_vi.logp), Ref(old_vi.num_produce))
 end
 @generated function newmetadata(metadata::NamedTuple{names}, ::Val{space}, x) where {names, space}
@@ -446,8 +446,6 @@ Returns a tuple of the unique symbols of random variables sampled in `vi`.
 syms(vi::UntypedVarInfo) = Tuple(unique!(map(vn -> vn.sym, vi.vns)))  # get all symbols
 syms(vi::TypedVarInfo) = keys(vi.metadata)
 
-getspaceval(alg) = Val(getspace(alg))
-
 # Get all indices of variables belonging to SampleFromPrior:
 #   if the gid/selector of a var is an empty Set, then that var is assumed to be assigned to
 #   the SampleFromPrior sampler
@@ -479,16 +477,14 @@ end
     #    spl.info[:idcs]
     #else
         #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHEIDCS
-        idcs = _getidcs(vi, spl.selector, getspaceval(spl.alg))
+        idcs = _getidcs(vi, spl.selector, Val(getspace(spl)))
         #spl.info[:idcs] = idcs
     #end
     return idcs
 end
-@inline function _getidcs(vi::UntypedVarInfo, s::Selector, ::Val{space}) where {space}
-    findinds(vi, s, Val(space))
-end
-@inline function _getidcs(vi::TypedVarInfo, s::Selector, ::Val{space}) where {space}
-    return _getidcs(vi.metadata, s, Val(space))
+@inline _getidcs(vi::UntypedVarInfo, s::Selector, space::Val) = findinds(vi, s, space)
+@inline function _getidcs(vi::TypedVarInfo, s::Selector, space::Val)
+    return _getidcs(vi.metadata, s, space)
 end
 # Get a NamedTuple for all the indices belonging to a given selector for each symbol
 @generated function _getidcs(metadata::NamedTuple{names}, s::Selector, ::Val{space}) where {names, space}
@@ -517,11 +513,10 @@ end
 end
 
 # Get all vns of variables belonging to spl
-_getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.vns, _getidcs(vi, spl))
-function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
-    # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
-    idcs = _getidcs(vi, spl)
-    return _getvns(vi.metadata, idcs)
+_getvns(vi::AbstractVarInfo, spl::Sampler) = _getvns(vi, spl.selector, Val(getspace(spl)))
+_getvns(vi::UntypedVarInfo, s::Selector, space::Val) = view(vi.vns, _getidcs(vi, s, space))
+function _getvns(vi::TypedVarInfo, s::Selector, space::Val)
+    return _getvns(vi.metadata, _getidcs(vi, s, space))
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
 @generated function _getvns(metadata, idcs::NamedTuple{names}) where {names}
@@ -541,14 +536,14 @@ end
     #    spl.info[:ranges]
     #else
         #spl.info[:cache_updated] = spl.info[:cache_updated] | CACHERANGES
-        ranges = _getranges(vi, spl.selector, getspaceval(spl.alg))
+        ranges = _getranges(vi, spl.selector, Val(getspace(spl)))
         #spl.info[:ranges] = ranges
         return ranges
     #end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
-@inline function _getranges(vi::AbstractVarInfo, s::Selector, ::Val{space}=Val(())) where {space}
-    _getranges(vi, _getidcs(vi, s, Val(space)))
+@inline function _getranges(vi::AbstractVarInfo, s::Selector, space::Val)
+    _getranges(vi, _getidcs(vi, s, space))
 end
 @inline function _getranges(vi::UntypedVarInfo, idcs::Vector{Int})
     mapreduce(i -> vi.ranges[i], vcat, idcs, init=Int[])
@@ -878,7 +873,7 @@ function link!(vi::UntypedVarInfo, spl::Sampler)
 end
 function link!(vi::TypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
-    return _link!(vi.metadata, vi, vns, getspaceval(spl))
+    return _link!(vi.metadata, vi, vns, Val(getspace(spl)))
 end
 @generated function _link!(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
     expr = Expr(:block)
@@ -924,7 +919,7 @@ function invlink!(vi::UntypedVarInfo, spl::Sampler)
 end
 function invlink!(vi::TypedVarInfo, spl::Sampler)
     vns = _getvns(vi, spl)
-    return _invlink!(vi.metadata, vi, vns, getspaceval(spl))
+    return _invlink!(vi.metadata, vi, vns, Val(getspace(spl)))
 end
 @generated function _invlink!(metadata::NamedTuple{names}, vi, vns, ::Val{space}) where {names, space}
     expr = Expr(:block)
@@ -1310,7 +1305,7 @@ If `vn` doesn't have a sampler selector linked and `vn`'s symbol is in the space
 `spl`, this function will set `vn`'s `gid` to `Set([spl.selector])`.
 """
 function updategid!(vi::AbstractVarInfo, vn::VarName, spl::Sampler)
-    if vn in getspace(spl.alg)
+    if vn in getspace(spl)
         setgid!(vi, spl.selector, vn)
     end
 end
