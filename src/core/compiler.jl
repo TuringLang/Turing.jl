@@ -1,29 +1,112 @@
-using Base.Meta: parse
+macro varinfo()
+    :(throw(_error_msg()))
+end
+macro logpdf()
+    :(throw(_error_msg()))
+end
+macro sampler()
+    :(throw(_error_msg()))
+end
+function _error_msg()
+    return "This macro is only for use in the `Turing.@model` macro and not for external use."
+end
 
-# TODO: Replace this macro, see issue #514
 """
-Usage: @VarName x[1,2][1+5][45][3]
-  return: (:x,[1,2],6,45,3)
+    @varname(var)
+
+A macro that returns an instance of `VarName` given the symbol or expression of a Julia variable, e.g. `@varname x[1,2][1+5][45][3]` returns `VarName{:x}("[1,2][6][45][3]")`.
 """
-macro VarName(expr::Union{Expr, Symbol})
+macro varname(expr::Union{Expr, Symbol})
+    expr |> varname |> esc
+end
+function varname(expr)
     ex = deepcopy(expr)
-    isa(ex, Symbol) && return var_tuple(ex)
+    (ex isa Symbol) && return quote
+        Turing.VarName{$(QuoteNode(ex))}("")
+    end
     (ex.head == :ref) || throw("VarName: Mis-formed variable name $(expr)!")
     inds = :(())
     while ex.head == :ref
         if length(ex.args) >= 2
-            strs = map(x -> :(string($x)), ex.args[2:end])
-            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ", ") * "]"))
+            strs = map(x -> :($x === (:) ? "Colon()" : string($x)), ex.args[2:end])
+            pushfirst!(inds.args, :("[" * join($(Expr(:vect, strs...)), ",") * "]"))
         end
         ex = ex.args[1]
-        isa(ex, Symbol) && return var_tuple(ex, inds)
+        isa(ex, Symbol) && return quote
+            Turing.VarName{$(QuoteNode(ex))}(foldl(*, $inds, init = ""))
+        end
     end
     throw("VarName: Mis-formed variable name $(expr)!")
 end
-function var_tuple(sym::Symbol, inds::Expr=:(()))
-    return esc(:($(QuoteNode(sym)), $inds, $(QuoteNode(gensym()))))
+
+macro vsym(expr::Union{Expr, Symbol})
+    expr |> vsym
 end
 
+"""
+    vsym(expr::Union{Expr, Symbol})
+
+Returns the variable symbol given the input variable expression `expr`. For example, if the input `expr = :(x[1])`, the output is `:x`.
+"""
+function vsym(expr::Union{Expr, Symbol})
+    ex = deepcopy(expr)
+    (ex isa Symbol) && return QuoteNode(ex)
+    (ex.head == :ref) || throw("VarName: Mis-formed variable name $(expr)!")
+    while ex.head == :ref
+        ex = ex.args[1]
+        isa(ex, Symbol) && return QuoteNode(ex)
+    end
+    throw("VarName: Mis-formed variable name $(expr)!")
+end
+
+"""
+    split_var_str(var_str, inds_as = Vector)
+
+This function splits a variable string, e.g. `"x[1:3,1:2][3,2]"` to the variable's symbol `"x"` and the indexing `"[1:3,1:2][3,2]"`. If `inds_as = String`, the indices are returned as a string, e.g. `"[1:3,1:2][3,2]"`. If `inds_as = Vector`, the indices are returned as a vector of vectors of strings, e.g. `[["1:3", "1:2"], ["3", "2"]]`.
+"""
+function split_var_str(var_str, inds_as = Vector)
+    ind = findfirst(c -> c == '[', var_str)
+    if inds_as === String
+        if ind === nothing
+            return var_str, ""
+        else
+            return var_str[1:ind-1], var_str[ind:end]
+        end
+    end
+    @assert inds_as === Vector
+    inds = Vector{String}[]
+    if ind === nothing
+        return var_str, inds
+    end
+    sym = var_str[1:ind-1]
+    ind = length(sym)
+    while ind < length(var_str)
+        ind += 1
+        @assert var_str[ind] == '['
+        push!(inds, String[])
+        while var_str[ind] != ']'
+            ind += 1
+            if var_str[ind] == '['
+                ind2 = findnext(c -> c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2]))
+                ind = ind2+1
+            else
+                ind2 = findnext(c -> c == ',' || c == ']', var_str, ind)
+                push!(inds[end], strip(var_str[ind:ind2-1]))
+                ind = ind2
+            end
+        end
+    end
+    return sym, inds
+end
+
+# Check if the right-hand side is a distribution.
+function assert_dist(dist; msg)
+    isa(dist, Distribution) || throw(ArgumentError(msg))
+end
+function assert_dist(dist::AbstractVector; msg)
+    all(d -> isa(d, Distribution), dist) || throw(ArgumentError(msg))
+end
 
 function wrong_dist_errormsg(l)
     return "Right-hand side of a ~ must be subtype of Distribution or a vector of " *
@@ -31,120 +114,45 @@ function wrong_dist_errormsg(l)
 end
 
 """
-    generate_observe(observation, dist, model_info)
+    @preprocess(data_vars, missing_vars, ex)
 
-Generate an observe expression for observation `observation` drawn from
-a distribution or a vector of distributions (`dist`).
+Let `ex` be `x[1]`. This macro returns `@varname x[1]` in any of the following cases:
+    1. `x` was not among the input data to the model,
+    2. `x` was among the input data to the model but with a value `missing`, or
+    3. `x` was among the input data to the model with a value other than missing, 
+    but `x[1] === missing`.
+Otherwise, the value of `x[1]` is returned.
 """
-function generate_observe(observation, dist, model_info)
-    main_body_names = model_info[:main_body_names]
-    vi = main_body_names[:vi]
-    sampler = main_body_names[:sampler]
-    return quote
-        isdist = if isa($dist, AbstractVector)
-            # Check if the right-hand side is a vector of distributions.
-            all(d -> isa(d, Distribution), $dist)
+macro preprocess(data_vars, missing_vars, ex)
+    ex
+end
+macro preprocess(data_vars, missing_vars, ex::Union{Symbol, Expr})
+    sym = gensym(:sym)
+    lhs = gensym(:lhs)
+    return esc(quote
+        # Extract symbol
+        $sym = Val($(vsym(ex)))
+        # This branch should compile nicely in all cases except for partial missing data
+        # For example, when `ex` is `x[i]` and `x isa Vector{Union{Missing, Float64}}`
+        if !Turing.Core.inparams($sym, $data_vars) || Turing.Core.inparams($sym, $missing_vars)
+            $(varname(ex))
         else
-            # Check if the right-hand side is a distribution.
-            isa($dist, Distribution)
-        end
-        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-        $vi.logp += Turing.observe($sampler, $dist, $observation, $vi)
-    end
-end
-
-"""
-    generate_assume(var, dist, model_info)
-
-Generate an assume expression for parameters `var` drawn from
-a distribution or a vector of distributions (`dist`).
-"""
-function generate_assume(var::Union{Symbol, Expr}, dist, model_info)
-    main_body_names = model_info[:main_body_names]
-    vi = main_body_names[:vi]
-    sampler = main_body_names[:sampler]
-
-    varname = gensym(:varname)
-    sym, idcs, csym = gensym(:sym), gensym(:idcs), gensym(:csym)
-    csym_str, indexing, syms = gensym(:csym_str), gensym(:indexing), gensym(:syms)
-
-    if var isa Symbol
-        varname_expr = quote
-            $sym, $idcs, $csym = Turing.@VarName $var
-            $csym = Symbol($(QuoteNode(model_info[:name])), $csym)
-            $varname = Turing.VarName{$sym}($csym, "")
-        end
-    else
-        varname_expr = quote
-            $sym, $idcs, $csym = Turing.@VarName $var
-            $csym_str = string($(QuoteNode(model_info[:name])))*string($csym)
-            $indexing = foldl(*, $idcs, init = "")
-            $varname = Turing.VarName{$sym}(Symbol($csym_str), $indexing)
-        end
-    end
-
-    lp = gensym(:lp)
-    return quote
-        $varname_expr
-        isdist = if isa($dist, AbstractVector)
-            # Check if the right-hand side is a vector of distributions.
-            all(d -> isa(d, Distribution), $dist)
-        else
-            # Check if the right-hand side is a distribution.
-            isa($dist, Distribution)
-        end
-        @assert isdist @error($(wrong_dist_errormsg(@__LINE__)))
-
-        ($var, $lp) = if isa($dist, AbstractVector)
-            Turing.assume($sampler, $dist, $varname, $var, $vi)
-        else
-            Turing.assume($sampler, $dist, $varname, $vi)
-        end
-        $vi.logp += $lp
-    end
-end
-
-"""
-    tilde(left, right, model_info)
-
-The `tilde` function generates observation expression for data variables and assumption expressions for parameter variables, updating `model_info` in the process.
-"""
-function tilde(left, right, model_info)
-    return generate_observe(left, right, model_info)
-end
-function tilde(left::Union{Symbol, Expr}, right, model_info)
-    return _tilde(getvsym(left), left, right, model_info)
-end
-
-function _tilde(vsym, left, dist, model_info)
-    main_body_names = model_info[:main_body_names]
-    model_name = main_body_names[:model]
-
-    model_info[:tent_dvars_list] = copy(model_info[:arg_syms])
-    if vsym in model_info[:arg_syms]
-        Turing.DEBUG && @debug " Observe - `$(vsym)` is an observation"
-        return quote
-            if Turing.in_pvars($(Val(vsym)), $model_name)
-                $(generate_assume(left, dist, model_info))
-            else
-                $(generate_observe(left, dist, model_info))
-            end
-        end
-    else
-        # Assume it is a parameter.
-        if !(vsym in model_info[:tent_pvars_list])
-            Turing.DEBUG && @debug begin
-                msg = " Assume - `$(vsym)` is a parameter"
-                if isdefined(Main, vsym)
-                    msg  *= " (ignoring `$(vsym)` found in global scope)"
+            if Turing.Core.inparams($sym, $data_vars)
+                # Evaluate the lhs
+                $lhs = $ex
+                if $lhs === missing
+                    $(varname(ex))
+                else
+                    $lhs
                 end
-                msg
+            else
+                throw("This point should not be reached. Please report this error.")
             end
-            push!(model_info[:tent_pvars_list], vsym)
         end
-
-        return generate_assume(left, dist, model_info)
-    end
+    end)
+end
+@generated function inparams(::Val{s}, ::Val{t}) where {s, t}
+    return (s in t) ? :(true) : :(false)
 end
 
 #################
@@ -166,58 +174,11 @@ Model definition:
 end
 ```
 
-Expanded model definition
-
-```julia
-# Allows passing arguments as kwargs
-model_generator(; x = nothing, y = nothing)) = model_generator(x, y)
-function model_generator(x = nothing, y = nothing)
-    pvars, dvars = Turing.get_vars(Tuple{:x, :y}, (x = x, y = y))
-    data = Turing.get_data(dvars, (x = x, y = y))
-    defaults = Turing.get_default_values(dvars, (x = default_x, y = nothing))
-
-    inner_function(sampler::Turing.AbstractSampler, model) = inner_function(model)
-    function inner_function(model)
-        return inner_function(Turing.VarInfo(), Turing.SampleFromPrior(), model)
-    end
-    function inner_function(vi::Turing.VarInfo, model)
-        return inner_function(vi, Turing.SampleFromPrior(), model)
-    end
-    # Define the main inner function
-    function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, model)
-        local x
-        if isdefined(model.data, :x)
-            if model.data.x isa Type && (model.data.x <: AbstractFloat || model.data.x <: AbstractArray)
-                x = Turing.Core.get_matching_type(sampler, vi, model.data.x)
-            else
-                x = model.data.x
-            end
-        else
-            x = model_defaults.x
-        end
-        local y
-        if isdefined(model.data, :y)
-            if model.data.y isa Type && (model.data.y <: AbstractFloat || model.data.y <: AbstractArray)
-                y = Turing.Core.get_matching_type(sampler, vi, model.data.y)
-            else
-                y = model.data.y
-            end
-        else
-            y = model.defaults.y
-        end
-
-        vi.logp = zero(Real)
-        ...
-    end
-    model = Turing.Model{pvars, dvars}(inner_function, data, defaults)
-    return model
-end
-```
-
-Generating a model: `model_generator(x_value)::Model`.
+To generate a `Turing.Model`, call `model_generator(x_value)`.
 """
 macro model(input_expr)
-    build_model_info(input_expr) |> translate_tilde! |> update_args! |> build_output
+    build_model_info(input_expr) |> replace_tilde! |> replace_vi! |> 
+        replace_logpdf! |> replace_sampler! |> build_output
 end
 
 """
@@ -247,6 +208,15 @@ function build_model_info(input_expr)
             throw(ArgumentError("Unsupported argument $arg to the `@model` macro."))
         end
     end
+    if length(arg_syms) == 0
+        args_nt = :(NamedTuple())
+    else
+        nt_type = Expr(:curly, :NamedTuple, 
+            Expr(:tuple, QuoteNode.(arg_syms)...), 
+            Expr(:curly, :Tuple, [:(Turing.Core.get_type($x)) for x in arg_syms]...)
+        )
+        args_nt = Expr(:call, :(Turing.namedtuple), nt_type, Expr(:tuple, arg_syms...))
+    end
     args = map(modeldef[:args]) do arg
         if (arg isa Symbol)
             arg
@@ -264,21 +234,16 @@ function build_model_info(input_expr)
     end
     model_info = Dict(
         :name => modeldef[:name],
-        :input_expr => input_expr,
         :main_body => modeldef[:body],
         :arg_syms => arg_syms,
+        :args_nt => args_nt,
         :args => args,
-        :kwargs => modeldef[:kwargs],
         :whereparams => modeldef[:whereparams],
-        :tent_dvars_list => Symbol[],
-        :tent_pvars_list => Symbol[],
         :main_body_names => Dict(
+            :ctx => gensym(:ctx),
             :vi => gensym(:vi),
             :sampler => gensym(:sampler),
             :model => gensym(:model),
-            :pvars => gensym(:pvars),
-            :dvars => gensym(:dvars),
-            :data => gensym(:data),
             :inner_function => gensym(:inner_function),
             :defaults => gensym(:defaults)
         )
@@ -288,48 +253,148 @@ function build_model_info(input_expr)
 end
 
 """
-    translate_tilde!(model_info)
+    replace_vi!(model_info)
 
-Translates ~ expressions to observation or assumption expressions, updating `model_info`.
+Replaces `@varinfo()` expressions with a handle to the `VarInfo` struct.
 """
-function translate_tilde!(model_info)
+function replace_vi!(model_info)
     ex = model_info[:main_body]
-    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
+    vi = model_info[:main_body_names][:vi]
+    ex = MacroTools.postwalk(x -> @capture(x, @varinfo()) ? vi : x, ex)
     model_info[:main_body] = ex
     return model_info
 end
 
 """
-    update_args!(model_info)
+    replace_logpdf!(model_info)
 
-Extracts default argument values and replaces them with `nothing`.
+Replaces `@logpdf()` expressions with the value of the accumulated `logpdf` in the `VarInfo` struct.
 """
-function update_args!(model_info)
-    fargs = Vector{Union{Symbol, Expr}}(model_info[:args])
-    fargs_default_values = []
-    for i in 1:length(fargs)
-        if isa(fargs[i], Symbol)
-            push!(fargs_default_values, :($(fargs[i]) = :nothing))
-            fargs[i] = Expr(:kw, fargs[i], :nothing)
-        elseif isa(fargs[i], Expr) && MacroTools.@capture(fargs[i], T_::Type{<:S_} = Tval_)
-            nothing
-            #push!(fargs_default_values, :($T = $Tval))
-        elseif isa(fargs[i], Expr) && fargs[i].head == :kw
-            push!(fargs_default_values, :($(fargs[i].args[1]) = $(fargs[i].args[2])))
-            fargs[i] = Expr(:kw, fargs[i].args[1], :nothing)
-        else
-            throw("Unsupported argument type $(fargs[i]).")
-        end
-    end
-    if length(fargs_default_values) == 0
-        tent_arg_defaults_nt = :(NamedTuple())
-    else
-        tent_arg_defaults_nt = :($(fargs_default_values...),)
-    end
-    model_info[:args] = fargs
-    model_info[:tent_arg_defaults_nt] = tent_arg_defaults_nt
+function replace_logpdf!(model_info)
+    ex = model_info[:main_body]
+    vi = model_info[:main_body_names][:vi]
+    ex = MacroTools.postwalk(x -> @capture(x, @logpdf()) ? :($vi.logp) : x, ex)
+    model_info[:main_body] = ex
     return model_info
 end
+
+"""
+    replace_sampler!(model_info)
+
+Replaces `@sampler()` expressions with a handle to the sampler struct.
+"""
+function replace_sampler!(model_info)
+    ex = model_info[:main_body]
+    spl = model_info[:main_body_names][:sampler]
+    ex = MacroTools.postwalk(x -> @capture(x, @sampler()) ? spl : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+
+# The next function is defined that way because .~ gives a parsing error in Julia 1.0
+"""
+\"""
+    replace_tilde!(model_info)
+
+Replaces `~` expressions with observation or assumption expressions, updating `model_info`.
+\"""
+function replace_tilde!(model_info)
+    ex = model_info[:main_body]
+    ex = MacroTools.postwalk(x -> @capture(x, @. L_ ~ R_) ? dot_tilde(L, R, model_info) : x, ex)
+    $(VERSION >= v"1.1" ? "ex = MacroTools.postwalk(x -> @capture(x, L_ .~ R_) ? dot_tilde(L, R, model_info) : x, ex)" : "")
+    ex = MacroTools.postwalk(x -> @capture(x, L_ ~ R_) ? tilde(L, R, model_info) : x, ex)
+    model_info[:main_body] = ex
+    return model_info
+end
+""" |> Meta.parse |> eval
+
+"""
+    tilde(left, right, model_info)
+
+The `tilde` function generates `observe` expression for data variables and `assume` 
+expressions for parameter variables, updating `model_info` in the process.
+"""
+function tilde(left, right, model_info)
+    arg_syms = Val((model_info[:arg_syms]...,))
+    model = model_info[:main_body_names][:model]
+    vi = model_info[:main_body_names][:vi]
+    ctx = model_info[:main_body_names][:ctx]
+    sampler = model_info[:main_body_names][:sampler]
+    temp_right = gensym(:temp_right)
+    out = gensym(:out)
+    lp = gensym(:lp)
+    preprocessed = gensym(:preprocessed)
+    assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
+    if left isa Symbol || left isa Expr
+        ex = quote
+            $temp_right = $right
+            $assert_ex
+            $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
+            if $preprocessed isa Turing.VarName
+                $out = Turing.Inference.tilde($ctx, $sampler, $temp_right, $preprocessed, $vi)
+                $left = $out[1]
+                $vi.logp += $out[2]
+            else
+                $vi.logp += Turing.Inference.tilde($ctx, $sampler, $temp_right, $preprocessed, $vi)
+            end
+        end
+    else
+        ex = quote
+            $temp_right = $right
+            $assert_ex
+            $vi.logp += Turing.Inference.tilde($ctx, $sampler, $temp_right, $left, $vi)
+        end
+    end
+    return ex
+end
+
+"""
+    dot_tilde(left, right, model_info)
+
+This function returns the expression that replaces `left .~ right` in the model body. If `preprocessed isa VarName`, then a `dot_assume` block will be run. Otherwise, a `dot_observe` block will be run.
+"""
+function dot_tilde(left, right, model_info)
+    arg_syms = Val((model_info[:arg_syms]...,))
+    model = model_info[:main_body_names][:model]
+    vi = model_info[:main_body_names][:vi]
+    ctx = model_info[:main_body_names][:ctx]
+    sampler = model_info[:main_body_names][:sampler]
+    out = gensym(:out)
+    temp_left = gensym(:temp_left)
+    temp_right = gensym(:temp_right)
+    preprocessed = gensym(:preprocessed)
+    lp = gensym(:lp)
+    assert_ex = :(Turing.Core.assert_dist($temp_right, msg = $(wrong_dist_errormsg(@__LINE__))))
+    if left isa Symbol || left isa Expr
+        ex = quote
+            $temp_right = $right
+            $assert_ex
+            $preprocessed = Turing.Core.@preprocess($arg_syms, Turing.getmissing($model), $left)
+            if $preprocessed isa Turing.VarName
+                $temp_left = $left
+                $out = Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $preprocessed, $vi)
+                $left .= $out[1]
+                $vi.logp += $out[2]
+            else
+                $temp_left = $preprocessed
+                $vi.logp += Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vi)
+            end
+        end
+    else
+        ex = quote
+            $temp_left = $left
+            $temp_right = $right
+            $assert_ex
+            $vi.logp += Turing.Inference.dot_tilde($ctx, $sampler, $temp_right, $temp_left, $vi)
+        end
+    end
+    return ex
+end
+
+const FloatOrArrayType = Type{<:Union{AbstractFloat, AbstractArray}}
+hasmissing(T::Type{<:AbstractArray{TA}}) where {TA <: AbstractArray} = hasmissing(TA)
+hasmissing(T::Type{<:AbstractArray{>:Missing}}) = true
+hasmissing(T::Type) = false
 
 """
     build_output(model_info)
@@ -339,106 +404,57 @@ Builds the output expression.
 function build_output(model_info)
     # Construct user-facing function
     main_body_names = model_info[:main_body_names]
-    vi_name = main_body_names[:vi]
-    model_name = main_body_names[:model]
-    sampler_name = main_body_names[:sampler]
-    data_name = main_body_names[:data]
-    pvars_name = main_body_names[:pvars]
-    dvars_name = main_body_names[:dvars]
-    inner_function_name = main_body_names[:inner_function]
-    defaults_name = main_body_names[:defaults]
+    ctx = main_body_names[:ctx]
+    vi = main_body_names[:vi]
+    model = main_body_names[:model]
+    sampler = main_body_names[:sampler]
+    inner_function = main_body_names[:inner_function]
 
     # Arguments with default values
     args = model_info[:args]
     # Argument symbols without default values
     arg_syms = model_info[:arg_syms]
+    # Arguments namedtuple
+    args_nt = model_info[:args_nt]
     # Default values of the arguments
     whereparams = model_info[:whereparams]
-    tent_arg_defaults_nt = model_info[:tent_arg_defaults_nt]
     # Model generator name
-    outer_function_name = model_info[:name]
-    # Tentative list of parameter variables
-    tent_pvars_list = model_info[:tent_pvars_list]
-    # Tentative list of data variables
-    tent_dvars_list = model_info[:tent_dvars_list]
+    outer_function = model_info[:name]
     # Main body of the model
     main_body = model_info[:main_body]
 
-    if length(tent_dvars_list) == 0
-        tent_dvars_nt = :(NamedTuple())
-    else
-        nt_type = Expr(:curly, :NamedTuple, 
-            Expr(:tuple, QuoteNode.(tent_dvars_list)...), 
-            Expr(:curly, :Tuple, [:(Turing.Core.get_type($x)) for x in tent_dvars_list]...)
-        )
-        tent_dvars_nt = Expr(:call, :(Turing.namedtuple), nt_type, Expr(:tuple, tent_dvars_list...))
-    end
-    #= Does the following for each of the tentative dvars
-        local x
-        if isdefined(model.data, :x)
-            x = model.data.x
-        else
-            x = default_x
-        end
-    =#
     unwrap_data_expr = Expr(:block)
-    for var in tent_dvars_list
+    for var in arg_syms
+        temp_var = gensym(:temp_var)
+        varT = gensym(:varT)
         push!(unwrap_data_expr.args, quote
             local $var
-            if isdefined($model_name.data, $(QuoteNode(var)))
-                # The `Type{T}` arguments will always show up in the `model.data` named tuple.
-                # This is because we are not replacing the default value of these arguments with `nothing` but keeping the same value defined by by the user, e.g. `Float64`.
-                # So if the value is indeed correct, i.e. a type then it should just work
-                # If the value is not a type, i.e. `::Type{T} = 1` and the user doesn't pass it something for this argument, then it will give an error when constructing the model, which is a correct Julia error.
-                # This means that we don't need an expression for the default value of the `Type{T}` arguments in `model.defaults`.
-                if $model_name.data.$var isa Type && ($model_name.data.$var <: AbstractFloat || $model_name.data.$var <: AbstractArray)
-                    $var = Turing.Core.get_matching_type($sampler_name, $vi_name, $model_name.data.$var)
-                else
-                    $var = $model_name.data.$var
-                end
+            $temp_var = $model.args.$var
+            $varT = typeof($temp_var)
+            if $temp_var isa Turing.Core.FloatOrArrayType
+                $var = Turing.Core.get_matching_type($sampler, $vi, $temp_var)
+            elseif Turing.Core.hasmissing($varT)
+                $var = Turing.Core.get_matching_type($sampler, $vi, $varT)($temp_var)
             else
-                $var = $model_name.defaults.$var
+                $var = $temp_var
             end
         end)
     end
     return esc(quote
         # Allows passing arguments as kwargs
-        $outer_function_name(;$(args...)) = $outer_function_name($(arg_syms...))
-        # Outer function with `nothing` as default values except for Type{T} arguments
-        function $outer_function_name($(args...))
-            # Adds variables equal to `nothing` or `missing` or whose `eltype` is `Missing` to pvars and the rest to dvars
-            # `tent_pvars_list` is the tentative list of pvars
-            # `tent_dvars_nt` is the tentative named tuple of dvars
-            $pvars_name, $dvars_name = Turing.get_vars($(Tuple{tent_pvars_list...}), $(tent_dvars_nt))
-            # Filter out the dvars equal to `nothing` or `missing`, or whose `eltype` is `Missing`
-            $data_name = Turing.get_data($dvars_name, $tent_dvars_nt)
-            # Replace default values of inputs whose values are Vector{Missing} by a Vector{Real} of the same length as the input
-            $defaults_name = Turing.get_default_values($tent_dvars_nt, $tent_arg_defaults_nt)
-
-            # Define fallback inner functions
-            function $inner_function_name($sampler_name::Turing.AbstractSampler, $model_name)
-                return $inner_function_name($model_name)
-            end
-            function $inner_function_name($model_name)
-                return $inner_function_name(Turing.VarInfo(), Turing.SampleFromPrior(), $model_name)
-            end
-            function $inner_function_name($vi_name::Turing.VarInfo, $model_name)
-                return $inner_function_name($vi_name, Turing.SampleFromPrior(), $model_name)
-            end
-
-            # Define the main inner function
-            function $inner_function_name(
-                $vi_name::Turing.VarInfo,
-                $sampler_name::Turing.AbstractSampler,
-                $model_name
-                )
-
+        $outer_function(;$(args...)) = $outer_function($(arg_syms...))
+        function $outer_function($(args...))
+            function $inner_function(
+                $vi::Turing.VarInfo,
+                $sampler::Turing.AbstractSampler,
+                $ctx::Turing.AbstractContext,
+                $model
+            )
                 $unwrap_data_expr
-                $vi_name.logp = zero(Real)
+                $vi.logp = 0
                 $main_body
             end
-            $model_name = Turing.Model{$pvars_name, $dvars_name}($inner_function_name, $data_name, $defaults_name)
-            return $model_name
+            return Turing.Model($inner_function, $args_nt)
         end
     end)
 end
@@ -450,77 +466,11 @@ end
 get_type(::Type{T}) where {T} = Type{T}
 get_type(t) = typeof(t)
 
-# Replaces the default for `Vector{Missing}` inputs by `Vector{Real}` of the same length as the input.
-@generated function get_default_values(tent_dvars_nt::Tdvars, tent_arg_defaults_nt::Tdefaults) where {Tdvars <: NamedTuple, Tdefaults <: NamedTuple}
-    dvar_names = Tdvars.names
-    dvar_types = Tdvars.parameters[2].types
-    defaults = []
-    for (n, t) in zip(dvar_names, dvar_types)
-        if eltype(t) == Missing
-            push!(defaults, :($n = similar(tent_dvars_nt.$n, Real)))
-        elseif in(n, tent_arg_defaults_nt.names)
-            push!(defaults, :($n = tent_arg_defaults_nt.$n))
-        end
-    end
-    if length(defaults) == 0
-        return :(NamedTuple())
-    else
-        return :($(defaults...),)
-    end
-end
-
-@generated function get_vars(tent_pvars::Type{Tpvars}, tent_dvars_nt::NamedTuple) where {Tpvars <: Tuple}
-    tent_pvar_syms = [Tpvars.types...]
-    tent_dvar_syms = [tent_dvars_nt.names...]
-    dvar_types = [tent_dvars_nt.types...]
-    append!(tent_pvar_syms, [tent_dvar_syms[i] for i in 1:length(tent_dvar_syms) if dvar_types[i] == Nothing || dvar_types[i] == Missing || eltype(dvar_types[i]) == Missing])
-    setdiff!(tent_dvar_syms, tent_pvar_syms)
-    pvars_tuple = Tuple{tent_pvar_syms...}
-    dvars_tuple = Tuple{tent_dvar_syms...}
-
-    return :($pvars_tuple, $dvars_tuple)
-end
-
-@inline get_data(Tdvars::Type{<:Tuple}, nt::NamedTuple) = _get_data(Tuple(Tdvars.types), nt)
-@inline function _get_data(dvars::Tuple, nt::NamedTuple)
-    length(dvars) === 0 && return NamedTuple()
-    n = dvars[1]
-    f = getfield(nt, n)
-    return ntmerge(namedtuple(NamedTuple{(n,), Tuple{get_type(f)}}, (f,)), _get_data(Base.tail(dvars), nt))
-end
-
 function warn_empty(body)
     if all(l -> isa(l, LineNumberNode), body.args)
         @warn("Model definition seems empty, still continue.")
     end
     return
-end
-
-####################
-# Helper functions #
-####################
-
-getvsym(s::Symbol) = s
-function getvsym(expr::Expr)
-    @assert expr.head == :ref "expr needs to be an indexing expression, e.g. :(x[1])"
-    return getvsym(expr.args[1])
-end
-
-
-"""
-    data(dict::Dict, keys::Vector{Symbol})
-Construct a tuple with values filled according to `dict` and keys
-according to `keys`.
-"""
-function data(dict::Dict, keys::Vector{Symbol})
-
-    @assert mapreduce(k -> haskey(dict, k), &, keys)
-
-    r = Expr(:tuple)
-    for k in keys
-        push!(r.args, Expr(:(=), k, dict[k]))
-    end
-    return Main.eval(r)
 end
 
 """

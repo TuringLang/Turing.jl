@@ -171,7 +171,11 @@ function postprocess_markdown(folder, yaml_dict; original = "")
                             write(f, line)
                         end
 
+                        # This is needed to replace the hyperlinks Documenter.jl generates
+                        # for the API pages.
 						txt = replace(txt, "api.md" => "{{site.baseurl}}/docs/library/")
+						txt = replace(txt, "bijectors.md" => "{{site.baseurl}}/docs/library/bijectors/")
+						txt = replace(txt, "advancedhmc.md" => "{{site.baseurl}}/docs/library/advancedhmc/")
 
                         # Add the rest of the text.
 						if original_path == full_path

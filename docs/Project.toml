@@ -1,0 +1,7 @@
+[deps]
+AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
+Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterMarkdown = "997ab1e6-3595-5248-9280-8efb232c3433"
+Libtask = "6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f"
+Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"

@@ -61,14 +61,6 @@ end
 function Sampler(alg::MH, model::Model, s::Selector)
     alg_str = "MH"
 
-    # Sanity check for space
-    if (s.tag == :default) && !isempty(getspace(alg))
-        @assert issubset(get_pvars(model), getspace(alg)) "[$alg_str] symbols specified to samplers ($getspace(alg)) doesn't cover the model parameters ($(get_pvars(model)))"
-        if !(issetequal(get_pvars(model), getspace(alg)))
-            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(getspace(alg), get_pvars(model)))")
-        end
-    end
-
     info = Dict{Symbol, Any}()
     state = MHState(model)
 
@@ -166,15 +158,15 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function assume(::Sampler{<:MH}, ::Vector{<:Distribution}, ::VarName, ::Any, ::VarInfo)
-    error("[Turing] MH doesn't support vectorizing assume statement")
+function observe(spl::Sampler{<:MH}, d::Distribution, value, vi::VarInfo)
+    return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
 end
 
-function observe(
+function dot_observe(
     spl::Sampler{<:MH},
-    d::Union{Distribution,Vector{<:Distribution}},
+    ds,
     value,
-    vi::VarInfo
+    vi::VarInfo,
 )
-    return observe(d, value, vi)  # accumulate pdf of likelihood
+    return dot_observe(nothing, ds, value, vi) # accumulate pdf of likelihood
 end

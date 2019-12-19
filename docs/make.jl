@@ -1,4 +1,4 @@
-using Documenter, DocumenterMarkdown, Turing
+using Documenter, DocumenterMarkdown, Turing, AdvancedHMC, Bijectors
 using LibGit2: clone
 
 # Include the utility functions.
@@ -23,9 +23,13 @@ end
 # connection by calling `julia make.jl no-tutorials`
 in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
+version_rx = r"v\d.\d.\d"
 baseurl = "/dev"
+ghref = get(ENV, "GITHUB_REF", "")
 if get(ENV, "TRAVIS_TAG", "") != ""
     baseurl = "/" * ENV["TRAVIS_TAG"]
+elseif !isnothing(match(version_rx, ghref))
+    baseurl = "/" * ghref
 end
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)

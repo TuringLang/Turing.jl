@@ -75,8 +75,8 @@ body {
 }
 
 .swimlane {
-    padding-top: 6rem;
-    padding-bottom: 6rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
 }
 
 .md-typeset h2 {
@@ -239,7 +239,7 @@ sub a {
     border-bottom: solid #ffffff;
 }
 
-.ecosystem-card a, .resource-card a {
+.ecosystem-card .btn, .resource-card .btn {
     width: 50%;
     position: absolute;
     bottom: 1rem;

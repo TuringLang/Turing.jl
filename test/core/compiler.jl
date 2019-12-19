@@ -1,5 +1,5 @@
 using Turing, Random, MacroTools, Distributions, Test
-import Turing.translate_tilde!
+using Turing.Core: split_var_str
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -77,12 +77,6 @@ priors = 0 # See "new grammar" test.
         chain = sample(fggibbstest(xs), gibbs, 2);
     end
     @testset "model macro" begin
-        model_info = Dict(:main_body_names => Dict(:vi => :vi, :sampler => :sampler))
-        # unit test model macro
-        expr = Turing.generate_observe(:x, :y, model_info)
-        @test expr.head == :block
-        @test :(vi.logp += Turing.observe(sampler, y, x, vi)) in expr.args
-
         @model testmodel_comp(x, y) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0,sqrt(s))
@@ -95,7 +89,7 @@ priors = 0 # See "new grammar" test.
         testmodel_comp(1.0, 1.2)
 
         # check if drawing from the prior works
-        @model testmodel0(x) = begin
+        @model testmodel0(x = missing) = begin
             x ~ Normal()
             return x
         end
@@ -103,7 +97,10 @@ priors = 0 # See "new grammar" test.
         @test mean(f0_mm() for _ in 1:1000) ≈ 0. atol=0.1
 
         # Test #544
-        @model testmodel0(x = Vector{Float64}(undef, 2)) = begin
+        @model testmodel0(x = missing) = begin
+            if x === missing
+                x = Vector{Float64}(undef, 2)
+            end
             x[1] ~ Normal()
             x[2] ~ Normal()
             return x
@@ -111,7 +108,7 @@ priors = 0 # See "new grammar" test.
         f0_mm = testmodel0()
         @test all(x -> isapprox(x, 0; atol = 0.1), mean(f0_mm() for _ in 1:1000))
 
-        @model testmodel01(x) = begin
+        @model testmodel01(x = missing) = begin
             x ~ Bernoulli(0.5)
             return x
         end
@@ -188,6 +185,33 @@ priors = 0 # See "new grammar" test.
 
         btest = brokentestmodel_assume2()
         @test_throws ArgumentError btest()
+
+        # Test missing input arguments
+        @model testmodel(x) = begin
+            x ~ Bernoulli(0.5)
+            return x
+        end
+        @test_throws UndefKeywordError testmodel()
+
+        # Test missing initialization for vector observation turned parameter
+        @model testmodel(x) = begin
+            x[1] ~ Bernoulli(0.5)
+            return x
+        end
+        @test_throws MethodError testmodel(missing)()
+
+        # Test @varinfo() and @logpdf()
+        @model testmodel(x) = begin
+            x[1] ~ Bernoulli(0.5)
+            global _varinfo = @varinfo()
+            global lp = @logpdf()
+            return x
+        end
+        model = testmodel([1.0])
+        varinfo = Turing.VarInfo(model)
+        model(varinfo)
+        @test varinfo.logp == lp
+        @test varinfo === _varinfo
     end
     @testset "new grammar" begin
         x = Float64[1 2]
@@ -277,11 +301,11 @@ priors = 0 # See "new grammar" test.
         alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
         chn = sample(gdemo_default, alg, 1000);
     end
-    @testset "vectorization" begin
+    @testset "vectorization @." begin
         @model vdemo1(x) = begin
             s ~ InverseGamma(2,3)
             m ~ Normal(0, sqrt(s))
-            x ~ [Normal(m, sqrt(s))]
+            @. x ~ Normal(m, sqrt(s))
             return s, m
         end
 
@@ -292,7 +316,7 @@ priors = 0 # See "new grammar" test.
         D = 2
         @model vdemo2(x) = begin
             μ ~ MvNormal(zeros(D), ones(D))
-            x ~ [MvNormal(μ, ones(D))]
+            @. x ~ MvNormal(μ, ones(D))
         end
 
         alg = HMC(0.01, 5)
@@ -315,7 +339,7 @@ priors = 0 # See "new grammar" test.
         # Test for vectorize UnivariateDistribution
         @model vdemo4() = begin
           x = Vector{Real}(undef, N)
-          x ~ [Normal(0, 2)]
+          @. x ~ Normal(0, 2)
         end
 
         t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
@@ -334,11 +358,94 @@ priors = 0 # See "new grammar" test.
         # Transformed test
         @model vdemo6() = begin
             x = Vector{Real}(undef, N)
-            x ~ [InverseGamma(2, 3)]
+            @. x ~ InverseGamma(2, 3)
         end
 
         sample(vdemo6(), alg, 1000)
+
+        N = 3
+        @model vdemo7() = begin
+            x = Array{Real}(undef, N, N)
+            @. x ~ [InverseGamma(2, 3) for i in 1:N]
+        end
+
+        sample(vdemo7(), alg, 1000)
     end
+
+    if VERSION >= v"1.1"
+        """
+        @testset "vectorization .~" begin
+            @model vdemo1(x) = begin
+                s ~ InverseGamma(2,3)
+                m ~ Normal(0, sqrt(s))
+                x .~ Normal(m, sqrt(s))
+                return s, m
+            end
+
+            alg = HMC(0.01, 5)
+            x = randn(100)
+            res = sample(vdemo1(x), alg, 250)
+
+            D = 2
+            @model vdemo2(x) = begin
+                μ ~ MvNormal(zeros(D), ones(D))
+                x .~ MvNormal(μ, ones(D))
+            end
+
+            alg = HMC(0.01, 5)
+            res = sample(vdemo2(randn(D,100)), alg, 250)
+
+            # Vector assumptions
+            N = 10
+            setchunksize(N)
+            alg = HMC(0.2, 4)
+
+            @model vdemo3() = begin
+                x = Vector{Real}(undef, N)
+                for i = 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
+            end
+
+            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+
+            # Test for vectorize UnivariateDistribution
+            @model vdemo4() = begin
+            x = Vector{Real}(undef, N)
+            x .~ Normal(0, 2)
+            end
+
+            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+
+            @model vdemo5() = begin
+                x ~ MvNormal(zeros(N), 2 * ones(N))
+            end
+
+            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+
+            println("Time for")
+            println("  Loop : \$t_loop")
+            println("  Vec  : \$t_vec")
+            println("  Mv   : \$t_mv")
+
+            # Transformed test
+            @model vdemo6() = begin
+                x = Vector{Real}(undef, N)
+                x .~ InverseGamma(2, 3)
+            end
+
+            sample(vdemo6(), alg, 1000)
+
+            @model vdemo7() = begin
+                x = Array{Real}(undef, N, N)
+                x .~ [InverseGamma(2, 3) for i in 1:N]
+            end
+    
+            sample(vdemo7(), alg, 1000)
+        end
+        """ |> Meta.parse |> eval
+    end
+
     @testset "Type parameters" begin
         N = 10
         setchunksize(N)
@@ -357,7 +464,7 @@ priors = 0 # See "new grammar" test.
 
         @model vdemo2(::Type{T}=Float64) where {T <: Real} = begin
             x = Vector{T}(undef, N)
-            x ~ [Normal(0, 2)]
+            @. x ~ Normal(0, 2)
         end
 
         t_vec = @elapsed res = sample(vdemo2(), alg, 250)
@@ -366,37 +473,61 @@ priors = 0 # See "new grammar" test.
 
         @model vdemo3(::Type{TV}=Vector{Float64}) where {TV <: AbstractVector} = begin
             x = TV(undef, N)
-            x ~ [InverseGamma(2, 3)]
+            @. x ~ InverseGamma(2, 3)
         end
 
         sample(vdemo3(), alg, 250)
         sample(vdemo3(Vector{Float64}), alg, 250)
         sample(vdemo3(TV=Vector{Float64}), alg, 250)
     end
-    @testset "tilde" begin
-        model_info = Dict(
-            :name => "model",
-            :main_body_names => Dict(:model => :model,
-                                    :vi => :vi,
-                                    :sampler => :sampler),
-            :arg_syms => [],
-            :tent_pvars_list => [])
+    @testset "split var string" begin
+        var_str = "x"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds == Vector{String}[]
 
-        ex = :(y ~ Normal(1,1))
-        model_info[:main_body] = ex
-        translate_tilde!(model_info)
-        res = model_info[:main_body]
-        Base.@assert res.head == :block
+        var_str = "x[1,1][2,3]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["1", "1"]
+        @test inds[2] == ["2", "3"]
 
-        ex = quote
-            x = 1
-            y = rand()
-            y ~ Normal(0,1)
+        var_str = "x[Colon(),1][2,Colon()]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["Colon()", "1"]
+        @test inds[2] == ["2", "Colon()"]
+
+        var_str = "x[2:3,1][2,1:2]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "1"]
+        @test inds[2] == ["2", "1:2"]
+
+        var_str = "x[2:3,2:3][[1,2],[1,2]]"
+        sym, inds = split_var_str(var_str)
+        @test sym == "x"
+        @test inds[1] == ["2:3", "2:3"]
+        @test inds[2] == ["[1,2]", "[1,2]"]
+    end
+    @testset "user-defined variable name" begin
+        @model f1() = begin
+            x ~ NamedDist(Normal(), :y)
         end
-
-        model_info[:main_body] = ex
-        translate_tilde!(model_info)
-        res = model_info[:main_body]
-        Base.@assert res.head == :block
+        @model f2() = begin
+            x ~ NamedDist(Normal(), Turing.@varname(y[2][:,1]))
+        end
+        @model f3() = begin
+            x ~ NamedDist(Normal(), "y[1]")
+        end
+        vi1 = Turing.VarInfo(f1())
+        vi2 = Turing.VarInfo(f2())
+        vi3 = Turing.VarInfo(f3())
+        @test haskey(vi1.metadata, :y)
+        @test vi1.metadata.y.vns[1] == Turing.VarName{:y}("")
+        @test haskey(vi2.metadata, :y)
+        @test vi2.metadata.y.vns[1] == Turing.VarName{:y}("[2][Colon(),1]")
+        @test haskey(vi3.metadata, :y)
+        @test vi3.metadata.y.vns[1] == Turing.VarName{:y}("[1]")
     end
 end

@@ -29,8 +29,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = MH(
             (:s, GKernel(5)),
             (:m, GKernel(1.0)))
-        chain = sample(gdemo_default, alg, 5000)
-        check_gdemo(chain, atol = 0.2)
+        chain = sample(gdemo_default, alg, 70000)
+        check_gdemo(chain, atol = 0.1)
 
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))

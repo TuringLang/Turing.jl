@@ -1,5 +1,5 @@
 using Turing, Random
-using Turing: ParticleContainer, weights, resample!,
+using Turing: ParticleContainer, getweights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
 using Turing.Core: logZ
@@ -30,27 +30,27 @@ include(dir*"/test/test_utils/AllUtils.jl")
             t[1] = 0;
             while true
                 ct = current_trace()
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 produce(0)
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 t[1] = 1 + t[1]
             end
         end
 
-        model = Turing.Model{(:x,),()}(fpc, NamedTuple(), NamedTuple())
+        model = Turing.Model(fpc, NamedTuple())
         particles = [Trace(fpc, model, spl, Turing.VarInfo()) for _ in 1:3]
         pc = ParticleContainer(fpc, particles)
 
-        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test getweights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)
         @test pc.logE ≈ log(1)
 
         @test consume(pc) == log(1)
 
         resample!(pc)
-        @test weights(pc) == [1/3, 1/3, 1/3]
+        @test getweights(pc) == [1/3, 1/3, 1/3]
         @test logZ(pc) ≈ log(3)
         @test pc.logE ≈ log(1)
         @test effectiveSampleSize(pc) == 3
@@ -70,17 +70,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
             t[1] = 0;
             while true
                 ct = current_trace()
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 produce(t[1]);
-                vn = VarName(gensym(), :x, "[$n]", 1)
+                vn = @varname x[n]
                 Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
                 t[1] = 1 + t[1]
             end
         end
 
         # Test task copy version of trace
-        model = Turing.Model{(:x,),()}(f2, NamedTuple(), NamedTuple())
+        model = Turing.Model(f2, NamedTuple())
         tr = Trace(f2, model, spl, Turing.VarInfo())
 
         consume(tr); consume(tr)

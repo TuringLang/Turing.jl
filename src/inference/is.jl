@@ -72,10 +72,10 @@ end
 function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
     r = rand(dist)
     push!(vi, vn, r, dist, spl)
-    r, zero(Real)
+    return r, 0
 end
 
 function observe(spl::Sampler{<:IS}, dist::Distribution, value, vi::VarInfo)
     # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
+    return logpdf(dist, value)
 end
