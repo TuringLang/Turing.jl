@@ -28,7 +28,7 @@ end
 function logprob(ex1, ex2)
 	ptype, modelgen, vi = probtype(ex1, ex2)
 	if ptype isa Val{:prior}
-		return logprior(ex1, modelgen, vi)
+		return logprior(ex1, ex2, modelgen, vi)
 	elseif ptype isa Val{:likelihood}
 		return loglikelihood(ex1, ex2, modelgen, vi)
 	end
@@ -80,14 +80,28 @@ function probtype(
 	modelgen::ModelGen{args},
 	defaults::NamedTuple{defs},
 ) where {namesl, namesr, args, defs}
-	basic_namesr = namesr == (:model,) || namesr == (:model, :varinfo)
-	@inline valid_arg(arg) = arg in namesl || arg in namesr || (arg in defs) && 
-		!(getfield(defaults, arg) isa Missing)
-
+	prior_rhs = all(n -> n in (:model, :varinfo) || 
+		n in args && !(getfield(ntr, n) isa Missing), namesr)
+	function get_arg(arg)
+		if arg in namesl
+			return getfield(ntl, arg)
+		elseif arg in namesr
+			return getfield(ntr, arg)
+		elseif arg in defs
+			return getfield(defaults, arg)
+		else
+			return nothing
+		end
+	end
+	function valid_arg(arg)
+		a = get_arg(arg)
+		return !(a isa Nothing || a isa Missing)
+	end
 	valid_args = all(valid_arg.(args))
+
 	# Uses the default values for model arguments not provided.
 	# If no default value exists, use `nothing`.
-	if basic_namesr
+	if prior_rhs
 		return Val(:prior)
 	# Uses the default values for model arguments not provided.
 	# If no default value exists or the default value is missing, then error.
@@ -96,16 +110,18 @@ function probtype(
 	else
 		for arg in args
 			if !valid_arg(args)
-				throw(ArgumentError(missing_arg_error_msg(arg)))
+				throw(ArgumentError(missing_arg_error_msg(arg, get_arg(arg))))
 			end
 		end
 	end
 end
 
-missing_arg_error_msg(arg) = """Variable $arg is not defined and has no default value, or its default value is `missing`. Please make sure all the variables are defined or have a default value other than `missing`."""
+missing_arg_error_msg(arg, ::Missing) = """Variable $arg has a value of `missing`, or is not defined and its default value is `missing`. Please make sure all the variables are either defined with a value other than `missing` or have a default value other than `missing`."""
+missing_arg_error_msg(arg, ::Nothing) = """Variable $arg is not defined and has no default value. Please make sure all the variables are either defined with a value other than `missing` or have a default value other than `missing`."""
 
 function logprior(
 	left::NamedTuple,
+	right::NamedTuple,
 	modelgen::ModelGen,
 	_vi::Union{Nothing, VarInfo},
 )
@@ -121,7 +137,7 @@ function logprior(
 	# All `observe` and `dot_observe` calls are no-op in the PriorContext
 
 	# When all of model args are on the lhs of |, this is also equal to the logjoint.
-	args, missing_vars = get_prior_model_args(left, modelgen, modelgen.defaults)
+	args, missing_vars = get_prior_model_args(left, right, modelgen, modelgen.defaults)
 	model = get_model(modelgen, args, missing_vars)
 	vi = _vi === nothing ? VarInfo(deepcopy(model), PriorContext()) : _vi
 	foreach(keys(vi.metadata)) do n
@@ -132,15 +148,18 @@ function logprior(
 end
 @generated function get_prior_model_args(
 	left::NamedTuple{namesl},
+	right::NamedTuple{namesr},
 	modelgen::ModelGen{args},
 	defaults::NamedTuple{default_args},
-) where {namesl, args, default_args}
+) where {namesl, namesr, args, default_args}
 	exprs = []
 	missing_args = []
 	foreach(args) do arg
 		if arg in namesl
 			push!(exprs, :($arg = deepcopy(left.$arg)))
 			push!(missing_args, arg)
+		elseif arg in namesr
+			push!(exprs, :($arg = right.$arg))
 		elseif arg in default_args
 			push!(exprs, :($arg = defaults.$arg))
 		else
