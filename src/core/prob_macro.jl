@@ -154,7 +154,7 @@ end
 
 function get_model(modelgen, args, missing_vars)
 	_model = modelgen(; args...)
-	return Turing.Model(_model.f, args, missing_vars)
+	return Turing.Model(_model.f, args, modelgen, missing_vars)
 end
 
 function loglikelihood(

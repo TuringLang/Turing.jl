@@ -40,8 +40,8 @@ include("stdlib/RandomMeasures.jl")
 struct Model{F, Targs <: NamedTuple, Tmissings <: Val, Tmodelgen}
     f::F
     args::Targs
-    missings::Tmissings
     modelgen::Tmodelgen
+    missings::Tmissings
 end
 
 A `Model` struct with arguments `args` and inner function `f`.

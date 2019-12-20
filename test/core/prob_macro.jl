@@ -1,8 +1,11 @@
-using Turing, Distributions, Test
+using Turing, Distributions, Test, Random
+
+dir = splitdir(splitdir(pathof(Turing))[1])[1]
+include(dir*"/test/test_utils/AllUtils.jl")
 
 Random.seed!(129)
 
-@turing_testset "logprob" begin
+@turing_testset "prob_macro" begin
     @testset "scalar" begin
         @model demo(x) = begin
             m ~ Normal()
