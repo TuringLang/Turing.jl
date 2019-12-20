@@ -19,7 +19,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "TypedVarInfo" begin
         @model gdemo(x, y) = begin
             s ~ InverseGamma(2,3)
-            m ~ TruncatedNormal(0.0,sqrt(s),0.0,2.0)
+            m ~ truncated(Normal(0.0, sqrt(s)), 0.0, 2.0)
             x ~ Normal(m, sqrt(s))
             y ~ Normal(m, sqrt(s))
         end
