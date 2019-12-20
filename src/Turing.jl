@@ -37,16 +37,20 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 
 """
-struct Model{F, Targs <: NamedTuple, Tmissings <: Val, Tmodelgen}
-    f::F
-    args::Targs
-    modelgen::Tmodelgen
-    missings::Tmissings
-end
+    struct Model{F, Targs <: NamedTuple, Tmodelgen, Tmissings <: Val}
+        f::F
+        args::Targs
+        modelgen::Tmodelgen
+        missings::Tmissings
+    end
 
-A `Model` struct with arguments `args` and inner function `f`.
+A `Model` struct with arguments `args`, inner function `f`, model generator `modelgen` and
+missing data `missings`. `missings` is a `Val` instance, e.g. `Val{(:a, :b)}()`. An
+argument in `args` with a value `missing` will be in `missings` by default. However, in
+non-traditional use-cases `missings` can be defined differently. All variables in
+`missings` are treated as random variables rather than observations.
 """
-struct Model{F, Targs <: NamedTuple, Tmissings <: Val, Tmodelgen} <: AbstractModel
+struct Model{F, Targs <: NamedTuple, Tmodelgen, Tmissings <: Val} <: AbstractModel
     f::F
     args::Targs
     modelgen::Tmodelgen

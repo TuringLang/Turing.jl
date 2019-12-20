@@ -13,6 +13,8 @@ end
 
 function get_exprs(str::String)
 	ind = findfirst(isequal('|'), str)
+	ind == nothing && throw("Invalid expression.")
+
 	str1 = str[1:(ind - 1)]
 	str2 = str[(ind + 1):end]
 

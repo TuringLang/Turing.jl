@@ -1,3 +1,14 @@
+"""
+    struct ModelGen{Targs, F, Tdefaults} <: Function
+        f::F
+        defaults::Tdefaults
+    end
+
+A `Turing.Model` generator. This is the output of the `@model` macro. `Targs` is the tuple 
+of the symbols of the model's arguments. `defaults` is the `NamedTuple` of default values
+of the arguments, if any. Every `ModelGen` is callable with the arguments `Targs`, 
+returning an instance of `Turing.Model`.
+"""
 struct ModelGen{Targs, F, Tdefaults} <: Function
     f::F
     defaults::Tdefaults
@@ -70,6 +81,12 @@ function vsym(expr::Union{Expr, Symbol})
     throw("VarName: Mis-formed variable name $(expr)!")
 end
 
+"""
+    @vinds(expr)
+
+Returns a tuple of tuples of the indices in `expr`. For example, `@vinds x[1,:][2]` returns 
+`((1, Colon()), (2,))`.
+"""
 macro vinds(expr::Union{Expr, Symbol})
     expr |> vinds |> esc
 end
@@ -262,7 +279,7 @@ function build_model_info(input_expr)
             arg
         end
     end
-    args_nt = to_nt_expr(arg_syms)
+    args_nt = to_namedtuple_expr(arg_syms)
 
     default_syms = []
     default_vals = [] 
@@ -281,7 +298,7 @@ function build_model_info(input_expr)
             push!(default_vals, val)
         end
     end
-    defaults_nt = to_nt_expr(default_syms, default_vals)
+    defaults_nt = to_namedtuple_expr(default_syms, default_vals)
 
     model_info = Dict(
         :name => modeldef[:name],
@@ -304,7 +321,7 @@ function build_model_info(input_expr)
     return model_info
 end
 
-function to_nt_expr(syms::Vector, vals = syms)
+function to_namedtuple_expr(syms::Vector, vals = syms)
     if length(syms) == 0
         nt = :(NamedTuple())
     else
