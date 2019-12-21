@@ -156,6 +156,7 @@ end
 ) where {namesl, namesr, args, default_args}
 	exprs = []
 	missing_args = []
+	warn_expr = Expr(:block)
 	foreach(args) do arg
 		if arg in namesl
 			push!(exprs, :($arg = deepcopy(left.$arg)))
@@ -165,13 +166,25 @@ end
 		elseif arg in default_args
 			push!(exprs, :($arg = defaults.$arg))
 		else
+			push!(warn_expr.args, :(@warn(warn_msg($(QuoteNode(arg))))))
 			push!(exprs, :($arg = nothing))
 		end
 	end
 	missing_vars = :(Val{($missing_args...,)}())
-	length(exprs) == 0 && :(NamedTuple(), $missing_vars)
-	return :(($(exprs...),), $missing_vars)
+	if length(exprs) == 0
+		return quote
+			$warn_expr
+			return NamedTuple(), $missing_vars
+		end
+	else
+		return quote
+			$warn_expr
+			return ($(exprs...),), $missing_vars
+		end
+	end
 end
+
+warn_msg(arg) = "Argument $arg is not defined. A value of `nothing` is used."
 
 function get_model(modelgen, args, missing_vars)
 	_model = modelgen(; args...)
