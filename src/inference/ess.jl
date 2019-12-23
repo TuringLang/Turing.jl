@@ -87,8 +87,8 @@ function step!(
 
     # sample initial angle
     θ = 2 * π * rand(rng)
-    θₘᵢₙ = θ - 2 * π
-    θₘₐₓ = θ
+    θmin = θ - 2 * π
+    θmax = θ
 
     while true
         # compute proposal and apply correction for distributions with nonzero mean
@@ -104,13 +104,13 @@ function step!(
 
         # shrink the bracket
         if θ < 0
-            θₘᵢₙ = θ
+            θmin = θ
         else
-            θₘₐₓ = θ
+            θmax = θ
         end
 
         # sample new angle
-        θ = θₘᵢₙ + rand(rng) * (θₘₐₓ - θₘᵢₙ)
+        θ = θmin + rand(rng) * (θmax - θmin)
     end
 
     return Transition(spl)
