@@ -167,36 +167,39 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model = gdemo(1.0, 2.0)
 
         vi = VarInfo()
+        meta = vi.metadata
         model(vi, SampleFromUniform())
 
-        @test all(x -> ~istrans(vi, x), vi.vns)
+        @test all(x -> ~istrans(vi, x), meta.vns)
         alg = HMC(0.1, 5)
         spl = Sampler(alg, model)
-        v = copy(vi.vals)
+        v = copy(meta.vals)
         link!(vi, spl)
-        @test all(x -> istrans(vi, x), vi.vns)
+        @test all(x -> istrans(vi, x), meta.vns)
         invlink!(vi, spl)
-        @test all(x -> ~istrans(vi, x), vi.vns)
-        @test vi.vals == v
+        @test all(x -> ~istrans(vi, x), meta.vns)
+        @test meta.vals == v
 
         vi = TypedVarInfo(vi)
+        meta = vi.metadata
         alg = HMC(0.1, 5)
         spl = Sampler(alg, model)
-        @test all(x -> ~istrans(vi, x), vi.metadata.s.vns)
-        @test all(x -> ~istrans(vi, x), vi.metadata.m.vns)
-        v_s = copy(vi.metadata.s.vals)
-        v_m = copy(vi.metadata.m.vals)
+        @test all(x -> ~istrans(vi, x), meta.s.vns)
+        @test all(x -> ~istrans(vi, x), meta.m.vns)
+        v_s = copy(meta.s.vals)
+        v_m = copy(meta.m.vals)
         link!(vi, spl)
-        @test all(x -> istrans(vi, x), vi.metadata.s.vns)
-        @test all(x -> istrans(vi, x), vi.metadata.m.vns)
+        @test all(x -> istrans(vi, x), meta.s.vns)
+        @test all(x -> istrans(vi, x), meta.m.vns)
         invlink!(vi, spl)
-        @test all(x -> ~istrans(vi, x), vi.metadata.s.vns)
-        @test all(x -> ~istrans(vi, x), vi.metadata.m.vns)
-        @test vi.metadata.s.vals == v_s
-        @test vi.metadata.m.vals == v_m
+        @test all(x -> ~istrans(vi, x), meta.s.vns)
+        @test all(x -> ~istrans(vi, x), meta.m.vns)
+        @test meta.s.vals == v_s
+        @test meta.m.vals == v_m
     end
     @turing_testset "setgid!" begin
         vi = VarInfo()
+        meta = vi.metadata
         vn = @varname x
         dist = Normal(0, 1)
         r = rand(dist)
@@ -204,15 +207,16 @@ include(dir*"/test/test_utils/AllUtils.jl")
         gid2 = Selector(2, :HMC)
 
         push!(vi, vn, r, dist, gid1)
-        @test vi.gids[vi.idcs[vn]] == Set([gid1])
+        @test meta.gids[meta.idcs[vn]] == Set([gid1])
         setgid!(vi, gid2, vn)
-        @test vi.gids[vi.idcs[vn]] == Set([gid1, gid2])
+        @test meta.gids[meta.idcs[vn]] == Set([gid1, gid2])
 
         vi = empty!(TypedVarInfo(vi))
+        meta = vi.metadata
         push!(vi, vn, r, dist, gid1)
-        @test vi.metadata.x.gids[vi.metadata.x.idcs[vn]] == Set([gid1])
+        @test meta.x.gids[meta.x.idcs[vn]] == Set([gid1])
         setgid!(vi, gid2, vn)
-        @test vi.metadata.x.gids[vi.metadata.x.idcs[vn]] == Set([gid1, gid2])
+        @test meta.x.gids[meta.x.idcs[vn]] == Set([gid1, gid2])
     end
     @testset "orders" begin
         function randr(vi::VarInfo, vn::VarName, dist::Distribution, spl::Turing.Sampler)
@@ -258,7 +262,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         randr(vi, vn_a2, dists[2], spl1)
         vi.num_produce += 1
         randr(vi, vn_z3, dists[1], spl1)
-        @test vi.orders == [1, 1, 2, 2, 2, 3]
+        @test vi.metadata.orders == [1, 1, 2, 2, 2, 3]
         @test vi.num_produce == 3
 
         vi.num_produce = 0
@@ -277,7 +281,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         vi.num_produce += 1
         randr(vi, vn_z3, dists[1], spl1)
         randr(vi, vn_a2, dists[2], spl1)
-        @test vi.orders == [1, 1, 2, 2, 3, 3]
+        @test vi.metadata.orders == [1, 1, 2, 2, 3, 3]
         @test vi.num_produce == 3
 
         vi = empty!(TypedVarInfo(vi))
