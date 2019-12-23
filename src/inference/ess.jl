@@ -130,5 +130,5 @@ function assume(spl::Sampler{<:ESS}, dist::Distribution, vn::VarName, vi::VarInf
 end
 
 function observe(spl::Sampler{<:ESS}, dist::Distribution, value, vi::VarInfo)
-    return observe(dist, value, vi)
+    return observe(SampleFromPrior(), dist, value, vi)
 end

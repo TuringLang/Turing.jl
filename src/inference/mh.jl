@@ -127,7 +127,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
                 lb = support(dist).lb
                 ub = support(dist).ub
                 stdG = Normal()
-                r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
+                r = rand(truncated(Normal(proposal.μ, proposal.σ), lb, ub))
                 # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
                 spl.state.proposal_ratio += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
                 spl.state.proposal_ratio -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
@@ -159,7 +159,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
 end
 
 function observe(spl::Sampler{<:MH}, d::Distribution, value, vi::VarInfo)
-    return observe(d, value, vi)  # accumulate pdf of likelihood
+    return observe(SampleFromPrior(), d, value, vi)  # accumulate pdf of likelihood
 end
 
 function dot_observe(
@@ -168,5 +168,5 @@ function dot_observe(
     value,
     vi::VarInfo,
 )
-    return dot_observe(ds, value, vi) # accumulate pdf of likelihood
+    return dot_observe(SampleFromPrior(), ds, value, vi) # accumulate pdf of likelihood
 end

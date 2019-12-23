@@ -612,14 +612,6 @@ function observe(spl::Sampler, weight)
     error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
 end
 
-## Default definitions for assume and observe without sampler.
-function assume(
-    dist::Distribution,
-    vn::VarName,
-    vi::VarInfo,
-)
-    return assume(SampleFromPrior(), dist, vn, vi)
-end
 function assume(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
@@ -639,13 +631,6 @@ function assume(
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function observe(
-    dist::Distribution,
-    value,
-    vi::VarInfo,
-)
-    return observe(SampleFromPrior(), dist, value, vi)
-end
 function observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
@@ -798,13 +783,6 @@ function _dot_tilde(sampler, right, left::AbstractArray, vi)
     return dot_observe(sampler, right, left, vi)
 end
 
-function dot_observe(
-    dist::Union{Distribution, AbstractArray{<:Distribution}},
-    value, 
-    vi::VarInfo,
-)
-    return dot_observe(SampleFromPrior(), dist, value, vi)
-end
 function dot_observe(
     spl::Union{SampleFromPrior, SampleFromUniform},
     dist::MultivariateDistribution,
