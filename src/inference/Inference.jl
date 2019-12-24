@@ -607,7 +607,7 @@ end
 function tilde(ctx::DefaultContext, sampler, right, left, vi)
     return _tilde(sampler, right, left, vi)
 end
-function tilde(ctx::PriorContext, sampler, right, left, vi) where {s}
+function tilde(ctx::PriorContext, sampler, right, left, vi)
     return 0
 end
 function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
