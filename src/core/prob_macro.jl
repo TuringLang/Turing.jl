@@ -122,42 +122,42 @@ missing_arg_error_msg(arg, ::Missing) = """Variable $arg has a value of `missing
 missing_arg_error_msg(arg, ::Nothing) = """Variable $arg is not defined and has no default value. Please make sure all the variables are either defined with a value other than `missing` or have a default value other than `missing`."""
 
 function logprior(
-	left::NamedTuple,
-	right::NamedTuple,
-	modelgen::ModelGen,
-	_vi::Union{Nothing, VarInfo},
+    left::NamedTuple,
+    right::NamedTuple,
+    modelgen::ModelGen,
+    _vi::Union{Nothing, VarInfo},
 )
-	# For model args on the LHS of |, use their passed value but add the symbol to 
-	# model.missings. This will lead to an `assume`/`dot_assume` call for those variables.
-	# Let `p::PriorContext`. If `p.vars` is `nothing`, `assume` and `dot_assume` will use 
-	# the values of the random variables in the `VarInfo`. If `p.vars` is a `NamedTuple` 
-	# or a `Chain`, the value in `p.vars` is input into the `VarInfo` and used instead.
+    # For model args on the LHS of |, use their passed value but add the symbol to 
+    # model.missings. This will lead to an `assume`/`dot_assume` call for those variables.
+    # Let `p::PriorContext`. If `p.vars` is `nothing`, `assume` and `dot_assume` will use 
+    # the values of the random variables in the `VarInfo`. If `p.vars` is a `NamedTuple` 
+    # or a `Chain`, the value in `p.vars` is input into the `VarInfo` and used instead.
 
-	# For model args not on the LHS of |, if they have a default value, use that, 
-	# otherwise use `nothing`. This will lead to an `observe`/`dot_observe`call for 
-	# those variables.
-	# All `observe` and `dot_observe` calls are no-op in the PriorContext
+    # For model args not on the LHS of |, if they have a default value, use that, 
+    # otherwise use `nothing`. This will lead to an `observe`/`dot_observe`call for 
+    # those variables.
+    # All `observe` and `dot_observe` calls are no-op in the PriorContext
 
-	# When all of model args are on the lhs of |, this is also equal to the logjoint.
-	args, missing_vars = get_prior_model_args(left, right, modelgen, modelgen.defaults)
-	model = get_model(modelgen, args, missing_vars)
-	vi = _vi === nothing ? VarInfo(deepcopy(model), PriorContext()) : _vi
-	foreach(keys(vi.metadata)) do n
+    # When all of model args are on the lhs of |, this is also equal to the logjoint.
+    args, missing_vars = get_prior_model_args(left, right, modelgen, modelgen.defaults)
+    model = get_model(modelgen, args, missing_vars)
+    vi = _vi === nothing ? VarInfo(deepcopy(model), PriorContext()) : _vi
+    foreach(keys(vi.metadata)) do n
         @assert n in keys(left) "Variable $n is not defined."
-	end
-	model(vi, SampleFromPrior(), PriorContext(left))
-	return vi.logp
+    end
+    model(vi, SampleFromPrior(), PriorContext(left))
+    return vi.logp
 end
 @generated function get_prior_model_args(
-	left::NamedTuple{namesl},
-	right::NamedTuple{namesr},
-	modelgen::ModelGen{args},
-	defaults::NamedTuple{default_args},
+    left::NamedTuple{namesl},
+    right::NamedTuple{namesr},
+    modelgen::ModelGen{args},
+    defaults::NamedTuple{default_args},
 ) where {namesl, namesr, args, default_args}
-	exprs = []
-	missing_args = []
-	warn_expr = Expr(:block)
-	foreach(args) do arg
+    exprs = []
+    missing_args = []
+    warn_expr = Expr(:block)
+    foreach(args) do arg
         if arg in namesl
             push!(exprs, :($arg = deepcopy(left.$arg)))
             push!(missing_args, arg)
