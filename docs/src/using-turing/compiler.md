@@ -11,19 +11,19 @@ The following terminology will be used in this section:
 - `D`: observed data variables conditioned upon in the posterior,
 - `P`: parameter variables distributed according to the prior distributions, these will also be referred to as random variables,
 - `Model`: a fully defined probabilistic model with input data, and
-- `Model` generator: a function that can be used to instantiate a `Model` instance by inputing data `D`.
+- `ModelGen`: a model generator function that can be used to instantiate a `Model` instance by inputing data `D`.
 
-`Turing`'s `@model` macro defines a `Model` generator that can be used to instantiate a `Model` by passing in the observed data `D`.
+`Turing`'s `@model` macro defines a `ModelGen` that can be used to instantiate a `Model` by passing in the observed data `D`.
 
 # `@model` macro
 
 The following are the main jobs of the `@model` macro:
-1. Parse `~` lines, e.g. `y ~ Normal(c*x, 1.0)`
+1. Parse `~` and `.~` lines, e.g. `y .~ Normal.(c*x, 1.0)`
 2. Figure out if a variable belongs to the data `D` and or to the parameters `P`
 3. Enable the handling of missing data variables in `D` when defining a `Model` and treating them as parameter variables in `P` instead
 4. Enable the tracking of random variables using the data structures `VarName` and `VarInfo`
-5. Change `~` lines with a variable in `P` on the LHS to a call to an `assume`-block
-6. Change `~` lines with a variable in `D` on the LHS to a call to an `observe`-block
+5. Change `~`/`.~` lines with a variable in `P` on the LHS to a call to an `assume`/`dot_assume`-block
+6. Change `~`/`.~` lines with a variable in `D` on the LHS to a call to an `observe`/`dot_observe`-block
 7. Enable type stable automatic differentiation of the model using type parameters
 
 Let's take the following model as an example:
@@ -40,13 +40,13 @@ Let's take the following model as an example:
     y ~ Normal(p[2], sqrt(p[1]))
 end
 ```
-A `model::Model` can be defined using `gauss(rand(3), 1.0)` or `gauss(x = rand(3), y = 1.0)`. While constructing the model, if an argument is not passed in, it will be assigned to its default value. If there is no default value given, an error will be thrown. If an argument has a default value `missing`, when not passed in, it will be treated as a random variable. For variables which require an intialization because we need to loop or broadcast over its elements, such as `x` above, the following needs to be done:
+The above call of the `@model` macro defines an instance of `ModelGen` called `gauss`. A `model::Model` can be defined using `gauss(rand(3), 1.0)` or `gauss(x = rand(3), y = 1.0)`. While constructing the model, if an argument is not passed in, it gets assigned to its default value. If there is no default value given, an error is thrown. If an argument has a default value `missing`, when not passed in, it is treated as a random variable. For variables which require an intialization because we need to loop or broadcast over its elements, such as `x` above, the following needs to be done:
 ```julia
 if x === missing
     x = ...
 end
 ```
-If `x` will be sampled as a whole from a multivariate distribution, e.g. `x ~ MvNormal(...)`, there is no need to initialize it in an `if`-block.
+If `x` is sampled as a whole from a multivariate distribution, e.g. `x ~ MvNormal(...)`, there is no need to initialize it in an `if`-block.
 
 The `@model` macro is defined as:
 ```julia
@@ -63,7 +63,8 @@ The first stop that the model definition takes is `build_model_info`. This funct
 - `main_body`: the model body excluding the header and `end`.
 - `arg_syms`: the argument symbols, e.g. `[:x, :y, :TV]` above.
 - `args`: a modified version of the arguments changing `::Type{TV}=Vector{Float64}` and `where {TV <: AbstractVector}` to `TV::Type{<:AbstractVector}=Vector{Float64}`. This is `[:(x = missing) :(y = 1.0), :(TV::Type{<:AbstractVector}=Vector{Float64})]` in the example above.
-- `args_nt`: an expression constructing a `NamedTuple` of the input arguments, e.g. :((x = x, y = y, T = T)) in the example above.
+- `args_nt`: an expression constructing a `NamedTuple` of the input arguments, e.g. :((x = x, y = y, TV = TV)) in the example above.
+- `defaults_nt`: an expression constructing a `NamedTuple` of the default values of the input arguments, if any, e.g. :((x = missing, y = 1, TV = Vector{Float64})) in the example above.
 and returns it as a dictionary called `model_info`.
 
 ## `replace_tilde!`
@@ -75,8 +76,9 @@ In the above example, `p[1] ~ InverseGamma(2, 3)` is replaced with:
 temp_right = InverseGamma(2, 3)
 Turing.Core.assert_dist(temp_right, msg = ...)
 preprocessed = Turing.Core.@preprocess(Val((:x, :y, :T)), Turing.getmissing(model), p[1])
-if preprocessed isa Turing.VarName
-    out = Turing.Inference.tilde(ctx, sampler, temp_right, preprocessed, vi)
+if preprocessed isa Tuple
+    vn, inds = preprocessed
+    out = Turing.Inference.tilde(ctx, sampler, temp_right, vn, inds, vi)
     p[1] = out[1]
     vi.logp += out[2]
 else
@@ -89,9 +91,9 @@ where `ctx::AbstractContext`, `sampler::AbstractSampler` and `vi::VarInfo` will 
 3. If neither of the above is true, but the value of `p[1]` is `missing`, then `p[1]` will still be treated as a random variable.
 4. Otherwise, `p[1]` is treated as an observation.
 
-If `@preprocess` treats `p[1]` as a random variable, it will return a variable identifier `vn::VarName = Turing.@varname p[1]`. Otherwise, it returns the value of `p[1]`. `Turing.@varname` and `VarName` wil be explained later. The above checks by `@preprocess` were carefully written to make sure that the Julia compiler can compile them away so no checks happen at runtime and only the correct branch is run straight away. 
+If `@preprocess` treats `p[1]` as a random variable, it will return a `2-Tuple` of: 1) a variable identifier `vn::VarName = Turing.@varname p[1]`, and 2) a tuple of tuples of the indices used in `vn`, `((1,),)` in this example. Otherwise, `@preprocess` returns the value of `p[1]`. `Turing.@varname` and `VarName` wil be explained later. The above checks by `@preprocess` were carefully written to make sure that the Julia compiler can compile them away so no checks happen at runtime and only the correct branch is run straight away. 
 
-When the output of `@preprocess` is a `VarName`, i.e. `p[1]` is a random variable, the `Turing.Inference.tilde` function will dispatch to a different method than when the output is of another type, i.e `p[1]` is an observation. In the former case, `Turing.Inference.tilde` returns 2 outputs, the value of the random variable and the `log` probability, while in the latter case, only the `log` probability is returned. The `log` probabilities then get accumulated and if `p[1]` is a random variable, the first returned output by `Turing.Inference.tilde` gets assigned to it.
+When the output of `@preprocess` is a `Tuple`, i.e. `p[1]` is a random variable, the `Turing.Inference.tilde` function will dispatch to a different method than when the output is of another type, i.e `p[1]` is an observation. In the former case, `Turing.Inference.tilde` returns 2 outputs, the value of the random variable and the `log` probability, while in the latter case, only the `log` probability is returned. The `log` probabilities then get accumulated and if `p[1]` is a random variable, the first returned output by `Turing.Inference.tilde` gets assigned to it.
 
 Note that `Core.tilde` is different from `Inference.tilde`. `Core.tilde` returns the expression block that will be run instead of the `~` line. A part of this expression block is a call to `Inference.tilde` as shown above. `Core.tilde` is defined in the `compiler.jl` file, while `Inference.tilde` is defined in the `Inference.jl` file.
 
@@ -100,9 +102,10 @@ The `dot_tilde!` function does something similar for expressions of the form `@.
 temp_right = Normal(p[2], sqrt(p[1]))
 Turing.Core.assert_dist(temp_right, msg = ...)
 preprocessed = Turing.Core.@preprocess(Val((:x, :y, :T)), Turing.getmissing(model), x[1:2])
-if preprocessed isa Turing.VarName
+if preprocessed isa Tuple
+    vn, inds = preprocessed
     temp_left = x[1:2]
-    out = Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, preprocessed, vi)
+    out = Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vn, inds, vi)
     left .= out[1]
     vi.logp += out[2]
 else
@@ -126,33 +129,59 @@ Every `model::Model` can be called as a function with arguments:
 
 The `Model` struct is defined as follows:
 ```julia
-struct Model{F, Targs <: NamedTuple}
+struct Model{F, Targs <: NamedTuple, Tmodelgen, Tmissings <: Val}
     f::F
     args::Targs
+    modelgen::Tmodelgen
+    missings::Tmissings
 end
+Model(f, args::NamedTuple, modelgen) = Model(f, args, modelgen, getmissing(args))
 (model::Model)(vi) = model(vi, SampleFromPrior())
 (model::Model)(vi, spl) = model(vi, spl, DefaultContext())
 (model::Model)(args...; kwargs...) = model.f(args..., model; kwargs...)
 ```
-`model.f` is an internal function that is called when `model` is called, where `model::Model`. When `model` is called, `model` itself is passed as an argument to `model.f` because we need to access `model.args` among other things inside `f`. `model.args` is a `NamedTuple` of all the arguments that were passed to the model generating function when constructing an instance of `Model`.
+`model.f` is an internal function that is called when `model` is called, where `model::Model`. When `model` is called, `model` itself is passed as an argument to `model.f` because we need to access `model.args` among other things inside `f`. `model.args` is a `NamedTuple` of all the arguments that were passed to the model generating function when constructing an instance of `Model`. `modelgen` is the instance of `ModelGen` that was used to construct `model`. `missings` is an instance of `Val`, e.g. `Val{(:a, :b)}()`. `getmissings` returns a `Val` instance of all the symbols in `args` with a value `missing`. This is the default definition of `missings`. All variables in `missings` are treated as random variables rather than observations. 
+
+In some non-traditional use-cases, `missings` is defined differently, e.g. when computing the log joint probability of the random variables and only some observations simultaneously, possibly conditioned on the remaining observations. An example using the model above is `logprob"x = rand(3), p = rand(2) | model = gauss, y = nothing"`. To evaluate this, the model argument `x` on the LHS of `|` is treated as a random variable leading to a call to the `assume` or `dot_assume` function in place of the `~` or `.~` expressions, respectively. The model is then run in the `PriorContext` which ignores the `observe` and `dot_observe` functions and only runs the `assume` and `dot_assume` ones. This returns the correct log probability. The reason why a model input argument, such as `x`, cannot be initialized to `missing` when on the LHS of `|` is somewhat subtle. In the model body before calling `~`, sometimes there would be a call to `length(x)` iterating over the elements of `x` in a loop calling `~` on each element of `x`. If `x` is initialized to `missing`, this will error because `length(missing)` is not defined. Moreover, it is not intuitive to require the user to handle the `x === missing` case because the user never assigned `x` to be `missing` in the first place, `missing` is merely an implementation detail in this case that the users need not concern themselves with. Therefore in this case, it makes sense to de-couple the `missings` field from the values of the arguments.
 
 ## `build_output`
 
 Now that we have all the information we need in the `@model` macro, we can start building the model generator function. The model generator function `gauss` will be defined as:
 ```julia
-gauss(; x = missing, y = 1.0, TV::Type{<:AbstractVector} = Vector{Float64}) = gauss(x, y, TV)
-function gauss(x = missing, y = 1.0, TV::Type{<:AbstractVector} = Vector{Float64})
+function outer_function(;
+    x = missing,
+    y = 1.0,
+    TV::Type{<:AbstractVector} = Vector{Float64},
+)
+    return outer_function(x, y, TV)
+end
+function outer_function(
+    x = missing,
+    y = 1.0,
+    TV::Type{<:AbstractVector} = Vector{Float64},
+)
     function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx::AbstractContext, model)
         ...
     end
-    return Turing.Model(inner_function, (x = x, y = y, TV = TV))
+    return Turing.Model(
+        inner_function,
+        (x = x, y = y, TV = TV),
+        Turing.Core.ModelGen{(:x, :y, :TV)}(
+            outer_function,
+            (x = missing, y = 1.0, TV = Vector{Float64}),
+        ),
+    )
 end
+gauss = Turing.Core.ModelGen{(:x, :y, :TV)}(
+            outer_function,
+            (x = missing, y = 1.0, TV = Vector{Float64}),
+        )
 ```
-The above 2 methods enable constructing the model using positional or keyword arguments. The second argument to the `Turing.Model` constructor is the expression called `args_nt` stored in `model_info`. The body of the `inner_function` is explained below.
+The above 2 methods enable constructing the model using positional or keyword arguments. The second argument to the `Turing.Model` constructor is the expression called `args_nt` stored in `model_info`. The second argument to the `ModelGen` constructor inside `outer_function` and outside is the expression called `defaults_nt` stored in `model_info`. The body of the `inner_function` is explained below.
 
 ## `inner_function`
 
-The main method `inner_function` does some pre-processing defining all the input variables from the model definition, `x`, `y` and `TV` in the example above. Then the rest of the model body is run as normal Julia code with the `L ~ R` and `@. L ~ R` lines replaced with the calls to `Inference.tilde` and `Inference.dot_tilde` respectively as shown earlier.
+The main method of `inner_function` does some pre-processing defining all the input variables from the model definition, `x`, `y` and `TV` in the example above. Then the rest of the model body is run as normal Julia code with the `L ~ R` and `@. L ~ R` lines replaced with the calls to `Inference.tilde` and `Inference.dot_tilde` respectively as shown earlier.
 ```julia
 function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx::AbstractContext, model)
     temp_x = model.args.x
