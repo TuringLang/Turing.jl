@@ -607,20 +607,14 @@ Symbol(vn::VarName) = Symbol(string(vn))  # simplified symbol
 
 Check whether `vn`'s symbol is in `space`.
 """
-function in(vn::VarName, space::Tuple)::Bool
-    if getsym(vn) in space || length(space) == 0
-        return true
-    else
-        # String representation of `vn`
-        vn_str = string(vn)
-        return _in(vn_str, space)
-    end
-end
-@inline function _in(vn_str::String, space::Tuple)
-    length(space) === 0 && return false
-    el = space[1]
+in(::VarName, ::Tuple{}) = true
+in(vn::VarName, space::Tuple)::Bool = getsym(vn) in space || _in(string(vn), space)
+
+_in(::String, ::Tuple{}) = false
+_in(vn_str::String, space::Tuple)::Bool = _in(vn_str, Base.tail(space))
+function _in(vn_str::String, space::Tuple{Expr,Vararg})::Bool
     # Collect expressions from space
-    expr = isa(el, Expr) ? el : return _in(vn_str, Base.tail(space))
+    expr = first(space)
     # Filter `(` and `)` out and get a string representation of `exprs`
     expr_str = replace(string(expr), r"\(|\)" => "")
     # Check if `vn_str` is in `expr_strs`
