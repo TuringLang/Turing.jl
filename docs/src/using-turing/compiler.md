@@ -15,7 +15,7 @@ The following terminology will be used in this section:
 
 `Turing`'s `@model` macro defines a `ModelGen` that can be used to instantiate a `Model` by passing in the observed data `D`.
 
-# `@model` macro
+# `@model` macro and `ModelGen`
 
 The following are the main jobs of the `@model` macro:
 1. Parse `~` and `.~` lines, e.g. `y .~ Normal.(c*x, 1.0)`
@@ -47,6 +47,17 @@ if x === missing
 end
 ```
 If `x` is sampled as a whole from a multivariate distribution, e.g. `x ~ MvNormal(...)`, there is no need to initialize it in an `if`-block.
+
+`ModelGen` is defined as:
+```julia
+struct ModelGen{Targs, F, Tdefaults} <: Function
+    f::F
+    defaults::Tdefaults
+end
+ModelGen{Targs}(args...) where {Targs} = ModelGen{Targs, typeof.(args)...}(args...)
+(m::ModelGen)(args...; kwargs...) = m.f(args...; kwargs...)
+```
+`Targs` is the tuple of the symbols of the model's arguments, `(:x, :y, :TV)`. `defaults` is the `NamedTuple` of default values `(x = missing, y = 1.0, TV = Vector{Float64})`.
 
 The `@model` macro is defined as:
 ```julia
