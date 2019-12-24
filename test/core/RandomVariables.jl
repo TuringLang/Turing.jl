@@ -471,18 +471,18 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set{Selector}(), Set{Selector}()]
 
-        g_demo_f(vi1, hmc)
+        @inferred g_demo_f(vi1, hmc)
         @test mapreduce(x -> x.gids, vcat, vi1.metadata) ==
             [Set([pg.selector]), Set([pg.selector]), Set([pg.selector]), Set([hmc.selector]), Set([hmc.selector])]
 
         g = Turing.Sampler(Gibbs(PG(10, :x, :y, :z), HMC(0.4, 8, :w, :u)), g_demo_f)
         pg, hmc = g.state.samplers
         vi = empty!(TypedVarInfo(vi))
-        g_demo_f(vi, SampleFromPrior())
+        @inferred g_demo_f(vi, SampleFromPrior())
         pg.state.vi = vi
         Turing.Inference.step!(Random.GLOBAL_RNG, g_demo_f, pg, 1)
         vi = pg.state.vi
-        g_demo_f(vi, hmc)
+        @inferred g_demo_f(vi, hmc)
         @test vi.metadata.x.gids[1] == Set([pg.selector])
         @test vi.metadata.y.gids[1] == Set([pg.selector])
         @test vi.metadata.z.gids[1] == Set([pg.selector])
