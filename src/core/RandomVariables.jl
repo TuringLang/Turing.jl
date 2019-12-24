@@ -337,7 +337,7 @@ getdist(vi::VarInfo, vn::VarName) = getmetadata(vi, vn).dists[getidx(vi, vn)]
 
 Return the value(s) of `vn`.
 
-The values may or may not be transformed to Euclidian space.
+The values may or may not be transformed to Euclidean space.
 """
 getval(vi::VarInfo, vn::VarName) = view(getmetadata(vi, vn).vals, getrange(vi, vn))
 
@@ -346,7 +346,7 @@ getval(vi::VarInfo, vn::VarName) = view(getmetadata(vi, vn).vals, getrange(vi, v
 
 Set the value(s) of `vn` in the metadata of `vi` to `val`.
 
-The values may or may not be transformed to Euclidian space.
+The values may or may not be transformed to Euclidean space.
 """
 setval!(vi::VarInfo, val, vn::VarName) = getmetadata(vi, vn).vals[getrange(vi, vn)] = val
 
@@ -355,7 +355,7 @@ setval!(vi::VarInfo, val, vn::VarName) = getmetadata(vi, vn).vals[getrange(vi, v
 
 Return the value(s) of `vns`.
 
-The values may or may not be transformed to Euclidian space.
+The values may or may not be transformed to Euclidean space.
 """
 function getval(vi::AbstractVarInfo, vns::Vector{<:VarName})
     return mapreduce(vn -> getval(vi, vn), vcat, vns)
@@ -366,7 +366,7 @@ end
 
 Return the values of all the variables in `vi`.
 
-The values may or may not be transformed to Euclidian space.
+The values may or may not be transformed to Euclidean space.
 """
 getall(vi::UntypedVarInfo) = vi.metadata.vals
 getall(vi::TypedVarInfo) = vcat(_getall(vi.metadata)...)
@@ -383,7 +383,7 @@ end
 
 Set the values of all the variables in `vi` to `val`.
 
-The values may or may not be transformed to Euclidian space.
+The values may or may not be transformed to Euclidean space.
 """
 setall!(vi::UntypedVarInfo, val) = vi.metadata.vals .= val
 setall!(vi::TypedVarInfo, val) = _setall!(vi.metadata, val)
@@ -605,7 +605,7 @@ Symbol(vn::VarName) = Symbol(string(vn))  # simplified symbol
 """
     in(vn::VarName, space::Set)
 
-Check wheher `vn`'s symbol is in `space`.
+Check whether `vn`'s symbol is in `space`.
 """
 function in(vn::VarName, space::Tuple)::Bool
     if getsym(vn) in space || length(space) == 0
@@ -769,7 +769,7 @@ setgid!(vi::VarInfo, gid::Selector, vn::VarName) = push!(getmetadata(vi, vn).gid
 """
     istrans(vi::VarInfo, vn::VarName)
 
-Return true if `vn`'s values in `vi` are transformed to Euclidian space, and false if
+Return true if `vn`'s values in `vi` are transformed to Euclidean space, and false if
 they are in the support of `vn`'s distribution.
 """
 istrans(vi::AbstractVarInfo, vn::VarName) = is_flagged(vi, vn, "trans")
@@ -826,7 +826,7 @@ end
     link!(vi::VarInfo, spl::Sampler)
 
 Transform the values of the random variables sampled by `spl` in `vi` from the support
-of their distributions to the Euclidian space and set their corresponding `"trans"`
+of their distributions to the Euclidean space and set their corresponding `"trans"`
 flag values to `true`.
 """
 function link!(vi::UntypedVarInfo, spl::Sampler)
@@ -874,7 +874,7 @@ end
     invlink!(vi::VarInfo, spl::AbstractSampler)
 
 Transform the values of the random variables sampled by `spl` in `vi` from the
-Euclidian space back to the support of their distributions and sets their corresponding
+Euclidean space back to the support of their distributions and sets their corresponding
 `"trans"` flag values to `false`.
 """
 function invlink!(vi::UntypedVarInfo, spl::AbstractSampler)
@@ -951,7 +951,7 @@ end
 Return the current value(s) of `vn` (`vns`) in `vi` in the support of its (their)
 distribution(s).
 
-If the value(s) is (are) transformed to the Euclidian space, it is
+If the value(s) is (are) transformed to the Euclidean space, it is
 (they are) transformed back.
 """
 function getindex(vi::AbstractVarInfo, vn::VarName)
@@ -974,7 +974,7 @@ end
 
 Return the current value(s) of the random variables sampled by `spl` in `vi`.
 
-The value(s) may or may not be transformed to Euclidian space.
+The value(s) may or may not be transformed to Euclidean space.
 """
 getindex(vi::AbstractVarInfo, spl::SampleFromPrior) = copy(getall(vi))
 getindex(vi::UntypedVarInfo, spl::Sampler) = copy(getval(vi, _getranges(vi, spl)))
@@ -998,7 +998,7 @@ end
 
 Set the current value(s) of the random variable `vn` in `vi` to `val`.
 
-The value(s) may or may not be transformed to Euclidian space.
+The value(s) may or may not be transformed to Euclidean space.
 """
 setindex!(vi::AbstractVarInfo, val, vn::VarName) = setval!(vi, val, vn)
 
@@ -1007,7 +1007,7 @@ setindex!(vi::AbstractVarInfo, val, vn::VarName) = setval!(vi, val, vn)
 
 Set the current value(s) of the random variables sampled by `spl` in `vi` to `val`.
 
-The value(s) may or may not be transformed to Euclidian space.
+The value(s) may or may not be transformed to Euclidean space.
 """
 setindex!(vi::AbstractVarInfo, val, spl::SampleFromPrior) = setall!(vi, val)
 setindex!(vi::UntypedVarInfo, val, spl::Sampler) = setval!(vi, val, _getranges(vi, spl))
