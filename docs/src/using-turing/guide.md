@@ -218,7 +218,7 @@ Output:
 #### Treating observations as random variables
 
 
-Inputs to the model that have a value `missing` are treated as parameters, aka random variables, to be estimated/sampled. This can be useful if you want to simulate draws for that parameter, or if you are sampling from a conditional distribution. Turing v0.6.7 supports the following syntax:
+Inputs to the model that have a value `missing` are treated as parameters, aka random variables, to be estimated/sampled. This can be useful if you want to simulate draws for that parameter, or if you are sampling from a conditional distribution. Turing supports the following syntax:
 
 
 ```julia
@@ -310,6 +310,34 @@ The element type of a vector (or matrix) of random variables should match the `e
 Similarly, when using a particle sampler, the Julia variable used should either be:
     1. A `TArray`, or
     2. An instance of some type parameter `T` defined in the model header using the type parameter syntax, e.g. `gdemo(x, ::Type{T} = Vector{Float64}) where {T} = begin`.
+
+
+### Querying Probabilities from Model or Chain
+
+
+Consider the following `gdemo` model:
+```julia
+@model gdemo(x, y) = begin
+  s ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s))
+  x ~ Normal(m, sqrt(s))
+  y ~ Normal(m, sqrt(s))
+end
+```
+
+The following are examples of valid queries of the `Turing` model or chain: 
+
+- `prob"x = 1.0, y = 1.0 | model = gdemo, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
+
+- `prob"s = 1.0, m = 1.0 | model = gdemo, x = nothing, y = nothing"` calculates the joint probability of `s = 1` and `m = 1` ignoring `x` and `y`. `x` and `y` are ignored so they can be optionally dropped from the RHS of `|`, but it is recommended to define them.
+
+- `prob"s = 1.0, m = 1.0, x = 1.0 | model = gdemo, y = nothing"` calculates the joint probability of `s = 1`, `m = 1` and `x = 1` ignoring `y`.
+
+- `prob"s = 1.0, m = 1.0, x = 1.0, y = 1.0 | model = gdemo"` calculates the joint probability of all the variables.
+
+- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
+
+In all the above cases, `logprob` can be used instead of `prob` to calculate the log probabilities instead.
 
 
 ## Beyond the Basics
