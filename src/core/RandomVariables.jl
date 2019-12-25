@@ -173,9 +173,9 @@ end
 const UntypedVarInfo = VarInfo{<:Metadata}
 const TypedVarInfo = VarInfo{<:NamedTuple}
 
-function VarInfo(model::Model)
+function VarInfo(model::Model, ctx = DefaultContext())
     vi = VarInfo()
-    model(vi)
+    model(vi, SampleFromPrior(), ctx)
     return TypedVarInfo(vi)
 end
 (model::Model)() = model(Turing.VarInfo(), SampleFromPrior())
@@ -710,6 +710,7 @@ function TypedVarInfo(vi::UntypedVarInfo)
     nt = NamedTuple{syms_tuple}(Tuple(new_metas))
     return VarInfo(nt, Ref(logp), Ref(num_produce))
 end
+TypedVarInfo(vi::TypedVarInfo) = vi
 
 function getproperty(vi::VarInfo, f::Symbol)
     f === :logp && return getfield(vi, :logp)[]

@@ -455,13 +455,11 @@ end
 function dot_assume(
     spl::Sampler{<:Hamiltonian},
     dist::MultivariateDistribution,
-    vn::VarName,
+    vns::AbstractArray{<:VarName},
     var::AbstractMatrix,
     vi::VarInfo,
 )
     @assert dim(dist) == size(var, 1)
-    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 2))
     updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
@@ -470,12 +468,10 @@ end
 function dot_assume(
     spl::Sampler{<:Hamiltonian},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
-    vn::VarName,
+    vns::AbstractArray{<:VarName},
     var::AbstractArray,
     vi::VarInfo,
 )
-    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = getvn.(CartesianIndices(var))
     updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
