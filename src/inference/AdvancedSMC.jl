@@ -267,7 +267,7 @@ end
 
 function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, ::VarInfo)
     vi = current_trace().vi
-    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
+    if vn in getspace(spl)
         if ~haskey(vi, vn)
             r = rand(dist)
             push!(vi, vn, r, dist, spl)

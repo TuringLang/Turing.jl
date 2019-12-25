@@ -13,6 +13,7 @@ include("test_utils/AllUtils.jl")
     @testset "core" begin
         include("core/ad.jl")
         include("core/compiler.jl")
+        include("core/prob_macro.jl")
         include("core/container.jl")
         include("core/RandomVariables.jl")
     end

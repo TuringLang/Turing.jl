@@ -116,13 +116,14 @@ function step!(
 end
 
 function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
-    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
+    if vn in getspace(spl)
         if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
         old_val = vi[vn]
+        sym = getsym(vn)
 
-        if vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
-            proposal = spl.alg.proposals[vn.sym](old_val)
-            if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
+        if sym in keys(spl.alg.proposals) # Custom proposal for this parameter
+            proposal = spl.alg.proposals[sym](old_val)
+            if proposal isa Distributions.Normal # If Gaussian proposal
                 σ = std(proposal)
                 lb = support(dist).lb
                 ub = support(dist).ub
@@ -138,7 +139,7 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
                     r = old_val
                 end
                 spl.state.proposal_ratio -= logpdf(proposal, r) # accumulate pdf of proposal
-                reverse_proposal = spl.alg.proposals[vn.sym](r)
+                reverse_proposal = spl.alg.proposals[sym](r)
                 spl.state.proposal_ratio += logpdf(reverse_proposal, old_val)
             end
 

@@ -105,19 +105,25 @@ mf(vi, sampler, ctx, model) = begin
     x = model.args.x
 
     # Assume s has an InverseGamma distribution.
-    s, lp = Turing.assume(sampler,
-                InverseGamma(2, 3),
-                Turing.@varname(s), vi)
+    s, lp = Turing.Inference.tilde(
+        ctx,
+        sampler,
+        InverseGamma(2, 3),
+        Turing.@varname(s),
+        (),
+        vi,
+    )
 
     # Add the lp to the accumulated logp.
     vi.logp += lp
 
     # Assume m has a Normal distribution.
     m, lp = Turing.Inference.tilde(
-        ctx, 
-        sampler, 
-        Normal(0, sqrt(s)), 
-        Turing.@varname(m), 
+        ctx,
+        sampler,
+        Normal(0, sqrt(s)),
+        Turing.@varname(m),
+        (),
         vi,
     )
 
@@ -136,7 +142,7 @@ mf(vi, sampler, ctx, model) = begin
 end
 
 # Instantiate a Model object.
-model = Turing.Model(mf, data)
+model = Turing.Model(mf, data, Turing.Core.ModelGen{()}(nothing, nothing))
 
 # Sample the model.
 chain = sample(model, HMC(0.1, 5), 1000)

@@ -6,7 +6,6 @@ using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing, Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
-using Zygote: Zygote
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
@@ -19,6 +18,7 @@ include("RandomVariables.jl")
 include("compiler.jl")
 include("container.jl")
 include("ad.jl")
+include("prob_macro.jl")
 
 export  @model,
         @varname,
@@ -54,6 +54,8 @@ export  @model,
         gradient_logp_reverse,
         @varinfo,
         @logpdf,
-        @sampler
+        @sampler,
+        @logprob_str,
+        @prob_str
 
 end # module
