@@ -637,7 +637,14 @@ function assume(
     vi::VarInfo,
 )
     if haskey(vi, vn)
+        if is_flagged(vi, vn, "del")
+            unset_flag!(vi, vn, "del")
+            r = spl isa SampleFromUniform ? init(dist) : rand(dist)
+            vi[vn] = vectorize(dist, r)
+            setorder!(vi, vn, vi.num_produce)
+        else
         r = vi[vn]
+        end
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
         push!(vi, vn, r, dist, spl)
@@ -794,9 +801,19 @@ function get_and_set_val!(
 )
     n = length(vns)
     if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
+            for i in 1:n
+                vn = vns[i]
+                vi[vn] = vectorize(dist, r[:, i])
+                setorder!(vi, vn, vi.num_produce)
+            end
+        else
         r = vi[vns]
+        end
     else
-        r = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
+        r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
         for i in 1:n
             push!(vi, vns[i], r[:,i], dist, spl)
         end
@@ -810,9 +827,21 @@ function get_and_set_val!(
     spl::AbstractSampler,
 )
     if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
+            r = f.(vns, dists)
+            for i in eachindex(vns)
+                vn = vns[i]
+                dist = dists isa AbstractArray ? dists[i] : dists
+                vi[vn] = vectorize(dist, r[i])
+                setorder!(vi, vn, vi.num_produce)
+            end
+        else
         r = reshape(vi[vec(vns)], size(vns))
+        end
     else
-        f(vn, dist) = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
+        f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
         r = f.(vns, dists)
         push!.(Ref(vi), vns, r, dists, Ref(spl))
     end

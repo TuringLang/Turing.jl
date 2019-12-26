@@ -36,9 +36,11 @@ function Sampler(alg::ESS, model::Model, s::Selector)
     vns = _getvns(vi, s, Val(space))
     length(vns) == 1 ||
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
-    dist = getdist(vi, vns[1][1])
-    isgaussian(dist) ||
-        error("[ESS] only supports Gaussian prior distributions")
+    for vn in vns[1]
+        dist = getdist(vi, vn)
+        isgaussian(dist) ||
+            error("[ESS] only supports Gaussian prior distributions")
+    end
 
     state = ESSState(vi)
     info = Dict{Symbol, Any}()
@@ -66,24 +68,27 @@ function step!(
 )
     # obtain mean of distribution
     vi = spl.state.vi
-    vn = _getvns(vi, spl)[1][1]
-    dist = getdist(vi, vn)
-    μ = vectorize(dist, mean(dist))
+    vns = _getvns(vi, spl)
+    μ = mapreduce(vcat, vns[1]) do vn
+        dist = getdist(vi, vn)
+        vectorize(dist, mean(dist))
+    end
 
     # obtain previous sample
-    f = vi[vn]
+    f = vi[spl]
 
     # recompute log-likelihood in logp
     if spl.selector.tag !== :default
         runmodel!(model, vi, spl)
     end
-    setgid!(vi, spl.selector, vn)
 
     # sample log-likelihood threshold for the next sample
     threshold = getlogp(vi) - randexp(rng)
 
     # sample from the prior
-    ν = vectorize(dist, rand(rng, dist))
+    set_flag!(vi, vns[1][1], "del")
+    runmodel!(model, vi, spl)
+    ν = vi[spl]
 
     # sample initial angle
     θ = 2 * π * rand(rng)
@@ -94,7 +99,7 @@ function step!(
         # compute proposal and apply correction for distributions with nonzero mean
         sinθ, cosθ = sincos(θ)
         a = 1 - (sinθ + cosθ)
-        vi[vn] = @. f * cosθ + ν * sinθ + μ * a
+        vi[spl] = @. f * cosθ + ν * sinθ + μ * a
 
         # recompute log-likelihood and check if threshold is reached
         runmodel!(model, vi, spl)
@@ -116,19 +121,26 @@ function step!(
     return Transition(spl)
 end
 
-function assume(spl::Sampler{<:ESS}, dist::Distribution, vn::VarName, vi::VarInfo)
-    # don't sample
-    r = vi[vn]
-
-    # avoid possibly costly computation of the prior probability
-    space = getspace(spl)
-    if space === () || space === (vn.sym,)
-        return r, zero(Base.promote_eltype(dist, r))
+function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
+    if vn in getspace(sampler)
+        return tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
-        return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+        return tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
     end
 end
 
-function observe(spl::Sampler{<:ESS}, dist::Distribution, value, vi::VarInfo)
-    return observe(SampleFromPrior(), dist, value, vi)
+function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return tilde(ctx, SampleFromPrior(), right, left, vi)
+end
+
+function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
+    if vn in getspace(sampler)
+        return dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
+    else
+        return dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
+    end
+end
+
+function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return dot_tilde(ctx, SampleFromPrior(), right, left, vi)
 end
