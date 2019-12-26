@@ -13,8 +13,10 @@ export  vectorize,
         Chain,
         init,
         vectorize,
-        set_resume!
+        set_resume!,
+        FlattenIterator
 
 include("robustinit.jl")
+include("helper.jl")
 
 end # module
