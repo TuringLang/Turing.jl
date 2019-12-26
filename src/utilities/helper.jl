@@ -7,6 +7,10 @@ Base.length(iter::FlattenIterator) where {T} = _length(iter.value)
 @inline _length(a::AbstractArray) = sum(_length, a)
 @inline _length(::Number) = 1
 
+Base.eltype(iter::FlattenIterator{String}) = Tuple{String, _eltype(typeof(iter.value))}
+@inline _eltype(::Type{TA}) where {T, TA <: AbstractArray{T}} = _eltype(T)
+@inline _eltype(::Type{T}) where {T <: Number} = T
+
 @inline function Base.iterate(iter::FlattenIterator{String, <:Number}, i = 1)
     i === 1 && return (iter.name, iter.value), 2
     return nothing

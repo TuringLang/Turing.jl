@@ -264,7 +264,7 @@ function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
             return [(string(k), v)]
         else
             return mapreduce(vcat, zip(v[1], v[2])) do (vnval, vn)
-                return [i for i in FlattenIterator(vn, vnval)]
+                return collect(FlattenIterator(vn, vnval))
             end
         end
     end
