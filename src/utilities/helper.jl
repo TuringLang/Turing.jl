@@ -11,14 +11,19 @@ Base.length(iter::FlattenIterator) where {T} = _length(iter.value)
     i === 1 && return (iter.name, iter.value), 2
     return nothing
 end
-@inline function Base.iterate(iter::FlattenIterator{String, T}, ind = (1,)) where {T <: AbstractArray{<:Number}}
+@inline function Base.iterate(
+    iter::FlattenIterator{String, <:AbstractArray{<:Number}}, 
+    ind = (1,),
+)
     i = ind[1]
     i > length(iter.value) && return nothing
     name = getname(iter, i)
     return (name, iter.value[i]), (i+1,)
 end
-@inline function Base.iterate(iter::FlattenIterator{String, T}, ind = startind(T)) where {T <: AbstractArray}
-    @show ind
+@inline function Base.iterate(
+    iter::FlattenIterator{String, T},
+    ind = startind(T),
+) where {T <: AbstractArray}
     i = ind[1]
     i > length(iter.value) && return nothing
     name = getname(iter, i)
@@ -36,10 +41,10 @@ end
     end
 end
 
-startind(::Type{<:AbstractArray{T}}) where {T} = (1, startind(T)...)
-startind(::Type{<:Number}) = ()
-startind(::Type{<:Any}) = throw("Type not supported.")
-function getname(iter::FlattenIterator, i::Int)
+@inline startind(::Type{<:AbstractArray{T}}) where {T} = (1, startind(T)...)
+@inline startind(::Type{<:Number}) = ()
+@inline startind(::Type{<:Any}) = throw("Type not supported.")
+@inline function getname(iter::FlattenIterator, i::Int)
     name = string(ind2sub(size(iter.value), i))
     name = replace(name, "(" => "[");
     name = replace(name, ",)" => "]");
@@ -47,4 +52,4 @@ function getname(iter::FlattenIterator, i::Int)
     name = iter.name * name
     return name
 end
-ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
+@inline ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
