@@ -497,7 +497,7 @@ end
 
 # Get all vns of variables belonging to spl
 _getvns(vi::AbstractVarInfo, spl::Sampler) = _getvns(vi, spl.selector, Val(getspace(spl)))
-_getvns(vi::UntypedVarInfo, s::Selector, space) = view(vi.vns, _getidcs(vi, s, space))
+_getvns(vi::UntypedVarInfo, s::Selector, space) = view(vi.metadata.vns, _getidcs(vi, s, space))
 function _getvns(vi::TypedVarInfo, s::Selector, space)
     return _getvns(vi.metadata, _getidcs(vi, s, space))
 end
