@@ -12,7 +12,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     @model demodot(x) = begin
         m = Vector{Float64}(undef, 2)
-        m .~ Normal()
+        @. m ~ Normal()
         x ~ Normal(m[2], 0.5)
     end
     demodot_default = demodot(1.0)
