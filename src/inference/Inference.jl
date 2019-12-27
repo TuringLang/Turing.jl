@@ -3,7 +3,7 @@ module Inference
 using ..Core, ..Core.RandomVariables, ..Utilities
 using ..Core.RandomVariables: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!
+    settrans!, _getvns, getdist
 using ..Core: split_var_str
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
@@ -13,7 +13,7 @@ using ..Turing: Model, runmodel!, Turing,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, NamedDist, NoDist
 using StatsFuns: logsumexp
-using Random: GLOBAL_RNG, AbstractRNG
+using Random: GLOBAL_RNG, AbstractRNG, randexp
 using AbstractMCMC
 
 import MCMCChains: Chains
@@ -33,6 +33,7 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
+        ESS,
         Gibbs,      # classic sampling
         HMC,
         SGLD,
@@ -274,8 +275,8 @@ function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransit
         end
         push!(dicts, d)
     end
-    
-    # Convert the set to an ordered vector so the parameter ordering 
+
+    # Convert the set to an ordered vector so the parameter ordering
     # is deterministic.
     ordered_names = collect(names)
     vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
@@ -486,6 +487,7 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
@@ -498,7 +500,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :Gibbs)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
@@ -635,7 +637,14 @@ function assume(
     vi::VarInfo,
 )
     if haskey(vi, vn)
+        if is_flagged(vi, vn, "del")
+            unset_flag!(vi, vn, "del")
+            r = spl isa SampleFromUniform ? init(dist) : rand(dist)
+            vi[vn] = vectorize(dist, r)
+            setorder!(vi, vn, vi.num_produce)
+        else
         r = vi[vn]
+        end
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
         push!(vi, vn, r, dist, spl)
@@ -792,9 +801,19 @@ function get_and_set_val!(
 )
     n = length(vns)
     if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
+            for i in 1:n
+                vn = vns[i]
+                vi[vn] = vectorize(dist, r[:, i])
+                setorder!(vi, vn, vi.num_produce)
+            end
+        else
         r = vi[vns]
+        end
     else
-        r = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
+        r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
         for i in 1:n
             push!(vi, vns[i], r[:,i], dist, spl)
         end
@@ -808,9 +827,21 @@ function get_and_set_val!(
     spl::AbstractSampler,
 )
     if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
+            r = f.(vns, dists)
+            for i in eachindex(vns)
+                vn = vns[i]
+                dist = dists isa AbstractArray ? dists[i] : dists
+                vi[vn] = vectorize(dist, r[i])
+                setorder!(vi, vn, vi.num_produce)
+            end
+        else
         r = reshape(vi[vec(vns)], size(vns))
+        end
     else
-        f(vn, dist) = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
+        f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
         r = f.(vns, dists)
         push!.(Ref(vi), vns, r, dists, Ref(spl))
     end

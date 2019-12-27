@@ -214,6 +214,7 @@ export  @model,                 # modelling
         @sampler,
 
         MH,                     # classic sampling
+        ESS,
         Gibbs,
 
         HMC,                    # Hamiltonian-like sampling
