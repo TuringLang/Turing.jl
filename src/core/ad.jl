@@ -43,7 +43,6 @@ getADtype(alg)
 
 Finds the autodifferentiation type of the algorithm `alg`.
 """
-getADtype(::Nothing) = ADBackend()
 getADtype(spl::Sampler) = getADtype(spl.alg)
 
 """
