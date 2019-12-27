@@ -61,12 +61,13 @@ function (elbo::ELBO)(
     alg::ADVI,
     q::MeanField,
     model::Model,
-    θ::AbstractVector{T},
+    θ::AbstractVector{<:Real},
     num_samples
-) where T <: Real
+)
     # setup
     varinfo = Turing.VarInfo(model)
 
+    T = eltype(θ)
     num_params = length(q)
     μ, ω = θ[1:num_params], θ[num_params + 1: end]
     

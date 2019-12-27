@@ -30,8 +30,8 @@ mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
     n_iters::Int               # number of iterations
     algs::A                 # Proposals for state & parameters
 end
-function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
-    return PMMH{space, A}(n_iters, algs)
+function PMMH(n_iters::Int, algs::Tuple, space::Tuple)
+    return PMMH{space, typeof(algs)}(n_iters, algs)
 end
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
     return PMMH(n_iters, tuple(parameter_algs..., smc_alg), ())

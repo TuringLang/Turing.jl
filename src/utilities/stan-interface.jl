@@ -16,29 +16,31 @@
 #   Ref
 #     http://goedman.github.io/Stan.jl/latest/index.html#Types-1
 
-function sample(mf::T, ss::CmdStan.Sample) where T
+function sample(mf, ss::CmdStan.Sample)
     return sample(mf, ss.num_samples, ss.num_warmup,
                     ss.save_warmup, ss.thin, ss.adapt, ss.alg)
 end
 
-function sample(mf::T,
+function sample(
+    mf,
     num_samples::Int,
     num_warmup::Int,
     save_warmup::Bool,
     thin::Int,
     ss::CmdStan.Sample
-) where T
+)
     return sample(mf, num_samples, num_warmup, save_warmup, thin, ss.adapt, ss.alg)
 end
 
-function sample(mf::T,
+function sample(
+    mf,
     num_samples::Int,
     num_warmup::Int,
     save_warmup::Bool,
     thin::Int,
     adapt::CmdStan.Adapt,
     alg::CmdStan.Hmc
-) where T
+)
     if alg.stepsize_jitter != 0.0
         @warn("[Turing.sample] Turing does not support adding noise to stepsize yet.")
     end
@@ -64,7 +66,7 @@ function sample(mf::T,
     end
 end
 
-function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
+function AHMCAdaptor(adaptor)
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
         AHMC.Preconditioner(metric),

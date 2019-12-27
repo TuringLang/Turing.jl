@@ -63,18 +63,14 @@ mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     particles            ::   ParticleContainer
 end
 
-function SMCState(
-    model::M,
-) where {
-    M<:Model
-}
+function SMCState(model::Model)
     vi = VarInfo(model)
     particles = ParticleContainer(model, Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
 
-function Sampler(alg::T, model::Model, s::Selector) where T<:SMC
+function Sampler(alg::SMC, model::Model, s::Selector)
     dict = Dict{Symbol, Any}()
     state = SMCState(model)
     return Sampler(alg, dict, s, state)
@@ -168,7 +164,7 @@ mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     average_logevidence  ::   F
 end
 
-function PGState(model::M) where {M<:Model}
+function PGState(model::Model)
     vi = VarInfo(model)
     return PGState(vi, 0.0)
 end
@@ -180,7 +176,7 @@ const CSMC = PG # type alias of PG as Conditional SMC
 
 Return a `Sampler` object for the PG algorithm.
 """
-function Sampler(alg::T, model::Model, s::Selector) where T<:PG
+function Sampler(alg::PG, model::Model, s::Selector)
     info = Dict{Symbol, Any}()
     state = PGState(model)
     return Sampler(alg, info, s, state)
@@ -313,8 +309,10 @@ function resample(w::AbstractVector{<:Real}, num_particles::Integer=length(w))
 end
 
 # More stable, faster version of rand(Categorical)
-function randcat(p::AbstractVector{T}) where T<:Real
-    r, s = rand(T), 1
+function randcat(p::AbstractVector{<:Real})
+    T = eltype(p)
+    r = rand(T)
+    s = 1
     for j in eachindex(p)
         r -= p[j]
         if r <= zero(T)

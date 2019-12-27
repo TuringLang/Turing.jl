@@ -136,14 +136,14 @@ When using long-form functions [always use the `return` keyword](https://groups.
 
 ```julia
 # Yes:
-function fnc(x::T) where T
-    result = zero(T)
+function fnc(x)
+    result = zero(x)
     result += fna(x)
     return result
 end
 # No:
-function fnc(x::T) where T
-    result = zero(T)
+function fnc(x)
+    result = zero(x)
     result += fna(x)
 end
 
