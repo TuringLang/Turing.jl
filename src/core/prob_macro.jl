@@ -13,7 +13,7 @@ end
 
 function get_exprs(str::String)
 	ind = findfirst(isequal('|'), str)
-	ind == nothing && throw("Invalid expression.")
+	ind === nothing && throw("Invalid expression.")
 
 	str1 = str[1:(ind - 1)]
 	str2 = str[(ind + 1):end]
@@ -97,7 +97,7 @@ function probtype(
     end
     function valid_arg(arg)
         a = get_arg(arg)
-        return !(a isa Nothing || a isa Missing)
+        return a !== nothing && a !== missing
     end
     valid_args = all(valid_arg.(args))
 
