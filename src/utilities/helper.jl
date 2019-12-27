@@ -3,12 +3,13 @@ struct FlattenIterator{Tname, Tvalue}
     value::Tvalue
 end
 
-Base.length(iter::FlattenIterator) where {T} = _length(iter.value)
-@inline _length(a::AbstractArray) = sum(_length, a)
+Base.length(iter::FlattenIterator) = _length(iter.value)
+_length(a::AbstractArray) = sum(_length, a)
+_length(a::AbstractArray{<:Number}) = length(a)
 @inline _length(::Number) = 1
 
 Base.eltype(iter::FlattenIterator{String}) = Tuple{String, _eltype(typeof(iter.value))}
-@inline _eltype(::Type{TA}) where {T, TA <: AbstractArray{T}} = _eltype(T)
+_eltype(::Type{TA}) where {TA <: AbstractArray} = _eltype(eltype(TA))
 @inline _eltype(::Type{T}) where {T <: Number} = T
 
 @inline function Base.iterate(iter::FlattenIterator{String, <:Number}, i = 1)
