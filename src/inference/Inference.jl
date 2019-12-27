@@ -570,14 +570,14 @@ function tilde(ctx::DefaultContext, sampler, right, vn::VarName, _, vi)
     return _tilde(sampler, right, vn, vi)
 end
 function tilde(ctx::PriorContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
-    if !(ctx.vars isa Nothing)
+    if ctx.vars !== nothing
         vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
         settrans!(vi, false, vn)
     end
     return _tilde(sampler, right, vn, vi)
 end
 function tilde(ctx::LikelihoodContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
-    if !(ctx.vars isa Nothing)
+    if ctx.vars !== nothing
         vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
         settrans!(vi, false, vn)
     end
@@ -682,7 +682,7 @@ function dot_tilde(
     inds,
     vi,
 ) where {s}
-    if !(ctx.vars isa Nothing)
+    if ctx.vars !== nothing
         var = _getindex(getfield(ctx.vars, s), inds)
         vns, dist = get_vns_and_dist(right, var, vn)
         set_val!(vi, vns, dist, var)
@@ -704,7 +704,7 @@ function dot_tilde(
     inds,
     vi,
 ) where {s}
-    if !(ctx.vars isa Nothing)
+    if ctx.vars !== nothing
         var = _getindex(getfield(ctx.vars, s), inds)
         vns, dist = get_vns_and_dist(right, var, vn)
         set_val!(vi, vns, dist, var)
