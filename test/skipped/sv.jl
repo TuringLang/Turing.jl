@@ -6,7 +6,7 @@ sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
 @model sv_model(T, y) = begin
     ϕ ~ Uniform(-1, 1)
-    σ ~ Truncated(Cauchy(0,5), 0, +Inf)
+    σ ~ truncated(Cauchy(0,5), 0, Inf)
     μ ~ Cauchy(0, 10)
     # h = tzeros(Real, T)
     h = Vector{Real}(T)
