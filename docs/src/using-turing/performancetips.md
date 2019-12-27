@@ -56,7 +56,7 @@ The following example:
     p,n = size(x)
     params = Vector{Real}(undef, n)
     for i = 1:n
-        params[i] ~ Truncated(Normal(), 0, Inf)
+        params[i] ~ truncated(Normal(), 0, Inf)
     end
 
     a = x * params
@@ -70,7 +70,7 @@ can be transformed into the following type-stable representation:
     p,n = size(x)
     params = T(undef, n)
     for i = 1:n
-        params[i] ~ Truncated(Normal(), 0, Inf)
+        params[i] ~ truncated(Normal(), 0, Inf)
     end
 
     a = x * params
@@ -93,11 +93,11 @@ end
 we can use
 
 ```julia
-m = tmodel(1.0);
-varinfo = Turing.VarInfo(model);
-spl = Turing.SampleFromPrior();
+model = tmodel(1.0)
+varinfo = Turing.VarInfo(model)
+spl = Turing.SampleFromPrior()
 
-@code_warntype model.f(varinfo, spl, model);
+@code_warntype model.f(varinfo, spl, Turing.DefaultContext(), model)
 ```
 to inspect the type instabilities in the model.
 
