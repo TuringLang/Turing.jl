@@ -42,7 +42,7 @@ function sample(mf::T,
     if alg.stepsize_jitter != 0.0
         @warn("[Turing.sample] Turing does not support adding noise to stepsize yet.")
     end
-    if adapt.engaged == false
+    if !adapt.engaged
         if isa(alg.engine, CmdStan.Static)   # hmc
             stepnum = Int(round(alg.engine.int_time / alg.stepsize))
             sample(mf, HMC(alg.stepsize, stepnum), num_samples; adaptor=NUTSAdaptor(adapt))
