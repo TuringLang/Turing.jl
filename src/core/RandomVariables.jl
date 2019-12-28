@@ -34,6 +34,7 @@ export  VarName,
         resetlogp!,
         set_retained_vns_del_by_spl!,
         is_flagged,
+        set_flag!,
         unset_flag!,
         setgid!,
         updategid!,
@@ -495,11 +496,10 @@ end
 end
 
 # Get all vns of variables belonging to spl
-_getvns(vi::UntypedVarInfo, spl::AbstractSampler) = view(vi.metadata.vns, _getidcs(vi, spl))
-function _getvns(vi::TypedVarInfo, spl::AbstractSampler)
-    # Get a NamedTuple of the indices of variables belonging to `spl`, one entry for each symbol
-    idcs = _getidcs(vi, spl)
-    return _getvns(vi.metadata, idcs)
+_getvns(vi::AbstractVarInfo, spl::Sampler) = _getvns(vi, spl.selector, Val(getspace(spl)))
+_getvns(vi::UntypedVarInfo, s::Selector, space) = view(vi.metadata.vns, _getidcs(vi, s, space))
+function _getvns(vi::TypedVarInfo, s::Selector, space)
+    return _getvns(vi.metadata, _getidcs(vi, s, space))
 end
 # Get a NamedTuple for all the `vns` of indices `idcs`, one entry for each symbol
 @generated function _getvns(metadata, idcs::NamedTuple{names}) where {names}
@@ -525,7 +525,7 @@ end
     #end
 end
 # Get the index (in vals) ranges of all the vns of variables belonging to selector `s` in `space`
-@inline function _getranges(vi::AbstractVarInfo, s::Selector, space = Val(()))
+@inline function _getranges(vi::AbstractVarInfo, s::Selector, space)
     return _getranges(vi, _getidcs(vi, s, space))
 end
 @inline function _getranges(vi::UntypedVarInfo, idcs::Vector{Int})
