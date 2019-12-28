@@ -37,11 +37,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         Random.seed!(100)
+
+        alg = Gibbs(
+            MH(:s),
+            HMC(0.2, 4, :m))
+        chain = sample(gdemo(1.5, 2.0), alg, 3000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+
         alg = Gibbs(
             CSMC(15, :s),
             ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = CSMC(10)
         chain = sample(gdemo(1.5, 2.0), alg, 5000)

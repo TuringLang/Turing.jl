@@ -94,7 +94,7 @@ function step!(
     ::Transition;
     kwargs...
 )
-    if spl.selector.tag != :default # Recompute joint in logp
+    if spl.selector.rerun # Recompute joint in logp
         runmodel!(model, spl.state.vi)
     end
     old_θ = copy(spl.state.vi[spl])
