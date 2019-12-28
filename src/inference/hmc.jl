@@ -118,18 +118,15 @@ function sample_init!(
     # Get `init_theta`
     initialize_parameters!(spl; verbose=verbose, kwargs...)
 
-    # Set the defualt number of adaptations, if relevant.
+    # Set the default number of adaptations, if relevant.
     if spl.alg isa AdaptiveHamiltonian
         # If there's no chain passed in, verify the n_adapts.
         if resume_from === nothing
             if spl.alg.n_adapts == 0
-                n_adapts_default = Int(round(N / 2))
-                spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-            else
-                # Verify that n_adapts is less than the samples to draw.
-                spl.alg.n_adapts < N || !ismissing(resume_from) ?
-                    nothing :
-                    throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
+                spl.alg.n_adapts = min(1000, N ÷ 2)
+            elseif spl.alg.n_adapts > N
+                # Verify that n_adapts is not greater than the number of samples to draw.
+                throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
             end
         else
             spl.alg.n_adapts = 0
