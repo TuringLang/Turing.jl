@@ -143,13 +143,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
             push!(vi, vn_x, r, dist, gid)
 
             # del is set by default
-            @test is_flagged(vi, vn_x, "del") == false
+            @test !is_flagged(vi, vn_x, "del")
 
             set_flag!(vi, vn_x, "del")
-            @test is_flagged(vi, vn_x, "del") == true
+            @test is_flagged(vi, vn_x, "del")
 
             unset_flag!(vi, vn_x, "del")
-            @test is_flagged(vi, vn_x, "del") == false
+            @test !is_flagged(vi, vn_x, "del")
         end
         vi = VarInfo()
         test_varinfo!(vi)
