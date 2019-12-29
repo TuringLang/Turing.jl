@@ -167,9 +167,9 @@ function step!(
     model::Model,
     spl::Sampler{<:Gibbs},
     N::Integer,
-    t::TransitionType;
+    t::AbstractTransition;
     kwargs...
-) where TransitionType<:AbstractTransition
+)
     Turing.DEBUG && @debug "Gibbs stepping..."
 
     time_elapsed = 0.0

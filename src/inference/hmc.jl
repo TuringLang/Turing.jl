@@ -27,7 +27,7 @@ struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTra
     stat :: NT
 end
 
-function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
+function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::AHMC.Transition)
     theta = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
     return HamiltonianTransition(theta, lp, t.stat)
@@ -110,7 +110,7 @@ function sample_init!(
     verbose::Bool=true,
     resume_from=nothing,
     kwargs...
-) where T<:Hamiltonian
+)
 
     # Resume the sampler.
     set_resume!(spl; resume_from=resume_from, kwargs...)
@@ -295,10 +295,10 @@ end
 
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(
-    alg::SamplerType,
+    alg::Union{StaticHamiltonian, AdaptiveHamiltonian},
     model::Model,
     s::Selector=Selector()
-) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
+)
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
     initial_state = SamplerState(VarInfo(model))
@@ -323,12 +323,12 @@ end
 function step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{T},
+    spl::Sampler{<:Hamiltonian},
     N::Integer;
     kwargs...
-) where T<:Hamiltonian
+)
     # Get step size
-    ϵ = T <: AdaptiveHamiltonian ?
+    ϵ = spl.alg isa AdaptiveHamiltonian ?
         AHMC.getϵ(spl.state.adaptor) :
         spl.alg.ϵ
 
@@ -359,7 +359,7 @@ function step!(
     spl.state.z = t.z
 
     # Adaptation
-    if T <: AdaptiveHamiltonian
+    if spl.alg isa AdaptiveHamiltonian
         spl.state.h, spl.state.traj, isadapted = 
             AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, 
                         spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
@@ -571,17 +571,14 @@ end
 
 function callback(
     rng::AbstractRNG,
-    model::ModelType,
-    spl::SamplerType,
+    model::Model,
+    spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
     N::Integer,
     iteration::Integer,
     t::HamiltonianTransition,
     cb::HMCCallback;
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler
-}
+)
     AHMC.pm_next!(cb.p, t.stat, iteration, spl.state.h.metric)
 end
 

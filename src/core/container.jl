@@ -20,8 +20,8 @@ function Base.copy(trace::Trace)
 end
 
 # NOTE: this function is called by `forkr`
-function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSampler}
-    res = Trace{T}(m, spl, deepcopy(vi));
+function Trace(f::Function, m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
+    res = Trace{typeof(spl)}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
     if res.task.storage === nothing
@@ -30,8 +30,8 @@ function Trace(f::Function, m::Model, spl::T, vi::AbstractVarInfo) where {T <: A
     res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
     return res
 end
-function Trace(m::Model, spl::T, vi::AbstractVarInfo) where {T <: AbstractSampler}
-    res = Trace{T}(m, spl, deepcopy(vi));
+function Trace(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
+    res = Trace{typeof(spl)}(m, spl, deepcopy(vi));
     # CTask(()->f());
     res.vi.num_produce = 0
     res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )

@@ -71,10 +71,8 @@ abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
-getchunksize(::T) where {T <: Hamiltonian} = getchunksize(T)
 getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
-getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
-getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
+getADtype(::Hamiltonian{AD}) where AD = AD
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
@@ -144,29 +142,21 @@ const TURING_INTERNAL_VARS = (internals = [
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer;
     kwargs...
-) where {
-    ModelType<:AbstractModel,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
 end
 
 function AbstractMCMC.sample(
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer;
     resume_from=nothing,
     kwargs...
-) where {
-    ModelType<:AbstractModel,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     if resume_from === nothing
         return sample(model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
     else
@@ -176,31 +166,23 @@ end
 
 
 function AbstractMCMC.psample(
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
     kwargs...
-) where {
-    ModelType<:AbstractModel,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
 end
 
 function AbstractMCMC.psample(
     rng::AbstractRNG,
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
     kwargs...
-) where {
-    ModelType<:AbstractModel,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
 end
 
@@ -221,17 +203,17 @@ end
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
-    spl::AbstractSampler,
+    ::AbstractSampler,
     ::Integer,
-    ::Vector{TransitionType};
+    ::Vector{<:AbstractTransition};
     kwargs...
-) where {TransitionType<:AbstractTransition}
+)
     # Silence the default API function.
 end
 
 function initialize_parameters!(
     spl::AbstractSampler;
-    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+    init_theta::Union{Nothing,Vector}=nothing,
     verbose::Bool=false,
     kwargs...
 )
@@ -259,7 +241,7 @@ end
 # Chain making utilities #
 ##########################
 
-function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransition}
+function _params_to_array(ts::Vector{<:AbstractTransition}, spl::Sampler)
     names = Set{String}()
     dicts = Vector{Dict{String, Any}}()
 
@@ -340,10 +322,10 @@ end
 
 ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
 
-function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
+function get_transition_extras(ts::Vector{<:AbstractTransition})
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
-    extra_params = additional_parameters(T)
+    extra_params = additional_parameters(eltype(ts))
 
     # Get the values of the extra parameters.
     local extra_names
@@ -383,14 +365,14 @@ end
 # Default Chains constructor.
 function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
-    model::ModelType,
+    model::AbstractModel,
     spl::Sampler,
     N::Integer,
-    ts::Vector{T};
+    ts::Vector{<:AbstractTransition};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
-) where {ModelType<:AbstractModel, T<:AbstractTransition}
+)
     # Check if we have adaptation samples.
     if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
         ts = ts[(spl.alg.n_adapts+1):end]
@@ -520,15 +502,15 @@ end
 function get_matching_type(
     spl::AbstractSampler, 
     vi::VarInfo, 
-    ::Type{T},
-) where {T <: AbstractFloat}
+    ::Type{<:AbstractFloat},
+)
     return floatof(eltype(vi, spl))
 end
 function get_matching_type(
     spl::Sampler{<:Hamiltonian}, 
     vi::VarInfo, 
-    ::Type{T},
-) where {T <: Union{Missing, AbstractFloat}}
+    ::Type{<:Union{Missing, AbstractFloat}},
+)
     return Union{Missing, floatof(eltype(vi, spl))}
 end
 function get_matching_type(
@@ -569,16 +551,16 @@ _getindex(x, inds::Tuple{}) = x
 function tilde(ctx::DefaultContext, sampler, right, vn::VarName, _, vi)
     return _tilde(sampler, right, vn, vi)
 end
-function tilde(ctx::PriorContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
+function tilde(ctx::PriorContext, sampler, right, vn::VarName, inds, vi)
     if ctx.vars !== nothing
-        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, getsym(vn)), inds))
         settrans!(vi, false, vn)
     end
     return _tilde(sampler, right, vn, vi)
 end
-function tilde(ctx::LikelihoodContext, sampler, right, vn::VarName{s}, inds, vi) where {s}
+function tilde(ctx::LikelihoodContext, sampler, right, vn::VarName, inds, vi)
     if ctx.vars !== nothing
-        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, s), inds))
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, getsym(vn)), inds))
         settrans!(vi, false, vn)
     end
     return _tilde(sampler, NoDist(right), vn, vi)
@@ -678,12 +660,12 @@ function dot_tilde(
     sampler,
     right,
     left,
-    vn::VarName{s},
+    vn::VarName,
     inds,
     vi,
-) where {s}
+)
     if ctx.vars !== nothing
-        var = _getindex(getfield(ctx.vars, s), inds)
+        var = _getindex(getfield(ctx.vars, getsym(vn)), inds)
         vns, dist = get_vns_and_dist(right, var, vn)
         set_val!(vi, vns, dist, var)
         settrans!.(Ref(vi), false, vns)
@@ -700,12 +682,12 @@ function dot_tilde(
     sampler,
     right,
     left,
-    vn::VarName{s},
+    vn::VarName,
     inds,
     vi,
-) where {s}
+)
     if ctx.vars !== nothing
-        var = _getindex(getfield(ctx.vars, s), inds)
+        var = _getindex(getfield(ctx.vars, getsym(vn)), inds)
         vns, dist = get_vns_and_dist(right, var, vn)
         set_val!(vi, vns, dist, var)
         settrans!.(Ref(vi), false, vns)

@@ -1,15 +1,15 @@
 import Distributions: _rand!
 
 
-function jac_inv_transform(dist::Distribution, x::T where T<:Real)
+function jac_inv_transform(dist::Distribution, x::Real)
     ForwardDiff.derivative(x -> invlink(dist, x), x)
 end
 
-function jac_inv_transform(dist::Distribution, x::AbstractArray{T} where T <: Real)
+function jac_inv_transform(dist::Distribution, x::AbstractArray{<:Real})
     ForwardDiff.jacobian(x -> invlink(dist, x), x)
 end
 
-function jac_inv_transform(dist::Distribution, x::TrackedArray{T} where T <: Real)
+function jac_inv_transform(dist::Distribution, x::TrackedArray{<:Real})
     Tracker.jacobian(x -> invlink(dist, x), x)
 end
 
@@ -30,9 +30,9 @@ Base.length(advi::MeanField) = length(advi.μ)
 
 function _rand!(
     rng::AbstractRNG,
-    q::MeanField{TDists},
-    x::AbstractVector{T}
-) where {T<:Real, TDists <: AbstractVector{<: Distribution}}
+    q::MeanField,
+    x::AbstractVector{<:Real}
+)
     # extract parameters for convenience
     μ, ω = q.μ, q.ω
     num_params = length(q)

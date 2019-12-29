@@ -98,10 +98,10 @@ function step!(
 end
 
 function Sampler(
-    alg::DynamicNUTS{AD},
-    model::Turing.Model,
+    alg::DynamicNUTS,
+    model::Model,
     s::Selector=Selector()
-) where AD
+)
     # Construct a state, using a default function.
     state = DynamicNUTSState(VarInfo(model), [])
 
@@ -116,6 +116,6 @@ function AbstractMCMC.init_callback(
     s::Sampler{<:DynamicNUTS},
     N::Integer;
     kwargs...
-) where {ModelType<:Sampleable, SamplerType<:AbstractSampler}
+)
     return NoCallback()
 end

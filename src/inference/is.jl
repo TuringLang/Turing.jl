@@ -64,7 +64,7 @@ function sample_end!(
     N::Integer,
     ts::Vector{<:Transition};
     kwargs...
-) where {SamplerType<:AbstractSampler}
+)
     # Calculate evidence.
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
