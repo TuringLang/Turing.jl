@@ -44,7 +44,7 @@ function sample(mf::T,
     end
     if adapt.engaged == false
         if isa(alg.engine, CmdStan.Static)   # hmc
-            stepnum = Int(round(alg.engine.int_time / alg.stepsize))
+            stepnum = alg.engine.int_time ÷ alg.stepsize
             sample(mf, HMC(alg.stepsize, stepnum), num_samples; adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # error
             error("[Turing.sample] CmdStan.Nuts cannot be used with adapt.engaged set as false")

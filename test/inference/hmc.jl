@@ -80,7 +80,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # Generating training data
         N = 20
-        M = round(Int64, N / 4)
+        M = N ÷ 4
         x1s = rand(M) * 5
         x2s = rand(M) * 5
         xt1s = Array([[x1s[i]; x2s[i]] for i = 1:M])
