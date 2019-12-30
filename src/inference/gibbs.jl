@@ -60,10 +60,18 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     # sanity check for space
     space = getspace(alg)
     # create tuple of samplers
-    samplers = map(alg.algs) do alg
-        Sampler(alg, model, Selector(Symbol(typeof(alg))))
+    i = 0
+    samplers = map(alg.algs) do _alg
+        i += 1
+        if i == 1
+            prev_alg = alg.algs[end]
+        else
+            prev_alg = alg.algs[i-1]
+        end
+        rerun = !(_alg isa MH) || prev_alg isa PG || prev_alg isa ESS
+        selector = Selector(Symbol(typeof(_alg)), rerun)
+        Sampler(_alg, model, selector)
     end
-
     # create a state variable
     state = GibbsState(model, samplers)
 
