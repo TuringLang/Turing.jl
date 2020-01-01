@@ -1,28 +1,26 @@
 module Inference
 
-using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, VarInfo, TypedVarInfo, 
+using ..Core, ..Utilities
+using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!, _getvns, getdist
-using ..Core: split_var_str
+    settrans!, _getvns, getdist, split_var_str, CACHERESET, AbstractSampler,
+    Model, runmodel!, Sampler, SampleFromPrior, SampleFromUniform,
+    Selector, AbstractSamplerState, DefaultContext, PriorContext,
+    LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
-using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Model, runmodel!, Turing,
-    Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, AbstractSamplerState, DefaultContext, PriorContext,
-    LikelihoodContext, MiniBatchContext, NamedDist, NoDist
+using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG, randexp
-using AbstractMCMC
+using AbstractMCMC, DynamicPPL
 
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
-import ..Turing: getspace
-import ..Core: getchunksize, getADtype, get_matching_type
+import ..Core: getchunksize, getADtype
 import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
+import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -525,7 +523,7 @@ function get_matching_type(
     vi::VarInfo, 
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
-    return Array{Turing.Core.get_matching_type(spl, vi, T), N}
+    return Array{get_matching_type(spl, vi, T), N}
 end
 function get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 

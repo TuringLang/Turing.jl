@@ -1,6 +1,5 @@
 using Turing, Random, Test
-using Turing: @varname
-using Turing.Core.RandomVariables: getsym
+using DynamicPPL: @varname, getsym
 using Distributions: Normal
 using StatsFuns
 
