@@ -503,7 +503,8 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=a
     if metric == AHMC.UnitEuclideanMetric
         adaptor = AHMC.NaiveHMCAdaptor(pc, da)
     else
-        adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, pc, da)
+        adaptor = AHMC.StanHMCAdaptor(pc, da)
+        AHMC.initialize!(adaptor, alg.n_adapts)
     end
     return adaptor
 end
