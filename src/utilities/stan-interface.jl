@@ -66,6 +66,7 @@ function sample(
     end
 end
 
+# FIXME: where is `spl` in the code below?
 function AHMCAdaptor(adaptor)
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
@@ -78,8 +79,10 @@ function AHMCAdaptor(adaptor)
     else # default adaptor
         @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
         adaptor = AHMC.StanHMCAdaptor(
-            spl.alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
+            AHMC.Preconditioner(:DiagEuclideanMetric),
             AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
         )
+        AHMC.initialize!(adaptor, spl.alg.n_adapts)
+        adaptor
     end
 end
