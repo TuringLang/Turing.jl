@@ -1,10 +1,11 @@
-name: Documentation
+name: MicroBenchmarks
 
 on:
   push:
     branches:
-      - 'master'
-    tags: '*'
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
