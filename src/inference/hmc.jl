@@ -500,10 +500,15 @@ end
 function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
     pc = AHMC.Preconditioner(metric)
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
-    if metric == AHMC.UnitEuclideanMetric
-        adaptor = AHMC.NaiveHMCAdaptor(pc, da)
+    if iszero(alg.n_adapts)
+        adaptor = AHMC.Adaptation.NoAdaptation()
     else
-        adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, pc, da)
+        if metric == AHMC.UnitEuclideanMetric
+            adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
+        else
+            adaptor = AHMC.StanHMCAdaptor(pc, da)
+            AHMC.initialize!(adaptor, alg.n_adapts)
+        end
     end
     return adaptor
 end
@@ -520,6 +525,7 @@ function HMCState(
     rng::AbstractRNG;
     kwargs...
 )
+
     # Reuse the VarInfo.
     vi = spl.state.vi
 

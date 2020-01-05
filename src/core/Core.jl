@@ -4,21 +4,18 @@ using MacroTools, Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
-using ..Turing: Turing, Model, runmodel!,
+using ..Turing: Turing
+using DynamicPPL: Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
 using DistributionsAD
 using StatsFuns: logsumexp, softmax
+@reexport using DynamicPPL
 
-include("RandomVariables.jl")
-@reexport using .RandomVariables
-
-include("compiler.jl")
 include("container.jl")
 include("ad.jl")
-include("prob_macro.jl")
 
 export  @model,
         @varname,

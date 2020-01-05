@@ -1,6 +1,6 @@
 using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
 using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
-using Turing.Core.RandomVariables: getval
+using DynamicPPL: getval
 using Turing.Core: TuringMvNormal, TuringDiagNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp

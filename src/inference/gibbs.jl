@@ -86,11 +86,11 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
 
         for vn in vns
             # update the gid for the Gibbs sampler
-            Turing.RandomVariables.updategid!(vi, vn, spl)
+            DynamicPPL.updategid!(vi, vn, spl)
 
             # try to store each subsampler's gid in the VarInfo
             for local_spl in samplers
-                Turing.RandomVariables.updategid!(vi, vn, local_spl)
+                DynamicPPL.updategid!(vi, vn, local_spl)
             end
         end
     end
