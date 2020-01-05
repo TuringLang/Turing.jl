@@ -9,8 +9,6 @@ matrix:
   fast_finish: true
 
 jobs:
-  allow_failures:
-    - env: STAGE=benchmark
   include:
     - stage: test
       os: linux
@@ -36,12 +34,6 @@ jobs:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
-    - stage: benchmark
-      julia: 1.1
-      os: linux
-      env: STAGE=benchmark
-      script:
-        - julia ./benchmarks/runbenchmarks.jl
 after_success:
     - julia -e 'if get(ENV, "STAGE", "") == "test"
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
