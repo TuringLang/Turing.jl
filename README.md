@@ -13,7 +13,7 @@ Current features include:
 - Robust, efficient [Hamiltonian Monte Carlo (HMC)](https://github.com/TuringLang/AdvancedHMC.jl) sampling for differentiable posterior distributions
 - [Particle MCMC](https://github.com/TuringLang/AdvancedPS.jl) sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Compositional inference via Gibbs sampling that combines particle MCMC, HMC, [Random-Walk MH (RWMH)](https://github.com/TuringLang/AdvancedMH.jl) and [Eliplitcal Slice Sampling](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/ess.jl)
-- [Advanced variational inference](https://github.com/TuringLang/AdvancedVI.jl) based on ADVI and [Normalising Flows](https://github.com/TuringLang/Bijectors.jl)
+- Advanced variational inference based on [ADVI](https://github.com/TuringLang/AdvancedVI.jl) and [Normalising Flows](https://github.com/TuringLang/Bijectors.jl)
 
 ## Getting Started
 
