@@ -240,85 +240,36 @@ end
 ##########################
 
 function _params_to_array(ts::Vector{<:AbstractTransition}, spl::Sampler)
-    names = Set{String}()
-    dicts = Vector{Dict{String, Any}}()
-
+    names_set = Set{String}()
     # Extract the parameter names and values from each transition.
-    for t in ts
+    dicts = map(ts) do t
         nms, vs = flatten_namedtuple(t.θ)
-        push!(names, nms...)
-
+        for nm in nms
+            push!(names_set, nm)
+        end
         # Convert the names and values to a single dictionary.
-        d = Dict{String, Any}()
-        for (k, v) in zip(nms, vs)
-            d[k] = v
-        end
-        push!(dicts, d)
+        return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-
-    # Convert the set to an ordered vector so the parameter ordering
-    # is deterministic.
-    ordered_names = collect(names)
-    vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
-
-    # Place each element of all dicts into the returned value matrix.
-    for i in eachindex(dicts)
-        for (j, key) in enumerate(ordered_names)
-            vals[i,j] = get(dicts[i], key, missing)
-        end
-    end
-
-    return ordered_names, vals
-end
-
-function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
-    vals = Vector{Real}()
-    names = Vector{AbstractString}()
-
-    for k in pnames
-        v = nt[k]
-        if length(v) == 1
-            flatten(names, vals, string(k), v)
-        else
-            for (vnval, vn) in zip(v[1], v[2])
-                flatten(names, vals, vn, vnval)
-            end
-        end
-    end
+    names = collect(names_set)
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
+        (j, key) in enumerate(names)]
 
     return names, vals
 end
 
-function flatten(names, value :: AbstractArray, k :: String, v)
-    if isa(v, Number)
-        name = k
-        push!(value, v)
-        push!(names, name)
-    elseif isa(v, Array)
-        for i = eachindex(v)
-            if isa(v[i], Number)
-                name = string(ind2sub(size(v), i))
-                name = replace(name, "(" => "[");
-                name = replace(name, ",)" => "]");
-                name = replace(name, ")" => "]");
-                name = k * name
-                isa(v[i], Nothing) && println(v, i, v[i])
-                push!(value, v[i])
-                push!(names, name)
-            elseif isa(v[i], AbstractArray)
-                name = k * string(ind2sub(size(v), i))
-                flatten(names, value, name, v[i])
-            else
-                error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
+function flatten_namedtuple(nt::NamedTuple)
+    names_vals = mapreduce(vcat, keys(nt)) do k
+        v = nt[k]
+        if length(v) == 1
+            return [(string(k), v)]
+        else
+            return mapreduce(vcat, zip(v[1], v[2])) do (vnval, vn)
+                return collect(FlattenIterator(vn, vnval))
             end
         end
-    else
-        error("Unknown var type: typeof($v)=$(typeof(v))")
     end
-    return
+    return [vn[1] for vn in names_vals], [vn[2] for vn in names_vals]
 end
-
-ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
 
 function get_transition_extras(ts::Vector{<:AbstractTransition})
     # Get the extra field names from the sampler state type.
@@ -384,7 +335,7 @@ function AbstractMCMC.bundle_samples(
     extra_params, extra_values = get_transition_extras(ts)
 
     # Extract names & construct param array.
-    nms = string.(vcat(nms..., string.(extra_params)...))
+    nms = [nms; extra_params]
     parray = hcat(vals, extra_values)
 
     # If the state field has average_logevidence or final_logevidence, grab that.
@@ -759,6 +710,7 @@ function dot_assume(
     vi::VarInfo,
 )
     r = get_and_set_val!(vi, vns, dists, spl)
+    # Make sure `r` is not a matrix for multivariate distributions
     lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
     var .= r
     return var, lp
