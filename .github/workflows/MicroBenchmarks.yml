@@ -22,7 +22,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Install dependencies
-        run: julia -e 'using Pkg; Pkg.instantiate()'
+        run: julia -e 'using Pkg; pkg"""instantiate;add Turing;"""'
       - name: Run benchmarks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
