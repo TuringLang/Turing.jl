@@ -15,6 +15,7 @@ using Markdown, Libtask, MacroTools
 using AbstractMCMC
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
+using DistributionsAD: DistributionsAD, Multi, ArrayDist
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
 import MCMCChains: AbstractChains, Chains
@@ -111,6 +112,8 @@ export  @model,                 # modelling
         VecBinomialLogit,
         OrderedLogistic,
         LogPoisson,
-        NamedDist
+        NamedDist,
+        Multi,
+        ArrayDist
 
 end

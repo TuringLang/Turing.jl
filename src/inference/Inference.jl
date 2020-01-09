@@ -696,7 +696,7 @@ function dot_assume(
     var::AbstractMatrix,
     vi::VarInfo,
 )
-    @assert dim(dist) == size(var, 1)
+    @assert length(dist) == size(var, 1)
     r = get_and_set_val!(vi, vns, dist, spl)
     lp = sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
     var .= r
