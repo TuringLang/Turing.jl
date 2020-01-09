@@ -122,6 +122,9 @@ function sample_init!(
     if spl.alg isa AdaptiveHamiltonian
         # If there's no chain passed in, verify the n_adapts.
         if resume_from === nothing
+            # if n_adapts is -1, then the user called a convenience
+            # constructor like NUTS() or NUTS(0.65), and we should
+            # set a default for them.
             if spl.alg.n_adapts == -1
                 spl.alg.n_adapts = min(1000, N ÷ 2)
             elseif spl.alg.n_adapts > N
