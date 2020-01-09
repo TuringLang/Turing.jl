@@ -281,7 +281,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
             x = tzeros(Float64, N)
             J = tzeros(Float64, N)
-            z = tzeros(Int, N)
 
             k = 0
             surplus = 1.0
