@@ -318,10 +318,13 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler,
     N::Integer,
     ts::Vector{<:AbstractTransition};
+    raw_output::Bool=false,
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
 )
+    raw_output && return ts
+
     # Check if we have adaptation samples.
     if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
         ts = ts[(spl.alg.n_adapts+1):end]
