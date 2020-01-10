@@ -34,6 +34,14 @@ jobs:
         - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
         - julia --check-bounds=yes -e 'using Pkg;
                    Pkg.test("Turing"; coverage=true)'
+    - stage: test
+      os: linux
+      julia: 1.3
+      env: STAGE=test
+      script:
+        - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+        - julia --check-bounds=yes -e 'using Pkg;
+                   Pkg.test("Turing"; coverage=true)'
 after_success:
     - julia -e 'if get(ENV, "STAGE", "") == "test"
                 using Pkg; cd(Pkg.dir("Turing")); Pkg.add("Coverage");
