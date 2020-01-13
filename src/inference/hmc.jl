@@ -585,7 +585,7 @@ function callback(
     cb::HMCCallback;
     kwargs...
 )
-    AHMC.pm_next!(cb.p, t.stat, iteration, spl.state.h.metric)
+    AHMC.pm_next!(cb.p, (iteration=iteration, t.stat..., mass_matrix=spl.state.h.metric))
 end
 
 function init_callback(
