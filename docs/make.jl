@@ -25,7 +25,7 @@ in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
 version_rx = r"v\d.\d.\d"
 baseurl = "/dev"
-ghref = replace(get(ENV, "GITHUB_REF", ""), "refs/tags" => "")
+ghref = replace(get(ENV, "GITHUB_REF", ""), "/refs/tags" => "")
 if get(ENV, "TRAVIS_TAG", "") != ""
     baseurl = "/" * ENV["TRAVIS_TAG"]
 elseif !isnothing(match(version_rx, ghref))
