@@ -459,7 +459,7 @@ function dot_assume(
     var::AbstractMatrix,
     vi::VarInfo,
 )
-    @assert dim(dist) == size(var, 1)
+    @assert length(dist) == size(var, 1)
     updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
