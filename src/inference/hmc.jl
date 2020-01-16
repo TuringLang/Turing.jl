@@ -122,7 +122,10 @@ function sample_init!(
     if spl.alg isa AdaptiveHamiltonian
         # If there's no chain passed in, verify the n_adapts.
         if resume_from === nothing
-            if spl.alg.n_adapts == 0
+            # if n_adapts is -1, then the user called a convenience
+            # constructor like NUTS() or NUTS(0.65), and we should
+            # set a default for them.
+            if spl.alg.n_adapts == -1
                 spl.alg.n_adapts = min(1000, N ÷ 2)
             elseif spl.alg.n_adapts > N
                 # Verify that n_adapts is not greater than the number of samples to draw.
@@ -182,7 +185,7 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMCDA{AD}(0, δ, λ, init_ϵ, metricT, ())
+    return HMCDA{AD}(-1, δ, λ, init_ϵ, metricT, ())
 end
 
 function HMCDA{AD}(
@@ -278,11 +281,11 @@ function NUTS{AD}(
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
-    NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
+    NUTS{AD}(-1, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 function NUTS{AD}(kwargs...) where AD
-    NUTS{AD}(0, 0.65; kwargs...)
+    NUTS{AD}(-1, 0.65; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
@@ -500,6 +503,7 @@ end
 function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
     pc = AHMC.Preconditioner(metric)
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
+
     if iszero(alg.n_adapts)
         adaptor = AHMC.Adaptation.NoAdaptation()
     else
@@ -510,6 +514,7 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=a
             AHMC.initialize!(adaptor, alg.n_adapts)
         end
     end
+
     return adaptor
 end
 
