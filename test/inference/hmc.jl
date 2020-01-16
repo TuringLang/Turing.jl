@@ -183,4 +183,14 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test sample(gdemo_default, alg2, 300) isa Chains
         @test sample(gdemo_default, alg3, 300) isa Chains
     end
+
+    @turing_testset "Regression tests" begin
+        # https://github.com/TuringLang/DynamicPPL.jl/issues/27
+        @model mwe(::Type{T}=Float64) where {T<:Real} = begin
+            m = Matrix{T}(undef, 2, 3)
+            m .~ MvNormal(zeros(2), 1)
+        end
+        
+        @test sample(mwe(), HMC(0.2, 4), 1_000) isa Chains
+    end
 end
