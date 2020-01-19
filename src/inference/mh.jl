@@ -1,22 +1,22 @@
-mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
+mutable struct MHStateOld{V<:VarInfo} <: AbstractSamplerState
     proposal_ratio        ::   Float64
     prior_prob            ::   Float64
     violating_support     ::   Bool
     vi                    ::   V
 end
 
-MHState(model::Model) = MHState(0.0, 0.0, false, VarInfo(model))
+MHStateOld(model::Model) = MHStateOld(0.0, 0.0, false, VarInfo(model))
 
 """
-    MH()
+    MHOld()
 
 Metropolis-Hastings sampler.
 
 Usage:
 
 ```julia
-MH(:m)
-MH((:m, x -> Normal(x, 0.1)))
+MHOld(:m)
+MHOld((:m, x -> Normal(x, 0.1)))
 ```
 
 Example:
@@ -30,18 +30,18 @@ Example:
   x[2] ~ Normal(m, sqrt(s))
 end
 
-chn = sample(gdemo([1.5, 2]), MH(), 1000)
+chn = sample(gdemo([1.5, 2]), MHOld(), 1000)
 ```
 """
-mutable struct MH{space} <: InferenceAlgorithm
+mutable struct MHOld{space} <: InferenceAlgorithm
     proposals ::  Dict{Symbol,Any}  # Proposals for paramters
 end
 
-function MH(proposals::Dict{Symbol, Any}, space::Tuple)
-    return MH{space}(proposals)
+function MHOld(proposals::Dict{Symbol, Any}, space::Tuple)
+    return MHOld{space}(proposals)
 end
 
-function MH(space...)
+function MHOld(space...)
     new_space = ()
     proposals = Dict{Symbol,Any}()
 
@@ -50,24 +50,24 @@ function MH(space...)
         if isa(element, Symbol)
             new_space = (new_space..., element)
         else
-            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH((:m, x -> Normal(x, 0.1)))"
+            @assert isa(element[1], Symbol) "[MHOld] ($element[1]) should be a Symbol. For proposal, use the syntax MHOld((:m, x -> Normal(x, 0.1)))"
             new_space = (new_space..., element[1])
             proposals[element[1]] = element[2]
         end
     end
-    return MH(proposals, new_space)
+    return MHOld(proposals, new_space)
 end
 
-function Sampler(alg::MH, model::Model, s::Selector)
-    alg_str = "MH"
+function Sampler(alg::MHOld, model::Model, s::Selector)
+    alg_str = "MHOld"
 
     info = Dict{Symbol, Any}()
-    state = MHState(model)
+    state = MHStateOld(model)
 
     return Sampler(alg, info, s, state)
 end
 
-function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
+function propose(model, spl::Sampler{<:MHOld}, vi::VarInfo)
     spl.state.proposal_ratio = 0.0
     spl.state.prior_prob = 0.0
     spl.state.violating_support = false
@@ -78,7 +78,7 @@ end
 function step!(
     ::AbstractRNG,
     model::Model,
-    spl::Sampler{<:MH},
+    spl::Sampler{<:MHOld},
     ::Integer;
     kwargs...
 )
@@ -89,7 +89,7 @@ end
 function step!(
     ::AbstractRNG,
     model::Model,
-    spl::Sampler{<:MH},
+    spl::Sampler{<:MHOld},
     ::Integer,
     ::Transition;
     kwargs...
@@ -115,9 +115,9 @@ function step!(
     return Transition(spl)
 end
 
-function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
+function assume(spl::Sampler{<:MHOld}, dist::Distribution, vn::VarName, vi::VarInfo)
     if vn in getspace(spl)
-        if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
+        if ~haskey(vi, vn) error("[MHOld] does not handle stochastic existence yet") end
         old_val = vi[vn]
         sym = getsym(vn)
 
@@ -159,12 +159,12 @@ function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo
     r, logpdf(dist, r)
 end
 
-function observe(spl::Sampler{<:MH}, d::Distribution, value, vi::VarInfo)
+function observe(spl::Sampler{<:MHOld}, d::Distribution, value, vi::VarInfo)
     return observe(SampleFromPrior(), d, value, vi)  # accumulate pdf of likelihood
 end
 
 function dot_observe(
-    spl::Sampler{<:MH},
+    spl::Sampler{<:MHOld},
     ds,
     value,
     vi::VarInfo,

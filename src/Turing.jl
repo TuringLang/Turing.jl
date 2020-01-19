@@ -70,6 +70,7 @@ export  @model,                 # modelling
         DynamicPPL,
 
         MH,                     # classic sampling
+        RWMH,
         ESS,
         Gibbs,
 
