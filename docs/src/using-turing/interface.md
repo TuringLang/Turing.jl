@@ -128,24 +128,22 @@ transition_type(model::DensityModel, spl::MetropolisHastings) =
 
 ### Metropolis-Hastings
 
-Now it's time to get into the actual inference. We've defined all of the core pieces we need, but we need to implement the `step!` function which actually perform inference.
+Now it's time to get into the actual inference. We've defined all of the core pieces we need, but we need to implement the `step!` function which actually performs inference.
 
 As a refresher, Metropolis-Hastings implements a very basic algorithm:
 
-1. Pick some initial state, $\theta_0$.
-2. For $t$ in $[1,N]$, do
+1. Pick some initial state, \$\$\theta\_0\$\$.
+2. For \$\$t\$\$ in \$\$[1,N]\$\$, do
     
-    a. Generate a proposal parameterization $θ'_t \sim q(\theta'_t \mid \theta_{t-1})$. 
+    a. Generate a proposal parameterization \$\$θ'\_t \sim q(\theta'\_t \mid \theta\_{t-1})\$\$. 
 
-    b. Calculate the acceptance probability, $\alpha = \text{min}\Big[1,\frac{\pi(θ'_t)}{\pi(\theta_{t-1})} \frac{q(θ_{t-1} \mid θ'_t)}{q(θ'_t \mid θ_{t-1})}) \Big]$.
+    b. Calculate the acceptance probability, \$\$\alpha = \text{min}\Big[1,\frac{\pi(θ'\_t)}{\pi(\theta\_{t-1})} \frac{q(θ\_{t-1} \mid θ'\_t)}{q(θ'\_t \mid θ\_{t-1})}) \Big]\$\$.
 
-    c. If $U \le α$ where $U \sim [0,1]$, then $\theta_t = \theta'_t$. Otherwise, $\theta_t = \theta_{t-1}$.
+    c. If \$\$U \le α\$\$ where \$\$U \sim [0,1]\$\$, then \$\$\theta\_t = \theta'\_t\$\$. Otherwise, \$\$\theta\_t = \theta\_{t-1}\$\$.
 
 Of course, it's much easier to do this in the log space, so the acceptance probability is more commonly written as 
 
-$$
-\alpha = \min\Big[\log \pi(θ'_t) - \log \pi(θ_{t-1}) + \log q(θ_{t-1} \mid θ'_t) - \log q(θ'_t \mid θ_{t-1}), 0\Big]
-$$
+$$\alpha = \min\Big[\log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1}), 0\Big]$$
 
 In interface terms, we should do the following:
 
