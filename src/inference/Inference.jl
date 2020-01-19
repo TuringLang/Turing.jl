@@ -31,6 +31,7 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
+        RWMH,
         ESS,
         Gibbs,      # classic sampling
         HMC,
@@ -420,6 +421,7 @@ end
 
 include("ess.jl")
 include("hmc.jl")
+include("amh.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
@@ -431,7 +433,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :RWMH, :MHOld, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
