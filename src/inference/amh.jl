@@ -8,16 +8,7 @@ import DynamicPPL: VarName, _getranges, _getindex, getval, _getvns
 ###
 
 struct MH{space} <: InferenceAlgorithm end
-
 MH(space...) = MH{space}()
-
-mutable struct MHState{VI<:VarInfo, M<:AMH.Metropolis} <: AbstractSamplerState
-    vi :: VI
-    mh_sampler :: M
-    density_model :: AMH.DensityModel
-    transitions :: Dict{VarName, AMH.Transition}
-end
-
 alg_str(::Sampler{<:MH}) = "MH"
 
 #################
@@ -30,21 +21,73 @@ struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition} <: AbstractTransitio
     mh_trans :: M
 end
 
-function MHTransition(spl::Sampler{<:Union{MH, RWMH}}, mh_trans::AMH.Transition)
+function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
     theta = tonamedtuple(spl.state.vi)
     return MHTransition(theta, mh_trans.lp, mh_trans)
 end
 
-transition_type(spl::Sampler{<:MH}) = MHTransition
-    # typeof(MHTransition(spl, AMH.Transition(spl.state.density_model, spl.state.vi[spl])))
+transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
 
-additional_parameters(::Type{<:MHTransition}) = [:lp]
+#################
+# Sampler state #
+#################
 
+mutable struct MHState{V<:VarInfo, F<:Real} <: AbstractSamplerState
+    vi :: V
+    density_model :: AMH.DensityModel
+    q_ratio :: F
+end
+
+MHState(model::Model, dm::AMH.DensityModel) = MHState(VarInfo(model), dm, 0.0)
+
+#####################
+# Utility functions #
+#####################
+
+"""
+    set_namedtuple!(vi::VarInfo, nt::NamedTuple)
+
+Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
+"""
+function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
+    for (n, vals) in pairs(nt)
+        vns = vi.metadata[n].vns
+
+        n_vns = length(vns)
+        n_vals = length(vals)
+        v_isarr = vals isa AbstractArray
+
+        if v_isarr && n_vals == 1 && n_vns > 1
+            for (vn, val) in zip(vns, vals[1])
+                vi[vn] = val isa AbstractArray ? val : [val]
+            end
+        elseif v_isarr && n_vals > 1 && n_vns == 1
+            vi[vns[1]] = vals
+        elseif v_isarr && n_vals == 1 && n_vns == 1
+            if vals[1] isa AbstractArray
+                vi[vns[1]] = vals[1]
+            else
+                vi[vns[1]] = [vals[1]]
+            end
+        elseif !(v_isarr)
+            vi[vns[1]] = [vals]
+        else
+            error("Unkown")
+        end
+    end
+end
+
+"""
+    gen_logπ_mh(vi::VarInfo, spl::Sampler, model)   
+
+Generate a log density function -- this variant uses the 
+`set_namedtuple!` function to update the `VarInfo`.
+"""
 function gen_logπ_mh(vi::VarInfo, spl::Sampler, model)
     function logπ(x)::Float64
         x_old, lj_old = vi[spl], vi.logp
-        # vi[spl] = [x]
-        set_vi_vals!(vi, x)
+        # vi[spl] = x
+        set_namedtuple!(vi, x)
         runmodel!(model, vi, spl)
         lj = vi.logp
         vi[spl] = x_old
@@ -54,18 +97,35 @@ function gen_logπ_mh(vi::VarInfo, spl::Sampler, model)
     return logπ
 end
 
-function set_vi_vals!(vi::VarInfo, nt::NamedTuple{names}) where names
-    for name in names
-        vns = vi.metadata[name].vns
-        vals = nt[name]
-        if vals isa Real
-            vi[vns[1]] = [vals]
-        else
-            for vn in vns
-                vi[vn] = vals
-            end
-        end
+"""
+    dist_val_tuple(spl::Sampler{<:MH})
+
+Returns two `NamedTuples`. The first `NamedTuple` has symbols as keys and distributions as values.
+The second `NamedTuple` has model symbols as keys and their stored values as values.
+"""
+function dist_val_tuple(spl::Sampler{<:MH})
+    vns = _getvns(spl.state.vi, spl)
+    dt = _dist_tuple(spl.state.vi.metadata, spl.state.vi, vns)
+    vt = _val_tuple(spl.state.vi.metadata, spl.state.vi, vns)
+    return dt, vt
+end
+
+@generated function _val_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns))))
     end
+    return expr
+end
+
+@generated function _dist_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(metadata.$f.dists[1])))
+    end
+    return expr
 end
 
 ###############################
@@ -80,83 +140,20 @@ function Sampler(
     # Set up info dict.
     info = Dict{Symbol, Any}()
 
-    # Set up VarInfo.
+    # Make a varinfo.
     vi = VarInfo(model)
 
-    # Create a vector of prior distributions.
-    space = getspace(alg)
-    vns = _getvns(vi, s, Val(space))
+    # Make a density model.
+    dm = AMH.DensityModel(x -> 0.0)
 
-    # Generate a sampler to retrieve the initial theta.
-    spl = Sampler(alg, info, s, SamplerState(vi))
-
-    # Retrieve all the proposal distributions and initial parameters.
-    dists = Distribution[]
-    init_theta = []
-
-    for (i, (key, vn)) in enumerate(pairs(vns))
-        for dist in vi.metadata[key].dists
-            push!(dists, dist)
-        end
-        push!(init_theta, first(getindex.(Ref(vi), vi.metadata[key].vns)))
-    end
-
-    # Create a NamedTuple of intial params and distributions.
-    syms = collect(keys(vns))
-    init_theta_nt = NamedTuple{tuple(syms...)}(tuple(init_theta...))
-    dists_nt = NamedTuple{tuple(syms...)}(tuple(dists...))
-
-    # Make a sampler state, using a dummy density model.
-    state = MHState(vi, AMH.StaticMH(init_theta_nt, dists_nt), AMH.DensityModel(x -> 0.0), Dict{VarName, AMH.Transition}())
+    # Set up state struct.
+    state = MHState(model, dm)
 
     # Generate a sampler.
     spl = Sampler(alg, info, s, state)
 
-    # Create the actual densitymodel.
-    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(vi, spl, model))
-
-    return spl
-end
-
-##################
-# Random walk MH #
-##################
-
-struct RWMH{space} <: InferenceAlgorithm end
-RWMH(space...) = RWMH{space}()
-alg_str(::Sampler{<:RWMH}) = "RWMH"
-transition_type(spl::Sampler{<:RWMH}) = MHTransition
-
-function Sampler(
-    alg::RWMH,
-    model::Model,
-    s::Selector=Selector()
-)
-    # Set up info dict.
-    info = Dict{Symbol, Any}()
-
-    # Set up VarInfo.
-    vi = VarInfo(model)
-
-    # Create a vector of prior distributions.
-    space = getspace(alg)
-    vns = _getvns(vi, s, Val(space))
-
-    # Generate a sampler to retrieve the initial theta.
-    spl = Sampler(alg, info, s, SamplerState(vi))
-
-    # Initial theta.
-    init_theta = vi[spl]
-
-    # Make a sampler state, using a dummy density model.
-    state = MHState(vi, AMH.RWMH(init_theta, MvNormal(zeros(length(init_theta)), 1)), AMH.DensityModel(x -> 0.0), Dict{VarName, AMH.Transition}())
-    println(state.mh_sampler)
-
-    # Generate a sampler.
-    spl = Sampler(alg, info, s, state)
-
-    # Create the actual density model.
-    spl.state.density_model = AMH.DensityModel(gen_logπ(vi, spl, model))
+    # Update the density model.
+    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl.state.vi, spl, model))
 
     return spl
 end
@@ -164,7 +161,7 @@ end
 function sample_init!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{<:Union{MH, RWMH}},
+    spl::Sampler{<:MH},
     N::Integer;
     verbose::Bool=true,
     resume_from=nothing,
@@ -187,94 +184,59 @@ end
 function step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     N::Integer;
     kwargs...
 )
-    mh_trans = step!(
-        rng, 
-        spl.state.density_model, 
-        spl.state.mh_sampler, 
-        N; 
-        kwargs...
-    )
-
-    return MHTransition(spl, mh_trans)
+    runmodel!(model, spl.state.vi, spl)
+    return Transition(spl)
 end
-
 
 function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
     N::Integer,
-    T::MHTransition;
+    T::Transition;
     kwargs...
 )
-    # Generate a new transition.
-    mh_trans = step!(
-        rng, 
-        spl.state.density_model, 
-        spl.state.mh_sampler, 
-        N, 
-        T.mh_trans; 
-        kwargs...
-    )
+    if spl.selector.rerun # Recompute joint in logp
+        runmodel!(model, spl.state.vi)
+    end
 
-    # Update the parameters in the VarInfo.
-    set_vi_vals!(spl.state.vi, mh_trans.params)
-    # spl.state.vi[spl] = reduce(vcat, mh_trans.params)
+    # Retrieve distribution and value NamedTuples.
+    dt, vt = dist_val_tuple(spl)
 
-    return MHTransition(spl, mh_trans)
-end
+    # Create a sampler and the previous transition.
+    mh_sampler = AMH.StaticMH(vt, dt)
+    prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
 
-function step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:RWMH},
-    N::Integer,
-    T::MHTransition;
-    kwargs...
-)
-    # Generate a new transition.
-    mh_trans = step!(
-        rng, 
-        spl.state.density_model, 
-        spl.state.mh_sampler, 
-        N, 
-        T.mh_trans; 
-        kwargs...
-    )
+    # Make a new transition.
+    trans = step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
 
-    # Update the parameters in the VarInfo.
-    # set_vi_vals!(spl.state.vi, mh_trans.params)
-    spl.state.vi[spl] = mh_trans.params
+    # Update the values in the VarInfo.
+    set_namedtuple!(spl.state.vi, trans.params)
+    setlogp!(spl.state.vi, trans.lp)
 
-    return MHTransition(spl, mh_trans)
+    return Transition(spl)
 end
 
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
 function assume(
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
     vi::VarInfo
 )
-    Turing.DEBUG && @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    # r
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "vn = $vn"
-    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
 function dot_assume(
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
@@ -289,7 +251,7 @@ function dot_assume(
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
 function dot_assume(
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
@@ -304,7 +266,7 @@ function dot_assume(
 end
 
 function observe(
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     d::Distribution,
     value,
     vi::VarInfo,
@@ -313,7 +275,7 @@ function observe(
 end
 
 function dot_observe(
-    spl::Sampler{<:Union{MH,RWMH}},
+    spl::Sampler{<:MH},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo,
