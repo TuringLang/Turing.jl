@@ -31,7 +31,6 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
-        RWMH,
         ESS,
         Gibbs,      # classic sampling
         HMC,
@@ -318,7 +317,8 @@ function AbstractMCMC.bundle_samples(
     model::AbstractModel,
     spl::Sampler,
     N::Integer,
-    ts::Vector{<:AbstractTransition};
+    ts::Vector{<:AbstractTransition},
+    chain_type::Type{Any};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
@@ -368,6 +368,49 @@ function AbstractMCMC.bundle_samples(
         info=info,
         sorted=true
     )
+end
+
+function AbstractMCMC.bundle_samples(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    spl::Sampler,
+    N::Integer,
+    ts::Vector{<:AbstractTransition},
+    chain_type::Type{Vector};
+    discard_adapt::Bool=true,
+    save_state=true,
+    kwargs...
+)
+    return ts
+end
+
+function AbstractMCMC.bundle_samples(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    spl::Sampler,
+    N::Integer,
+    ts::Vector{<:AbstractTransition},
+    chain_type::Type{NamedTuple};
+    discard_adapt::Bool=true,
+    save_state=true,
+    kwargs...
+)
+    nts = Vector{NamedTuple}(undef, N)
+
+    for (i,t) in enumerate(ts)
+        k = collect(keys(t.θ))
+        vs = []
+        for v in values(t.θ)
+            push!(vs, v[1])
+        end
+
+        push!(k, :lp)
+        
+        
+        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., t.lp))
+    end
+
+    return nts
 end
 
 function save(c::Chains, spl::AbstractSampler, model, vi, samples)
@@ -433,7 +476,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :RWMH, :MHOld, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :MHOld, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
