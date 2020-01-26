@@ -94,7 +94,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     @turing_testset "Tracker + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
-        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-8)
+        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-6, atol=1e-6)
     end
     @turing_testset "Tracker + fill" begin
         rng = MersenneTwister(123456)
