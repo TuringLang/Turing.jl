@@ -72,7 +72,7 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
         elseif !(v_isarr)
             vi[vns[1]] = [vals]
         else
-            error("Unkown")
+            error("Cannot assign `NamedTuple` to `VarInfo`")
         end
     end
 end
@@ -83,12 +83,13 @@ end
 Generate a log density function -- this variant uses the 
 `set_namedtuple!` function to update the `VarInfo`.
 """
-function gen_logπ_mh(vi::VarInfo, spl::Sampler, model)
+function gen_logπ_mh(spl::Sampler, model)
     function logπ(x)::Float64
+        vi = spl.state.vi
         x_old, lj_old = vi[spl], vi.logp
         # vi[spl] = x
         set_namedtuple!(vi, x)
-        runmodel!(model, vi, spl)
+        runmodel!(model, vi)
         lj = vi.logp
         vi[spl] = x_old
         setlogp!(vi, lj_old)
@@ -153,7 +154,7 @@ function Sampler(
     spl = Sampler(alg, info, s, state)
 
     # Update the density model.
-    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl.state.vi, spl, model))
+    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl, model))
 
     return spl
 end
@@ -172,13 +173,6 @@ function sample_init!(
 
     # Get `init_theta`
     initialize_parameters!(spl; verbose=verbose, kwargs...)
-
-    # Convert to transformed space if we're using
-    # non-Gibbs sampling.
-    if !islinked(spl.state.vi, spl) && spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
-    end
 end
 
 function step!(
