@@ -103,6 +103,8 @@ function Distributions.logpdf(d::OrderedLogistic, k::Int)
     return logp
 end
 
+Distributions.pdf(d::OrderedLogistic, k::Int) = exp(logpdf(d,k))
+
 function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
     cutpoints = d.cutpoints
     η = d.η
