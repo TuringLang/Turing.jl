@@ -78,7 +78,7 @@ end
 
 function sample_init!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -107,9 +107,10 @@ end
 
 function step!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:SMC},
-    ::Integer;
+    ::Integer,
+    transition::Union{Nothing,AbstractTransition} = nothing;
     iteration=-1,
     kwargs...
 )
@@ -184,9 +185,10 @@ end
 
 function step!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:PG},
-    ::Integer;
+    ::Integer,
+    transition::Union{Nothing,AbstractTransition} = nothing;
     kwargs...
 )
     # obtain or create reference particle

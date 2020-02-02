@@ -327,7 +327,8 @@ function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Hamiltonian},
-    N::Integer;
+    N::Integer,
+    transition::Union{Nothing,AbstractTransition} = nothing;
     kwargs...
 )
     # Get step size

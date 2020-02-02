@@ -48,7 +48,8 @@ function step!(
     ::AbstractRNG,
     model::Model,
     spl::Sampler{<:IS},
-    ::Integer;
+    ::Integer,
+    transition::Union{Nothing,AbstractTransition} = nothing;
     kwargs...
 )
     empty!(spl.state.vi)
