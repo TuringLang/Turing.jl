@@ -7,8 +7,39 @@ import DynamicPPL: VarName, _getranges, _getindex, getval, _getvns
 ### Sampler states
 ###
 
-struct MH{space} <: InferenceAlgorithm end
-MH(space...) = MH{space}()
+struct MH{space, P} <: InferenceAlgorithm 
+    proposals::P
+end
+
+function MH(space...)
+    syms = Symbol[]
+
+    prop_syms = Symbol[]
+    props = AMH.Proposal[]
+
+    check_support(dist) = insupport(dist, z)
+
+    for s in space
+        if s isa Symbol
+            push!(syms, s)
+        elseif s isa Pair || s isa Tuple
+            push!(prop_syms, s[1])
+
+            if s[2] isa AMH.Proposal
+                push!(props, s[2])
+            elseif s[2] isa Distribution
+                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+            elseif s[2] isa Function
+                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+            end
+        end
+    end
+
+    proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
+    syms = vcat(syms, prop_syms)
+    return MH{tuple(syms...), typeof(proposals)}(proposals)
+end
+
 alg_str(::Sampler{<:MH}) = "MH"
 
 #################
@@ -27,18 +58,6 @@ function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
 end
 
 transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
-
-#################
-# Sampler state #
-#################
-
-mutable struct MHState{V<:VarInfo, F<:Real} <: AbstractSamplerState
-    vi :: V
-    density_model :: AMH.DensityModel
-    q_ratio :: F
-end
-
-MHState(model::Model, dm::AMH.DensityModel) = MHState(VarInfo(model), dm, 0.0)
 
 #####################
 # Utility functions #
@@ -106,7 +125,7 @@ The second `NamedTuple` has model symbols as keys and their stored values as val
 """
 function dist_val_tuple(spl::Sampler{<:MH})
     vns = _getvns(spl.state.vi, spl)
-    dt = _dist_tuple(spl.state.vi.metadata, spl.state.vi, vns)
+    dt = _dist_tuple(spl.state.vi.metadata, spl.alg.proposals, spl.state.vi, vns)
     vt = _val_tuple(spl.state.vi.metadata, spl.state.vi, vns)
     return dt, vt
 end
@@ -115,18 +134,40 @@ end
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
-        push!(expr.args, Expr(:(=), f, :(getindex.(Ref(vi), metadata.$f.vns))))
+        push!(expr.args, Expr(:(=), f, :(
+            length(metadata.$f.vns) == 1 ? getindex(vi, metadata.$f.vns)[1] : getindex.(Ref(vi), metadata.$f.vns)
+        )))
     end
     return expr
 end
 
-@generated function _dist_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
+@generated function _dist_tuple(
+    metadata::NamedTuple, 
+    props::NamedTuple{propnames}, 
+    vi::VarInfo, 
+    vns::NamedTuple{names}
+) where {names, propnames}
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
-        push!(expr.args, Expr(:(=), f, :(metadata.$f.dists[1])))
+        if f in propnames
+            # We've been given a custom proposal, use that instead.
+            push!(expr.args, Expr(:(=), f, :(props.$f)))
+        else
+            # Otherwise, use the default proposal.
+            push!(expr.args, Expr(:(=), f, :(AMH.Proposal(AMH.Static(), metadata.$f.dists[1]))))
+        end
     end
     return expr
+end
+
+#################
+# Sampler state #
+#################
+
+mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
+    vi :: V
+    density_model :: AMH.DensityModel
 end
 
 ###############################
@@ -148,7 +189,7 @@ function Sampler(
     dm = AMH.DensityModel(x -> 0.0)
 
     # Set up state struct.
-    state = MHState(model, dm)
+    state = MHState(vi, dm)
 
     # Generate a sampler.
     spl = Sampler(alg, info, s, state)
@@ -202,7 +243,7 @@ function step!(
     dt, vt = dist_val_tuple(spl)
 
     # Create a sampler and the previous transition.
-    mh_sampler = AMH.StaticMH(vt, dt)
+    mh_sampler = AMH.MetropolisHastings(dt)
     prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
 
     # Make a new transition.
