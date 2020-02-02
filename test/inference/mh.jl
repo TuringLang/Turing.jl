@@ -8,7 +8,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(0)
         N = 500
         s1 = MH(
-            (:s, GKernel(3.0)),
+            (:s, InverseGamma(2,3)),
             (:m, GKernel(3.0)))
         s2 = MH(:s, :m)
         s3 = MH()
@@ -27,7 +27,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # MH with Gaussian proposal
         alg = MH(
-            (:s, GKernel(5)),
+            (:s, InverseGamma(2,3)),
             (:m, GKernel(1.0)))
         chain = sample(gdemo_default, alg, 70000)
         check_gdemo(chain, atol = 0.1)
@@ -40,7 +40,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # MoGtest
         gibbs = Gibbs(
             CSMC(15, :z1, :z2, :z3, :z4),
-            MH((:mu1,GKernel(1)), (:mu2,GKernel(1))))
+            MH((:mu1,GKernel(1)), (:mu2,GKernel(1)))
+        )
         chain = sample(MoGtest_default, gibbs, 10000)
         check_MoGtest_default(chain, atol = 0.1)
     end
