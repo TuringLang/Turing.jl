@@ -469,7 +469,7 @@ end
 
 include("ess.jl")
 include("hmc.jl")
-include("amh.jl")
+include("mh.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
