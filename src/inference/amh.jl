@@ -220,19 +220,8 @@ function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
-    N::Integer;
-    kwargs...
-)
-    runmodel!(model, spl.state.vi, spl)
-    return Transition(spl)
-end
-
-function step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:MH},
     N::Integer,
-    T::Transition;
+    T::Union{Transition, Nothing} = nothing;
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp
