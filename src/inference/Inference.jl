@@ -143,20 +143,22 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
+    return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    chain_type=Chains,
     resume_from=nothing,
     kwargs...
 )
     if resume_from === nothing
-        return sample(model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
+        return sample(model, Sampler(alg, model), N; progress=PROGRESS[], chain_type=chain_type, kwargs...)
     else
         return resume(resume_from, N)
     end
@@ -168,9 +170,10 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
+    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.psample(
@@ -179,9 +182,10 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
+    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.sample_init!(
@@ -318,7 +322,7 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler,
     N::Integer,
     ts::Vector{<:AbstractTransition},
-    chain_type::Type{Any};
+    chain_type::Type{Chains};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
@@ -376,7 +380,7 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler,
     N::Integer,
     ts::Vector{<:AbstractTransition},
-    chain_type::Type{Vector};
+    chain_type::Type{Any};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
@@ -390,7 +394,7 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler,
     N::Integer,
     ts::Vector{<:AbstractTransition},
-    chain_type::Type{NamedTuple};
+    chain_type::Type{Vector{NamedTuple}};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
@@ -410,7 +414,7 @@ function AbstractMCMC.bundle_samples(
         nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., t.lp))
     end
 
-    return nts
+    return map(x -> x, nts)
 end
 
 function save(c::Chains, spl::AbstractSampler, model, vi, samples)
