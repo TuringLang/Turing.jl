@@ -380,20 +380,6 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler,
     N::Integer,
     ts::Vector{<:AbstractTransition},
-    chain_type::Type{Any};
-    discard_adapt::Bool=true,
-    save_state=true,
-    kwargs...
-)
-    return ts
-end
-
-function AbstractMCMC.bundle_samples(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler,
-    N::Integer,
-    ts::Vector{<:AbstractTransition},
     chain_type::Type{Vector{NamedTuple}};
     discard_adapt::Bool=true,
     save_state=true,
