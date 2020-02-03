@@ -4,9 +4,8 @@ using ..Core, ..Utilities
 using Distributions, Bijectors, DynamicPPL
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS
-using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using ..Turing: Turing
-using ..Core: TuringDiagNormal
+using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using Random: AbstractRNG
 
 using ForwardDiff
@@ -26,7 +25,8 @@ export
     ADVI,
     ELBO,
     elbo,
-    TruncatedADAGrad
+    TruncatedADAGrad,
+    DecayedADAGrad
 
 abstract type VariationalInference{AD} end
 
@@ -39,7 +39,7 @@ const VariationalPosterior = Distribution{Multivariate, Continuous}
 
 
 """
-    grad!(vo, alg::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
+    grad!(vo, alg::VariationalInference, q, model::Model, θ, out, args...)
 
 Computes the gradients used in `optimize!`. Default implementation is provided for 
 `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`.
@@ -50,8 +50,8 @@ Variance reduction techniques, e.g. control variates, should be implemented in t
 function grad!(
     vo,
     alg::VariationalInference,
-    q::VariationalPosterior,
-    model::Model,
+    q,
+    model,
     θ,
     out,
     args...
@@ -61,17 +61,21 @@ function grad!(
 end
 
 """
-    vi(model::Model, alg::VariationalInference)
-    vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
+    vi(model, alg::VariationalInference)
+    vi(model, alg::VariationalInference, q::VariationalPosterior)
 
 Constructs the variational posterior from the `model` and performs the optimization
 following the configuration of the given `VariationalInference` instance.
 """
-function vi(model::Model, alg::VariationalInference)
+function vi(model, alg::VariationalInference)
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
 end
-function vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
+function vi(model, alg::VariationalInference, q)
+    error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
+          * "is not implemented")
+end
+function vi(model, alg::VariationalInference, q, θ_init)
     error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
           * "is not implemented")
 end
@@ -80,8 +84,8 @@ end
 function grad!(
     vo,
     alg::VariationalInference{<:ForwardDiffAD},
-    q::VariationalPosterior,
-    model::Model,
+    q,
+    model,
     θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
@@ -100,8 +104,8 @@ end
 function grad!(
     vo,
     alg::VariationalInference{<:TrackerAD},
-    q::VariationalPosterior,
-    model::Model,
+    q,
+    model,
     θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
@@ -128,8 +132,8 @@ the steps.
 function optimize!(
     vo,
     alg::VariationalInference,
-    q::VariationalPosterior,
-    model::Model,
+    q,
+    model,
     θ::AbstractVector{<:Real};
     optimizer = TruncatedADAGrad()
 )
@@ -138,7 +142,7 @@ function optimize!(
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
     
-    num_params = length(q)
+    num_params = length(θ)
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator

@@ -2,18 +2,18 @@ using StatsFuns
 using DistributionsAD
 using Bijectors
 using Bijectors: TransformedDistribution
+using Random: AbstractRNG, GLOBAL_RNG
 
-update(d::TuringDiagNormal, μ, σ) = TuringDiagNormal(μ, σ)
+update(d::TuringDiagMvNormal, μ, σ) = TuringDiagMvNormal(μ, σ)
 update(td::TransformedDistribution, θ...) = transformed(update(td.dist, θ...), td.transform)
 
 # TODO: add these to DistributionsAD.jl and remove from here
-Distributions.params(d::TuringDiagNormal) = (d.m, d.σ)
-Distributions.length(d::TuringDiagNormal) = length(d.m)
+Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
 
 import StatsBase: entropy
-function entropy(d::TuringDiagNormal)
+function entropy(d::TuringDiagMvNormal)
     T = eltype(d.σ)
-    return (length(d) * (T(log2π) + one(T)) / 2 + sum(log.(d.σ)))
+    return (DistributionsAD.length(d) * (T(log2π) + one(T)) / 2 + sum(log.(d.σ)))
 end
 
 import Bijectors: bijector
@@ -46,7 +46,7 @@ function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) whe
     bs = inv.(bijector.(tuple(dists...)))
 
     if sym2ranges
-        return Stacked(bs, ranges), sym_lookup
+        return Stacked(bs, ranges), (; collect(zip(keys(sym_lookup), values(sym_lookup)))...)
     else
         return Stacked(bs, ranges)
     end
@@ -85,7 +85,7 @@ function meanfield(model::Model)
     σ = softplus.(randn(num_params))
 
     # construct variational posterior
-    d = TuringDiagNormal(μ, σ)
+    d = TuringDiagMvNormal(μ, σ)
     bs = inv.(bijector.(tuple(dists...)))
     b = Stacked(bs, ranges)
 
@@ -114,61 +114,129 @@ function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
 end
 
 # TODO: make more flexible, allowing other types of `q`
-function vi(
-    model::Model,
-    alg::ADVI,
-    q::TransformedDistribution{<: TuringDiagNormal};
-    optimizer = TruncatedADAGrad()
-)
+function vi(model, alg::ADVI, q::TransformedDistribution{<:TuringDiagMvNormal}; optimizer = TruncatedADAGrad())
     Turing.DEBUG && @debug "Optimizing ADVI..."
-    θ = optimize(elbo, alg, q, model; optimizer = optimizer)
-    μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
-
-    return update(q, μ, softplus.(ω))
-end
-
-function optimize(
-    elbo::ELBO,
-    alg::ADVI,
-    q::TransformedDistribution{<: TuringDiagNormal},
-    model::Model;
-    optimizer = TruncatedADAGrad()
-)
+    # Initial parameters for mean-field approx
     μ, σs = params(q)
     θ = vcat(μ, invsoftplus.(σs))
 
+    # Optimize
     optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
+
+    # Return updated `Distribution`
+    μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
+    return update(q, μ, softplus.(ω))
+end
+
+function vi(model, alg::ADVI, q, θ_init; optimizer = TruncatedADAGrad())
+    Turing.DEBUG && @debug "Optimizing ADVI..."
+    θ = copy(θ_init)
+    optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
+
+    # If `q` is a mean-field approx we use the specialized `update` function
+    if q isa TransformedDistribution{<:TuringDiagMvNormal}
+        μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
+        return update(q, μ, softplus.(ω))
+    else
+        # Otherwise we assume it's a mapping θ → q
+        return q(θ)
+    end
+end
+
+
+function optimize(elbo::ELBO, alg::ADVI, q, model, θ_init; optimizer = TruncatedADAGrad())
+    θ = copy(θ_init)
+    
+    if model isa Model
+        optimize!(elbo, alg, q, make_logjoint(model), θ; optimizer = optimizer)
+    else
+        # `model` assumed to be callable z ↦ p(x, z)
+        optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
+    end
 
     return θ
 end
 
-function logdensity(model, varinfo, z)
+"""
+    make_logjoint(model; weight = 1.0)
+
+Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).
+
+The weight used to scale the likelihood, e.g. when doing stochastic gradient descent one needs to
+use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_obs / batch_size`.
+"""
+function make_logjoint(model; weight = 1.0)
+    # setup
+    ctx = DynamicPPL.MiniBatchContext(
+        DynamicPPL.DefaultContext(),
+        weight
+    )
+    varinfo = Turing.VarInfo(model, ctx)
+
+    function logπ(z)
+        varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+        model(varinfo)
+        
+        return varinfo.logp
+    end
+
+    return logπ
+end
+
+function logjoint(model, varinfo, z)
     varinfo = VarInfo(varinfo, SampleFromUniform(), z)
     model(varinfo)
 
     return varinfo.logp
 end
 
+function (elbo::ELBO)(alg::ADVI, q, logπ, θ, num_samples; kwargs...)
+    return elbo(GLOBAL_RNG, alg, q, logπ, θ, num_samples; kwargs...)
+end
+
+
+function (elbo::ELBO)(
+    rng::AbstractRNG,
+    alg::ADVI,
+    q,
+    model::Model,
+    θ::AbstractVector{<:Real},
+    num_samples;
+    weight = 1.0,
+    kwargs...
+)   
+    return elbo(rng, alg, q, make_logjoint(model; weight = weight), θ, num_samples; kwargs...)
+end
+
 function (elbo::ELBO)(
     alg::ADVI,
-    q::TransformedDistribution{<: TuringDiagNormal},
+    q::TransformedDistribution{<:TuringDiagMvNormal},
     model::Model,
+    num_samples;
+    kwargs...
+)
+    # extract the mean-field Gaussian params
+    μ, σs = params(q)
+    θ = vcat(μ, invsoftplus.(σs))
+
+    return elbo(alg, q, model, θ, num_samples; kwargs...)
+end
+
+
+function (elbo::ELBO)(
+    rng::AbstractRNG,
+    alg::ADVI,
+    q::TransformedDistribution{<:TuringDiagMvNormal},
+    logπ::Function,
     θ::AbstractVector{<:Real},
     num_samples
 )
-    # setup
-    varinfo = Turing.VarInfo(model)
-
-    T = eltype(θ)
     num_params = length(q)
     μ = θ[1:num_params]
     ω = θ[num_params + 1: end]
 
     # update the variational posterior
     q = update(q, μ, softplus.(ω))
-
-    # rescaling due to loglikelihood weight and samples used
-    c = weight / num_samples
 
     #   𝔼_q(z)[log p(xᵢ, z)]
     # = ∫ log p(xᵢ, z) q(z) dz
@@ -193,29 +261,50 @@ function (elbo::ELBO)(
     #      = 𝔼[log p(x, z) - logabsdetjac(J(f(z)))] + ℍ(q̃(z̃))
 
     # But our `forward(q)` is using f⁻¹: ℝ → supp(p(z | x)) going forward → `+ logjac`
-    _, z, logjac, _ = forward(q)
-    res = (logdensity(model, varinfo, z) + logjac) * c
+    _, z, logjac, _ = forward(rng, q)
+    res = (logπ(z) + logjac) / num_samples
 
     res += entropy(q.dist)
     
     for i = 2:num_samples
-        _, z, logjac, _ = forward(q)
-        res += (logdensity(model, varinfo, z) + logjac) * c
+        _, z, logjac, _ = forward(rng, q)
+        res += (logπ(z) + logjac) / num_samples
     end
 
     return res
 end
 
 function (elbo::ELBO)(
+    rng::AbstractRNG,
     alg::ADVI,
-    q::TransformedDistribution{<: TuringDiagNormal},
-    model::Model,
+    getq::Function,
+    logπ::Function,
+    θ::AbstractVector{<:Real},
     num_samples
 )
-    # extract the mean-field Gaussian params
-    μ, σs = params(q)
-    θ = vcat(μ, invsoftplus.(σs))
+    # Update the variational posterior
+    q = getq(θ)
 
-    return elbo(alg, q, model, θ, num_samples)
+    # ELBO computation
+    _, z, logjac, _ = forward(rng, q)
+    res = (logπ(z) + logjac) / num_samples
+
+    res += entropy(q.dist)
+    
+    for i = 2:num_samples
+        _, z, logjac, _ = forward(rng, q)
+        res += (logπ(z) + logjac) / num_samples
+    end
+
+    return res
 end
 
+# function (elbo::ELBO)(
+#     rng::AbstractRNG,
+#     alg::ADVI,
+#     getq::Function,
+#     logπ::Function,
+#     θ::AbstractVector{<:Real},
+#     estimator::AbstractEstimator;
+#     weight = 1.0
+# )
