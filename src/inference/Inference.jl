@@ -467,7 +467,7 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :MHOld, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
