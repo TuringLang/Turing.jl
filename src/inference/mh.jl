@@ -1,8 +1,3 @@
-import AdvancedMH
-const AMH = AdvancedMH
-
-import DynamicPPL: VarName, _getranges, _getindex, getval, _getvns
-
 ###
 ### Sampler states
 ###

@@ -16,11 +16,13 @@ using AbstractMCMC, DynamicPPL
 
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
+import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADtype
 import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
-import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type
+import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
+    VarName, _getranges, _getindex, getval, _getvns
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -400,7 +402,7 @@ function AbstractMCMC.bundle_samples(
         nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., t.lp))
     end
 
-    return map(x -> x, nts)
+    return map(identity, nts)
 end
 
 function save(c::Chains, spl::AbstractSampler, model, vi, samples)
