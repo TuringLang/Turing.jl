@@ -40,7 +40,7 @@ end
 """
     BinomialLogit(n<:Real, I<:Integer)
 
-A univariate binomial logit distribution. 
+A univariate binomial logit distribution.
 """
 struct BinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
     n::I
@@ -50,7 +50,7 @@ end
 """
     BinomialLogit(n<:Real, I<:Integer)
 
-A multivariate binomial logit distribution. 
+A multivariate binomial logit distribution.
 """
 struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
     n::Vector{I}
@@ -58,7 +58,7 @@ struct VecBinomialLogit{T<:Real, I<:Integer} <: DiscreteUnivariateDistribution
 end
 
 function logpdf_binomial_logit(n, logitp, k)
-    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.lbeta(n - k + 1, k + 1)
+    logcomb = -StatsFuns.log1p(n) - SpecialFunctions.logbeta(n - k + 1, k + 1)
     return logcomb + k * logitp - n * StatsFuns.log1pexp(logitp)
 end
 
@@ -103,6 +103,8 @@ function Distributions.logpdf(d::OrderedLogistic, k::Int)
     return logp
 end
 
+Distributions.pdf(d::OrderedLogistic, k::Int) = exp(logpdf(d,k))
+
 function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
     cutpoints = d.cutpoints
     η = d.η
@@ -114,9 +116,57 @@ function Distributions.rand(rng::AbstractRNG, d::OrderedLogistic)
 
     k = rand(rng, Categorical(ps))
 
-    if all(ps.>0)
+    if all(x -> x > zero(x), ps)
         return(k)
     else
         return(-Inf)
     end
 end
+
+"""
+Numerically stable Poisson log likelihood.
+* `logλ`: log of rate parameter
+"""
+struct LogPoisson{T<:Real} <: DiscreteUnivariateDistribution
+    logλ::T
+end
+
+function Distributions.logpdf(lp::LogPoisson, k::Int)
+    return k * lp.logλ - exp(lp.logλ) - SpecialFunctions.loggamma(k + 1)
+end
+
+"""
+A named distribution that carries the name of the random variable with it.
+"""
+struct NamedDist{
+    variate, 
+    support, 
+    Td <: Distribution{variate, support}, 
+    Tn
+} <: Distribution{variate, support}
+    dist::Td
+    name::Tn
+end
+
+struct NoDist{
+    variate, 
+    support, 
+    Td <: Distribution{variate, support}
+} <: Distribution{variate, support}
+    dist::Td
+end
+NoDist(dist::NamedDist) = NamedDist(NoDist(dist.dist), dist.name)
+
+Distributions.rand(d::NoDist) = rand(d.dist)
+Distributions.logpdf(d::NoDist{<:Univariate}, ::Real) = 0
+Distributions.logpdf(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}) = 0
+function Distributions.logpdf(d::NoDist{<:Multivariate}, x::AbstractMatrix{<:Real})
+    return zeros(Int, size(x, 2))
+end
+Distributions.logpdf(d::NoDist{<:Matrixvariate}, ::AbstractMatrix{<:Real}) = 0
+Bijectors.logpdf_with_trans(d::NoDist{<:Univariate}, ::Real) = 0
+Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}) = 0
+function Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, x::AbstractMatrix{<:Real})
+    return zeros(Int, size(x, 2))
+end
+Bijectors.logpdf_with_trans(d::NoDist{<:Matrixvariate}, ::AbstractMatrix{<:Real}) = 0

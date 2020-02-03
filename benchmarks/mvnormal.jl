@@ -18,7 +18,7 @@ n_adapts = 2_000
 
 # Sampling
 LOG_DATA = @tbenchmark_expr("NUTS(Leapfrog(...))",
-                             sample(target(D), HMC(n_samples, 0.1, 5)));
+                             sample(target(D), HMC(0.1, 5), n_samples));
 
 print_log(LOG_DATA)
 
@@ -42,10 +42,10 @@ d   = MvNormal(zeros(dim2), A)
 
 # ForwardDiff
 Turing.setadbackend(:forward_diff)
-@benchmark chain = sample(mdemo(d, 1), HMC(5000, 0.1, 5))
+@benchmark chain = sample(mdemo(d, 1), HMC(0.1, 5), 5000)
 
 #BackwardDiff
 Turing.setadbackend(:reverse_diff)
-@benchmark chain = sample(mdemo(d, 1), HMC(5000, 0.1, 5))
+@benchmark chain = sample(mdemo(d, 1), HMC(0.1, 5), 5000)
 
 # build log and send data back to github.

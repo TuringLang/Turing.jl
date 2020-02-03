@@ -1,27 +1,26 @@
 module Inference
 
-using ..Core, ..Core.RandomVariables, ..Utilities
-using ..Core.RandomVariables: Metadata, _tail, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple
+using ..Core, ..Utilities
+using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
+    islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
+    settrans!, _getvns, getdist, split_var_str, CACHERESET, AbstractSampler,
+    Model, runmodel!, Sampler, SampleFromPrior, SampleFromUniform,
+    Selector, AbstractSamplerState, DefaultContext, PriorContext,
+    LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
 using ProgressMeter, LinearAlgebra
-using ..Turing: PROGRESS, CACHERESET, AbstractSampler
-using ..Turing: Model, runmodel!, get_pvars, get_dvars,
-    Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, AbstractSamplerState
-using ..Turing: in_pvars, in_dvars, Turing
+using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
-using Random: GLOBAL_RNG, AbstractRNG
-using ..Turing.Interface
+using Random: GLOBAL_RNG, AbstractRNG, randexp
+using AbstractMCMC, DynamicPPL
 
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
-import ..Turing: getspace
-import Distributions: sample
 import ..Core: getchunksize, getADtype
-import ..Interface: AbstractTransition, sample, step!, sample_init!,
+import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
+import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -32,6 +31,7 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
+        ESS,
         Gibbs,      # classic sampling
         HMC,
         SGLD,
@@ -56,7 +56,8 @@ export  InferenceAlgorithm,
         get_covar,
         add_sample!,
         reset!,
-        step!
+        step!,
+        resume
 
 #######################
 # Sampler abstraction #
@@ -68,20 +69,25 @@ abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
-getchunksize(::T) where {T <: Hamiltonian} = getchunksize(T)
 getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
-getADtype(alg::Hamiltonian) = getADtype(typeof(alg))
-getADtype(::Type{<:Hamiltonian{AD}}) where {AD} = AD
+getADtype(::Hamiltonian{AD}) where AD = AD
 
 """
-    mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
+    mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
-Peform MH accept criteria with log acceptance ratio. Returns a `Bool` for acceptance.
-
-Note: This function is only used in PMMH.
+Decide if a proposal ``x'`` with log probability ``\\log p(x') = logp_proposal`` and
+log proposal ratio ``\\log k(x', x) - \\log k(x, x') = log_proposal_ratio`` in a
+Metropolis-Hastings algorithm with Markov kernel ``k(x_t, x_{t+1})`` and current state
+``x`` with log probability ``\\log p(x) = logp_current`` is accepted by evaluating the
+Metropolis-Hastings acceptance criterion
+```math
+\\log U \\leq \\log p(x') - \\log p(x) + \\log k(x', x) - \\log k(x, x')
+```
+for a uniform random number ``U \\in [0, 1)``.
 """
-function mh_accept(H::T, H_new::T, log_proposal_ratio::T) where {T<:Real}
-    return log(rand()) + H_new < H + log_proposal_ratio, min(0, -(H_new - H))
+function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
+    # replacing log(rand()) with -randexp() yields test errors
+    return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
 ######################
@@ -103,47 +109,52 @@ function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
 
-Interface.transition_type(::Sampler{alg}) where alg = transition_type(alg)
-
 ##########################################
 # Internal variable names for MCMCChains #
 ##########################################
 
-const TURING_INTERNAL_VARS =
-    (internals = ["elapsed", "eval_num", "lf_eps", "lp", "weight", "le",
-                  "acceptance_rate", "hamiltonian_energy", "is_accept", 
-                  "log_density", "n_steps", "numerical_error", "step_size",
-                  "tree_depth"],)
+const TURING_INTERNAL_VARS = (internals = [
+    "elapsed",
+    "eval_num",
+    "lf_eps",
+    "lp",
+    "weight",
+    "le",
+    "acceptance_rate",
+    "hamiltonian_energy",
+    "hamiltonian_energy_error",
+    "max_hamiltonian_energy_error",
+    "is_accept",
+    "log_density",
+    "n_steps",
+    "numerical_error",
+    "step_size",
+    "nom_step_size",
+    "tree_depth",
+    "is_adapt",
+],)
 
 #########################################
 # Default definitions for the interface #
 #########################################
 
-function Interface.sample(
+function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer;
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
 end
 
-function Interface.sample(
-    model::ModelType,
-    alg::AlgType,
+function AbstractMCMC.sample(
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer;
     resume_from=nothing,
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     if resume_from === nothing
         return sample(model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
     else
@@ -152,36 +163,28 @@ function Interface.sample(
 end
 
 
-function Interface.psample(
-    model::ModelType,
-    alg::AlgType,
+function AbstractMCMC.psample(
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
 end
 
-function Interface.psample(
+function AbstractMCMC.psample(
     rng::AbstractRNG,
-    model::ModelType,
-    alg::AlgType,
+    model::AbstractModel,
+    alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler,
-    AlgType<:InferenceAlgorithm
-}
+)
     return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
 end
 
-function Interface.sample_init!(
+function AbstractMCMC.sample_init!(
     ::AbstractRNG,
     model::Model,
     spl::Sampler,
@@ -195,25 +198,25 @@ function Interface.sample_init!(
     initialize_parameters!(spl; kwargs...)
 end
 
-function Interface.sample_end!(
+function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
-    spl::AbstractSampler,
+    ::AbstractSampler,
     ::Integer,
-    ::Vector{TransitionType};
+    ::Vector{<:AbstractTransition};
     kwargs...
-) where {TransitionType<:AbstractTransition}
+)
     # Silence the default API function.
 end
 
 function initialize_parameters!(
     spl::AbstractSampler;
-    init_theta::Union{Nothing,Array{<:Any,1}}=nothing,
+    init_theta::Union{Nothing,Vector}=nothing,
     verbose::Bool=false,
     kwargs...
 )
     # Get `init_theta`
-    if init_theta != nothing
+    if init_theta !== nothing
         verbose && @info "Using passed-in initial variable values" init_theta
         # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
         init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
@@ -236,91 +239,42 @@ end
 # Chain making utilities #
 ##########################
 
-function _params_to_array(ts::Vector{T}, spl::Sampler) where {T<:AbstractTransition}
-    names = Set{String}()
-    dicts = Vector{Dict{String, Any}}()
-
+function _params_to_array(ts::Vector{<:AbstractTransition}, spl::Sampler)
+    names_set = Set{String}()
     # Extract the parameter names and values from each transition.
-    for t in ts
+    dicts = map(ts) do t
         nms, vs = flatten_namedtuple(t.θ)
-        push!(names, nms...)
-
+        for nm in nms
+            push!(names_set, nm)
+        end
         # Convert the names and values to a single dictionary.
-        d = Dict{String, Any}()
-        for (k, v) in zip(nms, vs)
-            d[k] = v
-        end
-        push!(dicts, d)
+        return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    
-    # Convert the set to an ordered vector so the parameter ordering 
-    # is deterministic.
-    ordered_names = collect(names)
-    vals = Matrix{Union{Real, Missing}}(undef, length(ts), length(ordered_names))
-
-    # Place each element of all dicts into the returned value matrix.
-    for i in eachindex(dicts)
-        for (j, key) in enumerate(ordered_names)
-            vals[i,j] = get(dicts[i], key, missing)
-        end
-    end
-
-    return ordered_names, vals
-end
-
-function flatten_namedtuple(nt::NamedTuple{pnames}) where {pnames}
-    vals = Vector{Real}()
-    names = Vector{AbstractString}()
-
-    for k in pnames
-        v = nt[k]
-        if length(v) == 1
-            flatten(names, vals, string(k), v)
-        else
-            for (vnval, vn) in zip(v[1], v[2])
-                flatten(names, vals, vn, vnval)
-            end
-        end
-    end
+    names = collect(names_set)
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
+        (j, key) in enumerate(names)]
 
     return names, vals
 end
 
-function flatten(names, value :: AbstractArray, k :: String, v)
-    if isa(v, Number)
-        name = k
-        push!(value, v)
-        push!(names, name)
-    elseif isa(v, Array)
-        for i = eachindex(v)
-            if isa(v[i], Number)
-                name = string(ind2sub(size(v), i))
-                name = replace(name, "(" => "[");
-                name = replace(name, ",)" => "]");
-                name = replace(name, ")" => "]");
-                name = k * name
-                isa(v[i], Nothing) && println(v, i, v[i])
-                push!(value, v[i])
-                push!(names, name)
-            elseif isa(v[i], AbstractArray)
-                name = k * string(ind2sub(size(v), i))
-                flatten(names, value, name, v[i])
-            else
-                error("Unknown var type: typeof($v[i])=$(typeof(v[i]))")
+function flatten_namedtuple(nt::NamedTuple)
+    names_vals = mapreduce(vcat, keys(nt)) do k
+        v = nt[k]
+        if length(v) == 1
+            return [(string(k), v)]
+        else
+            return mapreduce(vcat, zip(v[1], v[2])) do (vnval, vn)
+                return collect(FlattenIterator(vn, vnval))
             end
         end
-    else
-        error("Unknown var type: typeof($v)=$(typeof(v))")
     end
-    return
+    return [vn[1] for vn in names_vals], [vn[2] for vn in names_vals]
 end
 
-ind2sub(v, i) = Tuple(CartesianIndices(v)[i])
-
-function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
+function get_transition_extras(ts::Vector{<:AbstractTransition})
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
-    extra_params = additional_parameters(T)
+    extra_params = additional_parameters(eltype(ts))
 
     # Get the values of the extra parameters.
     local extra_names
@@ -358,16 +312,16 @@ function get_transition_extras(ts::Vector{T}) where T<:AbstractTransition
 end
 
 # Default Chains constructor.
-function Chains(
+function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
-    model::ModelType,
+    model::AbstractModel,
     spl::Sampler,
     N::Integer,
-    ts::Vector{T};
+    ts::Vector{<:AbstractTransition};
     discard_adapt::Bool=true,
-    save_state=false,
+    save_state=true,
     kwargs...
-) where {ModelType<:Sampleable, T<:AbstractTransition}
+)
     # Check if we have adaptation samples.
     if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
         ts = ts[(spl.alg.n_adapts+1):end]
@@ -381,7 +335,7 @@ function Chains(
     extra_params, extra_values = get_transition_extras(ts)
 
     # Extract names & construct param array.
-    nms = string.(vcat(nms..., string.(extra_params)...))
+    nms = [nms; extra_params]
     parray = hcat(vals, extra_values)
 
     # If the state field has average_logevidence or final_logevidence, grab that.
@@ -398,12 +352,10 @@ function Chains(
     end
 
     # Set up the info tuple.
-    info = if save_state
-        (range = rng,
-        model = model,
-        spl = spl)
+    if save_state
+        info = (range = rng, model = model, spl = spl, vi = spl.state.vi)
     else
-        NamedTuple()
+        info = NamedTuple()
     end
 
     # Chain construction.
@@ -412,7 +364,8 @@ function Chains(
         string.(nms),
         deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
-        info=info
+        info=info,
+        sorted=true
     )
 end
 
@@ -423,15 +376,20 @@ end
 
 function resume(c::Chains, n_iter::Int; kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
-    return sample(
+
+    # Sample a new chain.
+    newchain = sample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
-        n_iter;    # this is actually not used
+        n_iter;
         resume_from=c,
         reuse_spl_n=n_iter,
         kwargs...
     )
+
+    # Stick the new samples at the end of the old chain.
+    return vcat(c, newchain)
 end
 
 function set_resume!(
@@ -440,37 +398,9 @@ function set_resume!(
     kwargs...
 )
     # If we're resuming, grab the sampler info.
-    if resume_from != nothing
+    if resume_from !== nothing
         s = resume_from.info[:spl]
     end
-end
-
-function split_var_str(var_str)
-    ind = findfirst(c -> c == '[', var_str)
-    inds = Vector{String}[]
-    if ind == nothing
-        return var_str, inds
-    end
-    sym = var_str[1:ind-1]
-    ind = length(sym)
-    while ind < length(var_str)
-        ind += 1
-        @assert var_str[ind] == '['
-        push!(inds, String[])
-        while var_str[ind] != ']'
-            ind += 1
-            if var_str[ind] == '['
-                ind2 = findnext(c -> c == ']', var_str, ind)
-                push!(inds[end], strip(var_str[ind:ind2]))
-                ind = ind2+1
-            else
-                ind2 = findnext(c -> c == ',' || c == ']', var_str, ind)
-                push!(inds[end], strip(var_str[ind:ind2-1]))
-                ind = ind2
-            end
-        end
-    end
-    return sym, inds
 end
 
 #########################
@@ -488,6 +418,7 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
@@ -500,44 +431,151 @@ include("../contrib/inference/AdvancedSMCExtensions.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS)
+for alg in (:SMC, :PG, :PMMH, :IPMCMC, :MH, :IS, :ESS, :Gibbs)
     @eval getspace(::$alg{space}) where {space} = space
-    @eval getspace(::Type{<:$alg{space}}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval getspace(::$alg{<:Any, space}) where {space} = space
-    @eval getspace(::Type{<:$alg{<:Any, space}}) where {space} = space
 end
-getspace(::Gibbs) = Tuple{}()
-getspace(::Type{<:Gibbs}) = Tuple{}()
 
-@inline floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-@inline floatof(::Type) = Real
+floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+floatof(::Type) = Real # fallback if type inference failed
 
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler, vi::Turing.RandomVariables.VarInfo, ::Type{T}) where {T <: AbstractFloat} = floatof(eltype(vi, spl))
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Hamiltonian}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = Array{Turing.Core.get_matching_type(spl, vi, T), N}
-@inline Turing.Core.get_matching_type(spl::Turing.Sampler{<:Union{PG, SMC}}, vi::Turing.RandomVariables.VarInfo, ::Type{TV}) where {T, N, TV <: Array{T, N}} = TArray{T, N}
+function get_matching_type(
+    spl::AbstractSampler, 
+    vi::VarInfo, 
+    ::Type{T},
+) where {T}
+    return T
+end
+function get_matching_type(
+    spl::AbstractSampler, 
+    vi::VarInfo, 
+    ::Type{<:AbstractFloat},
+)
+    return floatof(eltype(vi, spl))
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{<:Union{Missing, AbstractFloat}},
+)
+    return Union{Missing, floatof(eltype(vi, spl))}
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{<:AbstractFloat},
+)
+    return floatof(eltype(vi, spl))
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
+    ::Type{TV},
+) where {T, N, TV <: Array{T, N}}
+    return Array{get_matching_type(spl, vi, T), N}
+end
+function get_matching_type(
+    spl::Sampler{<:Union{PG, SMC}}, 
+    vi::VarInfo, 
+    ::Type{TV},
+) where {T, N, TV <: Array{T, N}}
+    return TArray{T, N}
+end
 
 ## Fallback functions
+
+alg_str(spl::Sampler) = string(nameof(typeof(spl.alg)))
+transition_type(spl::Sampler) = typeof(Transition(spl))
 
 # utility funcs for querying sampler information
 require_gradient(spl::Sampler) = false
 require_particles(spl::Sampler) = false
 
-assume(spl::Sampler, dist::Distribution) =
-error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+_getindex(x, inds::Tuple) = _getindex(x[first(inds)...], Base.tail(inds))
+_getindex(x, inds::Tuple{}) = x
 
-observe(spl::Sampler, weight::Float64) =
-error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+# assume
+function tilde(ctx::DefaultContext, sampler, right, vn::VarName, _, vi)
+    return _tilde(sampler, right, vn, vi)
+end
+function tilde(ctx::PriorContext, sampler, right, vn::VarName, inds, vi)
+    if ctx.vars !== nothing
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, getsym(vn)), inds))
+        settrans!(vi, false, vn)
+    end
+    return _tilde(sampler, right, vn, vi)
+end
+function tilde(ctx::LikelihoodContext, sampler, right, vn::VarName, inds, vi)
+    if ctx.vars !== nothing
+        vi[vn] = vectorize(right, _getindex(getfield(ctx.vars, getsym(vn)), inds))
+        settrans!(vi, false, vn)
+    end
+    return _tilde(sampler, NoDist(right), vn, vi)
+end
+function tilde(ctx::MiniBatchContext, sampler, right, left::VarName, inds, vi)
+    return tilde(ctx.ctx, sampler, right, left, inds, vi)
+end
 
-## Default definitions for assume, observe, when sampler = nothing.
-function assume(spl::A,
+function _tilde(sampler, right, vn::VarName, vi)
+    return Turing.assume(sampler, right, vn, vi)
+end
+function _tilde(sampler, right::NamedDist, vn::VarName, vi)
+    name = right.name
+    if name isa String
+        sym_str, inds = split_var_str(name, String)
+        sym = Symbol(sym_str)
+        vn = VarName{sym}(inds)
+    elseif name isa Symbol
+        vn = VarName{name}("")
+    elseif name isa VarName
+        vn = name
+    else
+        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
+    end
+    return _tilde(sampler, right.dist, vn, vi)
+end
+
+# observe
+function tilde(ctx::DefaultContext, sampler, right, left, vi)
+    return _tilde(sampler, right, left, vi)
+end
+function tilde(ctx::PriorContext, sampler, right, left, vi)
+    return 0
+end
+function tilde(ctx::LikelihoodContext, sampler, right, left, vi)
+    return _tilde(sampler, right, left, vi)
+end
+function tilde(ctx::MiniBatchContext, sampler, right, left, vi)
+    return ctx.loglike_scalar * tilde(ctx.ctx, sampler, right, left, vi)
+end
+
+_tilde(sampler, right, left, vi) = Turing.observe(sampler, right, left, vi)
+
+function assume(spl::Sampler, dist)
+    error("Turing.assume: unmanaged inference algorithm: $(typeof(spl))")
+end
+
+function observe(spl::Sampler, weight)
+    error("Turing.observe: unmanaged inference algorithm: $(typeof(spl))")
+end
+
+function assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
-
+    vi::VarInfo,
+)
     if haskey(vi, vn)
+        if is_flagged(vi, vn, "del")
+            unset_flag!(vi, vn, "del")
+            r = spl isa SampleFromUniform ? init(dist) : rand(dist)
+            vi[vn] = vectorize(dist, r)
+            setorder!(vi, vn, vi.num_produce)
+        else
         r = vi[vn]
+        end
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
         push!(vi, vn, r, dist, spl)
@@ -546,102 +584,296 @@ function assume(spl::A,
     #       r is genereated from some uniform distribution which is different from the prior
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
 
-    r, logpdf_with_trans(dist, r, istrans(vi, vn))
-
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::A,
-    dists::Vector{T},
+function observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::Distribution,
+    value,
+    vi::VarInfo,
+)
+    vi.num_produce += one(vi.num_produce)
+    return logpdf(dist, value)
+end
+
+# .~ functions
+
+# assume
+function dot_tilde(ctx::DefaultContext, sampler, right, left, vn::VarName, _, vi)
+    vns, dist = get_vns_and_dist(right, left, vn)
+    return _dot_tilde(sampler, dist, left, vns, vi)
+end
+function dot_tilde(
+    ctx::LikelihoodContext,
+    sampler,
+    right,
+    left,
     vn::VarName,
-    var::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
-    @assert length(dists) == 1 "Turing.assume only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
-
-    vns = map(i -> VarName(vn, "[$i]"), 1:n)
-
-    if haskey(vi, vns[1])
-        rs = vi[vns]
+    inds,
+    vi,
+)
+    if ctx.vars !== nothing
+        var = _getindex(getfield(ctx.vars, getsym(vn)), inds)
+        vns, dist = get_vns_and_dist(right, var, vn)
+        set_val!(vi, vns, dist, var)
+        settrans!.(Ref(vi), false, vns)
     else
-        rs = isa(spl, SampleFromUniform) ? init(dist, n) : rand(dist, n)
+        vns, dist = get_vns_and_dist(right, left, vn)
+    end
+    return _dot_tilde(sampler, NoDist(dist), left, vns, vi)
+end
+function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vn::VarName, inds, vi)
+    return dot_tilde(ctx.ctx, sampler, right, left, vn, inds, vi)
+end
+function dot_tilde(
+    ctx::PriorContext,
+    sampler,
+    right,
+    left,
+    vn::VarName,
+    inds,
+    vi,
+)
+    if ctx.vars !== nothing
+        var = _getindex(getfield(ctx.vars, getsym(vn)), inds)
+        vns, dist = get_vns_and_dist(right, var, vn)
+        set_val!(vi, vns, dist, var)
+        settrans!.(Ref(vi), false, vns)
+    else
+        vns, dist = get_vns_and_dist(right, left, vn)
+    end
+    return _dot_tilde(sampler, dist, left, vns, vi)
+end
 
-        if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[i], dist, spl)
+function get_vns_and_dist(dist::NamedDist, var, vn::VarName)
+    name = dist.name
+    if name isa String
+        sym_str, inds = split_var_str(name, String)
+        sym = Symbol(sym_str)
+        vn = VarName{sym}(inds)
+    elseif name isa Symbol
+        vn = VarName{name}("")
+    elseif name isa VarName
+        vn = name
+    else
+        throw("Unsupported variable name. Please use either a string, symbol or VarName.")
+    end
+    return get_vns_and_dist(dist.dist, var, vn)
+end
+function get_vns_and_dist(dist::MultivariateDistribution, var::AbstractMatrix, vn::VarName)
+    getvn = i -> VarName(vn, vn.indexing * "[Colon(),$i]")
+    return getvn.(1:size(var, 2)), dist
+end
+function get_vns_and_dist(
+    dist::Union{Distribution, AbstractArray{<:Distribution}}, 
+    var::AbstractArray, 
+    vn::VarName
+)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    return getvn.(CartesianIndices(var)), dist
+end
+
+function _dot_tilde(sampler, right, left, vns::AbstractArray{<:VarName}, vi)
+    return dot_assume(sampler, right, vns, left, vi)
+end
+
+# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
+function _dot_tilde(
+    sampler::AbstractSampler,
+    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}},
+    left::AbstractMatrix{>:AbstractVector},
+    vn::AbstractVector{<:VarName},
+    vi::VarInfo,
+)
+    throw(ambiguity_error_msg())
+end
+
+function dot_assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::MultivariateDistribution,
+    vns::AbstractVector{<:VarName},
+    var::AbstractMatrix,
+    vi::VarInfo,
+)
+    @assert length(dist) == size(var, 1)
+    r = get_and_set_val!(vi, vns, dist, spl)
+    lp = sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    var .= r
+    return var, lp
+end
+function dot_assume(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    vns::AbstractArray{<:VarName},
+    var::AbstractArray,
+    vi::VarInfo,
+)
+    r = get_and_set_val!(vi, vns, dists, spl)
+    # Make sure `r` is not a matrix for multivariate distributions
+    lp = sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    var .= r
+    return var, lp
+end
+function dot_assume(
+    spl::Sampler,
+    ::Any,
+    ::AbstractArray{<:VarName},
+    ::Any,
+    ::VarInfo
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing assume statement")
+end
+
+function get_and_set_val!(
+    vi::VarInfo,
+    vns::AbstractVector{<:VarName},
+    dist::MultivariateDistribution,
+    spl::AbstractSampler,
+)
+    n = length(vns)
+    if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
+            for i in 1:n
+                vn = vns[i]
+                vi[vn] = vectorize(dist, r[:, i])
+                setorder!(vi, vn, vi.num_produce)
             end
-            @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-            var = rs
-        elseif isa(dist, MultivariateDistribution)
-            for i = 1:n
-                push!(vi, vns[i], rs[:,i], dist, spl)
-            end
-            if isa(var, Vector)
-                @assert length(var) == size(rs)[2] "Turing.assume: variable and random number dimension unmatched"
-                for i = 1:n
-                    var[i] = rs[:,i]
-                end
-            elseif isa(var, Matrix)
-                @assert size(var) == size(rs) "Turing.assume: variable and random number dimension unmatched"
-                var = rs
-            else
-                @error("Turing.assume: unsupported variable container"); error()
-            end
+        else
+        r = vi[vns]
+        end
+    else
+        r = spl isa SampleFromUniform ? init(dist, n) : rand(dist, n)
+        for i in 1:n
+            push!(vi, vns[i], r[:,i], dist, spl)
         end
     end
-
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
-
+    return r
+end
+function get_and_set_val!(
+    vi::VarInfo,
+    vns::AbstractArray{<:VarName},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    spl::AbstractSampler,
+)
+    if haskey(vi, vns[1])
+        if is_flagged(vi, vns[1], "del")
+            unset_flag!(vi, vns[1], "del")
+            f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
+            r = f.(vns, dists)
+            for i in eachindex(vns)
+                vn = vns[i]
+                dist = dists isa AbstractArray ? dists[i] : dists
+                vi[vn] = vectorize(dist, r[i])
+                setorder!(vi, vn, vi.num_produce)
+            end
+        else
+        r = reshape(vi[vec(vns)], size(vns))
+        end
+    else
+        f = (vn, dist) -> spl isa SampleFromUniform ? init(dist) : rand(dist)
+        r = f.(vns, dists)
+        push!.(Ref(vi), vns, r, dists, Ref(spl))
+    end
+    return r
 end
 
+function set_val!(
+    vi::VarInfo,
+    vns::AbstractVector{<:VarName},
+    dist::MultivariateDistribution,
+    val::AbstractMatrix,
+)
+    @assert size(val, 2) == length(vns)
+    foreach(enumerate(vns)) do (i, vn)
+        vi[vn] = val[:,i]
+    end
+    return val
+end
+function set_val!(
+    vi::VarInfo,
+    vns::AbstractArray{<:VarName},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    val::AbstractArray,
+)
+    @assert size(val) == size(vns)
+    foreach(CartesianIndices(val)) do ind
+        dist = dists isa AbstractArray ? dists[ind] : dists
+        vi[vns[ind]] = vectorize(dist, val[ind])
+    end
+    return val
+end
 
-observe(::Nothing,
-        dist::T,
-        value::Any,
-        vi::VarInfo) where T = observe(SampleFromPrior(), dist, value, vi)
+# observe
+function dot_tilde(ctx::DefaultContext, sampler, right, left, vi)
+    return _dot_tilde(sampler, right, left, vi)
+end
+function dot_tilde(ctx::PriorContext, sampler, right, left, vi)
+    return 0
+end
+function dot_tilde(ctx::LikelihoodContext, sampler, right, left, vi)
+    return _dot_tilde(sampler, right, left, vi)
+end
+function dot_tilde(ctx::MiniBatchContext, sampler, right, left, vi)
+    return ctx.loglike_scalar * dot_tilde(ctx.ctx, sampler, right, left, left, vi)
+end
 
-function observe(spl::A,
-    dist::Distribution,
-    value::Any,
-    vi::VarInfo) where {A<:Union{SampleFromPrior, SampleFromUniform}}
+function _dot_tilde(sampler, right, left::AbstractArray, vi)
+    return dot_observe(sampler, right, left, vi)
+end
+# Ambiguity error when not sure to use Distributions convention or Julia broadcasting semantics
+function _dot_tilde(
+    sampler::AbstractSampler,
+    right::Union{MultivariateDistribution, AbstractVector{<:MultivariateDistribution}},
+    left::AbstractMatrix{>:AbstractVector},
+    vi::VarInfo,
+)
+    throw(ambiguity_error_msg())
+end
 
+function dot_observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dist::MultivariateDistribution,
+    value::AbstractMatrix,
+    vi::VarInfo,
+)
     vi.num_produce += one(vi.num_produce)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
-
-    # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
+    return sum(logpdf(dist, value))
 end
-
-function observe(spl::A,
-    dists::Vector{T},
-    value::Any,
-    vi::VarInfo) where {T<:Distribution, A<:Union{SampleFromPrior, SampleFromUniform}}
-
-    @assert length(dists) == 1 "Turing.observe only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    @assert isa(dist, UnivariateDistribution) || 
-        isa(dist, MultivariateDistribution) "Turing.observe: vectorizing matrix distribution is not supported"
-    if isa(dist, UnivariateDistribution)  # only univariate distributions support broadcast operation (logpdf.) by Distributions.jl
-        # acclogp!(vi, sum(logpdf.(Ref(dist), value)))
-        sum(logpdf.(Ref(dist), value))
-    else
-        # acclogp!(vi, sum(logpdf(dist, value)))
-        sum(logpdf(dist, value))
-    end
-
+function dot_observe(
+    spl::Union{SampleFromPrior, SampleFromUniform},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray,
+    vi::VarInfo,
+)
+    vi.num_produce += one(vi.num_produce)
+    Turing.DEBUG && @debug "dists = $dists"
+    Turing.DEBUG && @debug "value = $value"
+    return sum(logpdf.(dists, value))
 end
-
+function dot_observe(
+    spl::Sampler,
+    ::Any,
+    ::Any,
+    ::VarInfo,
+)
+    error("[Turing] $(alg_str(spl)) doesn't support vectorizing observe statement")
+end
 
 ##############
 # Utilities  #
 ##############
 
-getspace(spl::Sampler) = getspace(typeof(spl))
-getspace(::Type{<:Sampler{Talg}}) where {Talg} = getspace(Talg)
-
+getspace(spl::Sampler) = getspace(spl.alg)
+function ambiguity_error_msg()
+    return "Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
+    column-wise following the convention of Distributions.jl or element-wise following 
+    Julia's general broadcasting semantics. Please make sure that the element type of `lhs` 
+    is not a supertype of the support type of `AbstractVector` to eliminate ambiguity."
+end
 
 end # module

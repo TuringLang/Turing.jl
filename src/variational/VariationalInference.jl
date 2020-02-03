@@ -1,10 +1,10 @@
 module Variational
 
-using ..Core, ..Core.RandomVariables, ..Utilities
-using Distributions, Bijectors
+using ..Core, ..Utilities
+using Distributions, Bijectors, DynamicPPL
 using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS
-using ..Turing: Model, SampleFromPrior, SampleFromUniform
+using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using ..Turing: Turing
 using ..Core: TuringDiagNormal
 using Random: AbstractRNG
@@ -30,10 +30,8 @@ export
 
 abstract type VariationalInference{AD} end
 
-getchunksize(::T) where {T <: VariationalInference} = getchunksize(T)
 getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
-getADtype(alg::VariationalInference) = getADtype(typeof(alg))
-getADtype(::Type{<: VariationalInference{AD}}) where {AD} = AD
+getADtype(::VariationalInference{AD}) where AD = AD
 
 abstract type VariationalObjective end
 
@@ -51,13 +49,13 @@ Variance reduction techniques, e.g. control variates, should be implemented in t
 """
 function grad!(
     vo,
-    alg::VariationalInference{AD},
+    alg::VariationalInference,
     q::VariationalPosterior,
     model::Model,
     θ,
     out,
     args...
-) where AD
+)
     error("Turing.Variational.grad!: unmanaged variational inference algorithm: "
           * "$(typeof(alg))")
 end
@@ -81,18 +79,18 @@ end
 # default implementations
 function grad!(
     vo,
-    alg::VariationalInference{AD},
+    alg::VariationalInference{<:ForwardDiffAD},
     q::VariationalPosterior,
     model::Model,
-    θ::AbstractVector{T},
+    θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T<:Real, AD<:ForwardDiffAD}
+)
     # TODO: this probably slows down executation quite a bit; exists a better way
     # of doing this?
     f(θ_) = - vo(alg, q, model, θ_, args...)
 
-    chunk_size = getchunksize(alg)
+    chunk_size = getchunksize(typeof(alg))
     # Set chunk size and do ForwardMode.
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
@@ -101,13 +99,13 @@ end
 
 function grad!(
     vo,
-    alg::VariationalInference{AD},
+    alg::VariationalInference{<:TrackerAD},
     q::VariationalPosterior,
     model::Model,
-    θ::AbstractVector{T},
+    θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T<:Real, AD<:TrackerAD}
+)
     θ_tracked = Tracker.param(θ)
     y = - vo(alg, q, model, θ_tracked, args...)
     Tracker.back!(y, 1.0)
@@ -129,12 +127,12 @@ the steps.
 """
 function optimize!(
     vo,
-    alg::VariationalInference{AD},
+    alg::VariationalInference,
     q::VariationalPosterior,
     model::Model,
     θ::AbstractVector{<:Real};
     optimizer = TruncatedADAGrad()
-) where {AD}
+)
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step

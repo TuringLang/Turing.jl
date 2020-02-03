@@ -4,5 +4,6 @@ layout: page
 
 <h1 style="margin-bottom:0px">{{ page.title }}</h1>
 {% if page.badges %}{% for badge in page.badges %}<span class="badge badge-{{ badge.type }}">{{ badge.tag }}</span>{% endfor %}{% endif %}
+{% if page.author %} <span class"author"> {{ page.author }} </span> <br>{% endif %}
 <span class="post-date" style="font-style: italic;">{{ page.date | date: "%B %d, %Y" }}</span>
 {{ content }}

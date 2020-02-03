@@ -1,7 +1,7 @@
 using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
 using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
-using Turing.Core.RandomVariables: getval
-using Turing.Core: TuringMvNormal, TuringDiagNormal
+using DynamicPPL: getval
+using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
@@ -16,8 +16,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ad_test_f = gdemo_default
         vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
-        svn = vi.vns[1]
-        mvn = vi.vns[2]
+        svn = vi.metadata.vns[1]
+        mvn = vi.metadata.vns[2]
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
@@ -94,7 +94,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     @turing_testset "Tracker + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
-        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-8)
+        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-6, atol=1e-6)
     end
     @turing_testset "Tracker + fill" begin
         rng = MersenneTwister(123456)
@@ -107,8 +107,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         B = randn(rng, N, N)
         m, A = randn(rng, N), B' * B + I
 
-        # Generate from the TuringMvNormal
-        d, back = Tracker.forward(TuringMvNormal, m, A)
+        # Generate from the TuringDenseMvNormal
+        d, back = Tracker.forward(TuringDenseMvNormal, m, A)
         x = Tracker.data(rand(d))
 
         # Check that the logpdf agrees with MvNormal.
@@ -121,7 +121,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         rng, N = MersenneTwister(123456), 11
         m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
 
-        d = TuringDiagNormal(m, σ)
+        d = TuringDiagMvNormal(m, σ)
         x = rand(d)
 
         # Check that the logpdf agrees with MvNormal.
@@ -132,7 +132,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     end
     @turing_testset "Tracker + MvNormal Interface" begin
         # Note that we only test methods where the `MvNormal` ctor actually constructs
-        # a TuringMvNormal.
+        # a TuringDenseMvNormal.
 
         rng, N = MersenneTwister(123456), 7
         m, b, B, x = randn(rng, N), randn(rng, N), randn(rng, N, N), randn(rng, N)

@@ -9,7 +9,7 @@ include("dual_averaging.jl")
 # Turing
 
 # mf = gdemo()
-# chn = sample(mf, HMC(5000, 0.05, 5))
+# chn = sample(mf, HMC(0.05, 5), 5000)
 
 # println("mean of m: $(mean(chn[:m][1000:end]))")
 

@@ -797,8 +797,11 @@ html .md-footer-meta.md-typeset a:focus, html .md-footer-meta.md-typeset a:hover
     font-size: 1.28rem;
 }
 .md-footer-copyright__highlight {
-    color: hsla(0, 0%, 100%, .7);
-    text-align: center;
+    color: white;
+    text-align: left;
+    margin-left: 10%;
+    font-size: 1.4em;
+    max-width: 350px;
 }
 .md-footer-social {
     margin: 0 .8rem;

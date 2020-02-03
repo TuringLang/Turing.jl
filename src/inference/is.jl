@@ -30,8 +30,6 @@ sample(gdemo([1.5, 2]), IS(), 1000)
 struct IS{space} <: InferenceAlgorithm end
 
 IS() = IS{()}()
-transition_type(spl::Sampler{<:IS}) = typeof(Transition(spl))
-alg_str(::Sampler{<:IS}) = "IS"
 
 mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V
@@ -66,7 +64,7 @@ function sample_end!(
     N::Integer,
     ts::Vector{<:Transition};
     kwargs...
-) where {SamplerType<:AbstractSampler}
+)
     # Calculate evidence.
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
@@ -74,10 +72,10 @@ end
 function assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
     r = rand(dist)
     push!(vi, vn, r, dist, spl)
-    r, zero(Real)
+    return r, 0
 end
 
-function observe(spl::Sampler{<:IS}, dist::Distribution, value::Any, vi::VarInfo)
+function observe(spl::Sampler{<:IS}, dist::Distribution, value, vi::VarInfo)
     # acclogp!(vi, logpdf(dist, value))
-    logpdf(dist, value)
+    return logpdf(dist, value)
 end

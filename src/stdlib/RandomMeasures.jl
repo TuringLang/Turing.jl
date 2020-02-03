@@ -1,9 +1,9 @@
 module RandomMeasures
 
-using ..Core, ..Core.RandomVariables, ..Utilities
+#using ..Utilities
 using Distributions
 using LinearAlgebra
-using StatsFuns: logsumexp
+using StatsFuns: logsumexp, softmax!
 
 import Distributions: sample, logpdf
 import Base: maximum, minimum, rand
@@ -25,8 +25,8 @@ struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:Abstract
     surplus::V
 end
 
-logpdf(d::SizeBiasedSamplingProcess, x::T) where {T<:Real} = _logpdf(d, x)
-rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess) = _rand(rng, d)
+logpdf(d::SizeBiasedSamplingProcess, x::Real) = logpdf(distribution(d), x)
+rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess) = rand(rng, distribution(d))
 minimum(d::SizeBiasedSamplingProcess) = zero(d.surplus)
 maximum(d::SizeBiasedSamplingProcess) = d.surplus
 
@@ -39,8 +39,8 @@ struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <: ContinuousUn
     rpm::T
 end
 
-logpdf(d::StickBreakingProcess, x::T) where {T<:Real} = _logpdf(d, x)
-rand(rng::AbstractRNG, d::StickBreakingProcess) = _rand(rng, d)
+logpdf(d::StickBreakingProcess, x::Real) = logpdf(distribution(d), x)
+rand(rng::AbstractRNG, d::StickBreakingProcess) = rand(rng, distribution(d))
 minimum(d::StickBreakingProcess) = 0.0
 maximum(d::StickBreakingProcess) = 1.0
 
@@ -56,7 +56,7 @@ end
 
 
 """
-    _logpdf_table(d<:AbstractRandomProbabilityMeasure, m<:AbstractVector{Int})
+    _logpdf_table(d::AbstractRandomProbabilityMeasure, m::AbstractVector{Int})
 
 Parameters:
 
@@ -64,9 +64,7 @@ Parameters:
 * `m`: Cluster counts
 
 """
-function _logpdf_table(d::AbstractRandomProbabilityMeasure, m::T) where {T<:AbstractVector{Int}}
-    throw(MethodError(_logpdf_table(), (d, m)))
-end
+function _logpdf_table end
 
 function logpdf(d::ChineseRestaurantProcess, x::Int)
     if insupport(d, x)
@@ -79,8 +77,8 @@ end
 
 function rand(rng::AbstractRNG, d::ChineseRestaurantProcess)
     lp = _logpdf_table(d.rpm, d.m)
-    p = exp.(lp)
-    return rand(rng, Categorical(p ./ sum(p)))
+    softmax!(lp)
+    return rand(rng, Categorical(lp))
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
@@ -120,35 +118,52 @@ struct DirichletProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     α::T
 end
 
-_rand(rng::AbstractRNG, d::StickBreakingProcess{DirichletProcess{T}}) where {T<:Real} = rand(rng, Beta(one(T), d.rpm.α))
-
-function _rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess{DirichletProcess{T}}) where {T<:Real}
-    return d.surplus*rand(rng, Beta(one(T), d.rpm.α))
+function distribution(d::StickBreakingProcess{<:DirichletProcess})
+    α = d.rpm.α
+    return Beta(one(α), α)
 end
 
-function _logpdf(d::StickBreakingProcess{DirichletProcess{T}}, x::T) where {T<:Real}
-    return logpdf(Beta(one(T), d.rpm.α), x)
+function distribution(d::SizeBiasedSamplingProcess{<:DirichletProcess})
+    α = d.rpm.α
+    return LocationScale(zero(α), d.surplus, Beta(one(α), α))
 end
 
-function _logpdf(d::SizeBiasedSamplingProcess{DirichletProcess{T}}, x::T) where {T<:Real}
-    return logpdf(Beta(one(T), d.rpm.α), x/d.surplus)
-end
+function _logpdf_table(d::DirichletProcess, m::AbstractVector{Int})
+    # compute the sum of all cluster counts
+    sum_m = sum(m)
 
-function _logpdf_table(d::DirichletProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
-    if sum(m) == 0
-        return zeros(V,1)
-    elseif any(m_ -> m_ == 0, m)
-        z = log(sum(m) - 1 + d.α)
-        K = length(m)
-        zid = findfirst(m_ -> m_ == 0, m)
-        lpt(k) = k == zid ? log(d.α) - z : log(m[k]) - z
-        return map(k -> lpt(k), 1:K)
-    else
-        z = log(sum(m) - 1 + d.α)
-        K = length(m)
-        lp(k) = k > K ? log(d.α) - z : log(m[k]) - z
-        return map(k -> lp(k), 1:(K+1))
+    # shortcut if all cluster counts are zero
+    dα = d.α
+    T = typeof(dα)
+    iszero(sum_m) && return zeros(T, 1)
+
+    # pre-calculations
+    z = log(sum_m - 1 + dα)
+
+    # construct the table
+    K = length(m)
+    table = Vector{T}(undef, K)
+    contains_zero = false
+    @inbounds for i in 1:K
+        mi = m[i]
+
+        if iszero(mi)
+            if contains_zero
+                table[i] = -Inf
+            else
+                table[i] = log(dα) - z
+                contains_zero = true
+            end
+        else
+            table[i] = log(mi) - z
+        end
     end
+
+    if !contains_zero
+        push!(table, log(dα) - z)
+    end
+
+    return table
 end
 
 """
@@ -183,37 +198,56 @@ struct PitmanYorProcess{T<:Real} <: AbstractRandomProbabilityMeasure
     t::Int
 end
 
-function _rand(rng::AbstractRNG, d::StickBreakingProcess{PitmanYorProcess{T}}) where {T<:Real}
-    return rand(rng, Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
+function distribution(d::StickBreakingProcess{<:PitmanYorProcess})
+    d_rpm = d.rpm
+    d_rpm_d = d.rpm.d
+    return Beta(one(d_rpm_d)-d_rpm_d, d_rpm.θ + d_rpm.t*d_rpm_d)
 end
 
-function _rand(rng::AbstractRNG, d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}) where {T<:Real}
-    return d.surplus*rand(rng, Beta(one(T)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d))
+function distribution(d::SizeBiasedSamplingProcess{<:PitmanYorProcess})
+    d_rpm = d.rpm
+    d_rpm_d = d.rpm.d
+    dist = Beta(one(d_rpm_d)-d_rpm_d, d_rpm.θ + d_rpm.t*d_rpm_d)
+    return LocationScale(zero(d_rpm_d), d.surplus, dist)
 end
 
-function _logpdf(d::StickBreakingProcess{PitmanYorProcess{T}}, x::T) where {T<:Real}
-    return logpdf(Beta(one(V)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d), x)
-end
+function _logpdf_table(d::PitmanYorProcess, m::AbstractVector{Int})
+    # compute the sum of all cluster counts
+    sum_m = sum(m)
 
-function _logpdf(d::SizeBiasedSamplingProcess{PitmanYorProcess{T}}, x::T) where {T<:Real}
-    return logpdf(Beta(one(V)-d.rpm.d, d.rpm.θ + d.rpm.t*d.rpm.d), x/d.surplus)
-end
+    # shortcut if all cluster counts are zero
+    dd = d.d
+    T = typeof(dd)
+    iszero(sum_m) && return zeros(T, 1)
 
-function _logpdf_table(d::PitmanYorProcess{V}, m::T) where {T<:AbstractVector{Int},V<:Real}
-    if sum(m) == 0
-        return zeros(V,1)
-    elseif any(m_ -> m_ == 0, m)
-        z = log(sum(m) + d.θ)
-        K = length(m)
-        zidx = findfirst(m_ -> m_ == 0, m)
-        lpt(k) = k == zid ? log(d.θ+d.d*d.t) - z : m[k] == 0 ? -Inf : log(m[k]-d.d) - z
-        return map(k -> lpt(k), 1:K)
-    else
-        z = log(sum(m) + d.θ)
-        K = length(m)
-        lp(k) = k > K ? log(d.θ + d.d*d.t) - z : log(m[k] - d.d) - z
-        return map(k -> lp(k), 1:(K+1))
+    # pre-calculations
+    dθ = d.θ
+    z = log(sum_m + dθ)
+
+    # construct the table
+    K = length(m)
+    table = Vector{T}(undef, K)
+    contains_zero = false
+    @inbounds for i in 1:K
+        mi = m[i]
+
+        if iszero(mi)
+            if contains_zero
+                table[i] = -Inf
+            else
+                table[i] = log(dθ + dd * d.t) - z
+                contains_zero = true
+            end
+        else
+            table[i] = log(mi - dd) - z
+        end
     end
+
+    if !contains_zero
+        push!(table, log(dθ + dd * d.t) - z)
+    end
+
+    return table
 end
 
 ## ####### ##

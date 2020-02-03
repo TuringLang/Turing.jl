@@ -29,31 +29,24 @@ end
 
 abstract type ADBackend end
 struct ForwardDiffAD{chunk} <: ADBackend end
-getchunksize(::T) where {T <: ForwardDiffAD} = getchunksize(T)
-getchunksize(::Type{ForwardDiffAD{chunk}}) where chunk = chunk
-getchunksize(::T) where {T <: Sampler} = getchunksize(T)
-getchunksize(::Type{<:Sampler{T}}) where {T} = getchunksize(T)
-getchunksize(::SampleFromPrior) = getchunksize(Nothing)
-getchunksize(::Type{Nothing}) = CHUNKSIZE[]
+getchunksize(::Type{<:ForwardDiffAD{chunk}}) where chunk = chunk
+getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
+getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
 
 struct TrackerAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
-ADBackend(::Val{:forward_diff}) where {T} = ForwardDiffAD{CHUNKSIZE[]}
-ADBackend(::Val{T}) where {T} = TrackerAD
+ADBackend(::Val{:forward_diff}) = ForwardDiffAD{CHUNKSIZE[]}
+ADBackend(::Val) = TrackerAD
 
 """
 getADtype(alg)
 
 Finds the autodifferentiation type of the algorithm `alg`.
 """
-getADtype(::Nothing) = getADtype(Nothing)
-getADtype(::Type{Nothing}) = getADtype()
-getADtype() = ADBackend()
-getADtype(s::Sampler) = getADtype(typeof(s))
-getADtype(s::Type{<:Sampler{TAlg}}) where {TAlg} = getADtype(TAlg)
+getADtype(spl::Sampler) = getADtype(spl.alg)
 
 """
 gradient_logp(
@@ -71,10 +64,9 @@ function gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::TS,
-) where {TS <: Sampler}
-
-    ad_type = getADtype(TS)
+    sampler::Sampler
+)
+    ad_type = getADtype(sampler)
     if ad_type <: ForwardDiffAD
         return gradient_logp_forward(θ, vi, model, sampler)
     else ad_type <: TrackerAD
@@ -108,7 +100,7 @@ function gradient_logp_forward(
         return logp
     end
 
-    chunk_size = getchunksize(sampler)
+    chunk_size = getchunksize(typeof(sampler))
     # Set chunk size and do ForwardMode.
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)

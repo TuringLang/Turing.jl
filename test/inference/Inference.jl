@@ -1,5 +1,4 @@
 using Turing, Random, Test
-using Turing.Inference: split_var_str
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -50,34 +49,29 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chn3_contd = sample(gdemo_default, alg3, 500; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
-    @testset "split var string" begin
-        var_str = "x"
-        sym, inds = split_var_str(var_str)
-        @test sym == "x"
-        @test inds == Vector{String}[]
+    @testset "Contexts" begin
+        # Test LikelihoodContext
+        @model testmodel(x) = begin
+            a ~ Beta()
+            lp1 = @logpdf()
+            x[1] ~ Bernoulli(a)
+            global loglike = @logpdf() - lp1
+        end
+        model = testmodel([1.0])
+        varinfo = Turing.VarInfo(model)
+        model(varinfo, Turing.SampleFromPrior(), Turing.LikelihoodContext())
+        @test varinfo.logp == loglike
 
-        var_str = "x[1,1][2,3]"
-        sym, inds = split_var_str(var_str)
-        @test sym == "x"
-        @test inds[1] == ["1", "1"]
-        @test inds[2] == ["2", "3"]
-
-        var_str = "x[Colon(),1][2,Colon()]"
-        sym, inds = split_var_str(var_str)
-        @test sym == "x"
-        @test inds[1] == ["Colon()", "1"]
-        @test inds[2] == ["2", "Colon()"]
-
-        var_str = "x[2:3,1][2,1:2]"
-        sym, inds = split_var_str(var_str)
-        @test sym == "x"
-        @test inds[1] == ["2:3", "1"]
-        @test inds[2] == ["2", "1:2"]
-
-        var_str = "x[2:3,2:3][[1,2],[1,2]]"
-        sym, inds = split_var_str(var_str)
-        @test sym == "x"
-        @test inds[1] == ["2:3", "2:3"]
-        @test inds[2] == ["[1,2]", "[1,2]"]
+        # Test MiniBatchContext
+        @model testmodel(x) = begin
+            a ~ Beta()
+            x[1] ~ Bernoulli(a)
+        end
+        model = testmodel([1.0])
+        varinfo1 = Turing.VarInfo(model)
+        varinfo2 = deepcopy(varinfo1)
+        model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
+        model(varinfo2, Turing.SampleFromPrior(), Turing.MiniBatchContext(Turing.LikelihoodContext(), 10))
+        @test isapprox(varinfo2.logp / varinfo1.logp, 10)
     end
 end

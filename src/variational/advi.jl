@@ -153,14 +153,13 @@ function (elbo::ELBO)(
     alg::ADVI,
     q::TransformedDistribution{<: TuringDiagNormal},
     model::Model,
-    θ::AbstractVector{T},
-    num_samples,
-    weight = 1.0
-) where T <: Real
+    θ::AbstractVector{<:Real},
+    num_samples
+)
     # setup
     varinfo = Turing.VarInfo(model)
 
-    # extract params
+    T = eltype(θ)
     num_params = length(q)
     μ = θ[1:num_params]
     ω = θ[num_params + 1: end]

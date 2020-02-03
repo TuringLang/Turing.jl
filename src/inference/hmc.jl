@@ -27,7 +27,7 @@ struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTra
     stat :: NT
 end
 
-function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::T) where T<:AHMC.Transition
+function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::AHMC.Transition)
     theta = tonamedtuple(spl.state.vi)
     lp = getlogp(spl.state.vi)
     return HamiltonianTransition(theta, lp, t.stat)
@@ -68,10 +68,10 @@ Tips:
 
 ```julia
 # Original step_size
-sample(gdemo([1.5, 2]), HMC(1000, 0.1, 10))
+sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 
 # Reduced step_size.
-sample(gdemo([1.5, 2]), HMC(1000, 0.01, 10))
+sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
 mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
@@ -79,7 +79,6 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-transition_type(::Sampler{<:Hamiltonian}) = Transition
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
 HMC(args...) = HMC{ADBackend()}(args...)
@@ -111,7 +110,7 @@ function sample_init!(
     verbose::Bool=true,
     resume_from=nothing,
     kwargs...
-) where T<:Hamiltonian
+)
 
     # Resume the sampler.
     set_resume!(spl; resume_from=resume_from, kwargs...)
@@ -119,18 +118,18 @@ function sample_init!(
     # Get `init_theta`
     initialize_parameters!(spl; verbose=verbose, kwargs...)
 
-    # Set the defualt number of adaptations, if relevant.
+    # Set the default number of adaptations, if relevant.
     if spl.alg isa AdaptiveHamiltonian
         # If there's no chain passed in, verify the n_adapts.
         if resume_from === nothing
-            if spl.alg.n_adapts == 0
-                n_adapts_default = Int(round(N / 2))
-                spl.alg.n_adapts = n_adapts_default > 1000 ? 1000 : n_adapts_default
-            else
-                # Verify that n_adapts is less than the samples to draw.
-                spl.alg.n_adapts < N || !ismissing(resume_from) ?
-                    nothing :
-                    throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
+            # if n_adapts is -1, then the user called a convenience
+            # constructor like NUTS() or NUTS(0.65), and we should
+            # set a default for them.
+            if spl.alg.n_adapts == -1
+                spl.alg.n_adapts = min(1000, N ÷ 2)
+            elseif spl.alg.n_adapts > N
+                # Verify that n_adapts is not greater than the number of samples to draw.
+                throw(ArgumentError("n_adapt of $(spl.alg.n_adapts) is greater than total samples of $N."))
             end
         else
             spl.alg.n_adapts = 0
@@ -186,7 +185,7 @@ function HMCDA{AD}(
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric
 ) where AD
-    return HMCDA{AD}(0, δ, λ, init_ϵ, metricT, ())
+    return HMCDA{AD}(-1, δ, λ, init_ϵ, metricT, ())
 end
 
 function HMCDA{AD}(
@@ -219,16 +218,17 @@ No-U-Turn Sampler (NUTS) sampler.
 Usage:
 
 ```julia
-NUTS(200, 0.6j_max)
+NUTS()            # Use default NUTS configuration. 
+NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
 ```
 
 Arguments:
 
-- `n_adapts::Int` : The number of samples to use with adapatation.
-- `δ::Float64` : Target acceptance rate.
+- `n_adapts::Int` : The number of samples to use with adaptation.
+- `δ::Float64` : Target acceptance rate for dual averaging.
 - `max_depth::Float64` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
-- `ϵ::Float64` : Inital step size; 0 means automatically search by Turing.
+- `ϵ::Float64` : Inital step size; 0 means automatically searching using a heuristic procedure.
 
 """
 mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
@@ -240,6 +240,7 @@ mutable struct NUTS{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamilt
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
+
 function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
@@ -280,11 +281,11 @@ function NUTS{AD}(
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
-    NUTS{AD}(0, δ, max_depth, Δ_max, init_ϵ, metricT, ())
+    NUTS{AD}(-1, δ, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 function NUTS{AD}(kwargs...) where AD
-    NUTS{AD}(0, 0.65; kwargs...)
+    NUTS{AD}(-1, 0.65; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
@@ -297,10 +298,10 @@ end
 
 # Sampler(alg::Hamiltonian) =  Sampler(alg, AHMCAdaptor())
 function Sampler(
-    alg::SamplerType,
+    alg::Union{StaticHamiltonian, AdaptiveHamiltonian},
     model::Model,
     s::Selector=Selector()
-) where {SamplerType<:Union{StaticHamiltonian, AdaptiveHamiltonian}}
+)
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
     initial_state = SamplerState(VarInfo(model))
@@ -325,12 +326,12 @@ end
 function step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{T},
+    spl::Sampler{<:Hamiltonian},
     N::Integer;
     kwargs...
-) where T<:Hamiltonian
+)
     # Get step size
-    ϵ = T <: AdaptiveHamiltonian ?
+    ϵ = spl.alg isa AdaptiveHamiltonian ?
         AHMC.getϵ(spl.state.adaptor) :
         spl.alg.ϵ
 
@@ -361,7 +362,7 @@ function step!(
     spl.state.z = t.z
 
     # Adaptation
-    if T <: AdaptiveHamiltonian
+    if spl.alg isa AdaptiveHamiltonian
         spl.state.h, spl.state.traj, isadapted = 
             AHMC.adapt!(spl.state.h, spl.state.traj, spl.state.adaptor, 
                         spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
@@ -434,7 +435,8 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function assume(spl::Sampler{<:Hamiltonian},
+function assume(
+    spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
     vi::VarInfo
@@ -450,52 +452,49 @@ function assume(spl::Sampler{<:Hamiltonian},
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function assume(spl::Sampler{<:Hamiltonian},
-    dists::Vector{<:Distribution},
-    vn::VarName,
-    var::Any,
-    vi::VarInfo
+function dot_assume(
+    spl::Sampler{<:Hamiltonian},
+    dist::MultivariateDistribution,
+    vns::AbstractArray{<:VarName},
+    var::AbstractMatrix,
+    vi::VarInfo,
 )
-    @assert length(dists) == 1 "[observe] Turing only support vectorizing i.i.d distribution"
-    dist = dists[1]
-    n = size(var)[end]
-
-    vns = map(i -> VarName(vn, "[$i]"), 1:n)
-
-    rs = vi[vns]  # NOTE: inside Turing the Julia conversion should be sticked to
-
-    # acclogp!(vi, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1]))))
-
-    if isa(dist, UnivariateDistribution) || isa(dist, MatrixDistribution)
-        @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-        var = rs
-    elseif isa(dist, MultivariateDistribution)
-        if isa(var, Vector)
-            @assert length(var) == size(rs)[2] "Turing.assume variable and random number dimension unmatched"
-            for i = 1:n
-                var[i] = rs[:,i]
-            end
-        elseif isa(var, Matrix)
-            @assert size(var) == size(rs) "Turing.assume variable and random number dimension unmatched"
-            var = rs
-        else
-            error("[Turing] unsupported variable container")
-        end
-    end
-
-    var, sum(logpdf_with_trans(dist, rs, istrans(vi, vns[1])))
+    @assert length(dist) == size(var, 1)
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+end
+function dot_assume(
+    spl::Sampler{<:Hamiltonian},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    vns::AbstractArray{<:VarName},
+    var::AbstractArray,
+    vi::VarInfo,
+)
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = reshape(vi[vec(vns)], size(var))
+    var .= r
+    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-observe(spl::Sampler{<:Hamiltonian},
+function observe(
+    spl::Sampler{<:Hamiltonian},
     d::Distribution,
-    value::Any,
-    vi::VarInfo) = observe(nothing, d, value, vi)
+    value,
+    vi::VarInfo,
+)
+    return observe(SampleFromPrior(), d, value, vi)
+end
 
-observe(spl::Sampler{<:Hamiltonian},
-    ds::Vector{<:Distribution},
-    value::Any,
-    vi::VarInfo) = observe(nothing, ds, value, vi)
-
+function dot_observe(
+    spl::Sampler{<:Hamiltonian},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray,
+    vi::VarInfo,
+)
+    return dot_observe(SampleFromPrior(), ds, value, vi)
+end
 
 ####
 #### Default HMC stepsize and mass matrix adaptor
@@ -504,11 +503,18 @@ observe(spl::Sampler{<:Hamiltonian},
 function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
     pc = AHMC.Preconditioner(metric)
     da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
-    if metric == AHMC.UnitEuclideanMetric
-        adaptor = AHMC.NaiveHMCAdaptor(pc, da)
+
+    if iszero(alg.n_adapts)
+        adaptor = AHMC.Adaptation.NoAdaptation()
     else
-        adaptor = AHMC.StanHMCAdaptor(alg.n_adapts, pc, da)
+        if metric == AHMC.UnitEuclideanMetric
+            adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
+        else
+            adaptor = AHMC.StanHMCAdaptor(pc, da)
+            AHMC.initialize!(adaptor, alg.n_adapts)
+        end
     end
+
     return adaptor
 end
 
@@ -524,6 +530,7 @@ function HMCState(
     rng::AbstractRNG;
     kwargs...
 )
+
     # Reuse the VarInfo.
     vi = spl.state.vi
 
@@ -575,18 +582,15 @@ end
 
 function callback(
     rng::AbstractRNG,
-    model::ModelType,
-    spl::SamplerType,
+    model::Model,
+    spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
     N::Integer,
     iteration::Integer,
     t::HamiltonianTransition,
     cb::HMCCallback;
     kwargs...
-) where {
-    ModelType<:Sampleable,
-    SamplerType<:AbstractSampler
-}
-    AHMC.pm_next!(cb.p, t.stat, iteration, spl.state.h.metric)
+)
+    AHMC.pm_next!(cb.p, (iteration=iteration, t.stat..., mass_matrix=spl.state.h.metric))
 end
 
 function init_callback(

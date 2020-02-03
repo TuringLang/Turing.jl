@@ -30,8 +30,8 @@ mutable struct PMMH{space, A<:Tuple} <: InferenceAlgorithm
     n_iters::Int               # number of iterations
     algs::A                 # Proposals for state & parameters
 end
-function PMMH(n_iters::Int, algs::A, space::Tuple) where {A <: Tuple}
-    return PMMH{space, A}(n_iters, algs)
+function PMMH(n_iters::Int, algs::Tuple, space::Tuple)
+    return PMMH{space, typeof(algs)}(n_iters, algs)
 end
 function PMMH(n_iters::Int, smc_alg::SMC, parameter_algs...)
     return PMMH(n_iters, tuple(parameter_algs..., smc_alg), ())
@@ -65,19 +65,6 @@ function Sampler(alg::PMMH, model::Model, s::Selector)
         space = union(space, sub_alg.space)
     end
 
-    # Sanity check for space
-    if !isempty(space)
-        @assert issubset(Set(get_pvars(model)), space) "[$alg_str] symbols specified to samplers ($space)" * "
-            doesn't cover the model parameters ($(Set(get_pvars(model))))"
-
-        if Set(get_pvars(model)) != space
-            warn(
-                "[$alg_str] extra parameters specified by samplers" * 
-                "don't exist in model: $(setdiff(space, Set(get_pvars(model))))"
-            )
-        end
-    end
-
     info[:old_likelihood_estimate] = -Inf # Force to accept first proposal
     info[:old_prior_prob] = 0.0
     info[:samplers] = samplers
@@ -101,30 +88,30 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         proposal_ratio += local_spl.info[:proposal_ratio]
     end
 
-    if !violating_support # do not run SMC if going to refuse anyway
+    if violating_support
+        # do not run SMC if going to refuse anyway
+        accepted = false
+    else
         Turing.DEBUG && @debug "Propose new state with SMC..."
         vi, _ = step(model, spl.info[:samplers][end], vi)
         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
-        Turing.DEBUG && @debug "computing accept rate α..."
-        is_accept, _ = mh_accept(
-          -(spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob]),
-          -(new_likelihood_estimate + new_prior_prob),
+        Turing.DEBUG && @debug "Decide whether to accept..."
+        accepted = mh_accept(
+          spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob],
+          new_likelihood_estimate + new_prior_prob,
           proposal_ratio,
         )
     end
 
-    Turing.DEBUG && @debug "decide whether to accept..."
-    if !violating_support && is_accept # accepted
-        is_accept = true
+    if accepted
         spl.info[:old_likelihood_estimate] = new_likelihood_estimate
         spl.info[:old_prior_prob] = new_prior_prob
     else                      # rejected
-        is_accept = false
         vi[spl] = old_θ
     end
 
-    return vi, is_accept
+    return vi, accepted
 end
 
 function sample(  model::Model,
@@ -135,7 +122,7 @@ function sample(  model::Model,
                 )
 
     spl = Sampler(alg, model)
-    if resume_from != nothing
+    if resume_from !== nothing
         spl.selector = resume_from.info[:spl].selector
     end
     alg_str = "PMMH"
@@ -152,7 +139,7 @@ function sample(  model::Model,
     end
 
     # Init parameters
-    vi = if resume_from == nothing
+    vi = if resume_from === nothing
         vi_ = VarInfo(model)
     else
         resume_from.info[:vi]
@@ -184,7 +171,7 @@ function sample(  model::Model,
     accept_rate = sum(accept_his) / n  # calculate the accept rate
     println("  Accept rate         = $accept_rate;")
 
-    if resume_from != nothing   # concat samples
+    if resume_from !== nothing   # concat samples
       pushfirst!(samples, resume_from.info[:samples]...)
     end
     c = Chain(-Inf, samples)       # wrap the result by Chain
