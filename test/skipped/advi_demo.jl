@@ -55,7 +55,7 @@ for seed ∈ seeds
         μ, σs = params(q)
         θ = vcat(μ, f⁻¹.(σs))
 
-        history = [elbo(advi, q, m, θ, 1000)]
+        history = [elbo(advi, q, m, 1000)]
 
         # construct animation
         anim = @animate for j = 1:25

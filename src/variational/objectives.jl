@@ -8,7 +8,7 @@ end
 
 function (elbo::ELBO)(
     rng::AbstractRNG,
-    alg::ADVI,
+    alg::VariationalInference,
     q,
     model::Model,
     num_samples;

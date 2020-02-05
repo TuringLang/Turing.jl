@@ -202,12 +202,3 @@ function (elbo::ELBO)(
     return res
 end
 
-# function (elbo::ELBO)(
-#     rng::AbstractRNG,
-#     alg::ADVI,
-#     getq::Function,
-#     logπ::Function,
-#     θ::AbstractVector{<:Real},
-#     estimator::AbstractEstimator;
-#     weight = 1.0
-# )
