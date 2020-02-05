@@ -82,7 +82,7 @@ function rand(rng::AbstractRNG, d::ChineseRestaurantProcess)
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
-maximum(d::ChineseRestaurantProcess) = any(i -> i == 0, d.m) ? length(d.m) : length(d.m)+1
+maximum(d::ChineseRestaurantProcess) = any(iszero, d.m) ? length(d.m) : length(d.m)+1
 
 ## ################# ##
 ## Random partitions ##
@@ -128,30 +128,27 @@ function distribution(d::SizeBiasedSamplingProcess{<:DirichletProcess})
     return LocationScale(zero(α), d.surplus, Beta(one(α), α))
 end
 
-function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<:AbstractFloat}
-    # compute the sum of all cluster counts
-    sum_m = sum(m)
-
-    # pre-calculations
-    z = log(sum_m - 1 + d.α)
+function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<:Real}
 
     # construct the table
-    has_zeros = any(i -> i == 0, m)
-    K = has_zeros ? length(m) : length(m)+1
-    table = ones(T, K) * T(-Inf)
+    first_zero = findfirst(iszero, m)
+    K = first_zero === nothing ? length(m)+1 : length(m)
+    table = fill(T(-Inf), K)
 
-    if iszero(sum_m)
+    # exit if m is empty or contains only zeros
+    if iszero(m)
         table[1] = T(0)
         return table
     end
 
-    contains_zero = false
-    @inbounds for i in (has_zeros ? findall(j -> j>0, m) : 1:(K-1))
-        table[i] = T(log(m[i]) - z)
+    # compute logpdf for each occupied table
+    @inbounds for i in (first_zero === nothing ? findall(!iszero, m) : 1:(K-1))
+        table[i] = T(log(m[i]))
     end
 
-    k_new = has_zeros ? findfirst(j -> j == 0, m) : K
-    table[k_new] = log(d.α) - z
+    # logpdf for new table
+    k_new = first_zero === nothing ? K : first_zero
+    table[k_new] = log(d.α)
 
     return table
 end
@@ -201,34 +198,29 @@ function distribution(d::SizeBiasedSamplingProcess{<:PitmanYorProcess})
     return LocationScale(zero(d_rpm_d), d.surplus, dist)
 end
 
-function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<:AbstractFloat}
-    # compute the sum of all cluster counts
-    sum_m = sum(m)
-
-    # pre-calculations
-    dθ = d.θ
-    z = log(sum_m + d.θ)
-
-    # construct the table
-    has_zeros = any(i -> i == 0, m)
-    K = has_zeros ? length(m) : length(m)+1
-
+function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<:Real}
     # sanity check
-    @assert d.t == sum(i -> i>0, m)
-    table = ones(T, K) * T(-Inf)
+    @assert d.t == sum(!iszero, m)
 
-    if iszero(sum_m)
+    # construct table
+    first_zero = finfirst(iszero, m)
+    K = first_zero === nothing ? length(m)+1 : length(m)
+    table = fill(T(-Inf), K)
+
+    # exit if m is empty or contains only zeros
+    if iszero(m)
         table[1] = T(0)
         return table
     end
 
-    contains_zero = false
-    @inbounds for i in (has_zeros ? findall(j -> j>0, m) : 1:(K-1))
-        table[i] = T(log(m[i] - d.d) - z)
+    # compute logpdf for each occupied table
+    @inbounds for i in (first_zero === nothing ? findall(!iszero, m) : 1:(K-1))
+        table[i] = T(log(m[i] - d.d))
     end
 
-    k_new = has_zeros ? findfirst(j -> j == 0, m) : K
-    table[k_new] = log(d.θ + d.d * d.t) - z
+    # logpdf for new table
+    k_new = first_zero === nothing ? K : first_zero
+    table[k_new] = log(d.θ + d.d * d.t)
 
     return table
 end
