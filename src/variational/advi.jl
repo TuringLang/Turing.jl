@@ -163,7 +163,7 @@ function (elbo::ELBO)(
     rng::AbstractRNG,
     alg::ADVI,
     q::VariationalPosterior,
-    logπ::Function,
+    logπ,
     num_samples
 )
     #   𝔼_q(z)[log p(xᵢ, z)]
