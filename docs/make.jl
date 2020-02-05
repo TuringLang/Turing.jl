@@ -23,14 +23,20 @@ end
 # connection by calling `julia make.jl no-tutorials`
 in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
-version_rx = r"v\d.\d.\d"
+
+# set default baseurl for the master branch
 baseurl = "/dev"
-ghref = replace(get(ENV, "GITHUB_REF", ""), "/refs/tags" => "")
-if get(ENV, "TRAVIS_TAG", "") != ""
-    baseurl = "/" * ENV["TRAVIS_TAG"]
-elseif !isnothing(match(version_rx, ghref))
-    baseurl = "/" * ghref
+# set baseurl for version tag when current head is tagged
+vtag = get(ENV, "TRAVIS_TAG", "") # if on Travis
+if isempty(vtag) # so we are using GitHub Actions
+    vtag = replace(get(ENV, "GITHUB_REF", ""), r"/?refs/tags/?" => "")
 end
+
+version_match = match(r"^(v\d+\.\d+\.\d+)$", vtag)
+if !isnothing(version_match)
+    baseurl = "/" * version_match[1]
+end
+
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)
 
