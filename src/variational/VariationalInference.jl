@@ -206,10 +206,10 @@ function make_logjoint(model; weight = 1.0)
         DynamicPPL.DefaultContext(),
         weight
     )
-    varinfo = Turing.VarInfo(model, ctx)
+    varinfo_init = Turing.VarInfo(model, ctx)
 
     function logπ(z)
-        varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+        varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
         model(varinfo)
         
         return varinfo.logp
