@@ -142,7 +142,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     # compute logpdf for each occupied table
-    @inbounds for i in (first_zero === nothing ? findall(!iszero, m) : 1:(K-1))
+    @inbounds for i in 1:(K-1)
         table[i] = T(log(m[i]))
     end
 
@@ -203,7 +203,7 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
     @assert d.t == sum(!iszero, m)
 
     # construct table
-    first_zero = finfirst(iszero, m)
+    first_zero = findfirst(iszero, m)
     K = first_zero === nothing ? length(m)+1 : length(m)
     table = fill(T(-Inf), K)
 
@@ -214,8 +214,8 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     # compute logpdf for each occupied table
-    @inbounds for i in (first_zero === nothing ? findall(!iszero, m) : 1:(K-1))
-        table[i] = T(log(m[i] - d.d))
+    @inbounds for i in 1:(K-1)
+        !iszero(m[i]) && ( table[i] = T(log(m[i] - d.d)) )
     end
 
     # logpdf for new table
