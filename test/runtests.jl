@@ -36,6 +36,10 @@ include("test_utils/AllUtils.jl")
         @testset "algorithms" begin
             include("variational/advi.jl")
         end
+
+        @testset "optimisers" begin
+            include("variational/optimisers.jl")
+        end
     end
 
     @testset "stdlib" begin
@@ -48,3 +52,4 @@ include("test_utils/AllUtils.jl")
         include("utilities/util.jl")
     end
 end
+

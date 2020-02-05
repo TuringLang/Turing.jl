@@ -1,5 +1,21 @@
 const ϵ = 1e-8
 
+"""
+    TruncatedADAGrad(η=0.1, τ=1.0, n=100)
+
+Implements a truncated version of AdaGrad in the sense that only the `n` previous gradient norms are used to compute the scaling rather than *all* previous. It has parameter specific learning rates based on how frequently it is updated.
+
+## Parameters
+  - η: learning rate
+  - τ: constant scale factor
+  - n: number of previous gradient norms to use in the scaling.
+```
+## References
+[ADAGrad](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf) optimiser.
+Parameters don't need tuning.
+
+[TruncatedADAGrad](https://arxiv.org/abs/1506.03431v2) (Appendix E).
+"""
 mutable struct TruncatedADAGrad
     eta::Float64
     tau::Float64
@@ -44,7 +60,20 @@ function apply!(o::TruncatedADAGrad, x, Δ)
     @. Δ *= η / (τ + sqrt(s) + ϵ)
 end
 
+"""
+    DecayedADAGrad(η=0.1, pre=1.0, post=0.9)
 
+Implements a decayed version of AdaGrad. It has parameter specific learning rates based on how frequently it is updated.
+
+## Parameters
+  - η: learning rate
+  - pre: weight of new gradient norm
+  - post: weight of histroy of gradient norms
+```
+## References
+[ADAGrad](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf) optimiser.
+Parameters don't need tuning.
+"""
 mutable struct DecayedADAGrad
     eta::Float64
     pre::Float64
