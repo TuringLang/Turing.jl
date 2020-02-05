@@ -6,6 +6,10 @@ using Random: AbstractRNG, GLOBAL_RNG
 
 update(d::TuringDiagMvNormal, μ, σ) = TuringDiagMvNormal(μ, σ)
 update(td::TransformedDistribution, θ...) = transformed(update(td.dist, θ...), td.transform)
+function update(td::TransformedDistribution{<:TuringDiagMvNormal}, θ::AbstractArray)
+    μ, ω = θ[1:length(td)], θ[length(td) + 1:end]
+    return update(td, μ, softplus.(ω))
+end
 
 # TODO: add these to DistributionsAD.jl and remove from here
 Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
@@ -113,7 +117,6 @@ function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
     return vi(model, alg, q; optimizer = optimizer)
 end
 
-# TODO: make more flexible, allowing other types of `q`
 function vi(model, alg::ADVI, q::TransformedDistribution{<:TuringDiagMvNormal}; optimizer = TruncatedADAGrad())
     Turing.DEBUG && @debug "Optimizing ADVI..."
     # Initial parameters for mean-field approx
@@ -124,8 +127,7 @@ function vi(model, alg::ADVI, q::TransformedDistribution{<:TuringDiagMvNormal}; 
     optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
 
     # Return updated `Distribution`
-    μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
-    return update(q, μ, softplus.(ω))
+    return update(q, θ)
 end
 
 function vi(model, alg::ADVI, q, θ_init; optimizer = TruncatedADAGrad())
@@ -135,8 +137,7 @@ function vi(model, alg::ADVI, q, θ_init; optimizer = TruncatedADAGrad())
 
     # If `q` is a mean-field approx we use the specialized `update` function
     if q isa TransformedDistribution{<:TuringDiagMvNormal}
-        μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
-        return update(q, μ, softplus.(ω))
+        return update(q, θ)
     else
         # Otherwise we assume it's a mapping θ → q
         return q(θ)
@@ -157,87 +158,14 @@ function optimize(elbo::ELBO, alg::ADVI, q, model, θ_init; optimizer = Truncate
     return θ
 end
 
-"""
-    make_logjoint(model; weight = 1.0)
-
-Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).
-
-The weight used to scale the likelihood, e.g. when doing stochastic gradient descent one needs to
-use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_obs / batch_size`.
-"""
-function make_logjoint(model; weight = 1.0)
-    # setup
-    ctx = DynamicPPL.MiniBatchContext(
-        DynamicPPL.DefaultContext(),
-        weight
-    )
-    varinfo = Turing.VarInfo(model, ctx)
-
-    function logπ(z)
-        varinfo = VarInfo(varinfo, SampleFromUniform(), z)
-        model(varinfo)
-        
-        return varinfo.logp
-    end
-
-    return logπ
-end
-
-function logjoint(model, varinfo, z)
-    varinfo = VarInfo(varinfo, SampleFromUniform(), z)
-    model(varinfo)
-
-    return varinfo.logp
-end
-
-function (elbo::ELBO)(alg::ADVI, q, logπ, θ, num_samples; kwargs...)
-    return elbo(GLOBAL_RNG, alg, q, logπ, θ, num_samples; kwargs...)
-end
-
-
+# WITHOUT updating parameters inside ELBO
 function (elbo::ELBO)(
     rng::AbstractRNG,
     alg::ADVI,
-    q,
-    model::Model,
-    θ::AbstractVector{<:Real},
-    num_samples;
-    weight = 1.0,
-    kwargs...
-)   
-    return elbo(rng, alg, q, make_logjoint(model; weight = weight), θ, num_samples; kwargs...)
-end
-
-function (elbo::ELBO)(
-    alg::ADVI,
-    q::TransformedDistribution{<:TuringDiagMvNormal},
-    model::Model,
-    num_samples;
-    kwargs...
-)
-    # extract the mean-field Gaussian params
-    μ, σs = params(q)
-    θ = vcat(μ, invsoftplus.(σs))
-
-    return elbo(alg, q, model, θ, num_samples; kwargs...)
-end
-
-
-function (elbo::ELBO)(
-    rng::AbstractRNG,
-    alg::ADVI,
-    q::TransformedDistribution{<:TuringDiagMvNormal},
+    q::VariationalPosterior,
     logπ::Function,
-    θ::AbstractVector{<:Real},
     num_samples
 )
-    num_params = length(q)
-    μ = θ[1:num_params]
-    ω = θ[num_params + 1: end]
-
-    # update the variational posterior
-    q = update(q, μ, softplus.(ω))
-
     #   𝔼_q(z)[log p(xᵢ, z)]
     # = ∫ log p(xᵢ, z) q(z) dz
     # = ∫ log p(xᵢ, f(ϕ)) q(f(ϕ)) |det J_f(ϕ)| dϕ   (since change of variables)
@@ -261,31 +189,6 @@ function (elbo::ELBO)(
     #      = 𝔼[log p(x, z) - logabsdetjac(J(f(z)))] + ℍ(q̃(z̃))
 
     # But our `forward(q)` is using f⁻¹: ℝ → supp(p(z | x)) going forward → `+ logjac`
-    _, z, logjac, _ = forward(rng, q)
-    res = (logπ(z) + logjac) / num_samples
-
-    res += entropy(q.dist)
-    
-    for i = 2:num_samples
-        _, z, logjac, _ = forward(rng, q)
-        res += (logπ(z) + logjac) / num_samples
-    end
-
-    return res
-end
-
-function (elbo::ELBO)(
-    rng::AbstractRNG,
-    alg::ADVI,
-    getq::Function,
-    logπ::Function,
-    θ::AbstractVector{<:Real},
-    num_samples
-)
-    # Update the variational posterior
-    q = getq(θ)
-
-    # ELBO computation
     _, z, logjac, _ = forward(rng, q)
     res = (logπ(z) + logjac) / num_samples
 

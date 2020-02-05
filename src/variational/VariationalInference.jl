@@ -98,9 +98,11 @@ function grad!(
     out::DiffResults.MutableDiffResult,
     args...
 )
-    # TODO: this probably slows down executation quite a bit; exists a better way
-    # of doing this?
-    f(θ_) = - vo(alg, q, model, θ_, args...)
+    f(θ_) = if (q isa VariationalPosterior)
+        - vo(alg, update(q, θ_), model, args...)
+    else
+        - vo(alg, q(θ_), model, args...)
+    end
 
     chunk_size = getchunksize(typeof(alg))
     # Set chunk size and do ForwardMode.
@@ -119,7 +121,11 @@ function grad!(
     args...
 )
     θ_tracked = Tracker.param(θ)
-    y = - vo(alg, q, model, θ_tracked, args...)
+    y = if (q isa VariationalPosterior)
+        - vo(alg, update(q, θ_tracked), model, args...)
+    else
+        - vo(alg, q(θ_tracked), model, args...)
+    end
     Tracker.back!(y, 1.0)
 
     DiffResults.value!(out, Tracker.data(y))
@@ -185,6 +191,40 @@ function optimize!(
 
     return θ
 end
+
+"""
+    make_logjoint(model; weight = 1.0)
+
+Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).
+
+The weight used to scale the likelihood, e.g. when doing stochastic gradient descent one needs to
+use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_obs / batch_size`.
+"""
+function make_logjoint(model; weight = 1.0)
+    # setup
+    ctx = DynamicPPL.MiniBatchContext(
+        DynamicPPL.DefaultContext(),
+        weight
+    )
+    varinfo = Turing.VarInfo(model, ctx)
+
+    function logπ(z)
+        varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+        model(varinfo)
+        
+        return varinfo.logp
+    end
+
+    return logπ
+end
+
+function logjoint(model, varinfo, z)
+    varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+    model(varinfo)
+
+    return varinfo.logp
+end
+
 
 # objectives
 include("objectives.jl")
