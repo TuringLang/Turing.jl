@@ -19,6 +19,7 @@ using ConjugatePriors
 @model model(x) = begin
     s ~ InverseGamma(2, 3)
     m ~ Normal(0.0, sqrt(s))  # `Normal(μ, σ)` has mean μ and variance σ², i.e. parametrize with std. not variance
+
     for i = 1:length(x)
         x[i] ~ Normal(m, sqrt(s))
     end
@@ -45,7 +46,7 @@ for seed ∈ seeds
         
         # ADVI
         opt = Variational.TruncatedADAGrad()   # optimizer
-        Variational.TruncatedADAGrad()
+
         advi = ADVI(10, 100)                   # <: VariationalInference
         q = Variational.meanfield(m)           # => <: VariationalPosterior
         
