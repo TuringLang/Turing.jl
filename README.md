@@ -1,7 +1,7 @@
 # Turing.jl
 
 [![Build Status](https://travis-ci.org/TuringLang/Turing.jl.svg?branch=master)](https://travis-ci.org/TuringLang/Turing.jl)
-[![Build Status](https://dev.azure.com/yebai/TuringLang/_apis/build/status/TuringLang.Turing.jl?branchName=master)](https://dev.azure.com/yebai/TuringLang/_build/latest?definitionId=1&branchName=master)
+![Build Status](https://github.com/TuringLang/Turing.jl/workflows/Turing-CI/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/yebai/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/yebai/Turing.jl?branch=master)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](https://turing.ml/dev/docs/using-turing/)
 
