@@ -100,11 +100,11 @@ Generate a log density function -- this variant uses the
 function gen_logπ_mh(spl::Sampler, model)
     function logπ(x)::Float64
         vi = spl.state.vi
-        x_old, lj_old = vi[spl], vi.logp
+        x_old, lj_old = vi[spl], getlogp(vi)
         # vi[spl] = x
         set_namedtuple!(vi, x)
         runmodel!(model, vi)
-        lj = vi.logp
+        lj = getlogp(vi)
         vi[spl] = x_old
         setlogp!(vi, lj_old)
         return lj
@@ -215,8 +215,7 @@ function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
-    N::Integer,
-    T::Union{Transition, Nothing} = nothing;
+    N::Integer;
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp
