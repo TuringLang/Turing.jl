@@ -78,7 +78,7 @@ end
 
 function sample_init!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -107,9 +107,10 @@ end
 
 function step!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:SMC},
-    ::Integer;
+    ::Integer,
+    transition::Union{Nothing,AbstractTransition} = nothing;
     iteration=-1,
     kwargs...
 )
@@ -184,7 +185,7 @@ end
 
 function step!(
     ::AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     spl::Sampler{<:PG},
     ::Integer;
     kwargs...
@@ -194,7 +195,7 @@ function step!(
     ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
 
     # reset the VarInfo before new sweep
-    vi.num_produce = 0
+    reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
 
@@ -272,7 +273,7 @@ function assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, 
             r = rand(dist)
             vi[vn] = vectorize(dist, r)
             setgid!(vi, spl.selector, vn)
-            setorder!(vi, vn, vi.num_produce)
+            setorder!(vi, vn, get_num_produce(vi))
         else
             updategid!(vi, vn, spl)
             r = vi[vn]

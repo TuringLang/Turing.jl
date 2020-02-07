@@ -89,11 +89,11 @@ function gradient_logp_forward(
     sampler::AbstractSampler=SampleFromPrior(),
 )
     # Define function to compute log joint.
-    logp_old = vi.logp
+    logp_old = getlogp(vi)
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        logp = runmodel!(model, new_vi, sampler).logp
-        vi.logp = ForwardDiff.value(logp)
+        logp = getlogp(runmodel!(model, new_vi, sampler))
+        setlogp!(vi, ForwardDiff.value(logp))
         return logp
     end
 
@@ -102,8 +102,8 @@ function gradient_logp_forward(
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = vi.logp
-    vi.logp = logp_old
+    l = getlogp(vi)
+    setlogp!(vi, logp_old)
 
     return l, ∂l∂θ
 end
@@ -125,12 +125,12 @@ function gradient_logp_reverse(
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
-    T = typeof(vi.logp)
+    T = typeof(getlogp(vi))
 
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        return runmodel!(model, new_vi, sampler).logp
+        return getlogp(runmodel!(model, new_vi, sampler))
     end
 
     # Compute forward and reverse passes.

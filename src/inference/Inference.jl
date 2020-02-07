@@ -16,11 +16,13 @@ using AbstractMCMC, DynamicPPL
 
 import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
+import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADtype
 import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
     transitions_init, sample_end!, AbstractSampler, transition_type,
     callback, init_callback, AbstractCallback, psample
-import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type
+import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
+    VarName, _getranges, _getindex, getval, _getvns
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -143,20 +145,22 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
+    return sample(rng, model, Sampler(alg, model), N; progress=PROGRESS[], chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    chain_type=Chains,
     resume_from=nothing,
     kwargs...
 )
     if resume_from === nothing
-        return sample(model, Sampler(alg, model), N; progress=PROGRESS[], kwargs...)
+        return sample(model, Sampler(alg, model), N; progress=PROGRESS[], chain_type=chain_type, kwargs...)
     else
         return resume(resume_from, N)
     end
@@ -168,9 +172,10 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, kwargs...)
+    return psample(GLOBAL_RNG, model, alg, N, n_chains; progress=false, chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.psample(
@@ -179,9 +184,10 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
+    chain_type=Chains,
     kwargs...
 )
-    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, kwargs...)
+    return psample(rng, model, Sampler(alg, model), N, n_chains; progress=false, chain_type=chain_type, kwargs...)
 end
 
 function AbstractMCMC.sample_init!(
@@ -317,7 +323,8 @@ function AbstractMCMC.bundle_samples(
     model::AbstractModel,
     spl::Sampler,
     N::Integer,
-    ts::Vector{<:AbstractTransition};
+    ts::Vector{<:AbstractTransition},
+    chain_type::Type{Chains};
     discard_adapt::Bool=true,
     save_state=true,
     kwargs...
@@ -369,12 +376,41 @@ function AbstractMCMC.bundle_samples(
     )
 end
 
+function AbstractMCMC.bundle_samples(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    spl::Sampler,
+    N::Integer,
+    ts::Vector{<:AbstractTransition},
+    chain_type::Type{Vector{NamedTuple}};
+    discard_adapt::Bool=true,
+    save_state=true,
+    kwargs...
+)
+    nts = Vector{NamedTuple}(undef, N)
+
+    for (i,t) in enumerate(ts)
+        k = collect(keys(t.θ))
+        vs = []
+        for v in values(t.θ)
+            push!(vs, v[1])
+        end
+
+        push!(k, :lp)
+        
+        
+        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., t.lp))
+    end
+
+    return map(identity, nts)
+end
+
 function save(c::Chains, spl::AbstractSampler, model, vi, samples)
     nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(c::Chains, n_iter::Int; kwargs...)
+function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
@@ -385,6 +421,7 @@ function resume(c::Chains, n_iter::Int; kwargs...)
         n_iter;
         resume_from=c,
         reuse_spl_n=n_iter,
+        chain_type=Chains,
         kwargs...
     )
 
@@ -572,7 +609,7 @@ function assume(
             unset_flag!(vi, vn, "del")
             r = spl isa SampleFromUniform ? init(dist) : rand(dist)
             vi[vn] = vectorize(dist, r)
-            setorder!(vi, vn, vi.num_produce)
+            setorder!(vi, vn, get_num_produce(vi))
         else
         r = vi[vn]
         end
@@ -593,7 +630,7 @@ function observe(
     value,
     vi::VarInfo,
 )
-    vi.num_produce += one(vi.num_produce)
+    increment_num_produce!(vi)
     return logpdf(dist, value)
 end
 
@@ -739,7 +776,7 @@ function get_and_set_val!(
             for i in 1:n
                 vn = vns[i]
                 vi[vn] = vectorize(dist, r[:, i])
-                setorder!(vi, vn, vi.num_produce)
+                setorder!(vi, vn, get_num_produce(vi))
             end
         else
         r = vi[vns]
@@ -767,7 +804,7 @@ function get_and_set_val!(
                 vn = vns[i]
                 dist = dists isa AbstractArray ? dists[i] : dists
                 vi[vn] = vectorize(dist, r[i])
-                setorder!(vi, vn, vi.num_produce)
+                setorder!(vi, vn, get_num_produce(vi))
             end
         else
         r = reshape(vi[vec(vns)], size(vns))
@@ -839,7 +876,7 @@ function dot_observe(
     value::AbstractMatrix,
     vi::VarInfo,
 )
-    vi.num_produce += one(vi.num_produce)
+    increment_num_produce!(vi)
     Turing.DEBUG && @debug "dist = $dist"
     Turing.DEBUG && @debug "value = $value"
     return sum(logpdf(dist, value))
@@ -850,7 +887,7 @@ function dot_observe(
     value::AbstractArray,
     vi::VarInfo,
 )
-    vi.num_produce += one(vi.num_produce)
+    increment_num_produce!(vi)
     Turing.DEBUG && @debug "dists = $dists"
     Turing.DEBUG && @debug "value = $value"
     return sum(logpdf.(dists, value))

@@ -116,7 +116,7 @@ function (elbo::ELBO)(
         # compute log density
         varinfo = VarInfo(varinfo, SampleFromUniform(), z)
         model(varinfo)
-        elbo_acc += varinfo.logp / num_samples
+        elbo_acc += getlogp(varinfo) / num_samples
     end
 
     # add the term for the entropy of the variational posterior
