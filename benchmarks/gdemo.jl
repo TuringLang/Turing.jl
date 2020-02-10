@@ -1,4 +1,4 @@
-using Turing, ContinuousBenchmarks.TuringTools
+using Turing, BenchmarkHelper
 
 @model gdemo(x, y) = begin
     s ~ InverseGamma(2, 3)
@@ -11,6 +11,4 @@ end
 data = (1.5, 2.0)
 
 # sample(gdemo(1.5, 2.0), Turing.NUTS(2000000, 0.65));
-LOG_DATA = @tbenchmark(Turing.NUTS(2000000, 0.65), gdemo, data...)
-
-print_log(LOG_DATA)
+BENCHMARK_RESULT = @tbenchmark(Turing.NUTS(2000000, 0.65), gdemo, data...)

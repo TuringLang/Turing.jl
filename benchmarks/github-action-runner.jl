@@ -2,12 +2,15 @@ using Logging
 using JSON
 using GitHub
 
+push!(LOAD_PATH, abspath(@__DIR__))
+using BenchmarkHelper
+
 log_level =  Logging.Debug # Logging.Info | Logging.Warn | Logging.Error
 global_logger(SimpleLogger(stdout, log_level))
 
 # setup global variables
 EVENT_FILE = get(ENV, "GITHUB_EVENT_PATH", "")
-if EVENT_FILE == ""
+if isempty(EVENT_FILE)
     @error "No github event file specified."
     exit(0)
 end
@@ -16,6 +19,24 @@ EVENT_DATA = JSON.Parser.parsefile(EVENT_FILE)
 @debug EVENT_DATA
 
 # Utilities
+
+function bm_branches(br_text)
+    branches = filter(!isempty, map(strip, split(br_text, ",")))
+    if isempty(branches)
+        return ["HEAD", "master"]
+    elseif length(branches) == 1
+        if "master" in branches
+            return push!(branches, "master")
+        end
+        return push!(branches, "HEAD")
+    else
+        return branches
+    end
+end
+
+function bm_benchmarks(bm_text)
+    return filter(!isempty, map(strip, split(bm_text, ",")))
+end
 
 function reply_comment(event_data, body)
     repo = event_data["repository"]["full_name"]
@@ -43,22 +64,28 @@ if EVENT_DATA["action"] != "created" || !haskey(EVENT_DATA, "comment")
     exit(0)
 end
 
-comment_url = EVENT_DATA["comment"]["html_url"]
-comment_id = EVENT_DATA["comment"]["id"]
 comment_body = EVENT_DATA["comment"]["body"]
 user = EVENT_DATA["comment"]["user"]["login"]
 
 reg_bm_cmd = r"!benchmark\((.*)\)"i
 bm_cmd = match(reg_bm_cmd, comment_body)
 if (bm_cmd != nothing)
-    @info "benchmark command:", bm_cmd.captures[1]
-    body = "Got benchmark command: $(bm_cmd.captures[1])"
-    reply_comment(EVENT_DATA, body)
+    @info "benchmark command:", bm_cmd.match
+    branches = bm_branches(bm_cmd.captures[1])
+    body = [
+        "Hi @$user, I just got a benchmark command from you: `$(bm_cmd.match)`"
+        "I will run a benchmark on branches $branches as soon as possible."
+    ]
+    reply_comment(EVENT_DATA, join(body, "\n"))
+else
+    @info "No benchmarking command found in the comment."
+    exit(0)
 end
 
-
-# Check if we should run benchmarks on current event
-
+# Run benchmarks on current event
+result_files = []
+# TODO
+BenchmarkHelper.run_benchmark("benchmarks/dummy.jl")
 
 # Comment the benchmark results
 # TODO

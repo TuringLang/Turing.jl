@@ -1,4 +1,4 @@
-using Turing, ContinuousBenchmarks.TuringTools, ContinuousBenchmarks.Reporter
+using Turing, BenchmarkHelper
 
 data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
@@ -14,10 +14,9 @@ end
 
 log_report("Dummy model constructed!")
 
-LOG_DATA = @tbenchmark(HMC(1000, 1.5, 3), constrained_test, data)
+# BENCHMARK_RESULT = @tbenchmark(HMC(1.5, 3), constrained_test, data)
+BENCHMARK_RESULT = @tbenchmark_expr "HMC" sample(constrained_test(data),
+                                           HMC(1.5, 3),
+                                           1000)
 
 log_report("Dummy benchmark finished!")
-
-print_log(LOG_DATA)
-
-log_report("Dummy benchmark printed!")
