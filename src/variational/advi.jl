@@ -136,7 +136,7 @@ function vi(model, alg::ADVI, q, θ_init; optimizer = TruncatedADAGrad())
     optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
 
     # If `q` is a mean-field approx we use the specialized `update` function
-    if q isa TransformedDistribution{<:TuringDiagMvNormal}
+    if q isa Distribution
         return update(q, θ)
     else
         # Otherwise we assume it's a mapping θ → q
@@ -163,7 +163,7 @@ function (elbo::ELBO)(
     rng::AbstractRNG,
     alg::ADVI,
     q::VariationalPosterior,
-    logπ,
+    logπ::Function,
     num_samples
 )
     #   𝔼_q(z)[log p(xᵢ, z)]
