@@ -17,8 +17,8 @@ n_samples = 100_000
 n_adapts = 2_000
 
 # Sampling
-BENCHMARK_RESULT = @tbenchmark_expr("NUTS(Leapfrog(...))",
-                                    sample(target(D), HMC(0.1, 5), n_samples));
+BENCHMARK_RESULT = @benchmark_expr("NUTS(Leapfrog(...))",
+                                   sample(target(D), HMC(0.1, 5), n_samples));
 
 ##
 ## MvNormal: ForwardDiff vs BackwardDiff (Tracker)

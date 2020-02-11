@@ -14,9 +14,8 @@ end
 
 log_report("Dummy model constructed!")
 
-# BENCHMARK_RESULT = @tbenchmark(HMC(1.5, 3), constrained_test, data)
-BENCHMARK_RESULT = @tbenchmark_expr "HMC" sample(constrained_test(data),
-                                                 HMC(1.5, 3),
-                                                 1000)
+BENCHMARK_RESULT = @benchmark_expr "HMC" sample(constrained_test(data),
+                                                HMC(1.5, 3),
+                                                1000)
 
 log_report("Dummy benchmark finished!")

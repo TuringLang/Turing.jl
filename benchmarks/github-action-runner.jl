@@ -1,6 +1,5 @@
 using Logging
 using JSON
-using GitHub
 
 push!(LOAD_PATH, abspath(@__DIR__))
 using BenchmarkHelper
@@ -18,45 +17,6 @@ end
 EVENT_DATA = JSON.Parser.parsefile(EVENT_FILE)
 @debug EVENT_DATA
 
-# Utilities
-
-function bm_branches(br_text)
-    branches = filter(!isempty, map(strip, split(br_text, ",")))
-    if isempty(branches)
-        return ["HEAD", "master"]
-    elseif length(branches) == 1
-        if "master" in branches
-            return push!(branches, "master")
-        end
-        return push!(branches, "HEAD")
-    else
-        return branches
-    end
-end
-
-function bm_benchmarks(bm_text)
-    return filter(!isempty, map(strip, split(bm_text, ",")))
-end
-
-function reply_comment(event_data, body)
-    repo = event_data["repository"]["full_name"]
-    auth = GitHub.authenticate(get(ENV, "GITHUB_TOKEN", ""))
-    params = Dict("body" => body)
-
-    comment_kind = :issue
-    comment_parent = nothing
-
-    if haskey(EVENT_DATA, "issue")
-        comment_kind = :issue
-        comment_parent = event_data["issue"]["number"]
-    elseif haskey(event_data["comment"], "commit_id")
-        comment_kind = :commit
-        comment_parent = event_data["comment"]["commit_id"]
-    end
-
-    create_comment(repo, comment_parent, comment_kind; params=params, auth=auth)
-end
-
 # Extract event information
 
 if EVENT_DATA["action"] != "created" || !haskey(EVENT_DATA, "comment")
@@ -64,28 +24,29 @@ if EVENT_DATA["action"] != "created" || !haskey(EVENT_DATA, "comment")
     exit(0)
 end
 
-comment_body = EVENT_DATA["comment"]["body"]
 user = EVENT_DATA["comment"]["user"]["login"]
+branches = BenchmarkHelper.target_branches(EVENT_DATA)
 
-reg_bm_cmd = r"!benchmark\((.*)\)"i
-bm_cmd = match(reg_bm_cmd, comment_body)
-if (bm_cmd != nothing)
-    @info "benchmark command:", bm_cmd.match
-    branches = bm_branches(bm_cmd.captures[1])
+if (branches != nothing)
+    @info "benchmark target branches:", branches
     body = [
-        "Hi @$user, I just got a benchmark command from you: `$(bm_cmd.match)`"
+        "Hi @$user, I just got a benchmark command from you,"
         "I will run a benchmark on branches $branches as soon as possible."
     ]
-    reply_comment(EVENT_DATA, join(body, "\n"))
+    BenchmarkHelper.reply_comment(EVENT_DATA, join(body, "\n"))
 else
     @info "No benchmarking command found in the comment."
+    body = [
+        "Hi @$user, I just got a benchmark command from you,"
+        "But I can't determine on which branches to run,"
+        "Please specify the branches in your command."
+    ]
+    BenchmarkHelper.reply_comment(EVENT_DATA, join(body, "\n"))
     exit(0)
 end
 
 # Run benchmarks on current event
-result_files = []
-# TODO
-BenchmarkHelper.run_benchmark("benchmarks/dummy.jl")
+BenchmarkHelper.run_benchmarks(branches)
 
 # Comment the benchmark results
-reply_comment(EVENT_DATA, BenchmarkHelper.get_results(user))
+BenchmarkHelper.reply_comment(EVENT_DATA, BenchmarkHelper.get_results(user))
