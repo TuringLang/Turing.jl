@@ -1,5 +1,7 @@
-using Turing, TuringBenchmarks.TuringTools
+using Turing
 using LinearAlgebra
+
+using BenchmarkHelper
 
 include("lr_helper.jl")
 
@@ -22,4 +24,4 @@ end
 n_samples = 10_000
 
 # Sampling
-@tbenchmark chain = sample(hlr_nuts(x, y, 1/0.1), NUTS(0.65), n_samples);
+BENCHMARK_RESULT = @benchmark_expr "HLR_NUTS" sample(hlr_nuts(x, y, 1/0.1), NUTS(0.65), n_samples)

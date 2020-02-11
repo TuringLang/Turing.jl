@@ -90,7 +90,8 @@ function target_branches(event_data)
         return nothing
     end
 
-    branches = filter(!isempty, map(x -> strip(x, [' ', '"']), split(bm_cmd.captures[1], ",")))
+    branches = filter(!isempty, map(x -> strip(x, [' ', '"']),
+                                    split(bm_cmd.captures[1], ",")))
     target = "master"
     if haskey(event_data, "pull_request")
         target = event_data["pull_request"]["head"]["ref"]
@@ -131,12 +132,25 @@ function reply_comment(event_data, body)
         comment_parent = event_data["comment"]["commit_id"]
     end
 
-    create_comment(repo, comment_parent, comment_kind; params=params, auth=auth)
+    create_comment(repo, comment_parent, comment_kind;
+                   params=params, auth=auth)
 end
 
 function benchmark_files()
-    filter(readdir(joinpath(PROJECT_DIR, "benchmarks"))) do file
-        !in(file, NON_BENCHMARK_FILES) && endswith(file, ".jl")
+    bm_files = []
+    for (root, dirs, files) in walkdir(joinpath(PROJECT_DIR, "benchmarks"))
+        for file in files
+            push!(bm_files,joinpath(root, file))
+        end
+    end
+
+    bm_files = map(bm_files) do path
+        replace(path, joinpath(PROJECT_DIR, "benchmarks/") => "")
+    end
+
+    filter(bm_files) do file
+        !in(file, NON_BENCHMARK_FILES) &&
+            !endswith(file, "_helper.jl") && endswith(file, ".jl")
     end
 end
 
@@ -162,8 +176,9 @@ function run_benchmarks(branches)
     for branch in branches
         run(`git checkout .`)
         run(`git checkout $branch`)
-        # TODO
-        run_benchmark("benchmarks/dummy.jl")
+        for bm in benchmark_files()
+            run_benchmark(joinpath("benchmarks", bm))
+        end
     end
 end
 
