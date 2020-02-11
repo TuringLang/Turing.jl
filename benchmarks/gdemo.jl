@@ -10,4 +10,6 @@ end
 
 data = (1.5, 2.0)
 
-BENCHMARK_RESULT = @benchmark_expr "NUTS" sample(gdemo(1.5, 2.0), Turing.NUTS(2000000, 0.65))
+BENCHMARK_RESULT = @benchmark_expr "NUTS" sample(gdemo(1.5, 2.0),
+                                                 Turing.NUTS(1000, 0.65),
+                                                 6000)

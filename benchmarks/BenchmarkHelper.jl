@@ -136,6 +136,15 @@ function reply_comment(event_data, body)
                    params=params, auth=auth)
 end
 
+function benchmark_excluded(file)
+    excludes = joinpath(PROJECT_DIR, "benchmarks", "excludes.txt")
+    patterns = readlines(excludes)
+    for pat in patterns
+        match(Regex(pat), file) != nothing && return true
+    end
+    return false
+end
+
 function benchmark_files()
     bm_files = []
     for (root, dirs, files) in walkdir(joinpath(PROJECT_DIR, "benchmarks"))
@@ -150,7 +159,9 @@ function benchmark_files()
 
     filter(bm_files) do file
         !in(file, NON_BENCHMARK_FILES) &&
-            !endswith(file, "_helper.jl") && endswith(file, ".jl")
+            !endswith(file, "_helper.jl") &&
+            endswith(file, ".jl") &&
+            !benchmark_excluded(file)
     end
 end
 
@@ -158,7 +169,7 @@ function run_benchmark(file)
     empty!(REPORTED_LOGS)
     code = """
     using Pkg;
-    pkg"instantiate; add JSON GitHub;"
+    pkg"instantiate; add JSON GitHub BenchmarkTools;"
     Pkg.build(verbose=true)
     push!(LOAD_PATH, joinpath("$(PROJECT_DIR)", "benchmarks"))
     using BenchmarkHelper

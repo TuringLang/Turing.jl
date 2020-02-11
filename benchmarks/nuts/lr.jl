@@ -20,7 +20,9 @@ X, Y = readlrdata()
 end
 
 # Sampling parameter settings
+n_samples = 1_000
 n_adapts = 1_000
 
 # Sampling
-BENCHMARK_RESULT = @benchmark_expr "LR_NUTS" sample(lr_nuts(x, y, 100), NUTS(0.65), n_samples)
+BENCHMARK_RESULT = @benchmark_expr "LR_NUTS" sample(lr_nuts(X, Y, 100),
+                                                    NUTS(0.65), n_samples)
