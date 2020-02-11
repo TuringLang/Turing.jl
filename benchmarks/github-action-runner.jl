@@ -88,4 +88,4 @@ result_files = []
 BenchmarkHelper.run_benchmark("benchmarks/dummy.jl")
 
 # Comment the benchmark results
-# TODO
+reply_comment(EVENT_DATA, BenchmarkHelper.get_results(user))
