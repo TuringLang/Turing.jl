@@ -13,6 +13,7 @@ end
 
 # TODO: add these to DistributionsAD.jl and remove from here
 Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
+Base.size(d::TuringDiagMvNormal) = (length(d), ) # Fixes a bug in DistributionsAD.jl
 
 import StatsBase: entropy
 function entropy(d::TuringDiagMvNormal)
@@ -198,7 +199,11 @@ function (elbo::ELBO)(
     _, z, logjac, _ = forward(rng, q)
     res = (logπ(z) + logjac) / num_samples
 
-    res += entropy(q.dist)
+    if q isa TransformedDistribution
+        res += entropy(q.dist)
+    else
+        res += entropy(q)
+    end
     
     for i = 2:num_samples
         _, z, logjac, _ = forward(rng, q)
