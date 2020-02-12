@@ -21,6 +21,12 @@ function entropy(d::TuringDiagMvNormal)
 end
 
 import Bijectors: bijector
+"""
+    bijector(model::Model; sym_to_ranges = Val(false))
+
+Returns a `Stacked <: Bijector` which maps from the support of the posterior to ℝᵈ with `d`
+denoting the dimensionality of the latent variables.
+"""
 function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) where {sym2ranges}
     varinfo = Turing.VarInfo(model)
     num_params = sum([size(varinfo.metadata[sym].vals, 1)

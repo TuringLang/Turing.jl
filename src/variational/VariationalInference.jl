@@ -138,7 +138,7 @@ function TrackedArray(f::Call, x::SA) where {T, N, A, SA<:SubArray{T, N, A}}
 end
 
 """
-    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = TruncatedADAGrad())
+    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model, θ; optimizer = TruncatedADAGrad())
 
 Iteratively updates parameters by calling `grad!` and using the given `optimizer` to compute
 the steps.
@@ -193,14 +193,14 @@ function optimize!(
 end
 
 """
-    make_logjoint(model; weight = 1.0)
+    make_logjoint(model::Model; weight = 1.0)
 
 Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).
 
 The weight used to scale the likelihood, e.g. when doing stochastic gradient descent one needs to
 use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_obs / batch_size`.
 """
-function make_logjoint(model; weight = 1.0)
+function make_logjoint(model::Model; weight = 1.0)
     # setup
     ctx = DynamicPPL.MiniBatchContext(
         DynamicPPL.DefaultContext(),
@@ -212,17 +212,17 @@ function make_logjoint(model; weight = 1.0)
         varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
         model(varinfo)
         
-        return varinfo.logp
+        return getlogp(varinfo)
     end
 
     return logπ
 end
 
-function logjoint(model, varinfo, z)
+function logjoint(model::Model, varinfo, z)
     varinfo = VarInfo(varinfo, SampleFromUniform(), z)
     model(varinfo)
 
-    return varinfo.logp
+    return getlogp(varinfo)
 end
 
 
