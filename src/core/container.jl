@@ -33,7 +33,7 @@ end
 function Trace(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
     res = Trace{typeof(spl)}(m, spl, deepcopy(vi));
     # CTask(()->f());
-    res.vi.num_produce = 0
+    reset_num_produce!(res.vi)
     res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )
     if res.task.storage === nothing
         res.task.storage = IdDict()
@@ -43,7 +43,7 @@ function Trace(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
 end
 
 # step to the next observe statement, return log likelihood
-Libtask.consume(t::Trace) = (t.vi.num_produce += 1; consume(t.task))
+Libtask.consume(t::Trace) = (increment_num_produce!(t.vi); consume(t.task))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)
@@ -58,7 +58,7 @@ end
 function forkr(trace :: Trace)
     newtrace = Trace(trace.task.code, trace.model, trace.spl, deepcopy(trace.vi))
     newtrace.spl = trace.spl
-    newtrace.vi.num_produce = 0
+    reset_num_produce!(newtrace.vi)
     return newtrace
 end
 
