@@ -114,7 +114,8 @@ end
 
 function reply_comment(event_data, body)
     repo = event_data["repository"]["full_name"]
-    auth = GitHub.authenticate(get(ENV, "GITHUB_TOKEN", ""))
+    # auth = GitHub.authenticate(get(ENV, "GITHUB_TOKEN", ""))
+    auth = GitHub.authenticate(get(ENV, "BENCHMARK_KEY", ""))
     params = Dict("body" => body)
 
     comment_kind = :issue
