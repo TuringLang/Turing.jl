@@ -13,11 +13,7 @@ const CURRENT_BRANCH = Ref("HEAD")
 const CURRENT_BM = Ref("")
 const REPORTED_LOGS = String[]
 
-NON_BENCHMARK_FILES = [
-    "BenchmarkHelper.jl",
-    "github-action-runner.jl",
-    "runbenchmarks.jl",
-]
+CONFIG = Pkg.TOML.parsefile(joinpath(PROJECT_DIR, "benchmarks/config.toml"))
 
 # Functions run in benchmark processes
 
@@ -138,7 +134,7 @@ end
 
 function benchmark_excluded(file)
     excludes = joinpath(PROJECT_DIR, "benchmarks", "excludes.txt")
-    patterns = readlines(excludes)
+    patterns = get(CONFIG, "EXCLUDES", [])
     for pat in patterns
         match(Regex(pat), file) != nothing && return true
     end
@@ -158,10 +154,7 @@ function benchmark_files()
     end
 
     filter(bm_files) do file
-        !in(file, NON_BENCHMARK_FILES) &&
-            !endswith(file, "_helper.jl") &&
-            endswith(file, ".jl") &&
-            !benchmark_excluded(file)
+        endswith(file, ".jl") && !benchmark_excluded(file)
     end
 end
 
