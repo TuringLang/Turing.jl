@@ -46,7 +46,9 @@ else
 end
 
 # Run benchmarks on current event
+job_id = "TODO"
+BenchmarkHelper.set_benchmark_info("", job_id)
 BenchmarkHelper.run_benchmarks(branches)
 
 # Comment the benchmark results
-BenchmarkHelper.reply_comment(EVENT_DATA, BenchmarkHelper.get_results(user))
+BenchmarkHelper.reply_comment(EVENT_DATA, BenchmarkHelper.get_results(job_id, user))

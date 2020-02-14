@@ -1,67 +1,46 @@
 module BenchmarkHelper
 
+using BenchmarkTools
+
+
 using Pkg
 using GitHub
 
-export PROJECT_DIR,
-    log_report, save_results, @benchmark_expr,
+export PROJECT_DIR, BenchmarkSuite,
     target_branches, reply_comment,
-    benchmark_files, run_benchmark, run_benchmarks, get_results
+    benchmark_files, run_benchmarks, get_results
+
 
 const PROJECT_DIR = abspath(@__DIR__) |> dirname
 const CURRENT_BRANCH = Ref("HEAD")
-const CURRENT_BM = Ref("")
-const REPORTED_LOGS = String[]
+const CURRENT_JOB_ID = Ref("NEW-ID")
+const CONFIG = Pkg.TOML.parsefile(joinpath(PROJECT_DIR, "benchmarks/config.toml"))
 
-CONFIG = Pkg.TOML.parsefile(joinpath(PROJECT_DIR, "benchmarks/config.toml"))
+# Global Benchmark Suite
+const BenchmarkSuite = BenchmarkGroup()
 
 # Functions run in benchmark processes
 
-function set_benchmark_info(branch, file)
+function set_benchmark_info(branch, job_id)
     CURRENT_BRANCH[] = branch
-    CURRENT_BM[] = file
+    CURRENT_JOB_ID[] = job_id
 end
 
-function output_path(suffix="unknown")
+function output_path()
     branch = replace(CURRENT_BRANCH[], r"[-/.]"=>"_")
-    filename = replace(CURRENT_BM[], r"[-/.]"=>"_")
     outdir= joinpath(PROJECT_DIR, "benchmarks", "output")
     mkpath(outdir)
-    return joinpath(outdir, "$branch-$filename-$suffix.txt")
+    return joinpath(outdir, "BM-$(CURRENT_JOB_ID[])-$branch.txt")
 end
 
-function log_report(log::String)
-    @info "log reported" log
-    push!(REPORTED_LOGS, log)
-end
-
-function save_results(data::Dict)
-    open(output_path("log"), "w") do io
-        map(REPORTED_LOGS) do line
-            write(io, line)
-            write(io, "\n")
-        end
-    end
-
-    data["benchmark_file"] = CURRENT_BM[]
-    data["branch"] = CURRENT_BRANCH[]
-    @info "benchmark result" data
-    open(output_path("result"), "w") do io
-        Pkg.TOML.print(io, data)
+function run_suite()
+    t = run(BenchmarkSuite, samples=1)
+    branch = CURRENT_BRANCH[]
+    @info "benchmark result", t
+    open(output_path(), "w") do io
+        show(io, t) # TODO
     end
 end
-
-macro benchmark_expr(engine, expr)
-    quote
-        chain, t_elapsed, mem, gctime, memallocs  = @timed $(esc(expr))
-        Dict(
-            "engine" => $(string(engine)),
-            "time" => t_elapsed,
-            "memory" => mem,
-        )
-    end
-end
-
 
 # Functions run in the dispather process
 
@@ -159,35 +138,34 @@ function benchmark_files()
     end
 end
 
-function run_benchmark(file)
-    empty!(REPORTED_LOGS)
-    code = """
-    using Pkg;
-    pkg"instantiate; add JSON GitHub BenchmarkTools;"
-    Pkg.build(verbose=true)
-    push!(LOAD_PATH, joinpath("$(PROJECT_DIR)", "benchmarks"))
-    using BenchmarkHelper
-    BenchmarkHelper.set_benchmark_info("$(gitcurrentbranch())", "$file")
-    include("$(file)")
-    save_results(BENCHMARK_RESULT)
-    """
-    job = `julia --project=$(PROJECT_DIR) -e $code`
-    @info(job);
-    run(job)
-    @info("run `$file` ✓")
-end
-
 function run_benchmarks(branches)
+    job_id = CURRENT_JOB_ID[]
     for branch in branches
         run(`git checkout .`)
         run(`git checkout $branch`)
+        includes = ""
         for bm in benchmark_files()
-            run_benchmark(joinpath("benchmarks", bm))
+            includes *= """include("$(joinpath("benchmarks", bm))")\n"""
         end
+
+        code = """
+        using Pkg;
+        pkg"instantiate; add JSON GitHub BenchmarkTools;"
+        Pkg.build(verbose=true)
+        push!(LOAD_PATH, joinpath("$(PROJECT_DIR)", "benchmarks"))
+        using BenchmarkHelper
+        BenchmarkHelper.set_benchmark_info("$(gitcurrentbranch())", "$(job_id)")
+        $(includes)
+        BenchmarkHelper.run_suite()
+        """
+        job = `julia --project=$(PROJECT_DIR) -e $code`
+        @info(job);
+        run(job)
     end
 end
 
-function get_results(user)
+function get_results(job_id, user)
+    # TODO
     body = """
 ### Benchmark Results
 
