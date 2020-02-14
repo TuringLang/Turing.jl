@@ -9,7 +9,7 @@ Implements a truncated version of AdaGrad in the sense that only the `n` previou
   - η: learning rate
   - τ: constant scale factor
   - n: number of previous gradient norms to use in the scaling.
-```
+
 ## References
 [ADAGrad](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf) optimiser.
 Parameters don't need tuning.
@@ -69,7 +69,7 @@ Implements a decayed version of AdaGrad. It has parameter specific learning rate
   - η: learning rate
   - pre: weight of new gradient norm
   - post: weight of histroy of gradient norms
-```
+
 ## References
 [ADAGrad](http://www.jmlr.org/papers/volume12/duchi11a/duchi11a.pdf) optimiser.
 Parameters don't need tuning.
