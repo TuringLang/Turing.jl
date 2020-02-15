@@ -3,8 +3,7 @@ module Variational
 using ..Core, ..Utilities
 using Distributions, Bijectors, DynamicPPL
 using ProgressMeter, LinearAlgebra
-using ..Turing: PROGRESS
-using ..Turing: Turing
+using ..Turing: PROGRESS, Turing
 using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using Random: AbstractRNG
 
