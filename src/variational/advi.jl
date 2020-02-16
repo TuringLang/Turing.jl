@@ -28,7 +28,7 @@ import Bijectors: bijector
 Returns a `Stacked <: Bijector` which maps from the support of the posterior to ℝᵈ with `d`
 denoting the dimensionality of the latent variables.
 """
-function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false), rng::AbstractRNG = GLOBAL_RNG) where {sym2ranges}
+function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) where {sym2ranges}
     varinfo = Turing.VarInfo(model)
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
                       for sym ∈ keys(varinfo.metadata)])
@@ -68,7 +68,7 @@ end
 
 Creates a mean-field approximation with multivariate normal as underlying distribution.
 """
-function meanfield(model::Model)
+function meanfield(model::Model; rng::AbstractRNG = GLOBAL_RNG)
     # setup
     varinfo = Turing.VarInfo(model)
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
