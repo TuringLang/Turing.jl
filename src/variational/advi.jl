@@ -65,10 +65,12 @@ end
 
 """
     meanfield(model::Model)
+    meanfield(rng::AbstractRNG, model::Model)
 
 Creates a mean-field approximation with multivariate normal as underlying distribution.
 """
-function meanfield(model::Model; rng::AbstractRNG = GLOBAL_RNG)
+meanfield(model::Model) = meanfield(GLOBAL_RNG, model)
+function meanfield(rng::AbstractRNG, model::Model)
     # setup
     varinfo = Turing.VarInfo(model)
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
