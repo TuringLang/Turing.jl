@@ -1,3 +1,4 @@
+using Dates
 using Logging
 using JSON
 
@@ -46,7 +47,7 @@ else
 end
 
 # Run benchmarks on current event
-job_id = "TODO"
+job_id =  Dates.format(Dates.now(), "YmmddHHMMSS")
 BenchmarkHelper.set_benchmark_info("", job_id)
 BenchmarkHelper.run_benchmarks(branches)
 

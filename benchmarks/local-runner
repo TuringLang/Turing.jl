@@ -21,8 +21,8 @@ Pkg.add("BenchmarkTools")
 push!(LOAD_PATH, joinpath("${PROJECT_DIR}", "benchmarks"));
 using BenchmarkHelper;
 
-BenchmarkHelper.set_benchmark_info("${BRANCH}", "${FILE}");
+BenchmarkHelper.set_benchmark_info("${BRANCH}", "LOCAL");
 include("${FILE}");
-save_results(BENCHMARK_RESULT);
+BenchmarkHelper.run_suite()
 
 EOF
