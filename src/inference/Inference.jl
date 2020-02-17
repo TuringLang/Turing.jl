@@ -401,7 +401,7 @@ function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
-    newchain = sample(
+    newchain = AbstractMCMC.sample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
@@ -413,7 +413,8 @@ function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
     )
 
     # Stick the new samples at the end of the old chain.
-    return vcat(c, newchain)
+    # Hack to avoid issues in https://github.com/TuringLang/Turing.jl/pull/1116.
+    return cat(c, newchain; dims = 1)
 end
 
 function set_resume!(
