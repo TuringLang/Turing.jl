@@ -7,9 +7,11 @@ using Pkg
 using GitHub
 
 export PROJECT_DIR, BenchmarkSuite,
-    target_branches, reply_comment,
+    benchmarks_info, reply_comment,
     benchmark_files, run_benchmarks, get_results
 
+
+include("ns-utilities.jl")
 
 const PROJECT_DIR = abspath(@__DIR__) |> dirname
 const CURRENT_BRANCH = Ref("HEAD")
@@ -33,8 +35,9 @@ function output_path()
     return joinpath(outdir, "BM-$(CURRENT_JOB_ID[])-$branch.txt")
 end
 
-function run_suite()
-    t = run(BenchmarkSuite, samples=1)
+function run_suite(tags_expr=:ALL)
+    benchmarks = eval(Meta.parse("BenchmarkSuite[@tagged $tags_expr]"))
+    t = run(benchmarks, samples=1)
     branch = CURRENT_BRANCH[]
     @info "benchmark result", t
     open(output_path(), "w") do io
@@ -54,37 +57,38 @@ function gitcurrentbranch()
     return brname
 end
 
-function target_branches(event_data)
+function command_info(event_data)
     comment_body = event_data["comment"]["body"]
-    reg_bm_cmd = r"!benchmark\((.*)\)"i
+    reg_bm_cmd = r"`\w+\(.*\)`"i
     bm_cmd = match(reg_bm_cmd, comment_body)
+    bm_cmd == nothing && return (nothing, nothing, nothing)
+    cmd, args, kwargs = parse_submission_string(bm_cmd.match)
+    return (cmd, args, kwargs)
+end
 
-    if (bm_cmd != nothing)
-        @info "benchmark command:", bm_cmd.match
-    else
-        return nothing
+function benchmarks_info(event_data)
+    cmd, args, kwargs = command_info(event_data)
+    if cmd != "runbenchmarks"
+        return nothing, nothing
     end
 
-    branches = filter(!isempty, map(x -> strip(x, [' ', '"']),
-                                    split(bm_cmd.captures[1], ",")))
+    branches =  haskey(kwargs, :vs) ? [Meta.parse(kwargs[:vs])] : []
     target = "master"
     if haskey(event_data, "pull_request")
         target = event_data["pull_request"]["head"]["ref"]
     end
     if isempty(branches)
         if target != "master"
-            return [target, "master"]
+            branches = [target, "master"]
         end
     elseif length(branches) == 1
         if !in(target, branches)
-            return push!(branches, target)
+            push!(branches, target)
+        elseif !in("master", branches)
+            push!(branches, "master")
         end
-        if !in("master", branches)
-            return push!(branches, "master")
-        end
-    else
-        return branches
     end
+    return Meta.parse(args[1]), branches
 end
 
 function target_benchmarks(bm_text)
@@ -138,7 +142,7 @@ function benchmark_files()
     end
 end
 
-function run_benchmarks(branches)
+function run_benchmarks(tags, branches)
     job_id = CURRENT_JOB_ID[]
     for branch in branches
         run(`git checkout .`)
@@ -156,7 +160,7 @@ function run_benchmarks(branches)
         using BenchmarkHelper
         BenchmarkHelper.set_benchmark_info("$(gitcurrentbranch())", "$(job_id)")
         $(includes)
-        BenchmarkHelper.run_suite()
+        BenchmarkHelper.run_suite(:($tags))
         """
         job = `julia --project=$(PROJECT_DIR) -e $code`
         @info(job);

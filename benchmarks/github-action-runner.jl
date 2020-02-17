@@ -26,9 +26,9 @@ if EVENT_DATA["action"] != "created" || !haskey(EVENT_DATA, "comment")
 end
 
 user = EVENT_DATA["comment"]["user"]["login"]
-branches = BenchmarkHelper.target_branches(EVENT_DATA)
+tags, branches = BenchmarkHelper.benchmarks_info(EVENT_DATA)
 
-if (branches != nothing)
+if (branches != nothing && !isempty(branches))
     @info "benchmark target branches:", branches
     body = [
         "Hi @$user, I just got a benchmark command from you,"
@@ -49,7 +49,7 @@ end
 # Run benchmarks on current event
 job_id =  Dates.format(Dates.now(), "YmmddHHMMSS")
 BenchmarkHelper.set_benchmark_info("", job_id)
-BenchmarkHelper.run_benchmarks(branches)
+BenchmarkHelper.run_benchmarks(tags, branches)
 
 # Comment the benchmark results
 BenchmarkHelper.reply_comment(EVENT_DATA, BenchmarkHelper.get_results(job_id, user))
