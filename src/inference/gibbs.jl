@@ -99,7 +99,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
 end
 
 # Initialize the Gibbs sampler.
-function sample_init!(
+function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Gibbs},
@@ -108,12 +108,12 @@ function sample_init!(
 )
     # Initialize each local sampler.
     for local_spl in spl.state.samplers
-        sample_init!(rng, model, local_spl, N; kwargs...)
+        AbstractMCMC.sample_init!(rng, model, local_spl, N; kwargs...)
     end
 end
 
 # Finalize the Gibbs sampler.
-function sample_end!(
+function AbstractMCMC.sample_end!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Gibbs},
@@ -122,60 +122,17 @@ function sample_end!(
 )
     # Finalize each local sampler.
     for local_spl in spl.state.samplers
-        sample_end!(rng, model, local_spl, N; kwargs...)
+        AbstractMCMC.sample_end!(rng, model, local_spl, N; kwargs...)
     end
 end
 
-
-# First step.
-function step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    Turing.DEBUG && @debug "Gibbs stepping..."
-
-    time_elapsed = 0.0
-
-    # Iterate through each of the samplers.
-    for local_spl in spl.state.samplers
-        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-
-        Turing.DEBUG && @debug "recording old θ..."
-
-        # Update the sampler's VarInfo.
-        local_spl.state.vi = spl.state.vi
-
-        # Step through the local sampler.
-        time_elapsed_thin =
-            @elapsed step!(rng, model, local_spl, N; kwargs...)
-
-        # After the step, update the master varinfo.
-        spl.state.vi = local_spl.state.vi
-
-        # Uncomment when developing thinning functionality.
-        # Retrieve symbol to store this subsample.
-        # symbol_id = Symbol(local_spl.selector.gid)
-
-        # # Store the subsample.
-        # spl.state.subsamples[symbol_id][] = trans
-
-        # Record elapsed time.
-        time_elapsed += time_elapsed_thin
-    end
-
-    return Transition(spl)
-end
-
-# Steps 2:N
-function step!(
+# Steps 2
+function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Gibbs},
     N::Integer,
-    t::AbstractTransition;
+    transition;
     kwargs...
 )
     Turing.DEBUG && @debug "Gibbs stepping..."
@@ -193,7 +150,7 @@ function step!(
 
         # Step through the local sampler.
         time_elapsed_thin =
-            @elapsed trans = step!(rng, model, local_spl, N, t; kwargs...)
+            @elapsed trans = AbstractMCMC.step!(rng, model, local_spl, N, transition; kwargs...)
 
         # After the step, update the master varinfo.
         spl.state.vi = local_spl.state.vi

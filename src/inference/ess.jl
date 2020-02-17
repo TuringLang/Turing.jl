@@ -54,16 +54,23 @@ isgaussian(::NormalCanon) = true
 isgaussian(::AbstractMvNormal) = true
 
 # always accept in the first step
-function step!(::AbstractRNG, model::Model, spl::Sampler{<:ESS}, ::Integer; kwargs...)
+function AbstractMCMC.step!(
+    ::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:ESS},
+    ::Integer,
+    ::Nothing;
+    kwargs...
+)
     return Transition(spl)
 end
 
-function step!(
+function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:ESS},
     ::Integer,
-    ::Transition;
+    transition;
     kwargs...
 )
     # obtain mean of distribution

@@ -41,7 +41,7 @@ alg_str(::Sampler{<:MH}) = "MH"
 # MH Transition #
 #################
 
-struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition} <: AbstractTransition
+struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition}
     θ    :: T
     lp   :: F
     mh_trans :: M
@@ -51,8 +51,6 @@ function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
     theta = tonamedtuple(spl.state.vi)
     return MHTransition(theta, mh_trans.lp, mh_trans)
 end
-
-transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
 
 #####################
 # Utility functions #
@@ -195,7 +193,7 @@ function Sampler(
     return spl
 end
 
-function sample_init!(
+function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
@@ -211,11 +209,12 @@ function sample_init!(
     initialize_parameters!(spl; verbose=verbose, kwargs...)
 end
 
-function step!(
+function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
-    N::Integer;
+    N::Integer,
+    transition;
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp
@@ -230,7 +229,7 @@ function step!(
     prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
 
     # Make a new transition.
-    trans = step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
+    trans = AbstractMCMC.step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
 
     # Update the values in the VarInfo.
     set_namedtuple!(spl.state.vi, trans.params)

@@ -5,7 +5,7 @@ using Distributions
 using LinearAlgebra
 using StatsFuns: logsumexp, softmax!
 
-import Distributions: sample, logpdf
+import Distributions: logpdf
 import Base: maximum, minimum, rand
 import Random: AbstractRNG
 

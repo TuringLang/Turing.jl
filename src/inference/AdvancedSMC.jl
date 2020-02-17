@@ -7,7 +7,7 @@
 #######################
 
 """
-    ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+    ParticleTransition{T, F<:AbstractFloat}
 
 Fields:
 - `θ`: The parameters for any given sample.
@@ -15,14 +15,12 @@ Fields:
 - `le`: The log evidence retrieved from the particle.
 - `weight`: The weight of the particle the sample was retrieved from.
 """
-struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+struct ParticleTransition{T, F<:AbstractFloat}
     θ::T
     lp::F
     le::F
     weight::F
 end
-
-transition_type(spl::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
@@ -76,9 +74,9 @@ function Sampler(alg::SMC, model::Model, s::Selector)
     return Sampler(alg, dict, s, state)
 end
 
-function sample_init!(
+function AbstractMCMC.sample_init!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -105,12 +103,12 @@ function sample_init!(
     end
 end
 
-function step!(
+function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:SMC},
     ::Integer,
-    transition::Union{Nothing,AbstractTransition} = nothing;
+    transition;
     iteration=-1,
     kwargs...
 )
@@ -183,11 +181,12 @@ function Sampler(alg::PG, model::Model, s::Selector)
     return Sampler(alg, info, s, state)
 end
 
-function step!(
+function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:PG},
-    ::Integer;
+    ::Integer,
+    transition;
     kwargs...
 )
     # obtain or create reference particle
@@ -233,12 +232,12 @@ function step!(
     return ParticleTransition(params, lp, pc.logE, 1.0)
 end
 
-function sample_end!(
+function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
     spl::Sampler{<:ParticleInference},
     N::Integer,
-    ts::Vector{ParticleTransition};
+    ts::Vector{<:ParticleTransition};
     kwargs...
 )
     # Set the default for resuming the sampler.

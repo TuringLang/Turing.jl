@@ -44,11 +44,12 @@ function Sampler(alg::IS, model::Model, s::Selector)
     return Sampler(alg, info, s, state)
 end
 
-function step!(
+function AbstractMCMC.step!(
     ::AbstractRNG,
     model::Model,
     spl::Sampler{<:IS},
-    ::Integer;
+    ::Integer,
+    transition;
     kwargs...
 )
     empty!(spl.state.vi)
@@ -57,12 +58,12 @@ function step!(
     return Transition(spl)
 end
 
-function sample_end!(
+function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
     spl::Sampler{<:IS},
     N::Integer,
-    ts::Vector{<:Transition};
+    ts::Vector;
     kwargs...
 )
     # Calculate evidence.

@@ -1,4 +1,4 @@
-using AbstractMCMC: init_callback, NoCallback
+using AbstractMCMC: NoCallback
 
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
@@ -50,7 +50,7 @@ end
 
 getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-function sample_init!(
+function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
@@ -84,11 +84,12 @@ function sample_init!(
     spl.state.draws = results.chain
 end
 
-function step!(
+function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
-    N::Integer;
+    N::Integer,
+    transition;
     kwargs...
 )
     # Pop the next draw off the vector.
