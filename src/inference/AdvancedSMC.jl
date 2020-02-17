@@ -238,18 +238,15 @@ function AbstractMCMC.sample_end!(
     spl::Sampler{<:ParticleInference},
     N::Integer,
     ts::Vector{<:ParticleTransition};
+    resume_from = nothing,
     kwargs...
 )
-    # Set the default for resuming the sampler.
-    resume_from = get(kwargs, :resume_from, nothing)
-
     # Exponentiate the average log evidence.
     # loge = exp(mean([t.le for t in ts]))
     loge = mean(t.le for t in ts)
 
     # If we already had a chain, grab the logevidence.
-    if resume_from !== nothing   # concat samples
-        @assert resume_from isa Chains "resume_from needs to be a Chains object."
+    if resume_from isa Chains
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = resume_from.logevidence
         # Calculate new log-evidence
