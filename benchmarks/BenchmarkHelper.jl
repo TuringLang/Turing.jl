@@ -72,7 +72,12 @@ function benchmarks_info(event_data)
         return nothing, nothing
     end
 
-    branches =  haskey(kwargs, :vs) ? [Meta.parse(kwargs[:vs])] : []
+    branches =  haskey(kwargs, :vs) ? Meta.parse(kwargs[:vs]) : []
+    if branches isa Expr && branches.head == :vect
+        branches = branches.args
+    elseif branches isa AbstractString
+        branches = [branches]
+    end
     target = "master"
     if haskey(event_data, "pull_request")
         target = event_data["pull_request"]["head"]["ref"]
@@ -145,6 +150,7 @@ end
 function run_benchmarks(tags, branches)
     job_id = CURRENT_JOB_ID[]
     for branch in branches
+        branch = replace(branch, r"^.*?[:@#]"i => "")
         run(`git checkout .`)
         run(`git checkout $branch`)
         includes = ""
