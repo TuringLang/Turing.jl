@@ -146,7 +146,7 @@ function AbstractMCMC.sample(
     kwargs...
 )
     if resume_from === nothing
-        return AbstractMCMC.sample(model, Sampler(alg, model), N;
+        return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
                                    progress=PROGRESS[], chain_type=chain_type, kwargs...)
     else
         return resume(resume_from, N)
