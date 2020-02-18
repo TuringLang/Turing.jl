@@ -108,7 +108,7 @@ function optimize!(
 
     s = first(keys(svi.data)) # one of the symbols to be changed in the batch
     n = svi.n                 # total number of samples
-    batch_size = size(model.data[s])[end]
+    batch_size = size(get_data(model)[s])[end]
 
     # total number of iterations needed to get through a full dataset once
     total_iters = Integer(floor(n / batch_size)) * max_iters
@@ -118,6 +118,8 @@ function optimize!(
     if !((a - Integer(floor(a))) == 0.0)
         @warn "number of samples $n is not an integer multiple of $batch_size"
     end
+
+    logπ = make_logjoint(model; weight = n / batch_size)
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
@@ -140,7 +142,7 @@ function optimize!(
 
         for batch in svi.batch_gen(svi.data, batch_size)
             update_data!(model, batch)
-            grad!(vo, svi.alg, q, model, θ, diff_result, samples_per_step, n / length(batch))
+            grad!(vo, svi.alg, q, logπ, θ, diff_result, samples_per_step)
 
             # apply update rule
             Δ = DiffResults.gradient(diff_result)
@@ -158,37 +160,18 @@ function optimize!(
     return θ
 end
 
-function (elbo::ELBO)(
-    svi::SVI,
-    q::TransformedDistribution{<:TuringDiagNormal},
-    model::Model,
-    θ::AbstractVector{T},
-    num_samples
-) where T <: Real
-    # get the batch-size
-    s = first(keys(svi.data))
-    n = svi.n
-    batch_size = size(model.data[s])[end]
-
-    # weight to ensure we're only adding 1 × entropy(q) rather than n × entropy(q)
-    w = n / batch_size
-
-    elbo_acc = 0.0
-
-    for batch in svi.batch_gen(svi.data, batch_size)
-        update_data!(model, batch)
-        elbo_acc += elbo(svi.alg, q, model, θ, num_samples, w) / w
-    end
-
-    return elbo_acc
+data_from_args(::NamedTuple{names}, ::Val{vals}) where {names, vals} = setdiff(names, vals)
+function get_data(m::Model)
+    data_keys = data_from_args(m.args, getmissing(m))
+    return (; zip(data_keys, (m.args[k] for k in data_keys))...)
 end
 
-
-# TODO: make it generated or something
-function update_data!(model::Model, data::NamedTuple)
-    for s in keys(data)
-        sym = Symbol(s)
-        model.data[sym] .= data[sym]
+function update_data!(model::Model, data::NamedTuple{names}) where {names}
+    # Extract the data from the model
+    mdata = get_data(model)
+    for s in names
+        # Inplace updates to the model-data
+        mdata[s] .= data[s]
     end
 
     return model
