@@ -23,7 +23,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Install dependencies
-        run: julia -e 'using Pkg; pkg"""add JSON GitHub BenchmarkTools;"""'
+        run: julia -e 'using Pkg; pkg"""add JSON GitHub DataFrames BenchmarkTools;"""'
       - name: Run benchmarks
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

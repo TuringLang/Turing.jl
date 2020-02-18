@@ -41,7 +41,7 @@ function run_suite(tags_expr=:ALL)
     branch = CURRENT_BRANCH[]
     @info "benchmark result", t
     open(output_path(), "w") do io
-        show(io, t) # TODO
+        show(io, bmresults_to_dataframe(t))
     end
 end
 
@@ -160,7 +160,7 @@ function run_benchmarks(tags, branches)
 
         code = """
         using Pkg;
-        pkg"instantiate; add JSON GitHub BenchmarkTools;"
+        pkg"instantiate; add JSON GitHub DataFrames BenchmarkTools;"
         Pkg.build(verbose=true)
         push!(LOAD_PATH, joinpath("$(PROJECT_DIR)", "benchmarks"))
         using BenchmarkHelper

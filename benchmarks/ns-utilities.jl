@@ -1,5 +1,7 @@
-## copied from NanoSoldier.jl
 
+using DataFrames
+
+## copied from NanoSoldier.jl
 # from submisson.jl
 # `x` can only be Expr, Symbol, QuoteNode, T<:Number, or T<:AbstractString
 phrase_argument(x::Union{Expr, Symbol, QuoteNode}) = string(x)
@@ -27,4 +29,41 @@ function parse_submission_string(submission_string)
         push!(args, phrase_argument(parsed_args))
     end
     return name, args, kwargs
+end
+
+
+## format benchmark results
+
+
+function Base.convert(::Type{Dict}, t::BenchmarkTools.Trial)
+    data = Dict{String, Float64}()
+    data["times"] = sum(t.times) / length(t.times)
+    data["gctimes"] = sum(t.gctimes) / length(t.gctimes)
+    data["memory"] = t.memory
+    data["allocs"] = t.allocs
+    return data
+end
+
+function flatten_benchmark_results(res, data::Dict{String, Dict}, prefix = "")
+    for key in keys(res)
+        if res[key] isa BenchmarkTools.Trial
+            data["$prefix.$key"] = convert(Dict, res[key])
+        elseif res[key] isa BenchmarkGroup
+            flatten_benchmark_results(res[key], data, "$prefix.$key")
+        end
+    end
+end
+
+function bmresults_to_dataframe(res)
+    flatten_res = Dict{String, Dict}()
+    flatten_benchmark_results(res, flatten_res)
+
+    names = collect(keys(flatten_res))
+    df= DataFrame(Name=names,
+                  Times=map(x->flatten_res[x]["times"], names),
+                  GCtimes=map(x->flatten_res[x]["gctimes"], names),
+                  Memory=map(x->flatten_res[x]["memory"], names),
+                  Allocs=map(x->flatten_res[x]["allocs"], names),
+                  )
+    return df
 end
