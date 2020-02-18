@@ -27,12 +27,13 @@ end
 
 user = EVENT_DATA["comment"]["user"]["login"]
 tags, branches = BenchmarkHelper.benchmarks_info(EVENT_DATA)
+job_id =  Dates.format(Dates.now(), "YmmddHHMMSS")
 
 if (branches != nothing && !isempty(branches))
     @info "benchmark target branches:", branches
     body = [
         "Hi @$user, I just got a benchmark command from you,"
-        "I will run a benchmark on branches $branches as soon as possible."
+        "I will run a benchmark(JOB_ID=$(job_id)) on branches $branches as soon as possible."
     ]
     BenchmarkHelper.reply_comment(EVENT_DATA, join(body, "\n"))
 else
@@ -47,7 +48,6 @@ else
 end
 
 # Run benchmarks on current event
-job_id =  Dates.format(Dates.now(), "YmmddHHMMSS")
 BenchmarkHelper.set_benchmark_info("", job_id)
 BenchmarkHelper.run_benchmarks(tags, branches)
 
