@@ -24,7 +24,7 @@ end
 export
     vi,
     ADVI,
-    SVI,
+    MinibatchVI,
     ELBO,
     elbo,
     TruncatedADAGrad,

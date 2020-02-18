@@ -25,8 +25,8 @@ end
 # ADVI with 1 sample for gradient estimation and 10 total iterations through the full data
 advi = ADVI(1, 1000)
 
-# Wrap in SVI to use mini-batches for gradient estimation, ELBO, etc.
-svi = Turing.SVI(advi, data, batch_gen)
+# Wrap in MinibatchVI to use mini-batches for gradient estimation, ELBO, etc.
+svi = Turing.MinibatchVI(advi, data, batch_gen)
 
 @model gdemo(x) = begin
     s ~ InverseGamma(2, 3)

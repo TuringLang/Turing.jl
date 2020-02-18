@@ -1,12 +1,12 @@
 """
-    SVI(alg::VariationalInference, data, batch_gen)
-    SVI(alg::VariationalInference, data, batch_gen, n)
+    MinibatchVI(alg::VariationalInference, data, batch_gen)
+    MinibatchVI(alg::VariationalInference, data, batch_gen, n)
 
 Wraps the given VI algorithm `alg` to perform computations batch-wise rather than
 using the full dataset.
 
 When using mini-batches for gradient estimation rather than the entire dataset,
-the method is sometimes referred to as _Stochastic Variational Inference (SVI)_.[1, 2]
+the method is sometimes referred to as _Stochastic Variational Inference (MinibatchVI)_.[1, 2]
 
 This will also, when possible, compute whatever objective batch-wise. For example,
 if one runs `elbo(svi, ...)` rather than `elbo(advi, ...)` we will compute the
@@ -59,8 +59,8 @@ end
 # ADVI with 1 sample for gradient estimation and 10 total iterations through the full data
 advi = ADVI(1, 10)
 
-# Wrap in SVI to use mini-batches for gradient estimation, ELBO, etc.
-svi = SVI(advi, data, batch_gen)
+# Wrap in MinibatchVI to use mini-batches for gradient estimation, ELBO, etc.
+svi = MinibatchVI(advi, data, batch_gen)
 
 # initialize a model with an example of a batch to get the sizes right
 example_batch = first(batch_gen(data, BATCH_SIZE))
@@ -80,23 +80,23 @@ elbo(svi, q, m, 1000)
 [1] Hoffman, M., Blei, D. M., Wang, C., & Paisley, J., Stochastic Variational Inference, CoRR, (),  (2012). 
 [2] Zhang, C., Butepage, J., Kjellstrom, H., & Mandt, S., Advances in variational inference, CoRR, (),  (2017). 
 """
-struct SVI{AD, A, D, F} <: VariationalInference{AD} where {A <: VariationalInference{AD}, D, F}
+struct MinibatchVI{AD, A, D, F} <: VariationalInference{AD} where {A <: VariationalInference{AD}, D, F}
     alg::A
     data::D
     batch_gen::F
     n::Int
 end
-function SVI(alg::A, data::D, batch_gen::F, n::Int) where {AD, A <: VariationalInference{AD}, D, F}
-    return SVI{AD, A, D, F}(alg, data, batch_gen, n)
+function MinibatchVI(alg::A, data::D, batch_gen::F, n::Int) where {AD, A <: VariationalInference{AD}, D, F}
+    return MinibatchVI{AD, A, D, F}(alg, data, batch_gen, n)
 end
 
-SVI(alg, data, batch_gen) = SVI(alg, data, batch_gen, size(first(data))[end])
+MinibatchVI(alg, data, batch_gen) = MinibatchVI(alg, data, batch_gen, size(first(data))[end])
 
-alg_str(alg::SVI) = "SVI{$(alg_str(alg.alg))}"
+alg_str(alg::MinibatchVI) = "MinibatchVI{$(alg_str(alg.alg))}"
 
 function optimize!(
     vo,
-    svi::SVI,
+    svi::MinibatchVI,
     q::VariationalPosterior,
     model::Model,
     θ::AbstractVector{<:Real};
