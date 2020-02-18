@@ -201,6 +201,7 @@ function make_logjoint(model::Model; weight = 1.0)
     return logπ
 end
 
+
 function logjoint(model::Model, varinfo, z)
     varinfo = VarInfo(varinfo, SampleFromUniform(), z)
     model(varinfo)
@@ -208,6 +209,8 @@ function logjoint(model::Model, varinfo, z)
     return getlogp(varinfo)
 end
 
+# utility functions
+include("util.jl")
 
 # objectives
 include("objectives.jl")
@@ -215,48 +218,8 @@ include("objectives.jl")
 # optimisers
 include("optimisers.jl")
 
-# STUFF
-"""
-    meanfield(model::Model)
 
-Creates a mean-field approximation with multivariate normal as underlying distribution.
-"""
-function meanfield(model::Model)
-    # setup
-    varinfo = Turing.VarInfo(model)
-    num_params = sum([size(varinfo.metadata[sym].vals, 1)
-                      for sym ∈ keys(varinfo.metadata)])
-
-    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
-
-    num_ranges = sum([length(varinfo.metadata[sym].ranges)
-                      for sym ∈ keys(varinfo.metadata)])
-    ranges = Vector{UnitRange{Int}}(undef, num_ranges)
-    idx = 0
-    range_idx = 1
-    for sym ∈ keys(varinfo.metadata)
-        for r ∈ varinfo.metadata[sym].ranges
-            ranges[range_idx] = idx .+ r
-            range_idx += 1
-        end
-
-        # append!(ranges, [idx .+ r for r ∈ varinfo.metadata[sym].ranges])
-        idx += varinfo.metadata[sym].ranges[end][end]
-    end
-
-    # initial params
-    μ = randn(num_params)
-    σ = softplus.(randn(num_params))
-
-    # construct variational posterior
-    d = TuringDiagNormal(μ, σ)
-    bs = inv.(bijector.(tuple(dists...)))
-    b = Stacked(bs, ranges)
-
-    return transformed(d, b)
-end
-
-
+# Default implementations of `vi`
 function vi(model::Model, alg::VariationalInference; optimizer = TruncatedADAGrad())
     q = meanfield(model)
     return vi(model, alg, q; optimizer = optimizer)
@@ -264,9 +227,9 @@ end
 
 # TODO: make more flexible, allowing other types of `q`
 function vi(
-    model::Model,
+    model::Model, # TODO: could also just be `logπ(z)`, right?
     alg::VariationalInference,
-    q::TransformedDistribution{<: TuringDiagNormal};
+    q::TransformedDistribution{<:TuringDiagMvNormal};
     optimizer = TruncatedADAGrad()
 )
     Turing.DEBUG && @debug "Optimizing ADVI..."
@@ -277,9 +240,9 @@ function vi(
 end
 
 function optimize(
-    elbo::ELBO,
+    elbo::ELBO, # FIXME: shouldn't need to this to be specified to ELBO
     alg::VariationalInference,
-    q::TransformedDistribution{<: TuringDiagNormal},
+    q::TransformedDistribution{<:TuringDiagMvNormal},
     model::Model;
     optimizer = TruncatedADAGrad()
 )
