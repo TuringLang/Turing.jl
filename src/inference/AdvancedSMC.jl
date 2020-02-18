@@ -88,7 +88,7 @@ function sample_init!(
 
     # reset the VarInfo
     vi = spl.state.vi
-    vi.num_produce = 0
+    reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
     empty!(vi)
