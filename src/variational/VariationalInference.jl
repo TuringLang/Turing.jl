@@ -226,17 +226,17 @@ function vi(model::Model, alg::VariationalInference; optimizer = TruncatedADAGra
 end
 
 # TODO: make more flexible, allowing other types of `q`
-function vi(
-    model::Model, # TODO: could also just be `logπ(z)`, right?
-    alg::VariationalInference,
-    q::TransformedDistribution{<:TuringDiagMvNormal};
-    optimizer = TruncatedADAGrad()
-)
+function vi(model, alg::VariationalInference, q::TransformedDistribution{<:TuringDiagMvNormal}; optimizer = TruncatedADAGrad())
     Turing.DEBUG && @debug "Optimizing ADVI..."
-    θ = optimize(elbo, alg, q, model; optimizer = optimizer)
-    μ, ω = θ[1:length(q)], θ[length(q) + 1:end]
+    # Initial parameters for mean-field approx
+    μ, σs = params(q)
+    θ = vcat(μ, invsoftplus.(σs))
 
-    return update(q, μ, softplus.(ω))
+    # Optimize
+    optimize!(elbo, alg, q, model, θ; optimizer = optimizer)
+
+    # Return updated `Distribution`
+    return update(q, θ)
 end
 
 function optimize(
@@ -256,6 +256,6 @@ end
 
 # VI algorithms
 include("advi.jl")
-include("svi.jl")
+include("minibatch_vi.jl")
 
 end
