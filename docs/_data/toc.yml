@@ -13,8 +13,14 @@
   - title: "Advanced Usage"
     url: "docs/using-turing/advanced"
 
+  - title: "Interface Guide"
+    url: "docs/using-turing/interface"
+
   - title: "Automatic Differentiation"
     url: "docs/using-turing/autodiff"
+
+  - title: "Performance Tips"
+    url: "docs/using-turing/performancetips"
 
   - title: "Using DynamicHMC"
     url: "docs/using-turing/dynamichmc"
@@ -52,11 +58,15 @@
   - title: "Bayesian Poisson Regression"
     url: "tutorials/7-poissonregression"
 
-- title: "LIBRARY"
+- title: "API"
   url: "docs/library"
   children:
-    - title: "Public"
+    - title: "Turing"
       url: "docs/library"
+    - title: "AdvancedHMC"
+      url: "docs/library/advancedhmc/"
+    - title: "Bijectors"
+      url: "docs/library/bijectors/"
 
 - title: "CONTRIBUTING"
   url: "docs/contributing/guide"

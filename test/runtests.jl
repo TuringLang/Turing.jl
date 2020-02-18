@@ -12,26 +12,33 @@ include("test_utils/AllUtils.jl")
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
-        include("core/compiler.jl")
         include("core/container.jl")
-        include("core/RandomVariables.jl")
     end
 
     @testset "inference" begin
         @testset "samplers" begin
-            include("inference/dynamichmc.jl")
+            # FIXME: DynamicHMC version 1 has (??) a bug on 32bit platforms (but we were too
+            # lazy to open an issue so Tamas doesn't know about it), retest with 2.0
+            if Int === Int64 && Pkg.installed()["DynamicHMC"].major == 2
+                include("contrib/inference/dynamichmc.jl")
+            end
             include("inference/gibbs.jl")
             include("inference/hmc.jl")
             include("inference/is.jl")
             include("inference/mh.jl")
-            include("inference/sghmc.jl")
+            include("inference/ess.jl")
             include("inference/AdvancedSMC.jl")
+            include("inference/Inference.jl")
         end
     end
 
     @testset "variational" begin
         @testset "algorithms" begin
             include("variational/advi.jl")
+        end
+
+        @testset "optimisers" begin
+            include("variational/optimisers.jl")
         end
     end
 
@@ -41,8 +48,8 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "utilities" begin
-        include("utilities/io.jl")
       # include("utilities/stan-interface.jl")
         include("utilities/util.jl")
     end
 end
+

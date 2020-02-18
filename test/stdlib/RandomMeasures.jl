@@ -65,11 +65,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = crpimm(data, rpm)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 1000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)
@@ -84,7 +84,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         for i in 1:size(z,1)
             partition = map(c -> findall(z[i,:,1] .== c), unique(z[i,:,1]))
             partition_idx = findfirst(p -> sort(p) == sort(partition), partitions)
-            @test partition_idx != nothing
+            @test partition_idx !== nothing
             empirical_probs[partition_idx] += sum_weights == 0 ? 1 : w[i]
         end
 
@@ -223,11 +223,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = sbimm(data, rpm, 10)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 10000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)
@@ -242,7 +242,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         for i in 1:size(z,1)
             partition = map(c -> findall(z[i,:,1] .== c), unique(z[i,:,1]))
             partition_idx = findfirst(p -> sort(p) == sort(partition), partitions)
-            @test partition_idx != nothing
+            @test partition_idx !== nothing
             empirical_probs[partition_idx] += sum_weights == 0 ? 1 : w[i]
         end
 
@@ -281,7 +281,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
             x = tzeros(Float64, N)
             J = tzeros(Float64, N)
-            z = tzeros(Int, N)
 
             k = 0
             surplus = 1.0
@@ -301,11 +300,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         rpm = DirichletProcess(alpha)
 
-        sampler = SMC(1000)
+        sampler = SMC()
         mf = sbsimm(data, rpm, 100)
 
         # Compute empirical posterior distribution over partitions
-        samples = sample(mf, sampler)
+        samples = sample(mf, sampler, 1000)
 
         # Check that there is no NaN value associated
         z_samples = Int.(samples[:z].value)
@@ -320,7 +319,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         for i in 1:size(z,1)
             partition = map(c -> findall(z[i,:,1] .== c), unique(z[i,:,1]))
             partition_idx = findfirst(p -> sort(p) == sort(partition), partitions)
-            @test partition_idx != nothing
+            @test partition_idx !== nothing
             empirical_probs[partition_idx] += sum_weights == 0 ? 1 : w[i]
         end
 

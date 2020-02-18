@@ -14,7 +14,7 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 NSamples = 5000
 
 @model gdemo_fw() = begin
-  # s ~ InverseGamma(2, 3)
+  # s ~ InverseGamma(2,3)
   s = 1
   m ~ Normal(0, sqrt(s))
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
@@ -22,17 +22,17 @@ end
 
 @model gdemo_bk(x) = begin
   # Backward Step 1: theta ~ theta | x
-  # s ~ InverseGamma(2, 3)
+  # s ~ InverseGamma(2,3)
   s = 1
-  m ~ Normal(0, sqrt(s))
+  m ~ Normal(0,sqrt(s))
   x ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
   # Backward Step 2: x ~ x | theta
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
 fw = PG(50, NSamples)
-# bk = Gibbs(10, PG(10,10, :s, :y), HMC(1, 0.25, 5, :m));
-bk = HMCDA(50, 0.65, 0.2);
+# bk = Gibbs(10, PG(10,10, :s, :y), HMC(0.25, 5, :m));
+bk = HMCDA(0.65, 0.2);
 
 s = sample(gdemo_fw(), fw);
 # describe(s)
@@ -53,7 +53,7 @@ Base.CoreLogging.with_logger(simple_logger) do
   end
 end
 
-s2 = vcat(s_bk...);
+s2 = reduce(vcat, s_bk);
 # describe(s2)
 
 

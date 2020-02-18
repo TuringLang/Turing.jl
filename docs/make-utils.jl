@@ -25,7 +25,7 @@ function remove_yaml(file, key=nothing)
     if !isempty(yaml)
         open(file, "w+") do f
             # write back YAML lines.
-            if key != nothing
+            if key !== nothing
                 for line in yaml
                     startswith(line, key * ":") || write(f, line)
                 end
@@ -171,7 +171,11 @@ function postprocess_markdown(folder, yaml_dict; original = "")
                             write(f, line)
                         end
 
+                        # This is needed to replace the hyperlinks Documenter.jl generates
+                        # for the API pages.
 						txt = replace(txt, "api.md" => "{{site.baseurl}}/docs/library/")
+						txt = replace(txt, "bijectors.md" => "{{site.baseurl}}/docs/library/bijectors/")
+						txt = replace(txt, "advancedhmc.md" => "{{site.baseurl}}/docs/library/advancedhmc/")
 
                         # Add the rest of the text.
 						if original_path == full_path

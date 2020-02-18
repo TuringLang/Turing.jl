@@ -1,12 +1,10 @@
 module Variational
 
-using ..Core, ..Core.RandomVariables, ..Utilities
-using Distributions, Bijectors
+using ..Core, ..Utilities
+using Distributions, Bijectors, DynamicPPL
 using ProgressMeter, LinearAlgebra
-using ..Turing: PROGRESS
-using ..Turing: Model, SampleFromPrior, SampleFromUniform
-using ..Turing: Turing
-using ..Core: TuringDiagNormal
+using ..Turing: PROGRESS, Turing
+using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using Random: AbstractRNG
 
 using ForwardDiff
@@ -16,9 +14,11 @@ import ..Core: getchunksize, getADtype
 
 using Requires
 function __init__()
-    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
-    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
-    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" Flux.Optimise.apply!(o::DecayedADAGrad, x, Δ) = apply!(o, x, Δ)
+    @require Flux="587475ba-b771-5e3f-ad9e-33799f191a9c" begin
+        apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
+        Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
+        Flux.Optimise.apply!(o::DecayedADAGrad, x, Δ) = apply!(o, x, Δ)
+    end
 end
 
 export
@@ -27,14 +27,13 @@ export
     SVI,
     ELBO,
     elbo,
-    TruncatedADAGrad
+    TruncatedADAGrad,
+    DecayedADAGrad
 
 abstract type VariationalInference{AD} end
 
-getchunksize(::T) where {T <: VariationalInference} = getchunksize(T)
 getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
-getADtype(alg::VariationalInference) = getADtype(typeof(alg))
-getADtype(::Type{<: VariationalInference{AD}}) where {AD} = AD
+getADtype(::VariationalInference{AD}) where AD = AD
 
 abstract type VariationalObjective end
 
@@ -42,7 +41,7 @@ const VariationalPosterior = Distribution{Multivariate, Continuous}
 
 
 """
-    grad!(vo, alg::VariationalInference, q::VariationalPosterior, model::Model, θ, out, args...)
+    grad!(vo, alg::VariationalInference, q, model::Model, θ, out, args...)
 
 Computes the gradients used in `optimize!`. Default implementation is provided for 
 `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`.
@@ -50,50 +49,42 @@ This implicitly also gives a default implementation of `optimize!`.
 
 Variance reduction techniques, e.g. control variates, should be implemented in this function.
 """
-function grad!(
-    vo,
-    alg::VariationalInference{AD},
-    q::VariationalPosterior,
-    model::Model,
-    θ,
-    out,
-    args...
-) where AD
-    error("Turing.Variational.grad!: unmanaged variational inference algorithm: "
-          * "$(typeof(alg))")
-end
+function grad! end
 
 """
-    vi(model::Model, alg::VariationalInference)
-    vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
+    vi(model, alg::VariationalInference)
+    vi(model, alg::VariationalInference, q::VariationalPosterior)
+    vi(model, alg::VariationalInference, getq::Function, θ::AbstractArray)
 
 Constructs the variational posterior from the `model` and performs the optimization
 following the configuration of the given `VariationalInference` instance.
+
+# Arguments
+- `model`: `Turing.Model` or `Function` z ↦ log p(x, z) where `x` denotes the observations
+- `alg`: the VI algorithm used
+- `q`: a `VariationalPosterior` for which it is assumed a specialized implementation of the variational objective used exists.
+- `getq`: function taking parameters `θ` as input and returns a `VariationalPosterior`
+- `θ`: only required if `getq` is used, in which case it is the initial parameters for the variational posterior
 """
-function vi(model::Model, alg::VariationalInference)
-    error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
-          * "is not implemented")
-end
-function vi(model::Model, alg::VariationalInference, q::VariationalPosterior)
-    error("Turing.Variational.vi: variational inference algorithm $(typeof(alg)) "
-          * "is not implemented")
-end
+function vi end
 
 # default implementations
 function grad!(
     vo,
-    alg::VariationalInference{AD},
-    q::VariationalPosterior,
-    model::Model,
-    θ::AbstractVector{T},
+    alg::VariationalInference{<:ForwardDiffAD},
+    q,
+    model,
+    θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T<:Real, AD<:ForwardDiffAD}
-    # TODO: this probably slows down executation quite a bit; exists a better way
-    # of doing this?
-    f(θ_) = - vo(alg, q, model, θ_, args...)
+)
+    f(θ_) = if (q isa VariationalPosterior)
+        - vo(alg, update(q, θ_), model, args...)
+    else
+        - vo(alg, q(θ_), model, args...)
+    end
 
-    chunk_size = getchunksize(alg)
+    chunk_size = getchunksize(typeof(alg))
     # Set chunk size and do ForwardMode.
     chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
     config = ForwardDiff.GradientConfig(f, θ, chunk)
@@ -102,15 +93,19 @@ end
 
 function grad!(
     vo,
-    alg::VariationalInference{AD},
-    q::VariationalPosterior,
-    model::Model,
-    θ::AbstractVector{T},
+    alg::VariationalInference{<:TrackerAD},
+    q,
+    model,
+    θ::AbstractVector{<:Real},
     out::DiffResults.MutableDiffResult,
     args...
-) where {T<:Real, AD<:TrackerAD}
+)
     θ_tracked = Tracker.param(θ)
-    y = - vo(alg, q, model, θ_tracked, args...)
+    y = if (q isa VariationalPosterior)
+        - vo(alg, update(q, θ_tracked), model, args...)
+    else
+        - vo(alg, q(θ_tracked), model, args...)
+    end
     Tracker.back!(y, 1.0)
 
     DiffResults.value!(out, Tracker.data(y))
@@ -123,25 +118,25 @@ function TrackedArray(f::Call, x::SA) where {T, N, A, SA<:SubArray{T, N, A}}
 end
 
 """
-    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model::Model, θ; optimizer = TruncatedADAGrad())
+    optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model, θ; optimizer = TruncatedADAGrad())
 
 Iteratively updates parameters by calling `grad!` and using the given `optimizer` to compute
 the steps.
 """
 function optimize!(
     vo,
-    alg::VariationalInference{AD},
-    q::VariationalPosterior,
-    model::Model,
+    alg::VariationalInference,
+    q,
+    model,
     θ::AbstractVector{<:Real};
     optimizer = TruncatedADAGrad()
-) where {AD}
+)
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
     
-    num_params = length(q)
+    num_params = length(θ)
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
@@ -176,6 +171,43 @@ function optimize!(
 
     return θ
 end
+
+"""
+    make_logjoint(model::Model; weight = 1.0)
+
+Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).
+
+The weight used to scale the likelihood, e.g. when doing stochastic gradient descent one needs to
+use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_obs / batch_size`.
+
+## Notes
+- For sake of efficiency, the returned function is closes over an instance of `VarInfo`. This means that you *might* run into some weird behaviour if you call this method sequentially using different types; if that's the case, just generate a new one for each type using `make_logjoint`.
+"""
+function make_logjoint(model::Model; weight = 1.0)
+    # setup
+    ctx = DynamicPPL.MiniBatchContext(
+        DynamicPPL.DefaultContext(),
+        weight
+    )
+    varinfo_init = Turing.VarInfo(model, ctx)
+
+    function logπ(z)
+        varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
+        model(varinfo)
+        
+        return getlogp(varinfo)
+    end
+
+    return logπ
+end
+
+function logjoint(model::Model, varinfo, z)
+    varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+    model(varinfo)
+
+    return getlogp(varinfo)
+end
+
 
 # objectives
 include("objectives.jl")

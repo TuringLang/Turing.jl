@@ -10,12 +10,18 @@ if ON_TRAVIS
         "dummy.jl",
         "gdemo.jl",
         "mvnormal.jl",
+        "nuts/lr.jl",
+        "nuts/sv_nuts.jl",
+        "nuts/hlr.jl"
     ]
 else
     BENCHMARK_FILES = [
         "dummy.jl",
         "gdemo.jl",
         "mvnormal.jl",
+        "nuts/lr.jl",
+        "nuts/sv_nuts.jl",
+        "nuts/hlr.jl"
     ]
 end
 

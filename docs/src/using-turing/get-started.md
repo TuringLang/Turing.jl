@@ -55,7 +55,7 @@ using StatsPlots
 end
 
 #  Run sampler, collect results
-chn = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
+chn = sample(gdemo(1.5, 2), HMC(0.1, 5), 1000)
 
 # Summarise results (currently requires the master branch from MCMCChains)
 describe(chn)

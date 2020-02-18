@@ -1,4 +1,4 @@
-using Documenter, DocumenterMarkdown, DynamicHMC, Turing
+using Documenter, DocumenterMarkdown, Turing, AdvancedHMC, Bijectors
 using LibGit2: clone
 
 # Include the utility functions.
@@ -23,10 +23,20 @@ end
 # connection by calling `julia make.jl no-tutorials`
 in("no-tutorials", ARGS) || copy_tutorial(tutorial_path)
 
+
+# set default baseurl for the master branch
 baseurl = "/dev"
-if get(ENV, "TRAVIS_TAG", "") != ""
-    baseurl = ENV["TRAVIS_TAG"]
+# set baseurl for version tag when current head is tagged
+vtag = get(ENV, "TRAVIS_TAG", "") # if on Travis
+if isempty(vtag) # so we are using GitHub Actions
+    vtag = replace(get(ENV, "GITHUB_REF", ""), r"/?refs/tags/?" => "")
 end
+
+version_match = match(r"^(v\d+\.\d+\.\d+)$", vtag)
+if !isnothing(version_match)
+    baseurl = "/" * version_match[1]
+end
+
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)
 

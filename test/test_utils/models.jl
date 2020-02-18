@@ -48,3 +48,6 @@ gdemo_default = gdemo_d()
 end
 
 MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
+
+# Declare empty model to make the Sampler constructor work.
+@model empty_model() = begin x = 1; end

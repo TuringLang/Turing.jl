@@ -725,7 +725,7 @@ hr {
     margin-bottom: 2.4rem;
 }
 .md-footer-nav {
-    background-color: rgba(0, 0, 0, .87);
+    background-color: rgb(12, 59, 68);
     color: #fff;
     margin-top:50px;
     padding-top:30px;
@@ -797,8 +797,11 @@ html .md-footer-meta.md-typeset a:focus, html .md-footer-meta.md-typeset a:hover
     font-size: 1.28rem;
 }
 .md-footer-copyright__highlight {
-    color: hsla(0, 0%, 100%, .7);
-    text-align: center;
+    color: white;
+    text-align: left;
+    margin-left: 10%;
+    font-size: 1.4em;
+    max-width: 350px;
 }
 .md-footer-social {
     margin: 0 .8rem;

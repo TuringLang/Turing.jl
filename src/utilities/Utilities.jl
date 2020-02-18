@@ -1,6 +1,6 @@
 module Utilities
 
-using ..Turing: AbstractSampler, Sampler
+using DynamicPPL: AbstractSampler, Sampler
 using Distributions, Bijectors
 using StatsFuns, SpecialFunctions
 using MCMCChains: AbstractChains, Chains, setinfo
@@ -12,10 +12,11 @@ export  vectorize,
         Sample,
         Chain,
         init,
-        vectorize
+        vectorize,
+        set_resume!,
+        FlattenIterator
 
-include("helper.jl")
 include("robustinit.jl")
-include("io.jl")           # I/O
+include("helper.jl")
 
 end # module

@@ -4,20 +4,21 @@ using MacroTools, Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
-using ..Turing: Turing, Model, runmodel!,
+using ..Turing: Turing
+using DynamicPPL: Model, runmodel!,
     AbstractSampler, Sampler, SampleFromPrior
-using Zygote: Zygote
 using LinearAlgebra: copytri!
+using Bijectors: PDMatDistribution
+import Bijectors: link, invlink
+using DistributionsAD
+using StatsFuns: logsumexp, softmax
+@reexport using DynamicPPL
 
-include("RandomVariables.jl")
-@reexport using .RandomVariables
-
-include("compiler.jl")
 include("container.jl")
 include("ad.jl")
 
 export  @model,
-        @VarName,
+        @varname,
         generate_observe,
         translate_tilde!,
         get_vars,
@@ -29,24 +30,29 @@ export  @model,
         fork,
         forkr,
         current_trace,
-        weights,
+        getweights,
         effectiveSampleSize,
         increase_logweight,
         inrease_logevidence,
         resample!,
-        getsample, 
+        ResampleWithESSThreshold,
         ADBackend,
-        setadbackend, 
-        setadsafe, 
-        ForwardDiffAD, 
+        setadbackend,
+        setadsafe,
+        ForwardDiffAD,
         TrackerAD,
         value,
         gradient_logp,
-        CHUNKSIZE, 
+        CHUNKSIZE,
         ADBACKEND,
         setchunksize,
         verifygrad,
         gradient_logp_forward,
-        gradient_logp_reverse
+        gradient_logp_reverse,
+        @varinfo,
+        @logpdf,
+        @sampler,
+        @logprob_str,
+        @prob_str
 
 end # module

@@ -23,7 +23,7 @@ ys = xs * β + rand(Normal(0, sqrt(s)), N)
 println("s=$s, β=$β")
 
 mf = bayes_lr(xs, ys)
-chn = sample(mf, HMC(2000, 0.005, 3))
+chn = sample(mf, HMC(0.005, 3), 2000)
 
 println("mean of β: $(mean(chn[1000:end, :β, :].value))")
 

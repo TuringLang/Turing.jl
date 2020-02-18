@@ -21,3 +21,4 @@ docs/.gems/
 docs/Gemfile.lock
 
 .DS_Store
+Manifest.toml

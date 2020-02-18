@@ -1,11 +1,16 @@
 ---
-title: Library
+title: API
 permalink: /docs/library/
 toc: true
 ---
 
 ```@meta
 CurrentModule = Turing
+```
+## Index
+
+```@index
+Modules = [Turing, Turing.Core, Turing.Inference, Libtask]
 ```
 
 ## Modelling
@@ -21,16 +26,23 @@ Sampler
 Gibbs
 HMC
 HMCDA
-IPMCMC
 IS
 MH
 NUTS
 PG
-PMMH
-SGHMC
-SGLD
 SMC
 ```
+
+## Distributions
+
+```@docs
+Flat
+FlatPos
+BinomialLogit
+VecBinomialLogit
+OrderedLogistic
+```
+
 
 ## Data Structures
 ```@docs
@@ -42,7 +54,3 @@ TArray
 tzeros
 ```
 
-## Index
-
-```@index
-```

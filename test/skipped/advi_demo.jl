@@ -19,6 +19,7 @@ using ConjugatePriors
 @model model(x) = begin
     s ~ InverseGamma(2, 3)
     m ~ Normal(0.0, sqrt(s))  # `Normal(μ, σ)` has mean μ and variance σ², i.e. parametrize with std. not variance
+
     for i = 1:length(x)
         x[i] ~ Normal(m, sqrt(s))
     end
@@ -45,7 +46,7 @@ for seed ∈ seeds
         
         # ADVI
         opt = Variational.TruncatedADAGrad()   # optimizer
-        Variational.TruncatedADAGrad()
+
         advi = ADVI(10, 100)                   # <: VariationalInference
         q = Variational.meanfield(m)           # => <: VariationalPosterior
         
@@ -54,7 +55,7 @@ for seed ∈ seeds
         μ, σs = params(q)
         θ = vcat(μ, f⁻¹.(σs))
 
-        history = [elbo(advi, q, m, θ, 1000)]
+        history = [elbo(advi, q, m, 1000)]
 
         # construct animation
         anim = @animate for j = 1:25

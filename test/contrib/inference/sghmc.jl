@@ -10,7 +10,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         alg = SGHMC(10000, 0.02, 0.5)
         chain = sample(gdemo_default, alg)
-        check_gdemo(chain, eps=0.1)
+        check_gdemo(chain, atol = 0.1)
     end
     @turing_testset "sghmc constructor" begin
         alg = SGHMC(1000, 0.01, 0.1)

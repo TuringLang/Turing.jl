@@ -19,7 +19,7 @@ To specify distributions of random variables, Turing programs should use the `~`
 `x ~ distr` where `x` is a symbol and `distr` is a distribution. If `x` is undefined in the model function, inside the probabilistic program, this puts a random variable named `x`, distributed according to `distr`, in the current scope. `distr` can be a value of any type that implements `rand(distr)`, which samples a value from the distribution `distr`. If `x` is defined, this is used for conditioning in a style similar to [Anglican](https://probprog.github.io/anglican/index.html) (another PPL). In this case, `x` is an observed value, assumed to have been drawn from the distribution `distr`. The likelihood is computed using `logpdf(distr,y)`. The observe statements should be arranged so that every possible run traverses all of them in exactly the same order. This is equivalent to demanding that they are not placed inside stochastic control flow.
 
 
-Available inference methods include  Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC), Hamiltonian Monte Carlo with Dual Averaging (HMCDA) and The No-U-Turn Sampler (NUTS).
+Available inference methods include Importance Sampling (IS), Sequential Monte Carlo (SMC), Particle Gibbs (PG), Hamiltonian Monte Carlo (HMC), Hamiltonian Monte Carlo with Dual Averaging (HMCDA) and The No-U-Turn Sampler (NUTS).
 
 
 ### Simple Gaussian Demo
@@ -50,12 +50,12 @@ We can perform inference by using the `sample` function, the first argument of w
 
 ```julia
 #  Run sampler, collect results.
-c1 = sample(gdemo(1.5, 2), SMC(1000))
-c2 = sample(gdemo(1.5, 2), PG(10,1000))
-c3 = sample(gdemo(1.5, 2), HMC(1000, 0.1, 5))
-c4 = sample(gdemo(1.5, 2), Gibbs(1000, PG(10, 2, :m), HMC(2, 0.1, 5, :s)))
-c5 = sample(gdemo(1.5, 2), HMCDA(1000, 0.15, 0.65))
-c6 = sample(gdemo(1.5, 2), NUTS(1000,  0.65))
+c1 = sample(gdemo(1.5, 2), SMC(), 1000)
+c2 = sample(gdemo(1.5, 2), PG(10), 1000)
+c3 = sample(gdemo(1.5, 2), HMC(0.1, 5), 1000)
+c4 = sample(gdemo(1.5, 2), Gibbs(PG(10, :m), HMC(0.1, 5, :s)), 1000)
+c5 = sample(gdemo(1.5, 2), HMCDA(0.15, 0.65), 1000)
+c6 = sample(gdemo(1.5, 2), NUTS(0.65), 1000)
 ```
 
 
@@ -77,10 +77,10 @@ The arguments for each sampler are:
 
   * SMC: number of particles.
   * PG: number of particles, number of iterations.
-  * HMC: number of samples, leapfrog step size, leapfrog step numbers.
-  * Gibbs: number of samples, component sampler 1, component sampler 2, ...
-  * HMCDA: number of samples, total leapfrog length, target accept ratio.
-  * NUTS: number of samples, target accept ratio.
+  * HMC: leapfrog step size, leapfrog step numbers.
+  * Gibbs: component sampler 1, component sampler 2, ...
+  * HMCDA: total leapfrog length, target accept ratio.
+  * NUTS: number of adaptation steps (optional), target accept ratio.
 
 
 For detailed information on the samplers, please review Turing.jl's [API]({{site.baseurl}}/docs/library) documentation.
@@ -136,7 +136,7 @@ Turing does not have a declarative form. More generally, the order in which you 
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
@@ -151,32 +151,31 @@ But if we switch the `s ~ Poisson(1)` and `y ~ Normal(s, 1)` lines, the model wi
   return y
 end
 
-sample(model_function(10), SMC(100))
+sample(model_function(10), SMC(), 100)
 ```
 
 
 
 ### Sampling Multiple Chains
 
+If you have Julia 1.3 or greater, you may use `psample` to sample multiple chains in a multithreaded way:
 
-If you wish to run multiple chains, you can do so with the `mapreduce` function:
+```julia
+# Generate 4 chains, each with 1,000 samples.
+chains = psample(model, sampler, 1000, 4)
+```
+
+For older versions of Julia, `psample` may not function correctly. If you wish to run multiple chains, you can do so with the `mapreduce` function:
 
 
 ```julia
 # Replace num_chains below with however many chains you wish to sample.
-chains = mapreduce(c -> sample(model_fun, sampler), chainscat, 1:num_chains)
+chains = mapreduce(c -> sample(model_fun, sampler, 1000), chainscat, 1:num_chains)
 ```
-
 
 The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
 
-
 Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
-
-
-Please note that Turing does not have native support for chains sampled in parallel.
-
-
 
 ### Sampling from an Unconditional Distribution (The Prior)
 
@@ -195,13 +194,13 @@ end
 ```
 
 
-Assign the function without inputs to a variable, and Turing will produce a sample from the prior distribution.
+Assign the function with `missing` inputs to a variable, and Turing will produce a sample from the prior distribution.
 
 
 ```julia
 # Samples from p(x,y)
-g_prior_sampler = gdemo()
-g_prior_sampler()
+g_prior_sample = gdemo(missing, missing)
+g_prior_sample()
 ```
 
 
@@ -216,14 +215,18 @@ Output:
 ### Sampling from a Conditional Distribution (The Posterior)
 
 
-#### Using `Missing`
+#### Treating observations as random variables
 
 
-Values that are `missing` are treated as parameters to be estimated. This can be useful if you want to simulate draws for that parameter, or if you are sampling from a conditional distribution. Turing v0.6.7 supports the following syntax:
+Inputs to the model that have a value `missing` are treated as parameters, aka random variables, to be estimated/sampled. This can be useful if you want to simulate draws for that parameter, or if you are sampling from a conditional distribution. Turing supports the following syntax:
 
 
 ```julia
-@model gdemo(x) = begin
+@model gdemo(x, ::Type{T} = Float64) where {T} = begin
+    if x === missing
+        # Initialize `x` if missing
+        x = Vector{T}(undef, 2)
+    end
     s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
@@ -231,16 +234,15 @@ Values that are `missing` are treated as parameters to be estimated. This can be
     end
 end
 
-# Treat x as a vector of missing values.
-model = gdemo(fill(missing, 2))
-c = sample(model, HMC(500, 0.01, 5))
+# Construct a model with x = missing
+model = gdemo(missing)
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
+Note the need to initialize `x` when missing since we are iterating over its elements later in the model. The generated values for `x` can be extracted from the `Chains` object using `c[:x]`.
 
-The above case tells the model compiler the dimensions of the values it needs to generate. The generated values for `x` can be extracted from the `Chains` object using `c[:x]`.
 
-
-Currently, Turing does not support vector-valued inputs containing mixed `missing` and non-missing values, i.e. vectors of type `Union{Missing, T}` where `T` is any type. The following **will not work**:
+Turing also supports mixed `missing` and non-`missing` values in `x`, where the missing ones will be treated as random variables to be sampled while the others get treated as observations. For example:
 
 
 ```julia
@@ -252,52 +254,25 @@ Currently, Turing does not support vector-valued inputs containing mixed `missin
     end
 end
 
-# Warning: This will provide an error!
+# x[1] is a parameter, but x[2] is an observation
 model = gdemo([missing, 2.4])
-c = sample(model, HMC(500, 0.01, 5))
+c = sample(model, HMC(0.01, 5), 500)
 ```
 
 
-If this is functionality you need, you may need to define each parameter as a separate variable, as below:
+#### Default Values
 
 
-```julia
-@model gdemo(x1, x2) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    # Note that x1 and x2 are no longer vector-valued.
-    x1 ~ Normal(m, sqrt(s))
-    x2 ~ Normal(m, sqrt(s))
-end
-
-# Equivalent to sampling p( x1 | x2 = 1.5).
-model = gdemo(missing, 1.5)
-c = sample(model, HMC(500, 0.01, 5))
-```
-
-
-#### Using Argument Defaults
-
-
-Turing models can also be treated as generative by providing default values in the model declaration, and then calling that model without arguments.
-
-
-Suppose we wish to generate data according to the model
-
-
-$$ s \sim \text{InverseGamma}(2, 3) \\
-m \sim \text{Normal}(0, \sqrt{s}) \\
-x_i \sim \text{Normal}(m, \sqrt{s}), \space i = 1\dots10 $$
-
-
-Each $$x_i$$ can be generated by Turing. In the model below, if `x` is not provided when the function is called, `x` will default to `Vector{Real}(undef, 10)`, a 10-element array of `Real` values. The sampler will then treat `x` as a parameter and generate those quantities.
-
+Arguments to Turing models can have default values much like how default values work in normal Julia functions. For instance, the following will assign `missing` to `x` and treat it as a random variable. If the default value is not `missing`, `x` will be assigned that value and will be treated as an observation instead.
 
 ```julia
 using Turing
 
-# Declare a model with a default value.
-@model generative(x = Vector{Real}(undef, 10)) = begin
+@model generative(x = missing, ::Type{T} = Float64) where {T <: Real} = begin
+    if x === missing
+        # Initialize x when missing
+        x = Vector{T}(undef, 10)
+    end
     s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in 1:length(x)
@@ -305,97 +280,64 @@ using Turing
     end
     return s, m
 end
+
+m = generative()
+chain = sample(m, HMC(0.01, 5), 1000)
 ```
 
 
-This model can be called in a traditional fashion, with an argument vector of any size:
-
-
-```julia
-# The values 1.5 and 2.0 will be observed by the sampler.
-m = generative([1.5,2.0])
-chain = sample(m, HMC(1000, 0.01, 5))
-```
-
-
-We can generate observations by providing no arguments in the `sample` call.
-
-
-```julia
-# This call will generate a vector of 10 values
-# every sampler iteration.
-generated = sample(generative(), HMC(1000, 0.01, 5))
-```
-
-
-The generated quantities can then be accessed by pulling them out of the chain. To access all the `x` values, we first subset the chain using `generated[:x]`
-
-
-```julia
-xs = generated[:x]
-```
+#### Access Values inside Chain
 
 
 You can access the values inside a chain several ways:
-
 
 1. Turn them into a `DataFrame` object
 2. Use their raw `AxisArray` form
 3. Create a three-dimensional `Array` object
 
+For example, let `c` be a `Chain`:
+    1. `DataFrame(c)` converts `c` to a `DataFrame`,
+    2. `c.value` retrieves the values inside `c` as an `AxisArray`, and
+    3. `c.value.data` retrieves the values inside `c` as a 3D `Array`.
 
+
+#### Variable Types and Type Parameters
+
+
+The element type of a vector (or matrix) of random variables should match the `eltype` of the its prior distribution, `<: Integer` for discrete distributions and `<: AbstractFloat` for continuous distributions. Moreover, if the continuous random variable is to be sampled using a Hamiltonian sampler, the vector's element type needs to either be:
+    1. `Real` to enable auto-differentiation through the model which uses special number types that are sub-types of `Real`, or
+    2. Some type parameter `T` defined in the model header using the type parameter syntax, e.g. `gdemo(x, ::Type{T} = Float64) where {T} = begin`.
+Similarly, when using a particle sampler, the Julia variable used should either be:
+    1. A `TArray`, or
+    2. An instance of some type parameter `T` defined in the model header using the type parameter syntax, e.g. `gdemo(x, ::Type{T} = Vector{Float64}) where {T} = begin`.
+
+
+### Querying Probabilities from Model or Chain
+
+
+Consider the following `gdemo` model:
 ```julia
-# Convert to a DataFrame.
-DataFrame(xs)
-
-# Retrieve an AxisArray.
-xs.value
-
-# Retrieve a basic 3D Array.
-xs.value.data
-```
-
-
-#### What to Use as a Default Value
-
-
-Currently, the actual *value* of the default argument does not matter. Only the dimensions and type of a non-atomic value are relevant. Turing uses default values to pre-allocate vectors when they are treated as parameters, because if the value is not provided, the model will not know the size or type of a vector. Consider the following model:
-
-
-```julia
-@model generator(x) = begin
+@model gdemo(x, y) = begin
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
-  for i in 1:length(x)
-      x[i] ~ Normal(m, sqrt(s))
-  end
-  return s, m
+  x ~ Normal(m, sqrt(s))
+  y ~ Normal(m, sqrt(s))
 end
 ```
 
+The following are examples of valid queries of the `Turing` model or chain: 
 
-If we are trying to generate random random values from the `generator` model and we call `sample(generator(), HMC(1000, 0.01, 5))`, we will receive an error. This is because there is no way to determine `length(x)`, whether `x` is a vector, and the type of the values in `x`.
+- `prob"x = 1.0, y = 1.0 | model = gdemo, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
 
+- `prob"s = 1.0, m = 1.0 | model = gdemo, x = nothing, y = nothing"` calculates the joint probability of `s = 1` and `m = 1` ignoring `x` and `y`. `x` and `y` are ignored so they can be optionally dropped from the RHS of `|`, but it is recommended to define them.
 
-A sensible default value might be:
+- `prob"s = 1.0, m = 1.0, x = 1.0 | model = gdemo, y = nothing"` calculates the joint probability of `s = 1`, `m = 1` and `x = 1` ignoring `y`.
 
+- `prob"s = 1.0, m = 1.0, x = 1.0, y = 1.0 | model = gdemo"` calculates the joint probability of all the variables.
 
-```julia
-@model generator(x = zeros(10)) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  for i in 1:length(x)
-      x[i] ~ Normal(m, sqrt(s))
-  end
-  return s, m
-end
-```
+- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
 
-
-In this case, the model compiler can now determine that `x` is a `Vector{Float64,1}` of length 10, and the model will work as intended. It doesn't matter what the values in the vector are — at current, `x` will be treated as a parameter if it assumes its default value, i.e. no value was provided in the function call for that variable.
-
-
-The element type of the vector (or matrix) should match the type of the random variable, `<: Integer` for discrete random variables and `<: AbstractFloat` for continuous random variables. Moreover, if the continuous random variable is to be sampled using a Hamiltonian sampler, the vector's element type needs to be `Real` to enable auto-differentiation through the model which uses special number types that are sub-types of `Real`. Finally, when using a particle sampler, a `TArray` should be used.
+In all the above cases, `logprob` can be used instead of `prob` to calculate the log probabilities instead.
 
 
 ## Beyond the Basics
@@ -422,14 +364,14 @@ end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
 
-chn = sample(simple_choice_f, Gibbs(1000, HMC(1, 0.2, 3, :p), PG(20, 1, :z)))
+chn = sample(simple_choice_f, Gibbs(HMC(0.2, 3, :p), PG(20, :z)), 1000)
 ```
 
 
 The `Gibbs` sampler can be used to specify unique automatic differentation backends for different variable spaces. Please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article for more.
 
 
-For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://xuk.ai/assets/aistats2018-turing.pdf).
+For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://proceedings.mlr.press/v84/ge18b.html).
 
 
 ### Working with MCMCChains.jl

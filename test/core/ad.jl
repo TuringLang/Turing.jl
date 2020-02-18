@@ -1,7 +1,7 @@
 using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
 using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
-using Turing.Core.RandomVariables: getval
-using Turing.Core: TuringMvNormal, TuringDiagNormal
+using DynamicPPL: getval
+using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 using ForwardDiff: Dual
 using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
@@ -11,53 +11,13 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 _to_cov(B) = B * B' + Matrix(I, size(B)...)
-
 @testset "ad.jl" begin
-    @turing_testset "AD compatibility" begin
-
-        # Real
-        x_real = randn(5)
-        dists = [Normal(0, 1)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            ForwardDiff.gradient(f, x_real)
-        end
-
-        # Postive
-        x_positive = randn(5).^2
-        dists = [Gamma(2, 3)]
-        for dist in dists
-            f(x::Vector) = sum(logpdf.(Ref(dist), x))
-            g = x -> ForwardDiff.gradient(f, x)
-        end
-
-        # Test AD.
-        test_ad(p->binomlogpdf(10, p, 3))
-        test_ad(p->logpdf(Binomial(10, p), 3))
-        test_ad(p->Turing.poislogpdf(p, 1))
-        test_ad(p->logpdf(Poisson(p), 3))
-        test_ad(p->Turing.nbinomlogpdf(5, p, 1))
-        test_ad(p->logpdf(NegativeBinomial(5, p), 3))
-        test_ad(p->Turing.nbinomlogpdf(p, 0.5, 1), 3.5)
-        test_ad(r->logpdf(NegativeBinomial(r, 0.5), 3), 3.5)
-        test_ad(x->Turing.nbinomlogpdf(x[1], x[2], 1), [3.5, 0.5])
-        test_ad(m->logpdf(MvNormal(m, 1.0), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3]), [1.0, 1.0]), [1.0, 1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(ms->logpdf(MvNormal(ms[1:2], ms[3:4]), [1.0, 1.0]), [1.0, 1.0, 1.0, 1.0])
-        s = rand(2,2); s = s' * s
-        test_ad(m->logpdf(MvNormal(m, s), [1.0, 1.0]), [1.0, 1.0])
-        test_ad(s->logpdf(MvNormal(zeros(2), s), [1.0, 1.0]), s)
-        ms = [[0.0, 0.0]; s[:]]
-        test_ad(ms->logpdf(MvNormal(ms[1:2], reshape(ms[3:end], 2, 2)), [1.0, 1.0]), ms)
-        test_ad(logsumexp, [1.0, 1.0])
-    end
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
-        svn = vi.vns[1]
-        mvn = vi.vns[2]
+        svn = vi.metadata.vns[1]
+        mvn = vi.metadata.vns[2]
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
@@ -65,7 +25,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ∇E = gradient_logp_reverse(x, vi, ad_test_f)[2]
         grad_Turing = sort(∇E)
 
-        dist_s = InverseGamma(2, 3)
+        dist_s = InverseGamma(2,3)
 
         # Hand-written logp
         function logp(x::Vector)
@@ -73,7 +33,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
           # s = invlink(dist_s, s)
           m = x[1]
           lik_dist = Normal(m, sqrt(s))
-          lp = logpdf(dist_s, s) + logpdf(Normal(0, sqrt(s)), m)
+          lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
           lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
           lp
         end
@@ -108,7 +68,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
             s = x[2]
             m = x[1]
             lik_dist = Normal(m, sqrt(s))
-            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0, sqrt(s)), m, false)
+            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt(s)), m, false)
             lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
             return lp
         end
@@ -134,7 +94,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     @turing_testset "Tracker + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
-        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-8)
+        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-6, atol=1e-6)
     end
     @turing_testset "Tracker + fill" begin
         rng = MersenneTwister(123456)
@@ -147,8 +107,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         B = randn(rng, N, N)
         m, A = randn(rng, N), B' * B + I
 
-        # Generate from the TuringMvNormal
-        d, back = Tracker.forward(TuringMvNormal, m, A)
+        # Generate from the TuringDenseMvNormal
+        d, back = Tracker.forward(TuringDenseMvNormal, m, A)
         x = Tracker.data(rand(d))
 
         # Check that the logpdf agrees with MvNormal.
@@ -161,7 +121,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         rng, N = MersenneTwister(123456), 11
         m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
 
-        d = TuringDiagNormal(m, σ)
+        d = TuringDiagMvNormal(m, σ)
         x = rand(d)
 
         # Check that the logpdf agrees with MvNormal.
@@ -172,7 +132,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     end
     @turing_testset "Tracker + MvNormal Interface" begin
         # Note that we only test methods where the `MvNormal` ctor actually constructs
-        # a TuringMvNormal.
+        # a TuringDenseMvNormal.
 
         rng, N = MersenneTwister(123456), 7
         m, b, B, x = randn(rng, N), randn(rng, N), randn(rng, N, N), randn(rng, N)
@@ -306,19 +266,19 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(dir(), HMC(1000, 0.01, 1));
+        sample(dir(), HMC(0.01, 1), 1000);
     end
     @testset "PDMatDistribution Tracker AD" begin
         @model wishart() = begin
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(wishart(), HMC(1000, 0.01, 1));
+        sample(wishart(), HMC(0.01, 1), 1000);
 
         @model invwishart() = begin
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reverse_diff)
-        sample(invwishart(), HMC(1000, 0.01, 1));
+        sample(invwishart(), HMC(0.01, 1), 1000);
     end
 end

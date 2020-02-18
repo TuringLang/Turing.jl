@@ -16,46 +16,48 @@
 #   Ref
 #     http://goedman.github.io/Stan.jl/latest/index.html#Types-1
 
-function sample(mf::T, ss::CmdStan.Sample) where T
+function sample(mf, ss::CmdStan.Sample)
     return sample(mf, ss.num_samples, ss.num_warmup,
                     ss.save_warmup, ss.thin, ss.adapt, ss.alg)
 end
 
-function sample(mf::T,
+function sample(
+    mf,
     num_samples::Int,
     num_warmup::Int,
     save_warmup::Bool,
     thin::Int,
     ss::CmdStan.Sample
-) where T
+)
     return sample(mf, num_samples, num_warmup, save_warmup, thin, ss.adapt, ss.alg)
 end
 
-function sample(mf::T,
+function sample(
+    mf,
     num_samples::Int,
     num_warmup::Int,
     save_warmup::Bool,
     thin::Int,
     adapt::CmdStan.Adapt,
     alg::CmdStan.Hmc
-) where T
+)
     if alg.stepsize_jitter != 0.0
         @warn("[Turing.sample] Turing does not support adding noise to stepsize yet.")
     end
-    if adapt.engaged == false
+    if !adapt.engaged
         if isa(alg.engine, CmdStan.Static)   # hmc
-            stepnum = Int(round(alg.engine.int_time / alg.stepsize))
-            sample(mf, HMC(num_samples, alg.stepsize, stepnum); adaptor=NUTSAdaptor(adapt))
+            stepnum = alg.engine.int_time ÷ alg.stepsize
+            sample(mf, HMC(alg.stepsize, stepnum), num_samples; adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # error
             error("[Turing.sample] CmdStan.Nuts cannot be used with adapt.engaged set as false")
         end
     else
         if isa(alg.engine, CmdStan.Static)   # hmcda
-            sample(mf, HMCDA(num_samples, num_warmup, adapt.delta, alg.engine.int_time);
+            sample(mf, HMCDA(num_warmup, adapt.delta, alg.engine.int_time), num_samples;
                     adaptor=NUTSAdaptor(adapt))
         elseif isa(alg.engine, CmdStan.Nuts) # nuts
             if isa(alg.metric, CmdStan.diag_e)
-                sample(mf, NUTS(num_samples, num_warmup, adapt.delta);
+                sample(mf, NUTS(num_warmup, adapt.delta), num_samples;
                         adaptor=NUTSAdaptor(adapt))
             else # TODO: reove the following since Turing support this feature now.
                 @warn("[Turing.sample] Turing does not support full covariance matrix for pre-conditioning yet.")
@@ -64,7 +66,8 @@ function sample(mf::T,
     end
 end
 
-function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
+# FIXME: where is `spl` in the code below?
+function AHMCAdaptor(adaptor)
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
         AHMC.Preconditioner(metric),
@@ -76,8 +79,10 @@ function AHMCAdaptor(adaptor::CmdAdaptorType) where CmdAdaptorType
     else # default adaptor
         @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
         adaptor = AHMC.StanHMCAdaptor(
-            spl.alg.n_adapts, AHMC.Preconditioner(:DiagEuclideanMetric),
+            AHMC.Preconditioner(:DiagEuclideanMetric),
             AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
         )
+        AHMC.initialize!(adaptor, spl.alg.n_adapts)
+        adaptor
     end
 end

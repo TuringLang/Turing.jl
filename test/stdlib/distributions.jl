@@ -15,6 +15,29 @@ include(dir*"/test/test_utils/AllUtils.jl")
         k = 3
         @test logpdf(d1, k) ≈ logpdf(d2, k)
     end
+
+    @turing_testset "distributions functions" begin
+        Random.seed!(1)
+
+        d = OrderedLogistic(-2, [-1, 1])
+
+        n = 1_000_000
+        y = rand(d, n)
+        K = length(d.cutpoints) + 1
+        p = [mean(==(k), y) for k in 1:K]          # empirical probs
+        pmf = [exp(logpdf(d, k)) for k in 1:K]
+
+        @test all(((x, y),) -> abs(x - y) < 0.001, zip(p, pmf))
+    end
+
+    @turing_testset "distributions functions" begin
+        λ = .01:.01:5
+        LLp = @. logpdf(Poisson(λ),1)
+        LLlp = @. logpdf(LogPoisson(log(λ)),1)
+        @test LLp ≈ LLlp atol = .0001
+
+    end
+
     @numerical_testset "single distribution correctness" begin
         Random.seed!(12321)
 
@@ -100,7 +123,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                             x ~ dist
                         end
 
-                        chn = sample(m(), HMC(n_samples, 0.2, 1))
+                        chn = sample(m(), HMC(0.2, 1), n_samples)
 
                         # Numerical tests.
                         check_dist_numerical(dist,

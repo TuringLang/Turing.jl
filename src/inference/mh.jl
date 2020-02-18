@@ -1,241 +1,302 @@
-"""
-    MH(n_iters::Int)
+###
+### Sampler states
+###
 
-Metropolis-Hastings sampler.
-
-Usage:
-
-```julia
-MH(100, (:m, (x) -> Normal(x, 0.1)))
-```
-
-Example:
-
-```julia
-# Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  x[1] ~ Normal(m, sqrt(s))
-  x[2] ~ Normal(m, sqrt(s))
-  return s, m
+struct MH{space, P} <: InferenceAlgorithm 
+    proposals::P
 end
 
-chn = sample(gdemo([1.5, 2]), MH(1000))
-```
-"""
-mutable struct MH{space} <: InferenceAlgorithm
-    n_iters   ::  Int       # number of iterations
-    proposals ::  Dict{Symbol,Any}  # Proposals for paramters
-end
-function MH(n_iters::Int, proposals::Dict{Symbol, Any}, space::Tuple) 
-    return MH{space}(n_iters, proposals)
-end
+function MH(space...)
+    syms = Symbol[]
 
-function MH(n_iters::Int, space...)
-    new_space = ()
-    proposals = Dict{Symbol,Any}()
+    prop_syms = Symbol[]
+    props = AMH.Proposal[]
 
-    # parse random variables with their hypothetical proposal
-    for element in space
-        if isa(element, Symbol)
-            new_space = (new_space..., element)
-        else
-            @assert isa(element[1], Symbol) "[MH] ($element[1]) should be a Symbol. For proposal, use the syntax MH(N, (:m, (x) -> Normal(x, 0.1)))"
-            new_space = (new_space..., element[1])
-            proposals[element[1]] = element[2]
-        end
-    end
-    MH(n_iters, proposals, new_space)
-end
+    check_support(dist) = insupport(dist, z)
 
-function Sampler(alg::MH, model::Model, s::Selector)
-    alg_str = "MH"
+    for s in space
+        if s isa Symbol
+            push!(syms, s)
+        elseif s isa Pair || s isa Tuple
+            push!(prop_syms, s[1])
 
-    # Sanity check for space
-    if (s.tag == :default) && !isempty(getspace(alg))
-        @assert issubset(get_pvars(model), getspace(alg)) "[$alg_str] symbols specified to samplers ($getspace(alg)) doesn't cover the model parameters ($(get_pvars(model)))"
-        if !(issetequal(get_pvars(model), getspace(alg)))
-            @warn("[$alg_str] extra parameters specified by samplers don't exist in model: $(setdiff(getspace(alg), get_pvars(model)))")
-        end
-    end
-
-    info = Dict{Symbol, Any}()
-    info[:proposal_ratio] = 0.0
-    info[:prior_prob] = 0.0
-    info[:violating_support] = false
-
-    return Sampler(alg, info, s)
-end
-
-function propose(model, spl::Sampler{<:MH}, vi::VarInfo)
-    spl.info[:proposal_ratio] = 0.0
-    spl.info[:prior_prob] = 0.0
-    spl.info[:violating_support] = false
-    return runmodel!(model, vi ,spl)
-end
-
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{true})
-    return vi, true
-end
-
-function step(model, spl::Sampler{<:MH}, vi::VarInfo, is_first::Val{false})
-  if spl.selector.tag != :default # Recompute joint in logp
-    runmodel!(model, vi)
-  end
-  old_θ = copy(vi[spl])
-  old_logp = getlogp(vi)
-
-  Turing.DEBUG && @debug "Propose new parameters from proposals..."
-  propose(model, spl, vi)
-
-  Turing.DEBUG && @debug "computing accept rate α..."
-  is_accept, _ = mh_accept(-old_logp, -getlogp(vi), spl.info[:proposal_ratio])
-
-  Turing.DEBUG && @debug "decide wether to accept..."
-  if is_accept && !spl.info[:violating_support]  # accepted
-    is_accept = true
-  else                      # rejected
-    is_accept = false
-    vi[spl] = old_θ         # reset Θ
-    setlogp!(vi, old_logp)  # reset logp
-  end
-
-  return vi, is_accept
-end
-
-function sample(model::Model, alg::MH;
-                save_state=false,         # flag for state saving
-                resume_from=nothing,      # chain to continue
-                reuse_spl_n=0,            # flag for spl re-using
-                )
-
-  spl = reuse_spl_n > 0 ?
-        resume_from.info[:spl] :
-        Sampler(alg, model)
-    if resume_from != nothing
-        spl.selector = resume_from.info[:spl].selector
-    end
-  alg_str = "MH"
-
-  # Initialization
-  time_total = 0.0
-  n = reuse_spl_n > 0 ?
-      reuse_spl_n :
-      alg.n_iters
-  samples = Array{Sample}(undef, n)
-  weight = 1 / n
-  for i = 1:n
-    samples[i] = Sample(weight, Dict{Symbol, Any}())
-  end
-
-    vi = if resume_from == nothing
-        VarInfo(model)
-    else
-        resume_from.info[:vi]
-    end
-
-  if spl.selector.tag == :default
-    runmodel!(model, vi, spl)
-  end
-
-  # MH steps
-  accept_his = Bool[]
-  PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
-  for i = 1:n
-    Turing.DEBUG && @debug "$alg_str stepping..."
-
-    time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, Val(i == 1))
-    time_total += time_elapsed
-
-    if is_accept # accepted => store the new predcits
-        samples[i].value = Sample(vi, spl).value
-    else         # rejected => store the previous predcits
-        samples[i] = samples[i - 1]
-    end
-
-    samples[i].value[:elapsed] = time_elapsed
-    push!(accept_his, is_accept)
-
-    PROGRESS[] && (ProgressMeter.next!(spl.info[:progress]))
-  end
-
-  println("[$alg_str] Finished with")
-  println("  Running time        = $time_total;")
-  accept_rate = sum(accept_his) / n  # calculate the accept rate
-  println("  Accept rate         = $accept_rate;")
-
-  if resume_from != nothing   # concat samples
-    pushfirst!(samples, resume_from.info[:samples]...)
-  end
-  c = Chain(0.0, samples)       # wrap the result by Chain
-  if save_state               # save state
-    c = save(c, spl, model, vi, samples)
-  end
-
-  c
-end
-
-function assume(spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi::VarInfo)
-    if isempty(getspace(spl.alg)) || vn.sym in getspace(spl.alg)
-        if ~haskey(vi, vn) error("[MH] does not handle stochastic existence yet") end
-        old_val = vi[vn]
-
-        if vn.sym in keys(spl.alg.proposals) # Custom proposal for this parameter
-            proposal = spl.alg.proposals[vn.sym](old_val)
-            if typeof(proposal) == Distributions.Normal{Float64} # If Gaussian proposal
-                σ = std(proposal)
-                lb = support(dist).lb
-                ub = support(dist).ub
-                stdG = Normal()
-                r = rand(TruncatedNormal(proposal.μ, proposal.σ, lb, ub))
-                # cf http://fsaad.scripts.mit.edu/randomseed/metropolis-hastings-sampling-with-gaussian-drift-proposal-on-bounded-support/
-                spl.info[:proposal_ratio] += log(cdf(stdG, (ub-old_val)/σ) - cdf(stdG,(lb-old_val)/σ))
-                spl.info[:proposal_ratio] -= log(cdf(stdG, (ub-r)/σ) - cdf(stdG,(lb-r)/σ))
-            else # Other than Gaussian proposal
-                r = rand(proposal)
-                if (r < support(dist).lb) | (r > support(dist).ub) # check if value lies in support
-                    spl.info[:violating_support] = true
-                    r = old_val
-                end
-                spl.info[:proposal_ratio] -= logpdf(proposal, r) # accumulate pdf of proposal
-                reverse_proposal = spl.alg.proposals[vn.sym](r)
-                spl.info[:proposal_ratio] += logpdf(reverse_proposal, old_val)
+            if s[2] isa AMH.Proposal
+                push!(props, s[2])
+            elseif s[2] isa Distribution
+                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+            elseif s[2] isa Function
+                push!(props, AMH.Proposal(AMH.Static(), s[2]))
             end
-
-        else # Prior as proposal
-            r = rand(dist)
-            spl.info[:proposal_ratio] += (logpdf(dist, old_val) - logpdf(dist, r))
         end
-
-        spl.info[:prior_prob] += logpdf(dist, r) # accumulate prior for PMMH
-        vi[vn] = vectorize(dist, r)
-        setgid!(vi, spl.selector, vn)
-    else
-        r = vi[vn]
     end
 
-    # acclogp!(vi, logpdf(dist, r)) # accumulate pdf of prior
-    r, logpdf(dist, r)
+    proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
+    syms = vcat(syms, prop_syms)
+    return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-function assume(  spl::Sampler{<:MH},
-                  dists::Vector{D},
-                  vn::VarName,
-                  var::Any,
-                  vi::VarInfo
-                ) where D<:Distribution
-    error("[Turing] MH doesn't support vectorizing assume statement")
+alg_str(::Sampler{<:MH}) = "MH"
+
+#################
+# MH Transition #
+#################
+
+struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition} <: AbstractTransition
+    θ    :: T
+    lp   :: F
+    mh_trans :: M
 end
 
-function observe(spl::Sampler{<:MH}, d::Distribution, value::Any, vi::VarInfo)
-    return observe(nothing, d, value, vi)  # accumulate pdf of likelihood
+function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
+    theta = tonamedtuple(spl.state.vi)
+    return MHTransition(theta, mh_trans.lp, mh_trans)
 end
 
-function observe( spl::Sampler{<:MH},
-                  ds::Vector{D},
-                  value::Any,
-                  vi::VarInfo
-                )  where D<:Distribution
-    return observe(nothing, ds, value, vi) # accumulate pdf of likelihood
+transition_type(spl::Sampler{<:MH}) = typeof(Transition(spl))
+
+#####################
+# Utility functions #
+#####################
+
+"""
+    set_namedtuple!(vi::VarInfo, nt::NamedTuple)
+
+Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
+"""
+function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
+    for (n, vals) in pairs(nt)
+        vns = vi.metadata[n].vns
+
+        n_vns = length(vns)
+        n_vals = length(vals)
+        v_isarr = vals isa AbstractArray
+
+        if v_isarr && n_vals == 1 && n_vns > 1
+            for (vn, val) in zip(vns, vals[1])
+                vi[vn] = val isa AbstractArray ? val : [val]
+            end
+        elseif v_isarr && n_vals > 1 && n_vns == 1
+            vi[vns[1]] = vals
+        elseif v_isarr && n_vals == 1 && n_vns == 1
+            if vals[1] isa AbstractArray
+                vi[vns[1]] = vals[1]
+            else
+                vi[vns[1]] = [vals[1]]
+            end
+        elseif !(v_isarr)
+            vi[vns[1]] = [vals]
+        else
+            error("Cannot assign `NamedTuple` to `VarInfo`")
+        end
+    end
+end
+
+"""
+    gen_logπ_mh(vi::VarInfo, spl::Sampler, model)   
+
+Generate a log density function -- this variant uses the 
+`set_namedtuple!` function to update the `VarInfo`.
+"""
+function gen_logπ_mh(spl::Sampler, model)
+    function logπ(x)::Float64
+        vi = spl.state.vi
+        x_old, lj_old = vi[spl], getlogp(vi)
+        # vi[spl] = x
+        set_namedtuple!(vi, x)
+        runmodel!(model, vi)
+        lj = getlogp(vi)
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return lj
+    end
+    return logπ
+end
+
+"""
+    dist_val_tuple(spl::Sampler{<:MH})
+
+Returns two `NamedTuples`. The first `NamedTuple` has symbols as keys and distributions as values.
+The second `NamedTuple` has model symbols as keys and their stored values as values.
+"""
+function dist_val_tuple(spl::Sampler{<:MH})
+    vns = _getvns(spl.state.vi, spl)
+    dt = _dist_tuple(spl.state.vi.metadata, spl.alg.proposals, spl.state.vi, vns)
+    vt = _val_tuple(spl.state.vi.metadata, spl.state.vi, vns)
+    return dt, vt
+end
+
+@generated function _val_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(
+            length(metadata.$f.vns) == 1 ? getindex(vi, metadata.$f.vns)[1] : getindex.(Ref(vi), metadata.$f.vns)
+        )))
+    end
+    return expr
+end
+
+@generated function _dist_tuple(
+    metadata::NamedTuple, 
+    props::NamedTuple{propnames}, 
+    vi::VarInfo, 
+    vns::NamedTuple{names}
+) where {names, propnames}
+    length(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    map(names) do f
+        if f in propnames
+            # We've been given a custom proposal, use that instead.
+            push!(expr.args, Expr(:(=), f, :(props.$f)))
+        else
+            # Otherwise, use the default proposal.
+            push!(expr.args, Expr(:(=), f, :(AMH.Proposal(AMH.Static(), metadata.$f.dists[1]))))
+        end
+    end
+    return expr
+end
+
+#################
+# Sampler state #
+#################
+
+mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
+    vi :: V
+    density_model :: AMH.DensityModel
+end
+
+###############################
+# Static MH (from prior only) #
+###############################
+
+function Sampler(
+    alg::MH,
+    model::Model,
+    s::Selector=Selector()
+)
+    # Set up info dict.
+    info = Dict{Symbol, Any}()
+
+    # Make a varinfo.
+    vi = VarInfo(model)
+
+    # Make a density model.
+    dm = AMH.DensityModel(x -> 0.0)
+
+    # Set up state struct.
+    state = MHState(vi, dm)
+
+    # Generate a sampler.
+    spl = Sampler(alg, info, s, state)
+
+    # Update the density model.
+    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl, model))
+
+    return spl
+end
+
+function sample_init!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    N::Integer;
+    verbose::Bool=true,
+    resume_from=nothing,
+    kwargs...
+)
+    # Resume the sampler.
+    set_resume!(spl; resume_from=resume_from, kwargs...)
+
+    # Get `init_theta`
+    initialize_parameters!(spl; verbose=verbose, kwargs...)
+end
+
+function step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    N::Integer;
+    kwargs...
+)
+    if spl.selector.rerun # Recompute joint in logp
+        runmodel!(model, spl.state.vi)
+    end
+
+    # Retrieve distribution and value NamedTuples.
+    dt, vt = dist_val_tuple(spl)
+
+    # Create a sampler and the previous transition.
+    mh_sampler = AMH.MetropolisHastings(dt)
+    prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
+
+    # Make a new transition.
+    trans = step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
+
+    # Update the values in the VarInfo.
+    set_namedtuple!(spl.state.vi, trans.params)
+    setlogp!(spl.state.vi, trans.lp)
+
+    return Transition(spl)
+end
+
+####
+#### Compiler interface, i.e. tilde operators.
+####
+function assume(
+    spl::Sampler{<:MH},
+    dist::Distribution,
+    vn::VarName,
+    vi::VarInfo
+)
+    updategid!(vi, vn, spl)
+    r = vi[vn]
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+end
+
+function dot_assume(
+    spl::Sampler{<:MH},
+    dist::MultivariateDistribution,
+    vn::VarName,
+    var::AbstractMatrix,
+    vi::VarInfo,
+)
+    @assert dim(dist) == size(var, 1)
+    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
+    vns = getvn.(1:size(var, 2))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+end
+function dot_assume(
+    spl::Sampler{<:MH},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    vn::VarName,
+    var::AbstractArray,
+    vi::VarInfo,
+)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    vns = getvn.(CartesianIndices(var))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = reshape(vi[vec(vns)], size(var))
+    var .= r
+    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+end
+
+function observe(
+    spl::Sampler{<:MH},
+    d::Distribution,
+    value,
+    vi::VarInfo,
+)
+    return observe(SampleFromPrior(), d, value, vi)
+end
+
+function dot_observe(
+    spl::Sampler{<:MH},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray,
+    vi::VarInfo,
+)
+    return dot_observe(SampleFromPrior(), ds, value, vi)
 end

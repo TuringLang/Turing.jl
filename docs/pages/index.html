@@ -5,11 +5,11 @@ permalink: /
 
 main-feature_row:
   - title: "Intuitive"
-    excerpt: "Turing models are easy to read and write. Specify models quickly and easily."
-  - title: "Universal"
-    excerpt: "Turing supports models with stochastic control flow — models work the way you write them."
-  - title: "Adaptable"
-    excerpt: "Turing is written fully in Julia, and can be modified to suit your needs."
+    excerpt: "Turing models are easy to read and write — models work the way you write them."
+  - title: "General-purpose"
+    excerpt: "Turing supports models with discrete parameters and stochastic control flow. Specify complex models quickly and easily."
+  - title: "Modular"
+    excerpt: "Turing is modular, written fully in Julia, and can be modified to suit your needs."
 
 code-sample:
   excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
@@ -88,7 +88,7 @@ support:
           <h1><strong>Turing.jl</strong></h1>
           <!-- desc section -->
           <div class="lead">
-            <p><strong>Turing</strong>  is a universal probabilistic programming language with an intuitive modelling interface, composable probabilistic inference, and computational scalability.</p>
+            <p>A robust, efficient and modular library for general-purpose probabilistic AI.</p>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@ support:
       <div class="col-xl-2"></div>
       <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body  text-right">
-          <h2 class="archive__item-title" >A Quick Example</h2>
+          <h2 class="archive__item-title" >Hello World in Turing — Linear Gaussian Model</h2>
           <div class="archive__item-excerpt">
             {{ page.code-sample.excerpt | markdownify }}
           </div>
@@ -136,6 +136,31 @@ support:
   </div>
 </div>
 
+<!-- A Quick Example -->
+<div class="swimlane">
+  <div class="container">
+    <div class="row">
+      <div class="col-xl-2"></div>
+      <div class="col-sm-6 col-md-8 col-xl-6">
+        <div class="archive__item-body  text-left">
+          <h2 class="archive__item-title" >News feed</h2>
+          <div class="archive__item-excerpt">
+            
+          </div>
+          {% for post in site.posts limit:10 %}
+              <div class="post-preview">
+              <a href="{{ site.baseurl }}{{ post.url }}">{{ post.title }} —
+              <span class="post-date">{{ post.date | date: "%B %d, %Y" }}</span></a> <br>
+              </div>
+              <hr>
+          {% endfor %}
+          <p><a href="{{ site.baseurl}}/news" class="btn btn-default">News</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Large Sampling Library -->
  <div class="swimlane">
   <div class="container">
@@ -147,7 +172,7 @@ support:
       </div>
       <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body">
-          <h2 class="archive__item-title">Large Sampling Library</h2>
+          <h2 class="archive__item-title">Advanced Markov Chain Monte Carlo Samplers</h2>
           <div class="archive__item-excerpt">
             {{ page.samplers.excerpt | markdownify }}
           </div>
@@ -166,7 +191,7 @@ support:
         <div class="col-xl-2"></div>
       <div class="col-sm-6 col-md-8 col-xl-6">
         <div class="archive__item-body  text-right">
-          <h2 class="archive__item-title">Integrates With Other Machine Learning Packages</h2>
+          <h2 class="archive__item-title">Interoperable With Deep Learning Libraries</h2>
           <div class="archive__item-excerpt">
             {{ page.flux.excerpt | markdownify }}
           </div>
@@ -204,7 +229,7 @@ support:
                 <div class="card-body">
                   <h4>{{ f.title }}</h4>
 
-                  <p class="card-summary">{{ f.text }}</p>                  
+                  <p class="card-summary">{{ f.text | markdownify }}</p>                  
                 </div>
                 <a href="{{ f.url }}" class="btn btn-default" target="_blank">Go to {{ f.title }}</a>
               </div>
