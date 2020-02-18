@@ -5,6 +5,10 @@ using BenchmarkHelper
 
 include("lr_helper.jl")
 
+if !haskey(BenchmarkSuite, "nuts")
+    BenchmarkSuite["nuts"] = BenchmarkGroup(["nuts"])
+end
+
 X, Y = readlrdata()
 
 @model lr_nuts(x, y, σ) = begin
@@ -24,5 +28,5 @@ n_samples = 1_000
 n_adapts = 1_000
 
 # Sampling
-BENCHMARK_RESULT = @benchmark_expr "LR_NUTS" sample(lr_nuts(X, Y, 100),
-                                                    NUTS(0.65), n_samples)
+BenchmarkSuite["nuts"]["lr"] = @benchmarkable sample(lr_nuts(X, Y, 100),
+                                                     NUTS(0.65), n_samples)

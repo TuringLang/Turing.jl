@@ -3,6 +3,10 @@ using DelimitedFiles
 
 using BenchmarkHelper
 
+if !haskey(BenchmarkSuite, "nuts")
+    BenchmarkSuite["nuts"] = BenchmarkGroup(["nuts"])
+end
+
 fname = joinpath(dirname(@__FILE__), "sv_nuts.data")
 y, header = readdlm(fname, ',', header=true)
 
@@ -28,4 +32,4 @@ end
 n_samples = 10_000
 
 # Sampling
-BENCHMARK_RESULT = @benchmark_expr "SV_NUTS" sample(sv_nuts(y, NaN), NUTS(0.65), n_samples)
+BenchmarkSuite["nuts"]["sv"] = @benchmarkable sample(sv_nuts(y, NaN), NUTS(0.65), n_samples)
