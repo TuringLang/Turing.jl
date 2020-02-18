@@ -1,13 +1,19 @@
 using Turing
 using DelimitedFiles
 
+using BenchmarkHelper
+
+if !haskey(BenchmarkSuite, "nuts")
+    BenchmarkSuite["nuts"] = BenchmarkGroup(["nuts"])
+end
+
 fname = joinpath(dirname(@__FILE__), "sv_nuts.data")
 y, header = readdlm(fname, ',', header=true)
 
 # Stochastic volatility (SV)
 @model sv_nuts(y, dy, ::Type{T}=Vector{Float64}) where {T} = begin
     N = size(y,1)
-    
+
     τ ~ Exponential(1/100)
     ν ~ Exponential(1/100)
     s = T(undef, N)
@@ -26,4 +32,4 @@ end
 n_samples = 10_000
 
 # Sampling
-@tbenchmark chain = sample(sv_nuts(y, NaN), NUTS(0.65), n_samples);
+BenchmarkSuite["nuts"]["sv"] = @benchmarkable sample(sv_nuts(y, NaN), NUTS(0.65), n_samples)

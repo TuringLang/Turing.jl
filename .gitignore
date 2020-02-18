@@ -22,3 +22,5 @@ docs/Gemfile.lock
 
 .DS_Store
 Manifest.toml
+
+benchmarks/output/

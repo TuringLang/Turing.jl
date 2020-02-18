@@ -1,0 +1,9 @@
+# Excludes
+EXCLUDES = [
+    "BenchmarkHelper.jl",
+    "ns-utilities.jl",
+    "github-action-runner.jl",
+    "runbenchmarks.jl",
+    "nuts/lr_helper.jl",
+    "^nuts/.+", # exclude nuts dir temporarily
+]

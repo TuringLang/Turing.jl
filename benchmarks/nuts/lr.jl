@@ -1,7 +1,13 @@
-using Turing, TuringBenchmarks.TuringTools
+using Turing
 using LinearAlgebra
 
+using BenchmarkHelper
+
 include("lr_helper.jl")
+
+if !haskey(BenchmarkSuite, "nuts")
+    BenchmarkSuite["nuts"] = BenchmarkGroup(["nuts"])
+end
 
 X, Y = readlrdata()
 
@@ -18,7 +24,9 @@ X, Y = readlrdata()
 end
 
 # Sampling parameter settings
+n_samples = 1_000
 n_adapts = 1_000
 
 # Sampling
-@tbenchmark chain = sample(lr_nuts(x, y, 100), NUTS(0.65), n_samples);
+BenchmarkSuite["nuts"]["lr"] = @benchmarkable sample(lr_nuts(X, Y, 100),
+                                                     NUTS(0.65), n_samples)
