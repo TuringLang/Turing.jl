@@ -28,4 +28,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}
-        run: julia ./benchmarks/github-action-runner.jl
+        # run: julia ./benchmarks/github-action-runner.jl
