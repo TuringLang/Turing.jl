@@ -26,7 +26,7 @@ jobs:
         run: julia -e 'using Pkg; pkg"""add JSON GitHub DataFrames BenchmarkTools;"""'
       - name: Run benchmarks
         # `if` to temporarily disable the benchmark action
-        if: false
+        # if: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}

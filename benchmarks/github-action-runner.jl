@@ -26,8 +26,12 @@ if EVENT_DATA["action"] != "created" || !haskey(EVENT_DATA, "comment")
 end
 
 user = EVENT_DATA["comment"]["user"]["login"]
-tags, branches = BenchmarkHelper.benchmarks_info(EVENT_DATA)
+should_run, tags, branches = BenchmarkHelper.benchmarks_info(EVENT_DATA)
 job_id =  Dates.format(Dates.now(), "YmmddHHMMSS")
+
+if !should_run
+    exit(0)
+end
 
 if (branches != nothing && !isempty(branches))
     @info "benchmark target branches:", branches

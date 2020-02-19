@@ -69,7 +69,7 @@ end
 function benchmarks_info(event_data)
     cmd, args, kwargs = command_info(event_data)
     if cmd != "runbenchmarks"
-        return nothing, nothing
+        return false, nothing, nothing
     end
 
     branches =  haskey(kwargs, :vs) ? Meta.parse(kwargs[:vs]) : []
@@ -93,7 +93,7 @@ function benchmarks_info(event_data)
             push!(branches, "master")
         end
     end
-    return Meta.parse(args[1]), branches
+    return true, Meta.parse(args[1]), branches
 end
 
 function target_benchmarks(bm_text)
