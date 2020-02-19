@@ -59,6 +59,7 @@ end
 
 function command_info(event_data)
     comment_body = event_data["comment"]["body"]
+    !occursin("@BayesBot", comment_body) && return (nothing, nothing, nothing)
     reg_bm_cmd = r"`\w+\(.*\)`"i
     bm_cmd = match(reg_bm_cmd, comment_body)
     bm_cmd == nothing && return (nothing, nothing, nothing)
