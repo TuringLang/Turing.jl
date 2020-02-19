@@ -4,7 +4,7 @@
 
 Generally, you can run any code in a benchmark. We use package
 `BenchmarkTools.jl` to organize our benchmarks, and
-`BenchmarkHelper.BenchmarkSuite` is the root benchmark groups, so you
+`BenchmarkHelper.BenchmarkSuite` is the root benchmark group, so you
 can write a benchmark like this:
 
 ```julia
@@ -27,11 +27,11 @@ the following event:
 - Comment on an issue
 - Comment on a Pull Request (a.k.a Code Review Comment)
 
-You must include a command in pattern `runbenchmarks(benchamrk_tags,
-vs=branch)` in the comment text to specify the branches on which the
-benchmarks will run and trigger the benchmarks. This command pattern
-is borrowed from `Nanosoldier.jl`, please find more detail from its
-documents. Here are some examples:
+You must **@BayesBot** and include a command in pattern
+`runbenchmarks(benchamrk_tags, vs=branch)` in the comment text to
+specify the branches on which the benchmarks will run and trigger the
+benchmarks. This command pattern is borrowed from `Nanosoldier.jl`,
+please find more detail from its documents. Here are some examples:
 
 - `runbenchmarks("array", vs=[“br1”, "br2"])` will trigger benchmarks tagged
     with `"array"` on branch `br1` and `br2`

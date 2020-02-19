@@ -59,6 +59,7 @@ end
 
 function command_info(event_data)
     comment_body = event_data["comment"]["body"]
+    !occursin("@BayesBot", comment_body) && return (nothing, nothing, nothing)
     reg_bm_cmd = r"`\w+\(.*\)`"i
     bm_cmd = match(reg_bm_cmd, comment_body)
     bm_cmd == nothing && return (nothing, nothing, nothing)
@@ -69,7 +70,7 @@ end
 function benchmarks_info(event_data)
     cmd, args, kwargs = command_info(event_data)
     if cmd != "runbenchmarks"
-        return nothing, nothing
+        return false, nothing, nothing
     end
 
     branches =  haskey(kwargs, :vs) ? Meta.parse(kwargs[:vs]) : []
@@ -93,7 +94,7 @@ function benchmarks_info(event_data)
             push!(branches, "master")
         end
     end
-    return Meta.parse(args[1]), branches
+    return true, Meta.parse(args[1]), branches
 end
 
 function target_benchmarks(bm_text)
