@@ -59,16 +59,17 @@
   linkedin: cameron-pfiffer
 
 - name: David Widmann
-  photot: https://widmann.dev/images/profile.jpg
+  photo: https://widmann.dev/images/profile.jpg
   github: devmotion
   institution: Uppsala University
   website: https://widmann.dev
   email: david.widmann@it.uu.se
 
 - name: Sharan Yalburgi
-  photot: https://sharanry.github.io/images/profile_photo.jpg
+  photo: https://sharanry.github.io/images/profile_photo.jpg
   github: sharanry
   institution: BITS Pilani
   website: sharanry.github.io
   email: sharanyalburgi@gmail.com
   linkedin: sharanry
+  twitter: sharanry
