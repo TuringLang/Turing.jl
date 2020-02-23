@@ -42,13 +42,13 @@
   twitter: twitter_handle
 
 - name: Tor Erlend Fjelde
-  photo: placeholder.png
+  photo: http://retiredparkingguard.com/assets/images/profile.jpg
   github: torfjelde
-  institution: Somewhere
+  institution: University of Cambridge
   website: http://retiredparkingguard.com/about.html
-  email: your-email@something.com
-  linkedin: linked-page
-  twitter: twitter_handle
+  email: tef30@cam.ac.uk
+  linkedin: torfjelde
+  twitter: torfjelde
 
 - name: Cameron Pfiffer
   photo: cameron.jpg
