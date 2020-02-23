@@ -7,7 +7,7 @@ title: The Team
 {% for member in site.data.members %}
 <div class="team-row"> 
 <div class="team-row-image">
-    <img src="{{site.baseurl}}/assets/team_photos/{{ member.photo }}" alt="{{ member.name }}">
+    <img src="{{ member.photo }}" alt="{{ member.name }}">
 </div>
 <div class="team-row-bio">
     <div class="team-row-bio-links">
