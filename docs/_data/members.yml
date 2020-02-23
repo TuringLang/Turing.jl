@@ -1,11 +1,9 @@
 - name: Hong Ge
-  photo: placeholder.png
+  photo: https://yebai.github.io/images/hg344-pr.jpg
   github: yebai
   institution: University of Cambridge
   website: http://mlg.eng.cam.ac.uk/hong/
-  email: your-email@something.com
-  linkedin: linked-page
-  twitter: twitter-handle
+  email: hg344@cam.ac.uk
 
 - name: Kai Xu
   photo: placeholder.png
