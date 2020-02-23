@@ -1,0 +1,61 @@
+- name: Hong Ge
+  photo: placeholder.png
+  github: yebai
+  institution: University of Cambridge
+  website: http://mlg.eng.cam.ac.uk/hong/
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter-handle
+
+- name: Kai Xu
+  photo: placeholder.png
+  github: xukai92
+  institution: University of Edinburgh
+  website: https://xuk.ai/
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter-handle
+
+- name: Martin Trapp
+  photo: placeholder.png
+  github: trappmartin
+  institution: Graz University of Technology
+  website: https://martint.blog/
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: martin_trapp
+
+- name: Will Tebbutt
+  photo: placeholder.png
+  github: willtebbutt
+  institution: University of Cambridge
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
+
+- name: Mohamed Tarek
+  photo: placeholder.png
+  github: mohamed82008
+  institution: University of New South Wales Canberra
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
+
+- name: Tor Erlend Fjelde
+  photo: placeholder.png
+  github: torfjelde
+  institution: Somewhere
+  website: http://retiredparkingguard.com/about.html
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
+
+- name: Cameron Pfiffer
+  photo: cameron.jpg
+  github: cpfiffer
+  institution: University of Oregon
+  website: cameron.pfiffer.org
+  email: cpfiffer@uoregon.edu
+  linkedin: cameron-pfiffer
