@@ -111,11 +111,6 @@ function grad!(
     DiffResults.gradient!(out, Tracker.grad(θ_tracked))
 end
 
-import Tracker: TrackedArray, track, Call
-function TrackedArray(f::Call, x::SA) where {T, N, A, SA<:SubArray{T, N, A}}
-    TrackedArray(f, convert(A, x))
-end
-
 """
     optimize!(vo, alg::VariationalInference{AD}, q::VariationalPosterior, model, θ; optimizer = TruncatedADAGrad())
 
