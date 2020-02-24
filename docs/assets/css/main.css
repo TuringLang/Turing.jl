@@ -2963,6 +2963,34 @@ tt, code, kbd, samp, pre {
     cursor: pointer;
 }
 
+.team-row {
+    display: flex;
+    align-items: center;
+}
+
+.team-row-bio {
+    display: flex;
+    align-items: center;
+    padding-left: 5%;
+}
+
+.team-row-image {
+    width: 10em;
+    height: 10em;
+    overflow: hidden;
+}
+
+.team-row-image img {
+    border-radius: 10%;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    margin: auto;
+}
+
+.team-row-bio-links a {
+    color: #5c5c5c !important;
+}
 
 /*# sourceMappingURL=data:application/json;
     charset=utf-8;

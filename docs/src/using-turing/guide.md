@@ -335,7 +335,9 @@ The following are examples of valid queries of the `Turing` model or chain:
 
 - `prob"s = 1.0, m = 1.0, x = 1.0, y = 1.0 | model = gdemo"` calculates the joint probability of all the variables.
 
-- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
+- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain, model = gdemo"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
+
+- If `save_state=true` was used during sampling (i.e., `sample(model, sampler, N; save_state=true)`), you can simply do ``prob"x = 1.0, y = 1.0 | chain = chain"`.
 
 In all the above cases, `logprob` can be used instead of `prob` to calculate the log probabilities instead.
 

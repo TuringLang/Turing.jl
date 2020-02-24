@@ -75,6 +75,9 @@ collections:
   posts:
     output: true
     permalink: /:collection/:path
+  team:
+    output: true
+    permalink: /:collection/:path
 
 # Defaults
 defaults:
@@ -93,6 +96,11 @@ defaults:
       type: "pages"
     values:
       layout: "page"
+  - scope:
+      path: "_team"
+      type: "team"
+    values:
+      layout: "team"
 
 
 plugins:
@@ -101,3 +109,4 @@ plugins:
   - jekyll-gist
   - jekyll-feed
   - jemoji
+  - jekyll-sitemap

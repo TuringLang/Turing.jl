@@ -1,12 +1,15 @@
 ##############################
 # Global variables/constants #
 ##############################
+using Bijectors
 
 const ADBACKEND = Ref(:forward_diff)
 function setadbackend(backend_sym)
     @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
     backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = backend_sym
+
+    Bijectors.setadbackend(backend_sym)
 end
 
 const ADSAFE = Ref(false)

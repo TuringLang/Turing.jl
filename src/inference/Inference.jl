@@ -313,7 +313,7 @@ function AbstractMCMC.bundle_samples(
     ts::Vector,
     chain_type::Type{Chains};
     discard_adapt::Bool=true,
-    save_state=true,
+    save_state=false,
     kwargs...
 )
     # Check if we have adaptation samples.
@@ -371,7 +371,7 @@ function AbstractMCMC.bundle_samples(
     ts::Vector,
     chain_type::Type{Vector{NamedTuple}};
     discard_adapt::Bool=true,
-    save_state=true,
+    save_state=false,
     kwargs...
 )
     nts = Vector{NamedTuple}(undef, N)
