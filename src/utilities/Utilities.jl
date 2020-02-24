@@ -3,7 +3,7 @@ module Utilities
 using DynamicPPL: AbstractSampler, Sampler
 using Distributions, Bijectors
 using StatsFuns, SpecialFunctions
-using MCMCChains: AbstractChains, Chains, setinfo
+using MCMCChains: Chains, setinfo
 import Distributions: sample
 
 export  vectorize,

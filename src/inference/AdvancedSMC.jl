@@ -7,7 +7,7 @@
 #######################
 
 """
-    ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+    ParticleTransition{T, F<:AbstractFloat}
 
 Fields:
 - `θ`: The parameters for any given sample.
@@ -15,14 +15,12 @@ Fields:
 - `le`: The log evidence retrieved from the particle.
 - `weight`: The weight of the particle the sample was retrieved from.
 """
-struct ParticleTransition{T, F<:AbstractFloat} <: AbstractTransition
+struct ParticleTransition{T, F<:AbstractFloat}
     θ::T
     lp::F
     le::F
     weight::F
 end
-
-transition_type(spl::Sampler{<:ParticleInference}) = ParticleTransition
 
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
@@ -76,9 +74,9 @@ function Sampler(alg::SMC, model::Model, s::Selector)
     return Sampler(alg, dict, s, state)
 end
 
-function sample_init!(
+function AbstractMCMC.sample_init!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -105,12 +103,12 @@ function sample_init!(
     end
 end
 
-function step!(
+function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:SMC},
     ::Integer,
-    transition::Union{Nothing,AbstractTransition} = nothing;
+    transition;
     iteration=-1,
     kwargs...
 )
@@ -183,11 +181,12 @@ function Sampler(alg::PG, model::Model, s::Selector)
     return Sampler(alg, info, s, state)
 end
 
-function step!(
+function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:PG},
-    ::Integer;
+    ::Integer,
+    transition;
     kwargs...
 )
     # obtain or create reference particle
@@ -233,29 +232,28 @@ function step!(
     return ParticleTransition(params, lp, pc.logE, 1.0)
 end
 
-function sample_end!(
+function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
     spl::Sampler{<:ParticleInference},
     N::Integer,
-    ts::Vector{ParticleTransition};
+    ts::Vector{<:ParticleTransition};
+    resume_from = nothing,
     kwargs...
 )
-    # Set the default for resuming the sampler.
-    resume_from = get(kwargs, :resume_from, nothing)
-
     # Exponentiate the average log evidence.
     # loge = exp(mean([t.le for t in ts]))
     loge = mean(t.le for t in ts)
 
     # If we already had a chain, grab the logevidence.
-    if resume_from !== nothing   # concat samples
-        @assert resume_from isa Chains "resume_from needs to be a Chains object."
+    if resume_from isa Chains
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = resume_from.logevidence
         # Calculate new log-evidence
         pre_n = length(resume_from)
         loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
+    elseif resume_from !== nothing
+        error("keyword argument `resume_from` has to be `nothing` or a `Chains` object")
     end
 
     # Store the logevidence.

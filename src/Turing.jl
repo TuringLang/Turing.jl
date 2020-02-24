@@ -12,12 +12,10 @@ using Requires, Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
-using AbstractMCMC
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import MCMCChains: AbstractChains, Chains
 import DynamicPPL: getspace, runmodel!
 
 const PROGRESS = Ref(true)
@@ -90,9 +88,6 @@ export  @model,                 # modelling
         SMC,
         CSMC,
         PG,
-        PIMH,
-        PMMH,
-        IPMCMC,
 
         vi,                    # variational inference
         ADVI,
@@ -117,5 +112,9 @@ export  @model,                 # modelling
         OrderedLogistic,
         LogPoisson,
         NamedDist
+
+# Reexports
+using AbstractMCMC: sample, psample
+export sample, psample
 
 end

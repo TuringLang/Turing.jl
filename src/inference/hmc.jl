@@ -21,7 +21,7 @@ end
 # Hamiltonian Transition #
 ##########################
 
-struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat} <: AbstractTransition
+struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat}
     θ    :: T
     lp   :: F
     stat :: NT
@@ -32,9 +32,6 @@ function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::AHMC.Transition)
     lp = getlogp(spl.state.vi)
     return HamiltonianTransition(theta, lp, t.stat)
 end
-
-transition_type(spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}}) = 
-    HamiltonianTransition
 
 function additional_parameters(::Type{<:HamiltonianTransition})
     return [:lp,:stat]
@@ -102,7 +99,7 @@ function HMC{AD}(
     return HMC{AD}(ϵ, n_leapfrog, metricT, space)
 end
 
-function sample_init!(
+function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Hamiltonian},
@@ -310,7 +307,7 @@ function Sampler(
     initial_spl = Sampler(alg, info, s, initial_state)
 
     # Create the actual state based on the alg type.
-    state = HMCState(model, initial_spl, GLOBAL_RNG)
+    state = HMCState(model, initial_spl, Random.GLOBAL_RNG)
 
     # Create a real sampler after getting all the types/running the init phase.
     return Sampler(alg, initial_spl.info, initial_spl.selector, state)
@@ -322,24 +319,13 @@ end
 #### Transition / step functions for HMC samplers.
 ####
 
-
-function step!(
+# Single step of a Hamiltonian.
+function AbstractMCMC.step!(
     rng::AbstractRNG,
-    model::DynamicPPL.Model,
+    model::Model,
     spl::Sampler{<:Hamiltonian},
     N::Integer,
-    transition::AbstractTransition;
-    kwargs...
-)
-    return step!(rng, model, spl, N; kwargs...)
-end
-
-# Single step of a Hamiltonian.
-function step!(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Sampler{<:Hamiltonian},
-    N::Integer;
+    transition;
     kwargs...
 )
     # Get step size
@@ -591,8 +577,7 @@ mutable struct HMCCallback{
     p :: ProgType
 end
 
-
-function callback(
+function AbstractMCMC.callback(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
@@ -605,7 +590,7 @@ function callback(
     AHMC.pm_next!(cb.p, (iteration=iteration, t.stat..., mass_matrix=spl.state.h.metric))
 end
 
-function init_callback(
+function AbstractMCMC.init_callback(
     rng::AbstractRNG,
     model::Model,
     s::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
