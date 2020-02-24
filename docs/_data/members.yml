@@ -1,0 +1,81 @@
+- name: Hong Ge
+  photo: https://yebai.github.io/images/hg344-pr.jpg
+  github: yebai
+  institution: University of Cambridge
+  website: http://mlg.eng.cam.ac.uk/hong/
+  email: hg344@cam.ac.uk
+
+- name: Kai Xu
+  photo: https://xuk.ai/user/pages/01.home/me_ne2x.png
+  github: xukai92
+  institution: University of Edinburgh
+  website: https://xuk.ai/
+  email: kai.xu@ed.ac.uk
+  twitter: xukai92
+
+- name: Martin Trapp
+  photo: https://martintdotblog.files.wordpress.com/2018/06/photo.jpg
+  github: trappmartin
+  institution: Graz University of Technology
+  website: https://martint.blog/
+  email: martin.trapp@tugraz.at
+  linkedin: linked-page
+  twitter: martin_trapp
+
+- name: Will Tebbutt
+  photo: placeholder.png
+  github: willtebbutt
+  institution: University of Cambridge
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
+
+- name: Mohamed Tarek
+  photo: placeholder.png
+  github: mohamed82008
+  institution: University of New South Wales Canberra
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
+
+- name: Tor Erlend Fjelde
+  photo: http://retiredparkingguard.com/assets/images/profile.jpg
+  github: torfjelde
+  institution: University of Cambridge
+  website: http://retiredparkingguard.com/about.html
+  email: tef30@cam.ac.uk
+  linkedin: torfjelde
+  twitter: torfjelde
+
+- name: Cameron Pfiffer
+  photo: http://cameron.pfiffer.org/profile1.jpg
+  github: cpfiffer
+  institution: University of Oregon
+  website: cameron.pfiffer.org
+  email: cpfiffer@uoregon.edu
+  linkedin: cameron-pfiffer
+
+- name: David Widmann
+  photo: https://widmann.dev/images/profile.jpg
+  github: devmotion
+  institution: Uppsala University
+  website: https://widmann.dev
+  email: david.widmann@it.uu.se
+
+- name: Sharan Yalburgi
+  photo: https://sharanry.github.io/images/profile_photo.jpg
+  github: sharanry
+  institution: BITS Pilani
+  website: sharanry.github.io
+  email: sharanyalburgi@gmail.com
+  linkedin: sharanry
+  twitter: sharanry
+
+- name: Qingliang ZHUO
+  photo: https://res.cloudinary.com/kdr2/image/upload/v1582550146/misc/ZHUO_PHOTO.jpg
+  github: KDr2
+  institution: Beijing Paoding Technology Co., LTD.
+  website: https://kdr2.com
+  email: zhuoql@zoho.com
