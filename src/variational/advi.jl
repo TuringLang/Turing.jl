@@ -3,6 +3,7 @@ using DistributionsAD
 using Bijectors
 using Bijectors: TransformedDistribution
 using Random: AbstractRNG, GLOBAL_RNG
+import Bijectors: bijector
 
 update(d::TuringDiagMvNormal, μ, σ) = TuringDiagMvNormal(μ, σ)
 update(td::TransformedDistribution, θ...) = transformed(update(td.dist, θ...), td.transform)
@@ -13,15 +14,7 @@ end
 
 # TODO: add these to DistributionsAD.jl and remove from here
 Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
-Base.size(d::TuringDiagMvNormal) = (length(d), ) # Fixes a bug in DistributionsAD.jl
 
-import StatsBase: entropy
-function entropy(d::TuringDiagMvNormal)
-    T = eltype(d.σ)
-    return (DistributionsAD.length(d) * (T(log2π) + one(T)) / 2 + sum(log.(d.σ)))
-end
-
-import Bijectors: bijector
 """
     bijector(model::Model; sym_to_ranges = Val(false))
 
