@@ -53,19 +53,20 @@ isgaussian(::Normal) = true
 isgaussian(::NormalCanon) = true
 isgaussian(::AbstractMvNormal) = true
 
-# always accept in the first step
-function step!(::AbstractRNG, model::Model, spl::Sampler{<:ESS}, ::Integer; kwargs...)
-    return Transition(spl)
-end
 
 function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:ESS},
     ::Integer,
-    ::Transition;
+    t::Union{Nothing, AbstractTransition}=nothing;
     kwargs...
 )
+    # always accept in the first step
+    if t === nothing
+        return Transition(spl)
+    end
+
     # obtain mean of distribution
     vi = spl.state.vi
     vns = _getvns(vi, spl)

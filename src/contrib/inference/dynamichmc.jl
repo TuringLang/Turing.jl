@@ -88,7 +88,8 @@ function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
-    N::Integer;
+    N::Integer,
+    transition=nothing;
     kwargs...
 )
     # Pop the next draw off the vector.

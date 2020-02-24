@@ -17,7 +17,7 @@ using AbstractMCMC
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import MCMCChains: AbstractChains, Chains
+import MCMCChains: Chains
 import DynamicPPL: getspace, runmodel!
 
 const PROGRESS = Ref(true)

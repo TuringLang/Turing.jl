@@ -322,24 +322,13 @@ end
 #### Transition / step functions for HMC samplers.
 ####
 
-
-function step!(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Sampler{<:Hamiltonian},
-    N::Integer,
-    transition::AbstractTransition;
-    kwargs...
-)
-    return step!(rng, model, spl, N; kwargs...)
-end
-
 # Single step of a Hamiltonian.
 function step!(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     spl::Sampler{<:Hamiltonian},
-    N::Integer;
+    N::Integer,
+    t::Union{Nothing, AbstractTransition}=nothing;
     kwargs...
 )
     # Get step size

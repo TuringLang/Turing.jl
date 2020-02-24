@@ -215,7 +215,8 @@ function step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
-    N::Integer;
+    N::Integer,
+    t::Union{Nothing, AbstractTransition}=nothing;
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp

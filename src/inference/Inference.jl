@@ -18,9 +18,10 @@ import MCMCChains: Chains
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADtype
-import AbstractMCMC: AbstractTransition, sample, step!, sample_init!,
-    transitions_init, sample_end!, AbstractSampler, transition_type,
-    callback, init_callback, AbstractCallback, psample
+import AbstractMCMC: sample, step!, sample_init!,
+    transitions_init, sample_end!, AbstractSampler, 
+    callback, init_callback, AbstractCallback, psample,
+    AbstractModel
 import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 
@@ -59,11 +60,13 @@ export  InferenceAlgorithm,
         add_sample!,
         reset!,
         step!,
-        resume
+        resume,
+        psample
 
 #######################
 # Sampler abstraction #
 #######################
+abstract type AbstractTransition end
 abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
 abstract type ParticleInference <: InferenceAlgorithm end

@@ -187,7 +187,8 @@ function step!(
     ::AbstractRNG,
     model::DynamicPPL.Model,
     spl::Sampler{<:PG},
-    ::Integer;
+    ::Integer,
+    t::Union{Nothing, AbstractTransition}=nothing;
     kwargs...
 )
     # obtain or create reference particle
