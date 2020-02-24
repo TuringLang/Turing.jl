@@ -413,8 +413,7 @@ function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
     )
 
     # Stick the new samples at the end of the old chain.
-    # Hack to avoid issues in https://github.com/TuringLang/Turing.jl/pull/1116.
-    return cat(c, newchain; dims = 1)
+    return vcat(c, newchain)
 end
 
 function set_resume!(
