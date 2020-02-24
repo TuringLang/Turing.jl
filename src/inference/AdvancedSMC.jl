@@ -252,6 +252,8 @@ function AbstractMCMC.sample_end!(
         # Calculate new log-evidence
         pre_n = length(resume_from)
         loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
+    elseif resume_from !== nothing
+        error("keyword argument `resume_from` has to be `nothing` or a `Chains` object")
     end
 
     # Store the logevidence.
