@@ -1,5 +1,5 @@
 FROM julia:1.3.1-buster
-LABEL maintainer="ZHUO Qingliang <zhuo.dev@gmail.com>"
+LABEL maintainer="The Turing team"
 
 RUN true \
     && julia -e 'using Pkg; Pkg.add("Turing");' \
