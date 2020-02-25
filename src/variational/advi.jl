@@ -104,8 +104,10 @@ end
 Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
 struct ADVI{AD} <: VariationalInference{AD}
-    samples_per_step # number of samples used to estimate the ELBO in each optimization step
-    max_iters        # maximum number of gradient steps used in optimization
+    "Number of samples used to estimate the ELBO in each optimization step."
+    samples_per_step::Int
+    "Maximum number of gradient steps used in optimization."
+    max_iters::Int
 end
 
 ADVI(args...) = ADVI{ADBackend()}(args...)
