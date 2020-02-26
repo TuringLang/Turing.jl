@@ -40,7 +40,7 @@ include("../test_utils/AllUtils.jl")
         q = vi(logπ, advi, getq, randn(4))
 
         xs = rand(target, 10)
-        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.05
+        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.06
 
         # OR: implement `update` and pass a `Distribution`
         function Variational.update(d::TuringDiagMvNormal, θ::AbstractArray{<:Real})
