@@ -566,37 +566,3 @@ function HMCState(
 
     return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end
-
-#######################################################
-# Special callback functionality for the HMC samplers #
-#######################################################
-
-mutable struct HMCCallback{
-    ProgType<:ProgressMeter.AbstractProgress
-} <: AbstractCallback
-    p :: ProgType
-end
-
-function AbstractMCMC.callback(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
-    N::Integer,
-    iteration::Integer,
-    t::HamiltonianTransition,
-    cb::HMCCallback;
-    kwargs...
-)
-    AHMC.pm_next!(cb.p, (iteration=iteration, t.stat..., mass_matrix=spl.state.h.metric))
-end
-
-function AbstractMCMC.init_callback(
-    rng::AbstractRNG,
-    model::Model,
-    s::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
-    N::Integer;
-    dt::Real=0.25,
-    kwargs...
-)
-    return HMCCallback(ProgressMeter.Progress(N, dt=dt, desc="Sampling ", barlen=31))
-end

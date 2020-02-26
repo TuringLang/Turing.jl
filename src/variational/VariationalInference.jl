@@ -2,7 +2,7 @@ module Variational
 
 using ..Core, ..Utilities
 using Distributions, Bijectors, DynamicPPL
-using ProgressMeter, LinearAlgebra
+using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using Random: AbstractRNG
@@ -11,6 +11,11 @@ using ForwardDiff
 using Tracker
 
 import ..Core: getchunksize, getADtype
+
+import ProgressLogging
+
+import Logging
+import UUIDs
 
 using Requires
 function __init__()
@@ -123,44 +128,53 @@ function optimize!(
     q,
     model,
     θ::AbstractVector{<:Real};
-    optimizer = TruncatedADAGrad()
+    optimizer = TruncatedADAGrad(),
+    progress = Turing.PROGRESS[],
+    progressname = "[$(alg_str(alg))] Optimizing..."
 )
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
-    alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
-    
-    num_params = length(θ)
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
-    if (optimizer isa TruncatedADAGrad) && (θ ∉ keys(optimizer.acc))
+    if optimizer isa TruncatedADAGrad && θ ∉ keys(optimizer.acc)
         # this message should only occurr once in the optimization process
-        @info "[$alg_name] Should only be seen once: optimizer created for θ" objectid(θ)
+        @info "[$(alg_str(alg))] Should only be seen once: optimizer created for θ" objectid(θ)
     end
 
     diff_result = DiffResults.GradientResult(θ)
 
-    i = 0
-    prog = if PROGRESS[]
-        ProgressMeter.Progress(max_iters, 1, "[$alg_name] Optimizing...", 0)
-    else
-        0
+    # Create the progress bar.
+    if progress
+        progressid = UUIDs.uuid4()
+        Logging.@logmsg(ProgressLogging.ProgressLevel, progressname, progress=NaN,
+                        _id=progressid)
     end
 
-    # add criterion? A running mean maybe?
-    time_elapsed = @elapsed while (i < max_iters) # & converged
-        grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
+    try
+        # add criterion? A running mean maybe?
+        for i in 1:max_iters
+            grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
 
-        # apply update rule
-        Δ = DiffResults.gradient(diff_result)
-        Δ = apply!(optimizer, θ, Δ)
-        @. θ = θ - Δ
-        
-        Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
-        PROGRESS[] && (ProgressMeter.next!(prog))
+            # apply update rule
+            Δ = DiffResults.gradient(diff_result)
+            Δ = apply!(optimizer, θ, Δ)
+            @. θ = θ - Δ
 
-        i += 1
+            Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
+
+            # Update the progress bar.
+            if progress
+                Logging.@logmsg(ProgressLogging.ProgressLevel, progressname,
+                                progress=i/max_iters, _id=progressid)
+            end
+        end
+    finally
+        if progress
+            Logging.@logmsg(ProgressLogging.ProgressLevel, progressname, progress="done",
+                            _id=progressid)
+        end
     end
 
     return θ

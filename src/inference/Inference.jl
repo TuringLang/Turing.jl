@@ -8,12 +8,12 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
-using ProgressMeter, LinearAlgebra
+using LinearAlgebra
 using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG, randexp
 using DynamicPPL
-using AbstractMCMC: AbstractModel, AbstractCallback, AbstractSampler
+using AbstractMCMC: AbstractModel, AbstractSampler
 using MCMCChains: Chains
 
 import AbstractMCMC

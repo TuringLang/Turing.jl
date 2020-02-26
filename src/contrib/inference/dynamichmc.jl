@@ -1,5 +1,3 @@
-using AbstractMCMC: NoCallback
-
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
@@ -108,15 +106,4 @@ function Sampler(
 
     # Return a new sampler.
     return Sampler(alg, Dict{Symbol,Any}(), s, state)
-end
-
-# Disable the callback for DynamicHMC, since it has it's own progress meter.
-function AbstractMCMC.init_callback(
-    rng::AbstractRNG,
-    model::Model,
-    s::Sampler{<:DynamicNUTS},
-    N::Integer;
-    kwargs...
-)
-    return NoCallback()
 end
