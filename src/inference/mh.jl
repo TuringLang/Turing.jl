@@ -143,7 +143,6 @@ end
     expr = Expr(:tuple)
     map(names) do f
         push!(expr.args, Expr(:(=), f, :(scalar_map(vi, metadata.$f.vns))))
-        #push!(expr.args, Expr(:(=), f, :(getindex(vi, metadata.$f.vns))))
     end
     return expr
 end
