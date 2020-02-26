@@ -68,13 +68,17 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
         n_vns = length(vns)
         n_vals = length(vals)
         v_isarr = vals isa AbstractArray
-
+        
         if v_isarr && n_vals == 1 && n_vns > 1
             for (vn, val) in zip(vns, vals[1])
                 vi[vn] = val isa AbstractArray ? val : [val]
             end
         elseif v_isarr && n_vals > 1 && n_vns == 1
             vi[vns[1]] = vals
+        elseif v_isarr && n_vals == n_vns > 1
+            for (vn, val) in zip(vns, vals)
+                vi[vn] = [val]
+            end
         elseif v_isarr && n_vals == 1 && n_vns == 1
             if vals[1] isa AbstractArray
                 vi[vns[1]] = vals[1]
@@ -110,6 +114,17 @@ function gen_logπ_mh(spl::Sampler, model)
     return logπ
 end
 
+function scalar_map(vi::VarInfo, vns::Vector{V}) where V<:VarName
+    vals = getindex(vi, vns)
+    if length(vals) == length(vns) == 1
+        # It's a scalar!
+        return vals[1]
+    else 
+        # Go home, vector, you're drunk.
+        return vals
+    end
+end
+
 """
     dist_val_tuple(spl::Sampler{<:MH})
 
@@ -127,9 +142,8 @@ end
     length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     map(names) do f
-        push!(expr.args, Expr(:(=), f, :(
-            length(metadata.$f.vns) == 1 ? getindex(vi, metadata.$f.vns)[1] : getindex.(Ref(vi), metadata.$f.vns)
-        )))
+        push!(expr.args, Expr(:(=), f, :(scalar_map(vi, metadata.$f.vns))))
+        #push!(expr.args, Expr(:(=), f, :(getindex(vi, metadata.$f.vns))))
     end
     return expr
 end
