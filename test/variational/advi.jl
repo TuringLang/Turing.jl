@@ -31,6 +31,8 @@ include("../test_utils/AllUtils.jl")
     end
 
     @turing_testset "advi different interfaces" begin
+        Random.seed!(1234)
+        
         target = MvNormal(ones(2))
         logπ(z) = logpdf(target, z)
         advi = ADVI(10, 1000)
