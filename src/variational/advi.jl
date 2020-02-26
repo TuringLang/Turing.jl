@@ -99,19 +99,31 @@ function meanfield(rng::AbstractRNG, model::Model)
 end
 
 """
-    ADVI(samples_per_step = 1, max_iters = 1000)
+$(TYPEDEF)
 
-Automatic Differentiation Variational Inference (ADVI) for a given model.
+Automatic Differentiation Variational Inference (ADVI) with automatic differentiation
+backend `AD`.
+
+# Fields
+
+$(TYPEDFIELDS)
 """
 struct ADVI{AD} <: VariationalInference{AD}
     "Number of samples used to estimate the ELBO in each optimization step."
     samples_per_step::Int
-    "Maximum number of gradient steps used in optimization."
+    "Maximum number of gradient steps."
     max_iters::Int
 end
 
-ADVI(args...) = ADVI{ADBackend()}(args...)
-ADVI() = ADVI(1, 1000)
+"""
+    ADVI([samples_per_step=1, max_iters=1000])
+
+Create an [`ADVI`](@ref) with the currently enabled automatic differentiation backend
+`ADBackend()`.
+"""
+function ADVI(samples_per_step::Int=1, max_iters::Int=1000)
+    return ADVI{ADBackend()}(samples_per_step, max_iters)
+end
 
 alg_str(::ADVI) = "ADVI"
 
