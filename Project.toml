@@ -30,7 +30,7 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
-AbstractMCMC = "0.4"
+AbstractMCMC = "0.4, 0.5"
 AdvancedHMC = "0.2.20"
 AdvancedMH = "0.4"
 Bijectors = "0.4.0, 0.5"
