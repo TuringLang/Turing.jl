@@ -116,9 +116,12 @@ end
     N::Integer;
     chain_type=Chains,
     resume_from=nothing,
-    progress=false,
+    progress=PROGRESS[],
     kwargs...
 )
+    if progress
+        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+    end
     if resume_from === nothing
         return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
                                    chain_type=chain_type, progress=false, kwargs...)
@@ -134,9 +137,12 @@ function AbstractMCMC.psample(
     N::Integer,
     n_chains::Integer;
     chain_type=Chains,
-    progress=false,
+    progress=PROGRESS[],
     kwargs...
 )
+    if progress
+        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+    end
     return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
                                 chain_type=chain_type, progress=false, kwargs...)
 end
