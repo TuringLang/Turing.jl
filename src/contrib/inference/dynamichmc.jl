@@ -107,3 +107,36 @@ function Sampler(
     # Return a new sampler.
     return Sampler(alg, Dict{Symbol,Any}(), s, state)
 end
+
+ # Disable the progress logging for DynamicHMC, since it has its own progress meter.
+ function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::DynamicNUTS,
+    N::Integer;
+    chain_type=Chains,
+    resume_from=nothing,
+    progress=false,
+    kwargs...
+)
+    if resume_from === nothing
+        return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
+                                   chain_type=chain_type, progress=false, kwargs...)
+    else
+        return resume(resume_from, N; chain_type=chain_type, progress=false, kwargs...)
+    end
+end
+
+function AbstractMCMC.psample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::DynamicNUTS,
+    N::Integer,
+    n_chains::Integer;
+    chain_type=Chains,
+    progress=false,
+    kwargs...
+)
+    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
+                                chain_type=chain_type, progress=false, kwargs...)
+end
