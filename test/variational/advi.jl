@@ -31,6 +31,8 @@ include("../test_utils/AllUtils.jl")
     end
 
     @turing_testset "advi different interfaces" begin
+        Random.seed!(1234)
+
         target = MvNormal(ones(2))
         logπ(z) = logpdf(target, z)
         advi = ADVI(10, 1000)
@@ -40,7 +42,7 @@ include("../test_utils/AllUtils.jl")
         q = vi(logπ, advi, getq, randn(4))
 
         xs = rand(target, 10)
-        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.06
+        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.07
 
         # OR: implement `update` and pass a `Distribution`
         function Variational.update(d::TuringDiagMvNormal, θ::AbstractArray{<:Real})
