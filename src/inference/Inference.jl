@@ -8,12 +8,12 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
-using ProgressMeter, LinearAlgebra
+using LinearAlgebra
 using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG, randexp
 using DynamicPPL
-using AbstractMCMC: AbstractModel, AbstractCallback, AbstractSampler
+using AbstractMCMC: AbstractModel, AbstractSampler
 using MCMCChains: Chains
 
 import AbstractMCMC
@@ -143,16 +143,16 @@ function AbstractMCMC.sample(
     N::Integer;
     chain_type=Chains,
     resume_from=nothing,
+    progress=PROGRESS[],
     kwargs...
 )
     if resume_from === nothing
         return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
-                                   progress=PROGRESS[], chain_type=chain_type, kwargs...)
+                                   chain_type=chain_type, progress=progress, kwargs...)
     else
-        return resume(resume_from, N)
+        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
 end
-
 
 function AbstractMCMC.psample(
     model::AbstractModel,
@@ -171,10 +171,11 @@ function AbstractMCMC.psample(
     N::Integer,
     n_chains::Integer;
     chain_type=Chains,
+    progress=PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
-                                progress=false, chain_type=chain_type, kwargs...)
+                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
 function AbstractMCMC.sample_init!(

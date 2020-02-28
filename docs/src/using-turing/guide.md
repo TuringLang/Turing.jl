@@ -454,7 +454,13 @@ Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl suppor
 For more information on Turing's automatic differentiation backend, please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article.
 
 
-#### Progress Meter
+#### Progress Logging
 
-
-Turing.jl uses ProgressMeter.jl to show the progress of sampling, which may lead to slow down of inference or even cause bugs in some IDEs due to I/O. This can be turned on or off by `turnprogress(true)` and `turnprogress(false)`, of which the former is set as default.
+Turing.jl uses ProgressLogging.jl to log the progress of sampling. To visualize the
+progress of sampling, you need to use a package that supports progress logs created by
+ProgressLogging.jl such as [Juno](https://junolab.org/) or
+[TerminalLoggers.jl](https://github.com/c42f/TerminalLoggers.jl). Progress logging is
+enabled as default but might slow down inference. It can be turned on or off by setting
+the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover,
+you can enable or disable progress logging globally by calling `turnprogress(true)` or
+`turnprogress(false)`, respectively.

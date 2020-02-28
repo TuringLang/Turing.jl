@@ -1,5 +1,3 @@
-using AbstractMCMC: NoCallback
-
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
@@ -110,13 +108,41 @@ function Sampler(
     return Sampler(alg, Dict{Symbol,Any}(), s, state)
 end
 
-# Disable the callback for DynamicHMC, since it has it's own progress meter.
-function AbstractMCMC.init_callback(
+ # Disable the progress logging for DynamicHMC, since it has its own progress meter.
+ function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::Model,
-    s::Sampler{<:DynamicNUTS},
+    model::AbstractModel,
+    alg::DynamicNUTS,
     N::Integer;
+    chain_type=Chains,
+    resume_from=nothing,
+    progress=PROGRESS[],
     kwargs...
 )
-    return NoCallback()
+    if progress
+        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+    end
+    if resume_from === nothing
+        return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
+                                   chain_type=chain_type, progress=false, kwargs...)
+    else
+        return resume(resume_from, N; chain_type=chain_type, progress=false, kwargs...)
+    end
+end
+
+function AbstractMCMC.psample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::DynamicNUTS,
+    N::Integer,
+    n_chains::Integer;
+    chain_type=Chains,
+    progress=PROGRESS[],
+    kwargs...
+)
+    if progress
+        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+    end
+    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
+                                chain_type=chain_type, progress=false, kwargs...)
 end
