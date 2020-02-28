@@ -12,9 +12,6 @@ function update(td::TransformedDistribution{<:TuringDiagMvNormal}, θ::AbstractA
     return update(td, μ, softplus.(ω))
 end
 
-# TODO: add these to DistributionsAD.jl and remove from here
-Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
-
 """
     bijector(model::Model; sym_to_ranges = Val(false))
 
