@@ -1,6 +1,7 @@
 module Variational
 
 using ..Core, ..Utilities
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using Distributions, Bijectors, DynamicPPL
 using LinearAlgebra
 using ..Turing: PROGRESS, Turing
