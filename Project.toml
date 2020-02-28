@@ -32,7 +32,7 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-AbstractMCMC = "0.4"
+AbstractMCMC = "0.5"
 AdvancedHMC = "0.2.20"
 AdvancedMH = "0.4"
 Bijectors = "0.4.0, 0.5"
