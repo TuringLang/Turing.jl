@@ -17,22 +17,17 @@ jobs:
         julia-arch: [x64]
         os: [ubuntu-latest]
     steps:
+      - uses: actions/checkout@v1.0.0
       - name: Set up Julia
         uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
-      - name: Run benchmarks via Nanosoldier
+      - name: Install dependencies
+        run: julia -e 'using Pkg; pkg"""add JSON GitHub DataFrames BenchmarkTools;"""'
+      - name: Run benchmarks
         # `if` to temporarily disable the benchmark action
         # if: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}
-        run: |
-                bash -c '
-                git clone https://github.com/TuringLang/Nanosoldier.jl.git
-                cd Nanosoldier.jl
-                git checkout origin/turing
-                export JULIA_PROJECT=$PWD
-                julia -e "using Pkg;Pkg.instantiate();Pkg.build(verbose=true)"
-                julia ./bin/turing_benchmark.jl
-                '
+        run: julia ./benchmarks/github-action-runner.jl
