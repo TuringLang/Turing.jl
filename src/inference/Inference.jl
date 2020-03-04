@@ -22,6 +22,7 @@ import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADtype
 import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
+import EllipticalSliceSampling
 import Random
 
 export  InferenceAlgorithm,
