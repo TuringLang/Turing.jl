@@ -1,3 +1,9 @@
+- name: Zoubin Ghahramani
+  photo: https://www.turing.ac.uk/sites/default/files/styles/people/public/2018-06/professor_zoubin_ghahramani_frs_cc_by-sa_4.0.jpg
+  institution: University of Cambridge
+  website: http://mlg.eng.cam.ac.uk/zoubin/
+  email: zoubin@eng.cam.ac.uk
+  
 - name: Hong Ge
   photo: https://yebai.github.io/images/hg344-pr.jpg
   github: yebai
