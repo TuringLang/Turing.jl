@@ -32,13 +32,11 @@
   twitter: twitter_handle
 
 - name: Mohamed Tarek
-  photo: placeholder.png
+  photo: https://user-images.githubusercontent.com/19524993/75977159-e77c3500-5f2f-11ea-882c-0593597985da.png
   github: mohamed82008
-  institution: University of New South Wales Canberra
-  website: www.example.com
-  email: your-email@something.com
-  linkedin: linked-page
-  twitter: twitter_handle
+  institution: University of New South Wales at Canberra
+  email: m.mohamed@student.adfa.edu.au
+  linkedin: mabdelaty
 
 - name: Tor Erlend Fjelde
   photo: http://retiredparkingguard.com/assets/images/profile.jpg
