@@ -38,7 +38,7 @@ function Sampler(alg::ESS, model::Model, s::Selector)
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
     for vn in vns[1]
         dist = getdist(vi, vn)
-        isgaussian(dist) ||
+        EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("[ESS] only supports Gaussian prior distributions")
     end
 
@@ -47,11 +47,6 @@ function Sampler(alg::ESS, model::Model, s::Selector)
 
     return Sampler(alg, info, s, state)
 end
-
-isgaussian(dist) = false
-isgaussian(::Normal) = true
-isgaussian(::NormalCanon) = true
-isgaussian(::AbstractMvNormal) = true
 
 # always accept in the first step
 function AbstractMCMC.step!(
@@ -73,13 +68,8 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # obtain mean of distribution
+    # obtain random variable that should be sampled
     vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
-        vectorize(dist, mean(dist))
-    end
 
     # obtain previous sample
     f = vi[spl]
@@ -89,43 +79,69 @@ function AbstractMCMC.step!(
         runmodel!(model, vi, spl)
     end
 
-    # sample log-likelihood threshold for the next sample
-    threshold = getlogp(vi) - randexp(rng)
+    # define previous sampler state
+    oldstate = EllipticalSliceSampling.EllipticalSliceSamplerState(f, getlogp(vi))
 
-    # sample from the prior
-    set_flag!(vi, vns[1][1], "del")
-    runmodel!(model, vi, spl)
-    ν = vi[spl]
+    # compute next state
+    state = AbstractMCMC.step!(rng, ESSModel(model, spl),
+                               EllipticalSliceSampling.EllipticalSliceSampler(), 1, oldstate;
+                               progress = false)
 
-    # sample initial angle
-    θ = 2 * π * rand(rng)
-    θmin = θ - 2 * π
-    θmax = θ
-
-    while true
-        # compute proposal and apply correction for distributions with nonzero mean
-        sinθ, cosθ = sincos(θ)
-        a = 1 - (sinθ + cosθ)
-        vi[spl] = @. f * cosθ + ν * sinθ + μ * a
-
-        # recompute log-likelihood and check if threshold is reached
-        runmodel!(model, vi, spl)
-        if getlogp(vi) > threshold
-            break
-        end
-
-        # shrink the bracket
-        if θ < 0
-            θmin = θ
-        else
-            θmax = θ
-        end
-
-        # sample new angle
-        θ = θmin + rand(rng) * (θmax - θmin)
-    end
+    # update sample and log-likelihood
+    vi[spl] = state.sample
+    setlogp!(vi, state.loglikelihood)
 
     return Transition(spl)
+end
+
+struct ESSModel{M<:Model,S<:Sampler{<:ESS},T} <: AbstractMCMC.AbstractModel
+    model::M
+    spl::S
+    μ::T
+end
+
+function ESSModel(model::Model, spl::Sampler{<:ESS})
+    vi = spl.state.vi
+    vns = _getvns(vi, spl)
+    μ = mapreduce(vcat, vns[1]) do vn
+        dist = getdist(vi, vn)
+        vectorize(dist, mean(dist))
+    end
+
+    ESSModel(model, spl, μ)
+end
+
+# sample from the prior
+function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ESSModel)
+    spl = model.spl
+    vi = spl.state.vi
+    vns = _getvns(vi, spl)
+    set_flag!(vi, vns[1][1], "del")
+    runmodel!(model.model, vi, spl)
+    return vi[spl]
+end
+
+# compute proposal and apply correction for distributions with nonzero mean
+function EllipticalSliceSampling.proposal(model::ESSModel, f, ν, θ)
+    sinθ, cosθ = sincos(θ)
+    a = 1 - (sinθ + cosθ)
+    return @. cosθ * f + sinθ * ν + a * model.μ
+end
+
+function EllipticalSliceSampling.proposal!(out, model::ESSModel, f, ν, θ)
+    sinθ, cosθ = sincos(θ)
+    a = 1 - (sinθ + cosθ)
+    @. out = cosθ * f + sinθ * ν + a * model.μ
+    return out
+end
+
+# evaluate log-likelihood
+function Distributions.loglikelihood(model::ESSModel, f)
+    spl = model.spl
+    vi = spl.state.vi
+    vi[spl] = f
+    runmodel!(model.model, vi, spl)
+    getlogp(vi)
 end
 
 function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
