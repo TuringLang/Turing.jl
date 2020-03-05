@@ -23,13 +23,11 @@
   twitter: martin_trapp
 
 - name: Will Tebbutt
-  photo: placeholder.png
+  photo: https://avatars3.githubusercontent.com/u/3628294?s=460&v=4
   github: willtebbutt
   institution: University of Cambridge
-  website: www.example.com
-  email: your-email@something.com
-  linkedin: linked-page
-  twitter: twitter_handle
+  website: https://willtebbutt.github.io/
+  email: wct23@cam.ac.uk
 
 - name: Mohamed Tarek
   photo: https://user-images.githubusercontent.com/19524993/75977159-e77c3500-5f2f-11ea-882c-0593597985da.png
@@ -39,7 +37,7 @@
   linkedin: mabdelaty
 
 - name: Tor Erlend Fjelde
-  photo: http://retiredparkingguard.com/assets/images/profile.jpg
+  photo: https://avatars3.githubusercontent.com/u/11074788?s=460&v=4
   github: torfjelde
   institution: University of Cambridge
   website: http://retiredparkingguard.com/about.html
