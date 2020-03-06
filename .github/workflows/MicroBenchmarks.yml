@@ -17,6 +17,7 @@ jobs:
         julia-arch: [x64]
         os: [ubuntu-latest]
     steps:
+      - uses: actions/checkout@v1.0.0
       - name: Set up Julia
         uses: julia-actions/setup-julia@latest
         with:
@@ -32,6 +33,7 @@ jobs:
                 git clone https://github.com/TuringLang/Nanosoldier.jl.git
                 cd Nanosoldier.jl
                 git checkout origin/turing
+                cp ../benchmarks/turing_benchmark.jl ./bin/
                 export JULIA_PROJECT=$PWD
                 julia -e "using Pkg;Pkg.instantiate();Pkg.build(verbose=true)"
                 julia ./bin/turing_benchmark.jl
