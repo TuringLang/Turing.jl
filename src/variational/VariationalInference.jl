@@ -13,10 +13,8 @@ using Tracker
 
 import ..Core: getchunksize, getADtype
 
+import AbstractMCMC
 import ProgressLogging
-
-import Logging
-import UUIDs
 
 using Requires
 function __init__()
@@ -48,7 +46,7 @@ const VariationalPosterior = Distribution{Multivariate, Continuous}
 """
     grad!(vo, alg::VariationalInference, q, model::Model, θ, out, args...)
 
-Computes the gradients used in `optimize!`. Default implementation is provided for 
+Computes the gradients used in `optimize!`. Default implementation is provided for
 `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`.
 This implicitly also gives a default implementation of `optimize!`.
 
@@ -147,13 +145,7 @@ function optimize!(
     diff_result = DiffResults.GradientResult(θ)
 
     # Create the progress bar.
-    if progress
-        progressid = UUIDs.uuid4()
-        Logging.@logmsg(ProgressLogging.ProgressLevel, progressname, progress=NaN,
-                        _id=progressid)
-    end
-
-    try
+    AbstractMCMC.@ifwithprogresslogger progress name=progressname begin
         # add criterion? A running mean maybe?
         for i in 1:max_iters
             grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
@@ -166,15 +158,7 @@ function optimize!(
             Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
 
             # Update the progress bar.
-            if progress
-                Logging.@logmsg(ProgressLogging.ProgressLevel, progressname,
-                                progress=i/max_iters, _id=progressid)
-            end
-        end
-    finally
-        if progress
-            Logging.@logmsg(ProgressLogging.ProgressLevel, progressname, progress="done",
-                            _id=progressid)
+            progress && ProgressLogging.@logprogress i/max_iters
         end
     end
 
@@ -203,7 +187,7 @@ function make_logjoint(model::Model; weight = 1.0)
     function logπ(z)
         varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
         model(varinfo)
-        
+
         return getlogp(varinfo)
     end
 

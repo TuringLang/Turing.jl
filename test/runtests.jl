@@ -33,6 +33,8 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "variational" begin
+        turnprogress(true)
+
         @testset "algorithms" begin
             include("variational/advi.jl")
         end
@@ -40,6 +42,8 @@ include("test_utils/AllUtils.jl")
         @testset "optimisers" begin
             include("variational/optimisers.jl")
         end
+
+        turnprogress(false)
     end
 
     @testset "stdlib" begin
@@ -52,4 +56,3 @@ include("test_utils/AllUtils.jl")
         include("utilities/util.jl")
     end
 end
-
