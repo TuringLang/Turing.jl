@@ -239,7 +239,7 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function assume(
+function DynamicPPL.assume(
     spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
@@ -250,7 +250,7 @@ function assume(
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function dot_assume(
+function DynamicPPL.dot_assume(
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
     vn::VarName,
@@ -265,7 +265,7 @@ function dot_assume(
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
-function dot_assume(
+function DynamicPPL.dot_assume(
     spl::Sampler{<:MH},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
@@ -280,20 +280,20 @@ function dot_assume(
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-function observe(
+function DynamicPPL.observe(
     spl::Sampler{<:MH},
     d::Distribution,
     value,
     vi::VarInfo,
 )
-    return observe(SampleFromPrior(), d, value, vi)
+    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
 end
 
-function dot_observe(
+function DynamicPPL.dot_observe(
     spl::Sampler{<:MH},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo,
 )
-    return dot_observe(SampleFromPrior(), ds, value, vi)
+    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end
