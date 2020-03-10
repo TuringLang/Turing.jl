@@ -325,7 +325,7 @@ Consider the following `gdemo` model:
 end
 ```
 
-The following are examples of valid queries of the `Turing` model or chain: 
+The following are examples of valid queries of the `Turing` model or chain:
 
 - `prob"x = 1.0, y = 1.0 | model = gdemo, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
 
@@ -456,11 +456,16 @@ For more information on Turing's automatic differentiation backend, please see t
 
 #### Progress Logging
 
-Turing.jl uses ProgressLogging.jl to log the progress of sampling. To visualize the
-progress of sampling, you need to use a package that supports progress logs created by
-ProgressLogging.jl such as [Juno](https://junolab.org/) or
-[TerminalLoggers.jl](https://github.com/c42f/TerminalLoggers.jl). Progress logging is
-enabled as default but might slow down inference. It can be turned on or off by setting
-the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover,
-you can enable or disable progress logging globally by calling `turnprogress(true)` or
-`turnprogress(false)`, respectively.
+Turing.jl uses ProgressLogging.jl to log the progress of sampling. Progress
+logging is enabled as default but might slow down inference. It can be turned on
+or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `turnprogress(true)` or `turnprogress(false)`, respectively.
+
+Turing uses heuristics to select an appropriate visualization backend. If you
+use [Juno](https://junolab.org/), the progress is displayed with a
+[progress bar in the Atom window](http://docs.junolab.org/latest/man/juno_frontend/#Progress-Meters-1).
+For Jupyter notebooks the default backend is
+[ConsoleProgressMonitor.jl](https://github.com/tkf/ConsoleProgressMonitor.jl).
+In all other cases progress logs are displayed with
+[TerminalLoggers.jl](https://github.com/c42f/TerminalLoggers.jl). Alternatively,
+if you provide a custom visualization backend, Turing uses it instead of the
+default backend.
