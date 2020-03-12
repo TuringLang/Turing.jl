@@ -399,7 +399,7 @@ function save(c::Chains, spl::Sampler, model, vi, samples)
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
+function resume(c::Chains, n_iter::Int; chain_type=Chains, progress=PROGRESS[], kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
@@ -411,6 +411,7 @@ function resume(c::Chains, n_iter::Int; chain_type=Chains, kwargs...)
         resume_from=c,
         reuse_spl_n=n_iter,
         chain_type=Chains,
+        progress=progress,
         kwargs...
     )
 
