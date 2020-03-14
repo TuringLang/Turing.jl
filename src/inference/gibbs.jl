@@ -2,7 +2,7 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-const GibbsComponent = Union{Hamiltonian,MH,ESS,PG}
+const GibbsComponent = Union{Hamiltonian,MH,ESS,PG,GibbsConditional}
 
 """
     Gibbs(algs...)
