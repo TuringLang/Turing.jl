@@ -9,11 +9,12 @@ module Turing
 ########################################################################
 
 using Requires, Reexport, ForwardDiff
-using Bijectors, StatsFuns, SpecialFunctions
+using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
+using DistributionsAD: mapvcat
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
 import DynamicPPL: getspace, runmodel!
@@ -70,6 +71,7 @@ export  @model,                 # modelling
         @logpdf,
         @sampler,
         DynamicPPL,
+        mapvcat,
 
         MH,                     # classic sampling
         RWMH,
@@ -111,7 +113,9 @@ export  @model,                 # modelling
         VecBinomialLogit,
         OrderedLogistic,
         LogPoisson,
-        NamedDist
+        NamedDist,
+        filldist,
+        arraydist
 
 # Reexports
 using AbstractMCMC: sample, psample

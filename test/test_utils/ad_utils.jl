@@ -6,32 +6,37 @@ using Test
 
 Check that the reverse-mode sensitivities produced by an AD library are correct for `f`
 at `x...`, given sensitivity `ȳ` w.r.t. `y = f(x...)` up to `rtol` and `atol`.
-`forward` should be either `Tracker.forward` or `Zygote.pullback`.
 """
-function test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
-
+function test_reverse_mode_ad( f, ȳ, x...; rtol=1e-6, atol=1e-6)
     # Perform a regular forwards-pass.
     y = f(x...)
 
-    # Use tracker to compute reverse-mode sensitivities.
-    y_tracker, back = forward(f, x...)
-    x̄s_tracker = back(ȳ)
+    # Use Tracker to compute reverse-mode sensitivities.
+    y_tracker, back_tracker = Tracker.forward(f, x...)
+    x̄s_tracker = back_tracker(ȳ)
+
+    # Use Zygote to compute reverse-mode sensitivities.
+    y_zygote, back_zygote = Zygote.pullback(f, x...)
+    x̄s_zygote = back_zygote(ȳ)
 
     # Use finite differencing to compute reverse-mode sensitivities.
     x̄s_fdm = FDM.j′vp(central_fdm(5, 1), f, ȳ, x...)
 
-    # Check that forwards-pass produces the correct answer.
+    # Check that Tracker forwards-pass produces the correct answer.
     @test isapprox(y, Tracker.data(y_tracker), atol=atol, rtol=rtol)
 
-    # Check that reverse-mode sensitivities are correct.
+    # Check that Zygpte forwards-pass produces the correct answer.
+    @test isapprox(y, y_zygote, atol=atol, rtol=rtol)
+
+    # Check that Tracker reverse-mode sensitivities are correct.
     @test all(zip(x̄s_tracker, x̄s_fdm)) do (x̄_tracker, x̄_fdm)
         isapprox(Tracker.data(x̄_tracker), x̄_fdm; atol=atol, rtol=rtol)
     end
-end
 
-# See `test_reverse_mode_ad` for details.
-function test_tracker_ad(f, ȳ, x...; rtol=1e-6, atol=1e-6)
-    return test_reverse_mode_ad(Tracker.forward, f, ȳ, x...; rtol=rtol, atol=atol)
+    # Check that Zygote reverse-mode sensitivities are correct.
+    @test all(zip(x̄s_zygote, x̄s_fdm)) do (x̄_zygote, x̄_fdm)
+        isapprox(x̄_zygote, x̄_fdm; atol=atol, rtol=rtol)
+    end
 end
 
 function test_model_ad(model, f, syms::Vector{Symbol})

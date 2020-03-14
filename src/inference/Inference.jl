@@ -8,12 +8,14 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
+using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
 using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
-using Random: AbstractRNG, randexp
+using Random: GLOBAL_RNG, AbstractRNG, randexp
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
+using Bijectors: _debug
 using MCMCChains: Chains
 
 import AbstractMCMC
@@ -314,10 +316,13 @@ function AbstractMCMC.bundle_samples(
     N::Integer,
     ts::Vector,
     chain_type::Type{Chains};
+    raw_output::Bool=false,
     discard_adapt::Bool=true,
     save_state=false,
     kwargs...
 )
+    raw_output && return ts
+
     # Check if we have adaptation samples.
     if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
         ts = ts[(spl.alg.n_adapts+1):end]
@@ -599,7 +604,7 @@ function assume(
             vi[vn] = vectorize(dist, r)
             setorder!(vi, vn, get_num_produce(vi))
         else
-        r = vi[vn]
+            r = vi[vn]
         end
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
@@ -865,8 +870,8 @@ function dot_observe(
     vi::VarInfo,
 )
     increment_num_produce!(vi)
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "value = $value"
+    Turing.DEBUG && _debug("dist = $dist")
+    Turing.DEBUG && _debug("value = $value")
     return sum(logpdf(dist, value))
 end
 function dot_observe(
@@ -876,8 +881,8 @@ function dot_observe(
     vi::VarInfo,
 )
     increment_num_produce!(vi)
-    Turing.DEBUG && @debug "dists = $dists"
-    Turing.DEBUG && @debug "value = $value"
+    Turing.DEBUG && _debug("dists = $dists")
+    Turing.DEBUG && _debug("value = $value")
     return sum(logpdf.(dists, value))
 end
 function dot_observe(

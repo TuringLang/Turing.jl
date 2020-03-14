@@ -91,9 +91,9 @@ if preprocessed isa Tuple
     vn, inds = preprocessed
     out = Turing.Inference.tilde(ctx, sampler, temp_right, vn, inds, vi)
     p[1] = out[1]
-    vi.logp += out[2]
+    acclogp!(vi, out[2])
 else
-    vi.logp += Turing.Inference.tilde(ctx, sampler, temp_right, preprocessed, vi)
+    acclogp!(vi, Turing.Inference.tilde(ctx, sampler, temp_right, preprocessed, vi))
 end
 ```
 where `ctx::AbstractContext`, `sampler::AbstractSampler` and `vi::VarInfo` will be discussed later. `assert_dist` will check that the RHS of `~` is a distribution otherwise an error is thrown. The `@preprocess` macro here checks:
@@ -118,17 +118,17 @@ if preprocessed isa Tuple
     temp_left = x[1:2]
     out = Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vn, inds, vi)
     left .= out[1]
-    vi.logp += out[2]
+    acclogp!(vi, out[2])
 else
     temp_left = preprocessed # x[1:2]
-    vi.logp += Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vi)
+    acclogp!(vi, Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vi))
 end
 ```
 The main difference in the expanded code between `L ~ R` and `@. L ~ R` is that the former doesn't assume `L` to be defined, it can be a new Julia variable in the scope, while the latter assumes `L` already exists. `L` is also always input to the `dot_tilde` function but not the `tilde` function.
 
 ## `replace_vi!`, `replace_logpdf!` and `replace_sampler!`
 
-Using `@varinfo()` inside the model body will give the user access to the `vi::VarInfo` object used inside the model. The function `replace_vi!` therefore finds and replaces every use of `@varinfo()` with the handle to the `VarInfo` instance used inside the model. The `@logpdf()` macro will return `vi.logp` which is the accumumlated `log` probability that the model is computing. What this means can change depending on the context, `ctx`, used when running the model. Finally, `replace_sampler!` will replace `@sampler()` with the `sampler` input to the model.
+Using `@varinfo()` inside the model body will give the user access to the `vi::VarInfo` object used inside the model. The function `replace_vi!` therefore finds and replaces every use of `@varinfo()` with the handle to the `VarInfo` instance used inside the model. The `@logpdf()` macro will return `vi.logp[]` which is the accumumlated `log` probability that the model is computing. What this means can change depending on the context, `ctx`, used when running the model. Finally, `replace_sampler!` will replace `@sampler()` with the `sampler` input to the model.
 
 ## `Turing.Model`
 
@@ -136,7 +136,7 @@ Every `model::Model` can be called as a function with arguments:
 1. `vi::VarInfo`,
 2. `spl::AbstractSampler`, and
 3. `ctx::AbstractContext`.
-`vi` is a data structure that stores information about random variables in `P`. `spl` includes the choice of the MCMC algorithm, e.g. Metropolis-Hastings, importance sampling or Hamiltonian Monte Carlo (HMC). `ctx` is used to modify the behaviour of the `logp` accumulator, accumulating different variants of it. For example, if `ctx isa LikelihoodContext`, only the log likelihood will be accumulated in `vi.logp`. By default, `ctx isa DefaultContext` which accumulates the log joint probability of `P` and `D`. The `Inference.tilde` and `Inference.dot_tilde` functions will do something different for different subtypes of `AbstractSampler` to facilitate the sampling process.
+`vi` is a data structure that stores information about random variables in `P`. `spl` includes the choice of the MCMC algorithm, e.g. Metropolis-Hastings, importance sampling or Hamiltonian Monte Carlo (HMC). `ctx` is used to modify the behaviour of the `logp` accumulator, accumulating different variants of it. For example, if `ctx isa LikelihoodContext`, only the log likelihood will be accumulated in `vi.logp[]`. By default, `ctx isa DefaultContext` which accumulates the log joint probability of `P` and `D`. The `Inference.tilde` and `Inference.dot_tilde` functions will do something different for different subtypes of `AbstractSampler` to facilitate the sampling process.
 
 The `Model` struct is defined as follows:
 ```julia
@@ -207,8 +207,8 @@ function inner_function(vi::Turing.VarInfo, sampler::Turing.AbstractSampler, ctx
 
     ... # The code above is repeated for the other 2 variables, y and TV
 
-    # Reset `vi.logp`
-    vi.logp = 0
+    # Reset the `logp` accumulator
+    resetlogp!(vi)
 
     ... # Main model body
 end
