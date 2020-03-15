@@ -13,9 +13,6 @@
   - title: "Advanced Usage"
     url: "docs/using-turing/advanced"
 
-  - title: "Interface Guide"
-    url: "docs/using-turing/interface"
-
   - title: "Automatic Differentiation"
     url: "docs/using-turing/autodiff"
 
@@ -27,6 +24,15 @@
 
   - title: "Sampler Visualization"
     url: "docs/using-turing/sampler-viz"
+
+- title: "FOR DEVELOPERS"
+  url: "docs/for-developers/"
+  children:
+  - title: "Turing Compiler Design"
+    url: "docs/for-developers/compiler"
+
+  - title: "Interface Guide"
+    url: "docs/for-developers/interface"
 
 - title: "TUTORIALS"
   url: "tutorials"
