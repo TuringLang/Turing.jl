@@ -28,6 +28,9 @@
   - title: "Sampler Visualization"
     url: "docs/using-turing/sampler-viz"
 
+  - title: "Turing Compiler Design"
+    url: "docs/using-turing/compiler"
+
 - title: "TUTORIALS"
   url: "tutorials"
   children:
