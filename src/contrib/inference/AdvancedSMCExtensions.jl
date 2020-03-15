@@ -255,7 +255,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
 
     # Run SMC & CSMC nodes
     for j in 1:spl.alg.n_nodes
-        VarInfos[j].num_produce = 0
+        reset_num_produce!(VarInfos[j])
         VarInfos[j] = step(model, spl.info[:samplers][j], VarInfos[j])[1]
         log_zs[j] = spl.info[:samplers][j].info[:logevidence][end]
     end

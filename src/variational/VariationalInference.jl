@@ -11,7 +11,7 @@ using Random: AbstractRNG
 using ForwardDiff
 using Tracker
 
-import ..Core: getchunksize, getADtype
+import ..Core: getchunksize, getADbackend
 
 import AbstractMCMC
 import ProgressLogging
@@ -22,6 +22,25 @@ function __init__()
         apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
         Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
         Flux.Optimise.apply!(o::DecayedADAGrad, x, Δ) = apply!(o, x, Δ)
+    end
+    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" begin
+        function Variational.grad!(
+            vo,
+            alg::VariationalInference{<:Turing.ZygoteAD},
+            q,
+            model,
+            θ::AbstractVector{<:Real},
+            out::DiffResults.MutableDiffResult,
+            args...
+        )
+            f(θ) = if (q isa VariationalPosterior)
+                - vo(alg, update(q, θ), model, args...)
+            else
+                - vo(alg, q(θ), model, args...)
+            end
+            out .= Zygote.gradient(f, θ)
+            return out
+        end
     end
 end
 
@@ -36,7 +55,7 @@ export
 abstract type VariationalInference{AD} end
 
 getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
-getADtype(::VariationalInference{AD}) where AD = AD
+getADbackend(::VariationalInference{AD}) where AD = AD()
 
 abstract type VariationalObjective end
 

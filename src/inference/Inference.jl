@@ -8,18 +8,20 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!
 using Distributions, Libtask, Bijectors
+using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
 using ..Turing: PROGRESS, NamedDist, NoDist, Turing
 using StatsFuns: logsumexp
-using Random: AbstractRNG, randexp
+using Random: GLOBAL_RNG, AbstractRNG, randexp
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
+using Bijectors: _debug
 using MCMCChains: Chains
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
-import ..Core: getchunksize, getADtype
+import ..Core: getchunksize, getADbackend
 import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
@@ -60,7 +62,7 @@ abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
 getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
-getADtype(::Hamiltonian{AD}) where AD = AD
+getADbackend(::Hamiltonian{AD}) where AD = AD()
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
@@ -599,7 +601,7 @@ function assume(
             vi[vn] = vectorize(dist, r)
             setorder!(vi, vn, get_num_produce(vi))
         else
-        r = vi[vn]
+            r = vi[vn]
         end
     else
         r = isa(spl, SampleFromUniform) ? init(dist) : rand(dist)
@@ -865,8 +867,8 @@ function dot_observe(
     vi::VarInfo,
 )
     increment_num_produce!(vi)
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "value = $value"
+    Turing.DEBUG && _debug("dist = $dist")
+    Turing.DEBUG && _debug("value = $value")
     return sum(logpdf(dist, value))
 end
 function dot_observe(
@@ -876,8 +878,8 @@ function dot_observe(
     vi::VarInfo,
 )
     increment_num_produce!(vi)
-    Turing.DEBUG && @debug "dists = $dists"
-    Turing.DEBUG && @debug "value = $value"
+    Turing.DEBUG && _debug("dists = $dists")
+    Turing.DEBUG && _debug("value = $value")
     return sum(logpdf.(dists, value))
 end
 function dot_observe(

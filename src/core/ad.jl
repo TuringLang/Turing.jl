@@ -1,15 +1,14 @@
 ##############################
 # Global variables/constants #
 ##############################
-using Bijectors
-
 const ADBACKEND = Ref(:forward_diff)
-function setadbackend(backend_sym)
-    @assert backend_sym == :forward_diff || backend_sym == :reverse_diff
-    backend_sym == :forward_diff && CHUNKSIZE[] == 0 && setchunksize(40)
-    ADBACKEND[] = backend_sym
-
-    Bijectors.setadbackend(backend_sym)
+setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
+function setadbackend(::Val{:forward_diff})
+    CHUNKSIZE[] == 0 && setchunksize(40)
+    ADBACKEND[] = :forward_diff
+end
+function setadbackend(::Val{:reverse_diff})
+    ADBACKEND[] = :reverse_diff
 end
 
 const ADSAFE = Ref(false)
@@ -39,22 +38,23 @@ ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forward_diff}) = ForwardDiffAD{CHUNKSIZE[]}
-ADBackend(::Val) = TrackerAD
+ADBackend(::Val{:reverse_diff}) = TrackerAD
+ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
-getADtype(alg)
+    getADbackend(alg)
 
-Finds the autodifferentiation type of the algorithm `alg`.
+Find the autodifferentiation backend of the algorithm `alg`.
 """
-getADtype(spl::Sampler) = getADtype(spl.alg)
+getADbackend(spl::Sampler) = getADbackend(spl.alg)
 
 """
-gradient_logp(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
-)
+    gradient_logp(
+        θ::AbstractVector{<:Real},
+        vi::VarInfo,
+        model::Model,
+        sampler::AbstractSampler=SampleFromPrior(),
+    )
 
 Computes the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using whichever automatic differentation
@@ -66,26 +66,23 @@ function gradient_logp(
     model::Model,
     sampler::Sampler
 )
-    ad_type = getADtype(sampler)
-    if ad_type <: ForwardDiffAD
-        return gradient_logp_forward(θ, vi, model, sampler)
-    else ad_type <: TrackerAD
-        return gradient_logp_reverse(θ, vi, model, sampler)
-    end
+    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler)
 end
 
 """
-gradient_logp_forward(
+gradient_logp(
+    backend::ADBackend,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    spl::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractSampler = SampleFromPrior(),
 )
 
-Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, spl, model)` using forwards-mode AD from ForwardDiff.jl.
+Compute the value of the log joint of `θ` and its gradient for the model
+specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
 """
-function gradient_logp_forward(
+function gradient_logp(
+    ::ForwardDiffAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -110,23 +107,12 @@ function gradient_logp_forward(
 
     return l, ∂l∂θ
 end
-
-"""
-gradient_logp_reverse(
+function gradient_logp(
+    ::TrackerAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
-)
-
-Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, sampler, model)` using reverse-mode AD from Tracker.jl.
-"""
-function gradient_logp_reverse(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractSampler = SampleFromPrior(),
 )
     T = typeof(getlogp(vi))
 
@@ -138,8 +124,9 @@ function gradient_logp_reverse(
 
     # Compute forward and reverse passes.
     l_tracked, ȳ = Tracker.forward(f, θ)
-    l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
     # Remove tracking info from variables in model (because mutable state).
+    l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
+
     return l, ∂l∂θ
 end
 
@@ -153,31 +140,7 @@ function verifygrad(grad::AbstractVector{<:Real})
     end
 end
 
-for F in (:link, :invlink)
-    @eval begin
-        function $F(
-            dist::Dirichlet, 
-            x::Tracker.TrackedArray, 
-            ::Type{Val{proj}} = Val{true}
-        ) where {proj}
-            return Tracker.track($F, dist, x, Val{proj})
-        end
-        Tracker.@grad function $F(
-            dist::Dirichlet, 
-            x::Tracker.TrackedArray, 
-            ::Type{Val{proj}}
-        ) where {proj}
-            x_data = Tracker.data(x)
-            T = eltype(x_data)
-            y = $F(dist, x_data, Val{proj})
-            return  y, Δ -> begin
-                out = (ForwardDiff.jacobian(x -> $F(dist, x, Val{proj}), x_data)::Matrix{T})' * Δ
-                return (nothing, out, nothing)
-            end
-        end
-    end
-end
-
+# These still seem necessary
 for F in (:link, :invlink)
     @eval begin
         $F(dist::PDMatDistribution, x::Tracker.TrackedArray) = Tracker.track($F, dist, x)
