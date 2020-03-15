@@ -42,9 +42,9 @@ ADBackend(::Val{:reverse_diff}) = TrackerAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
-getADbackend(alg)
+    getADbackend(alg)
 
-Finds the autodifferentiation backend of the algorithm `alg`.
+Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 
@@ -78,7 +78,7 @@ gradient_logp(
     sampler::AbstractSampler = SampleFromPrior(),
 )
 
-Computes the value of the log joint of `θ` and its gradient for the model
+Compute the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
 """
 function gradient_logp(
