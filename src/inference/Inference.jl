@@ -21,7 +21,7 @@ using MCMCChains: Chains
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
-import ..Core: getchunksize, getADtype
+import ..Core: getchunksize, getADbackend
 import DynamicPPL: tilde, dot_tilde, getspace, get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
@@ -62,7 +62,7 @@ abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
 getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
-getADtype(::Hamiltonian{AD}) where AD = AD
+getADbackend(::Hamiltonian{AD}) where AD = AD()
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)

@@ -1,4 +1,4 @@
-using Turing: gradient_logp_forward, gradient_logp_reverse
+using Turing: gradient_logp, ForwardDiffAD
 using Test
 
 """
@@ -57,7 +57,7 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     end
 
     spl = SampleFromPrior()
-    _, ∇E = gradient_logp_forward(vi[spl], vi, model)
+    _, ∇E = gradient_logp(ForwardDiffAD{1}(), vi[spl], vi, model)
     grad_Turing = sort(∇E)
 
     # Call ForwardDiff's AD

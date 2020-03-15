@@ -4,7 +4,7 @@ function setadbackend(::Val{:zygote})
     ADBACKEND[] = :zygote
 end
 
-function gradient_logp_reverse(
+function gradient_logp(
     backend::ZygoteAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,

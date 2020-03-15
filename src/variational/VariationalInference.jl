@@ -11,7 +11,7 @@ using Random: AbstractRNG
 using ForwardDiff
 using Tracker
 
-import ..Core: getchunksize, getADtype
+import ..Core: getchunksize, getADbackend
 
 import AbstractMCMC
 import ProgressLogging
@@ -55,7 +55,7 @@ export
 abstract type VariationalInference{AD} end
 
 getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
-getADtype(::VariationalInference{AD}) where AD = AD
+getADbackend(::VariationalInference{AD}) where AD = AD()
 
 abstract type VariationalObjective end
 

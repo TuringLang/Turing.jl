@@ -1,6 +1,6 @@
 using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra
 using PDMats, Zygote
-using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior, 
+using Turing: Turing, invlink, link, SampleFromPrior, 
     TrackerAD, ZygoteAD
 using DynamicPPL: getval
 using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
@@ -24,8 +24,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         _m = getval(vi, mvn)[1]
 
         x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E1 = gradient_logp_reverse(TrackerAD(), x, vi, ad_test_f)[2]
-        ∇E2 = gradient_logp_reverse(ZygoteAD(), x, vi, ad_test_f)[2]
+        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
+        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
         grad_Turing1 = sort(∇E1)
         grad_Turing2 = sort(∇E2)
 

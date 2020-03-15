@@ -1,8 +1,6 @@
 ##############################
 # Global variables/constants #
 ##############################
-using Bijectors
-
 const ADBACKEND = Ref(:forward_diff)
 setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(::Val{:forward_diff})
@@ -44,11 +42,11 @@ ADBackend(::Val{:reverse_diff}) = TrackerAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
-getADtype(alg)
+getADbackend(alg)
 
-Finds the autodifferentiation type of the algorithm `alg`.
+Finds the autodifferentiation backend of the algorithm `alg`.
 """
-getADtype(spl::Sampler) = getADtype(spl.alg)
+getADbackend(spl::Sampler) = getADbackend(spl.alg)
 
 """
 gradient_logp(
@@ -68,26 +66,23 @@ function gradient_logp(
     model::Model,
     sampler::Sampler
 )
-    ad_type = getADtype(sampler)
-    if ad_type <: ForwardDiffAD
-        return gradient_logp_forward(θ, vi, model, sampler)
-    else
-        return gradient_logp_reverse(ad_type(), θ, vi, model, sampler)
-    end
+    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler)
 end
 
 """
-gradient_logp_forward(
+gradient_logp(
+    backend::ADBackend,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    spl::AbstractSampler=SampleFromPrior(),
+    sampler::AbstractSampler = SampleFromPrior(),
 )
 
 Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, spl, model)` using forwards-mode AD from ForwardDiff.jl.
+specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
 """
-function gradient_logp_forward(
+function gradient_logp(
+    ::ForwardDiffAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -112,21 +107,8 @@ function gradient_logp_forward(
 
     return l, ∂l∂θ
 end
-
-"""
-gradient_logp_reverse(
-    backend::ADBackend,
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    model::Model,
-    sampler::AbstractSampler = SampleFromPrior(),
-)
-
-Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, sampler, model)` using reverse-mode AD from the specified `backend`, e.g. `TrackerAD()` which uses `Tracker.jl` or `ZygoteAD()` which uses `Zygote.jl`.
-"""
-function gradient_logp_reverse(
-    backend::TrackerAD,
+function gradient_logp(
+    ::TrackerAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -146,14 +128,6 @@ function gradient_logp_reverse(
     l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
 
     return l, ∂l∂θ
-end
-function gradient_logp_reverse(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    model::Model,
-    sampler::AbstractSampler = SampleFromPrior(),
-)
-    return gradient_logp_reverse(TrackerAD(), θ, vi, model, sampler)
 end
 
 function verifygrad(grad::AbstractVector{<:Real})
