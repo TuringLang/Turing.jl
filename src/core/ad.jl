@@ -44,7 +44,7 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 """
     getADbackend(alg)
 
-Finds the autodifferentiation backend of the algorithm `alg`.
+Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 
