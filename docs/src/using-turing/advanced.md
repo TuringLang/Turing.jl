@@ -132,15 +132,8 @@ mf(vi, sampler, ctx, model) = begin
 
     # Observe each value of x[i], according to a
     # Normal distribution.
-    acclogp!(vi,
-        Turing.Inference.dot_tilde(
-            ctx, 
-            sampler, 
-            Normal(m, sqrt(s)), 
-            x, 
-            vi,
-        ),
-    )
+    lp = Turing.Inference.dot_tilde(ctx, sampler, Normal(m, sqrt(s)), x, vi)
+    acclogp!(vi, lp)
 end
 
 # Instantiate a Model object.

@@ -71,7 +71,6 @@ export  @model,                 # modelling
         @logpdf,
         @sampler,
         DynamicPPL,
-        mapvcat,
 
         MH,                     # classic sampling
         RWMH,

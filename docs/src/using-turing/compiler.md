@@ -93,7 +93,8 @@ if preprocessed isa Tuple
     p[1] = out[1]
     acclogp!(vi, out[2])
 else
-    acclogp!(vi, Turing.Inference.tilde(ctx, sampler, temp_right, preprocessed, vi))
+    lp = Turing.Inference.tilde(ctx, sampler, temp_right, preprocessed, vi)
+    acclogp!(vi, lp)
 end
 ```
 where `ctx::AbstractContext`, `sampler::AbstractSampler` and `vi::VarInfo` will be discussed later. `assert_dist` will check that the RHS of `~` is a distribution otherwise an error is thrown. The `@preprocess` macro here checks:
@@ -121,7 +122,8 @@ if preprocessed isa Tuple
     acclogp!(vi, out[2])
 else
     temp_left = preprocessed # x[1:2]
-    acclogp!(vi, Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vi))
+    lp = Turing.Inference.dot_tilde(ctx, sampler, temp_right, temp_left, vi)
+    acclogp!(vi, lp)
 end
 ```
 The main difference in the expanded code between `L ~ R` and `@. L ~ R` is that the former doesn't assume `L` to be defined, it can be a new Julia variable in the scope, while the latter assumes `L` already exists. `L` is also always input to the `dot_tilde` function but not the `tilde` function.
