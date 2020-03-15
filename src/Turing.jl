@@ -14,7 +14,6 @@ using Statistics, LinearAlgebra
 using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
-using DistributionsAD: mapvcat
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
 import DynamicPPL: getspace, runmodel!
