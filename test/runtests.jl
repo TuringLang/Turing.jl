@@ -14,7 +14,7 @@ include("test_utils/AllUtils.jl")
         include("core/ad.jl")
         include("core/container.jl")
     end
-
+    Turing.setadbackend(:forward_diff)
     @testset "inference" begin
         @testset "samplers" begin
             # FIXME: DynamicHMC version 1 has (??) a bug on 32bit platforms (but we were too
