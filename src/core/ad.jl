@@ -42,7 +42,7 @@ ADBackend(::Val{:reverse_diff}) = TrackerAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
-getADbackend(alg)
+    getADbackend(alg)
 
 Finds the autodifferentiation backend of the algorithm `alg`.
 """
