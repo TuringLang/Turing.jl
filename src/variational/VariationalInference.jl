@@ -23,6 +23,25 @@ function __init__()
         Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
         Flux.Optimise.apply!(o::DecayedADAGrad, x, Δ) = apply!(o, x, Δ)
     end
+    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" begin
+        function Variational.grad!(
+            vo,
+            alg::VariationalInference{<:Turing.ZygoteAD},
+            q,
+            model,
+            θ::AbstractVector{<:Real},
+            out::DiffResults.MutableDiffResult,
+            args...
+        )
+            f(θ) = if (q isa VariationalPosterior)
+                - vo(alg, update(q, θ), model, args...)
+            else
+                - vo(alg, q(θ), model, args...)
+            end
+            out .= Zygote.gradient(f, θ)
+            return out
+        end
+    end
 end
 
 export

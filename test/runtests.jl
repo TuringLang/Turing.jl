@@ -1,7 +1,7 @@
 ##########################################
 # Master file for running all test cases #
 ##########################################
-using Turing; turnprogress(false)
+using Zygote, Turing; turnprogress(false)
 using Pkg
 using Random
 using Test

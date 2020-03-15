@@ -25,3 +25,5 @@ function gradient_logp_reverse(
 
     return l, ∂l∂θ
 end
+
+Zygote.@nograd DynamicPPL.updategid!
