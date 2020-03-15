@@ -166,7 +166,7 @@ function verifygrad(grad::AbstractVector{<:Real})
     end
 end
 
-# This seems still necessary
+# These still seem necessary
 for F in (:link, :invlink)
     @eval begin
         $F(dist::PDMatDistribution, x::Tracker.TrackedArray) = Tracker.track($F, dist, x)

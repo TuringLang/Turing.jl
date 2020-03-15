@@ -439,14 +439,14 @@ function assume(
     vn::VarName,
     vi::VarInfo
 )
-    Turing.DEBUG && @debug "assuming..."
+    Turing.DEBUG && _debug("assuming...")
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    Turing.DEBUG && @debug "dist = $dist"
-    Turing.DEBUG && @debug "vn = $vn"
-    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
+    Turing.DEBUG && _debug("dist = $dist")
+    Turing.DEBUG && _debug("vn = $vn")
+    Turing.DEBUG && _debug("r = $r, typeof(r)=$(typeof(r))")
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
