@@ -49,12 +49,12 @@ Finds the autodifferentiation backend of the algorithm `alg`.
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 
 """
-gradient_logp(
-    θ::AbstractVector{<:Real},
-    vi::VarInfo,
-    model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
-)
+    gradient_logp(
+        θ::AbstractVector{<:Real},
+        vi::VarInfo,
+        model::Model,
+        sampler::AbstractSampler=SampleFromPrior(),
+    )
 
 Computes the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using whichever automatic differentation
