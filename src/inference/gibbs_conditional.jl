@@ -1,8 +1,14 @@
+# @model test(y) = begin
+    # p ~ Uniform()
+    # y ~ Bernoulli(p)
+# end
+
+
 struct GibbsConditional{space, C} <: InferenceAlgorithm 
     conditional::C
 
-    function GibbsConditional(sym::Symbol, conditional)
-        return new{sym, typeof(conditional)}(conditional)
+    function GibbsConditional(sym::Symbol, conditional::C) where {C}
+        return new{sym, C}(conditional)
     end
 end
 
@@ -78,24 +84,25 @@ function AbstractMCMC.step!(
         runmodel!(model, spl.state.vi)
     end
 
-    condvals = getcondvals(spl.state.vi, S)
+    vn = VarName{S}("")
+    condvals = getcondvals(spl.state.vi, vn)
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    setval!(spl.state.vi, updated, S)
-    # setlogp!(spl.state.vi, logdensity(spl.state.densitymodel, ))
+    spl.state.vi[vn] = [updated]
 
     return Transition(spl)
 end
 
 
-function getcondvals(vi::VarInfo, S::Symbol)
-    f(vn::VarName{s}) where {s} = s == S
-    conditionals = filter(f, getallvns(vi))
-    return NamedTuple{conditionals}(getval(vi, conditionals))
+function getcondvals(vi::VarInfo, vn::VarName)
+    conditionals = filter(!(==(vn)), getallvns(vi))
+    condnames = Tuple(getsym.(conditionals))
+    condvals = getindex.(getval.(Ref(vi), conditionals), 1)  # getval returns a view slice!
+    return NamedTuple{condnames}(condvals)
 end
 
 getallvns(vi::UntypedVarInfo) = vi.metadata.vns
-getallvns(vi::TypedVarInfo) = foldl(vcat, m.vns for m in values(vi.metadata))
+getallvns(vi::TypedVarInfo) = foldl(vcat, m.vns for m in values(vi.metadata); init=VarName[])
 
 
 ####
