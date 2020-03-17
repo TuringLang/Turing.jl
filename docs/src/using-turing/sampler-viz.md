@@ -47,7 +47,7 @@ vi.flags["trans"] = [true, false]
 function evaluate(m1, m2)
     vi.vals .= [m1, m2]
     model(vi, Turing.SampleFromPrior())
-    -vi.logp
+    -getlogp(vi)
 end
 
 function plot_sampler(chain)
