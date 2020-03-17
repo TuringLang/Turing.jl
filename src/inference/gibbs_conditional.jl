@@ -22,18 +22,16 @@ alg_str(::Sampler{<:GibbsConditional}) = "GibbsConditional"
 
 struct GibbsConditionalTransition{T, F<:AbstractFloat}
     θ::T
-    lp::F
 end
 
-function GibbsConditionalTransition(spl::Sampler{<:GibbsConditional}, lp)
+function GibbsConditionalTransition(spl::Sampler{<:GibbsConditional})
     θ = tonamedtuple(spl.state.vi)
-    return GibbsConditionalTransition(θ, mh_trans.lp)
+    return GibbsConditionalTransition(θ)
 end
 
 
 mutable struct GibbsConditionalState{V<:VarInfo} <: AbstractSamplerState
     vi::V
-    # density_model::AMH.DensityModel
 end
 
 function Sampler(
@@ -84,25 +82,25 @@ function AbstractMCMC.step!(
         runmodel!(model, spl.state.vi)
     end
 
-    vn = VarName{S}("")
-    condvals = getcondvals(spl.state.vi, vn)
+    condvals = conditioned(tonamedtuple(spl.state.vi), Val{S}())
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    spl.state.vi[vn] = [updated]
+    spl.state.vi[VarName{S}("")] = [updated]
 
     return Transition(spl)
 end
 
 
-function getcondvals(vi::VarInfo, vn::VarName)
-    conditionals = filter(!(==(vn)), getallvns(vi))
-    condnames = Tuple(getsym.(conditionals))
-    condvals = getindex.(getval.(Ref(vi), conditionals), 1)  # getval returns a view slice!
-    return NamedTuple{condnames}(condvals)
+@generated function conditioned(θ::NamedTuple{names}, ::Val{S}) where {names, S}
+    # condvals = tonamedtuple(vi) returns a NamedTuple of the form
+    # (n1 = ([val1, ...], [ix1, ...]), n2 = ...)
+    # e.g. (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
+    condvals = [:($n = extractparam(θ.$n[1]) for n in names if n ≠ S]
+    return Expr(:tuple, condvals...)
 end
 
-getallvns(vi::UntypedVarInfo) = vi.metadata.vns
-getallvns(vi::TypedVarInfo) = foldl(vcat, m.vns for m in values(vi.metadata); init=VarName[])
+extractparam(p::Vector{<:Real}) = length(p) == 1 ? p[1] : p
+extractparam(p::Vector{<:Array{<:Real}}) = foldl(vcat, p)
 
 
 ####
