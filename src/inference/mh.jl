@@ -12,8 +12,6 @@ function MH(space...)
     prop_syms = Symbol[]
     props = AMH.Proposal[]
 
-    check_support(dist) = insupport(dist, z)
-
     for s in space
         if s isa Symbol
             push!(syms, s)
