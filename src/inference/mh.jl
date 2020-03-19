@@ -114,15 +114,16 @@ function gen_logπ_mh(spl::Sampler, model)
     return logπ
 end
 
-function scalar_map(vi::VarInfo, vns::Vector{V}) where V<:VarName
-    vals = getindex(vi, vns)
-    if length(vals) == length(vns) == 1
-        # It's a scalar!
-        return vals[1]
-    else 
-        # Go home, vector, you're drunk.
-        return vals
-    end
+# unpack a vector if possible
+unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
+
+# possibly unpack and reshape samples according to the prior distribution 
+reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
+function reconstruct(
+    dist::AbstractVector{<:UnivariateDistribution},
+    val::AbstractVector
+)
+    return val
 end
 
 """
@@ -132,39 +133,41 @@ Returns two `NamedTuples`. The first `NamedTuple` has symbols as keys and distri
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
 function dist_val_tuple(spl::Sampler{<:MH})
-    vns = _getvns(spl.state.vi, spl)
-    dt = _dist_tuple(spl.state.vi.metadata, spl.alg.proposals, spl.state.vi, vns)
-    vt = _val_tuple(spl.state.vi.metadata, spl.state.vi, vns)
+    vi = spl.state.vi
+    vns = _getvns(vi, spl)
+    dt = _dist_tuple(spl.alg.proposals, vi, vns)
+    vt = _val_tuple(vi, vns)
     return dt, vt
 end
 
-@generated function _val_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
-    length(names) === 0 && return :(NamedTuple())
-    expr = Expr(:tuple)
-    map(names) do f
-        push!(expr.args, Expr(:(=), f, :(scalar_map(vi, metadata.$f.vns))))
-    end
-    return expr
+function _val_tuple(
+    vi::VarInfo,
+    vns::NamedTuple{names}
+) where {names}
+    return NamedTuple{names}(
+        map(names) do f
+            dist = unvectorize(DynamicPPL.getdist.(Ref(vi), vns[f]))
+            reconstruct(dist, DynamicPPL.getval(vi, vns[f]))
+        end
+    )
 end
 
-@generated function _dist_tuple(
-    metadata::NamedTuple, 
+function _dist_tuple(
     props::NamedTuple{propnames}, 
     vi::VarInfo, 
     vns::NamedTuple{names}
-) where {names, propnames}
-    length(names) === 0 && return :(NamedTuple())
-    expr = Expr(:tuple)
-    map(names) do f
-        if f in propnames
-            # We've been given a custom proposal, use that instead.
-            push!(expr.args, Expr(:(=), f, :(props.$f)))
-        else
-            # Otherwise, use the default proposal.
-            push!(expr.args, Expr(:(=), f, :(AMH.Proposal(AMH.Static(), metadata.$f.dists[1]))))
+) where {names,propnames}
+    return NamedTuple{names}(
+        map(names) do f
+            if f in propnames
+                # We've been given a custom proposal, use that instead.
+                props[f]
+            else
+                # Otherwise, use the default proposal.
+                AMH.Proposal(AMH.Static(), unvectorize(DynamicPPL.getdist.(Ref(vi), vns[f])))
+            end
         end
-    end
-    return expr
+    )
 end
 
 #################
