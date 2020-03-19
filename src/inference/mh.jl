@@ -157,34 +157,36 @@ function dist_val_tuple(spl::Sampler{<:MH})
     return dt, vt
 end
 
-function _val_tuple(
+@generated function _val_tuple(
     vi::VarInfo,
     vns::NamedTuple{names}
 ) where {names}
-    return NamedTuple{names}(
-        map(names) do f
-            dist = unvectorize(DynamicPPL.getdist.(Ref(vi), vns[f]))
-            reconstruct(dist, DynamicPPL.getval(vi, vns[f]))
-        end
-    )
+    isempty(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    expr.args = Any[
+        :($name = reconstruct(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
+                              DynamicPPL.getval(vi, vns.$name)))
+        for name in names]
+    return expr
 end
 
-function _dist_tuple(
+@generated function _dist_tuple(
     props::NamedTuple{propnames}, 
     vi::VarInfo, 
     vns::NamedTuple{names}
 ) where {names,propnames}
-    return NamedTuple{names}(
-        map(names) do f
-            if f in propnames
-                # We've been given a custom proposal, use that instead.
-                props[f]
-            else
-                # Otherwise, use the default proposal.
-                AMH.Proposal(AMH.Static(), unvectorize(DynamicPPL.getdist.(Ref(vi), vns[f])))
-            end
-        end
-    )
+    isempty(names) === 0 && return :(NamedTuple())
+    expr = Expr(:tuple)
+    expr.args = Any[
+        if name in propnames
+            # We've been given a custom proposal, use that instead.
+            :($name = props.$name)
+        else
+            # Otherwise, use the default proposal.
+            :($name = AMH.Proposal(AMH.Static(),
+                                   unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
+        end for name in names]
+    return expr
 end
 
 function AbstractMCMC.sample_init!(
