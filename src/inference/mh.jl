@@ -33,6 +33,21 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
+function Sampler(
+    alg::MH,
+    model::Model,
+    s::Selector=Selector()
+)
+    # Set up info dict.
+    info = Dict{Symbol, Any}()
+
+    # Set up state struct.
+    state = SamplerState(VarInfo(model))
+
+    # Generate a sampler.
+    return Sampler(alg, info, s, state)
+end
+
 alg_str(::Sampler{<:MH}) = "MH"
 
 #################
@@ -92,24 +107,28 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 end
 
 """
-    gen_logπ_mh(vi::VarInfo, spl::Sampler, model)   
+    MHLogDensityFunction
 
-Generate a log density function -- this variant uses the 
-`set_namedtuple!` function to update the `VarInfo`.
+A log density function for the MH sampler.
+    
+This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
-function gen_logπ_mh(spl::Sampler, model)
-    function logπ(x)::Float64
-        vi = spl.state.vi
-        x_old, lj_old = vi[spl], getlogp(vi)
-        # vi[spl] = x
-        set_namedtuple!(vi, x)
-        runmodel!(model, vi)
-        lj = getlogp(vi)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return lj
-    end
-    return logπ
+struct MHLogDensityFunction{M<:Model,S<:Sampler{<:MH}} <: Function # Relax AMH.DensityModel?
+    model::M
+    sampler::S
+end
+
+function (f::MHLogDensityFunction)(x)::Float64
+    sampler = f.sampler
+    vi = sampler.state.vi
+    x_old, lj_old = vi[sampler], getlogp(vi)
+    # vi[sampler] = x
+    set_namedtuple!(vi, x)
+    runmodel!(f.model, vi)
+    lj = getlogp(vi)
+    vi[sampler] = x_old
+    setlogp!(vi, lj_old)
+    return lj
 end
 
 # unpack a vector if possible
@@ -168,45 +187,6 @@ function _dist_tuple(
     )
 end
 
-#################
-# Sampler state #
-#################
-
-mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
-    vi :: V
-    density_model :: AMH.DensityModel
-end
-
-###############################
-# Static MH (from prior only) #
-###############################
-
-function Sampler(
-    alg::MH,
-    model::Model,
-    s::Selector=Selector()
-)
-    # Set up info dict.
-    info = Dict{Symbol, Any}()
-
-    # Make a varinfo.
-    vi = VarInfo(model)
-
-    # Make a density model.
-    dm = AMH.DensityModel(x -> 0.0)
-
-    # Set up state struct.
-    state = MHState(vi, dm)
-
-    # Generate a sampler.
-    spl = Sampler(alg, info, s, state)
-
-    # Update the density model.
-    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl, model))
-
-    return spl
-end
-
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
@@ -243,7 +223,8 @@ function AbstractMCMC.step!(
     prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
 
     # Make a new transition.
-    trans = AbstractMCMC.step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
+    densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl))
+    trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
 
     # Update the values in the VarInfo.
     set_namedtuple!(spl.state.vi, trans.params)
