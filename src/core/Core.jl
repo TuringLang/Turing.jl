@@ -2,7 +2,7 @@ module Core
 
 using DistributionsAD, Bijectors
 using MacroTools, Libtask, ForwardDiff, Random
-using Distributions, LinearAlgebra
+using Distributions, LinearAlgebra, Memoization
 using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing
@@ -23,7 +23,7 @@ include("ad.jl")
 end
 @init @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
     include("compat/reversediff.jl")
-    export ReverseDiffAD
+    export ReverseDiffAD, setcache
 end
 
 export  @model,
