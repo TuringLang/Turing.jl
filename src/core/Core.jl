@@ -21,6 +21,10 @@ include("ad.jl")
     include("compat/zygote.jl")
     export ZygoteAD
 end
+@init @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
+    include("compat/reversediff.jl")
+    export ReverseDiffAD
+end
 
 export  @model,
         @varname,

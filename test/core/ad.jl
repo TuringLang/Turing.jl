@@ -270,25 +270,32 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         @model dir() = begin
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
+        Turing.setadbackend(:tracker)
+        sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:reverse_diff)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000);
     end
-    @testset "PDMatDistribution Tracker AD" begin
+    # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
+    @testset "PDMatDistribution AD" begin
         @model wishart() = begin
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:tracker)
         sample(wishart(), HMC(0.01, 1), 1000);
+        #Turing.setadbackend(:reverse_diff)
+        #sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
 
         @model invwishart() = begin
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:tracker)
         sample(invwishart(), HMC(0.01, 1), 1000);
+        #Turing.setadbackend(:reverse_diff)
+        #sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end

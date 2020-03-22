@@ -8,10 +8,9 @@ title: Automatic Differentiation
 ## Switching AD Modes
 
 
-Turing supports two types of automatic differentiation (AD) in the back end during sampling. The current default AD mode is [ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl), but Turing also supports [Tracker](https://github.com/FluxML/Tracker.jl)-based differentation.
+Turing supports four packages of automatic differentiation (AD) in the back end during sampling. The default AD backend is [ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl) for forward-mode AD. Three reverse-mode AD backends are also supported, namely [Tracker](https://github.com/FluxML/Tracker.jl), [Zygote](https://github.com/FluxML/Zygote.jl) and [ReverseDiff](https://github.com/JuliaDiff/ReverseDiff.jl). `Zygote` and `ReverseDiff` are supported optionally if explicitly loaded by the user with `using Zygote` or `using ReverseDiff` next to `using Turing`.
 
-
-To switch between `ForwardDiff` and `Tracker`, one can call function `Turing.setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
+To switch between the different AD backends, one can call function `Turing.setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` (`ForwardDiff`), `:tracker` (`Tracker`), `:zygote` (`Zygote`) or `:reverse_diff` (`ReverseDiff.jl`).
 
 
 ## Compositional Sampling with Differing AD Modes

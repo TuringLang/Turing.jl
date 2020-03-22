@@ -37,7 +37,7 @@ AdvancedHMC = "0.2.20"
 AdvancedMH = "0.4"
 Bijectors = "0.6.2"
 BinaryProvider = "0.5.6"
-Distributions = "0.22"
+Distributions = "0.22, 0.23"
 DistributionsAD = "0.4.3"
 DocStringExtensions = "0.8"
 DynamicPPL = "0.4"
@@ -68,6 +68,7 @@ TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 
 [targets]
-test = ["Pkg", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote"]
+test = ["Pkg", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote", "ReverseDiff"]

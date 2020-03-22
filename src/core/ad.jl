@@ -7,8 +7,8 @@ function setadbackend(::Val{:forward_diff})
     CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forward_diff
 end
-function setadbackend(::Val{:reverse_diff})
-    ADBACKEND[] = :reverse_diff
+function setadbackend(::Val{:tracker})
+    ADBACKEND[] = :tracker
 end
 
 const ADSAFE = Ref(false)
@@ -38,7 +38,7 @@ ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forward_diff}) = ForwardDiffAD{CHUNKSIZE[]}
-ADBackend(::Val{:reverse_diff}) = TrackerAD
+ADBackend(::Val{:tracker}) = TrackerAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
