@@ -37,21 +37,6 @@ end
 
 alg_str(::Sampler{<:MH}) = "MH"
 
-#################
-# MH Transition #
-#################
-
-struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition}
-    θ    :: T
-    lp   :: F
-    mh_trans :: M
-end
-
-function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
-    theta = tonamedtuple(spl.state.vi)
-    return MHTransition(theta, mh_trans.lp, mh_trans)
-end
-
 #####################
 # Utility functions #
 #####################
