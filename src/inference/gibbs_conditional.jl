@@ -1,9 +1,3 @@
-# @model test(y) = begin
-    # p ~ Uniform()
-    # y ~ Bernoulli(p)
-# end
-
-
 struct GibbsConditional{space, C} <: InferenceAlgorithm 
     conditional::C
 
