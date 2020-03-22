@@ -272,7 +272,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         end
         Turing.setadbackend(:tracker)
         sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:reversediff)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000);
@@ -284,7 +284,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         end
         Turing.setadbackend(:tracker)
         sample(wishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reverse_diff)
+        #Turing.setadbackend(:reversediff)
         #sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
@@ -294,7 +294,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         end
         Turing.setadbackend(:tracker)
         sample(invwishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reverse_diff)
+        #Turing.setadbackend(:reversediff)
         #sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);

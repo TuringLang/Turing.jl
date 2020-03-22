@@ -34,7 +34,7 @@ end
 
 ## Choose your AD backend
 Turing currently provides support for two different automatic differentiation (AD) backends. 
-Generally, try to use `:forward_diff` for models with few parameters and `:reverse_diff`, `:tracker` or `:zygote` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
+Generally, try to use `:forwarddiff` for models with few parameters and `:reversediff`, `:tracker` or `:zygote` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
 
 
 ## Special care for `:tracker` and `:zygote`

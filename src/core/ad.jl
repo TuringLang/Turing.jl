@@ -1,11 +1,15 @@
 ##############################
 # Global variables/constants #
 ##############################
-const ADBACKEND = Ref(:forward_diff)
+const ADBACKEND = Ref(:forwarddiff)
 setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(::Val{:forward_diff})
+    @warn("Turing.setadbackend(:forward_diff) is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.")
+    setadbackend(Val(:forwarddiff))
+end
+function setadbackend(::Val{:forwarddiff})
     CHUNKSIZE[] == 0 && setchunksize(40)
-    ADBACKEND[] = :forward_diff
+    ADBACKEND[] = :forwarddiff
 end
 function setadbackend(::Val{:tracker})
     ADBACKEND[] = :tracker
@@ -37,7 +41,7 @@ struct TrackerAD <: ADBackend end
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
-ADBackend(::Val{:forward_diff}) = ForwardDiffAD{CHUNKSIZE[]}
+ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
 ADBackend(::Val{:tracker}) = TrackerAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 

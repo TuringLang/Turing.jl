@@ -16,9 +16,9 @@ include("test_utils/AllUtils.jl")
     end
 
     test_adbackends = if VERSION >= v"1.2"
-        [:forward_diff, :tracker, :reverse_diff]
+        [:forwarddiff, :tracker, :reversediff]
     else
-        [:forward_diff, :tracker]
+        [:forwarddiff, :tracker]
     end
     for adbackend in test_adbackends
         Turing.setadbackend(adbackend)
@@ -50,7 +50,7 @@ include("test_utils/AllUtils.jl")
         end
     end
 
-    Turing.setadbackend(:forward_diff)
+    Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
         include("stdlib/distributions.jl")
         # include("stdlib/RandomMeasures.jl")
