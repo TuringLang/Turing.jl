@@ -14,8 +14,13 @@ include("test_utils/AllUtils.jl")
         include("core/ad.jl")
         include("core/container.jl")
     end
-    
-    for adbackend in [:forward_diff, :tracker, :reverse_diff]
+
+    test_adbackends = if VERSION >= v"1.2"
+        [:forward_diff, :tracker, :reverse_diff]
+    else
+        [:forward_diff, :tracker]
+    end
+    for adbackend in test_adbackends
         Turing.setadbackend(adbackend)
         @testset "inference" begin
             @testset "samplers" begin
