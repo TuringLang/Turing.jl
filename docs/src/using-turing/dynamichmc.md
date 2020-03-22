@@ -7,7 +7,7 @@ title: Using DynamicHMC
 Turing supports the use of [DynamicHMC](https://github.com/tpapp/DynamicHMC.jl) as a sampler through the `DynamicNUTS` function.
 
 
-`DynamicNUTS` is not appropriate for use in compositional inference. If you intend to use [Gibbs](http://turing.ml/docs/library/#-turinggibbs--type) sampling, you must use Turing's native `NUTS` function.
+`DynamicNUTS` is not appropriate for use in compositional inference. If you intend to use [Gibbs](https://turing.ml/dev/docs/library/#Turing.Inference.Gibbs) sampling, you must use Turing's native `NUTS` function.
 
 
 To use the `DynamicNUTS` function, you must import the `DynamicHMC` package as well as Turing. Turing does not formally require `DynamicHMC` but will include additional functionality if both packages are present.
