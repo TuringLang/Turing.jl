@@ -93,14 +93,22 @@ end
 
 @generated function conditioned(θ::NamedTuple{names}, ::Val{S}) where {names, S}
     # condvals = tonamedtuple(vi) returns a NamedTuple of the form
-    # (n1 = ([val1, ...], [ix1, ...]), n2 = ...)
+    # (n1 = ([val1, ...], [ix1, ...]), n2 = (...))
     # e.g. (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
-    condvals = [:($n = extractparam(θ.$n[1]) for n in names if n ≠ S]
+    condvals = [:($n = extractparam(θ.$n)) for n in names if n ≠ S]
     return Expr(:tuple, condvals...)
 end
 
-extractparam(p::Vector{<:Real}) = length(p) == 1 ? p[1] : p
-extractparam(p::Vector{<:Array{<:Real}}) = foldl(vcat, p)
+extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[1])
+function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
+    values, strings = p
+    if length(values) == length(strings) == 1 && !occursin(r".\[.+\]$", strings[1])
+        # if m ~ MVNormal(1, 1), we could have have ([1], ["m[1]"])!
+        return values[1]
+    else
+        return values
+    end
+end
 
 
 ####
