@@ -44,7 +44,7 @@ function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) whe
         idx += varinfo.metadata[sym].ranges[end][end]
     end
 
-    bs = inv.(bijector.(tuple(dists...)))
+    bs = bijector.(tuple(dists...))
 
     if sym2ranges
         return Stacked(bs, ranges), (; collect(zip(keys(sym_lookup), values(sym_lookup)))...)
