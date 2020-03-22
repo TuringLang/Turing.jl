@@ -75,6 +75,7 @@ export  @model,                 # modelling
         RWMH,
         ESS,
         Gibbs,
+        GibbsConditional,
 
         HMC,                    # Hamiltonian-like sampling
         SGLD,
