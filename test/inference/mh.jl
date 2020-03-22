@@ -1,4 +1,6 @@
 using Turing, Random, Test
+import Turing.Inference
+import AdvancedMH
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -45,26 +47,41 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chain = sample(MoGtest_default, gibbs, 5000)
         check_MoGtest_default(chain, atol = 0.1)
     end
-    @turing_testset "" begin
-        # Test MH shape passing.
+
+    # Test MH shape passing.
+    @turing_testset "shape" begin
         @model M(mu, sigma, observable) = begin
             z ~ MvNormal(mu, sigma)
-    
-            m = Vector{Any}(undef, 2)
-            m[1] ~ Normal(0,1)
-            m[2] ~ InverseGamma(2,1)
-            s ~ InverseGamma(2,1)
-    
-            observable ~ Bernoulli(cdf(Normal(), z'*z))
-    
+
+            m = Array{Float64}(undef, 1, 2)
+            m[1] ~ Normal(0, 1)
+            m[2] ~ InverseGamma(2, 1)
+            s ~ InverseGamma(2, 1)
+
+            observable ~ Bernoulli(cdf(Normal(), z' * z))
+
             1.5 ~ Normal(m[1], m[2])
             -1.5 ~ Normal(m[1], m[2])
-    
+
             1.5 ~ Normal(m[1], s)
             2.0 ~ Normal(m[1], s)
         end
- 
-        chain = sample(M(zeros(2), ones(2), 1), MH(), 100)
+
+        model = M(zeros(2), ones(2), 1)
+        sampler = Inference.Sampler(MH(), model)
+
+        dt, vt = Inference.dist_val_tuple(sampler)
+
+        @test dt[:z] isa AdvancedMH.Proposal{AdvancedMH.Static,<:MvNormal}
+        @test dt[:m] isa AdvancedMH.Proposal{AdvancedMH.Static,Vector{ContinuousUnivariateDistribution}}
+        @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
+        @test dt[:s] isa AdvancedMH.Proposal{AdvancedMH.Static,<:InverseGamma}
+
+        @test vt[:z] isa Vector{Float64} && length(vt[:z]) == 2
+        @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2
+        @test vt[:s] isa Float64
+
+        chain = sample(model, MH(), 100)
 
         @test chain isa MCMCChains.Chains
     end
