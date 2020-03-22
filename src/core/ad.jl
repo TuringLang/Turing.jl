@@ -4,7 +4,7 @@
 const ADBACKEND = Ref(:forwarddiff)
 setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(::Val{:forward_diff})
-    @warn("Turing.setadbackend(:forward_diff) is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.")
+    @warn("`Turing.setadbackend(:forward_diff)` is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.")
     setadbackend(Val(:forwarddiff))
 end
 function setadbackend(::Val{:forwarddiff})

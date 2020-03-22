@@ -1,7 +1,7 @@
 struct ReverseDiffAD <: ADBackend end
 ADBackend(::Val{:reversediff}) = ReverseDiffAD
 function setadbackend(::Val{:reverse_diff})
-    @warn("Turing.setadbackend(:reverse_diff) is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.")
+    @warn("`Turing.setadbackend(:reverse_diff)` is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.")
     setadbackend(Val(:reversediff))
 end
 function setadbackend(::Val{:reversediff})
