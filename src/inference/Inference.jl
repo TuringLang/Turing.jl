@@ -334,7 +334,7 @@ function AbstractMCMC.bundle_samples(
 
     # Extract names & construct param array.
     nms = [nms; extra_params]
-    parray = hcat(vals, extra_values)
+    parray = map(x -> x, hcat(vals, extra_values))
 
     # If the state field has average_logevidence or final_logevidence, grab that.
     le = missing
@@ -355,9 +355,6 @@ function AbstractMCMC.bundle_samples(
     else
         info = NamedTuple()
     end
-
-    # Ensure that the chain is not of type Any.
-    parray = eltype(parray) == Any ? convert(Array{Union{Real, Missing}}, parray) : parray
 
     # Chain construction.
     return Chains(
