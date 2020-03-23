@@ -9,25 +9,6 @@ end
 getspace(::GibbsConditional{S}) where {S} = (S,)
 alg_str(::Sampler{<:GibbsConditional}) = "GibbsConditional"
 
-
-#################
-# Transition #
-#################
-
-struct GibbsConditionalTransition{T, F<:AbstractFloat}
-    θ::T
-end
-
-function GibbsConditionalTransition(spl::Sampler{<:GibbsConditional})
-    θ = tonamedtuple(spl.state.vi)
-    return GibbsConditionalTransition(θ)
-end
-
-
-mutable struct GibbsConditionalState{V<:VarInfo} <: AbstractSamplerState
-    vi::V
-end
-
 function Sampler(
     alg::GibbsConditional,
     model::Model,
@@ -40,7 +21,7 @@ function Sampler(
     vi = VarInfo(model)
 
     # Set up state struct.
-    state = GibbsConditionalState(vi)
+    state = SamplerState(vi)
 
     # Generate a sampler.
     spl = Sampler(alg, info, s, state)
