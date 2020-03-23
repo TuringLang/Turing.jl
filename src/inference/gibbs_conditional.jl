@@ -1,4 +1,4 @@
-struct GibbsConditional{space, C} <: InferenceAlgorithm 
+struct GibbsConditional{S, C}
     conditional::C
 
     function GibbsConditional(sym::Symbol, conditional::C) where {C}
@@ -7,45 +7,20 @@ struct GibbsConditional{space, C} <: InferenceAlgorithm
 end
 
 getspace(::GibbsConditional{S}) where {S} = (S,)
-alg_str(::Sampler{<:GibbsConditional}) = "GibbsConditional"
+alg_str(::GibbsConditional) = "GibbsConditional"
+isgibbscomponent(::GibbsConditional) = true
+
 
 function Sampler(
     alg::GibbsConditional,
     model::Model,
     s::Selector=Selector()
 )
-    # Set up info dict.
-    info = Dict{Symbol, Any}()
-
-    # Make a varinfo.
-    vi = VarInfo(model)
-
-    # Set up state struct.
-    state = SamplerState(vi)
-
-    # Generate a sampler.
-    spl = Sampler(alg, info, s, state)
-
-    return spl
+    return Sampler(alg, Dict{Symbol, Any}(), s, SamplerState(VarInfo(model)))
 end
 
-function AbstractMCMC.sample_init!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:GibbsConditional},
-    N::Integer;
-    verbose::Bool=true,
-    resume_from=nothing,
-    kwargs...
-)
-    # Resume the sampler.
-    set_resume!(spl; resume_from=resume_from, kwargs...)
 
-    # Get `init_theta`
-    initialize_parameters!(spl; verbose=verbose, kwargs...)
-end
-
-function AbstractMCMC.step!(
+function gibbs_step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:GibbsConditional{S}},
@@ -61,8 +36,8 @@ function AbstractMCMC.step!(
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
     spl.state.vi[VarName{S}("")] = [updated]
-
-    return Transition(spl)
+    
+    return transition
 end
 
 
@@ -73,6 +48,7 @@ end
     condvals = [:($n = extractparam(θ.$n)) for n in names if n ≠ S]
     return Expr(:tuple, condvals...)
 end
+
 
 extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[1])
 function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})

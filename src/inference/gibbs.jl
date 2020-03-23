@@ -164,26 +164,38 @@ function AbstractMCMC.step!(
     # Iterate through each of the samplers.
     transitions = map(enumerate(spl.state.samplers)) do (i, local_spl)
         Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-
-        # Update the sampler's VarInfo.
+        
+        # Update the local sampler's VarInfo.
         local_spl.state.vi = spl.state.vi
 
         # Step through the local sampler.
         if transition === nothing
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, nothing; kwargs...)
+            trans = gibbs_step!(rng, model, local_spl, N, nothing; kwargs...)
         else
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i];
-                                       kwargs...)
+            trans = gibbs_step!(rng, model, local_spl, N, transition.transitions[i]; kwargs...)
         end
-
+        
         # After the step, update the master varinfo.
         spl.state.vi = local_spl.state.vi
 
-        trans
+        return trans
     end
 
     return GibbsTransition(spl, transitions)
 end
+
+
+function gibbs_step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler,
+    N,
+    transition;
+    kwargs...)
+    
+    return AbstractMCMC.step!(rng, model, local_spl, N, transition; kwargs...)
+end
+
 
 # Do not store transitions of subsamplers
 function AbstractMCMC.transitions_init(
