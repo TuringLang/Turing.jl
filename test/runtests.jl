@@ -20,9 +20,10 @@ include("test_utils/AllUtils.jl")
     else
         [:forwarddiff, :tracker]
     end
+    Turing.setcache(false)
     for adbackend in test_adbackends
         Turing.setadbackend(adbackend)
-        @testset "inference" begin
+        @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 # FIXME: DynamicHMC version 1 has (??) a bug on 32bit platforms (but we were too
                 # lazy to open an issue so Tamas doesn't know about it), retest with 2.0
@@ -39,15 +40,12 @@ include("test_utils/AllUtils.jl")
             end
         end
 
-        @testset "variational" begin
-            @testset "algorithms" begin
-                include("variational/advi.jl")
-            end
-
-            @testset "optimisers" begin
-                include("variational/optimisers.jl")
-            end
+        @testset "variational algorithms : $adbackend" begin
+            include("variational/advi.jl")
         end
+    end
+    @testset "variational optimisers" begin
+        include("variational/optimisers.jl")
     end
 
     Turing.setadbackend(:forwarddiff)

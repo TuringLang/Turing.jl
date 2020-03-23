@@ -1,3 +1,6 @@
+using .ReverseDiff: compile, GradientTape
+using .ReverseDiff.DiffResults: GradientResult
+
 struct ReverseDiffAD{cache} <: ADBackend end
 const RDCache = Ref(false)
 setcache(b::Bool) = RDCache[] = b
@@ -26,10 +29,10 @@ function gradient_logp(
         return getlogp(runmodel!(model, new_vi, sampler))
     end
     if cache
-        ctp, result = memoized_gettape(f, θ)
+        ctp, result = memoized_taperesult(f, θ)
         ReverseDiff.gradient!(result, ctp, θ)
     else
-        tp, result = gettape(f, θ)
+        tp, result = taperesult(f, θ)
         ReverseDiff.gradient!(result, tp, θ)
     end
 
@@ -39,7 +42,7 @@ function gradient_logp(
     return l, ∂l∂θ
 end
 
-# This makes sure we generate a single tape per Turing model
+# This makes sure we generate a single tape per Turing model and sampler
 struct RDTapeKey{F, Tx}
 	f::F
 	x::Tx
@@ -49,15 +52,15 @@ function Memoization._get!(f, d, keys::Tuple{Tuple{RDTapeKey}, Nothing})
 	return Memoization._get!(f, d, (typeof(key.f), typeof(key.x), size(key.x)))
 end
 
-gettape(f, x) = gettape(RDTapeKey(f, x))
-function gettape(k::RDTapeKey)
-    tp = ReverseDiff.GradientTape(k.f, k.x)    
-    result = DiffResults.GradientResult(k.x)
-    return tp, result
+tape(f, x) = GradientTape(f, x)
+compiledtape(f, x) = compile(GradientTape(f, x))
+function taperesult(f, x)
+    return tape(f, x), GradientResult(x)
 end
-memoized_gettape(f, x) = memoized_gettape(RDTapeKey(f, x))
-@memoize function memoized_gettape(k::RDTapeKey)
-    ctp = ReverseDiff.compile(ReverseDiff.GradientTape(k.f, k.x))
-    result = DiffResults.GradientResult(k.x)
-    return ctp, result
+
+memoized_taperesult(f, x) = memoized_taperesult(RDTapeKey(f, x))
+@memoize function memoized_taperesult(k::RDTapeKey)
+    return compiledtape(k.f, k.x), GradientResult(k.x)
 end
+memoized_tape(f, x) = memoized_tape(RDTapeKey(f, x))
+@memoize memoized_tape(k::RDTapeKey) = compiledtape(k.f, k.x)

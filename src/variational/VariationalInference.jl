@@ -48,24 +48,25 @@ function __init__()
     @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
         function Variational.grad!(
             vo,
-            alg::VariationalInference{<:Turing.ReverseDiffAD},
+            alg::VariationalInference{<:Turing.ReverseDiffAD{cache}},
             q,
             model,
             θ::AbstractVector{<:Real},
             out::DiffResults.MutableDiffResult,
             args...
-        )
+        ) where {cache}
             f(θ) = if (q isa VariationalPosterior)
                 - vo(alg, update(q, θ), model, args...)
             else
                 - vo(alg, q(θ), model, args...)
             end
-            dy = similar(θ)
-            tp = ReverseDiff.GradientTape(f, θ)
-            ReverseDiff.gradient!(dy, tp, θ)
-            y = ReverseDiff.value(tp.output)
-            DiffResults.value!(out, y)
-            DiffResults.gradient!(out, dy)
+            if cache
+                ctp = Turing.Core.memoized_tape(f, θ)
+                ReverseDiff.gradient!(out, ctp, θ)
+            else
+                tp = Turing.Core.tape(f, θ)
+                ReverseDiff.gradient!(out, tp, θ)
+            end
             return out
         end
     end
