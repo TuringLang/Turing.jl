@@ -356,6 +356,9 @@ function AbstractMCMC.bundle_samples(
         info = NamedTuple()
     end
 
+    # Ensure that the chain is not of type Any.
+    parray = eltype(parray) == Any ? convert(Array{Union{Real, Missing}}, parray) : parray
+
     # Chain construction.
     return Chains(
         parray,
