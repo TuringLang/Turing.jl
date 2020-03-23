@@ -193,7 +193,7 @@ function gibbs_step!(
     transition;
     kwargs...)
     
-    return AbstractMCMC.step!(rng, model, local_spl, N, transition; kwargs...)
+    return AbstractMCMC.step!(rng, model, spl, N, transition; kwargs...)
 end
 
 
