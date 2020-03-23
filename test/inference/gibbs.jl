@@ -137,4 +137,46 @@ include(dir*"/test/test_utils/AllUtils.jl")
         sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
+    
+    @turing_testset "gibbs conditionals" begin
+        α₀ = 2.0
+        θ₀ = inv(3.0)
+        x = [1.5, 2.0]
+        
+        @model inverse_gdemo(x) = begin
+            λ ~ Gamma(α₀, θ₀)
+            m ~ Normal(0, √(1 / λ))
+            x .~ Normal(m, √(1 / λ))
+        end
+
+        function gdemo_statistics(x)
+            # The conditionals and posterior can be formulated in terms of the following statistics:
+            N = length(x) # number of samples
+            x̄ = mean(x) # sample mean
+            s² = var(x; mean=x̄, corrected=false) # sample variance
+            return N, x̄, s²
+        end
+
+        function cond_m(c)
+            N, x̄, s² = gdemo_statistics(x)
+            mₙ = N * x̄ / (N + 1)
+            λₙ = c.λ * (N + 1)
+            σₙ = √(1 / λₙ)
+            return Normal(mₙ, σₙ)
+        end
+
+        function cond_λ(c)
+            N, x̄, s² = gdemo_statistics(x)
+            αₙ = α₀ + (N - 1) / 2
+            βₙ = (s² * N / 2 + c.m^2 / 2 + inv(θ₀))
+            return Gamma(αₙ, inv(βₙ))
+        end
+
+        Random.seed!(100)
+        alg = Gibbs(
+            GibbsConditional(:m, cond_m),
+            GibbsConditional(:λ, cond_λ))
+        chain = sample(inverse_gdemo(x), alg, 3000)
+        check_numerical(chain, [:m, :λ], [7/6, 24/49], atol=0.1)
+    end
 end
