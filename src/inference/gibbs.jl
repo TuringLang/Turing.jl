@@ -184,3 +184,27 @@ function AbstractMCMC.step!(
 
     return GibbsTransition(spl, transitions)
 end
+
+# Do not store transitions of subsamplers
+function AbstractMCMC.transitions_init(
+    transition::GibbsTransition,
+    ::Model,
+    ::Sampler{<:Gibbs},
+    N::Integer;
+    kwargs...
+)
+    return Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, N)
+end
+
+function AbstractMCMC.transitions_save!(
+    transitions::Vector{<:Transition},
+    iteration::Integer,
+    transition::GibbsTransition,
+    ::Model,
+    ::Sampler{<:Gibbs},
+    ::Integer;
+    kwargs...
+)
+    transitions[iteration] = Transition(transition.θ, transition.lp)
+    return
+end

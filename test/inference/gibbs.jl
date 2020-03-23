@@ -1,4 +1,6 @@
 using Random, Turing, Test
+import AbstractMCMC
+import Turing.Inference
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -71,5 +73,37 @@ include(dir*"/test/test_utils/AllUtils.jl")
             ESS(:mu1), ESS(:mu2))
         chain = sample(MoGtest_default, gibbs, 1500)
         check_MoGtest_default(chain, atol = 0.1)
+    end
+
+    @turing_testset "transitions" begin
+        @model gdemo_copy() = begin
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            1.5 ~ Normal(m, sqrt(s))
+            2.0 ~ Normal(m, sqrt(s))
+            return s, m
+        end
+        model = gdemo_copy()
+
+        function AbstractMCMC.sample_end!(
+            ::AbstractRNG,
+            ::typeof(model),
+            ::Turing.Sampler{<:Gibbs},
+            ::Integer,
+            transitions::Vector;
+            kwargs...
+        )
+            transitions isa Vector{<:Inference.Transition} ||
+                error("incorrect transitions")
+            return
+        end
+
+        function callback(rng, model, sampler, N, i, transition; kwargs...)
+            transition isa Inference.GibbsTransition || error("incorrect transition")
+            return
+        end
+
+        alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
+        sample(model, alg, 100; callback = callback)
     end
 end
