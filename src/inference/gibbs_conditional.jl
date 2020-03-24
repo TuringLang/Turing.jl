@@ -5,7 +5,7 @@ A "pseudo-sampler" to manually provide analytical Gibbs conditionals to `Gibbs`.
 `GibbsConditional(:x, cond)` will sample the variable `x` according to the conditional `cond`, which
 must therefore be a function from a `NamedTuple` of the conditioned variables to a `Distribution`.
 
-Example:
+# Examples
 
 ```julia
 α₀ = 2.0
@@ -99,16 +99,21 @@ Extract a `NamedTuple` of the values in `θ` conditioned on `S`; i.e., all names
 `S`, mapping to their respecitve values.
 
 `θ` is assumed to come from `tonamedtuple(vi)`, which returns a `NamedTuple` of the form
-```
+
+```julia
 t = (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
 ```
+
 so this function does both the cleanup of indexing and filtering by name. `conditioned(t, Val{m}())`
 and `conditioned(t, Val{λ}())` will therefore return
-```
+
+```julia
 (λ = 1.233,)
 ```
+
 and
-```
+
+```julia
 (m = [0.234, -1.23],)
 ```
 """
