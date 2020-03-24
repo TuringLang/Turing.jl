@@ -26,7 +26,7 @@ using ConjugatePriors
 end
 
 const seeds = [125, 245, 3]
-const ad_modes = [:forward_diff, :reverse_diff]
+const ad_modes = [:forwarddiff, :reversediff, :tracker]
 
 for seed ∈ seeds
     @info seed

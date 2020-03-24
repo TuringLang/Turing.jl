@@ -38,8 +38,51 @@ function __init__()
             else
                 - vo(alg, q(θ), model, args...)
             end
-            out .= Zygote.gradient(f, θ)
+            y, back = Tracker.pullback(f, θ)
+            dy = back(1.0)
+            DiffResults.value!(out, y)
+            DiffResults.gradient!(out, dy)
             return out
+        end
+    end
+    @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
+        function Variational.grad!(
+            vo,
+            alg::VariationalInference{<:Turing.ReverseDiffAD{false}},
+            q,
+            model,
+            θ::AbstractVector{<:Real},
+            out::DiffResults.MutableDiffResult,
+            args...
+        )
+            f(θ) = if (q isa VariationalPosterior)
+                - vo(alg, update(q, θ), model, args...)
+            else
+                - vo(alg, q(θ), model, args...)
+            end
+            tp = Turing.Core.tape(f, θ)
+            ReverseDiff.gradient!(out, tp, θ)
+            return out
+        end
+        @require Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73" begin
+            function Variational.grad!(
+                vo,
+                alg::VariationalInference{<:Turing.ReverseDiffAD{true}},
+                q,
+                model,
+                θ::AbstractVector{<:Real},
+                out::DiffResults.MutableDiffResult,
+                args...
+            )
+                f(θ) = if (q isa VariationalPosterior)
+                    - vo(alg, update(q, θ), model, args...)
+                else
+                    - vo(alg, q(θ), model, args...)
+                end
+                ctp = Turing.Core.memoized_tape(f, θ)
+                ReverseDiff.gradient!(out, ctp, θ)
+                return out
+            end
         end
     end
 end

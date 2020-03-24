@@ -96,7 +96,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
-    @turing_testset "Tracker & Zygote + logdet" begin
+    @turing_testset "Tracker, Zygote and ReverseDiff + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
         test_reverse_mode_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-6)
@@ -107,7 +107,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         test_reverse_mode_ad(x->fill(x, 7, 11), randn(rng, 7, 11), randn(rng))
         test_reverse_mode_ad(x->fill(x, 7, 11, 13), rand(rng, 7, 11, 13), randn(rng))
     end
-    @turing_testset "Tracker & Zygote + MvNormal" begin
+    @turing_testset "Tracker, Zygote and ReverseDiff + MvNormal" begin
         rng, N = MersenneTwister(123456), 11
         B = randn(rng, N, N)
         m, A = randn(rng, N), B' * B + I
@@ -122,7 +122,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_reverse_mode_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), m, B, x)
     end
-    @turing_testset "Tracker & Zygote + Diagonal Normal" begin
+    @turing_testset "Tracker, Zygote and ReverseDiff + Diagonal Normal" begin
         rng, N = MersenneTwister(123456), 11
         m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
 
@@ -135,7 +135,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_reverse_mode_ad((m, σ, x)->logpdf(MvNormal(m, σ), x), randn(rng), m, σ, x)
     end
-    @turing_testset "Tracker & Zygote + MvNormal Interface" begin
+    @turing_testset "Tracker, Zygote and ReverseDiff + MvNormal Interface" begin
         # Note that we only test methods where the `MvNormal` ctor actually constructs
         # a TuringDenseMvNormal.
 
@@ -266,29 +266,39 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         )
         test_reverse_mode_ad(b->logpdf(MvNormal(N, exp(b)), x), randn(rng), randn(rng))
     end
-    @testset "Simplex Tracker & Zygote AD" begin
+    @testset "Simplex Tracker, Zygote and ReverseDiff (with and without caching) AD" begin
         @model dir() = begin
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:tracker)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000);
+        Turing.setadbackend(:reversediff)
+        Turing.setcache(false)
+        sample(dir(), HMC(0.01, 1), 1000);
+        Turing.setcache(true)
+        sample(dir(), HMC(0.01, 1), 1000);
     end
-    @testset "PDMatDistribution Tracker AD" begin
+    # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
+    @testset "PDMatDistribution AD" begin
         @model wishart() = begin
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:tracker)
         sample(wishart(), HMC(0.01, 1), 1000);
+        #Turing.setadbackend(:reversediff)
+        #sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
 
         @model invwishart() = begin
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reverse_diff)
+        Turing.setadbackend(:tracker)
         sample(invwishart(), HMC(0.01, 1), 1000);
+        #Turing.setadbackend(:reversediff)
+        #sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end
