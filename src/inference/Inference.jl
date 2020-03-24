@@ -50,7 +50,8 @@ export  InferenceAlgorithm,
         PG,
         assume,
         observe,
-        resume
+        resume,
+        gibbs_step!
 
 #######################
 # Sampler abstraction #

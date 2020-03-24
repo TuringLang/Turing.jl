@@ -185,6 +185,12 @@ function AbstractMCMC.step!(
 end
 
 
+"""
+    gibbs_step!(rng, model, spl, N, transition; kwargs...)
+
+Perform a conditional sampling step of the local sampler `spl` within a `Gibbs` sampler.  If the
+sampler is based on an `InferenceAlgorithm`, this just falls back to `AbstractMCMC.step!`.
+"""
 function gibbs_step!(
     rng::AbstractRNG,
     model::Model,
