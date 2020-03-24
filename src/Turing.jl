@@ -16,7 +16,7 @@ using Markdown, Libtask, MacroTools
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import DynamicPPL: getspace, runmodel!
+import DynamicPPL: getspace, runmodel!, NoDist, NamedDist
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
