@@ -34,6 +34,9 @@
   - title: "Interface Guide"
     url: "docs/for-developers/interface"
 
+  - title: "Variational Inference"
+    url: "docs/for-developers/variational_inference"
+
 - title: "TUTORIALS"
   url: "tutorials"
   children:
