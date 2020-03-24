@@ -433,7 +433,7 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function assume(
+function DynamicPPL.assume(
     spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
@@ -450,7 +450,7 @@ function assume(
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function dot_assume(
+function DynamicPPL.dot_assume(
     spl::Sampler{<:Hamiltonian},
     dist::MultivariateDistribution,
     vns::AbstractArray{<:VarName},
@@ -463,7 +463,7 @@ function dot_assume(
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
-function dot_assume(
+function DynamicPPL.dot_assume(
     spl::Sampler{<:Hamiltonian},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},
@@ -476,22 +476,22 @@ function dot_assume(
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-function observe(
+function DynamicPPL.observe(
     spl::Sampler{<:Hamiltonian},
     d::Distribution,
     value,
     vi::VarInfo,
 )
-    return observe(SampleFromPrior(), d, value, vi)
+    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
 end
 
-function dot_observe(
+function DynamicPPL.dot_observe(
     spl::Sampler{<:Hamiltonian},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo,
 )
-    return dot_observe(SampleFromPrior(), ds, value, vi)
+    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end
 
 ####

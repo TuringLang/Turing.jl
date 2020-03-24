@@ -144,26 +144,26 @@ function Distributions.loglikelihood(model::ESSModel, f)
     getlogp(vi)
 end
 
-function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
+function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
     if vn in getspace(sampler)
-        return tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
-        return tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
     end
 end
 
-function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return tilde(ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
+function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
     if vn in getspace(sampler)
-        return dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
+        return DynamicPPL.dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
     else
-        return dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
+        return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
     end
 end
 
-function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return dot_tilde(ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vi)
 end
