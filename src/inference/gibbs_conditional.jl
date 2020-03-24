@@ -1,3 +1,54 @@
+"""
+    GibbsConditional(sym, conditional)
+
+A "pseudo-sampler" to manually provide analytical Gibbs conditionals to `Gibbs`.
+`GibbsConditional(:x, cond)` will sample the variable `x` according to the conditional `cond`, which
+must therefore be a function from a `NamedTuple` of the conditioned variables to a `Distribution`.
+
+Example:
+
+```julia
+α₀ = 2.0
+θ₀ = inv(3.0)
+
+x = [1.5, 2.0]
+
+function gdemo_statistics(x)
+    # The conditionals and posterior can be formulated in terms of the following statistics:
+    N = length(x) # number of samples
+    x̄ = mean(x) # sample mean
+    s² = var(x; mean=x̄, corrected=false) # sample variance
+    return N, x̄, s²
+end
+
+function gdemo_cond_m(c)
+    # c = (λ = ...,)
+    N, x̄, s² = gdemo_statistics(x)
+    mₙ = N * x̄ / (N + 1)
+    λₙ = c.λ * (N + 1)
+    σₙ = √(1 / λₙ)
+    return Normal(mₙ, σₙ)
+end
+
+function gdemo_cond_λ(c)
+    # c = (m = ...,)
+    N, x̄, s² = gdemo_statistics(x)
+    αₙ = α₀ + (N - 1) / 2
+    βₙ = (s² * N / 2 + c.m^2 / 2 + inv(θ₀))
+    return Gamma(αₙ, inv(βₙ))
+end
+
+@model gdemo(x) = begin
+    λ ~ Gamma(α₀, θ₀)
+    m ~ Normal(0, √(1 / λ))
+    x .~ Normal(m, √(1 / λ))
+end
+
+m = gdemo(x)
+
+sample(m, Gibbs(GibbsConditional(:λ, gdemo_cond_λ), GibbsConditional(:m, gdemo_cond_m)), 10)
+```
+"""
 struct GibbsConditional{S, C}
     conditional::C
 
@@ -41,15 +92,33 @@ function gibbs_step!(
 end
 
 
+"""
+    conditioned(θ::NamedTuple, ::Val{S})
+
+Extract a `NamedTuple` of the values in `θ` conditioned on `S`; i.e., all names of `θ` except for
+`S`, mapping to their respecitve values.
+
+`θ` is assumed to come from `tonamedtuple(vi)`, which returns a `NamedTuple` of the form
+```
+t = (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
+```
+so this function does both the cleanup of indexing and filtering by name. `conditioned(t, Val{m}())`
+and `conditioned(t, Val{λ}())` will therefore return
+```
+(λ = 1.233,)
+```
+and
+```
+(m = [0.234, -1.23],)
+```
+"""
 @generated function conditioned(θ::NamedTuple{names}, ::Val{S}) where {names, S}
-    # condvals = tonamedtuple(vi) returns a NamedTuple of the form
-    # (n1 = ([val1, ...], [ix1, ...]), n2 = (...))
-    # e.g. (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
     condvals = [:($n = extractparam(θ.$n)) for n in names if n ≠ S]
     return Expr(:tuple, condvals...)
 end
 
 
+"""Takes care of removing the `tonamedtuple` indexing form."""
 extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[1])
 function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
     values, strings = p
