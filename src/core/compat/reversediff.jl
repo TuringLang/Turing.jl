@@ -6,10 +6,6 @@ const RDCache = Ref(false)
 setcache(b::Bool) = RDCache[] = b
 getcache() = RDCache[]
 ADBackend(::Val{:reversediff}) = ReverseDiffAD{getcache()}
-function setadbackend(::Val{:reverse_diff})
-    Base.depwarn("`Turing.setadbackend(:reverse_diff)` is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.",  :setadbackend)
-    setadbackend(Val(:reversediff))
-end
 function setadbackend(::Val{:reversediff})
     ADBACKEND[] = :reversediff
 end
