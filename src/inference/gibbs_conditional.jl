@@ -86,7 +86,7 @@ function gibbs_step!(
     condvals = conditioned(tonamedtuple(spl.state.vi), Val{S}())
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    spl.state.vi[VarName{S}("")] = [updated]
+    spl.state.vi[VarName{S}("")] = [updated;]  # setindex allows only vectors in this case...
     
     return transition
 end
