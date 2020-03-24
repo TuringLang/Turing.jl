@@ -1,3 +1,12 @@
+# Release 0.9.1
+- Update elliptical slice sampling to use [EllipticalSliceSampling.jl](https://github.com/TuringLang/EllipticalSliceSampling.jl) on the backend. [#1145](https://github.com/TuringLang/Turing.jl/pull/1145). Nothing should change from a front-end perspective -- you can still call `sample(model, ESS(), 1000)`.
+- Added default progress loggers in [#1149](https://github.com/TuringLang/Turing.jl/pull/1149).
+- Turing now has experimental support for Zygote.jl ([#783](https://github.com/TuringLang/Turing.jl/pull/783)) and ReverseDiff.jl ([#1170](https://github.com/TuringLang/Turing.jl/pull/1170)) AD backends. Both backends are experimental, so please report any bugs you find. Zygote does not allow mutation within your model, so please be aware of this issue. You can enable Zygote with `Turing.setadbackend(:zygote)` and you can enable ReverseDiff with `Turing.setadbackend(:reversediff)`, though to use either you must import the package with `using Zygote` or `using ReverseDiff`. `for` loops are not recommended for ReverseDiff or Zygote -- see [performance tips](https://turing.ml/dev/docs/using-turing/performancetips#special-care-for-tracker-and-zygote) for more information.
+- Fix MH indexing bug [#1135](https://github.com/TuringLang/Turing.jl/pull/1135).
+- Fix MH array sampling [#1167](https://github.com/TuringLang/Turing.jl/pull/1167).
+- Fix bug in VI where the bijectors where being inverted incorrectly [#1168](https://github.com/TuringLang/Turing.jl/pull/1168).
+- The Gibbs sampler handles state better by passing `Transition` structs to the local samplers ([#1169](https://github.com/TuringLang/Turing.jl/pull/1169) and [#1166](https://github.com/TuringLang/Turing.jl/pull/1166)).
+
 # Release 0.4.0-alpha
 - Fix compatibility with Julia 0.6 [#341, #330, #293]
 - Support of Stan interface [#343, #326]
