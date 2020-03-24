@@ -69,7 +69,7 @@ end
         f::F
         x::Tx
     end
-    function Memoization._get!(f, d, keys::Tuple{Tuple{RDTapeKey}, Nothing})
+    function Memoization._get!(f::Union{Function, Type}, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Nothing})
         key = keys[1][1]
         return Memoization._get!(f, d, (typeof(key.f), typeof(key.x), size(key.x)))
     end
