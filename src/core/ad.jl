@@ -11,6 +11,11 @@ function setadbackend(::Val{:forwarddiff})
     CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forwarddiff
 end
+
+function setadbackend(::Val{:reverse_diff})
+    Base.depwarn("`Turing.setadbackend(:reverse_diff)` is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.",  :setadbackend)
+    setadbackend(Val(:tracker))
+end
 function setadbackend(::Val{:tracker})
     ADBACKEND[] = :tracker
 end
