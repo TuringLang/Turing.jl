@@ -12,6 +12,8 @@ function MH(space...)
     prop_syms = Symbol[]
     props = AMH.Proposal[]
 
+    check_support(dist) = insupport(dist, z)
+
     for s in space
         if s isa Symbol
             push!(syms, s)
@@ -33,22 +35,22 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-function Sampler(
-    alg::MH,
-    model::Model,
-    s::Selector=Selector()
-)
-    # Set up info dict.
-    info = Dict{Symbol, Any}()
+alg_str(::Sampler{<:MH}) = "MH"
 
-    # Set up state struct.
-    state = SamplerState(VarInfo(model))
+#################
+# MH Transition #
+#################
 
-    # Generate a sampler.
-    return Sampler(alg, info, s, state)
+struct MHTransition{T, F<:AbstractFloat, M<:AMH.Transition}
+    θ    :: T
+    lp   :: F
+    mh_trans :: M
 end
 
-alg_str(::Sampler{<:MH}) = "MH"
+function MHTransition(spl::Sampler{<:MH}, mh_trans::AMH.Transition)
+    theta = tonamedtuple(spl.state.vi)
+    return MHTransition(theta, mh_trans.lp, mh_trans)
+end
 
 #####################
 # Utility functions #
@@ -66,17 +68,13 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
         n_vns = length(vns)
         n_vals = length(vals)
         v_isarr = vals isa AbstractArray
-        
+
         if v_isarr && n_vals == 1 && n_vns > 1
             for (vn, val) in zip(vns, vals[1])
                 vi[vn] = val isa AbstractArray ? val : [val]
             end
         elseif v_isarr && n_vals > 1 && n_vns == 1
             vi[vns[1]] = vals
-        elseif v_isarr && n_vals == n_vns > 1
-            for (vn, val) in zip(vns, vals)
-                vi[vn] = [val]
-            end
         elseif v_isarr && n_vals == 1 && n_vns == 1
             if vals[1] isa AbstractArray
                 vi[vns[1]] = vals[1]
@@ -92,40 +90,24 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 end
 
 """
-    MHLogDensityFunction
+    gen_logπ_mh(vi::VarInfo, spl::Sampler, model)   
 
-A log density function for the MH sampler.
-    
-This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
+Generate a log density function -- this variant uses the 
+`set_namedtuple!` function to update the `VarInfo`.
 """
-struct MHLogDensityFunction{M<:Model,S<:Sampler{<:MH}} <: Function # Relax AMH.DensityModel?
-    model::M
-    sampler::S
-end
-
-function (f::MHLogDensityFunction)(x)::Float64
-    sampler = f.sampler
-    vi = sampler.state.vi
-    x_old, lj_old = vi[sampler], getlogp(vi)
-    # vi[sampler] = x
-    set_namedtuple!(vi, x)
-    runmodel!(f.model, vi)
-    lj = getlogp(vi)
-    vi[sampler] = x_old
-    setlogp!(vi, lj_old)
-    return lj
-end
-
-# unpack a vector if possible
-unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
-
-# possibly unpack and reshape samples according to the prior distribution 
-reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
-function reconstruct(
-    dist::AbstractVector{<:UnivariateDistribution},
-    val::AbstractVector
-)
-    return val
+function gen_logπ_mh(spl::Sampler, model)
+    function logπ(x)::Float64
+        vi = spl.state.vi
+        x_old, lj_old = vi[spl], getlogp(vi)
+        # vi[spl] = x
+        set_namedtuple!(vi, x)
+        runmodel!(model, vi)
+        lj = getlogp(vi)
+        vi[spl] = x_old
+        setlogp!(vi, lj_old)
+        return lj
+    end
+    return logπ
 end
 
 """
@@ -135,43 +117,80 @@ Returns two `NamedTuples`. The first `NamedTuple` has symbols as keys and distri
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
 function dist_val_tuple(spl::Sampler{<:MH})
-    vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    dt = _dist_tuple(spl.alg.proposals, vi, vns)
-    vt = _val_tuple(vi, vns)
+    vns = _getvns(spl.state.vi, spl)
+    dt = _dist_tuple(spl.state.vi.metadata, spl.alg.proposals, spl.state.vi, vns)
+    vt = _val_tuple(spl.state.vi.metadata, spl.state.vi, vns)
     return dt, vt
 end
 
-@generated function _val_tuple(
-    vi::VarInfo,
-    vns::NamedTuple{names}
-) where {names}
-    isempty(names) === 0 && return :(NamedTuple())
+@generated function _val_tuple(metadata::NamedTuple, vi::VarInfo, vns::NamedTuple{names}) where {names}
+    length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
-    expr.args = Any[
-        :($name = reconstruct(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
-                              DynamicPPL.getval(vi, vns.$name)))
-        for name in names]
+    map(names) do f
+        push!(expr.args, Expr(:(=), f, :(
+            length(metadata.$f.vns) == 1 ? getindex(vi, metadata.$f.vns)[1] : getindex.(Ref(vi), metadata.$f.vns)
+        )))
+    end
     return expr
 end
 
 @generated function _dist_tuple(
+    metadata::NamedTuple, 
     props::NamedTuple{propnames}, 
     vi::VarInfo, 
     vns::NamedTuple{names}
-) where {names,propnames}
-    isempty(names) === 0 && return :(NamedTuple())
+) where {names, propnames}
+    length(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
-    expr.args = Any[
-        if name in propnames
+    map(names) do f
+        if f in propnames
             # We've been given a custom proposal, use that instead.
-            :($name = props.$name)
+            push!(expr.args, Expr(:(=), f, :(props.$f)))
         else
             # Otherwise, use the default proposal.
-            :($name = AMH.Proposal(AMH.Static(),
-                                   unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
-        end for name in names]
+            push!(expr.args, Expr(:(=), f, :(AMH.Proposal(AMH.Static(), metadata.$f.dists[1]))))
+        end
+    end
     return expr
+end
+
+#################
+# Sampler state #
+#################
+
+mutable struct MHState{V<:VarInfo} <: AbstractSamplerState
+    vi :: V
+    density_model :: AMH.DensityModel
+end
+
+###############################
+# Static MH (from prior only) #
+###############################
+
+function Sampler(
+    alg::MH,
+    model::Model,
+    s::Selector=Selector()
+)
+    # Set up info dict.
+    info = Dict{Symbol, Any}()
+
+    # Make a varinfo.
+    vi = VarInfo(model)
+
+    # Make a density model.
+    dm = AMH.DensityModel(x -> 0.0)
+
+    # Set up state struct.
+    state = MHState(vi, dm)
+
+    # Generate a sampler.
+    spl = Sampler(alg, info, s, state)
+
+    # Update the density model.
+    spl.state.density_model = AMH.DensityModel(gen_logπ_mh(spl, model))
+
+    return spl
 end
 
 function AbstractMCMC.sample_init!(
@@ -210,8 +229,7 @@ function AbstractMCMC.step!(
     prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
 
     # Make a new transition.
-    densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl))
-    trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
+    trans = AbstractMCMC.step!(rng, spl.state.density_model, mh_sampler, 1, prev_trans)
 
     # Update the values in the VarInfo.
     set_namedtuple!(spl.state.vi, trans.params)
@@ -223,7 +241,7 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(
+function assume(
     spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
@@ -234,7 +252,7 @@ function DynamicPPL.assume(
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function DynamicPPL.dot_assume(
+function dot_assume(
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
     vn::VarName,
@@ -249,7 +267,7 @@ function DynamicPPL.dot_assume(
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
-function DynamicPPL.dot_assume(
+function dot_assume(
     spl::Sampler{<:MH},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
@@ -264,20 +282,20 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-function DynamicPPL.observe(
+function observe(
     spl::Sampler{<:MH},
     d::Distribution,
     value,
     vi::VarInfo,
 )
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
+    return observe(SampleFromPrior(), d, value, vi)
 end
 
-function DynamicPPL.dot_observe(
+function dot_observe(
     spl::Sampler{<:MH},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo,
 )
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+    return dot_observe(SampleFromPrior(), ds, value, vi)
 end

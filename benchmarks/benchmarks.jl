@@ -71,10 +71,10 @@ A    = rand(Wishart(dim2, Matrix{Float64}(I, dim2, dim2)));
 d    = MvNormal(zeros(dim2), A)
 
 # ForwardDiff
-Turing.setadbackend(:forwarddiff)
-BenchmarkSuite["mnormal"]["forwarddiff"] = @benchmarkable sample(mdemo($d, 1), HMC(0.1, 5), 5000)
+Turing.setadbackend(:forward_diff)
+BenchmarkSuite["mnormal"]["forward_diff"] = @benchmarkable sample(mdemo($d, 1), HMC(0.1, 5), 5000)
 
 
 # BackwardDiff
-Turing.setadbackend(:reversediff)
-BenchmarkSuite["mnormal"]["reversediff"] = @benchmarkable sample(mdemo($d, 1), HMC(0.1, 5), 5000)
+Turing.setadbackend(:reverse_diff)
+BenchmarkSuite["mnormal"]["reverse_diff"] = @benchmarkable sample(mdemo($d, 1), HMC(0.1, 5), 5000)

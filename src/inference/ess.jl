@@ -38,7 +38,7 @@ function Sampler(alg::ESS, model::Model, s::Selector)
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
     for vn in vns[1]
         dist = getdist(vi, vn)
-        EllipticalSliceSampling.isgaussian(typeof(dist)) ||
+        isgaussian(dist) ||
             error("[ESS] only supports Gaussian prior distributions")
     end
 
@@ -47,6 +47,11 @@ function Sampler(alg::ESS, model::Model, s::Selector)
 
     return Sampler(alg, info, s, state)
 end
+
+isgaussian(dist) = false
+isgaussian(::Normal) = true
+isgaussian(::NormalCanon) = true
+isgaussian(::AbstractMvNormal) = true
 
 # always accept in the first step
 function AbstractMCMC.step!(
@@ -68,8 +73,13 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # obtain random variable that should be sampled
+    # obtain mean of distribution
     vi = spl.state.vi
+    vns = _getvns(vi, spl)
+    μ = mapreduce(vcat, vns[1]) do vn
+        dist = getdist(vi, vn)
+        vectorize(dist, mean(dist))
+    end
 
     # obtain previous sample
     f = vi[spl]
@@ -79,91 +89,65 @@ function AbstractMCMC.step!(
         runmodel!(model, vi, spl)
     end
 
-    # define previous sampler state
-    oldstate = EllipticalSliceSampling.EllipticalSliceSamplerState(f, getlogp(vi))
+    # sample log-likelihood threshold for the next sample
+    threshold = getlogp(vi) - randexp(rng)
 
-    # compute next state
-    state = AbstractMCMC.step!(rng, ESSModel(model, spl),
-                               EllipticalSliceSampling.EllipticalSliceSampler(), 1, oldstate;
-                               progress = false)
+    # sample from the prior
+    set_flag!(vi, vns[1][1], "del")
+    runmodel!(model, vi, spl)
+    ν = vi[spl]
 
-    # update sample and log-likelihood
-    vi[spl] = state.sample
-    setlogp!(vi, state.loglikelihood)
+    # sample initial angle
+    θ = 2 * π * rand(rng)
+    θmin = θ - 2 * π
+    θmax = θ
+
+    while true
+        # compute proposal and apply correction for distributions with nonzero mean
+        sinθ, cosθ = sincos(θ)
+        a = 1 - (sinθ + cosθ)
+        vi[spl] = @. f * cosθ + ν * sinθ + μ * a
+
+        # recompute log-likelihood and check if threshold is reached
+        runmodel!(model, vi, spl)
+        if getlogp(vi) > threshold
+            break
+        end
+
+        # shrink the bracket
+        if θ < 0
+            θmin = θ
+        else
+            θmax = θ
+        end
+
+        # sample new angle
+        θ = θmin + rand(rng) * (θmax - θmin)
+    end
 
     return Transition(spl)
 end
 
-struct ESSModel{M<:Model,S<:Sampler{<:ESS},T} <: AbstractMCMC.AbstractModel
-    model::M
-    spl::S
-    μ::T
-end
-
-function ESSModel(model::Model, spl::Sampler{<:ESS})
-    vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
-        vectorize(dist, mean(dist))
-    end
-
-    ESSModel(model, spl, μ)
-end
-
-# sample from the prior
-function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ESSModel)
-    spl = model.spl
-    vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    set_flag!(vi, vns[1][1], "del")
-    runmodel!(model.model, vi, spl)
-    return vi[spl]
-end
-
-# compute proposal and apply correction for distributions with nonzero mean
-function EllipticalSliceSampling.proposal(model::ESSModel, f, ν, θ)
-    sinθ, cosθ = sincos(θ)
-    a = 1 - (sinθ + cosθ)
-    return @. cosθ * f + sinθ * ν + a * model.μ
-end
-
-function EllipticalSliceSampling.proposal!(out, model::ESSModel, f, ν, θ)
-    sinθ, cosθ = sincos(θ)
-    a = 1 - (sinθ + cosθ)
-    @. out = cosθ * f + sinθ * ν + a * model.μ
-    return out
-end
-
-# evaluate log-likelihood
-function Distributions.loglikelihood(model::ESSModel, f)
-    spl = model.spl
-    vi = spl.state.vi
-    vi[spl] = f
-    runmodel!(model.model, vi, spl)
-    getlogp(vi)
-end
-
-function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
+function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
     if vn in getspace(sampler)
-        return DynamicPPL.tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+        return tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
-        return DynamicPPL.tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
+        return tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
     end
 end
 
-function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
+function tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return tilde(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
+function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
     if vn in getspace(sampler)
-        return DynamicPPL.dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
+        return dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
     else
-        return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
+        return dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
     end
 end
 
-function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vi)
+function dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return dot_tilde(ctx, SampleFromPrior(), right, left, vi)
 end

@@ -1,6 +1,5 @@
 module Core
 
-using DistributionsAD, Bijectors
 using MacroTools, Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
@@ -11,22 +10,12 @@ using DynamicPPL: Model, runmodel!,
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
+using DistributionsAD
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using Requires
 
 include("container.jl")
 include("ad.jl")
-function __init__()
-    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" begin
-        include("compat/zygote.jl")
-        export ZygoteAD
-    end
-    @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-        include("compat/reversediff.jl")
-        export ReverseDiffAD, setcache
-    end
-end
 
 export  @model,
         @varname,
@@ -58,6 +47,8 @@ export  @model,
         ADBACKEND,
         setchunksize,
         verifygrad,
+        gradient_logp_forward,
+        gradient_logp_reverse,
         @varinfo,
         @logpdf,
         @sampler,

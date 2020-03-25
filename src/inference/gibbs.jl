@@ -98,30 +98,6 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
     return spl
 end
 
-"""
-    GibbsTransition
-
-Fields:
-- `θ`: The parameters for any given sample.
-- `lp`: The log pdf for the sample's parameters.
-- `transitions`: The transitions of the samplers.
-"""
-struct GibbsTransition{T,F,S<:AbstractVector}
-    θ::T
-    lp::F
-    transitions::S
-end
-
-function GibbsTransition(spl::Sampler{<:Gibbs}, transitions::AbstractVector)
-    theta = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
-    return GibbsTransition(theta, lp, transitions)
-end
-
-function additional_parameters(::Type{<:GibbsTransition})
-    return [:lp]
-end
-
 # Initialize the Gibbs sampler.
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -156,55 +132,39 @@ function AbstractMCMC.step!(
     model::Model,
     spl::Sampler{<:Gibbs},
     N::Integer,
-    transition::Union{Nothing,GibbsTransition};
+    transition;
     kwargs...
 )
     Turing.DEBUG && @debug "Gibbs stepping..."
 
+    time_elapsed = 0.0
+
     # Iterate through each of the samplers.
-    transitions = map(enumerate(spl.state.samplers)) do (i, local_spl)
+    for local_spl in spl.state.samplers
         Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+
+        Turing.DEBUG && @debug "recording old θ..."
 
         # Update the sampler's VarInfo.
         local_spl.state.vi = spl.state.vi
 
         # Step through the local sampler.
-        if transition === nothing
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, nothing; kwargs...)
-        else
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i];
-                                       kwargs...)
-        end
+        time_elapsed_thin =
+            @elapsed trans = AbstractMCMC.step!(rng, model, local_spl, N, transition; kwargs...)
 
         # After the step, update the master varinfo.
         spl.state.vi = local_spl.state.vi
 
-        trans
+        # Uncomment when developing thinning functionality.
+        # Retrieve symbol to store this subsample.
+        # symbol_id = Symbol(local_spl.selector.gid)
+        #
+        # # Store the subsample.
+        # spl.state.subsamples[symbol_id][] = trans
+
+        # Record elapsed time.
+        time_elapsed += time_elapsed_thin
     end
 
-    return GibbsTransition(spl, transitions)
-end
-
-# Do not store transitions of subsamplers
-function AbstractMCMC.transitions_init(
-    transition::GibbsTransition,
-    ::Model,
-    ::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    return Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, N)
-end
-
-function AbstractMCMC.transitions_save!(
-    transitions::Vector{<:Transition},
-    iteration::Integer,
-    transition::GibbsTransition,
-    ::Model,
-    ::Sampler{<:Gibbs},
-    ::Integer;
-    kwargs...
-)
-    transitions[iteration] = Transition(transition.θ, transition.lp)
-    return
+    return Transition(spl)
 end

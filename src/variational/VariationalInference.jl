@@ -1,9 +1,8 @@
 module Variational
 
 using ..Core, ..Utilities
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using Distributions, Bijectors, DynamicPPL
-using LinearAlgebra
+using ProgressMeter, LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
 using Random: AbstractRNG
@@ -11,10 +10,7 @@ using Random: AbstractRNG
 using ForwardDiff
 using Tracker
 
-import ..Core: getchunksize, getADbackend
-
-import AbstractMCMC
-import ProgressLogging
+import ..Core: getchunksize, getADtype
 
 using Requires
 function __init__()
@@ -22,68 +18,6 @@ function __init__()
         apply!(o, x, Δ) = Flux.Optimise.apply!(o, x, Δ)
         Flux.Optimise.apply!(o::TruncatedADAGrad, x, Δ) = apply!(o, x, Δ)
         Flux.Optimise.apply!(o::DecayedADAGrad, x, Δ) = apply!(o, x, Δ)
-    end
-    @require Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f" begin
-        function Variational.grad!(
-            vo,
-            alg::VariationalInference{<:Turing.ZygoteAD},
-            q,
-            model,
-            θ::AbstractVector{<:Real},
-            out::DiffResults.MutableDiffResult,
-            args...
-        )
-            f(θ) = if (q isa VariationalPosterior)
-                - vo(alg, update(q, θ), model, args...)
-            else
-                - vo(alg, q(θ), model, args...)
-            end
-            y, back = Tracker.pullback(f, θ)
-            dy = back(1.0)
-            DiffResults.value!(out, y)
-            DiffResults.gradient!(out, dy)
-            return out
-        end
-    end
-    @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-        function Variational.grad!(
-            vo,
-            alg::VariationalInference{<:Turing.ReverseDiffAD{false}},
-            q,
-            model,
-            θ::AbstractVector{<:Real},
-            out::DiffResults.MutableDiffResult,
-            args...
-        )
-            f(θ) = if (q isa VariationalPosterior)
-                - vo(alg, update(q, θ), model, args...)
-            else
-                - vo(alg, q(θ), model, args...)
-            end
-            tp = Turing.Core.tape(f, θ)
-            ReverseDiff.gradient!(out, tp, θ)
-            return out
-        end
-        @require Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73" begin
-            function Variational.grad!(
-                vo,
-                alg::VariationalInference{<:Turing.ReverseDiffAD{true}},
-                q,
-                model,
-                θ::AbstractVector{<:Real},
-                out::DiffResults.MutableDiffResult,
-                args...
-            )
-                f(θ) = if (q isa VariationalPosterior)
-                    - vo(alg, update(q, θ), model, args...)
-                else
-                    - vo(alg, q(θ), model, args...)
-                end
-                ctp = Turing.Core.memoized_tape(f, θ)
-                ReverseDiff.gradient!(out, ctp, θ)
-                return out
-            end
-        end
     end
 end
 
@@ -98,7 +32,7 @@ export
 abstract type VariationalInference{AD} end
 
 getchunksize(::Type{<:VariationalInference{AD}}) where AD = getchunksize(AD)
-getADbackend(::VariationalInference{AD}) where AD = AD()
+getADtype(::VariationalInference{AD}) where AD = AD
 
 abstract type VariationalObjective end
 
@@ -108,7 +42,7 @@ const VariationalPosterior = Distribution{Multivariate, Continuous}
 """
     grad!(vo, alg::VariationalInference, q, model::Model, θ, out, args...)
 
-Computes the gradients used in `optimize!`. Default implementation is provided for
+Computes the gradients used in `optimize!`. Default implementation is provided for 
 `VariationalInference{AD}` where `AD` is either `ForwardDiffAD` or `TrackerAD`.
 This implicitly also gives a default implementation of `optimize!`.
 
@@ -189,39 +123,44 @@ function optimize!(
     q,
     model,
     θ::AbstractVector{<:Real};
-    optimizer = TruncatedADAGrad(),
-    progress = Turing.PROGRESS[],
-    progressname = "[$(alg_str(alg))] Optimizing..."
+    optimizer = TruncatedADAGrad()
 )
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
+    alg_name = alg_str(alg)
     samples_per_step = alg.samples_per_step
     max_iters = alg.max_iters
+    
+    num_params = length(θ)
 
     # TODO: really need a better way to warn the user about potentially
     # not using the correct accumulator
-    if optimizer isa TruncatedADAGrad && θ ∉ keys(optimizer.acc)
+    if (optimizer isa TruncatedADAGrad) && (θ ∉ keys(optimizer.acc))
         # this message should only occurr once in the optimization process
-        @info "[$(alg_str(alg))] Should only be seen once: optimizer created for θ" objectid(θ)
+        @info "[$alg_name] Should only be seen once: optimizer created for θ" objectid(θ)
     end
 
     diff_result = DiffResults.GradientResult(θ)
 
-    # Create the progress bar.
-    AbstractMCMC.@ifwithprogresslogger progress name=progressname begin
-        # add criterion? A running mean maybe?
-        for i in 1:max_iters
-            grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
+    i = 0
+    prog = if PROGRESS[]
+        ProgressMeter.Progress(max_iters, 1, "[$alg_name] Optimizing...", 0)
+    else
+        0
+    end
 
-            # apply update rule
-            Δ = DiffResults.gradient(diff_result)
-            Δ = apply!(optimizer, θ, Δ)
-            @. θ = θ - Δ
+    # add criterion? A running mean maybe?
+    time_elapsed = @elapsed while (i < max_iters) # & converged
+        grad!(vo, alg, q, model, θ, diff_result, samples_per_step)
 
-            Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
+        # apply update rule
+        Δ = DiffResults.gradient(diff_result)
+        Δ = apply!(optimizer, θ, Δ)
+        @. θ = θ - Δ
+        
+        Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
+        PROGRESS[] && (ProgressMeter.next!(prog))
 
-            # Update the progress bar.
-            progress && ProgressLogging.@logprogress i/max_iters
-        end
+        i += 1
     end
 
     return θ
@@ -249,7 +188,7 @@ function make_logjoint(model::Model; weight = 1.0)
     function logπ(z)
         varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
         model(varinfo)
-
+        
         return getlogp(varinfo)
     end
 

@@ -1,9 +1,3 @@
-- name: Zoubin Ghahramani
-  photo: https://www.turing.ac.uk/sites/default/files/styles/people/public/2018-06/professor_zoubin_ghahramani_frs_cc_by-sa_4.0.jpg
-  institution: University of Cambridge
-  website: http://mlg.eng.cam.ac.uk/zoubin/
-  email: zoubin@eng.cam.ac.uk
-  
 - name: Hong Ge
   photo: https://yebai.github.io/images/hg344-pr.jpg
   github: yebai
@@ -25,25 +19,29 @@
   institution: Graz University of Technology
   website: https://martint.blog/
   email: martin.trapp@tugraz.at
-  linkedin: martintrapp
+  linkedin: linked-page
   twitter: martin_trapp
 
 - name: Will Tebbutt
-  photo: https://avatars3.githubusercontent.com/u/3628294?s=460&v=4
+  photo: placeholder.png
   github: willtebbutt
   institution: University of Cambridge
-  website: https://willtebbutt.github.io/
-  email: wct23@cam.ac.uk
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
 
 - name: Mohamed Tarek
-  photo: https://user-images.githubusercontent.com/19524993/75977159-e77c3500-5f2f-11ea-882c-0593597985da.png
+  photo: placeholder.png
   github: mohamed82008
-  institution: UNSW Canberra
-  email: m.mohamed@student.adfa.edu.au
-  linkedin: mabdelaty
+  institution: University of New South Wales Canberra
+  website: www.example.com
+  email: your-email@something.com
+  linkedin: linked-page
+  twitter: twitter_handle
 
 - name: Tor Erlend Fjelde
-  photo: https://avatars3.githubusercontent.com/u/11074788?s=460&v=4
+  photo: http://retiredparkingguard.com/assets/images/profile.jpg
   github: torfjelde
   institution: University of Cambridge
   website: http://retiredparkingguard.com/about.html
@@ -81,9 +79,3 @@
   institution: Beijing Paoding Technology Co., LTD.
   website: https://kdr2.com
   email: zhuoql@zoho.com
-
-- name: Philipp Gabler
-  photo: https://avatars0.githubusercontent.com/u/7878215
-  github: phipsgabler
-  institution: Graz University of Technology
-  email: pgabler@student.tugraz.at

@@ -34,15 +34,14 @@ end
 
 ## Choose your AD backend
 Turing currently provides support for two different automatic differentiation (AD) backends. 
-Generally, try to use `:forwarddiff` for models with few parameters and `:reversediff`, `:tracker` or `:zygote` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
+Generally, try to use `:forward_diff` for models with few parameters and `:reverse_diff` for models with large parameter vectors or linear algebra operations. See [Automatic Differentiation](autodiff) for details.
 
 
-## Special care for `:tracker` and `:zygote`
+## Special care for `reverse_diff`
 
-In case of `:tracker` and `:zygote`, it is necessary to avoid loops for now.
-This is mainly due to the reverse-mode AD backends `Tracker` and `Zygote` which are inefficient for such cases. `ReverseDiff` does better but vectorized operations will still perform better.
-
-Avoiding loops can be done using `filldist(dist, N)` and `arraydist(dists)`. `filldist(dist, N)` creates a multivariate distribution that is composed of `N` identical and independent copies of the univariate distribution `dist` if `dist` is univariate, or it creates a matrix-variate distribution composed of `N` identical and idependent copies of the multivariate distribution `dist` if `dist` is multivariate. `filldist(dist, N, M)` can also be used to create a matrix-variate distribution from a univariate distribution `dist`.  `arraydist(dists)` is similar to `filldist` but it takes an array of distributions `dists` as input. Writing a [custom distribution](advanced) with a custom adjoint is another option to avoid loops.
+In case of `reverse_diff` it is necessary to avoid loops for now.
+This is mainly due to the reverse-mode AD backend `Tracker` which is inefficient for such cases.
+Therefore, it is often recommended to write a [custom distribution](advanced) which implements a multivariate version of the prior distribution.
 
 
 ## Make your model type-stable

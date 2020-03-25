@@ -325,7 +325,7 @@ Consider the following `gdemo` model:
 end
 ```
 
-The following are examples of valid queries of the `Turing` model or chain:
+The following are examples of valid queries of the `Turing` model or chain: 
 
 - `prob"x = 1.0, y = 1.0 | model = gdemo, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
 
@@ -448,23 +448,13 @@ ForwardDiff (Turing's default AD backend) uses forward-mode chunk-wise AD. The c
 #### AD Backend
 
 
-Turing supports four packages of automatic differentiation (AD) in the back end during sampling. The default AD backend is [ForwardDiff](https://github.com/JuliaDiff/ForwardDiff.jl) for forward-mode AD. Three reverse-mode AD backends are also supported, namely [Tracker](https://github.com/FluxML/Tracker.jl), [Zygote](https://github.com/FluxML/Zygote.jl) and [ReverseDiff](https://github.com/JuliaDiff/ReverseDiff.jl). `Zygote` and `ReverseDiff` are supported optionally if explicitly loaded by the user with `using Zygote` or `using ReverseDiff` next to `using Turing`.
+Since [#428](https://github.com/TuringLang/Turing.jl/pull/428), Turing.jl supports `Tracker` as backend for reverse mode autodiff. To switch between `ForwardDiff.jl` and `Tracker`, one can call function `setadbackend(backend_sym)`, where `backend_sym` can be `:forward_diff` or `:reverse_diff`.
+
 
 For more information on Turing's automatic differentiation backend, please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article.
 
 
-#### Progress Logging
+#### Progress Meter
 
-Turing.jl uses ProgressLogging.jl to log the progress of sampling. Progress
-logging is enabled as default but might slow down inference. It can be turned on
-or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `turnprogress(true)` or `turnprogress(false)`, respectively.
 
-Turing uses heuristics to select an appropriate visualization backend. If you
-use [Juno](https://junolab.org/), the progress is displayed with a
-[progress bar in the Atom window](http://docs.junolab.org/latest/man/juno_frontend/#Progress-Meters-1).
-For Jupyter notebooks the default backend is
-[ConsoleProgressMonitor.jl](https://github.com/tkf/ConsoleProgressMonitor.jl).
-In all other cases progress logs are displayed with
-[TerminalLoggers.jl](https://github.com/c42f/TerminalLoggers.jl). Alternatively,
-if you provide a custom visualization backend, Turing uses it instead of the
-default backend.
+Turing.jl uses ProgressMeter.jl to show the progress of sampling, which may lead to slow down of inference or even cause bugs in some IDEs due to I/O. This can be turned on or off by `turnprogress(true)` and `turnprogress(false)`, of which the former is set as default.

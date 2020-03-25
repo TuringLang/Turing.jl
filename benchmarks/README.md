@@ -22,27 +22,45 @@ After its run, the results will be saved under the directory
 ## Run on Github
 
 All benchmarks under this directory can run on Github, triggered by
-commenting on a Pull Request (a.k.a Code Review Comment).
+the following event:
+
+- Comment on an issue
+- Comment on a Pull Request (a.k.a Code Review Comment)
 
 You must **@BayesBot** and include a command in pattern
 `runbenchmarks(benchamrk_tags, vs=branch)` in the comment text to
 specify the branches on which the benchmarks will run and trigger the
 benchmarks. This command pattern is borrowed from `Nanosoldier.jl`,
-please find more detail from [its
-documents](https://github.com/TuringLang/Nanosoldier.jl/blob/turing/README.md#trigger-syntax). Here
-is an examples:
+please find more detail from its documents. Here are some examples:
 
-```
-@BayesBot `runbenchmarks(ALL, vs=":master")`
-```
+- `@BayesBot runbenchmarks("array", vs=[“br1”, "br2"])` will trigger benchmarks tagged
+    with `"array"` on branch `br1` and `br2`
+- Comments on a regular issue
+  - `@BayesBot runbenchmarks("array")` won't trigger any benchmarks due to no
+    branches are specified
+  - `@BayesBot runbenchmarks("tag2", vs="feature-1")` will trigger benchmarks
+    tagged with `"tag2"` on branch `master` and `feature-1`
+- Comments on a pull request
+  - `@BayesBot runbenchmarks(ALL)` will trigger all benchmarks on the pull
+    request branch and the `master` branch
+  - `@BayesBot runbenchmark(ALL, vs="feature-1")` will trigger all benchmarks
+    on the pull request branch and the `feature-1` branch
 
-After these triggered benchmarks finish, the reports will be committed
-to
-[TuringLang/BenchmarkReports](https://github.com/TuringLang/BenchmarkReports),
-then a reply comment contains the reports link will be made on the
-original pull request.
+
+After these triggered benchmarks finish, a reply comment will be made
+to report the results.
 
 ### Notes
 
 - Put a Regex pattern to the `EXCLUDES` array in
-  `benchmarks/config.toml` to exclude paricular benchmark files
+  `benchmarks/config.toml` to exclude paricular benchmarks
+- One can use an existing Git commit ID in lieu of a branch name in
+  the `!benchmark` command
+
+## Run on local machine
+
+We can use `benchmarks/local-runner` to run a benchmark on our local machine:
+
+```bash
+./benchmarks/local-runner benchmarks/benchmarks.jl
+```

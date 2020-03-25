@@ -12,6 +12,9 @@ function update(td::TransformedDistribution{<:TuringDiagMvNormal}, θ::AbstractA
     return update(td, μ, softplus.(ω))
 end
 
+# TODO: add these to DistributionsAD.jl and remove from here
+Distributions.params(d::TuringDiagMvNormal) = (d.m, d.σ)
+
 """
     bijector(model::Model; sym_to_ranges = Val(false))
 
@@ -44,7 +47,7 @@ function bijector(model::Model; sym_to_ranges::Val{sym2ranges} = Val(false)) whe
         idx += varinfo.metadata[sym].ranges[end][end]
     end
 
-    bs = bijector.(tuple(dists...))
+    bs = inv.(bijector.(tuple(dists...)))
 
     if sym2ranges
         return Stacked(bs, ranges), (; collect(zip(keys(sym_lookup), values(sym_lookup)))...)
@@ -96,31 +99,17 @@ function meanfield(rng::AbstractRNG, model::Model)
 end
 
 """
-$(TYPEDEF)
+    ADVI(samples_per_step = 1, max_iters = 1000)
 
-Automatic Differentiation Variational Inference (ADVI) with automatic differentiation
-backend `AD`.
-
-# Fields
-
-$(TYPEDFIELDS)
+Automatic Differentiation Variational Inference (ADVI) for a given model.
 """
 struct ADVI{AD} <: VariationalInference{AD}
-    "Number of samples used to estimate the ELBO in each optimization step."
-    samples_per_step::Int
-    "Maximum number of gradient steps."
-    max_iters::Int
+    samples_per_step # number of samples used to estimate the ELBO in each optimization step
+    max_iters        # maximum number of gradient steps used in optimization
 end
 
-"""
-    ADVI([samples_per_step=1, max_iters=1000])
-
-Create an [`ADVI`](@ref) with the currently enabled automatic differentiation backend
-`ADBackend()`.
-"""
-function ADVI(samples_per_step::Int=1, max_iters::Int=1000)
-    return ADVI{ADBackend()}(samples_per_step, max_iters)
-end
+ADVI(args...) = ADVI{ADBackend()}(args...)
+ADVI() = ADVI(1, 1000)
 
 alg_str(::ADVI) = "ADVI"
 

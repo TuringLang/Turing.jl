@@ -433,24 +433,24 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(
+function assume(
     spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
     vi::VarInfo
 )
-    Turing.DEBUG && _debug("assuming...")
+    Turing.DEBUG && @debug "assuming..."
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    Turing.DEBUG && _debug("dist = $dist")
-    Turing.DEBUG && _debug("vn = $vn")
-    Turing.DEBUG && _debug("r = $r, typeof(r)=$(typeof(r))")
+    Turing.DEBUG && @debug "dist = $dist"
+    Turing.DEBUG && @debug "vn = $vn"
+    Turing.DEBUG && @debug "r = $r" "typeof(r)=$(typeof(r))"
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
-function DynamicPPL.dot_assume(
+function dot_assume(
     spl::Sampler{<:Hamiltonian},
     dist::MultivariateDistribution,
     vns::AbstractArray{<:VarName},
@@ -463,7 +463,7 @@ function DynamicPPL.dot_assume(
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
-function DynamicPPL.dot_assume(
+function dot_assume(
     spl::Sampler{<:Hamiltonian},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},
@@ -476,22 +476,22 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
 end
 
-function DynamicPPL.observe(
+function observe(
     spl::Sampler{<:Hamiltonian},
     d::Distribution,
     value,
     vi::VarInfo,
 )
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
+    return observe(SampleFromPrior(), d, value, vi)
 end
 
-function DynamicPPL.dot_observe(
+function dot_observe(
     spl::Sampler{<:Hamiltonian},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi::VarInfo,
 )
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+    return dot_observe(SampleFromPrior(), ds, value, vi)
 end
 
 ####
@@ -565,4 +565,38 @@ function HMCState(
     invlink!(vi, spl)
 
     return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
+end
+
+#######################################################
+# Special callback functionality for the HMC samplers #
+#######################################################
+
+mutable struct HMCCallback{
+    ProgType<:ProgressMeter.AbstractProgress
+} <: AbstractCallback
+    p :: ProgType
+end
+
+function AbstractMCMC.callback(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
+    N::Integer,
+    iteration::Integer,
+    t::HamiltonianTransition,
+    cb::HMCCallback;
+    kwargs...
+)
+    AHMC.pm_next!(cb.p, (iteration=iteration, t.stat..., mass_matrix=spl.state.h.metric))
+end
+
+function AbstractMCMC.init_callback(
+    rng::AbstractRNG,
+    model::Model,
+    s::Sampler{<:Union{StaticHamiltonian, AdaptiveHamiltonian}},
+    N::Integer;
+    dt::Real=0.25,
+    kwargs...
+)
+    return HMCCallback(ProgressMeter.Progress(N, dt=dt, desc="Sampling ", barlen=31))
 end

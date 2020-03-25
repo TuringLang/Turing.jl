@@ -9,18 +9,18 @@ module Turing
 ########################################################################
 
 using Requires, Reexport, ForwardDiff
-using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
-using Statistics, LinearAlgebra
+using Bijectors, StatsFuns, SpecialFunctions
+using Statistics, LinearAlgebra, ProgressMeter
 using Markdown, Libtask, MacroTools
 @reexport using Distributions, MCMCChains, Libtask
 using Tracker: Tracker
 
 import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import DynamicPPL: getspace, runmodel!, NoDist, NamedDist
+import DynamicPPL: getspace, runmodel!
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
-    @info "[Turing]: progress logging is $(switch ? "enabled" : "disabled") globally"
+    @info("[Turing]: global PROGRESS is set as $switch")
     PROGRESS[] = switch
 end
 
@@ -111,9 +111,7 @@ export  @model,                 # modelling
         VecBinomialLogit,
         OrderedLogistic,
         LogPoisson,
-        NamedDist,
-        filldist,
-        arraydist
+        NamedDist
 
 # Reexports
 using AbstractMCMC: sample, psample

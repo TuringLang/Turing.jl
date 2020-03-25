@@ -101,7 +101,7 @@ data = (x = [1.5, 2.0],)
 # Create the model function.
 mf(vi, sampler, ctx, model) = begin
     # Set the accumulated logp to zero.
-    resetlogp!(vi)
+    vi.logp = 0
     x = model.args.x
 
     # Assume s has an InverseGamma distribution.
@@ -115,7 +115,7 @@ mf(vi, sampler, ctx, model) = begin
     )
 
     # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
+    vi.logp += lp
 
     # Assume m has a Normal distribution.
     m, lp = Turing.Inference.tilde(
@@ -128,12 +128,17 @@ mf(vi, sampler, ctx, model) = begin
     )
 
     # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
+    vi.logp += lp
 
     # Observe each value of x[i], according to a
     # Normal distribution.
-    lp = Turing.Inference.dot_tilde(ctx, sampler, Normal(m, sqrt(s)), x, vi)
-    acclogp!(vi, lp)
+    vi.logp += Turing.Inference.dot_tilde(
+        ctx, 
+        sampler, 
+        Normal(m, sqrt(s)), 
+        x, 
+        vi,
+    )
 end
 
 # Instantiate a Model object.
@@ -177,7 +182,7 @@ function get_nlogp(model)
         spl = Turing.SampleFromPrior()
         new_vi = Turing.VarInfo(vi, spl, sm)
         model(new_vi, spl)
-        -getlogp(new_vi)
+        -new_vi.logp
     end
 
     return nlogp

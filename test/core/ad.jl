@@ -1,7 +1,5 @@
-using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra
-using PDMats, Zygote
-using Turing: Turing, invlink, link, SampleFromPrior, 
-    TrackerAD, ZygoteAD
+using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra, PDMats
+using Turing: Turing, gradient_logp_reverse, invlink, link, SampleFromPrior
 using DynamicPPL: getval
 using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 using ForwardDiff: Dual
@@ -16,18 +14,16 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 @testset "ad.jl" begin
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
-        vi = Turing.VarInfo(ad_test_f)
+        vi = Turing.VarInfo()
         ad_test_f(vi, SampleFromPrior())
-        svn = vi.metadata.s.vns[1]
-        mvn = vi.metadata.m.vns[1]
+        svn = vi.metadata.vns[1]
+        mvn = vi.metadata.vns[2]
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
         x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
-        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
-        grad_Turing1 = sort(∇E1)
-        grad_Turing2 = sort(∇E2)
+        ∇E = gradient_logp_reverse(x, vi, ad_test_f)[2]
+        grad_Turing = sort(∇E)
 
         dist_s = InverseGamma(2,3)
 
@@ -49,8 +45,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         grad_FWAD = sort(g(_x))
 
         # Compare result
-        @test grad_Turing1 ≈ grad_FWAD atol=1e-9
-        @test grad_Turing2 ≈ grad_FWAD atol=1e-9
+        @test grad_Turing ≈ grad_FWAD atol=1e-9
     end
     @turing_testset "passing duals to distributions" begin
         float1 = 1.1
@@ -96,18 +91,18 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
-    @turing_testset "Tracker, Zygote and ReverseDiff + logdet" begin
+    @turing_testset "Tracker + logdet" begin
         rng, N = MersenneTwister(123456), 7
         ȳ, B = randn(rng), randn(rng, N, N)
-        test_reverse_mode_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-8, atol=1e-6)
+        test_tracker_ad(B->logdet(cholesky(_to_cov(B))), ȳ, B; rtol=1e-6, atol=1e-6)
     end
-    @turing_testset "Tracker & Zygote + fill" begin
+    @turing_testset "Tracker + fill" begin
         rng = MersenneTwister(123456)
-        test_reverse_mode_ad(x->fill(x, 7), randn(rng, 7), randn(rng))
-        test_reverse_mode_ad(x->fill(x, 7, 11), randn(rng, 7, 11), randn(rng))
-        test_reverse_mode_ad(x->fill(x, 7, 11, 13), rand(rng, 7, 11, 13), randn(rng))
+        test_tracker_ad(x->fill(x, 7), randn(rng, 7), randn(rng))
+        test_tracker_ad(x->fill(x, 7, 11), randn(rng, 7, 11), randn(rng))
+        test_tracker_ad(x->fill(x, 7, 11, 13), rand(rng, 7, 11, 13), randn(rng))
     end
-    @turing_testset "Tracker, Zygote and ReverseDiff + MvNormal" begin
+    @turing_testset "Tracker + MvNormal" begin
         rng, N = MersenneTwister(123456), 11
         B = randn(rng, N, N)
         m, A = randn(rng, N), B' * B + I
@@ -120,9 +115,9 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         d_ref = MvNormal(m, PDMat(A))
         @test logpdf(d, x) ≈ logpdf(d_ref, x)
 
-        test_reverse_mode_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), m, B, x)
+        test_tracker_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), m, B, x)
     end
-    @turing_testset "Tracker, Zygote and ReverseDiff + Diagonal Normal" begin
+    @turing_testset "Tracker + Diagonal Normal" begin
         rng, N = MersenneTwister(123456), 11
         m, σ = randn(rng, N), exp.(0.1 .* randn(rng, N)) .+ 1
 
@@ -133,9 +128,9 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         d_ref = MvNormal(m, σ)
         @test logpdf(d, x) ≈ logpdf(d_ref, x)
 
-        test_reverse_mode_ad((m, σ, x)->logpdf(MvNormal(m, σ), x), randn(rng), m, σ, x)
+        test_tracker_ad((m, σ, x)->logpdf(MvNormal(m, σ), x), randn(rng), m, σ, x)
     end
-    @turing_testset "Tracker, Zygote and ReverseDiff + MvNormal Interface" begin
+    @turing_testset "Tracker + MvNormal Interface" begin
         # Note that we only test methods where the `MvNormal` ctor actually constructs
         # a TuringDenseMvNormal.
 
@@ -144,162 +139,146 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ȳ = randn(rng)
 
         # zero mean, dense covariance
-        test_reverse_mode_ad((B, x)->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B, x)
-        test_reverse_mode_ad(B->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B)
+        test_tracker_ad((B, x)->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B, x)
+        test_tracker_ad(B->logpdf(MvNormal(_to_cov(B)), x), randn(rng), B)
 
         # zero mean, diagonal covariance
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(exp.(b)), x), randn(rng), b, x)
-        test_reverse_mode_ad(b->logpdf(MvNormal(exp.(b)), x), randn(rng), b)
+        test_tracker_ad((b, x)->logpdf(MvNormal(exp.(b)), x), randn(rng), b, x)
+        test_tracker_ad(b->logpdf(MvNormal(exp.(b)), x), randn(rng), b)
 
         # dense mean, dense covariance
-        test_reverse_mode_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+        test_tracker_ad((m, B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
             randn(rng),
             randn(rng, N), randn(rng, N, N), randn(rng, N),
         )
-        test_reverse_mode_ad((m, B)->logpdf(MvNormal(m, _to_cov(B)), x),
+        test_tracker_ad((m, B)->logpdf(MvNormal(m, _to_cov(B)), x),
             randn(rng),
             randn(rng, N), randn(rng, N, N),
         )
-        test_reverse_mode_ad((m, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, _to_cov(B)), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
+        test_tracker_ad((B, x)->logpdf(MvNormal(m, _to_cov(B)), x),
             randn(rng),
             randn(rng, N, N), randn(rng, N),
         )
-        test_reverse_mode_ad(m->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N))
-        test_reverse_mode_ad(B->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N, N))
+        test_tracker_ad(m->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(B->logpdf(MvNormal(m, _to_cov(B)), x), randn(rng), randn(rng, N, N))
 
         # dense mean, diagonal covariance
-        test_reverse_mode_ad((m, b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N), randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((m, b)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((m, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad(m->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad(m->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N),
         )
-        test_reverse_mode_ad(b->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
+        test_tracker_ad(b->logpdf(MvNormal(m, Diagonal(exp.(b))), x),
             randn(rng),
             randn(rng, N),
         )
 
         # dense mean, diagonal variance
-        test_reverse_mode_ad((m, b, x)->logpdf(MvNormal(m, exp.(b)), x),
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp.(b)), x),
             randn(rng),
             randn(rng, N), randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((m, b)->logpdf(MvNormal(m, exp.(b)), x),
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp.(b)), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((m, x)->logpdf(MvNormal(m, exp.(b)), x),
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp.(b)), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(m, exp.(b)), x),
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp.(b)), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad(m->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
-        test_reverse_mode_ad(b->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(m->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp.(b)), x), randn(rng), randn(rng, N))
 
         # dense mean, constant covariance
         b_s = randn(rng)
-        test_reverse_mode_ad((m, b, x)->logpdf(MvNormal(m, exp(b)), x),
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp(b)), x),
             randn(rng),
             randn(rng, N), randn(rng), randn(rng, N),
         )
-        test_reverse_mode_ad((m, b)->logpdf(MvNormal(m, exp(b)), x),
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp(b)), x),
             randn(rng),
             randn(rng, N), randn(rng),
         )
-        test_reverse_mode_ad((m, x)->logpdf(MvNormal(m, exp(b_s)), x),
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp(b_s)), x),
             randn(rng),
             randn(rng, N), randn(rng, N)
         )
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(m, exp(b)), x),
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp(b)), x),
             randn(rng),
             randn(rng), randn(rng, N),
         )
-        test_reverse_mode_ad(m->logpdf(MvNormal(m, exp(b_s)), x), randn(rng), randn(rng, N))
-        test_reverse_mode_ad(b->logpdf(MvNormal(m, exp(b)), x), randn(rng), randn(rng))
+        test_tracker_ad(m->logpdf(MvNormal(m, exp(b_s)), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp(b)), x), randn(rng), randn(rng))
 
         # dense mean, constant variance
         b_s = randn(rng)
-        test_reverse_mode_ad((m, b, x)->logpdf(MvNormal(m, exp(b) * I), x),
+        test_tracker_ad((m, b, x)->logpdf(MvNormal(m, exp(b) * I), x),
             randn(rng),
             randn(rng, N), randn(rng), randn(rng, N),
         )
-        test_reverse_mode_ad((m, b)->logpdf(MvNormal(m, exp(b) * I), x),
+        test_tracker_ad((m, b)->logpdf(MvNormal(m, exp(b) * I), x),
             randn(rng),
             randn(rng, N), randn(rng),
         )
-        test_reverse_mode_ad((m, x)->logpdf(MvNormal(m, exp(b_s) * I), x),
+        test_tracker_ad((m, x)->logpdf(MvNormal(m, exp(b_s) * I), x),
             randn(rng),
             randn(rng, N), randn(rng, N),
         )
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(m, exp(b) * I), x),
+        test_tracker_ad((b, x)->logpdf(MvNormal(m, exp(b) * I), x),
             randn(rng),
             randn(rng), randn(rng, N),
         )
-        test_reverse_mode_ad(m->logpdf(MvNormal(m, exp(b_s) * I), x), randn(rng), randn(rng, N))
-        test_reverse_mode_ad(b->logpdf(MvNormal(m, exp(b) * I), x), randn(rng), randn(rng))
+        test_tracker_ad(m->logpdf(MvNormal(m, exp(b_s) * I), x), randn(rng), randn(rng, N))
+        test_tracker_ad(b->logpdf(MvNormal(m, exp(b) * I), x), randn(rng), randn(rng))
 
         # zero mean, constant variance
-        test_reverse_mode_ad((b, x)->logpdf(MvNormal(N, exp(b)), x),
+        test_tracker_ad((b, x)->logpdf(MvNormal(N, exp(b)), x),
             randn(rng),
             randn(rng), randn(rng, N),
         )
-        test_reverse_mode_ad(b->logpdf(MvNormal(N, exp(b)), x), randn(rng), randn(rng))
+        test_tracker_ad(b->logpdf(MvNormal(N, exp(b)), x), randn(rng), randn(rng))
     end
-    @testset "Simplex Tracker, Zygote and ReverseDiff (with and without caching) AD" begin
+    @testset "Simplex Tracker AD" begin
         @model dir() = begin
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setadbackend(:zygote)
-        sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setadbackend(:reversediff)
-        Turing.setcache(false)
-        sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setcache(true)
+        Turing.setadbackend(:reverse_diff)
         sample(dir(), HMC(0.01, 1), 1000);
     end
-    # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
-    @testset "PDMatDistribution AD" begin
+    @testset "PDMatDistribution Tracker AD" begin
         @model wishart() = begin
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(wishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(wishart(), HMC(0.01, 1), 1000);
-        Turing.setadbackend(:zygote)
+        Turing.setadbackend(:reverse_diff)
         sample(wishart(), HMC(0.01, 1), 1000);
 
         @model invwishart() = begin
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(invwishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(invwishart(), HMC(0.01, 1), 1000);
-        Turing.setadbackend(:zygote)
+        Turing.setadbackend(:reverse_diff)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end
 end
