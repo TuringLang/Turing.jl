@@ -16,7 +16,6 @@ using Random: GLOBAL_RNG, AbstractRNG, randexp
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using Bijectors: _debug
-using MCMCChains: Chains
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
@@ -26,6 +25,7 @@ import DynamicPPL: getspace, get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
 import Random
+import MCMCChains
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -147,7 +147,7 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     resume_from=nothing,
     progress=PROGRESS[],
     kwargs...
@@ -176,7 +176,7 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
@@ -311,14 +311,14 @@ function get_transition_extras(ts::Vector)
     return extra_names, valmat
 end
 
-# Default Chains constructor.
+# Default MCMCChains.Chains constructor.
 function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler,
     N::Integer,
     ts::Vector,
-    chain_type::Type{Chains};
+    chain_type::Type{MCMCChains.Chains};
     discard_adapt::Bool=true,
     save_state=false,
     kwargs...
@@ -359,8 +359,11 @@ function AbstractMCMC.bundle_samples(
         info = NamedTuple()
     end
 
+    # Conretize the array before giving it to MCMCChains.
+    parray = MCMCChains.concretize(parray)
+
     # Chain construction.
-    return Chains(
+    return MCMCChains.Chains(
         parray,
         string.(nms),
         deepcopy(TURING_INTERNAL_VARS);
@@ -399,12 +402,12 @@ function AbstractMCMC.bundle_samples(
     return map(identity, nts)
 end
 
-function save(c::Chains, spl::Sampler, model, vi, samples)
+function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(c::Chains, n_iter::Int; chain_type=Chains, progress=PROGRESS[], kwargs...)
+function resume(c::MCMCChains.Chains, n_iter::Int; chain_type=MCMCChains.Chains, progress=PROGRESS[], kwargs...)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
@@ -415,7 +418,7 @@ function resume(c::Chains, n_iter::Int; chain_type=Chains, progress=PROGRESS[], 
         n_iter;
         resume_from=c,
         reuse_spl_n=n_iter,
-        chain_type=Chains,
+        chain_type=MCMCChains.Chains,
         progress=progress,
         kwargs...
     )
@@ -426,7 +429,7 @@ end
 
 function set_resume!(
     s::Sampler;
-    resume_from::Union{Chains, Nothing}=nothing,
+    resume_from::Union{MCMCChains.Chains, Nothing}=nothing,
     kwargs...
 )
     # If we're resuming, grab the sampler info.
