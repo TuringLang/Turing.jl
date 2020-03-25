@@ -77,6 +77,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         function cond_μ(c)
             z = c.z
             n = [count(z .== k) for k = 1:K]
+
+            # If there were no observations assigned to center `k`, `n[k] == 0`, and
+            # we use the prior instead.
             x_bar = [(n[k] != 0) ? (sum(x[z .== k]) / n[k]) : m for k = 1:K]
             λ_hat = [(n[k] != 0) ? inv(n[k] / σ^2 + 1/λ^2) : λ for k = 1:K]
             μ_hat = [x_bar[k] * (n[k]/σ^2) * λ_hat[k] for k = 1:K]
@@ -89,6 +92,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
             GibbsConditional(:z, cond_z),
             GibbsConditional(:μ, cond_μ))
         chain = sample(mixture(x), alg, 10000)
-        # check_numerical(chain, [:z, :μ], [[fill(1, 10); fill(2, 10)], [0.0, 2.5]], atol=0.1)
+        check_numerical(chain, [:z, :μ], [[fill(1, 10); fill(2, 10)], [0.0, 2.5]], atol=0.1)
     end
 end
