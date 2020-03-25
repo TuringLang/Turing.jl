@@ -246,14 +246,14 @@ function AbstractMCMC.sample_end!(
     loge = mean(t.le for t in ts)
 
     # If we already had a chain, grab the logevidence.
-    if resume_from isa Chains
+    if resume_from isa MCMCChains.Chains
         # pushfirst!(samples, resume_from.info[:samples]...)
         pre_loge = resume_from.logevidence
         # Calculate new log-evidence
         pre_n = length(resume_from)
         loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
     elseif resume_from !== nothing
-        error("keyword argument `resume_from` has to be `nothing` or a `Chains` object")
+        error("keyword argument `resume_from` has to be `nothing` or a `MCMCChains.Chains` object")
     end
 
     # Store the logevidence.

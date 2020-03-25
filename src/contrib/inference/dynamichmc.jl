@@ -114,7 +114,7 @@ end
     model::AbstractModel,
     alg::DynamicNUTS,
     N::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     resume_from=nothing,
     progress=PROGRESS[],
     kwargs...
@@ -136,7 +136,7 @@ function AbstractMCMC.psample(
     alg::DynamicNUTS,
     N::Integer,
     n_chains::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
