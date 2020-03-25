@@ -46,7 +46,7 @@ function check_numerical(chain,
     for (sym, val) in zip(symbols, exact_vals)
         E = val isa Real ?
             mean(chain[sym].value) :
-            vec(mean(chain[sym].value, dims=[1]))
+            vec(mean(chain[sym].value, dims=1))
         @info (symbol=sym, exact=val, evaluated=E)
         @test E ≈ val atol=atol rtol=rtol
     end
