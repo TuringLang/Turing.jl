@@ -63,6 +63,9 @@
 
   - title: "Bayesian Poisson Regression"
     url: "tutorials/7-poissonregression"
+    
+  - title: "Bayesian Multinomial Logistic Regression"
+    url: "tutorials/8-multinomiallogisticregression"
 
 - title: "API"
   url: "docs/library"
