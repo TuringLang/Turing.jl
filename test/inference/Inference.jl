@@ -1,5 +1,6 @@
 using Turing, Random, Test
 using DynamicPPL: getlogp
+import MCMCChains
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -17,6 +18,11 @@ include(dir*"/test/test_utils/AllUtils.jl")
             # Smoke test for default psample call.
             chain = psample(gdemo_default, HMC(0.1, 7), 1000, 4)
             check_gdemo(chain)
+
+            # run sampler: progress logging should be disabled and
+            # it should return a Chains object
+            sampler = Sampler(HMC(0.1, 7), gdemo_default)
+            @test psample(gdemo_default, sampler, 1000, 4) isa MCMCChains.Chains
         end
     end
     @testset "chain save/resume" begin
