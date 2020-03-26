@@ -427,11 +427,17 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(c::MCMCChains.Chains, n_iter::Int; chain_type=MCMCChains.Chains, progress=PROGRESS[], kwargs...)
+function resume(
+    c::MCMCChains.Chains,
+    n_iter::Int;
+    chain_type=MCMCChains.Chains,
+    progress=PROGRESS[],
+    kwargs...
+)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
-    newchain = AbstractMCMC.sample(
+    newchain = AbstractMCMC.mcmcsample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
