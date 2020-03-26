@@ -51,7 +51,7 @@ include("test_utils/AllUtils.jl")
     Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
         include("stdlib/distributions.jl")
-        # include("stdlib/RandomMeasures.jl")
+        include("stdlib/RandomMeasures.jl")
     end
 
     @testset "utilities" begin
