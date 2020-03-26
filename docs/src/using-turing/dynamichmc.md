@@ -10,14 +10,18 @@ Turing supports the use of [DynamicHMC](https://github.com/tpapp/DynamicHMC.jl) 
 `DynamicNUTS` is not appropriate for use in compositional inference. If you intend to use [Gibbs]({{site.baseurl}}/docs/library/#Turing.Inference.Gibbs) sampling, you must use Turing's native `NUTS` function.
 
 
-To use the `DynamicNUTS` function, you must import the `DynamicHMC` package as well as Turing. Turing does not formally require `DynamicHMC` but will include additional functionality if both packages are present.
+To use the `DynamicNUTS` function, you must import the `DynamicHMC` and
+`LogDensityProblems` packages as well as Turing. Turing does not formally require
+`DynamicHMC` and `LogDensityProblems` but will include additional functionality if both
+packages are present.
 
 Here is a brief example of how to apply `DynamicNUTS`:
 
 
 ```julia
 # Import Turing and DynamicHMC.
-using LogDensityProblems, DynamicHMC, Turing
+using Turing
+using LogDensityProblems, DynamicHMC
 
 # Model definition.
 @model gdemo(x, y) = begin

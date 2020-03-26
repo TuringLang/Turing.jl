@@ -1,99 +1,26 @@
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
-struct DynamicNUTS{AD, space} <: Hamiltonian{AD} end
-
-using LogDensityProblems: LogDensityProblems
-
-struct FunctionLogDensity{F}
-    dimension::Int
-    f::F
-end
-
-LogDensityProblems.dimension(ℓ::FunctionLogDensity) = ℓ.dimension
-
-function LogDensityProblems.capabilities(::Type{<:FunctionLogDensity})
-    LogDensityProblems.LogDensityOrder{1}()
-end
-
-function LogDensityProblems.logdensity(ℓ::FunctionLogDensity, x::AbstractVector)
-    first(ℓ.f(x))
-end
-
-function LogDensityProblems.logdensity_and_gradient(ℓ::FunctionLogDensity,
-                                                    x::AbstractVector)
-    ℓ.f(x)
-end
 
 """
-    DynamicNUTS()
+    DynamicNUTS
 
 Dynamic No U-Turn Sampling algorithm provided by the DynamicHMC package. To use it, make
-sure you have the DynamicHMC package (version `2.*`) loaded:
+sure you have the LogDensityProblems package and DynamicHMC package (version >= 2) loaded:
 
 ```julia
-using DynamicHMC
-``
+using LogDensityProblems, DynamicHMC
+```
 """
-DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
-DynamicNUTS{AD}() where AD = DynamicNUTS{AD, ()}()
-function DynamicNUTS{AD}(space::Symbol...) where AD
-    DynamicNUTS{AD, space}()
-end
+struct DynamicNUTS{AD, space} <: Hamiltonian{AD} end
 
-mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
-    vi::V
-    draws::Vector{D}
-end
+DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
+DynamicNUTS{AD}(space::Symbol...) where AD = DynamicNUTS{AD, space}()
 
 getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-function AbstractMCMC.sample_init!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
-    N::Integer;
-    kwargs...
-)
-    # Set up lp function.
-    function _lp(x)
-        gradient_logp(x, spl.state.vi, model, spl)
-    end
-
-    runmodel!(model, spl.state.vi, SampleFromUniform())
-
-    if spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
-    end
-
-    # Set the parameters to a starting value.
-    initialize_parameters!(spl; kwargs...)
-
-    results = mcmc_with_warmup(
-        rng,
-        FunctionLogDensity(
-            length(spl.state.vi[spl]),
-            _lp
-        ),
-        N
-    )
-
-    spl.state.draws = results.chain
-end
-
-function AbstractMCMC.step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
-    N::Integer,
-    transition;
-    kwargs...
-)
-    # Pop the next draw off the vector.
-    draw = popfirst!(spl.state.draws)
-    spl.state.vi[spl] = draw
-    return Transition(spl)
+mutable struct DynamicNUTSState{V<:VarInfo} <: AbstractSamplerState
+    vi::V
 end
 
 function Sampler(
@@ -102,47 +29,144 @@ function Sampler(
     s::Selector=Selector()
 )
     # Construct a state, using a default function.
-    state = DynamicNUTSState(VarInfo(model), [])
+    state = DynamicNUTSState(VarInfo(model))
 
     # Return a new sampler.
     return Sampler(alg, Dict{Symbol,Any}(), s, state)
 end
 
- # Disable the progress logging for DynamicHMC, since it has its own progress meter.
- function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::DynamicNUTS,
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
-    end
-    if resume_from === nothing
-        return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
-                                   chain_type=chain_type, progress=false, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=false, kwargs...)
-    end
+"""
+    DynamicNUTSTransition
+
+Transition for the `DynamicNUTS` sampler.
+"""
+struct DynamicNUTSTransition{T,F<:AbstractFloat,QType,H,S}
+    θ::T
+    lp::F
+    Q::QType
+    hamiltonian::H
+    stepsize::S
 end
 
-function AbstractMCMC.psample(
+function additional_parameters(::Type{<:DynamicNUTSTransition})
+    return [:lp]
+end
+
+# Wrapper for the log density function
+struct LogDensity{M<:Model,S<:Sampler}
+    model::M
+    spl::S
+end
+
+function LogDensityProblems.dimension(ℓ::LogDensity)
+    spl = ℓ.spl
+    return length(spl.state.vi[spl])
+end
+
+function LogDensityProblems.capabilities(::Type{<:LogDensity})
+    LogDensityProblems.LogDensityOrder{1}()
+end
+
+function LogDensityProblems.logdensity(ℓ::LogDensity, x::AbstractVector)
+    sampler = ℓ.sampler
+    vi = sampler.state.vi
+
+    x_old = vi[sampler]
+    lj_old = getlogp(vi)
+        
+    vi[sampler] = x
+    runmodel!(ℓ.model, vi, sampler)
+    lj = getlogp(vi)
+
+    vi[sampler] = x_old
+    setlogp!(vi, lj_old)
+    
+    return lj
+end
+
+function LogDensityProblems.logdensity_and_gradient(ℓ::LogDensity,
+                                                    x::AbstractVector)
+    spl = ℓ.spl
+    return gradient_logp(x, spl.state.vi, ℓ.model, spl)
+end
+
+function AbstractMCMC.step!(
     rng::AbstractRNG,
-    model::AbstractModel,
-    alg::DynamicNUTS,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
+    model::Model,
+    spl::Sampler{<:DynamicNUTS},
+    ::Integer,
+    ::Nothing;
     kwargs...
 )
-    if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+    # Convert to transformed space.
+    vi = spl.state.vi
+    if !islinked(vi, spl)
+        Turing.DEBUG && @debug "X-> R..."
+        link!(vi, spl)
+        runmodel!(model, vi, spl)
     end
-    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
-                                chain_type=chain_type, progress=false, kwargs...)
+
+    # Initial step
+    results = DynamicHMC.mcmc_keep_warmup(
+        rng,
+        LogDensity(model, spl),
+        0;
+        reporter = DynamicHMC.NoProgressReport()
+    )
+    steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
+    Q, stats = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
+
+    # Update the sample.
+    vi[spl] = Q.q
+    logp = stats.π
+    setlogp!(vi, logp)
+
+    return DynamicNUTSTransition(tonamedtuple(vi), logp, Q, steps.H, steps.ϵ)
+end
+
+function AbstractMCMC.step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:DynamicNUTS},
+    ::Integer,
+    transition::DynamicNUTSTransition;
+    kwargs...
+)
+    # Compute next sample.
+    hamiltonian = transition.hamiltonian
+    stepsize = transition.stepsize
+    steps = DynamicHMC.MCMCSteps(rng, DynamicHMC.NUTS(), hamiltonian, stepsize)
+    Q, stats = DynamicHMC.mcmc_next_step(steps, transition.Q)
+
+    # Update the sample.
+    vi = spl.state.vi
+    vi[spl] = Q.q
+    logp = stats.π
+    setlogp!(vi, logp)
+
+    return DynamicNUTSTransition(tonamedtuple(vi), logp, Q, hamiltonian, stepsize)
+end
+
+# Do not store fields specific to DynamicHMC.
+function AbstractMCMC.transitions_init(
+    transition::DynamicNUTSTransition,
+    ::Model,
+    ::Sampler{<:DynamicNUTS},
+    N::Integer;
+    kwargs...
+)
+    return Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, N)
+end
+
+function AbstractMCMC.transitions_save!(
+    transitions::Vector{<:Transition},
+    iteration::Integer,
+    transition::DynamicNUTSTransition,
+    ::Model,
+    ::Sampler{<:DynamicNUTS},
+    ::Integer;
+    kwargs...
+)
+    transitions[iteration] = Transition(transition.θ, transition.lp)
+    return
 end

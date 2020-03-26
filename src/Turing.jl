@@ -48,14 +48,15 @@ using .Variational
 #     end
 # end
 
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
-    import ..DynamicHMC
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
+    @require LogDensityProblems="6fdf6af0-433a-55f7-b3ed-c6c6e0b8df7c" @eval Inference begin
+        import ..DynamicHMC, ..LogDensityProblems
 
-    if isdefined(DynamicHMC, :mcmc_with_warmup)
-        using ..DynamicHMC: mcmc_with_warmup
-        include("contrib/inference/dynamichmc.jl")
-    else
-        error("Please update DynamicHMC, v1.x is no longer supported")
+        if isdefined(DynamicHMC, :mcmc_with_warmup)
+            include("contrib/inference/dynamichmc.jl")
+        else
+            error("Please update DynamicHMC, v1.x is no longer supported")
+        end
     end
 end
 
