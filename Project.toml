@@ -32,7 +32,7 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
-AbstractMCMC = "0.5.2"
+AbstractMCMC = "0.5.5"
 AdvancedHMC = "0.2.20"
 AdvancedMH = "0.4"
 Bijectors = "0.6.4"
@@ -64,12 +64,12 @@ DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TerminalLoggers = "5d786b92-1e48-4d6f-9151-6b4477ca9bed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
-ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 
 [targets]
 test = ["Pkg", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote", "ReverseDiff", "Memoization"]
