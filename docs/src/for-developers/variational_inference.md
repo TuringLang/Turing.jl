@@ -63,7 +63,7 @@ One can also show that \$\$\mathrm{D\_{KL}} \ge 0\$\$, which we'll need later. F
 \mathrm{supp}\big(q(z)\big) \subseteq \mathrm{supp}\big(p(z \mid x)\big)
 \$\$
 
-Otherwise there might be a point \$\$z_0 \sim q(z)\$\$ such that \$\$p(z_0 \mid \\{ x\_i \\}\_{i = 1}^n) = 0\$\$, resulting in \$\$\log\big(\frac{q(z)}{0}\big)\$\$ which doesn't make sense!
+Otherwise there might be a point \$\$z\_0 \sim q(z)\$\$ such that \$\$p(z\_0 \mid \\{ x\_i \\}\_{i = 1}^n) = 0\$\$, resulting in \$\$\log\big(\frac{q(z)}{0}\big)\$\$ which doesn't make sense!
 
 One major problem: as we can see in the definition of the KL-divergence, we need \$\$p(z \mid \\{ x\_i \\}\_{i = 1}^n)\$\$ for any \$\$z\$\$ if we want to compute the KL-divergence between this and \$\$q(z)\$\$. We don't have that. The entire reason we even do Bayesian inference is that we don't know the posterior! Cleary this isn't going to work. _Or is it?!_
 
@@ -119,7 +119,7 @@ Assuming joint \$\$p(x\_i, z)\$\$ and the entropy \$\$\mathbb{H}\big(q(z)\big)\$
 where
 
 \$\$
-\widehat{\mathrm{ELBO}}(q) = \frac{1}{m} \bigg( \sum\_{k = 1}^m \sum\_{i = 1}^n \log p(x\_i, z_k) \bigg) + \mathbb{H} \big(q(z)\big) \quad \text{where} \quad z\_k \sim q(z) \quad \forall k = 1, \dots, m
+\widehat{\mathrm{ELBO}}(q) = \frac{1}{m} \bigg( \sum\_{k = 1}^m \sum\_{i = 1}^n \log p(x\_i, z\_k) \bigg) + \mathbb{H} \big(q(z)\big) \quad \text{where} \quad z\_k \sim q(z) \quad \forall k = 1, \dots, m
 \$\$
 
 Hence, as long as we can sample from \$\$q(z)\$\$ somewhat efficiently, we can indeed minimize the KL-divergence! Neat, eh?
@@ -177,7 +177,7 @@ With this assumption we finally have a tractable expression for \$\$\widehat{\ma
 Though not necessary, we'll often make a *mean-field* assumption for the variational posterior \$\$q(z)\$\$, i.e. assume independence between the latent variables. In this case, we'll write
 
 \$\$
-\theta = (\mu, \sigma^2) := (\mu\_1, \dots, \mu\_d, \sigma_1^2, \dots, \sigma_d^2)
+\theta = (\mu, \sigma^2) := (\mu\_1, \dots, \mu\_d, \sigma\_1^2, \dots, \sigma_d^2)
 \$\$
 
 ### Examples
@@ -211,7 +211,7 @@ But what about this generative model for \$\$p(z \mid \\{ x\_i \\}\_{i = 1}^n)\$
 with posterior \$\$p(s, m \mid \\{ x\_i \\}\_{i = 1}^n) = p(s) p(m \mid s) \prod\_{i = 1}^n p(x\_i \mid s, m)\$\$ and the mean-field variational posterior \$\$q(s, m)\$\$ will be
 
 \$\$
-q\_{\mu\_1, \mu\_2, \sigma_1^2, \sigma_2^2}(s, m) = p\_{\mathcal{N}(\mu\_1, \sigma_1^2)}(s) p\_{\mathcal{N}(\mu\_2, \sigma_2^2)}(m)
+q\_{\mu\_1, \mu\_2, \sigma_1^2, \sigma_2^2}(s, m) = p\_{\mathcal{N}(\mu\_1, \sigma\_1^2)}(s) p\_{\mathcal{N}(\mu\_2, \sigma_2^2)}(m)
 \$\$
 
 where we've denoted the evaluation of the probability density of a Gaussian as \$\$p\_{\mathcal{N}(\mu, \sigma^2)}(x)\$\$.
