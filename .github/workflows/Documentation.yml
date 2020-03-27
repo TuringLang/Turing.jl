@@ -7,27 +7,26 @@ on:
     tags: '*'
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        julia-version: [1.3]
-        julia-arch: [x86]
-        os: [ubuntu-latest]
+  docs:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1.0.0
+      - uses: actions/checkout@v2
       - name: Set up Julia
-        uses: julia-actions/setup-julia@latest
+        uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.julia-version }}
+          version: '1.4'
       - name: Set up Ruby 2.6
         uses: actions/setup-ruby@v1
         with:
           ruby-version: '2.6.x'
       - name: Install dependencies
-        run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
+        run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()'
       - name: Build and deploy
+        run: julia --project=docs --color=yes docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: julia --project=docs --color=yes docs/make.jl
