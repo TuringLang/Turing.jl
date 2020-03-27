@@ -146,14 +146,24 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    kwargs...
+)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    sampler::Sampler,
+    N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
     progress=PROGRESS[],
     kwargs...
 )
     if resume_from === nothing
-        return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
-                                   chain_type=chain_type, progress=progress, kwargs...)
+        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
@@ -175,12 +185,23 @@ function AbstractMCMC.psample(
     alg::InferenceAlgorithm,
     N::Integer,
     n_chains::Integer;
+    kwargs...
+)
+    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains; kwargs...)
+end
+
+function AbstractMCMC.psample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    sampler::Sampler,
+    N::Integer,
+    n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
-                                chain_type=chain_type, progress=progress, kwargs...)
+    return AbstractMCMC.mcmcpsample(rng, model, sampler, N, n_chains;
+                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
 function AbstractMCMC.sample_init!(
@@ -406,11 +427,17 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(c::MCMCChains.Chains, n_iter::Int; chain_type=MCMCChains.Chains, progress=PROGRESS[], kwargs...)
+function resume(
+    c::MCMCChains.Chains,
+    n_iter::Int;
+    chain_type=MCMCChains.Chains,
+    progress=PROGRESS[],
+    kwargs...
+)
     @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
 
     # Sample a new chain.
-    newchain = AbstractMCMC.sample(
+    newchain = AbstractMCMC.mcmcsample(
         c.info[:range],
         c.info[:model],
         c.info[:spl],
