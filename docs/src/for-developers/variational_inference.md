@@ -67,7 +67,7 @@ Otherwise there might be a point \$\$z\_0 \sim q(z)\$\$ such that \$\$p(z\_0 \mi
 
 One major problem: as we can see in the definition of the KL-divergence, we need \$\$p(z \mid \\{ x\_i \\}\_{i = 1}^n)\$\$ for any \$\$z\$\$ if we want to compute the KL-divergence between this and \$\$q(z)\$\$. We don't have that. The entire reason we even do Bayesian inference is that we don't know the posterior! Cleary this isn't going to work. _Or is it?!_
 
-## Computing \$\$\mathrm{D_{KL}}\$\$ without the posterior
+## Computing KL-divergence without knowing the posterior
 
 First off, recall that
 
@@ -128,7 +128,7 @@ Sidenote: in the case where \$\$q(z)\$\$ is tractable but \$\$\mathbb{H} \big(q(
 
 Also, I fooled you real good: the ELBO _isn't_ an arbitrary name, hah! In fact it's an abbreviation for the **expected lower bound (ELBO)** because it, uhmm, well, it's the _expected_ lower bound (remember \$\$\mathrm{D\_{KL}} \ge 0\$\$). Yup.
 
-## Maximizing \$\$\widehat{\mathrm{ELBO}}(q)\$\$
+## Maximizing the ELBO
 
 Finding the optimal \$\$q\$\$ over _all_ possible densities of course isn't feasible. Instead we consider a family of _parameterized_ densities \$\$\mathscr{D}\_{\Theta}\$\$ where \$\$\Theta\$\$ denotes the space of possible parameters. Each density in this family \$\$q\_{\theta} \in \mathscr{D}\_{\Theta}\$\$ is parameterized by a unique \$\$\theta \in \Theta\$\$. Moreover, we'll assume
 1. \$\$q\_{\theta}(z)\$\$, i.e. evaluating the probability density \$\$q\$\$ at any point \$\$z\$\$, is differentiable
