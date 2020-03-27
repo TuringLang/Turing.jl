@@ -1,5 +1,6 @@
 using Random, Turing, Test
 import AbstractMCMC
+import MCMCChains
 import Turing.Inference
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
@@ -29,6 +30,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test g.state.samplers[1].selector != g.selector
         @test g.state.samplers[2].selector != g.selector
         @test g.state.samplers[1].selector != g.state.samplers[2].selector
+
+        # run sampler: progress logging should be disabled and
+        # it should return a Chains object
+        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)

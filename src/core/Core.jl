@@ -1,7 +1,7 @@
 module Core
 
 using DistributionsAD, Bijectors
-using MacroTools, Libtask, ForwardDiff, Random
+using Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
