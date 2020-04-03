@@ -49,10 +49,10 @@
   - title: "Gaussian Mixture Models"
     url: "tutorials/1-gaussianmixturemodel"
 
-  - title: "Bayesian Logistic Regression"
+  - title: "Logistic Regression"
     url: "tutorials/2-logisticregression"
 
-  - title: "Bayesian Neural Networks"
+  - title: "Neural Networks"
     url: "tutorials/3-bayesnn"
 
   - title: "Hidden Markov Models"
@@ -64,7 +64,7 @@
   - title: "Infinite Mixture Models"
     url: "tutorials/6-infinitemixturemodel"
 
-  - title: "Bayesian Poisson Regression"
+  - title: "Poisson Regression"
     url: "tutorials/7-poissonregression"
 
   - title: "Multinomial Logistic Regression"
