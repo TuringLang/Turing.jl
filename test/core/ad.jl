@@ -23,12 +23,6 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
-        x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
-        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
-        grad_Turing1 = sort(∇E1)
-        grad_Turing2 = sort(∇E2)
-
         dist_s = InverseGamma(2,3)
 
         # Hand-written logp
@@ -48,9 +42,15 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        # Compare result
-        @test grad_Turing1 ≈ grad_FWAD atol=1e-9
-        @test grad_Turing2 ≈ grad_FWAD atol=1e-9
+        x = map(x->Float64(x), vi[SampleFromPrior()])
+        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
+        @test sort(∇E1) ≈ grad_FWAD atol=1e-9
+
+        # FIXME: this crashes Julia on Julia 1.4 + master
+        if VERSION < v"1.4"
+            ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
+            @test sort(∇E2) ≈ grad_FWAD atol=1e-9
+        end
     end
     @turing_testset "passing duals to distributions" begin
         float1 = 1.1
