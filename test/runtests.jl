@@ -25,11 +25,6 @@ include("test_utils/AllUtils.jl")
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
-                # FIXME: DynamicHMC version 1 has (??) a bug on 32bit platforms (but we were too
-                # lazy to open an issue so Tamas doesn't know about it), retest with 2.0
-                if Int === Int64 && Pkg.installed()["DynamicHMC"].major == 2
-                    include("contrib/inference/dynamichmc.jl")
-                end
                 include("inference/gibbs.jl")
                 include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
@@ -38,6 +33,7 @@ include("test_utils/AllUtils.jl")
                 include("inference/ess.jl")
                 include("inference/AdvancedSMC.jl")
                 include("inference/Inference.jl")
+                include("contrib/inference/dynamichmc.jl")
             end
         end
 
