@@ -156,7 +156,7 @@ As you can see, the MH sampler doesn't move parameter estimates very often.
 
 The No U-Turn Sampler (NUTS) is an implementation of the algorithm found in the paper "The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo" by Hoffman and Gelman (2011). The paper can be found on [arXiv](https://arxiv.org/abs/1111.4246) for the interested reader.
 
-NUTS tends to be very good at traversing the minima of complex posteriors quickly.
+NUTS tends to be very good at traversing complex posteriors quickly.
 
 ```julia
 c = sample(model, NUTS(0.65), 1000)
@@ -168,7 +168,7 @@ plot_sampler(c)
 
 The only parameter that needs to be set other than the number of iterations to run is the target acceptance rate. In the Hoffman and Gelman paper, they note that a target acceptance rate of 0.65 is typical.
 
-Here is a plot showing a very high acceptance rate. Note that it appears to "stick" to a local minima and is not particularly good at exploring the posterior.
+Here is a plot showing a very high acceptance rate. Note that it appears to "stick" to a mode and is not particularly good at exploring the posterior as compared to the 0.65 target acceptance ratio case.
 
 ```julia
 c = sample(model, NUTS(0.95), 1000)
