@@ -18,13 +18,5 @@ for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
     test_opt(ForwardDiff, opt)
 end
 for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
-    Turing.setrdcache(false)
     test_opt(ReverseDiff, opt)
-end
-for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
-    Turing.setrdcache(true)
-    test_opt(ReverseDiff, opt)
-    @test length(Memoization.caches) == 1
-    Turing.emptyrdcache()
-    @test length(Memoization.caches) == 0
 end
