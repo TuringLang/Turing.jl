@@ -20,7 +20,7 @@ include("test_utils/AllUtils.jl")
     else
         [:forwarddiff, :tracker]
     end
-    Turing.setcache(false)
+    Turing.setrdcache(false)
     for adbackend in test_adbackends
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin

@@ -39,7 +39,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
         end
 
-        model = Turing.Model(fpc, NamedTuple(), nothing)
+        modelgen = Turing.ModelGen{()}(nothing, NamedTuple())
+        model = Turing.Model{()}(fpc, NamedTuple(), modelgen)
         particles = [Trace(fpc, model, spl, Turing.VarInfo()) for _ in 1:3]
         pc = ParticleContainer(fpc, particles)
 
@@ -80,7 +81,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         # Test task copy version of trace
-        model = Turing.Model(f2, NamedTuple(), nothing)
+        modelgen = Turing.ModelGen{()}(nothing, NamedTuple())
+        model = Turing.Model{()}(f2, NamedTuple(), modelgen)
         tr = Trace(f2, model, spl, Turing.VarInfo())
 
         consume(tr); consume(tr)
