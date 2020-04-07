@@ -24,7 +24,7 @@ function __init__()
     end
     @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
         include("compat/reversediff.jl")
-        export ReverseDiffAD, setcache
+        export ReverseDiffAD, getrdcache, setrdcache, emptyrdcache
     end
 end
 
