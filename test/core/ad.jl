@@ -275,10 +275,13 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:reversediff)
-        Turing.setcache(false)
+        Turing.setrdcache(false)
         sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setcache(true)
+        Turing.setrdcache(true)
         sample(dir(), HMC(0.01, 1), 1000);
+        @test length(Memoization.caches) == 1
+        Turing.emptyrdcache()
+        @test length(Memoization.caches) == 0
     end
     # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin

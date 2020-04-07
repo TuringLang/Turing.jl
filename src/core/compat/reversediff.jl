@@ -3,9 +3,13 @@ using .ReverseDiff.DiffResults: GradientResult
 
 struct ReverseDiffAD{cache} <: ADBackend end
 const RDCache = Ref(false)
-setcache(b::Bool) = RDCache[] = b
-getcache() = RDCache[]
-ADBackend(::Val{:reversediff}) = ReverseDiffAD{getcache()}
+setrdcache(b::Bool) = setrdcache(Val(b))
+setrdcache(::Val{false}) = RDCache[] = false
+setrdcache(::Val) = throw("Memoization.jl is not loaded. Please load it before setting the cache to true.")
+function emptyrdcache end
+
+getrdcache() = RDCache[]
+ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
 function setadbackend(::Val{:reversediff})
     ADBACKEND[] = :reversediff
 end
@@ -27,7 +31,7 @@ function gradient_logp(
     tp, result = taperesult(f, θ)
     ReverseDiff.gradient!(result, tp, θ)
     l = DiffResults.value(result)
-    ∂l∂θ = DiffResults.gradient(result)
+    ∂l∂θ::typeof(θ) = DiffResults.gradient(result)
 
     return l, ∂l∂θ
 end
@@ -38,6 +42,14 @@ function taperesult(f, x)
 end
 
 @require Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73" @eval begin
+    setrdcache(::Val{true}) = RDCache[] = true
+    function emptyrdcache()
+        for k in keys(Memoization.caches)
+            if k[1] === typeof(memoized_taperesult)
+                pop!(Memoization.caches, k)
+            end
+        end
+    end
     function gradient_logp(
         backend::ReverseDiffAD{true},
         θ::AbstractVector{<:Real},
@@ -65,7 +77,7 @@ end
         f::F
         x::Tx
     end
-    function Memoization._get!(f::Union{Function, Type}, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Nothing})
+    function Memoization._get!(f::Union{Function, Type}, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Any})
         key = keys[1][1]
         return Memoization._get!(f, d, (typeof(key.f), typeof(key.x), size(key.x)))
     end
