@@ -66,8 +66,16 @@ function Distributions.logpdf(d::BinomialLogit{<:Real}, k::Int)
     return logpdf_binomial_logit(d.n, d.logitp, k)
 end
 
+function Distributions.pdf(d::BinomialLogit{<:Real}, k::Int)
+    return exp(logpdf_binomial_logit(d.n, d.logitp, k))
+end
+
 function Distributions.logpdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer})
     return sum(logpdf_binomial_logit.(d.n, d.logitp, ks))
+end
+
+function Distributions.pdf(d::VecBinomialLogit{<:Real}, ks::Vector{<:Integer}) 
+    return sum(exp.(logpdf_binomial_logit.(d.n, d.logitp, ks)))
 end
 
 """
