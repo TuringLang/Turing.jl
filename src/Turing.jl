@@ -107,6 +107,7 @@ export  @model,                 # modelling
         Flat,
         FlatPos,
         BinomialLogit,
+        BernoulliLogit,
         VecBinomialLogit,
         OrderedLogistic,
         LogPoisson,
