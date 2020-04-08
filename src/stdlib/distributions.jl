@@ -38,6 +38,44 @@ function Distributions.logpdf(d::FlatPos, x::AbstractVector{<:Real})
 end
 
 """
+    BernoulliLogit(T<:Real)
+
+A univariate logit-parameterised Bernoulli distribution
+"""
+struct BernoulliLogit{T<:Real} <: DiscreteUnivariateDistribution
+    logitp::T
+end
+
+"""
+    VecBernoulliLogit(T<:Real)
+
+A multivariate logit-parameterised Bernoulli distribution
+"""
+struct VecBernoulliLogit{T<:Real} <: DiscreteUnivariateDistribution
+    logitp::Vector{T}
+end
+
+function logpdf_bernoulli_logit(logitp, k)
+    return k * logitp - StatsFuns.log1pexp(logitp)
+end
+
+function Distributions.logpdf(d::BernoulliLogit{<:Real}, k::Int)
+    return logpdf_bernoulli_logit(d.logitp, k)
+end
+
+function Distributions.pdf(d::BernoulliLogit{<:Real}, k::Int)
+    return exp(logpdf_bernoulli_logit(d.logitp, k))
+end
+
+function Distributions.logpdf(d::VecBernoulliLogit{<:Real}, ks::Vector{<:Integer})
+    return sum(logpdf_bernoulli_logit.(d.logitp, ks))
+end
+
+function Distributions.pdf(d::VecBernoulliLogit{<:Real}, ks::Vector{<:Integer}) 
+    return sum(exp.(logpdf_bernoulli_logit.(d.logitp, ks)))
+end
+
+"""
     BinomialLogit(n<:Real, I<:Integer)
 
 A univariate binomial logit distribution.
