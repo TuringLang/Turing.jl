@@ -5,46 +5,62 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
 
 @turing_testset "gibbs conditionals" begin
-    # let α_0 = 2.0,
-    #     θ_0 = inv(3.0),
-    #     x = [1.5, 2.0]
+    let N = 1000,
+        (α_0, θ_0) = (2.0, inv(3.0)),
+        λ_true = rand(Gamma(α_0, θ_0)),
+        σ_true = √(1 / λ_true),
+        m_true = rand(Normal(0, σ_true)),
+        x = rand(Normal(m_true, σ_true), N)
         
-    #     @model inverse_gdemo(x) = begin
-    #         λ ~ Gamma(α_0, θ_0)
-    #         m ~ Normal(0, sqrt(1 / λ))
-    #         x .~ Normal(m, sqrt(1 / λ))
-    #     end
+        @model inverse_gdemo(x) = begin
+            λ ~ Gamma(α_0, θ_0)
+            m ~ Normal(0, sqrt(1 / λ))
+            x .~ Normal(m, sqrt(1 / λ))
+        end
 
-    #     function gdemo_statistics(x)
-    #         # The conditionals and posterior can be formulated in terms of the following statistics:
-    #         N = length(x) # number of samples
-    #         x_bar = mean(x) # sample mean
-    #         s2 = var(x; mean=x_bar, corrected=false) # sample variance
-    #         return N, x_bar, s2
-    #     end
+        function gdemo_statistics(x)
+            # The conditionals and posterior can be formulated in terms of the following statistics:
+            N = length(x) # number of samples
+            x_bar = mean(x) # sample mean
+            s2 = var(x; mean=x_bar, corrected=false) # sample variance
+            return N, x_bar, s2
+        end
 
-    #     function cond_m(c)
-    #         N, x_bar, s2 = gdemo_statistics(x)
-    #         m_n = N * x_bar / (N + 1)
-    #         λ_n = c.λ * (N + 1)
-    #         σ_n = sqrt(1 / λ_n)
-    #         return Normal(m_n, σ_n)
-    #     end
+        function cond_m(c)
+            N, x_bar, s2 = gdemo_statistics(x)
+            m_n = N * x_bar / (N + 1)
+            λ_n = c.λ * (N + 1)
+            σ_n = sqrt(1 / λ_n)
+            return Normal(m_n, σ_n)
+        end
 
-    #     function cond_λ(c)
-    #         N, x_bar, s2 = gdemo_statistics(x)
-    #         α_n = α_0 + (N - 1) / 2
-    #         β_n = (s2 * N / 2 + c.m^2 / 2 + inv(θ_0))
-    #         return Gamma(α_n + 1, inv(β_n))
-    #     end
+        function cond_λ(c)
+            N, x_bar, s2 = gdemo_statistics(x)
+            α_n = α_0 + (N - 1) / 2 + 1
+            β_n = s2 * N / 2 + c.m^2 / 2 + inv(θ_0)
+            return Gamma(α_n, inv(β_n))
+        end
 
-    #     Random.seed!(100)
-    #     alg = Gibbs(
-    #         GibbsConditional(:m, cond_m),
-    #         GibbsConditional(:λ, cond_λ))
-    #     chain = sample(inverse_gdemo(x), alg, 3000)
-    #     check_numerical(chain, [:m, :λ], [7/6, 24/49], atol=0.1)
-    # end
+        Random.seed!(100)
+
+        alg = Gibbs(
+            GibbsConditional(:m, cond_m),
+            GibbsConditional(:λ, c -> Normal(λ_true, 0)))
+        chain = sample(inverse_gdemo(x), alg, 10_000)
+        check_numerical(chain, [:m, :λ], [m_true, λ_true], atol=0.2)
+
+        alg = Gibbs(
+            GibbsConditional(:m, c -> Normal(m_true, 0)),
+            GibbsConditional(:λ, cond_λ))
+        chain = sample(inverse_gdemo(x), alg, 10_000)
+        check_numerical(chain, [:m, :λ], [m_true, λ_true], atol=0.2)
+        
+        alg = Gibbs(
+            GibbsConditional(:m, cond_m),
+            GibbsConditional(:λ, cond_λ))
+        chain = sample(inverse_gdemo(x), alg, 10_000)
+        check_numerical(chain, [:m, :λ], [m_true, λ_true], atol=0.2)
+    end
 
     let π = [0.5, 0.5],
         K = length(π),
