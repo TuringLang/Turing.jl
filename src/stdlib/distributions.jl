@@ -61,6 +61,15 @@ function Distributions.pdf(d::BinomialLogit{<:Real}, k::Int)
 end
 
 """
+    BernoulliLogit(p<:Real)
+
+A univariate logit-parameterised Bernoulli distribution.
+"""
+function BernoulliLogit(logitp::Real)
+    return BinomialLogit(1, logitp)
+end
+
+"""
     OrderedLogistic(η::Any, cutpoints<:AbstractVector)
 
 An ordered logistic distribution.
