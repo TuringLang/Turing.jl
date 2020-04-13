@@ -118,8 +118,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
             N = length(y)
             rpm = DirichletProcess(alpha)
         
-            z = zeros(Int, N)
-            cluster_counts = zeros(Int, N)
+            z = tzeros(Int, N)
+            cluster_counts = tzeros(Int, N)
             fill!(cluster_counts, 0)
         
             for i in 1:N
@@ -135,5 +135,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
         model = imm(randn(100), 1.0);
         sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+        sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end
