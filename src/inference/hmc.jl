@@ -338,15 +338,14 @@ function AbstractMCMC.step!(
 
     Turing.DEBUG && @debug "current ϵ: $ϵ"
 
-    # Get position and log density before transition
-    θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
-
     # Gibbs component specified cares
     if spl.selector.tag != :default
         # Transform the space
         Turing.DEBUG && @debug "X-> R..."
         link!(spl.state.vi, spl)
         runmodel!(model, spl.state.vi, spl)
+        # Get position and log density before transition
+        θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
         # Update Hamiltonian
         metric = gen_metric(length(θ_old), spl)
         ∂logπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
@@ -354,6 +353,9 @@ function AbstractMCMC.step!(
         spl.state.h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
         resize!(spl.state.z.θ, length(θ_old))
         spl.state.z.θ .= θ_old
+    else
+        # Get position and log density before transition
+        θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
     end
 
     # Transition
