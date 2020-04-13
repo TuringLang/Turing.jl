@@ -502,8 +502,8 @@ end
 ####
 
 function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
-    pc = AHMC.Preconditioner(metric)
-    da = AHMC.NesterovDualAveraging(alg.δ, ϵ)
+    pc = AHMC.MassMatrixAdaptor(metric)
+    da = AHMC.StepSizeAdaptor(alg.δ, ϵ)
 
     if iszero(alg.n_adapts)
         adaptor = AHMC.Adaptation.NoAdaptation()
@@ -552,7 +552,7 @@ function HMCState(
 
     # Find good eps if not provided one
     if spl.alg.ϵ == 0.0
-        ϵ = AHMC.find_good_eps(h, θ_init)
+        ϵ = AHMC.find_good_stepsize(h, θ_init)
         @info "Found initial step size" ϵ
     else
         ϵ = spl.alg.ϵ

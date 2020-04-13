@@ -20,7 +20,9 @@ docs/_site/
 docs/.gems/
 docs/Gemfile.lock
 
+.vscode
 .DS_Store
 Manifest.toml
+test/Project.toml
 
 benchmarks/output/
