@@ -70,8 +70,8 @@ end
 function AHMCAdaptor(adaptor)
     if :engaged in fieldnames(typeof(adaptor)) # CmdStan.Adapt
         adaptor.engaged ? spl.alg.n_adapts : 0,
-        AHMC.Preconditioner(metric),
-        AHMC.NesterovDualAveraging(adaptor.gamma,
+        AHMC.MassMatrixAdaptor(metric),
+        AHMC.StepSizeAdaptor(adaptor.gamma,
             adaptor.t0, adaptor.kappa, adaptor.δ, init_ϵ),
             adaptor.init_buffer,
             adaptor.term_buffer,
@@ -79,8 +79,8 @@ function AHMCAdaptor(adaptor)
     else # default adaptor
         @warn "Invalid adaptor type: $(typeof(adaptor)). Default adaptor is used instead."
         adaptor = AHMC.StanHMCAdaptor(
-            AHMC.Preconditioner(:DiagEuclideanMetric),
-            AHMC.NesterovDualAveraging(spl.alg.δ, init_ϵ)
+            AHMC.MassMatrixAdaptor(:DiagEuclideanMetric),
+            AHMC.StepSizeAdaptor(spl.alg.δ, init_ϵ)
         )
         AHMC.initialize!(adaptor, spl.alg.n_adapts)
         adaptor
