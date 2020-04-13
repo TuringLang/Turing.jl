@@ -29,7 +29,7 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
 AbstractMCMC = "0.5.5"
-AdvancedHMC = "0.2.23"
+AdvancedHMC = "0.2.22, 0.2.23"
 AdvancedMH = "0.4"
 Bijectors = "0.6.4"
 Distributions = "0.22, 0.23"
