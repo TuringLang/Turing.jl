@@ -111,4 +111,29 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
         sample(model, alg, 100; callback = callback)
     end
+
+    @turing_testset "dynamic model" begin
+        const RandomMeasures = Turing.RandomMeasures
+        @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
+            N = length(y)
+            rpm = DirichletProcess(alpha)
+        
+            z = zeros(Int, N)
+            cluster_counts = zeros(Int, N)
+            fill!(cluster_counts, 0)
+        
+            for i in 1:N
+                z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
+                cluster_counts[z[i]] += 1
+            end
+        
+            Kmax = findlast(!iszero, cluster_counts)
+            m = M(undef, Kmax)
+            for k = 1:Kmax
+                m[k] ~ Normal(1.0, 1.0)
+            end
+        end
+        model = imm(randn(100), 1.0);
+        sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+    end
 end
