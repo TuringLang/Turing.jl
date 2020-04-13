@@ -2,6 +2,7 @@ using Random, Turing, Test
 import AbstractMCMC
 import MCMCChains
 import Turing.Inference
+using Turing.RandomMeasures
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -113,7 +114,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
 
     @turing_testset "dynamic model" begin
-        const RandomMeasures = Turing.RandomMeasures
         @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
             N = length(y)
             rpm = DirichletProcess(alpha)
