@@ -133,7 +133,9 @@ function Libtask.consume(pc :: ParticleContainer)
     if num_done == n
         res = Val{:done}
     elseif num_done != 0
-        error("[consume]: mis-aligned execution traces, num_particles= $(n), num_done=$(num_done).")
+        # The posterior for models with random number of observations is not well-defined.
+        error("[consume]: mis-aligned execution traces, num_particles= $(n),
+            num_done=$(num_done). Please make sure the number of observations is NOT random.")
     else
         # update incremental likelihoods
         z2 = logZ(pc)
