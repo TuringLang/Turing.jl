@@ -41,6 +41,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return Gamma(α_n, inv(β_n))
         end
 
+        # Three tests: one for each variable fixed to the true value, and one for both
+        # using the conditional
         Random.seed!(100)
 
         alg = Gibbs(
@@ -99,15 +101,28 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return arraydist(Normal.(μ_hat, λ_hat))
         end
 
+        # Both variables sampled using the Gibbs conditional
+        # We can't be sure about the order of cluster assignment, so we check both
         Random.seed!(100)
         alg = Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ))
         chain = sample(mixture(x), alg, 10000)
         
-        check_numerical(chain, [:μ], [[0, 1]], atol=0.1)
-
-        # we can't be sure about the order of cluster assignment, so we check both
-        ẑ = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        μ_true = [0, 1]
         z_true = [fill(1, 10); fill(2, 10)]
-        @test isapprox(ẑ, z_true, atol=0.2, rtol=0.0) || isapprox(ẑ, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
+        μ_hat = dropdims(mean(chain[:μ].value, dims=1), dims=(1, 3))
+        @test isapprox(μ_hat, μ_true, atol=0.1) || isapprox(μ_hat, reverse(μ_true), atol=0.1)
+        z_hat = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0) ||
+            isapprox(z_hat, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
+
+        # Gibbs conditional for `z`, HMC for `μ`
+        Random.seed!(100)
+        alg = Gibbs(GibbsConditional(:z, cond_z), HMC(0.05, 4, :μ,))
+        chain = sample(mixture(x), alg, 10000)
+        μ_hat = dropdims(mean(chain[:μ].value, dims=1), dims=(1, 3))
+        @test isapprox(μ_hat, μ_true, atol=0.1) || isapprox(μ_hat, reverse(μ_true), atol=0.1)
+        z_hat = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0) ||
+            isapprox(z_hat, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
     end
 end
