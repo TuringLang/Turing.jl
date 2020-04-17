@@ -8,38 +8,36 @@ must therefore be a function from a `NamedTuple` of the conditioned variables to
 # Examples
 
 ```julia
-α₀ = 2.0
-θ₀ = inv(3.0)
+α_0 = 2.0
+θ_0 = inv(3.0)
 
 x = [1.5, 2.0]
 
 function gdemo_statistics(x)
     # The conditionals and posterior can be formulated in terms of the following statistics:
     N = length(x) # number of samples
-    x̄ = mean(x) # sample mean
-    s² = var(x; mean=x̄, corrected=false) # sample variance
-    return N, x̄, s²
+    x_bar = mean(x) # sample mean
+    s2 = var(x; mean=x_bar, corrected=false) # sample variance
+    return N, x_bar, s2
 end
 
 function gdemo_cond_m(c)
-    # c = (λ = ...,)
-    N, x̄, s² = gdemo_statistics(x)
-    mₙ = N * x̄ / (N + 1)
-    λₙ = c.λ * (N + 1)
-    σₙ = √(1 / λₙ)
-    return Normal(mₙ, σₙ)
+    N, x_bar, s2 = gdemo_statistics(x)
+    m_n = N * x_bar / (N + 1)
+    λ_n = c.λ * (N + 1)
+    σ_n = sqrt(1 / λ_n)
+    return Normal(m_n, σ_n)
 end
 
 function gdemo_cond_λ(c)
-    # c = (m = ...,)
-    N, x̄, s² = gdemo_statistics(x)
-    αₙ = α₀ + (N - 1) / 2
-    βₙ = (s² * N / 2 + c.m^2 / 2 + inv(θ₀))
-    return Gamma(αₙ, inv(βₙ))
+    N, x_bar, s2 = gdemo_statistics(x)
+    α_n = α_0 + (N - 1) / 2 + 1
+    β_n = s2 * N / 2 + c.m^2 / 2 + inv(θ_0)
+    return Gamma(α_n, inv(β_n))
 end
 
 @model gdemo(x) = begin
-    λ ~ Gamma(α₀, θ₀)
+    λ ~ Gamma(α_0, θ_0)
     m ~ Normal(0, √(1 / λ))
     x .~ Normal(m, √(1 / λ))
 end
