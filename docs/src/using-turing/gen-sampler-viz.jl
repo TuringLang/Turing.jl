@@ -4,7 +4,7 @@ using StatsPlots
 using Turing
 using Bijectors
 using Random
-using DynamicPPL: getlogp, settrans!, runmodel!, getval, reconstruct, vectorize, setval!
+using DynamicPPL: getlogp, settrans!, getval, reconstruct, vectorize, setval!
 
 # Set a seed.
 Random.seed!(0)

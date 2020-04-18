@@ -104,7 +104,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return
         end
 
-        function callback(rng, model, sampler, N, i, transition; kwargs...)
+        function callback(rng, model, sampler, transition, i; kwargs...)
             transition isa Inference.GibbsTransition || error("incorrect transition")
             return
         end

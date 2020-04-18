@@ -85,7 +85,7 @@ function step(
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        model(vi, spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."
@@ -198,7 +198,7 @@ function step(
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        model(vi, spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."
