@@ -45,7 +45,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             MH((:mu1,GKernel(1)), (:mu2,GKernel(1)))
         )
         chain = sample(MoGtest_default, gibbs, 5000)
-        check_MoGtest_default(chain, atol = 0.1)
+        check_MoGtest_default(chain, atol = 0.15)
     end
 
     # Test MH shape passing.
@@ -72,10 +72,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         dt, vt = Inference.dist_val_tuple(sampler)
 
-        @test dt[:z] isa AdvancedMH.Proposal{AdvancedMH.Static,<:MvNormal}
-        @test dt[:m] isa AdvancedMH.Proposal{AdvancedMH.Static,Vector{ContinuousUnivariateDistribution}}
+        @test dt[:z] isa AdvancedMH.StaticProposal{<:MvNormal}
+        @test dt[:m] isa AdvancedMH.StaticProposal{Vector{ContinuousUnivariateDistribution}}
         @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
-        @test dt[:s] isa AdvancedMH.Proposal{AdvancedMH.Static,<:InverseGamma}
+        @test dt[:s] isa AdvancedMH.StaticProposal{<:InverseGamma}
 
         @test vt[:z] isa Vector{Float64} && length(vt[:z]) == 2
         @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2
