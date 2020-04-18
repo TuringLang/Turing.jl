@@ -21,9 +21,9 @@ function MH(space...)
             if s[2] isa AMH.Proposal
                 push!(props, s[2])
             elseif s[2] isa Distribution
-                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+                push!(props, AMH.StaticProposal(s[2]))
             elseif s[2] isa Function
-                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+                push!(props, AMH.StaticProposal(s[2]))
             end
         end
     end
@@ -168,8 +168,7 @@ end
             :($name = props.$name)
         else
             # Otherwise, use the default proposal.
-            :($name = AMH.Proposal(AMH.Static(),
-                                   unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
+            :($name = AMH.StaticProposal(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
         end for name in names]
     return expr
 end
