@@ -262,7 +262,7 @@ end
 
 function DynamicPPL.assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, ::VarInfo)
     vi = current_trace().vi
-    if vn in getspace(spl)
+    if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(dist)
             push!(vi, vn, r, dist, spl)

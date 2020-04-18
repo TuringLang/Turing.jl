@@ -101,7 +101,8 @@ function gradient_logp(
     logp_old = getlogp(vi)
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        logp = getlogp(runmodel!(model, new_vi, sampler))
+        model(new_vi, sampler)
+        logp = getlogp(new_vi)
         setlogp!(vi, ForwardDiff.value(logp))
         return logp
     end
@@ -128,7 +129,8 @@ function gradient_logp(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        return getlogp(runmodel!(model, new_vi, sampler))
+        model(new_vi, sampler)
+        return getlogp(new_vi)
     end
 
     # Compute forward and reverse passes.

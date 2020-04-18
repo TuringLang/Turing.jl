@@ -109,7 +109,7 @@ function (f::MHLogDensityFunction)(x)::Float64
     x_old, lj_old = vi[sampler], getlogp(vi)
     # vi[sampler] = x
     set_namedtuple!(vi, x)
-    runmodel!(f.model, vi)
+    f.model(vi)
     lj = getlogp(vi)
     vi[sampler] = x_old
     setlogp!(vi, lj_old)
@@ -198,7 +198,7 @@ function AbstractMCMC.step!(
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp
-        runmodel!(model, spl.state.vi)
+        model(spl.state.vi)
     end
 
     # Retrieve distribution and value NamedTuples.

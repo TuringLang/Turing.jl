@@ -15,7 +15,7 @@ using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC
 using Tracker: Tracker
 
-import DynamicPPL: getspace, runmodel!, NoDist, NamedDist
+import DynamicPPL: getspace, NoDist, NamedDist
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
@@ -65,9 +65,6 @@ end
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
         @varname,
-        @varinfo,
-        @logpdf,
-        @sampler,
         DynamicPPL,
 
         MH,                     # classic sampling
