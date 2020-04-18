@@ -137,7 +137,7 @@ function AbstractMCMC.sample_init!(
     # non-Gibbs sampling.
     if !islinked(spl.state.vi, spl) && spl.selector.tag == :default
         link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
+        model(spl.state.vi, spl)
     end
 end
 
@@ -343,7 +343,7 @@ function AbstractMCMC.step!(
         # Transform the space
         Turing.DEBUG && @debug "X-> R..."
         link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
+        model(spl.state.vi, spl)
     end
     # Get position and log density before transition
     θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
@@ -416,7 +416,7 @@ function gen_logπ(vi::VarInfo, spl::Sampler, model)
     function logπ(x)::Float64
         x_old, lj_old = vi[spl], getlogp(vi)
         vi[spl] = x
-        runmodel!(model, vi, spl)
+        model(vi, spl)
         lj = getlogp(vi)
         vi[spl] = x_old
         setlogp!(vi, lj_old)

@@ -26,7 +26,8 @@ function gradient_logp(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        return getlogp(runmodel!(model, new_vi, sampler))
+        model(new_vi, sampler)
+        return getlogp(new_vi)
     end
     tp, result = taperesult(f, θ)
     ReverseDiff.gradient!(result, tp, θ)
@@ -62,7 +63,8 @@ end
         # Specify objective function.
         function f(θ)
             new_vi = VarInfo(vi, sampler, θ)
-            return getlogp(runmodel!(model, new_vi, sampler))
+            model(new_vi, sampler)
+            return getlogp(new_vi)
         end
         ctp, result = memoized_taperesult(f, θ)
         ReverseDiff.gradient!(result, ctp, θ)

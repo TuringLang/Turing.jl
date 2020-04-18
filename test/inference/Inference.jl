@@ -63,9 +63,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test LikelihoodContext
         @model testmodel(x) = begin
             a ~ Beta()
-            lp1 = @logpdf()
+            lp1 = getlogp(_varinfo)
             x[1] ~ Bernoulli(a)
-            global loglike = @logpdf() - lp1
+            global loglike = getlogp(_varinfo) - lp1
         end
         model = testmodel([1.0])
         varinfo = Turing.VarInfo(model)

@@ -6,8 +6,7 @@ using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing
-using DynamicPPL: Model, runmodel!,
-    AbstractSampler, Sampler, SampleFromPrior
+using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
@@ -58,9 +57,6 @@ export  @model,
         ADBACKEND,
         setchunksize,
         verifygrad,
-        @varinfo,
-        @logpdf,
-        @sampler,
         @logprob_str,
         @prob_str
 

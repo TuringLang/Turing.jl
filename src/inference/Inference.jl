@@ -3,10 +3,11 @@ module Inference
 using ..Core, ..Utilities
 using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!, _getvns, getdist, split_var_str, CACHERESET, AbstractSampler,
-    Model, runmodel!, Sampler, SampleFromPrior, SampleFromUniform,
+    settrans!, _getvns, getdist, CACHERESET, AbstractSampler,
+    Model, Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
-    LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist
+    LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
+    getspace, inspace
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -21,7 +22,7 @@ import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADbackend
-import DynamicPPL: getspace, get_matching_type, 
+import DynamicPPL: get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
 import Random
@@ -499,10 +500,10 @@ include("../contrib/inference/sghmc.jl")
 ################
 
 for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs)
-    @eval getspace(::$alg{space}) where {space} = space
+    @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
-    @eval getspace(::$alg{<:Any, space}) where {space} = space
+    @eval DynamicPPL.getspace(::$alg{<:Any, space}) where {space} = space
 end
 
 floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
@@ -556,7 +557,8 @@ end
 # Utilities  #
 ##############
 
-getspace(spl::Sampler) = getspace(spl.alg)
+DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
+DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 function ambiguity_error_msg()
     return "Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
     column-wise following the convention of Distributions.jl or element-wise following 
