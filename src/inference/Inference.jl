@@ -205,8 +205,8 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.mcmcpsample(rng, model, sampler, parallel, N, n_chains;
-                                    chain_type=chain_type, progress=progress, kwargs...)
+    return AbstractMCMC.mcmcsample(rng, model, sampler, parallel, N, n_chains;
+                                   chain_type=chain_type, progress=progress, kwargs...)
 end
 
 function AbstractMCMC.sample_init!(
