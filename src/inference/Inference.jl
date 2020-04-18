@@ -170,38 +170,43 @@ function AbstractMCMC.sample(
     end
 end
 
-function AbstractMCMC.psample(
+function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
+    parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.psample(Random.GLOBAL_RNG, model, alg, N, n_chains; kwargs...)
+    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, parallel, N, n_chains;
+                               kwargs...)
 end
 
-function AbstractMCMC.psample(
+function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::InferenceAlgorithm,
+    parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
+                               kwargs...)
 end
 
-function AbstractMCMC.psample(
+function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     sampler::Sampler,
+    parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.mcmcpsample(rng, model, sampler, N, n_chains;
+    return AbstractMCMC.mcmcpsample(rng, model, sampler, parallel, N, n_chains;
                                     chain_type=chain_type, progress=progress, kwargs...)
 end
 
