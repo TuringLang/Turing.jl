@@ -6,23 +6,26 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "io.jl" begin
-    @testset "threaded sampling" begin
-        # Only test threading if 1.3+.
-        if VERSION > v"1.2"
+    # Only test threading if 1.3+.
+    if VERSION > v"1.2"
+        @testset "threaded sampling" begin
             # Test that chains with the same seed will sample identically.
-            chain1 = psample(Random.seed!(5), gdemo_default, HMC(0.1, 7), 1000, 4)
-            chain2 = psample(Random.seed!(5), gdemo_default, HMC(0.1, 7), 1000, 4)
+            chain1 = sample(Random.seed!(5), gdemo_default, HMC(0.1, 7), MCMCThreads(),
+                            1000, 4)
+            chain2 = sample(Random.seed!(5), gdemo_default, HMC(0.1, 7), MCMCThreads(),
+                            1000, 4)
             @test all(chain1.value .== chain2.value)
             check_gdemo(chain1)
 
-            # Smoke test for default psample call.
-            chain = psample(gdemo_default, HMC(0.1, 7), 1000, 4)
+            # Smoke test for default sample call.
+            chain = sample(gdemo_default, HMC(0.1, 7), MCMCThreads(), 1000, 4)
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
             sampler = Sampler(HMC(0.1, 7), gdemo_default)
-            @test psample(gdemo_default, sampler, 1000, 4) isa MCMCChains.Chains
+            chains = sample(gdemo_default, sampler, MCMCThreads(), 1000, 4)
+            @test chains isa MCMCChains.Chains
         end
     end
     @testset "chain save/resume" begin

@@ -12,7 +12,7 @@ using Requires, Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, Libtask
+@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC
 using Tracker: Tracker
 
 import DynamicPPL: getspace, runmodel!, NoDist, NamedDist
@@ -92,7 +92,6 @@ export  @model,                 # modelling
         ADVI,
 
         sample,                 # inference
-        psample,
         setchunksize,
         resume,
         @logprob_str,
@@ -113,9 +112,4 @@ export  @model,                 # modelling
         NamedDist,
         filldist,
         arraydist
-
-# Reexports
-using AbstractMCMC: sample, psample
-export sample, psample
-
 end
