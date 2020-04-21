@@ -2,7 +2,7 @@ struct PriorSampler{space} <: InferenceAlgorithm end
 
 PriorSampler() = PriorSampler{()}()
 
-getspace(::PriorSampler{space}) where {space} = space
+DynamicPPL.getspace(::PriorSampler{space}) where {space} = space
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
