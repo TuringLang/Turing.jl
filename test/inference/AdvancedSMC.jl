@@ -1,10 +1,81 @@
 using Turing, Random, Test
+using Turing.Core: ResampleWithESSThreshold
+using Turing.Inference: getspace, resample_systematic, resample_multinomial
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
-@testset "smc.jl" begin
-    # No tests.
+@testset "SMC" begin
+    @turing_testset "SMC constructor" begin
+        s = SMC()
+        @test s.resampler == ResampleWithESSThreshold()
+        @test getspace(s) === ()
+
+        s = SMC(:x)
+        @test s.resampler == ResampleWithESSThreshold()
+        @test getspace(s) === (:x,)
+
+        s = SMC((:x,))
+        @test s.resampler == ResampleWithESSThreshold()
+        @test getspace(s) === (:x,)
+
+        s = SMC(:x, :y)
+        @test s.resampler == ResampleWithESSThreshold()
+        @test getspace(s) === (:x, :y)
+
+        s = SMC((:x, :y))
+        @test s.resampler == ResampleWithESSThreshold()
+        @test getspace(s) === (:x, :y)
+
+        s = SMC(0.6)
+        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
+        @test getspace(s) === ()
+
+        s = SMC(0.6, (:x,))
+        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
+        @test getspace(s) === (:x,)
+
+        s = SMC(resample_multinomial, 0.6)
+        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
+        @test getspace(s) === ()
+
+        s = SMC(resample_multinomial, 0.6, (:x,))
+        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
+        @test getspace(s) === (:x,)
+
+        s = SMC(resample_systematic)
+        @test s.resampler === resample_systematic
+        @test getspace(s) === ()
+
+        s = SMC(resample_systematic, (:x,))
+        @test s.resampler === resample_systematic
+        @test getspace(s) === (:x,)
+    end
+
+    @turing_testset "models" begin
+        @model normal() = begin
+            a ~ Normal(4,5)
+            3 ~ Normal(a,2)
+            b ~ Normal(a,1)
+            1.5 ~ Normal(b,2)
+            a, b
+        end
+
+        tested = sample(normal(), SMC(), 100);
+
+        # failing test
+        @model fail_smc() = begin
+            a ~ Normal(4,5)
+            3 ~ Normal(a,2)
+            b ~ Normal(a,1)
+            if a >= 4.0
+                1.5 ~ Normal(b,2)
+            end
+            a, b
+        end
+
+        @test_throws ErrorException sample(fail_smc(), SMC(), 100)
+    end
 end
 
 # @testset "pmmh.jl" begin

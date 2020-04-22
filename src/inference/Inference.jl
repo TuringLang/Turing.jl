@@ -17,6 +17,7 @@ using Random: GLOBAL_RNG, AbstractRNG, randexp
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using Bijectors: _debug
+using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
