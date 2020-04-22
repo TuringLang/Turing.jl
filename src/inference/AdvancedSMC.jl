@@ -31,28 +31,41 @@ end
 ####
 
 """
-    SMC()
+$(TYPEDEF)
 
 Sequential Monte Carlo sampler.
 
-Note that this method is particle-based, and arrays of variables
-must be stored in a [`TArray`](@ref) object.
+# Fields
 
-Usage:
-
-```julia
-SMC()
-```
+$(TYPEDFIELDS)
 """
 struct SMC{space, R} <: ParticleInference
     resampler::R
 end
 
+"""
+    SMC(space...)
+    SMC([resampler = ResampleWithESSThreshold(), space = ()])
+    SMC([resampler = resample_systematic, ]threshold[, space = ()])
+
+Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
+
+If the algorithm for the resampling step is not specified explicitly, systematic resampling
+is performed if the estimated effective sample size per particle drops below 0.5.
+"""
 function SMC(resampler = Turing.Core.ResampleWithESSThreshold(), space::Tuple = ())
-    SMC{space, typeof(resampler)}(resampler)
+    return SMC{space, typeof(resampler)}(resampler)
 end
-SMC(::Tuple{}) = SMC()
+
+# Convenient constructors with ESS threshold
+function SMC(resampler, threshold::Real, space::Tuple = ())
+    return SMC(Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+end
+SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, space)
+
+# If only the space is defined
 SMC(space::Symbol...) = SMC(space)
+SMC(space::Tuple) = SMC(Turing.Core.ResampleWithESSThreshold(), space)
 
 mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
