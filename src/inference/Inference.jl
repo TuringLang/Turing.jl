@@ -265,18 +265,20 @@ end
 # Chain making utilities #
 ##########################
 
-function _params_to_array(ts::Vector, spl::Sampler)
-    names_set = Set{String}()
+function _params_to_array(ts::Vector)
+    names = Vector{String}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(t.θ)
         for nm in nms
-            push!(names_set, nm)
+            if !(nm in names)
+                push!(names, nm)
+            end
         end
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    names = collect(names_set)
+    # names = collect(names_set)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
         (j, key) in enumerate(names)]
 
@@ -356,7 +358,7 @@ function AbstractMCMC.bundle_samples(
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(ts, spl)
+    nms, vals = _params_to_array(ts)
 
     # Get the values of the extra parameters in each Transition struct.
     extra_params, extra_values = get_transition_extras(ts)
