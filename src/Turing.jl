@@ -36,6 +36,8 @@ include("inference/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
+include("modes/ModeEstimation.jl")
+using .ModeEstimation
 
 # TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
 #   Related: https://github.com/TuringLang/Turing.jl/issues/746
@@ -85,7 +87,7 @@ export  @model,                 # modelling
         CSMC,
         PG,
 
-        vi,                    # variational inference
+        vi,                     # variational inference
         ADVI,
 
         sample,                 # inference
@@ -108,5 +110,8 @@ export  @model,                 # modelling
         LogPoisson,
         NamedDist,
         filldist,
-        arraydist
+        arraydist,
+
+        MLE,                    # mode estimation tools
+        MAP
 end
