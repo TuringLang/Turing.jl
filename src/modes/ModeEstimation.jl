@@ -50,9 +50,9 @@ end
 """
     make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
 
-Constructs a log density function that accepts a vector `z` and returns 
-a tuple (-likelihood, `varinfo`). The model is run using the provided 
-context `ctx`.
+Construct a log density function.
+
+The `model` is run using the provided context `ctx`.
 """
 function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
     # setup
