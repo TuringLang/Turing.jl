@@ -78,7 +78,7 @@ end
 
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 
-HMC(args...) = HMC{ADBackend()}(args...)
+HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
 function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
     return HMC{AD, space, metricT}(ϵ, n_leapfrog)
 end
