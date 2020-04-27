@@ -111,9 +111,17 @@ function AbstractMCMC.sample_init!(
     # create a new particle container
     spl.state.particles = pc = ParticleContainer(model, particles)
 
-    while consume(pc) !== Val{:done}
+    # Run particle filter.
+    logevidence = zero(spl.state.average_logevidence)
+    isdone = false
+    while !isdone
         resample!(pc, spl.alg.resampler)
+        isdone = propagate!(pc)
+        logevidence += logZ(pc)
     end
+    spl.state.average_logevidence = logevidence
+
+    return
 end
 
 function AbstractMCMC.step!(
@@ -137,7 +145,7 @@ function AbstractMCMC.step!(
     params = tonamedtuple(particle.vi)
     lp = getlogp(particle.vi)
 
-    return ParticleTransition(params, lp, pc.logE, Ws[iteration])
+    return ParticleTransition(params, lp, spl.state.average_logevidence, Ws[iteration])
 end
 
 ####
@@ -228,8 +236,12 @@ function AbstractMCMC.step!(
     pc = ParticleContainer(model, particles)
 
     # run the particle filter
-    while consume(pc) !== Val{:done}
-        resample!(pc, spl.alg.resampler, ref_particle)
+    logevidence = zero(spl.state.average_logevidence)
+    isdone = false
+    while !isdone
+        resample!(pc, spl.alg.resampler)
+        isdone = propagate!(pc)
+        logevidence += logZ(pc)
     end
 
     # pick a particle to be retained.
@@ -242,7 +254,7 @@ function AbstractMCMC.step!(
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
-    return ParticleTransition(params, lp, pc.logE, 1.0)
+    return ParticleTransition(params, lp, logevidence, 1.0)
 end
 
 function AbstractMCMC.sample_end!(

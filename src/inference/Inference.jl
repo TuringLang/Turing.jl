@@ -1,6 +1,8 @@
 module Inference
 
-using ..Core, ..Utilities
+using ..Core
+using ..Core: logZ
+using ..Utilities
 using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
     settrans!, _getvns, getdist, CACHERESET, AbstractSampler,
