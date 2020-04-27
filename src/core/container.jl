@@ -72,15 +72,16 @@ Data structure for particle filters
 - normalise!(pc::ParticleContainer)
 - consume(pc::ParticleContainer): return incremental likelihood
 """
-mutable struct ParticleContainer{T<:Particle, F}
-    model::F
+mutable struct ParticleContainer{T<:Particle}
+    "Particles."
     vals::Vector{T}
-    # logarithmic weights (Trace) or incremental log-likelihoods (ParticleContainer)
+    "Unnormalized logarithmic weights."
     logWs::Vector{Float64}
 end
 
-ParticleContainer(model, particles::Vector{<:Particle}) =
-    ParticleContainer(model, particles, zeros(length(particles)))
+function ParticleContainer(particles::Vector{<:Particle})
+    return ParticleContainer(particles, zeros(length(particles)))
+end
 
 Base.collect(pc::ParticleContainer) = pc.vals
 Base.length(pc::ParticleContainer) = length(pc.vals)
@@ -101,7 +102,7 @@ function Base.copy(pc::ParticleContainer)
     # copy weights
     logWs = copy(pc.logWs)
 
-    ParticleContainer(pc.model, vals, logWs)
+    ParticleContainer(vals, logWs)
 end
 
 """
