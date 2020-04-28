@@ -225,10 +225,9 @@ struct ResampleWithESSThreshold{R, T<:Real}
     threshold::T
 end
 
-function ResampleWithESSThreshold()
-    ResampleWithESSThreshold(Turing.Inference.resample_systematic)
+function ResampleWithESSThreshold(resampler = Turing.Inference.resample_systematic)
+    ResampleWithESSThreshold(resampler, 0.5)
 end
-ResampleWithESSThreshold(resampler) = ResampleWithESSThreshold(resampler, 0.5)
 
 function resample!(
     pc::ParticleContainer,
