@@ -114,7 +114,7 @@ function mode_estimation(
     hess_target(x) = lpf(x; unlinked=true)
 
     # Optimize!
-    M = Optim.optimize(target, init_vals, optim_options)
+    M = Optim.optimize(target, init_vals, Optim.BFGS(), optim_options)
 
     # Retrieve the estimated values.
     vals = binv(M.minimizer)
