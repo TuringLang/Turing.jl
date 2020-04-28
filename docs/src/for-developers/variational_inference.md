@@ -42,7 +42,7 @@ To approximate something you need a notion of what "close" means. In the context
 
 \$\$
 \begin{align*}
-  \mathrm{D\_{KL}} \big( q(z), p(z \mid \\{ x\_i \\}\_{i = 1}^n) \big) &= \int \log \bigg( \frac{q(z)}{\sum\_{i = 1}^n p(z \mid x\_i)} \bigg) q(z) \mathrm{d}{z} \\\\
+  \mathrm{D\_{KL}} \big( q(z), p(z \mid \\{ x\_i \\}\_{i = 1}^n) \big) &= \int \log \bigg( \frac{q(z)}{\prod\_{i = 1}^n p(z \mid x\_i)} \bigg) q(z) \mathrm{d}{z} \\\\
   &= \mathbb{E}\_{z \sim q(z)} \big[ \log q(z) - \sum\_{i = 1}^n \log p(z \mid x\_i) \big] \\\\
   &= \mathbb{E}\_{z \sim q(z)} \big[ \log q(z) \big] - \sum\_{i = 1}^n \mathbb{E}\_{z \sim q(z)} \big[ \log p(z \mid x\_i) \big]
 \end{align*}

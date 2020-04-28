@@ -77,14 +77,10 @@ mutable struct ParticleContainer{T<:Particle, F}
     vals::Vector{T}
     # logarithmic weights (Trace) or incremental log-likelihoods (ParticleContainer)
     logWs::Vector{Float64}
-    # log model evidence
-    logE::Float64
-    # helpful for rejuvenation steps, e.g. in SMC2
-    n_consume::Int
 end
 
 ParticleContainer(model, particles::Vector{<:Particle}) =
-    ParticleContainer(model, particles, zeros(length(particles)), 0.0, 0)
+    ParticleContainer(model, particles, zeros(length(particles)))
 
 Base.collect(pc::ParticleContainer) = pc.vals
 Base.length(pc::ParticleContainer) = length(pc.vals)
@@ -105,53 +101,56 @@ function Base.copy(pc::ParticleContainer)
     # copy weights
     logWs = copy(pc.logWs)
 
-    ParticleContainer(pc.model, vals, logWs, pc.logE, pc.n_consume)
+    ParticleContainer(pc.model, vals, logWs)
 end
 
-# run particle filter for one step, return incremental likelihood
-function Libtask.consume(pc :: ParticleContainer)
+"""
+    propagate!(pc::ParticleContainer)
+
+Run particle filter for one step and check if the final time step is reached.
+"""
+function propagate!(pc::ParticleContainer)
     # normalisation factor: 1/N
-    z1 = logZ(pc)
     n = length(pc)
 
     particles = collect(pc)
-    num_done = 0
-    for i=1:n
+    numdone = 0
+    for i in 1:n
         p = particles[i]
         score = Libtask.consume(p)
         if score isa Real
             score += getlogp(p.vi)
             resetlogp!(p.vi)
-            increase_logweight(pc, i, Float64(score))
+            increase_logweight!(pc, i, Float64(score))
         elseif score == Val{:done}
-            num_done += 1
+            numdone += 1
         else
             error("[consume]: error in running particle filter.")
         end
     end
 
-    if num_done == n
-        res = Val{:done}
-    elseif num_done != 0
-        # The posterior for models with random number of observations is not well-defined.
-        error("[consume]: mis-aligned execution traces, num_particles= $(n),
-            num_done=$(num_done). Please make sure the number of observations is NOT random.")
-    else
-        # update incremental likelihoods
-        z2 = logZ(pc)
-        res = increase_logevidence(pc, z2 - z1)
-        pc.n_consume += 1
-        # res = increase_loglikelihood(pc, z2 - z1)
+    # Check if all particles are propagated to the final time point.
+    numdone == n && return true
+
+    # The posterior for models with random number of observations is not well-defined.
+    if numdone != 0
+        error("mis-aligned execution traces: # particles = ", n,
+              " # completed trajectories = ", numdone,
+              ". Please make sure the number of observations is NOT random.")
     end
 
-    res
+    return false
 end
 
 # compute the normalized weights
 getweights(pc::ParticleContainer) = softmax(pc.logWs)
 
-# compute the log-likelihood estimate, ignoring constant term ``- \log num_particles``
-logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
+"""
+    logZ(pc::ParticleContainer)
+
+Return the estimate of the log-likelihood ``p(y_t | y_{1:(t-1)}, \\theta)``.
+"""
+logZ(pc::ParticleContainer) = logsumexp(pc.logWs) - log(length(pc))
 
 # compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights
 function effectiveSampleSize(pc :: ParticleContainer)
@@ -159,12 +158,7 @@ function effectiveSampleSize(pc :: ParticleContainer)
     return inv(sum(abs2, Ws))
 end
 
-increase_logweight(pc :: ParticleContainer, t :: Int, logw :: Float64) =
-    (pc.logWs[t]  += logw)
-
-increase_logevidence(pc :: ParticleContainer, logw :: Float64) =
-    (pc.logE += logw)
-
+increase_logweight!(pc::ParticleContainer, t::Int, logw::Float64) = (pc.logWs[t] += logw)
 
 function resample!(
     pc :: ParticleContainer,

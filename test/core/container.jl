@@ -2,7 +2,7 @@ using Turing, Random
 using Turing: ParticleContainer, getweights, resample!,
     effectiveSampleSize, Trace, current_trace, VarName,
     Sampler, consume, produce, copy, fork
-using Turing.Core: logZ
+using Turing.Core: logZ, propagate!
 using Test
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
@@ -13,9 +13,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         pc = ParticleContainer(x -> x * x, Trace[])
         newpc = copy(pc)
 
-        @test newpc.logE        == pc.logE
-        @test newpc.logWs       == pc.logWs
-        @test newpc.n_consume   == pc.n_consume
+        @test newpc.logWs == pc.logWs
         @test typeof(pc) === typeof(newpc)
     end
     @turing_testset "particle container" begin
@@ -44,21 +42,38 @@ include(dir*"/test/test_utils/AllUtils.jl")
         particles = [Trace(fpc, model, spl, Turing.VarInfo()) for _ in 1:3]
         pc = ParticleContainer(fpc, particles)
 
-        @test getweights(pc) == [1/3, 1/3, 1/3]
-        @test logZ(pc) ≈ log(3)
-        @test pc.logE ≈ log(1)
+        # Initial weights and likelihood.
+        weights = getweights(pc)
+        lz = logZ(pc)
+        @test weights == [1/3, 1/3, 1/3]
+        @test iszero(lz)
 
-        @test consume(pc) == log(1)
+        # Propagate particles.
+        propagate!(pc)
+        @test getweights(pc) == weights
+        @test logZ(pc) == lz
 
+        # Propagate particles.
+        propagate!(pc)
+        @test getweights(pc) == weights
+        @test logZ(pc) == lz
+
+        # Resample particles.
         resample!(pc)
-        @test getweights(pc) == [1/3, 1/3, 1/3]
-        @test logZ(pc) ≈ log(3)
-        @test pc.logE ≈ log(1)
+        @test getweights(pc) == weights
+        @test logZ(pc) == lz
         @test effectiveSampleSize(pc) == 3
 
-        @test consume(pc) ≈ log(1)
+        # Propagate particles.
+        propagate!(pc)
+        @test getweights(pc) == weights
+        @test logZ(pc) == lz
+
+        # Resample and propagate particles.
         resample!(pc)
-        @test consume(pc) ≈ log(1)
+        propagate!(pc)
+        @test getweights(pc) == weights
+        @test logZ(pc) == lz
     end
     @turing_testset "trace" begin
         n = Ref(0)
