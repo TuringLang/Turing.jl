@@ -76,7 +76,7 @@ end
 
 function SMCState(model::Model)
     vi = VarInfo(model)
-    particles = ParticleContainer(model, Trace[])
+    particles = ParticleContainer(Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
@@ -109,7 +109,7 @@ function AbstractMCMC.sample_init!(
     particles = T[Trace(model, spl, vi) for _ in 1:N]
 
     # create a new particle container
-    spl.state.particles = pc = ParticleContainer(model, particles)
+    spl.state.particles = pc = ParticleContainer(particles)
 
     # Run particle filter.
     logevidence = zero(spl.state.average_logevidence)
@@ -233,7 +233,7 @@ function AbstractMCMC.step!(
     end
 
     # create a new particle container
-    pc = ParticleContainer(model, particles)
+    pc = ParticleContainer(particles)
 
     # run the particle filter
     logevidence = zero(spl.state.average_logevidence)
