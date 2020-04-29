@@ -101,7 +101,7 @@ end
 
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
     N::Integer;
     verbose::Bool=true,
@@ -139,6 +139,43 @@ function AbstractMCMC.sample_init!(
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
     end
+end
+
+function AbstractMCMC.transitions_init(
+    transition,
+    ::AbstractModel,
+    sampler::Sampler{<:Hamiltonian},
+    N::Integer;
+    discard_adapt = true,
+    kwargs...
+)
+    if discard_adapt && isdefined(sampler.alg, :n_adapts)
+        n = max(0, N - sampler.alg.n_adapts)
+    else
+        n = N
+    end
+    return Vector{typeof(transition)}(undef, n)
+end
+
+function AbstractMCMC.transitions_save!(
+    transitions::AbstractVector,
+    iteration::Integer,
+    transition,
+    ::AbstractModel,
+    sampler::Sampler{<:Hamiltonian},
+    ::Integer;
+    discard_adapt = true,
+    kwargs...
+)
+    if discard_adapt && isdefined(sampler.alg, :n_adapts)
+        if iteration > sampler.alg.n_adapts
+            transitions[iteration - sampler.alg.n_adapts] = transition
+        end
+        return
+    end
+
+    transitions[iteration] = transition
+    return
 end
 
 """
