@@ -86,21 +86,31 @@ defaults:
       type: "docs"
     values:
       layout: "page"
+      sidebar: true
   - scope:
       path: "_tutorials"
       type: "tutorials"
     values:
       layout: "page"
+      sidebar: true
   - scope:
       path: ""
       type: "pages"
     values:
       layout: "page"
+      sidebar: true
   - scope:
       path: "_team"
       type: "team"
     values:
       layout: "team"
+      sidebar: false
+  - scope:
+      path: "_posts"
+      type: "posts"
+    values:
+      layout: "post"
+      sidebar: false
 
 
 plugins:

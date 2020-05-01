@@ -1,6 +1,7 @@
 ---
 title: News
 permalink: /news/
+sidebar: false
 ---
 
 # News
