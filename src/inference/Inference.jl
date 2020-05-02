@@ -512,42 +512,42 @@ floatof(::Type) = Real # fallback if type inference failed
 
 function get_matching_type(
     spl::AbstractSampler, 
-    vi::VarInfo, 
+    vi,
     ::Type{T},
 ) where {T}
     return T
 end
 function get_matching_type(
     spl::AbstractSampler, 
-    vi::VarInfo, 
+    vi,
     ::Type{<:AbstractFloat},
 )
     return floatof(eltype(vi, spl))
 end
 function get_matching_type(
     spl::Sampler{<:Hamiltonian}, 
-    vi::VarInfo, 
+    vi,
     ::Type{<:Union{Missing, AbstractFloat}},
 )
     return Union{Missing, floatof(eltype(vi, spl))}
 end
 function get_matching_type(
     spl::Sampler{<:Hamiltonian}, 
-    vi::VarInfo, 
+    vi,
     ::Type{<:AbstractFloat},
 )
     return floatof(eltype(vi, spl))
 end
 function get_matching_type(
     spl::Sampler{<:Hamiltonian}, 
-    vi::VarInfo, 
+    vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
     return Array{get_matching_type(spl, vi, T), N}
 end
 function get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 
-    vi::VarInfo, 
+    vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
     return TArray{T, N}
