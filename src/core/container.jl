@@ -2,7 +2,7 @@ mutable struct Trace{Tspl<:AbstractSampler, Tvi<:AbstractVarInfo, Tmodel<:Model}
     model::Tmodel
     spl::Tspl
     vi::Tvi
-    task::Task
+    ctask::CTask
 
     function Trace{SampleFromPrior}(model::Model, spl::AbstractSampler, vi::AbstractVarInfo)
         return new{SampleFromPrior,typeof(vi),typeof(model)}(model, SampleFromPrior(), vi)
@@ -15,48 +15,50 @@ end
 function Base.copy(trace::Trace)
     vi = deepcopy(trace.vi)
     res = Trace{typeof(trace.spl)}(trace.model, trace.spl, vi)
-    res.task = copy(trace.task)
+    res.ctask = copy(trace.ctask)
     return res
 end
 
 # NOTE: this function is called by `forkr`
 function Trace(f::Function, m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
     res = Trace{typeof(spl)}(m, spl, deepcopy(vi));
-    # CTask(()->f());
-    res.task = CTask( () -> begin res=f(); produce(Val{:done}); res; end )
-    if res.task.storage === nothing
-        res.task.storage = IdDict()
+    ctask = CTask(() -> (res = f(); produce(Val{:done}); res))
+    task = ctask.task
+    if task.storage === nothing
+        task.storage = IdDict()
     end
-    res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+    task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+    res.ctask = ctask
     return res
 end
 function Trace(m::Model, spl::AbstractSampler, vi::AbstractVarInfo)
     res = Trace{typeof(spl)}(m, spl, deepcopy(vi));
-    # CTask(()->f());
     reset_num_produce!(res.vi)
-    res.task = CTask( () -> begin vi_new=m(vi, spl); produce(Val{:done}); vi_new; end )
-    if res.task.storage === nothing
-        res.task.storage = IdDict()
+    ctask = CTask(() -> (vi_new = m(vi, spl); produce(Val{:done}); vi_new))
+    task = ctask.task
+    if task.storage === nothing
+        task.storage = IdDict()
     end
-    res.task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+    task.storage[:turing_trace] = res # create a backward reference in task_local_storage
+    res.ctask = ctask
     return res
 end
 
 # step to the next observe statement, return log likelihood
-Libtask.consume(t::Trace) = (increment_num_produce!(t.vi); consume(t.task))
+Libtask.consume(t::Trace) = (increment_num_produce!(t.vi); consume(t.ctask))
 
 # Task copying version of fork for Trace.
 function fork(trace :: Trace, is_ref :: Bool = false)
     newtrace = copy(trace)
     is_ref && set_retained_vns_del_by_spl!(newtrace.vi, newtrace.spl)
-    newtrace.task.storage[:turing_trace] = newtrace
+    newtrace.ctask.task.storage[:turing_trace] = newtrace
     return newtrace
 end
 
 # PG requires keeping all randomness for the reference particle
 # Create new task and copy randomness
-function forkr(trace :: Trace)
-    newtrace = Trace(trace.task.code, trace.model, trace.spl, deepcopy(trace.vi))
+function forkr(trace::Trace)
+    newtrace = Trace(trace.ctask.task.code, trace.model, trace.spl, deepcopy(trace.vi))
     newtrace.spl = trace.spl
     reset_num_produce!(newtrace.vi)
     return newtrace
