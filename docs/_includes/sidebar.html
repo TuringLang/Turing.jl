@@ -1,5 +1,4 @@
 
-{% if page.sidebar %}
 <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
   <div class="md-sidebar__scrollwrap">
     <div class="md-sidebar__inner">
@@ -45,30 +44,32 @@
 
               <label class="md-nav__title" for="__drawer"></label>
 
-              <ul class="md-nav__list" data-md-scrollfix="">
-                {% assign paths = page.url | remove: "/docs/" | split: "/" %}
-                {% for section in site.data.toc %}
-                {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}
-                <li class="md-nav__item md-nav__item--nested navbar_bottom-border">
-                  <a class="md-nav__link pancakes-parent-mobile"
-                  id="pancakes-{{ section.title | slugify }}" title="{{ section.title }}">{{ section.title }}</a>
-                  {% if section.children %}
-                  <nav class="md-nav md-nav--secondary">
-                    <a class="md-nav__title mobile-navbar-back" for="__toc">Table of contents</a>
-                    <ul class="md-nav__list" data-md-scrollfix="">
-                      {% for child in section.children %}
-                      <li class="md-nav__item navbar_bottom-border">
-                        <a class="md-nav__link" href="{{ site.baseurl }}/{{ child.url }}"
-                            id="pancakes-{{ child.title | slugify }}"
-                            title="{{ child.title }}">{{ child.title }}</a>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                  </nav>
-                  {% endif %}
-                </li>
-                {% endfor %}
-              </ul>
+              {% if page.sidebar %}
+
+                <ul class="md-nav__list" data-md-scrollfix="">
+                  {% assign paths = page.url | remove: "/docs/" | split: "/" %}
+                  {% for section in site.data.toc %}
+                  {% assign sectionpaths = section.url | remove: "docs/" | split: "/" %}
+                  <li class="md-nav__item md-nav__item--nested navbar_bottom-border">
+                    <a class="md-nav__link pancakes-parent-mobile"
+                    id="pancakes-{{ section.title | slugify }}" title="{{ section.title }}">{{ section.title }}</a>
+                    {% if section.children %}
+                    <nav class="md-nav md-nav--secondary">
+                      <a class="md-nav__title mobile-navbar-back" for="__toc">Table of contents</a>
+                      <ul class="md-nav__list" data-md-scrollfix="">
+                        {% for child in section.children %}
+                        <li class="md-nav__item navbar_bottom-border">
+                          <a class="md-nav__link" href="{{ site.baseurl }}/{{ child.url }}"
+                              id="pancakes-{{ child.title | slugify }}"
+                              title="{{ child.title }}">{{ child.title }}</a>
+                        </li>
+                        {% endfor %}
+                      </ul>
+                    </nav>
+                    {% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
             </nav>
           </li>
 
@@ -102,12 +103,15 @@
                 {% endif %}
          </li>
          {% endfor %}
+         {% endif %}
 
         </ul>
       </nav>
     </div>
   </div>
 </div>
+
+{% if page.sidebar %}
 <div class="md-sidebar md-sidebar--secondary invisible" data-md-component="toc">
   <div class="md-sidebar__scrollwrap">
     <div class="md-sidebar__inner">
