@@ -1,5 +1,8 @@
 ---
 title: The Team
+permalink: /team/
+layout: team
+sidebar: false
 ---
 
 # Team Members
