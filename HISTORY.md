@@ -5,7 +5,8 @@
 - There were some performance improvements in the automatic differentiation of functions in `DistributionsAD` and `Bijectors` leading to speeds closer to and sometimes faster than Stan's.
 - An HMC initialization bug was fixed. HMC initialization in Turing is now consistent with Stan's.
 - Sampling from the prior is now possible using `sample`.
-- Turing now uses AdvancedMH v0.5 and AbstractMCMC v1.0.
+- `psample` is now deprecated, in favor of `sample(model, sampler, parallel_method, n_samples, n_chains)` where `parallel_method` can be either `MCMCThreads()` or `MCMCDistributed()`. `MCMCThreads` will use your available threads to sample each chain (ensure that you have the environment variable `JULIA_NUM_THREADS` set to the number of threads you want to use) and `MCMCDistributed` will dispatch chain sampling to each available processes (you can add processes with `addprocs()`).
+- Turing now uses AdvancedMH v0.5, which mostly provides behind-the -scenes restructuring.
 
 # Release 0.11.0
 - Removed some extraneous imports and dependencies ([#1182](https://github.com/TuringLang/Turing.jl/pull/1182))
