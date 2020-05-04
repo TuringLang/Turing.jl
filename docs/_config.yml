@@ -57,12 +57,22 @@ fixedNav: 'true' # true or false
 
 permalink: /:year/:title/
 markdown: kramdown
-exclude: [.gems, _site,
-          CHANGELOG.md, CNAME, LICENSE, src,
-          Gemfile, Gemfile.lock, jekyll-build,
-          make.jl, make-utils.jl, README.md, vendor,
-          test.sh,
-          ]
+exclude:
+  - .gems
+  - _site
+  - CHANGELOG.md
+  - CNAME
+  - LICENSE
+  - src
+  - Gemfile
+  - Gemfile.lock
+  - jekyll-build
+  - make.jl
+  - make-utils.jl
+  - README.md
+  - vendor
+  - test.sh
+  - "*.org"
 
 # Collections
 collections:
@@ -111,7 +121,6 @@ defaults:
     values:
       layout: "post"
       sidebar: false
-
 
 plugins:
   - jekyll-paginate
