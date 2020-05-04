@@ -37,6 +37,7 @@ function additional_parameters(::Type{<:HamiltonianTransition})
     return [:lp,:stat]
 end
 
+DynamicPPL.getlogp(t::HamiltonianTransition) = t.lp
 
 ###
 ### Hamiltonian Monte Carlo samplers.

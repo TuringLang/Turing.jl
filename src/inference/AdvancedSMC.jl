@@ -26,6 +26,8 @@ function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
 end
 
+DynamicPPL.getlogp(t::ParticleTransition) = t.lp
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####

@@ -122,6 +122,8 @@ function additional_parameters(::Type{<:GibbsTransition})
     return [:lp]
 end
 
+DynamicPPL.getlogp(t::GibbsTransition) = t.lp
+
 # Initialize the Gibbs sampler.
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,

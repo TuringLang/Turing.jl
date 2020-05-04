@@ -111,6 +111,8 @@ function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
 
+DynamicPPL.getlogp(t::Transition) = t.lp
+
 ##########################################
 # Internal variable names for MCMCChains #
 ##########################################
@@ -302,14 +304,6 @@ Return a named tuple of parameters.
 getparams(t) = t.θ
 getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
 
-"""
-    getlp(t)
-
-Return the log probability.
-"""
-getlp(t) = t.lp
-getlp(t::VarInfo) = getlogp(t)
-
 function _params_to_array(ts)
     names_set = Set{String}()
     # Extract the parameter names and values from each transition.
@@ -470,7 +464,7 @@ function AbstractMCMC.bundle_samples(
 
         push!(k, :lp)
 
-        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., getlp(t)))
+        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., getlogp(t)))
     end
 
     return map(identity, nts)
