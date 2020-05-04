@@ -37,16 +37,16 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg2 = PG(20)
         alg3 = Gibbs(PG(30, :s), HMCDA(500, 0.65, 0.05, :m))
 
-        chn1 = sample(gdemo_default, alg1, 3000; save_state=true)
+        chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
 
         chn1_resumed = Turing.Inference.resume(chn1, 1000)
         check_gdemo(chn1_resumed)
 
-        chn1_contd = sample(gdemo_default, alg1, 1000; resume_from=chn1)
+        chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(gdemo_default, alg1, 1000; resume_from=chn1, reuse_spl_n=1000)
+        chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1, reuse_spl_n=1000)
         check_gdemo(chn1_contd2)
 
         chn2 = sample(gdemo_default, alg2, 1000; save_state=true)
