@@ -52,6 +52,7 @@ export  InferenceAlgorithm,
         SMC,
         CSMC,
         PG,
+        Prior,
         assume,
         dot_assume,
         observe,
@@ -71,6 +72,9 @@ abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
 getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADbackend(::Hamiltonian{AD}) where AD = AD()
+
+# Algorithm for sampling from the prior
+struct Prior <: InferenceAlgorithm end
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
@@ -108,6 +112,8 @@ end
 function additional_parameters(::Type{<:Transition})
     return [:lp]
 end
+
+DynamicPPL.getlogp(t::Transition) = t.lp
 
 ##########################################
 # Internal variable names for MCMCChains #
@@ -160,7 +166,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler,
+    sampler::Sampler{<:InferenceAlgorithm},
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
@@ -169,6 +175,24 @@ function AbstractMCMC.sample(
 )
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       chain_type=chain_type, progress=progress, kwargs...)
+    else
+        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
+    end
+end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::Prior,
+    N::Integer;
+    chain_type=MCMCChains.Chains,
+    resume_from=nothing,
+    progress=PROGRESS[],
+    kwargs...
+)
+    if resume_from === nothing
+        return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
                                        chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
@@ -203,7 +227,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler,
+    sampler::Sampler{<:InferenceAlgorithm},
     parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
@@ -215,10 +239,25 @@ function AbstractMCMC.sample(
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::Prior,
+    parallel::AbstractMCMC.AbstractMCMCParallel,
+    N::Integer,
+    n_chains::Integer;
+    chain_type=MCMCChains.Chains,
+    progress=PROGRESS[],
+    kwargs...
+)
+    return AbstractMCMC.sample(rng, model, SampleFromPrior(), parallel, N, n_chains;
+                               chain_type=chain_type, progress=progress, kwargs...)
+end
+
 function AbstractMCMC.sample_init!(
     ::AbstractRNG,
-    model::Model,
-    spl::Sampler,
+    model::AbstractModel,
+    spl::Sampler{<:InferenceAlgorithm},
     N::Integer;
     kwargs...
 )
@@ -227,17 +266,6 @@ function AbstractMCMC.sample_init!(
 
     # Set the parameters to a starting value.
     initialize_parameters!(spl; kwargs...)
-end
-
-function AbstractMCMC.sample_end!(
-    ::AbstractRNG,
-    ::Model,
-    ::Sampler,
-    ::Integer,
-    ::Vector;
-    kwargs...
-)
-    # Silence the default API function.
 end
 
 function initialize_parameters!(
@@ -270,11 +298,19 @@ end
 # Chain making utilities #
 ##########################
 
-function _params_to_array(ts::Vector, spl::Sampler)
+"""
+    getparams(t)
+
+Return a named tuple of parameters.
+"""
+getparams(t) = t.θ
+getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
+
+function _params_to_array(ts)
     names_set = Set{String}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
-        nms, vs = flatten_namedtuple(t.θ)
+        nms, vs = flatten_namedtuple(getparams(t))
         for nm in nms
             push!(names_set, nm)
         end
@@ -282,7 +318,7 @@ function _params_to_array(ts::Vector, spl::Sampler)
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
     names = collect(names_set)
-    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
         (j, key) in enumerate(names)]
 
     return names, vals
@@ -302,7 +338,12 @@ function flatten_namedtuple(nt::NamedTuple)
     return [vn[1] for vn in names_vals], [vn[2] for vn in names_vals]
 end
 
-function get_transition_extras(ts::Vector)
+function get_transition_extras(ts::AbstractVector{<:VarInfo})
+    valmat = reshape([getlogp(t) for t in ts], :, 1)
+    return ["lp"], valmat
+end
+
+function get_transition_extras(ts::AbstractVector)
     # Get the extra field names from the sampler state type.
     # This handles things like :lp or :weight.
     extra_params = additional_parameters(eltype(ts))
@@ -342,50 +383,46 @@ function get_transition_extras(ts::Vector)
     return extra_names, valmat
 end
 
+getlogevidence(sampler) = missing
+function getlogevidence(sampler::Sampler)
+    if isdefined(sampler.state, :average_logevidence)
+        return sampler.state.average_logevidence
+    elseif isdefined(sampler.state, :final_logevidence)
+        return sampler.state.final_logevidence
+    else
+        return missing
+    end
+end
+
 # Default MCMCChains.Chains constructor.
+# This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
-    model::Model,
-    spl::Sampler,
+    model::AbstractModel,
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     N::Integer,
     ts::Vector,
     chain_type::Type{MCMCChains.Chains};
-    discard_adapt::Bool=true,
-    save_state=false,
+    save_state = false,
     kwargs...
 )
-    # Check if we have adaptation samples.
-    if discard_adapt && :n_adapts in fieldnames(typeof(spl.alg))
-        ts = ts[(spl.alg.n_adapts+1):end]
-    end
-
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(ts, spl)
+    nms, vals = _params_to_array(ts)
 
-    # Get the values of the extra parameters in each Transition struct.
+    # Get the values of the extra parameters in each transition.
     extra_params, extra_values = get_transition_extras(ts)
 
     # Extract names & construct param array.
     nms = [nms; extra_params]
     parray = hcat(vals, extra_values)
 
-    # If the state field has average_logevidence or final_logevidence, grab that.
-    le = missing
-    if :average_logevidence in fieldnames(typeof(spl.state))
-        le = getproperty(spl.state, :average_logevidence)
-    elseif :final_logevidence in fieldnames(typeof(spl.state))
-        le = getproperty(spl.state, :final_logevidence)
-    end
-
-    # Check whether to invlink! the varinfo
-    if islinked(spl.state.vi, spl)
-        invlink!(spl.state.vi, spl)
-    end
+    # Get the average or final log evidence, if it exists.
+    le = getlogevidence(spl)
 
     # Set up the info tuple.
     if save_state
-        info = (range = rng, model = model, spl = spl, vi = spl.state.vi)
+        info = (range = rng, model = model, spl = spl)
     else
         info = NamedTuple()
     end
@@ -404,10 +441,11 @@ function AbstractMCMC.bundle_samples(
     )
 end
 
+# This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     rng::AbstractRNG,
-    model::Model,
-    spl::Sampler,
+    model::AbstractModel,
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     N::Integer,
     ts::Vector,
     chain_type::Type{Vector{NamedTuple}};
@@ -417,17 +455,18 @@ function AbstractMCMC.bundle_samples(
 )
     nts = Vector{NamedTuple}(undef, N)
 
-    for (i,t) in enumerate(ts)
-        k = collect(keys(t.θ))
+    for (i, t) in enumerate(ts)
+        params = getparams(t)
+
+        k = collect(keys(params))
         vs = []
-        for v in values(t.θ)
+        for v in values(params)
             push!(vs, v[1])
         end
 
         push!(k, :lp)
-        
-        
-        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., t.lp))
+
+        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., getlogp(t)))
     end
 
     return map(identity, nts)

@@ -67,6 +67,8 @@ export  @model,                 # modelling
         @varname,
         DynamicPPL,
 
+        Prior,                  # Sampling from the prior
+
         MH,                     # classic sampling
         RWMH,
         ESS,
