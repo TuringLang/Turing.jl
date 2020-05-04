@@ -72,7 +72,7 @@ getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADbackend(::Hamiltonian{AD}) where AD = AD()
 
 # Algorithm for sampling from the prior
-struct Prior end
+struct Prior <: InferenceAlgorithm end
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
@@ -142,7 +142,7 @@ const TURING_INTERNAL_VARS = (internals = [
 
 function AbstractMCMC.sample(
     model::AbstractModel,
-    alg::Union{InferenceAlgorithm,Prior},
+    alg::InferenceAlgorithm,
     N::Integer;
     kwargs...
 )
@@ -197,7 +197,7 @@ end
 
 function AbstractMCMC.sample(
     model::AbstractModel,
-    alg::Union{InferenceAlgorithm,Prior},
+    alg::InferenceAlgorithm,
     parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
