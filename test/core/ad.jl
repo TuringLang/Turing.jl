@@ -46,11 +46,8 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
-        # FIXME: this crashes Julia on Julia 1.4 + master
-        if VERSION < v"1.4"
-            ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
-            @test sort(∇E2) ≈ grad_FWAD atol=1e-9
-        end
+        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
+        @test sort(∇E2) ≈ grad_FWAD atol=1e-9
     end
     @turing_testset "passing duals to distributions" begin
         float1 = 1.1

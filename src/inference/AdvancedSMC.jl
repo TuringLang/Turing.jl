@@ -285,7 +285,12 @@ function AbstractMCMC.sample_end!(
     spl.state.average_logevidence = loge
 end
 
-function DynamicPPL.assume(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, ::VarInfo)
+function DynamicPPL.assume(
+    spl::Sampler{<:Union{PG,SMC}},
+    dist::Distribution,
+    vn::VarName,
+    ::Any
+)
     vi = current_trace().vi
     if inspace(vn, spl)
         if ~haskey(vi, vn)
