@@ -7,7 +7,7 @@
 - Sampling from the prior is now possible using `sample`.
 - `psample` is now deprecated, in favor of `sample(model, sampler, parallel_method, n_samples, n_chains)` where `parallel_method` can be either `MCMCThreads()` or `MCMCDistributed()`. `MCMCThreads` will use your available threads to sample each chain (ensure that you have the environment variable `JULIA_NUM_THREADS` set to the number of threads you want to use) and `MCMCDistributed` will dispatch chain sampling to each available processes (you can add processes with `addprocs()`).
 - Turing now uses AdvancedMH v0.5, which mostly provides behind-the -scenes restructuring.
-- Custom expressions and macros can be interpolated in the `@model` definition with `$`.
+- Custom expressions and macros can be interpolated in the `@model` definition with `$` and it is possible to use `@.` also for assumptions and observations.
 - The macros `@varinfo`, `@logpdf`, and `@sampler` are removed. Instead one can access the internal variables `_varinfo`, `_model`, `_sampler`, and `_context` in the `@model` definition.
 
 # Release 0.11.0
