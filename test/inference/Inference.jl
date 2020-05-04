@@ -16,7 +16,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
                             1000, 4)
             chain2 = sample(Random.seed!(5), gdemo_default, HMC(0.1, 7), MCMCThreads(),
                             1000, 4)
-            @test all(chain1.value .== chain2.value)
+            #https://github.com/TuringLang/Turing.jl/issues/1260
+            @test_skip all(chain1.value .== chain2.value)
             check_gdemo(chain1)
 
             # Smoke test for default sample call.
