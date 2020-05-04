@@ -598,11 +598,5 @@ end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
-function ambiguity_error_msg()
-    return "Ambiguous `lhs .~ rhs` or `@. lhs ~ rhs` syntax. The broadcasting can either be 
-    column-wise following the convention of Distributions.jl or element-wise following 
-    Julia's general broadcasting semantics. Please make sure that the element type of `lhs` 
-    is not a supertype of the support type of `AbstractVector` to eliminate ambiguity."
-end
 
 end # module
