@@ -55,6 +55,7 @@ export  InferenceAlgorithm,
         assume,
         dot_assume,
         observe,
+        dot_observe,
         resume,
         gibbs_step!
 
@@ -494,7 +495,6 @@ include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
-include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 
@@ -522,19 +522,26 @@ end
 function get_matching_type(
     spl::AbstractSampler, 
     vi::VarInfo, 
+    ::Type{<:AbstractFloat},
+)
+    return floatof(eltype(vi, spl))
+end
+function get_matching_type(
+    spl::Sampler{<:Hamiltonian}, 
+    vi::VarInfo, 
     ::Type{<:Union{Missing, AbstractFloat}},
 )
     return Union{Missing, floatof(eltype(vi, spl))}
 end
 function get_matching_type(
-    spl::AbstractSampler, 
+    spl::Sampler{<:Hamiltonian}, 
     vi::VarInfo, 
     ::Type{<:AbstractFloat},
 )
     return floatof(eltype(vi, spl))
 end
 function get_matching_type(
-    spl::AbstractSampler, 
+    spl::Sampler{<:Hamiltonian}, 
     vi::VarInfo, 
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
@@ -547,7 +554,6 @@ function get_matching_type(
 ) where {T, N, TV <: Array{T, N}}
     return TArray{T, N}
 end
-
 
 ##############
 # Utilities  #
