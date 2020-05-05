@@ -558,27 +558,20 @@ function get_matching_type(
 end
 function get_matching_type(
     spl::AbstractSampler, 
-    vi,
-    ::Type{<:AbstractFloat},
-)
-    return floatof(eltype(vi, spl))
-end
-function get_matching_type(
-    spl::Sampler{<:Hamiltonian}, 
-    vi,
+    vi, 
     ::Type{<:Union{Missing, AbstractFloat}},
 )
     return Union{Missing, floatof(eltype(vi, spl))}
 end
 function get_matching_type(
-    spl::Sampler{<:Hamiltonian}, 
-    vi,
+    spl::AbstractSampler,
+    vi, 
     ::Type{<:AbstractFloat},
 )
     return floatof(eltype(vi, spl))
 end
 function get_matching_type(
-    spl::Sampler{<:Hamiltonian}, 
+    spl::AbstractSampler,
     vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
