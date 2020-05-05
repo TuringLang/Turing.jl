@@ -100,12 +100,11 @@ function HMC{AD}(
     return HMC{AD}(ϵ, n_leapfrog, metricT, space)
 end
 
-function update_hamiltonian!(rng, spl, model, theta)
-    metric = gen_metric(length(theta), spl)
+function update_hamiltonian!(spl, model, n)
+    metric = gen_metric(n, spl)
     ℓπ = gen_logπ(spl.state.vi, spl, model)
     ∂ℓπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
     spl.state.h = AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
-    spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
     return spl
 end
 
@@ -129,18 +128,21 @@ function AbstractMCMC.sample_init!(
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
         theta = spl.state.vi[spl]
-        update_hamiltonian!(rng, spl, model, theta)
+        update_hamiltonian!(spl, model, length(theta))
+        spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
     else
         # Samples new values and sets trans to true, then computes the logp
         model(empty!(spl.state.vi), SampleFromUniform())
         link!(spl.state.vi, spl)
         theta = spl.state.vi[spl]
-        update_hamiltonian!(rng, spl, model, theta)
+        update_hamiltonian!(spl, model, length(theta))
+        spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         while !isfinite(spl.state.z.ℓπ.value) || !isfinite(spl.state.z.ℓπ.gradient)
             model(empty!(spl.state.vi), SampleFromUniform())
             link!(spl.state.vi, spl)
             theta = spl.state.vi[spl]
-            update_hamiltonian!(rng, spl, model, theta)
+            update_hamiltonian!(spl, model, length(theta))
+            spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         end
     end
 
@@ -417,7 +419,9 @@ function AbstractMCMC.step!(
     # Get position and log density before transition
     θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
     if spl.selector.tag != :default
-        update_hamiltonian!(rng, spl, model, θ_old)
+        update_hamiltonian!(spl, model, length(θ_old))
+        resize!(spl.state.z.θ, length(θ_old))
+        spl.state.z.θ .= θ_old
     end
 
     # Transition
