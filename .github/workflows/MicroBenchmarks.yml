@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.3]
+        julia-version: ['1']
         julia-arch: [x64]
         os: [ubuntu-latest]
     steps:
