@@ -272,6 +272,7 @@ function initialize_parameters!(
     verbose::Bool=false,
     kwargs...
 )
+    islinked(spl.state.vi, spl) && invlink!(spl.state.vi, spl)
     # Get `init_theta`
     if init_theta !== nothing
         verbose && @info "Using passed-in initial variable values" init_theta
