@@ -10,8 +10,6 @@ We, i.e. the [TuringLang team](https://turing.ml/dev/team/), are currently explo
 
 We want to emphasize that you should look to the original paper rather than this post for developments and analysis of the model. We are not aiming to make any claims about the validity or the implications of the model and refer to [Imperial Report 13](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/) for details on the model itself. This post's purpose is only to add tiny bit of validation to the *inference* performed in the paper by obtaining the same results using a different probabilistic programming language (PPL) and to explore whether or not `Turing.jl` can be useful for researchers working on these problems.
 
-{% include plotly.html id='plot-3' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/plot2.json' %}
-
 All code and inference results shown in this post can be found [here](https://github.com/TuringLang/Covid19).
 
 
@@ -47,83 +45,40 @@ nthreads()
 
     4
 
-Here's a summary of the setup:
-
-```julia
-using Pkg
-Pkg.status()
-```
-
-    Project Covid19 v0.1.0
-    Status `~/Projects/mine/Covid19/Project.toml`
-      [dce04be8] ArgCheck v2.0.0
-      [c7e460c6] ArgParse v1.1.0
-      [131c737c] ArviZ v0.4.1
-      [76274a88] Bijectors v0.6.7 #tor/using-bijectors-in-link-and-invlink (https://github.com/TuringLang/Bijectors.jl.git)
-      [336ed68f] CSV v0.6.1
-      [a93c6f00] DataFrames v0.20.2
-      [31c24e10] Distributions v0.23.2
-      [ced4e74d] DistributionsAD v0.4.10
-      [634d3b9d] DrWatson v1.10.2
-      [1a297f60] FillArrays v0.8.7
-      [58dd65bb] Plotly v0.3.0
-      [f0f68f2c] PlotlyJS v0.13.1
-      [91a5bcdd] Plots v1.1.2
-      [438e738f] PyCall v1.91.4
-      [d330b81b] PyPlot v2.9.0
-      [df47a6cb] RData v0.7.1
-      [2913bbd2] StatsBase v0.33.0
-      [f3b207a7] StatsPlots v0.14.5
-      [fce5fe82] Turing v0.11.0 #tor/modelling-temporary (https://github.com/TuringLang/Turing.jl.git)
-      [9a3f8284] Random 
-      [10745b16] Statistics 
-
 In the Github project you will find a `Manifest.toml`. This means that if you're working directory is the project directory, and you do `julia --project` followed by `] instantiate` you will have *exactly* the same enviroment as we had when performing this analysis.
 
 {% details Overloading some functionality in `DrWatson.jl` %}
 
-As mentioned `DrWatson.jl` provides a lot of convenience functions for working in a project, and one of them is `projectdir(args...)` which will resolve join the `args` to the absolute path of the project directory. In similar fashion it provides a `datadir` method which defaults to `projectdir("data")`. But to remove the possibility of making a type later on when writing `datadir("imperial-report13")`, we'll overload this method for this notebook:
+As mentioned `DrWatson.jl` provides a lot of convenience functions for working in a project, and one of them is `projectdir(args...)` which will resolve join the `args` to the absolute path of the project directory. We add a `outdir` method for resolving the paths for some of the files we will be loading.
 
 ```julia
-import DrWatson: datadir
-
 outdir() = projectdir("out")
 outdir(args...) = projectdir("out", args...)
-
-datadir() = projectdir("data", "imperial-report13")
-datadir(s...) = projectdir("data", "imperial-report13", s...)
 ```
 
-    datadir (generic function with 2 methods)
+    outdir (generic function with 2 methods)
 
 {% enddetails %}
 
 
 # Data
 
-To ensure consistency with the original model from the paper (and to stay up-to-date with the changes made), we preprocessed the data using the `base.r` script from the [original repository (#6ee3010)](https://github.com/ImperialCollegeLondon/covid19model/tree/6ee3010a58a57cc14a16545ae897ca668b7c9096) and store the processed data in a `processed.rds` file. To load this RDS file obtained from the R script, we make use of the RData.jl package which allows us to load the RDS file into a Julia `Dict`.
+To ensure consistency with the original implementation from the paper, the `data` (or input) is obtained using the `base.r` script from the [original repository (#6ee3010)](https://github.com/ImperialCollegeLondon/covid19model/tree/6ee3010a58a57cc14a16545ae897ca668b7c9096), with the exception of renaming some variables. Hence the input should be identical to the input outlined in the paper, and we defer a thorough description of the inputs to their excellent [techical report (#6ee3010)](https://github.com/ImperialCollegeLondon/covid19model/tree/6ee3010a58a57cc14a16545ae897ca668b7c9096/Technical_description_of_Imperial_COVID_19_Model.pdf). Here's a short summary of the inputs to the model:
+
+-   `cases` and `deaths` which are *daily* recorded cases and deaths, respectively
+-   `covariates` which refers to different interventions taken by the country, e.g. closing schools and universities
+-   `epidemic_start` which refers to be "start of the epidemic" in a specific country, which is defined as 30 days prior to the first 10 cumulative recorded deaths
+-   `serial_intervals` which are pre-computed serial intervals → see their technical report for their estimation technique
+-   `π` (see model definition below)
+
+The procssed data (using their `base.r`) is stored in `out/imperial-report13/processed.rds` in the project. To load this RDS we simply do:
 
 ```julia
-using RData
+data = ImperialReport13.load_data(datadir("imperial-report13", "processed.rds"));
 ```
 
 ```julia
-rdata_full = load(datadir("processed.rds"))
-rdata = rdata_full["stan_data"];
-```
-
-```julia
-keys(rdata_full)
-```
-
-    Base.KeySet for a Dict{String,Int64} with 4 entries. Keys:
-      "reported_cases"
-      "stan_data"
-      "deaths_by_country"
-      "dates"
-
-```julia
-country_to_dates = d = Dict([(k, rdata_full["dates"][k]) for k in keys(rdata_full["dates"])])
+country_to_dates = data.country_to_dates
 ```
 
     Dict{String,Array{Date,1}} with 14 entries:
@@ -142,107 +97,22 @@ country_to_dates = d = Dict([(k, rdata_full["dates"][k]) for k in keys(rdata_ful
       "Italy"          => Date[2020-01-27, 2020-01-28, 2020-01-29, 2020-01-30, 2020…
       "Austria"        => Date[2020-02-22, 2020-02-23, 2020-02-24, 2020-02-25, 2020…
 
-Since the data-format is not native Julia there might be some discrepancies in the *types* of the some data fields, and so we need to do some type-conversion of the loaded `rdata`. We also rename a lot of the fields to make it more understandable and for an easier mapping to our implementation of the model. Feel free to skip this snippet.
-
-{% details Data wrangling %}
+For convenience we can extract the some of the loadeded data into global variables:
 
 ```julia
-# Convert some misparsed fields
-rdata["N2"] = Int(rdata["N2"]);
-rdata["N0"] = Int(rdata["N0"]);
+countries = data.countries;
+num_countries = length(data.countries);
+covariate_names = data.covariate_names;
 
-rdata["EpidemicStart"] = Int.(rdata["EpidemicStart"]);
+lockdown_index = findfirst(==("lockdown"), covariate_names)
 
-rdata["cases"] = Int.(rdata["cases"]);
-rdata["deaths"] = Int.(rdata["deaths"]);
-
-# Stan will fail if these are `nothing` so we make them empty arrays
-rdata["x"] = []
-rdata["features"] = []
-
-countries = (
-  "Denmark",
-  "Italy",
-  "Germany",
-  "Spain",
-  "United_Kingdom",
-  "France",
-  "Norway",
-  "Belgium",
-  "Austria", 
-  "Sweden",
-  "Switzerland",
-  "Greece",
-  "Portugal",
-  "Netherlands"
-)
-num_countries = length(countries)
-
-names_covariates = ("schools_universities", "self_isolating_if_ill", "public_events", "any", "lockdown", "social_distancing_encouraged")
-lockdown_index = findfirst(==("lockdown"), names_covariates)
-
-
-function rename!(d, names::Pair...)
-    # check that keys are not yet present before updating `d`
-    for k_new in values.(names)
-        @assert k_new ∉ keys(d) "$(k_new) already in dictionary"
-    end
-
-    for (k_old, k_new) in names
-        d[k_new] = pop!(d, k_old)
-    end
-    return d
-end
-
-# `rdata` is a `DictOfVector` so we convert to a simple `Dict` for simplicity
-d = Dict([(k, rdata[k]) for k in keys(rdata)]) # `values(df)` and `keys(df)` have different ordering so DON'T do `Dict(keys(df), values(df))`
-
-# Rename some columns
-rename!(
-    d,
-    "f" => "π", "SI" => "serial_intervals", "pop" => "population",
-    "M" => "num_countries", "N0" => "num_impute", "N" => "num_obs_countries",
-    "N2" => "num_total_days", "EpidemicStart" => "epidemic_start",
-    "X" => "covariates", "P" => "num_covariates"
-)
-
-# Add some type-information to arrays and replace `-1` with `missing` (as `-1` is supposed to represent, well, missing data)
-d["deaths"] = Int.(d["deaths"])
-# d["deaths"] = replace(d["deaths"], -1 => missing)
-d["deaths"] = collect(eachcol(d["deaths"])) # convert into Array of arrays instead of matrix
-
-d["cases"] = Int.(d["cases"])
-# d["cases"] = replace(d["cases"], -1 => missing)
-d["cases"] = collect(eachcol(d["cases"])) # convert into Array of arrays instead of matrix
-
-d["num_covariates"] = Int(d["num_covariates"])
-d["num_countries"] = Int(d["num_countries"])
-d["num_total_days"] = Int(d["num_total_days"])
-d["num_impute"] = Int(d["num_impute"])
-d["num_obs_countries"] = Int.(d["num_obs_countries"])
-d["epidemic_start"] = Int.(d["epidemic_start"])
-d["population"] = Int.(d["population"])
-
-d["π"] = collect(eachcol(d["π"])) # convert into Array of arrays instead of matrix
-
-# Convert 3D array into Array{Matrix}
-covariates = [rdata["X"][m, :, :] for m = 1:num_countries]
-
-data = (; (k => d[String(k)] for k in [:num_countries, :num_impute, :num_obs_countries, :num_total_days, :cases, :deaths, :π, :epidemic_start, :population, :serial_intervals])...)
-data = merge(data, (covariates = covariates, ));
-
-# Can deal with ragged arrays, so we can shave off unobserved data (future) which are just filled with -1
-data = merge(
-    data,
-    (cases = [data.cases[m][1:data.num_obs_countries[m]] for m = 1:data.num_countries],
-     deaths = [data.deaths[m][1:data.num_obs_countries[m]] for m = 1:data.num_countries])
-);
+# Need to pass arguments to `pystan` as a `Dict` with different names, so we have one instance tailored for `Stan` and one for `Turing.jl`
+stan_data = data.stan_data;
+turing_data = data.turing_data;
 ```
 
-{% enddetails %}
-
 ```julia
-data.num_countries
+num_countries
 ```
 
     14
@@ -255,7 +125,9 @@ uk_index = findfirst(==("United_Kingdom"), countries)
 
     5
 
-It's worth noting that the data user here is not quite up-to-date for UK because on <span class="timestamp-wrapper"><span class="timestamp">&lt;2020-04-30 to.&gt; </span></span> they updated their *past* numbers by including deaths from care- and nursing-homes (data source: [ECDC](https://www.ecdc.europa.eu/en)). Thus if you compare the prediction of the model to real numbers, it's likely that the real numbers will be a bit higher than what the model predicts.
+<span style="color: red;">TODO: remove the text below when we've re-run models with updated data!!!</span>
+
+It's worth noting that the data user here is not quite up-to-date for UK because on <span class="timestamp-wrapper"><span class="timestamp">&lt;2020-04-30 to.&gt; </span></span> deaths from care- and nursing-homes were included, and this has then been smoothed over the past days by the [ECDC](https://www.ecdc.europa.eu/en), which is the data source. Thus if you compare the prediction of the model to real numbers, it's likely that the real numbers will be a bit higher than what the model predicts with the current data.
 
 
 # Model
@@ -506,6 +378,8 @@ end
 Turing.acclogp!(_varinfo, sum(logps))
 ```
 
+You can find the resulting model in the project.
+
 {% details Explanation of what we just did %}
 
 It might be worth explaining a bit about what's going on here. First we should explain what the deal is with `_varinfo`. `_varinfo` is basically the object used internally in Turing to track the sampled variables and the log-pdf *for a particular evaluation* of the model, and so `acclogp!(_varinfo, lp)` will increment the log-pdf stored in `_varinfo` by `lp`. With that we can explain what happens to `~` inside the `@macro`. Using the old observe-snippet as an example, the `@model` macro replaces `~` with
@@ -521,127 +395,12 @@ You can read more about the `@macro` and its internals [here](https://turing.ml/
 {% enddetails %}
 
 
-### Final model
-
-This results in the following model definition
-
-```julia
-@model function model_v2(
-    num_impute,        # [Int] num. of days for which to impute infections
-    num_total_days,    # [Int] days of observed data + num. of days to forecast
-    cases,             # [AbstractVector{<:AbstractVector{<:Int}}] reported cases
-    deaths,            # [AbstractVector{<:AbstractVector{<:Int}}] reported deaths; rows indexed by i > N contain -1 and should be ignored
-    π,                 # [AbstractVector{<:AbstractVector{<:Real}}] h * s
-    covariates,        # [Vector{<:AbstractMatrix}]
-    epidemic_start,    # [AbstractVector{<:Int}]
-    population,        # [AbstractVector{<:Real}]
-    serial_intervals,  # [AbstractVector{<:Real}] fixed pre-calculated serial interval (SI) using empirical data from Neil
-    lockdown_index,    # [Int] the index for the `lockdown` covariate in `covariates`
-    predict=false,     # [Bool] if `false`, will only compute what's needed to `observe` but not more
-    ::Type{TV} = Vector{Float64}
-) where {TV}
-    # `covariates` should be of length `num_countries` and each entry correspond to a matrix of size `(num_total_days, num_covariates)`
-    num_covariates = size(covariates[1], 2)
-    num_countries = length(cases)
-    num_obs_countries = length.(cases)
-
-    # If we don't want to predict the future, we only need to compute up-to time-step `num_obs_countries[m]`
-    last_time_steps = predict ? fill(num_total_days, num_countries) : num_obs_countries
-
-    # Latent variables
-    τ ~ Exponential(1 / 0.03) # `Exponential` has inverse parameterization of the one in Stan
-    y ~ filldist(Exponential(τ), num_countries)
-    ϕ ~ truncated(Normal(0, 5), 0, Inf)
-    κ ~ truncated(Normal(0, 0.5), 0, Inf)
-    μ ~ filldist(truncated(Normal(3.28, κ), 0, Inf), num_countries)
-
-    α_hier ~ filldist(Gamma(.1667, 1), num_covariates)
-    α = α_hier .- log(1.05) / 6.
-
-    ifr_noise ~ filldist(truncated(Normal(1., 0.1), 0, Inf), num_countries)
-
-    # lockdown-related
-    γ ~ truncated(Normal(0, 0.2), 0, Inf)
-    lockdown ~ filldist(Normal(0, γ), num_countries)
-
-    # Initialization of some quantities
-    expected_daily_cases = TV[TV(undef, last_time_steps[m]) for m in 1:num_countries]
-    cases_pred = TV[TV(undef, last_time_steps[m]) for m in 1:num_countries]
-    expected_daily_deaths = TV[TV(undef, last_time_steps[m]) for m in 1:num_countries]
-    Rt = TV[TV(undef, last_time_steps[m]) for m in 1:num_countries]
-    Rt_adj = TV[TV(undef, last_time_steps[m]) for m in 1:num_countries]
-
-    # Loops over countries and perform independent computations for each country
-    # since this model does not include any notion of migration across borders.
-    # => might has well wrap it in a `@threads` to perform the computation in parallel.
-    @threads for m = 1:num_countries
-        # Country-specific parameters
-        π_m = π[m]
-        pop_m = population[m]
-        expected_daily_cases_m = expected_daily_cases[m]
-        cases_pred_m = cases_pred[m]
-        expected_daily_deaths_m = expected_daily_deaths[m]
-        Rt_m = Rt[m]
-        Rt_adj_m = Rt_adj[m]
-
-        last_time_step = last_time_steps[m]
-
-        # Imputation of `num_impute` days
-        expected_daily_cases_m[1:num_impute] .= y[m]
-        cases_pred_m[1] = zero(cases_pred_m[1])
-        cases_pred_m[2:num_impute] .= cumsum(expected_daily_cases_m[1:num_impute - 1])
-
-        xs = covariates[m][1:last_time_step, :] # extract covariates for the wanted time-steps and country `m`
-        Rt_m .= μ[m] * exp.(xs * (-α) + (- lockdown[m]) * xs[:, lockdown_index])
-
-        # Adjusts for portion of pop that are susceptible
-        Rt_adj_m[1:num_impute] .= (max.(pop_m .- cases_pred_m[1:num_impute], zero(cases_pred_m[1])) ./ pop_m) .* Rt_m[1:num_impute]
-
-        for t = (num_impute + 1):last_time_step
-            # Update cumulative cases
-            cases_pred_m[t] = cases_pred_m[t - 1] + expected_daily_cases_m[t - 1]
-
-            # Adjusts for portion of pop that are susceptible
-            Rt_adj_m[t] = (max(pop_m - cases_pred_m[t], zero(cases_pred_m[t])) / pop_m) * Rt_m[t]
-
-            expected_daily_cases_m[t] = Rt_adj_m[t] * sum(expected_daily_cases_m[τ] * serial_intervals[t - τ] for τ = 1:(t - 1))
-        end
-
-        expected_daily_deaths_m[1] = 1e-15 * expected_daily_cases_m[1]
-        for t = 2:last_time_step
-            expected_daily_deaths_m[t] = sum(expected_daily_cases_m[τ] * π_m[t - τ] * ifr_noise[m] for τ = 1:(t - 1))
-        end
-    end
-
-    # Observe
-    # Doing observations in parallel provides a small speedup
-    logps = TV(undef, num_countries)
-    @threads for m = 1:num_countries
-        # Extract the estimated expected daily deaths for country `m`
-        expected_daily_deaths_m = expected_daily_deaths[m]
-        # Extract time-steps for which we have observations
-        ts = epidemic_start[m]:num_obs_countries[m]
-        # Observe!
-        logps[m] = logpdf(arraydist(NegativeBinomial2.(expected_daily_deaths_m[ts], ϕ)), deaths[m][ts])
-    end
-    Turing.acclogp!(_varinfo, sum(logps))
-
-    return (
-        expected_daily_cases = expected_daily_cases,
-        expected_daily_deaths = expected_daily_deaths,
-        Rt = Rt,
-        Rt_adjusted = Rt_adj
-    )
-end;
-```
-
-    ┌ Warning: you are using the internal variable `_varinfo`
-    └ @ DynamicPPL /homes/tef30/.julia/packages/DynamicPPL/3jy49/src/compiler.jl:175
+### Instantiating the model
 
 We define an alias `model_def` so that if we want to try out a different model, there's only one point in the notebook which we need to change.
 
 ```julia
-model_def = model_v2;
+model_def = ImperialReport13.model_v2;
 ```
 
 The input data have up to 30-40 days of unobserved future data which we might want to predict on. But during sampling we don't want to waste computation on sampling for the future for which we do not have any observations. Therefore we have an argument `predict::Bool` in the model which allows us to specify whether or not to generate future quantities.
@@ -649,15 +408,15 @@ The input data have up to 30-40 days of unobserved future data which we might wa
 ```julia
 # Model instantance used to for inference
 m_no_pred = model_def(
-    data.num_impute,
-    data.num_total_days,
-    data.cases,
-    data.deaths,
-    data.π,
-    data.covariates,
-    data.epidemic_start,
-    data.population,
-    data.serial_intervals,
+    turing_data.num_impute,
+    turing_data.num_total_days,
+    turing_data.cases,
+    turing_data.deaths,
+    turing_data.π,
+    turing_data.covariates,
+    turing_data.epidemic_start,
+    turing_data.population,
+    turing_data.serial_intervals,
     lockdown_index,
     false # <= DON'T predict
 );
@@ -666,15 +425,15 @@ m_no_pred = model_def(
 ```julia
 # Model instance used for prediction
 m = model_def(
-    data.num_impute,
-    data.num_total_days,
-    data.cases,
-    data.deaths,
-    data.π,
-    data.covariates,
-    data.epidemic_start,
-    data.population,
-    data.serial_intervals,
+    turing_data.num_impute,
+    turing_data.num_total_days,
+    turing_data.cases,
+    turing_data.deaths,
+    turing_data.π,
+    turing_data.covariates,
+    turing_data.epidemic_start,
+    turing_data.population,
+    turing_data.serial_intervals,
     lockdown_index,
     true # <= predict
 );
@@ -688,32 +447,32 @@ res.expected_daily_cases[uk_index]
 ```
 
     100-element Array{Float64,1}:
-     0.2978422827487166
-     0.2978422827487166
-     0.2978422827487166
-     0.2978422827487166
-     0.2978422827487166
-     0.2978422827487166
-     0.832817101553483
-     1.0346063917235566
-     1.3678178161493468
-     1.8604943842674377
-     2.546129501657631
-     3.4852378065416523
-     4.768875412263893
-     ⋮
-     0.24406116233616038
-     0.17186744515247868
-     0.1208474970159245
-     0.08485139699103932
-     0.05949579772505278
-     0.04166274540068994
-     0.029138775736189983
-     0.02035555519759347
-     0.014203911930339133
-     0.009900796534873262
-     0.00689432670057081
-     0.004796166095549548
+          5.887664668479525
+          5.887664668479525
+          5.887664668479525
+          5.887664668479525
+          5.887664668479525
+          5.887664668479525
+          8.854759426344241
+         10.606503398588705
+         12.602788016861936
+         14.993166658770727
+         17.866451002220067
+         21.30827613672178
+         25.420827498883103
+          ⋮
+     855054.8042720843
+     942514.8202567706
+          1.0349380137200175e6
+          1.1316017068846978e6
+          1.2315014612695938e6
+          1.333325285600925e6
+          1.4354406924536768e6
+          1.5359002737704832e6
+          1.6324714430765258e6
+          1.7226950769818595e6
+          1.803975729475767e6
+          1.873702782384192e6
 
 
 # Visualization utilities
@@ -721,73 +480,69 @@ res.expected_daily_cases[uk_index]
 For visualisation we of course use [Plots.jl](https://github.com/JuliaPlots/Plots.jl), and in this case we're going to use the `pyplot` backend which uses Python's matplotlib under the hood.
 
 ```julia
-using Plots, StatsPlots
+using Plots, StatsPlots, LaTeXStrings
 ```
 
 {% details Method definition for plotting the predictive distribution %}
 
 ```julia
 # Ehh, this can be made nicer...
-function country_prediction_plot(country_idx, predictions_country::AbstractMatrix, e_deaths_country::AbstractMatrix, Rt_country::AbstractMatrix; normalize_pop::Bool = false, main_title="")
-    pop = data.population[country_idx]
-    num_total_days = data.num_total_days
-    num_observed_days = length(data.cases[country_idx])
+function country_prediction_plot(data::ImperialReport13.Data, country_idx, predictions_country::AbstractMatrix, e_deaths_country::AbstractMatrix, Rt_country::AbstractMatrix; normalize_pop::Bool = false, main_title="")
+    pop = data.turing_data.population[country_idx]
+    num_total_days = data.turing_data.num_total_days
+    num_observed_days = length(data.turing_data.cases[country_idx])
 
     country_name = countries[country_idx]
     start_date = first(country_to_dates[country_name])
-    dates = cumsum(fill(Day(1), data.num_total_days)) + (start_date - Day(1))
+    dates = cumsum(fill(Day(1), data.turing_data.num_total_days)) + (start_date - Day(1))
     date_strings = Dates.format.(dates, "Y-mm-dd")
 
     # A tiny bit of preprocessing of the data
     preproc(x) = normalize_pop ? x ./ pop : x
 
-    daily_deaths = data.deaths[country_idx]
-    daily_cases = data.cases[country_idx]
+    daily_deaths = data.turing_data.deaths[country_idx]
+    daily_cases = data.turing_data.cases[country_idx]
 
     p1 = plot(; xaxis = false, legend = :topleft)
     bar!(preproc(daily_deaths), label="Observed daily deaths")
     title!(replace(country_name, "_" => " ") * " " * main_title)
-    vline!([data.epidemic_start[country_idx]], label="epidemic start", linewidth=2)
+    vline!([data.turing_data.epidemic_start[country_idx]], label="epidemic start", linewidth=2)
     vline!([num_observed_days], label="end of observations", linewidth=2)
     xlims!(0, num_total_days)
 
     p2 = plot(; legend = :topleft, xaxis=false)
     plot_confidence_timeseries!(p2, preproc(e_deaths_country); label = "Expected daily deaths")
-    # title!("Expected daily deaths (pred)")
     bar!(preproc(daily_deaths), label="Recorded daily deaths (observed)", alpha=0.5)
 
     p3 = plot(; legend = :bottomleft, xaxis=false)
     plot_confidence_timeseries!(p3, Rt_country; no_label = true)
-    for (c_idx, c_time) in enumerate(findfirst.(==(1), eachcol(data.covariates[country_idx])))
+    for (c_idx, c_time) in enumerate(findfirst.(==(1), eachcol(data.turing_data.covariates[country_idx])))
         if c_time !== nothing
-            c_name = names_covariates[c_idx]
+            c_name = covariate_names[c_idx]
             if (c_name != "any")
                 # Don't add the "any intervention" stuff
                 vline!([c_time - 1], label=c_name)
             end
         end
     end
-    title!("Rt")
+    title!(L"$R_t$")
     qs = [quantile(v, [0.025, 0.975]) for v in eachrow(Rt_country)]
     lq, hq = (eachrow(hcat(qs...))..., )
     ylims!(0, maximum(hq) + 0.1)
 
     p4 = plot(; legend = :topleft, xaxis=false)
     plot_confidence_timeseries!(p4, preproc(predictions_country); label = "Expected daily cases")
-    # title!("Expected daily cases (pred)")
     bar!(preproc(daily_cases), label="Recorded daily cases (observed)", alpha=0.5)
 
     vals = preproc(cumsum(e_deaths_country; dims = 1))
     p5 = plot(; legend = :topleft, xaxis=false)
     plot_confidence_timeseries!(p5, vals; label = "Expected deaths")
     plot!(preproc(cumsum(daily_deaths)), label="Recorded deaths (observed)", color=:red)
-    # title!("Expected deaths (pred)")
 
     vals = preproc(cumsum(predictions_country; dims = 1))
     p6 = plot(; legend = :topleft)
     plot_confidence_timeseries!(p6, vals; label = "Expected cases")
     plot!(preproc(daily_cases), label="Recorded cases (observed)", color=:red)
-    # title!("Expected cases (pred)")
 
     p = plot(p1, p3, p2, p4, p5, p6, layout=(6, 1), size=(900, 1200), sharex=true)
     xticks!(1:3:num_total_days, date_strings[1:3:end], xrotation=45)
@@ -795,17 +550,17 @@ function country_prediction_plot(country_idx, predictions_country::AbstractMatri
     return p
 end
 
-function country_prediction_plot(country_idx, cases, e_deaths, Rt; kwargs...)
+function country_prediction_plot(data::ImperialReport13.Data, country_idx, cases, e_deaths, Rt; kwargs...)
     n = length(cases)
     e_deaths_country = hcat([e_deaths[t][country_idx] for t = 1:n]...)
     Rt_country = hcat([Rt[t][country_idx] for t = 1:n]...)
     predictions_country = hcat([cases[t][country_idx] for t = 1:n]...)
 
-    return country_prediction_plot(country_idx, predictions_country, e_deaths_country, Rt_country; kwargs...)
+    return country_prediction_plot(data, country_idx, predictions_country, e_deaths_country, Rt_country; kwargs...)
 end
 ```
 
-    country_prediction_plot (generic function with 2 methods)
+    country_prediction_plot (generic function with 4 methods)
 
 ```julia
 function arrarrarr2arr(a::AbstractVector{<:AbstractVector{<:AbstractVector{T}}}) where {T<:Real}
@@ -823,24 +578,27 @@ function arrarrarr2arr(a::AbstractVector{<:AbstractVector{<:AbstractVector{T}}})
     return A
 end
 
-function country_cumulative_prediction(vals::AbstractArray{<:Real, 3}; normalize_pop = false, no_label=false, kwargs...)
+function countries_prediction_plot(data::ImperialReport13.Data, vals::AbstractArray{<:Real, 3}; normalize_pop = false, no_label=false, kwargs...)
     lqs, mqs, hqs = [], [], []
     labels = []
 
-    for country_idx in 1:length(countries)
+    # `vals` is assumed to be of the shape `(num_countries, num_days, num_samples)`
+    num_countries = size(vals, 1)
+
+    for country_idx in 1:num_countries
         val = vals[country_idx, :, :]
         n = size(val, 1)
 
-        pop = data.population[country_idx]
-        num_total_days = data.num_total_days
-        num_observed_days = length(data.cases[country_idx])
+        pop = data.turing_data.population[country_idx]
+        num_total_days = data.turing_data.num_total_days
+        num_observed_days = length(data.turing_data.cases[country_idx])
 
-        country_name = countries[country_idx]
+        country_name = data.countries[country_idx]
 
         # A tiny bit of preprocessing of the data
         preproc(x) = normalize_pop ? x ./ pop : x
 
-        tmp = preproc(cumsum(val; dims = 1))
+        tmp = preproc(val)
         qs = [quantile(tmp[t, :], [0.025, 0.5, 0.975]) for t = 1:n]
         lq, mq, hq = (eachrow(hcat(qs...))..., )
 
@@ -864,140 +622,11 @@ function country_cumulative_prediction(vals::AbstractArray{<:Real, 3}; normalize
 end
 ```
 
-    country_cumulative_prediction (generic function with 1 method)
+    countries_prediction_plot (generic function with 1 method)
 
 {% enddetails %}
 
-```julia
-daily_deaths_arr = arrarrarr2arr(daily_deaths_posterior)
-daily_deaths_arr = permutedims(daily_deaths_arr, (2, 3, 1))
-
-daily_cases_arr = arrarrarr2arr(daily_cases_posterior)
-daily_cases_arr = permutedims(daily_cases_arr, (2, 3, 1))
-```
-
-    14×100×4000 Array{Float64,3}:
-    [:, :, 1] =
-     31.6314   31.6314   31.6314   31.6314   …    156.61        151.178
-     35.2791   35.2791   35.2791   35.2791       3646.08       3431.64
-      5.82819   5.82819   5.82819   5.82819      6416.22       6282.52
-     32.4507   32.4507   32.4507   32.4507       9749.19       9408.06
-     33.8585   33.8585   33.8585   33.8585       6107.9        5812.33
-     14.4027   14.4027   14.4027   14.4027   …  13849.1       13444.2
-     13.4485   13.4485   13.4485   13.4485         73.396        70.6272
-      5.32057   5.32057   5.32057   5.32057     45867.8       45212.0
-     31.3424   31.3424   31.3424   31.3424        191.955       186.097
-     93.6691   93.6691   93.6691   93.6691      53568.5       53719.7
-     25.9993   25.9993   25.9993   25.9993   …    130.31        122.522
-     63.4528   63.4528   63.4528   63.4528          0.135277      0.120549
-     30.3088   30.3088   30.3088   30.3088         86.6885       82.4991
-     58.7329   58.7329   58.7329   58.7329        364.967       341.81
-    
-    [:, :, 2] =
-     21.8248   21.8248   21.8248   21.8248   …     59.4495        56.6651
-     17.6305   17.6305   17.6305   17.6305       2751.21        2577.23
-     17.5398   17.5398   17.5398   17.5398       2514.87        2422.85
-     39.3773   39.3773   39.3773   39.3773       2572.54        2435.6
-     13.8745   13.8745   13.8745   13.8745       7143.99        6796.27
-      2.43846   2.43846   2.43846   2.43846  …  21861.8        21394.1
-     16.6948   16.6948   16.6948   16.6948         12.4779        11.7615
-      7.64907   7.64907   7.64907   7.64907     43911.9        43155.0
-     54.9893   54.9893   54.9893   54.9893        164.217        158.063
-     96.3331   96.3331   96.3331   96.3331      52492.8        52575.9
-      6.69537   6.69537   6.69537   6.69537  …    291.955        278.593
-     41.8925   41.8925   41.8925   41.8925          0.0549723      0.0484776
-     10.4633   10.4633   10.4633   10.4633       1133.48        1110.4
-     53.9036   53.9036   53.9036   53.9036        285.281        266.222
-    
-    [:, :, 3] =
-      45.2317   45.2317   45.2317   45.2317  …     61.406         58.6976
-      29.357    29.357    29.357    29.357       3176.11        2995.15
-      30.394    30.394    30.394    30.394       1196.45        1139.83
-     125.299   125.299   125.299   125.299       6239.52        5961.07
-      36.4959   36.4959   36.4959   36.4959      4289.44        4052.54
-      19.2367   19.2367   19.2367   19.2367  …  19999.4        19513.5
-      16.405    16.405    16.405    16.405         13.0237        12.2817
-      15.1937   15.1937   15.1937   15.1937     36906.7        36324.8
-      47.9864   47.9864   47.9864   47.9864       198.327        192.355
-     145.876   145.876   145.876   145.876      95512.4        93517.3
-      12.7606   12.7606   12.7606   12.7606  …    140.283        132.076
-      84.0577   84.0577   84.0577   84.0577         0.0887854      0.078702
-      66.317    66.317    66.317    66.317         26.8103        25.0513
-      50.1513   50.1513   50.1513   50.1513       385.437        362.086
-    
-    ...
-    
-    [:, :, 3998] =
-     40.6005   40.6005   40.6005   40.6005   …     41.3201      39.257
-     37.4406   37.4406   37.4406   37.4406       5168.87      4928.88
-      6.66627   6.66627   6.66627   6.66627      1796.71      1724.79
-     19.2496   19.2496   19.2496   19.2496       2893.68      2735.41
-     21.6056   21.6056   21.6056   21.6056      13520.2      13034.5
-      4.69097   4.69097   4.69097   4.69097  …  12729.8      12386.1
-     42.8182   42.8182   42.8182   42.8182        326.627      322.394
-      7.19116   7.19116   7.19116   7.19116     50203.4      49797.1
-     26.3942   26.3942   26.3942   26.3942        263.88       256.656
-     53.6565   53.6565   53.6565   53.6565      83072.5      82676.3
-     24.4936   24.4936   24.4936   24.4936   …    153.229      144.346
-     46.8848   46.8848   46.8848   46.8848          3.16499      2.94815
-     74.0729   74.0729   74.0729   74.0729         34.9909      32.6986
-     84.5948   84.5948   84.5948   84.5948        600.202      567.397
-    
-    [:, :, 3999] =
-      17.5754    17.5754    17.5754    17.5754   …     246.31         239.819
-      46.9688    46.9688    46.9688    46.9688        2641.87        2474.16
-       5.1029     5.1029     5.1029     5.1029        2141.21        2071.62
-      30.5983    30.5983    30.5983    30.5983        2429.53        2299.52
-      15.1354    15.1354    15.1354    15.1354       15339.1        14856.2
-      12.5852    12.5852    12.5852    12.5852   …   19716.9        19184.8
-      20.7569    20.7569    20.7569    20.7569         198.359        193.751
-       9.44519    9.44519    9.44519    9.44519      67919.1        66470.7
-      46.0889    46.0889    46.0889    46.0889         106.309        102.061
-      87.7028    87.7028    87.7028    87.7028      103695.0       102949.0
-      34.3861    34.3861    34.3861    34.3861   …     299.303        285.163
-     114.996    114.996    114.996    114.996            0.367775       0.332197
-      51.0231    51.0231    51.0231    51.0231         306.67         296.26
-      95.074     95.074     95.074     95.074          683.525        647.794
-    
-    [:, :, 4000] =
-     41.9978   41.9978   41.9978   41.9978   …    267.147        260.315
-     29.6776   29.6776   29.6776   29.6776       6149.86        5851.81
-     45.4262   45.4262   45.4262   45.4262       2766.05        2682.29
-     67.3271   67.3271   67.3271   67.3271       3339.49        3174.33
-     72.374    72.374    72.374    72.374       13353.4        12889.1
-      5.65709   5.65709   5.65709   5.65709  …  39438.8        38904.1
-     17.4738   17.4738   17.4738   17.4738         49.7947        47.6519
-     16.4718   16.4718   16.4718   16.4718      33295.2        32990.2
-     65.9772   65.9772   65.9772   65.9772        199.27         193.239
-     87.5592   87.5592   87.5592   87.5592      32651.7        32673.7
-     11.5608   11.5608   11.5608   11.5608   …    480.357        461.34
-     88.1057   88.1057   88.1057   88.1057          0.0795788      0.070559
-     27.258    27.258    27.258    27.258          97.7505        92.8548
-     28.6621   28.6621   28.6621   28.6621        577.574        545.546
-
-To make the plots interactive, we're going to use the [`PlotlyJS.jl`](https://github.com/sglyon/PlotlyJS.jl) backend (which generates [plotly.js](https://github.com/plotly/plotly.js/) plots under the hood):
-
-```julia
-plotlyjs()
-```
-
-    Plots.PlotlyJSBackend()
-
-```julia
-country_cumulative_prediction(daily_deaths_arr; size = (800, 300))
-title!("Expected deaths (95% intervals)")
-```
-
-{% include plotly.html id='plot1' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/plot1.json' %}
-
-```julia
-country_cumulative_prediction(daily_deaths_arr; normalize_pop = true, size = (800, 300))
-title!("Expected deaths / population (95% intervals)")
-```
-
-{% include plotly.html id='plot2' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/plot2.json' %}
-
-In the following sections we're instead going to use `PyPlot.jl` as backend (which uses Python's `matplotlib` under the hood) instead of `Plotly.js` since too many `Plotly.js` plots can slow down even the finest of computers.
+For the most part we will use the `PyPlot.jl` (which uses Python's `matplotlib` under the hood) backend for `Plots.jl`, but certain parts will be more useful to display using the `PlotlyJS.jl` (which uses `plotly.js` under the hood) backend.
 
 ```julia
 pyplot()
@@ -1025,11 +654,11 @@ For the same reasons it can be very useful to inspect the *prior predictive* dis
 ```julia
 # Compute the "generated quantities" for the PRIOR
 generated_prior = vectup2tupvec(generated_quantities(m, chain_prior));
-daily_cases_prior, daily_deaths_prior, Rt_prior, Rt_adj_prior = generated_prior;
+daily_cases_prior, daily_deaths_prior, Rt_prior, Rt_adj_prior = generated_prior; # <= tuple of `Vector{<:Vector{<:Vector}}`
 ```
 
 ```julia
-country_prediction_plot(uk_index, daily_cases_prior, daily_deaths_prior, Rt_prior; main_title = "(prior)")
+country_prediction_plot(data, uk_index, daily_cases_prior, daily_deaths_prior, Rt_prior; main_title = "(prior)")
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/uk-predictive-prior-Rt.png)
@@ -1037,13 +666,15 @@ country_prediction_plot(uk_index, daily_cases_prior, daily_deaths_prior, Rt_prio
 And with the Rt *adjusted for remaining population*:
 
 ```julia
-country_prediction_plot(uk_index, daily_cases_prior, daily_deaths_prior, Rt_adj_prior; main_title = "(prior)")
+country_prediction_plot(data, uk_index, daily_cases_prior, daily_deaths_prior, Rt_adj_prior; main_title = "(prior)")
 ```
+
+![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/uk-predictive-prior-Rt-adjusted.png)
 
 At this point it might be useful to remind ourselves of the total population of UK is:
 
 ```julia
-data.population[uk_index]
+turing_data.population[uk_index]
 ```
 
     67886004
@@ -1225,12 +856,6 @@ generated quantities {
 """
 ```
 
-We need the data to be in a format compatible with the Stan model, which we can accomplish by converting `rdata` into a `Dict`:
-
-```julia
-d = Dict([(k, rdata[k]) for k in keys(rdata)]); # `values(df)` and `keys(df)` have different ordering so DON'T do `Dict(keys(df), values(df))`
-```
-
 Then we can compile the `Stan` model
 
 ```julia
@@ -1241,7 +866,7 @@ And finally fit:
 
 ```julia
 fit_stan(n_iters=300, warmup=100) = sm.sampling(
-    data=d, iter=n_iters, chains=1, warmup=warmup, algorithm="NUTS", 
+    data=stan_data, iter=n_iters, chains=1, warmup=warmup, algorithm="NUTS", 
     control=Dict(
         "adapt_delta" => 0.95,
         "max_treedepth" => 10
@@ -1287,7 +912,7 @@ la = open(io -> deserialize(io), outdir(stan_chain_fname), "r")
 And if we want to compare it with the results from `Turing.jl` it can be convenient to rename some of the variables
 
 ```julia
-rename!(
+Covid19.rename!(
     la,
     "alpha" => "α",
     "alpha_hier" => "α_hier",
@@ -1340,6 +965,7 @@ la_subset = Dict(
 In `Covid19.jl` we've added a constructor for `MCMCChains.Chains` which takes a `Dict` as an argument, easily allowing us to convert the `la` from `Stan` into a `Chains` object.
 
 ```julia
+# TODO: remove this and use `resetrange` after we've updated the dependencies
 function MCMCChains._cat(::Val{3}, c1::Chains, args::Chains...)
     # check inputs
     rng = range(c1)
@@ -1523,9 +1149,7 @@ stan_chains = stan_chains[1:3:end] # thin
 
 ### Load
 
-Unfortunately the resulting chains, each with 3000 steps, take up a fair bit of space and are thus too large to include in the Github repository. As a temporary hack around this, you can find download the chains from [this link](https://drive.google.com/open?id=16PomGVnjPI1Q4KLdA9gRloVolfRmrhPP). Then you simply navigate to the project-directory and unpack.
-
-With that, we can load the chains from disk:
+To download the resulting chains, you need to setup [`git lfs`](https://git-lfs.github.com/) and clone the repository. Then we can load the chains from disk:
 
 ```julia
 filenames = [
@@ -1706,12 +1330,18 @@ pooled_chains = MCMCChains.pool_chain(chains_posterior)
 generated_posterior = vectup2tupvec(generated_quantities(m, pooled_chains));
 
 daily_cases_posterior, daily_deaths_posterior, Rt_posterior, Rt_adj_posterior = generated_posterior;
+
+# Convert `Vector{<:Vector{<:Vector}}` into `Array{<:Real, 3}` with shape `(num_countries, num_days, num_samples)`
+daily_cases_posterior_arr = permutedims(arrarrarr2arr(daily_cases_posterior), (2, 3, 1));
+daily_deaths_posterior_arr = permutedims(arrarrarr2arr(daily_deaths_posterior), (2, 3, 1));
+Rt_posterior_arr = permutedims(arrarrarr2arr(Rt_posterior), (2, 3, 1));
+Rt_adj_posterior_arr = permutedims(arrarrarr2arr(Rt_adj_posterior), (2, 3, 1));
 ```
 
 The posterior predictive distribution:
 
 ```julia
-country_prediction_plot(uk_index, daily_cases_posterior, daily_deaths_posterior, Rt_posterior; main_title = "(posterior)")
+country_prediction_plot(data, uk_index, daily_cases_posterior, daily_deaths_posterior, Rt_posterior; main_title = "(posterior)")
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/uk-predictive-posterior-Rt.png)
@@ -1719,10 +1349,61 @@ country_prediction_plot(uk_index, daily_cases_posterior, daily_deaths_posterior,
 and with the adjusted \\(R\_t\\):
 
 ```julia
-country_prediction_plot(uk_index, daily_cases_posterior, daily_deaths_posterior, Rt_adj_posterior; main_title = "(posterior)")
+country_prediction_plot(data, uk_index, daily_cases_posterior, daily_deaths_posterior, Rt_adj_posterior; main_title = "(posterior)")
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/uk-predictive-posterior-Rt-adjusted.png)
+
+Plotting all countries in one plot can quite cluttered, we're going to use the [`PlotlyJS.jl`](https://github.com/sglyon/PlotlyJS.jl) plotting backend (which generates [plotly.js](https://github.com/plotly/plotly.js/) plots under the hood) which allows us to interactively select which countries to view by clicking on the labels.
+
+```julia
+plotlyjs()
+```
+
+    Plots.PlotlyJSBackend()
+
+```julia
+countries_prediction_plot(data, Rt_posterior_arr; size = (800, 300))
+title!("Rt (95% intervals)")
+```
+
+{% include plotly.html id='Rt-posterior' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/Rt_posterior.json' %}
+
+```julia
+countries_prediction_plot(data, cumsum(daily_cases_posterior_arr; dims = 2); size = (800, 300))
+title!("Expected cases (95% intervals)")
+```
+
+{% include plotly.html id='fig-pred-cases' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_cases.json' %}
+
+```julia
+countries_prediction_plot(data, cumsum(daily_deaths_posterior_arr; dims = 2); size = (800, 300))
+title!("Expected deaths (95% intervals)")
+```
+
+{% include plotly.html id='fig-pred-deaths' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_deaths.json' %}
+
+```julia
+countries_prediction_plot(data, cumsum(daily_cases_posterior_arr; dims = 2); normalize_pop = true, size = (800, 300))
+title!("Expected cases / population (95% intervals)")
+```
+
+{% include plotly.html id='fig-pred-cases-normalized' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_cases_normalized.json' %}
+
+```julia
+countries_prediction_plot(data, cumsum(daily_deaths_posterior_arr; dims = 2); normalize_pop = true, size = (800, 300))
+title!("Expected deaths / population (95% intervals)")
+```
+
+{% include plotly.html id='fig-pred-deaths-normalized' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_deaths_normalized.json' %}
+
+In the following sections we’re going to back to `PyPlot.jl` as backend (which uses Python’s matplotlib under the hood) instead of `PlotlyJS.jl` since too many `plotly.js` plots can slow down even the finest of computers.
+
+```julia
+pyplot()
+```
+
+    Plots.PyPlotBackend()
 
 
 ## All countries: prior vs. posterior predictive
@@ -1794,13 +1475,13 @@ For the sake of completeness, here are the prior and posterior predictive distri
 
 One interesting thing one can do after obtaining estimates for the effect of each of the interventions is to run the model but now *without* all or a subset of the interventions performed. Thus allowing us to get a sense of what the outcome would have been without those interventions, and also whether or not the interventions have the wanted effect.
 
-`data.covariates[m]` is a binary matrix for each `m` (country index), with `data.covariate[m][:, k]` then being a binary vector representing the time-series for the k-th covariate: `0` means the intervention has is not implemented, `1` means that the intervention is implemented. As an example, if schools and universites were closed after the 45th day for country `m`, then `data.covariate[m][1:45, k]` are all zeros and `data.covariate[m][45:end, k]` are all ones.
+`turing_data.covariates[m]` is a binary matrix for each `m` (country index), with `turing_data.covariate[m][:, k]` then being a binary vector representing the time-series for the k-th covariate: `0` means the intervention has is not implemented, `1` means that the intervention is implemented. As an example, if schools and universites were closed after the 45th day for country `m`, then `turing_data.covariate[m][1:45, k]` are all zeros and `turing_data.covariate[m][45:end, k]` are all ones.
 
 ```julia
 # Get the index of schools and univerities closing
-schools_universities_closed_index = findfirst(==("schools_universities"), names_covariates)
+schools_universities_closed_index = findfirst(==("schools_universities"), covariate_names)
 # Time-series for UK
-data.covariates[uk_index][:, schools_universities_closed_index]
+turing_data.covariates[uk_index][:, schools_universities_closed_index]
 ```
 
     100-element Array{Float64,1}:
@@ -1846,17 +1527,17 @@ Note that only `remove` xor `keep` can be non-empty.
 
 Useful when instantiating counter-factual models, as it allows one to remove/keep a subset of the covariates.
 """
-zero_covariates(xs::AbstractMatrix{<:Real}; kwargs...) = zero_covariates(xs, names_covariates; kwargs...)
-function zero_covariates(xs::AbstractMatrix{<:Real}, names_covariates; remove=[], keep=[])
+zero_covariates(xs::AbstractMatrix{<:Real}; kwargs...) = zero_covariates(xs, covariate_names; kwargs...)
+function zero_covariates(xs::AbstractMatrix{<:Real}, covariate_names; remove=[], keep=[])
     @assert (isempty(remove) || isempty(keep)) "only `remove` or `keep` can be non-empty"
 
     if isempty(keep)
         return mapreduce(hcat, enumerate(eachcol(xs))) do (i, c)
-            (names_covariates[i] ∈ remove ? zeros(eltype(c), length(c)) : c)
+            (covariate_names[i] ∈ remove ? zeros(eltype(c), length(c)) : c)
         end
     else
         return mapreduce(hcat, enumerate(eachcol(xs))) do (i, c)
-            (names_covariates[i] ∈ keep ? c : zeros(eltype(c), length(c))) 
+            (covariate_names[i] ∈ keep ? c : zeros(eltype(c), length(c))) 
         end
     end
 end
@@ -1871,15 +1552,15 @@ Now we can consider simulation under the posterior with *no* intervention, and w
 ```julia
 # What happens if we don't do anything?
 m_counterfactual = model_def(
-    data.num_impute,
-    data.num_total_days,
-    data.cases,
-    data.deaths,
-    data.π,
-    [zeros(size(c)) for c in data.covariates], # <= remove ALL covariates
-    data.epidemic_start,
-    data.population,
-    data.serial_intervals,
+    turing_data.num_impute,
+    turing_data.num_total_days,
+    turing_data.cases,
+    turing_data.deaths,
+    turing_data.π,
+    [zeros(size(c)) for c in turing_data.covariates], # <= remove ALL covariates
+    turing_data.epidemic_start,
+    turing_data.population,
+    turing_data.serial_intervals,
     lockdown_index,
     true # <= use full model
 );
@@ -1887,25 +1568,51 @@ m_counterfactual = model_def(
 # Compute the "generated quantities" for the "counter-factual" model
 generated_counterfactual = vectup2tupvec(generated_quantities(m_counterfactual, pooled_chains));
 daily_cases_counterfactual, daily_deaths_counterfactual, Rt_counterfactual, Rt_adj_counterfactual = generated_counterfactual;
-country_prediction_plot(5, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
+
+# Convert `Vector{<:Vector{<:Vector}}` into `Array{<:Real, 3}` with shape `(num_countries, num_days, num_samples)`
+daily_cases_counterfactual_arr = permutedims(arrarrarr2arr(daily_cases_counterfactual), (2, 3, 1));
+daily_deaths_counterfactual_arr = permutedims(arrarrarr2arr(daily_deaths_counterfactual), (2, 3, 1));
+Rt_counterfactual_arr = permutedims(arrarrarr2arr(Rt_counterfactual), (2, 3, 1));
+Rt_adj_counterfactual_arr = permutedims(arrarrarr2arr(Rt_adj_counterfactual), (2, 3, 1));
+
+# plot
+country_prediction_plot(data, 5, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/counterfactual-remove-all.png)
 
+```julia
+plotlyjs()
+countries_prediction_plot(data, cumsum(daily_cases_counterfactual_arr; dims = 2); normalize_pop = true, size = (800, 300))
+title!("Expected cases / population when no intervention (95% intervals)")
+```
+
+{% include plotly.html id='fig-pred-cases-counterfactual-3' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_cases_counterfactual_3.json' %}
+
+Recalling the same figure for the posterior which includes interventions
+
+{% include plotly.html id='pred-cases-normalized-2' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/pred_cases_normalized.json' %}
+
 We can also consider the cases where we only do *some* of the interventions, e.g. we never do a full lockdown (`lockdown`) or close schools and universities (`schools_universities`):
+
+```julia
+pyplot()
+```
+
+    Plots.PyPlotBackend()
 
 ```julia
 # What happens if we never close schools nor do a lockdown?
 m_counterfactual = model_def(
-    data.num_impute,
-    data.num_total_days,
-    data.cases,
-    data.deaths,
-    data.π,
-    [zero_covariates(c; remove = ["lockdown", "schools_universities"]) for c in data.covariates], # <= remove covariates
-    data.epidemic_start,
-    data.population,
-    data.serial_intervals,
+    turing_data.num_impute,
+    turing_data.num_total_days,
+    turing_data.cases,
+    turing_data.deaths,
+    turing_data.π,
+    [zero_covariates(c; remove = ["lockdown", "schools_universities"]) for c in turing_data.covariates], # <= remove covariates
+    turing_data.epidemic_start,
+    turing_data.population,
+    turing_data.serial_intervals,
     lockdown_index,
     true # <= use full model
 );
@@ -1913,7 +1620,7 @@ m_counterfactual = model_def(
 # Compute the "generated quantities" for the "counter-factual" model
 generated_counterfactual = vectup2tupvec(generated_quantities(m_counterfactual, pooled_chains));
 daily_cases_counterfactual, daily_deaths_counterfactual, Rt_counterfactual, Rt_adj_counterfactual = generated_counterfactual;
-country_prediction_plot(uk_index, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
+country_prediction_plot(data, uk_index, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/counterfactual-remove-lockdown-and-schools.png)
@@ -1923,22 +1630,22 @@ As mentioned, this assumes that we will stay in lockdown and schools and univers
 ```julia
 lift_lockdown_time = 75
 
-new_covariates = [copy(c) for c in data.covariates] # <= going to do inplace manipulations so we copy
+new_covariates = [copy(c) for c in turing_data.covariates] # <= going to do inplace manipulations so we copy
 for covariates_m ∈ new_covariates
     covariates_m[lift_lockdown_time:end, lockdown_index] .= 0
 end
 
 # What happens if we never close schools nor do a lockdown?
 m_counterfactual = model_def(
-    data.num_impute,
-    data.num_total_days,
-    data.cases,
-    data.deaths,
-    data.π,
+    turing_data.num_impute,
+    turing_data.num_total_days,
+    turing_data.cases,
+    turing_data.deaths,
+    turing_data.π,
     new_covariates,
-    data.epidemic_start,
-    data.population,
-    data.serial_intervals,
+    turing_data.epidemic_start,
+    turing_data.population,
+    turing_data.serial_intervals,
     lockdown_index,
     true # <= use full model
 );
@@ -1946,7 +1653,7 @@ m_counterfactual = model_def(
 # Compute the "generated quantities" for the "counter-factual" model
 generated_counterfactual = vectup2tupvec(generated_quantities(m_counterfactual, pooled_chains));
 daily_cases_counterfactual, daily_deaths_counterfactual, Rt_counterfactual, Rt_adj_counterfactual = generated_counterfactual;
-country_prediction_plot(uk_index, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
+country_prediction_plot(data, uk_index, daily_cases_counterfactual, daily_deaths_counterfactual, Rt_adj_counterfactual; normalize_pop = true)
 ```
 
 ![nil](../assets/figures/2020-05-04-Imperial-Report13-analysis/counterfactual-remove-lockdown-after-a-while.png)
