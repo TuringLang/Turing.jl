@@ -1,11 +1,11 @@
 - name: Arthur Lui
-  # photo: www.example.com/image.png
-  # github: username
+  photo: https://avatars.githubusercontent.com/u/5297817?v=3
+  github: luiarthur
   institution: University of California, Santa Cruz
-  # website: https://example.com/
-  # email: person@example.com
-  # linkedin: linkedin_username
-  # twitter: twitter_handle
+  website: https://luiarthur.github.io
+  email: alui2@ucsc.edu
+  linkedin: lui-arthur
+  twitter: luiarthur89
 
 - name: Saranjeet Kaur
   # photo: www.example.com/image.png
