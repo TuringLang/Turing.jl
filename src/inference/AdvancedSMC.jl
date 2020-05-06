@@ -91,7 +91,7 @@ end
 
 function AbstractMCMC.sample_init!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -113,14 +113,8 @@ function AbstractMCMC.sample_init!(
     # create a new particle container
     spl.state.particles = pc = ParticleContainer(particles)
 
-    # Run particle filter.
-    logevidence = zero(spl.state.average_logevidence)
-    isdone = false
-    while !isdone
-        resample!(pc, spl.alg.resampler)
-        isdone = propagate!(pc)
-        logevidence += logZ(pc)
-    end
+    # Perform particle sweep.
+    logevidence = sweep!(pc, spl.alg.resampler)
     spl.state.average_logevidence = logevidence
 
     return
@@ -128,7 +122,7 @@ end
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:SMC},
     ::Integer,
     transition;
@@ -138,16 +132,19 @@ function AbstractMCMC.step!(
     # check that we received a real iteration number
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
 
-    # grab the weights
+    # grab the weight
     pc = spl.state.particles
-    Ws = getweights(pc)
+    weight = getweight(pc, iteration)
 
     # update the master vi
     particle = pc.vals[iteration]
     params = tonamedtuple(particle.vi)
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
     lp = getlogp(particle.vi)
 
-    return ParticleTransition(params, lp, spl.state.average_logevidence, Ws[iteration])
+    return ParticleTransition(params, lp, spl.state.average_logevidence, weight)
 end
 
 ####
@@ -155,29 +152,55 @@ end
 ####
 
 """
-    PG(n_particles::Int)
+$(TYPEDEF)
 
 Particle Gibbs sampler.
 
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Usage:
+# Fields
 
-```julia
-PG(100, 100)
-```
+$(TYPEDFIELDS)
 """
-struct PG{space} <: ParticleInference
-  n_particles           ::    Int         # number of particles used
-  resampler             ::    Function    # function to resample
+struct PG{space,R} <: ParticleInference
+    """Number of particles."""
+    nparticles::Int
+    """Resampling algorithm."""
+    resampler::R
 end
-function PG(n_particles::Int, resampler::Function, space::Tuple)
-    return PG{space}(n_particles, resampler)
+
+"""
+    PG(n, space...)
+    PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
+    PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
+
+Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
+in `space`.
+
+If the algorithm for the resampling step is not specified explicitly, systematic resampling
+is performed if the estimated effective sample size per particle drops below 0.5.
+"""
+function PG(
+    nparticles::Int,
+    resampler = Turing.Core.ResampleWithESSThreshold(),
+    space::Tuple = (),
+)
+    return PG{space, typeof(resampler)}(nparticles, resampler)
 end
-PG(n1::Int, ::Tuple{}) = PG(n1)
-function PG(n1::Int, space::Symbol...)
-    PG(n1, resample_systematic, space)
+
+# Convenient constructors with ESS threshold
+function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+end
+function PG(nparticles::Int, threshold::Real, space::Tuple = ())
+    return PG(nparticles, resample_systematic, threshold, space)
+end
+
+# If only the number of particles and the space is defined
+PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
+function PG(nparticles::Int, space::Tuple)
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
 end
 
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
@@ -206,7 +229,7 @@ end
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:PG},
     ::Integer,
     transition;
@@ -222,7 +245,7 @@ function AbstractMCMC.step!(
     resetlogp!(vi)
 
     # create a new set of particles
-    num_particles = spl.alg.n_particles
+    num_particles = spl.alg.nparticles
     T = Trace{typeof(spl),typeof(vi),typeof(model)}
     if ref_particle === nothing
         particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
@@ -237,14 +260,8 @@ function AbstractMCMC.step!(
     # create a new particle container
     pc = ParticleContainer(particles)
 
-    # run the particle filter
-    logevidence = zero(spl.state.average_logevidence)
-    isdone = false
-    while !isdone
-        resample!(pc, spl.alg.resampler)
-        isdone = propagate!(pc)
-        logevidence += logZ(pc)
-    end
+    # Perform a particle sweep.
+    logevidence = sweep!(pc, spl.alg.resampler)
 
     # pick a particle to be retained.
     Ws = getweights(pc)
@@ -253,6 +270,9 @@ function AbstractMCMC.step!(
     # extract the VarInfo from the retained particle.
     params = tonamedtuple(vi)
     spl.state.vi = pc.vals[indx].vi
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
@@ -261,7 +281,7 @@ end
 
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
-    ::Model,
+    ::AbstractModel,
     spl::Sampler{<:ParticleInference},
     N::Integer,
     ts::Vector{<:ParticleTransition};
