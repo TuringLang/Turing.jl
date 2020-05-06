@@ -129,6 +129,7 @@ function AbstractMCMC.sample_init!(
         model(spl.state.vi, spl)
         theta = spl.state.vi[spl]
         update_hamiltonian!(spl, model, length(theta))
+        # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
     else
         # Samples new values and sets trans to true, then computes the logp
@@ -136,12 +137,14 @@ function AbstractMCMC.sample_init!(
         link!(spl.state.vi, spl)
         theta = spl.state.vi[spl]
         update_hamiltonian!(spl, model, length(theta))
+        # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         while !isfinite(spl.state.z.ℓπ.value) || !isfinite(spl.state.z.ℓπ.gradient)
             model(empty!(spl.state.vi), SampleFromUniform())
             link!(spl.state.vi, spl)
             theta = spl.state.vi[spl]
             update_hamiltonian!(spl, model, length(theta))
+            # Refresh the internal cache phase point z's hamiltonian energy.
             spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         end
     end
