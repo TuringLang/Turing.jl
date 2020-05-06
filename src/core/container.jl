@@ -167,6 +167,16 @@ function effectiveSampleSize(pc::ParticleContainer)
     return inv(sum(abs2, Ws))
 end
 
+"""
+    resample_propagate!(pc::ParticleContainer[, randcat = resample_systematic, ref = nothing;
+                        weights = getweights(pc)])
+
+Resample and propagate the particles in `pc`.
+
+Function `randcat` is used for sampling ancestor indices from the categorical distribution
+of the particle `weights`. For Particle Gibbs sampling, one can provide a reference particle
+`ref` that is ensured to survive the resampling step.
+"""
 function resample_propagate!(
     pc::ParticleContainer,
     randcat = Turing.Inference.resample_systematic,
@@ -274,6 +284,11 @@ end
 Perform a particle sweep and return an unbiased estimate of the log evidence.
 
 The resampling steps use the given `resampler`.
+
+# Reference
+
+Del Moral, P., Doucet, A., & Jasra, A. (2006). Sequential monte carlo samplers.
+Journal of the Royal Statistical Society: Series B (Statistical Methodology), 68(3), 411-436.
 """
 function sweep!(pc::ParticleContainer, resampler)
     # Initial step:
