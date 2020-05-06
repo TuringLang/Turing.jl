@@ -77,7 +77,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs ⊆ logps
         @test getweights(pc) == exp.(pc.logWs) ./ sum(exp, pc.logWs)
-        @test all(getweight(pc, i) == exp(pc.logWs[i]) / sum(exp, pc.logWs) for i in 1:3)
+        @test all(getweight(pc, i) ≈ exp(pc.logWs[i]) / sum(exp, pc.logWs) for i in 1:3)
         @test logZ(pc) == log(sum(exp, pc.logWs))
 
         # Increase unnormalized logarithmic weights.
