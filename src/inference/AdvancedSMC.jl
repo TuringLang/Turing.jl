@@ -91,7 +91,7 @@ end
 
 function AbstractMCMC.sample_init!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:SMC},
     N::Integer;
     kwargs...
@@ -122,7 +122,7 @@ end
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:SMC},
     ::Integer,
     transition;
@@ -229,7 +229,7 @@ end
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
-    model::Model,
+    model::AbstractModel,
     spl::Sampler{<:PG},
     ::Integer,
     transition;
@@ -281,7 +281,7 @@ end
 
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
-    ::Model,
+    ::AbstractModel,
     spl::Sampler{<:ParticleInference},
     N::Integer,
     ts::Vector{<:ParticleTransition};
