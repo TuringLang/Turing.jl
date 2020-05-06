@@ -9,6 +9,7 @@
 - Turing now uses AdvancedMH v0.5, which mostly provides behind-the -scenes restructuring.
 - Custom expressions and macros can be interpolated in the `@model` definition with `$` and it is possible to use `@.` also for assumptions and observations.
 - The macros `@varinfo`, `@logpdf`, and `@sampler` are removed. Instead one can access the internal variables `_varinfo`, `_model`, `_sampler`, and `_context` in the `@model` definition.
+- Additional constructors for SMC and PG make it easier to choose the resampling method and threshold.
 
 # Release 0.11.0
 - Removed some extraneous imports and dependencies ([#1182](https://github.com/TuringLang/Turing.jl/pull/1182))
