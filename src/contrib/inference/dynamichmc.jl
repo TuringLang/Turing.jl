@@ -60,6 +60,9 @@ function AbstractMCMC.sample_init!(
         gradient_logp(x, spl.state.vi, model, spl)
     end
 
+    # Set the parameters to a starting value.
+    initialize_parameters!(spl; kwargs...)
+
     model(spl.state.vi, SampleFromUniform())
     link!(spl.state.vi, spl)
     l, dl = _lp(spl.state.vi[spl])
@@ -73,9 +76,6 @@ function AbstractMCMC.sample_init!(
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
     end
-
-    # Set the parameters to a starting value.
-    initialize_parameters!(spl; kwargs...)
 
     results = mcmc_with_warmup(
         rng,
