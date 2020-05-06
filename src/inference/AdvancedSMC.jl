@@ -152,29 +152,55 @@ end
 ####
 
 """
-    PG(n_particles::Int)
+$(TYPEDEF)
 
 Particle Gibbs sampler.
 
 Note that this method is particle-based, and arrays of variables
 must be stored in a [`TArray`](@ref) object.
 
-Usage:
+# Fields
 
-```julia
-PG(100, 100)
-```
+$(TYPEDFIELDS)
 """
-struct PG{space} <: ParticleInference
-  n_particles           ::    Int         # number of particles used
-  resampler             ::    Function    # function to resample
+struct PG{space,R} <: ParticleInference
+    """Number of particles."""
+    nparticles::Int
+    """Resampling algorithm."""
+    resampler::R
 end
-function PG(n_particles::Int, resampler::Function, space::Tuple)
-    return PG{space}(n_particles, resampler)
+
+"""
+    PG(n, space...)
+    PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
+    PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
+
+Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
+in `space`.
+
+If the algorithm for the resampling step is not specified explicitly, systematic resampling
+is performed if the estimated effective sample size per particle drops below 0.5.
+"""
+function PG(
+    nparticles::Int,
+    resampler = Turing.Core.ResampleWithESSThreshold(),
+    space::Tuple = (),
+)
+    return PG{space, typeof(resampler)}(nparticles, resampler)
 end
-PG(n1::Int, ::Tuple{}) = PG(n1)
-function PG(n1::Int, space::Symbol...)
-    PG(n1, resample_systematic, space)
+
+# Convenient constructors with ESS threshold
+function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+end
+function PG(nparticles::Int, threshold::Real, space::Tuple = ())
+    return PG(nparticles, resample_systematic, threshold, space)
+end
+
+# If only the number of particles and the space is defined
+PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
+function PG(nparticles::Int, space::Tuple)
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
 end
 
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
@@ -219,7 +245,7 @@ function AbstractMCMC.step!(
     resetlogp!(vi)
 
     # create a new set of particles
-    num_particles = spl.alg.n_particles
+    num_particles = spl.alg.nparticles
     T = Trace{typeof(spl),typeof(vi),typeof(model)}
     if ref_particle === nothing
         particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
