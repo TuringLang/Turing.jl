@@ -49,7 +49,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(
             MH(:s),
             HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 3000)
+        chain = sample(gdemo(1.5, 2.0), alg, 5000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = Gibbs(

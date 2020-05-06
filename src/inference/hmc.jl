@@ -103,7 +103,7 @@ end
 function update_hamiltonian!(spl, model, n)
     metric = gen_metric(n, spl)
     ℓπ = gen_logπ(spl.state.vi, spl, model)
-    ∂ℓπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)    
+    ∂ℓπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
     spl.state.h = AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
     return spl
 end
@@ -128,22 +128,24 @@ function AbstractMCMC.sample_init!(
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
         theta = spl.state.vi[spl]
-        spl.state.z.θ .= theta
+        update_hamiltonian!(spl, model, length(theta))
+        # Refresh the internal cache phase point z's hamiltonian energy.
+        spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
     else
         # Samples new values and sets trans to true, then computes the logp
         model(empty!(spl.state.vi), SampleFromUniform())
         link!(spl.state.vi, spl)
         theta = spl.state.vi[spl]
-        resize!(spl.state.z.θ, length(theta))
-        spl.state.z.θ .= theta
         update_hamiltonian!(spl, model, length(theta))
+        # Refresh the internal cache phase point z's hamiltonian energy.
+        spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         while !isfinite(spl.state.z.ℓπ.value) || !isfinite(spl.state.z.ℓπ.gradient)
             model(empty!(spl.state.vi), SampleFromUniform())
             link!(spl.state.vi, spl)
             theta = spl.state.vi[spl]
-            resize!(spl.state.z.θ, length(theta))
-            spl.state.z.θ .= theta
             update_hamiltonian!(spl, model, length(theta))
+            # Refresh the internal cache phase point z's hamiltonian energy.
+            spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         end
     end
 
