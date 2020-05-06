@@ -2,6 +2,8 @@ using Turing, Random, Test
 using Turing.Core: ResampleWithESSThreshold
 using Turing.Inference: getspace, resample_systematic, resample_multinomial
 
+using Random
+
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
@@ -75,6 +77,46 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
+    end
+
+    @turing_testset "logevidence" begin
+        Random.seed!(100)
+
+        @model function test()
+            a ~ Normal(0, 1)
+            x ~ Bernoulli(1)
+            b ~ Gamma(2, 3)
+            1 ~ Bernoulli(x / 2)
+            c ~ Beta()
+            0 ~ Bernoulli(x / 2)
+            x
+        end
+
+        chains_smc = sample(test(), SMC(), 100)
+
+        @test all(isone, chains_smc[:x].value)
+        @test chains_smc.logevidence ≈ -2 * log(2)
+    end
+end
+
+@testset "PG" begin
+    @turing_testset "logevidence" begin
+        Random.seed!(100)
+
+        @model function test()
+            a ~ Normal(0, 1)
+            x ~ Bernoulli(1)
+            b ~ Gamma(2, 3)
+            1 ~ Bernoulli(x / 2)
+            c ~ Beta()
+            0 ~ Bernoulli(x / 2)
+            x
+        end
+
+        chains_pg = sample(test(), PG(10), 100)
+
+        @test all(isone, chains_pg[:x].value)
+        @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
     end
 end
 

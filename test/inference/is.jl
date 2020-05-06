@@ -1,5 +1,8 @@
-using Turing, Random, Test
+using Turing
 using StatsFuns
+
+using Random
+using Test
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -59,5 +62,24 @@ include(dir*"/test/test_utils/AllUtils.jl")
             @test exact[:lp][i] == t_vals.lp[i]
         end
       end
+    end
+
+    @turing_testset "logevidence" begin
+        Random.seed!(100)
+
+        @model function test()
+            a ~ Normal(0, 1)
+            x ~ Bernoulli(1)
+            b ~ Gamma(2, 3)
+            1 ~ Bernoulli(x / 2)
+            c ~ Beta()
+            0 ~ Bernoulli(x / 2)
+            x
+        end
+
+        chains = sample(test(), IS(), 10000)
+
+        @test all(isone, chains[:x].value)
+        @test chains.logevidence ≈ - 2 * log(2)
     end
 end
