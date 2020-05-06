@@ -1,8 +1,9 @@
 using Turing, Random
-using Turing: ParticleContainer, getweights, resample!,
+using Turing: ParticleContainer, getweights, getweight,
     effectiveSampleSize, Trace, current_trace, VarName, VarInfo,
-    Sampler, consume, produce, copy, fork, getlogp
-using Turing.Core: logZ, propagate!
+    Sampler, consume, produce, fork, getlogp
+using Turing.Core: logZ, reset_logweights!, increase_logweight!,
+    resample_propagate!, reweight!
 using Test
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
@@ -16,6 +17,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test newpc.logWs == pc.logWs
         @test typeof(pc) === typeof(newpc)
     end
+
     @turing_testset "particle container" begin
         # Create a resumable function that always yields `logp`.
         function fpc(logp)
@@ -41,38 +43,55 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs == zeros(3)
         @test getweights(pc) == fill(1/3, 3)
-        @test iszero(logZ(pc))
+        @test all(getweight(pc, i) == 1/3 for i in 1:3)
+        @test logZ(pc) ≈ log(3)
         @test effectiveSampleSize(pc) == 3
 
-        # Propagate particles.
-        propagate!(pc)
+        # Reweight particles.
+        reweight!(pc)
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs == logps
         @test getweights(pc) ≈ exp.(logps) ./ sum(exp, logps)
-        @test logZ(pc) == log(sum(exp, logps)) - log(3)
+        @test all(getweight(pc, i) ≈ exp(logps[i]) / sum(exp, logps) for i in 1:3)
+        @test logZ(pc) == log(sum(exp, logps))
 
-        # Propagate particles.
-        propagate!(pc)
+        # Reweight particles.
+        reweight!(pc)
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs == 2 .* logps
         @test getweights(pc) == exp.(2 .* logps) ./ sum(exp, 2 .* logps)
-        @test logZ(pc) == log(sum(exp, 2 .* logps)) - log(3)
+        @test all(getweight(pc, i) ≈ exp(2 * logps[i]) / sum(exp, 2 .* logps) for i in 1:3)
+        @test logZ(pc) == log(sum(exp, 2 .* logps))
 
-        # Resample particles.
-        resample!(pc)
+        # Resample and propagate particles.
+        resample_propagate!(pc)
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs == zeros(3)
         @test getweights(pc) == fill(1/3, 3)
-        @test iszero(logZ(pc))
+        @test all(getweight(pc, i) == 1/3 for i in 1:3)
+        @test logZ(pc) ≈ log(3)
         @test effectiveSampleSize(pc) == 3
 
-        # Propagate particles.
-        propagate!(pc)
+        # Reweight particles.
+        reweight!(pc)
         @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
         @test pc.logWs ⊆ logps
         @test getweights(pc) == exp.(pc.logWs) ./ sum(exp, pc.logWs)
-        @test logZ(pc) == log(sum(exp, pc.logWs)) - log(3)
+        @test all(getweight(pc, i) == exp(pc.logWs[i]) / sum(exp, pc.logWs) for i in 1:3)
+        @test logZ(pc) == log(sum(exp, pc.logWs))
+
+        # Increase unnormalized logarithmic weights.
+        logws = copy(pc.logWs)
+        increase_logweight!(pc, 2, 1.41)
+        @test pc.logWs == logws + [0, 1.41, 0]
+
+        # Reset unnormalized logarithmic weights.
+        logws = pc.logWs
+        reset_logweights!(pc)
+        @test pc.logWs === logws
+        @test all(iszero, pc.logWs)
     end
+
     @turing_testset "trace" begin
         n = Ref(0)
 
