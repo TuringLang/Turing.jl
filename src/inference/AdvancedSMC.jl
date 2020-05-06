@@ -113,14 +113,8 @@ function AbstractMCMC.sample_init!(
     # create a new particle container
     spl.state.particles = pc = ParticleContainer(particles)
 
-    # Run particle filter.
-    logevidence = zero(spl.state.average_logevidence)
-    isdone = false
-    while !isdone
-        resample!(pc, spl.alg.resampler)
-        isdone = propagate!(pc)
-        logevidence += logZ(pc)
-    end
+    # Perform particle sweep.
+    logevidence = sweep!(pc, spl.alg.resampler)
     spl.state.average_logevidence = logevidence
 
     return
@@ -138,16 +132,19 @@ function AbstractMCMC.step!(
     # check that we received a real iteration number
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
 
-    # grab the weights
+    # grab the weight
     pc = spl.state.particles
-    Ws = getweights(pc)
+    weight = getweight(pc, iteration)
 
     # update the master vi
     particle = pc.vals[iteration]
     params = tonamedtuple(particle.vi)
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
     lp = getlogp(particle.vi)
 
-    return ParticleTransition(params, lp, spl.state.average_logevidence, Ws[iteration])
+    return ParticleTransition(params, lp, spl.state.average_logevidence, weight)
 end
 
 ####
@@ -237,14 +234,8 @@ function AbstractMCMC.step!(
     # create a new particle container
     pc = ParticleContainer(particles)
 
-    # run the particle filter
-    logevidence = zero(spl.state.average_logevidence)
-    isdone = false
-    while !isdone
-        resample!(pc, spl.alg.resampler)
-        isdone = propagate!(pc)
-        logevidence += logZ(pc)
-    end
+    # Perform a particle sweep.
+    logevidence = sweep!(pc, spl.alg.resampler)
 
     # pick a particle to be retained.
     Ws = getweights(pc)
@@ -253,6 +244,9 @@ function AbstractMCMC.step!(
     # extract the VarInfo from the retained particle.
     params = tonamedtuple(vi)
     spl.state.vi = pc.vals[indx].vi
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
     lp = getlogp(spl.state.vi)
 
     # update the master vi.
