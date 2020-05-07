@@ -70,13 +70,13 @@ function AbstractMCMC.sample_end!(
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
 
-function DynamicPPL.assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi::VarInfo)
+function DynamicPPL.assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
     r = rand(dist)
     push!(vi, vn, r, dist, spl)
     return r, 0
 end
 
-function DynamicPPL.observe(spl::Sampler{<:IS}, dist::Distribution, value, vi::VarInfo)
+function DynamicPPL.observe(spl::Sampler{<:IS}, dist::Distribution, value, vi)
     # acclogp!(vi, logpdf(dist, value))
     return logpdf(dist, value)
 end

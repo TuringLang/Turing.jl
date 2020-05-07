@@ -1,3 +1,16 @@
+# Release 0.12.0
+
+- The interface for defining new distributions with a constrained support and making them compatible with `Turing` has changed. To make a custom distribution type `CustomDistribution` compatible with `Turing`, the user needs to define the method `bijector(d::CustomDistribution)` that returns an instance of type `Bijector` implementing the `Bijectors.Bijector` API.
+- `~` is now thread-safe when used for observations, but not assumptions yet.
+- There were some performance improvements in the automatic differentiation of functions in `DistributionsAD` and `Bijectors` leading to speeds closer to and sometimes faster than Stan's.
+- An HMC initialization bug was fixed. HMC initialization in Turing is now consistent with Stan's.
+- Sampling from the prior is now possible using `sample`.
+- `psample` is now deprecated, in favor of `sample(model, sampler, parallel_method, n_samples, n_chains)` where `parallel_method` can be either `MCMCThreads()` or `MCMCDistributed()`. `MCMCThreads` will use your available threads to sample each chain (ensure that you have the environment variable `JULIA_NUM_THREADS` set to the number of threads you want to use) and `MCMCDistributed` will dispatch chain sampling to each available processes (you can add processes with `addprocs()`).
+- Turing now uses AdvancedMH v0.5, which mostly provides behind-the -scenes restructuring.
+- Custom expressions and macros can be interpolated in the `@model` definition with `$` and it is possible to use `@.` also for assumptions and observations.
+- The macros `@varinfo`, `@logpdf`, and `@sampler` are removed. Instead one can access the internal variables `_varinfo`, `_model`, `_sampler`, and `_context` in the `@model` definition.
+- Additional constructors for SMC and PG make it easier to choose the resampling method and threshold.
+
 # Release 0.11.0
 - Removed some extraneous imports and dependencies ([#1182](https://github.com/TuringLang/Turing.jl/pull/1182))
 - Minor backend changes to `sample` and `psample`, which now use functions defined upstream in AbstractMCMC.jl ([#1187](https://github.com/TuringLang/Turing.jl/pull/1187))
