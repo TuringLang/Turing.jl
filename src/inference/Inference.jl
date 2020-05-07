@@ -566,7 +566,7 @@ function get_matching_type(
 end
 function get_matching_type(
     spl::AbstractSampler,
-    vi, 
+    vi,
     ::Type{<:AbstractFloat},
 )
     return floatof(eltype(vi, spl))

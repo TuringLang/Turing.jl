@@ -302,4 +302,42 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end
+    @testset "Hessian test" begin
+        @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
+            params = TV(undef, 2)
+            @. params ~ Normal(0, 1)
+        
+            x ~ MvNormal(params, 1)
+        end
+        
+        function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
+            # setup
+            varinfo_init = Turing.VarInfo(model)
+            spl = DynamicPPL.SampleFromPrior()    
+            DynamicPPL.link!(varinfo_init, spl)
+        
+            function logπ(z; unlinked = false)
+                varinfo = DynamicPPL.VarInfo(varinfo_init, spl, z)
+        
+                unlinked && DynamicPPL.invlink!(varinfo_init, spl)
+                model(varinfo, spl, ctx)
+                unlinked && DynamicPPL.link!(varinfo_init, spl)
+        
+                return -DynamicPPL.getlogp(varinfo)
+            end
+        
+            return logπ
+        end
+        
+        data = [0.5, -0.5]
+        model = tst(data)
+        
+        likelihood = make_logjoint(model, DynamicPPL.LikelihoodContext())
+        target(x) = likelihood(x, unlinked=true)
+        
+        H_f = ForwardDiff.hessian(target, zeros(2))
+        H_r = ReverseDiff.hessian(target, zeros(2))
+        @test H_f == [1.0 0.0; 0.0 1.0]
+        @test H_f == H_r
+    end
 end
