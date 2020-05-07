@@ -1,5 +1,5 @@
 ---
-title: "Replication study: Estimating number of inections and impact of NPIs on COVID-19 in European countries (Imperial Report 13)"
+title: "Replication study: Estimating number of infections and impact of NPIs on COVID-19 in European countries (Imperial Report 13)"
 author: Tor Erlend Fjelde; Mohamed Tarek; Kai Xu; David Widmann; Martin Trapp; Cameron Pfiffer; Hong Ge 
 date: 2020-05-04
 draft: true
