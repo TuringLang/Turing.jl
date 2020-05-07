@@ -9,37 +9,21 @@ The Turing.jl team is currently exploring cooperation with other researchers in 
 
 In summary, we replicated the Imperial COVID-19 model using Turing.jl. Subsequently, we compared the inference results between Turing and Stan, and our comparison indicates that results are reproducible with two different implementations. In particular, we performed 4 sets of simulations using the Imperial COVID-19 model. The resulting estimates of real number of cases, in contrast to *recorded* number of cases, the reproduction number \\(R\_t\\), and expected number of deaths as a function of time and non-pharmaceutical interventions (NPIs) for each simulation are shown below. Note that \\(R\_t\\) has a different time-range than the other plots; following the original report, this shows the 100 days days following the country-specific `epidemic_start` which is defined to be 31 days prior to the first date of 10 cumulative deaths, while the other plots show the last 60 days for all countries.
 
-{% include plotly.html id='simulation-1-Rt' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/Rt_prior.json' %}
+{% include plotly.html id='simulation-1-full' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/full_prior.json' %}
 
-{% include plotly.html id='simulation-1-cases' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/cases_prior.json' %}
+**Simulation (a):** hypothetical simulation from the model without data (prior predictive) or non-pharmaceutical interventions. The dotted lines correspond to observations, and the black bar corresponds to the date of the last observation.
 
-{% include plotly.html id='simulation-1-deaths' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/deaths_prior.json' %}
+{% include plotly.html id='simulation-2-full' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/full_posterior.json' %}
 
-**Simulation (a):** hypothetical simulation from the model without data (prior predictive) or non-pharmaceutical interventions. The black bar corresponds to the date of the last observation.
+**Simulation (b):** future simulation with non-pharmaceutical interventions kept in place (posterior predictive). The dotted lines correspond to observations, and the black bar corresponds to the date of the last observation.
 
-{% include plotly.html id='simulation-2-Rt' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/Rt_posterior.json' %}
+{% include plotly.html id='simulation-3-full' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/full_counterfactual.json' %}
 
-{% include plotly.html id='simulation-2-cases' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/cases_posterior.json' %}
+**Simulation (c):** future simulation with non-pharmaceutical interventions removed. The dotted lines correspond to observations, and the black bar corresponds to the date of the last observation.
 
-{% include plotly.html id='simulation-2-deaths' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/deaths_posterior.json' %}
+{% include plotly.html id='simulation-4-full' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/full_counterfactual2.json' %}
 
-**Simulation (b):** future simulation with non-pharmaceutical interventions kept in place (posterior predictive). The black bar corresponds to the date of the last observation.
-
-{% include plotly.html id='simulation-3-Rt' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/Rt_counterfactual.json' %}
-
-{% include plotly.html id='simulation-3-cases' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/cases_counterfactual.json' %}
-
-{% include plotly.html id='simulation-3-deaths' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/deaths_counterfactual.json' %}
-
-**Simulation (c):** future simulation with non-pharmaceutical interventions removed. The black bar corresponds to the date of the last observation.
-
-{% include plotly.html id='simulation-4-Rt' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/Rt_counterfactual2.json' %}
-
-{% include plotly.html id='simulation-4-cases' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/cases_counterfactual2.json' %}
-
-{% include plotly.html id='simulation-4-deaths' json='../assets/figures/2020-05-04-Imperial-Report13-analysis/deaths_counterfactual2.json' %}
-
-**Simulation (d):** future simulation with when `lockdown` is lifted two weeks before the last observation. The black bar corresponds to the date of the last observation, and the red bar indicates when `lockdown` was lifted.
+**Simulation (d):** future simulation with when `lockdown` is lifted two weeks before the last observation. The dotted lines correspond to observations, the black bar corresponds to the date of the last observation, and the red bar indicates when `lockdown` was lifted.
 
 Simulation (a) shows the prior modelling assumptions, and how these prior assumptions determine the predicted numbed of cases, etc. before seeing any data. Simulation (b) predicts the trend of the number of cases, etc. using estimated parameters and by keeping all the non-pharmaceutical interventions in place. Simulation (c) shows the estimate in case all intervention measures are removed, e.g. such as lifting lockdown after the peak has passed. Simulation (d) shows the esimates in the case when lockdown was lifted two weeks prior to the last observation, while keeping all the other non-pharmaceutical interventions in place.
 
