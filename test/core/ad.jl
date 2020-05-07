@@ -305,7 +305,7 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
     @testset "Hessian test" begin
         @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
             params = TV(undef, 2)
-            params .~ Normal(0, 1)
+            @. params ~ Normal(0, 1)
         
             x ~ MvNormal(params, 1)
         end
