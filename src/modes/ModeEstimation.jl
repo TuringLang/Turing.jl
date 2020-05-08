@@ -30,12 +30,23 @@ struct OptimLogDensity{M<:Model,C<:AbstractContext,V<:VarInfo}
 	init::V
 end
 
+"""
+    OptimLogDensity(model::Model, context::AbstractContext)
+
+Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
+"""
 function OptimLogDensity(model::Model, context::AbstractContext)
 	init = VarInfo(model)
 	DynamicPPL.link!(init, SampleFromPrior())
 	return OptimLogDensity(model, context, init)
 end
 
+"""
+    (f::OptimLogDensity)(z; unlinked::Bool = false)
+
+Evaluate the log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
+at the array `z`. If `unlinked=true`, no change of variables will occur.
+"""
 function (f::OptimLogDensity)(z; unlinked::Bool = false)
     spl = DynamicPPL.SampleFromPrior()
 
@@ -110,14 +121,59 @@ StatsBase.loglikelihood(m::ModeResult) = m.lp
 # Optim.jl methods #
 ####################
 
+"""
+    Optim.optimize(model::Model, ::MLE, args...; kwargs...)
+
+Compute a maximum likelihood estimate of the `model`.
+
+Example:
+
+```julia
+@model function f(x)
+    m ~ Normal(0, 1)
+    x ~ Normal(m, 1)
+end
+
+model = f(1.5)
+mle = optimize(model, MLE())
+
+# Use a different optimizer
+mle = optimize(model, MLE(), NelderMeade())
+```
+"""
 function Optim.optimize(model::Model, ::MLE, args...; kwargs...)
     return optimize(model, OptimLogDensity(model, DynamicPPL.LikelihoodContext()), args...; kwargs...)
 end
 
+"""
+    Optim.optimize(model::Model, ::MAP, args...; kwargs...)
+
+Compute a maximum a posterior estimate of the `model`.
+
+Example:
+
+```julia
+@model function f(x)
+    m ~ Normal(0, 1)
+    x ~ Normal(m, 1)
+end
+
+model = f(1.5)
+map_est = optimize(model, MAP())
+
+# Use a different optimizer
+map_est = optimize(model, MAP(), NelderMeade())
+```
+"""
 function Optim.optimize(model::Model, ::MAP, args...; kwargs...)
     return optimize(model, OptimLogDensity(model, DynamicPPL.DefaultContext()), args...; kwargs...)
 end
 
+"""
+    Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS(), args...; kwargs...)
+
+Estimate a mode, i.e., compute a MLE or MAP estimate.
+"""
 function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS(), args...; kwargs...)
     # Do some initialization.
     b = bijector(model)
