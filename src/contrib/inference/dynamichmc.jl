@@ -60,15 +60,22 @@ function AbstractMCMC.sample_init!(
         gradient_logp(x, spl.state.vi, model, spl)
     end
 
-    model(spl.state.vi, SampleFromUniform())
+    # Set the parameters to a starting value.
+    initialize_parameters!(spl; kwargs...)
 
-    if spl.selector.tag == :default
+    model(spl.state.vi, SampleFromUniform())
+    link!(spl.state.vi, spl)
+    l, dl = _lp(spl.state.vi[spl])
+    while !isfinite(l) || !isfinite(dl)
+        model(spl.state.vi, SampleFromUniform())
+        link!(spl.state.vi, spl)
+        l, dl = _lp(spl.state.vi[spl])
+    end
+
+    if spl.selector.tag == :default && !islinked(spl.state.vi, spl)
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
     end
-
-    # Set the parameters to a starting value.
-    initialize_parameters!(spl; kwargs...)
 
     results = mcmc_with_warmup(
         rng,
