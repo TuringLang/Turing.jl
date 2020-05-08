@@ -137,7 +137,6 @@ function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS()
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
     # correct dimensionality.
     vi[spl] = vals
-    model(vi) # XXX: Is this a necessary step?
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(vi), DynamicPPL.getlogp(vi))]
