@@ -98,7 +98,7 @@ model = tmodel(1.0)
 varinfo = Turing.VarInfo(model)
 spl = Turing.SampleFromPrior()
 
-@code_warntype model.f(varinfo, spl, Turing.DefaultContext(), model)
+@code_warntype model.f(model, varinfo, spl, Turing.DefaultContext())
 ```
 to inspect the type instabilities in the model.
 
@@ -136,4 +136,3 @@ Then define the `Turing` model using the new functions as such:
     x .~ Normal(c, d)
 end
 ```
-
