@@ -174,7 +174,7 @@ end
 
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
-function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS(), args...; kwargs...)
+function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
     # Do some initialization.
     b = bijector(model)
     binv = inv(b)
