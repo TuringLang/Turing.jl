@@ -36,8 +36,6 @@ include("inference/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
-include("modes/ModeEstimation.jl")
-using .ModeEstimation
 
 # TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
 #   Related: https://github.com/TuringLang/Turing.jl/issues/746
@@ -58,6 +56,11 @@ using .ModeEstimation
     else
         error("Please update DynamicHMC, v1.x is no longer supported")
     end
+end
+
+@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
+    include("modes/ModeEstimation.jl")
+    export optimize
 end
 
 ###########
