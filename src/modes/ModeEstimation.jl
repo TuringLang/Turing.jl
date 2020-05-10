@@ -52,11 +52,16 @@ function (f::OptimLogDensity)(z; unlinked::Bool = false)
 
     varinfo = DynamicPPL.VarInfo(f.init, spl, z)
 
-    unlinked && DynamicPPL.invlink!(f.init, spl)
-    f.model(varinfo, spl, f.context)
-    unlinked && DynamicPPL.link!(f.init, spl)
-
-    return -DynamicPPL.getlogp(varinfo)
+    if unlinked
+        DynamicPPL.invlink!(f.init, spl)
+        f.model(varinfo, spl, f.context)
+        lp = -DynamicPPL.getlogp(varinfo)
+        DynamicPPL.link!(f.init, spl)
+        return lp
+    else
+        f.model(varinfo, spl, f.context)
+        return -DynamicPPL.getlogp(varinfo)
+    end
 end
 
 """
@@ -126,7 +131,7 @@ StatsBase.loglikelihood(m::ModeResult) = m.lp
 
 Compute a maximum likelihood estimate of the `model`.
 
-Example:
+# Examples
 
 ```julia
 @model function f(x)
@@ -150,7 +155,7 @@ end
 
 Compute a maximum a posterior estimate of the `model`.
 
-Example:
+# Examples
 
 ```julia
 @model function f(x)
@@ -170,11 +175,11 @@ function Optim.optimize(model::Model, ::MAP, args...; kwargs...)
 end
 
 """
-    Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS(), args...; kwargs...)
+    Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
 
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
-function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.BFGS(), args...; kwargs...)
+function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
     # Do some initialization.
     b = bijector(model)
     binv = inv(b)
