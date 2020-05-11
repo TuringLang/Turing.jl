@@ -55,7 +55,7 @@ struct GibbsConditional{S, C}
     end
 end
 
-getspace(::GibbsConditional{S}) where {S} = (S,)
+DynamicPPL.getspace(::GibbsConditional{S}) where {S} = (S,)
 alg_str(::GibbsConditional) = "GibbsConditional"
 isgibbscomponent(::GibbsConditional) = true
 
@@ -78,13 +78,13 @@ function gibbs_step!(
     kwargs...
 ) where {S}
     if spl.selector.rerun # Recompute joint in logp
-        runmodel!(model, spl.state.vi)
+        model(spl.state.vi)
     end
 
     condvals = conditioned(tonamedtuple(spl.state.vi), Val{S}())
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    spl.state.vi[VarName{S}("")] = [updated;]  # setindex allows only vectors in this case...
+    spl.state.vi[VarName(S)] = [updated;]  # setindex allows only vectors in this case...
     
     return transition
 end
