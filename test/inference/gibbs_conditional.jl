@@ -41,11 +41,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return Gamma(α_n, inv(β_n))
         end
 
-<<<<<<< HEAD
         # Three tests: one for each variable fixed to the true value, and one for both
         # using the conditional
-=======
->>>>>>> Make gdemo conditional tests work
         Random.seed!(100)
 
         alg = Gibbs(

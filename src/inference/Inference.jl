@@ -535,6 +535,7 @@ include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
+include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 
