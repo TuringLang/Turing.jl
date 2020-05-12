@@ -12,7 +12,7 @@
   email: hg344@cam.ac.uk
 
 - name: Kai Xu
-  photo: https://xuk.ai/user/pages/01.home/me_ne2x.png
+  photo: https://xuk.ai/assets/me_ne2x.png
   github: xukai92
   institution: University of Edinburgh
   website: https://xuk.ai/
@@ -87,3 +87,12 @@
   github: phipsgabler
   institution: Graz University of Technology
   email: pgabler@student.tugraz.at
+
+- name: Miles Lucas
+  photo: https://avatars3.githubusercontent.com/u/14099459
+  github: mileslucas
+  institution: Institute for Astronomy, University of Hawai'i
+  website: mileslucas.com
+  email: mdlucas@hawaii.edu
+  twitter: mileslucas_
+  

@@ -23,12 +23,6 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
-        x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
-        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
-        grad_Turing1 = sort(∇E1)
-        grad_Turing2 = sort(∇E2)
-
         dist_s = InverseGamma(2,3)
 
         # Hand-written logp
@@ -48,9 +42,12 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        # Compare result
-        @test grad_Turing1 ≈ grad_FWAD atol=1e-9
-        @test grad_Turing2 ≈ grad_FWAD atol=1e-9
+        x = map(x->Float64(x), vi[SampleFromPrior()])
+        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
+        @test sort(∇E1) ≈ grad_FWAD atol=1e-9
+
+        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
+        @test sort(∇E2) ≈ grad_FWAD atol=1e-9
     end
     @turing_testset "passing duals to distributions" begin
         float1 = 1.1
@@ -275,10 +272,13 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:reversediff)
-        Turing.setcache(false)
+        Turing.setrdcache(false)
         sample(dir(), HMC(0.01, 1), 1000);
-        Turing.setcache(true)
+        Turing.setrdcache(true)
         sample(dir(), HMC(0.01, 1), 1000);
+        @test length(Memoization.caches) == 1
+        Turing.emptyrdcache()
+        @test length(Memoization.caches) == 0
     end
     # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
@@ -301,5 +301,43 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         #sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
+    end
+    @testset "Hessian test" begin
+        @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
+            params = TV(undef, 2)
+            @. params ~ Normal(0, 1)
+        
+            x ~ MvNormal(params, 1)
+        end
+        
+        function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
+            # setup
+            varinfo_init = Turing.VarInfo(model)
+            spl = DynamicPPL.SampleFromPrior()    
+            DynamicPPL.link!(varinfo_init, spl)
+        
+            function logπ(z; unlinked = false)
+                varinfo = DynamicPPL.VarInfo(varinfo_init, spl, z)
+        
+                unlinked && DynamicPPL.invlink!(varinfo_init, spl)
+                model(varinfo, spl, ctx)
+                unlinked && DynamicPPL.link!(varinfo_init, spl)
+        
+                return -DynamicPPL.getlogp(varinfo)
+            end
+        
+            return logπ
+        end
+        
+        data = [0.5, -0.5]
+        model = tst(data)
+        
+        likelihood = make_logjoint(model, DynamicPPL.LikelihoodContext())
+        target(x) = likelihood(x, unlinked=true)
+        
+        H_f = ForwardDiff.hessian(target, zeros(2))
+        H_r = ReverseDiff.hessian(target, zeros(2))
+        @test H_f == [1.0 0.0; 0.0 1.0]
+        @test H_f == H_r
     end
 end

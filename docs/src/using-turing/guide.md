@@ -158,14 +158,23 @@ sample(model_function(10), SMC(), 100)
 
 ### Sampling Multiple Chains
 
-If you have Julia 1.3 or greater, you may use `psample` to sample multiple chains in a multithreaded way:
+You can use multiple processes to sample chains in parallel:
 
 ```julia
 # Generate 4 chains, each with 1,000 samples.
-chains = psample(model, sampler, 1000, 4)
+chains = sample(model, sampler, MCMCDistributed(), 1000, 4)
 ```
 
-For older versions of Julia, `psample` may not function correctly. If you wish to run multiple chains, you can do so with the `mapreduce` function:
+Alternatively, if you have Julia 1.3 or greater, you may sample multiple chains using
+multiple threads:
+
+```julia
+# Generate 4 chains, each with 1,000 samples.
+chains = sample(model, sampler, MCMCThreads(), 1000, 4)
+```
+
+For older versions of Julia, `sample` may not function correctly. If you wish to run
+multiple chains, you can do so with the `mapreduce` function:
 
 
 ```julia

@@ -21,9 +21,9 @@ function MH(space...)
             if s[2] isa AMH.Proposal
                 push!(props, s[2])
             elseif s[2] isa Distribution
-                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+                push!(props, AMH.StaticProposal(s[2]))
             elseif s[2] isa Function
-                push!(props, AMH.Proposal(AMH.Static(), s[2]))
+                push!(props, AMH.StaticProposal(s[2]))
             end
         end
     end
@@ -66,7 +66,7 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
         n_vns = length(vns)
         n_vals = length(vals)
         v_isarr = vals isa AbstractArray
-        
+
         if v_isarr && n_vals == 1 && n_vns > 1
             for (vn, val) in zip(vns, vals[1])
                 vi[vn] = val isa AbstractArray ? val : [val]
@@ -95,7 +95,7 @@ end
     MHLogDensityFunction
 
 A log density function for the MH sampler.
-    
+
 This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
 struct MHLogDensityFunction{M<:Model,S<:Sampler{<:MH}} <: Function # Relax AMH.DensityModel?
@@ -109,7 +109,7 @@ function (f::MHLogDensityFunction)(x)::Float64
     x_old, lj_old = vi[sampler], getlogp(vi)
     # vi[sampler] = x
     set_namedtuple!(vi, x)
-    runmodel!(f.model, vi)
+    f.model(vi)
     lj = getlogp(vi)
     vi[sampler] = x_old
     setlogp!(vi, lj_old)
@@ -157,7 +157,7 @@ end
 
 @generated function _dist_tuple(
     props::NamedTuple{propnames}, 
-    vi::VarInfo, 
+    vi::VarInfo,
     vns::NamedTuple{names}
 ) where {names,propnames}
     isempty(names) === 0 && return :(NamedTuple())
@@ -168,8 +168,7 @@ end
             :($name = props.$name)
         else
             # Otherwise, use the default proposal.
-            :($name = AMH.Proposal(AMH.Static(),
-                                   unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
+            :($name = AMH.StaticProposal(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
         end for name in names]
     return expr
 end
@@ -199,7 +198,7 @@ function AbstractMCMC.step!(
     kwargs...
 )
     if spl.selector.rerun # Recompute joint in logp
-        runmodel!(model, spl.state.vi)
+        model(spl.state.vi)
     end
 
     # Retrieve distribution and value NamedTuples.
@@ -227,7 +226,7 @@ function DynamicPPL.assume(
     spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
-    vi::VarInfo
+    vi,
 )
     updategid!(vi, vn, spl)
     r = vi[vn]
@@ -239,7 +238,7 @@ function DynamicPPL.dot_assume(
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
-    vi::VarInfo,
+    vi,
 )
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
@@ -254,7 +253,7 @@ function DynamicPPL.dot_assume(
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
-    vi::VarInfo,
+    vi,
 )
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
@@ -268,7 +267,7 @@ function DynamicPPL.observe(
     spl::Sampler{<:MH},
     d::Distribution,
     value,
-    vi::VarInfo,
+    vi,
 )
     return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
 end
@@ -277,7 +276,7 @@ function DynamicPPL.dot_observe(
     spl::Sampler{<:MH},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
-    vi::VarInfo,
+    vi,
 )
     return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end

@@ -34,6 +34,9 @@
   - title: "Interface Guide"
     url: "docs/for-developers/interface"
 
+  - title: "Variational Inference"
+    url: "docs/for-developers/variational_inference"
+
 - title: "TUTORIALS"
   url: "tutorials"
   children:
@@ -63,6 +66,12 @@
 
   - title: "Bayesian Poisson Regression"
     url: "tutorials/7-poissonregression"
+
+  - title: "Multinomial Logistic Regression"
+    url: "tutorials/8-multinomiallogisticregression"
+
+  - title: "Variational Inference"
+    url: "tutorials/9-variationalinference"
 
 - title: "API"
   url: "docs/library"

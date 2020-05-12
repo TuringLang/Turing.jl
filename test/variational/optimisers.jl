@@ -18,10 +18,5 @@ for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
     test_opt(ForwardDiff, opt)
 end
 for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
-    Turing.setcache(false)
-    test_opt(ReverseDiff, opt)
-end
-for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
-    Turing.setcache(true)
     test_opt(ReverseDiff, opt)
 end

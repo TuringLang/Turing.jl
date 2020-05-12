@@ -5,23 +5,25 @@ on:
     branches:
       - master
   pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.3]
-        julia-arch: [x64]
-        os: [ubuntu-latest]
-
-
+        version:
+          - '1'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
     steps:
-      - uses: actions/checkout@v1.0.0
-      - uses: julia-actions/setup-julia@latest
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.julia-version }}
-      - uses: julia-actions/julia-runtest@master
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-buildpkg@latest
+      - uses: julia-actions/julia-runtest@latest
         env:
           STAGE: stan

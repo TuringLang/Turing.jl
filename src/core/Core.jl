@@ -1,13 +1,12 @@
 module Core
 
 using DistributionsAD, Bijectors
-using MacroTools, Libtask, ForwardDiff, Random
+using Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using ..Utilities, Reexport
 using Tracker: Tracker
 using ..Turing: Turing
-using DynamicPPL: Model, runmodel!,
-    AbstractSampler, Sampler, SampleFromPrior
+using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
 import Bijectors: link, invlink
@@ -24,7 +23,7 @@ function __init__()
     end
     @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
         include("compat/reversediff.jl")
-        export ReverseDiffAD, setcache
+        export ReverseDiffAD, getrdcache, setrdcache, emptyrdcache
     end
 end
 
@@ -42,10 +41,9 @@ export  @model,
         forkr,
         current_trace,
         getweights,
+        getweight,
         effectiveSampleSize,
-        increase_logweight,
-        inrease_logevidence,
-        resample!,
+        sweep!,
         ResampleWithESSThreshold,
         ADBackend,
         setadbackend,
@@ -58,9 +56,6 @@ export  @model,
         ADBACKEND,
         setchunksize,
         verifygrad,
-        @varinfo,
-        @logpdf,
-        @sampler,
         @logprob_str,
         @prob_str
 

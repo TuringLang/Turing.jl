@@ -85,7 +85,7 @@ function step(
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        model(vi, spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."
@@ -172,7 +172,7 @@ function step(
     spl.selector.tag != :default && link!(vi, spl)
 
     mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.ϵ))
-    spl.info[:adaptor] = AHMC.NaiveHMCAdaptor(AHMC.UnitPreconditioner(), mssa)
+    spl.info[:adaptor] = AHMC.NaiveHMCAdaptor(AHMC.UnitMassMatrix(), mssa)
 
     spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
@@ -198,7 +198,7 @@ function step(
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
-        runmodel!(model, vi, spl)
+        model(vi, spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."

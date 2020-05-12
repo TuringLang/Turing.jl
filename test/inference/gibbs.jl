@@ -1,6 +1,8 @@
 using Random, Turing, Test
 import AbstractMCMC
+import MCMCChains
 import Turing.Inference
+using Turing.RandomMeasures
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -29,6 +31,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test g.state.samplers[1].selector != g.selector
         @test g.state.samplers[2].selector != g.selector
         @test g.state.samplers[1].selector != g.state.samplers[2].selector
+
+        # run sampler: progress logging should be disabled and
+        # it should return a Chains object
+        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)
@@ -43,7 +49,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(
             MH(:s),
             HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 3000)
+        chain = sample(gdemo(1.5, 2.0), alg, 5000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = Gibbs(
@@ -63,7 +69,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             PG(10, :z1, :z2, :z3, :z4),
             HMC(0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol = 0.1)
+        check_MoGtest_default(chain, atol = 0.15)
 
         setadsafe(false)
 
@@ -72,7 +78,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             PG(10, :z1, :z2, :z3, :z4),
             ESS(:mu1), ESS(:mu2))
         chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol = 0.1)
+        check_MoGtest_default(chain, atol = 0.15)
     end
 
     @turing_testset "transitions" begin
@@ -98,12 +104,37 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return
         end
 
-        function callback(rng, model, sampler, N, i, transition; kwargs...)
+        function callback(rng, model, sampler, transition, i; kwargs...)
             transition isa Inference.GibbsTransition || error("incorrect transition")
             return
         end
 
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
         sample(model, alg, 100; callback = callback)
+    end
+
+    @turing_testset "dynamic model" begin
+        @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
+            N = length(y)
+            rpm = DirichletProcess(alpha)
+        
+            z = tzeros(Int, N)
+            cluster_counts = tzeros(Int, N)
+            fill!(cluster_counts, 0)
+        
+            for i in 1:N
+                z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
+                cluster_counts[z[i]] += 1
+            end
+        
+            Kmax = findlast(!iszero, cluster_counts)
+            m = M(undef, Kmax)
+            for k = 1:Kmax
+                m[k] ~ Normal(1.0, 1.0)
+            end
+        end
+        model = imm(randn(100), 1.0);
+        sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+        sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end

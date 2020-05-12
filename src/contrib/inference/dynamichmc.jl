@@ -46,7 +46,7 @@ mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
     draws::Vector{D}
 end
 
-getspace(::DynamicNUTS{<:Any, space}) where {space} = space
+DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -60,15 +60,22 @@ function AbstractMCMC.sample_init!(
         gradient_logp(x, spl.state.vi, model, spl)
     end
 
-    runmodel!(model, spl.state.vi, SampleFromUniform())
-
-    if spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        runmodel!(model, spl.state.vi, spl)
-    end
-
     # Set the parameters to a starting value.
     initialize_parameters!(spl; kwargs...)
+
+    model(spl.state.vi, SampleFromUniform())
+    link!(spl.state.vi, spl)
+    l, dl = _lp(spl.state.vi[spl])
+    while !isfinite(l) || !isfinite(dl)
+        model(spl.state.vi, SampleFromUniform())
+        link!(spl.state.vi, spl)
+        l, dl = _lp(spl.state.vi[spl])
+    end
+
+    if spl.selector.tag == :default && !islinked(spl.state.vi, spl)
+        link!(spl.state.vi, spl)
+        model(spl.state.vi, spl)
+    end
 
     results = mcmc_with_warmup(
         rng,
@@ -114,7 +121,7 @@ end
     model::AbstractModel,
     alg::DynamicNUTS,
     N::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     resume_from=nothing,
     progress=PROGRESS[],
     kwargs...
@@ -130,19 +137,20 @@ end
     end
 end
 
-function AbstractMCMC.psample(
+function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::DynamicNUTS,
+    parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
-    chain_type=Chains,
+    chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
     if progress
         @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
-    return AbstractMCMC.psample(rng, model, Sampler(alg, model), N, n_chains;
-                                chain_type=chain_type, progress=false, kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
+                               chain_type=chain_type, progress=false, kwargs...)
 end

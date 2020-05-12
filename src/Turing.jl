@@ -11,12 +11,11 @@ module Turing
 using Requires, Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
-using Markdown, Libtask, MacroTools
-@reexport using Distributions, MCMCChains, Libtask
+using Libtask
+@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC
 using Tracker: Tracker
 
-import Base: ~, ==, convert, hash, promote_rule, rand, getindex, setindex!
-import DynamicPPL: getspace, runmodel!, NoDist, NamedDist
+import DynamicPPL: getspace, NoDist, NamedDist
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
@@ -66,10 +65,9 @@ end
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
         @varname,
-        @varinfo,
-        @logpdf,
-        @sampler,
         DynamicPPL,
+
+        Prior,                  # Sampling from the prior
 
         MH,                     # classic sampling
         RWMH,
@@ -94,7 +92,6 @@ export  @model,                 # modelling
         ADVI,
 
         sample,                 # inference
-        psample,
         setchunksize,
         resume,
         @logprob_str,
@@ -109,15 +106,10 @@ export  @model,                 # modelling
         Flat,
         FlatPos,
         BinomialLogit,
-        VecBinomialLogit,
+        BernoulliLogit,
         OrderedLogistic,
         LogPoisson,
         NamedDist,
         filldist,
         arraydist
-
-# Reexports
-using AbstractMCMC: sample, psample
-export sample, psample
-
 end

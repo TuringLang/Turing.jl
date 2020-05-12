@@ -1,3 +1,30 @@
+# Release 0.12.0
+
+- The interface for defining new distributions with a constrained support and making them compatible with `Turing` has changed. To make a custom distribution type `CustomDistribution` compatible with `Turing`, the user needs to define the method `bijector(d::CustomDistribution)` that returns an instance of type `Bijector` implementing the `Bijectors.Bijector` API.
+- `~` is now thread-safe when used for observations, but not assumptions yet.
+- There were some performance improvements in the automatic differentiation of functions in `DistributionsAD` and `Bijectors` leading to speeds closer to and sometimes faster than Stan's.
+- An HMC initialization bug was fixed. HMC initialization in Turing is now consistent with Stan's.
+- Sampling from the prior is now possible using `sample`.
+- `psample` is now deprecated, in favor of `sample(model, sampler, parallel_method, n_samples, n_chains)` where `parallel_method` can be either `MCMCThreads()` or `MCMCDistributed()`. `MCMCThreads` will use your available threads to sample each chain (ensure that you have the environment variable `JULIA_NUM_THREADS` set to the number of threads you want to use) and `MCMCDistributed` will dispatch chain sampling to each available processes (you can add processes with `addprocs()`).
+- Turing now uses AdvancedMH v0.5, which mostly provides behind-the -scenes restructuring.
+- Custom expressions and macros can be interpolated in the `@model` definition with `$` and it is possible to use `@.` also for assumptions and observations.
+- The macros `@varinfo`, `@logpdf`, and `@sampler` are removed. Instead one can access the internal variables `_varinfo`, `_model`, `_sampler`, and `_context` in the `@model` definition.
+- Additional constructors for SMC and PG make it easier to choose the resampling method and threshold.
+
+# Release 0.11.0
+- Removed some extraneous imports and dependencies ([#1182](https://github.com/TuringLang/Turing.jl/pull/1182))
+- Minor backend changes to `sample` and `psample`, which now use functions defined upstream in AbstractMCMC.jl ([#1187](https://github.com/TuringLang/Turing.jl/pull/1187))
+- Fix for an AD-related crash ([#1202](https://github.com/TuringLang/Turing.jl/pull/1202))
+- StatsBase compat update to 0.33 ([#1185](https://github.com/TuringLang/Turing.jl/pull/1185))
+- Bugfix for ReverseDiff caching and memoization ([#1208](https://github.com/TuringLang/Turing.jl/pull/1208))
+- BREAKING: `VecBinomialLogit` is now removed. Also `BernoulliLogit` is added ([#1214](https://github.com/TuringLang/Turing.jl/pull/1214))
+- Bugfix for cases where dynamic models were breaking with HMC methods ([#1217](https://github.com/TuringLang/Turing.jl/pull/1217))
+- Updates to allow AdvancedHMC 0.2.23 ([#1218](https://github.com/TuringLang/Turing.jl/pull/1218))
+- Add more informative error messages for SMC ([#900](https://github.com/TuringLang/Turing.jl/pull/900))
+
+# Release 0.10.1
+- Fix bug where arrays with mixed integers, floats, and missing values were not being passed to the `MCMCChains.Chains` constructor properly [#1180](https://github.com/TuringLang/Turing.jl/pull/1180).
+
 # Release 0.10.0
 - Update elliptical slice sampling to use [EllipticalSliceSampling.jl](https://github.com/TuringLang/EllipticalSliceSampling.jl) on the backend. [#1145](https://github.com/TuringLang/Turing.jl/pull/1145). Nothing should change from a front-end perspective -- you can still call `sample(model, ESS(), 1000)`.
 - Added default progress loggers in [#1149](https://github.com/TuringLang/Turing.jl/pull/1149).
