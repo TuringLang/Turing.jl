@@ -55,43 +55,6 @@ alg_str(::Sampler{<:MH}) = "MH"
 #####################
 
 """
-    set_namedtuple!(vi::VarInfo, nt::NamedTuple)
-
-Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
-"""
-function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
-    for (n, vals) in pairs(nt)
-        vns = vi.metadata[n].vns
-
-        n_vns = length(vns)
-        n_vals = length(vals)
-        v_isarr = vals isa AbstractArray
-
-        if v_isarr && n_vals == 1 && n_vns > 1
-            for (vn, val) in zip(vns, vals[1])
-                vi[vn] = val isa AbstractArray ? val : [val]
-            end
-        elseif v_isarr && n_vals > 1 && n_vns == 1
-            vi[vns[1]] = vals
-        elseif v_isarr && n_vals == n_vns > 1
-            for (vn, val) in zip(vns, vals)
-                vi[vn] = [val]
-            end
-        elseif v_isarr && n_vals == 1 && n_vns == 1
-            if vals[1] isa AbstractArray
-                vi[vns[1]] = vals[1]
-            else
-                vi[vns[1]] = [vals[1]]
-            end
-        elseif !(v_isarr)
-            vi[vns[1]] = [vals]
-        else
-            error("Cannot assign `NamedTuple` to `VarInfo`")
-        end
-    end
-end
-
-"""
     MHLogDensityFunction
 
 A log density function for the MH sampler.
@@ -136,7 +99,7 @@ The second `NamedTuple` has model symbols as keys and their stored values as val
 """
 function dist_val_tuple(spl::Sampler{<:MH})
     vi = spl.state.vi
-    vns = _getvns(vi, spl)
+    vns = getvns(vi, spl)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
     return dt, vt
@@ -149,7 +112,7 @@ end
     isempty(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     expr.args = Any[
-        :($name = reconstruct(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
+        :($name = reconstruct(unvectorize(DynamicPPL.getinitdist.(Ref(vi), vns.$name)),
                               DynamicPPL.getval(vi, vns.$name)))
         for name in names]
     return expr
@@ -168,7 +131,7 @@ end
             :($name = props.$name)
         else
             # Otherwise, use the default proposal.
-            :($name = AMH.StaticProposal(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
+            :($name = AMH.StaticProposal(unvectorize(DynamicPPL.getinitdist.(Ref(vi), vns.$name))))
         end for name in names]
     return expr
 end
@@ -229,8 +192,8 @@ function DynamicPPL.assume(
     vi,
 )
     updategid!(vi, vn, spl)
-    r = vi[vn]
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    r = vi[vn, dist]
+    return r, logpdf_with_trans(dist, r, islinked_and_trans(vi, vn))
 end
 
 function DynamicPPL.dot_assume(
@@ -244,9 +207,9 @@ function DynamicPPL.dot_assume(
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
     vns = getvn.(1:size(var, 2))
     updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
+    r = vi[vns, dist]
     var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans(dist, r, islinked_and_trans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
     spl::Sampler{<:MH},
@@ -258,9 +221,9 @@ function DynamicPPL.dot_assume(
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
     updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
+    r = vi[vns, dists]
     var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans.(dists, r, islinked_and_trans(vi, vns[1])))
 end
 
 function DynamicPPL.observe(

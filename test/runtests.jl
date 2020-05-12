@@ -14,30 +14,31 @@ include("test_utils/AllUtils.jl")
         include("core/ad.jl")
         include("core/container.jl")
     end
+    @testset "inference" begin
+        @testset "samplers" begin
+            include("inference/gibbs.jl")
+            include("inference/is.jl")
+            include("inference/mh.jl")
+            include("inference/ess.jl")
+            include("inference/AdvancedSMC.jl")
+            include("inference/Inference.jl")
 
-    test_adbackends = if VERSION >= v"1.2"
-        [:forwarddiff, :tracker, :reversediff]
-    else
-        [:forwarddiff, :tracker]
-    end
-    Turing.setrdcache(false)
-    for adbackend in test_adbackends
-        Turing.setadbackend(adbackend)
-        @testset "inference: $adbackend" begin
-            @testset "samplers" begin
-                include("inference/gibbs.jl")
-                include("inference/hmc.jl")
-                include("inference/is.jl")
-                include("inference/mh.jl")
-                include("inference/ess.jl")
-                include("inference/AdvancedSMC.jl")
-                include("inference/Inference.jl")
-                include("contrib/inference/dynamichmc.jl")
+            test_adbackends = if VERSION >= v"1.2"
+                [:forwarddiff, :tracker, :reversediff]
+            else
+                [:forwarddiff, :tracker]
             end
-        end
-
-        @testset "variational algorithms : $adbackend" begin
-            include("variational/advi.jl")
+            Turing.setrdcache(false)
+            for adbackend in test_adbackends
+                @testset "hmc: $adbackend" begin
+                    Turing.setadbackend(adbackend)
+                    include("inference/hmc.jl")
+                    include("contrib/inference/dynamichmc.jl")
+                end
+                @testset "variational algorithms : $adbackend" begin
+                    include("variational/advi.jl")
+                end
+            end
         end
     end
     @testset "variational optimisers" begin

@@ -193,4 +193,70 @@ include(dir*"/test/test_utils/AllUtils.jl")
         
         @test sample(mwe(), HMC(0.2, 4), 1_000) isa Chains
     end
+
+    @turing_testset "Stochastic support" begin
+        n = 10
+        m = 10
+        k = 4
+        theta = randn(n)
+        b = zeros(k,m)
+        for i in 1:m
+            b[1,i] = randn()
+            for j in 2:k
+                dd = truncated(Normal(), b[j-1,i], Inf)
+                b[j,i] = rand(dd)
+            end
+        end
+    
+        logit = x -> log(x / (1 - x))
+        invlogit = x -> exp(x)/(1 + exp(x))
+        y = zeros(m,n)
+        probs = zeros(k,m,n)
+        for p in 1:n
+            for i in 1:m
+                probs[1,i,p] = 1.0
+                for j in 1:(k-1)
+                    Q = invlogit(theta[p] - b[j,i])
+                    probs[j,i,p] -= Q
+                    probs[j+1,i,p] = Q
+                end
+                y[i,p] = rand(Categorical(probs[:,i,p]))
+            end
+        end
+    
+        # Graded Response Model
+        @model function grm(y, n, m, k, ::Type{TC}=Array{Float64,3}, ::Type{TM}=Array{Float64,2}, ::Type{TV}=Vector{Float64}) where {TC, TM, TV}
+            b = TM(undef, k, m)
+            for i in 1:m
+                b[1,i] ~ Normal(0,1)
+                for j in 2:k
+                    b[j,i] ~ truncated(Normal(0,1), b[j-1,i], Inf) 
+                end
+            end
+            probs = TC(undef, k, m, n)
+            theta = TV(undef, n)
+            for p in 1:n
+                theta[p] ~ Normal(0,1)
+                for i in 1:m
+                    probs[1,i,p] = 1.0
+                    for j in 1:(k-1)
+                        Q = invlogit(theta[p] - b[j,i])
+                        probs[j,i,p] -= Q
+                        probs[j+1,i,p] = Q
+                    end
+                    probs[:,i,p] ./= sum(probs[:,i,p])
+                    y[i,p] ~ Categorical(probs[:,i,p], check_args=false)
+                end
+            end
+            return theta, b
+        end;
+        chn = sample(grm(y, n, m, k), HMC(0.05, 1), 100)
+        for c in 1:100
+            for i in 1:m
+                for j in 2:k
+                    @test chn["b[$j,$i]"].value[c] > chn["b[$(j-1),$i]"].value[c]
+                end
+            end
+        end
+    end
 end

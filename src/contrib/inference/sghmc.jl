@@ -61,13 +61,9 @@ function step(
     is_first::Val{true};
     kwargs...
 )
-    spl.selector.tag != :default && link!(vi, spl)
-
     # Initialize velocity
     v = zeros(Float64, size(vi[spl]))
     spl.info[:v] = v
-
-    spl.selector.tag != :default && invlink!(vi, spl)
     return vi, true
 end
 
@@ -84,13 +80,12 @@ function step(
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
-        link!(vi, spl)
-        model(vi, spl)
+        model(initlink(vi), spl)
     end
 
     Turing.DEBUG && @debug "recording old variables..."
     θ, v = vi[spl], spl.info[:v]
-    _, grad = gradient_logp(θ, vi, model, spl)
+    _, grad = gradient_logp(θ, link(vi), model, spl)
     verifygrad(grad)
 
     # Implements the update equations from (15) of Chen et al. (2014).
@@ -197,7 +192,7 @@ function step(
 
     Turing.DEBUG && @debug "X-> R..."
     if spl.selector.tag != :default
-        link!(vi, spl)
+        link!(vi, spl, model)
         model(vi, spl)
     end
 

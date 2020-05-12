@@ -321,21 +321,21 @@ function DynamicPPL.assume(
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(dist)
-            vi[vn] = vectorize(dist, r)
+            vi[vn, dist] = r
             setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, get_num_produce(vi))
         else
             updategid!(vi, vn, spl)
-            r = vi[vn]
+            r = vi[vn, dist]
         end
     else # vn belongs to other sampler <=> conditionning on vn
         if haskey(vi, vn)
-            r = vi[vn]
+            r = vi[vn, dist]
         else
             r = rand(dist)
             push!(vi, vn, r, dist, Selector(:invalid))
         end
-        lp = logpdf_with_trans(dist, r, istrans(vi, vn))
+        lp = logpdf_with_trans(dist, r, islinked_and_trans(vi, vn))
         acclogp!(vi, lp)
     end
     return r, 0

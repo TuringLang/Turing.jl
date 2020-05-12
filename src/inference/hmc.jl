@@ -102,8 +102,8 @@ end
 
 function update_hamiltonian!(spl, model, n)
     metric = gen_metric(n, spl)
-    ℓπ = gen_logπ(spl.state.vi, spl, model)
-    ∂ℓπ∂θ = gen_∂logπ∂θ(spl.state.vi, spl, model)
+    ℓπ = gen_logπ(link(spl.state.vi), spl, model)
+    ∂ℓπ∂θ = gen_∂logπ∂θ(link(spl.state.vi), spl, model)
     spl.state.h = AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
     return spl
 end
@@ -125,24 +125,24 @@ function AbstractMCMC.sample_init!(
     initialize_parameters!(spl; verbose=verbose, kwargs...)
     if init_theta !== nothing
         # Doesn't support dynamic models
-        link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
-        theta = spl.state.vi[spl]
+        link!(spl.state.vi, spl, model)
+        model(link(spl.state.vi), spl)
+        theta = link(spl.state.vi)[spl]
         update_hamiltonian!(spl, model, length(theta))
         # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
-    else
+    elseif resume_from === nothing
         # Samples new values and sets trans to true, then computes the logp
         model(empty!(spl.state.vi), SampleFromUniform())
-        link!(spl.state.vi, spl)
-        theta = spl.state.vi[spl]
+        link!(spl.state.vi, spl, model)
+        theta = link(spl.state.vi)[spl]
         update_hamiltonian!(spl, model, length(theta))
         # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         while !isfinite(spl.state.z.ℓπ.value) || !isfinite(spl.state.z.ℓπ.gradient)
             model(empty!(spl.state.vi), SampleFromUniform())
-            link!(spl.state.vi, spl)
-            theta = spl.state.vi[spl]
+            link!(spl.state.vi, spl, model)
+            theta = link(spl.state.vi)[spl]
             update_hamiltonian!(spl, model, length(theta))
             # Refresh the internal cache phase point z's hamiltonian energy.
             spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
@@ -166,14 +166,14 @@ function AbstractMCMC.sample_init!(
             spl.alg.n_adapts = 0
         end
     end
-
+    
     # Convert to transformed space if we're using
     # non-Gibbs sampling.
-    if !islinked(spl.state.vi, spl) && spl.selector.tag == :default
-        link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
-    elseif islinked(spl.state.vi, spl) && spl.selector.tag != :default
-        invlink!(spl.state.vi, spl)
+    if spl.selector.tag == :default
+        link!(spl.state.vi, spl, model)
+        model(link(spl.state.vi), spl)
+    else
+        invlink!(spl.state.vi, spl, model)
         model(spl.state.vi, spl)        
     end
 end
@@ -416,15 +416,17 @@ function AbstractMCMC.step!(
     if spl.selector.tag != :default
         # Transform the space
         Turing.DEBUG && @debug "X-> R..."
-        link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
+        updategid!(spl.state.vi, spl)
+        link!(spl.state.vi, spl, model)
+        model(link(spl.state.vi), spl)
     end
     # Get position and log density before transition
-    θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
+    θ_old, θ_old_trans = spl.state.vi[spl], link(spl.state.vi)[spl]
+    log_density_old = getlogp(spl.state.vi)
     if spl.selector.tag != :default
-        update_hamiltonian!(spl, model, length(θ_old))
+        update_hamiltonian!(spl, model, length(θ_old_trans))
         resize!(spl.state.z.θ, length(θ_old))
-        spl.state.z.θ .= θ_old
+        spl.state.z.θ .= θ_old_trans
     end
 
     # Transition
@@ -443,17 +445,19 @@ function AbstractMCMC.step!(
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        spl.state.vi[spl] = t.z.θ
+        link(spl.state.vi)[spl] = t.z.θ
+        invlink!(spl.state.vi, spl, model)
         setlogp!(spl.state.vi, t.stat.log_density)
     else
         spl.state.vi[spl] = θ_old
+        link(spl.state.vi)[spl] = θ_old_trans
         setlogp!(spl.state.vi, log_density_old)
+        DynamicPPL.setsynced!(spl.state.vi, true)
     end
 
     # Gibbs component specified cares
     # Transform the space back
     Turing.DEBUG && @debug "R -> X..."
-    spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
     return HamiltonianTransition(spl, t)
 end
@@ -513,14 +517,13 @@ function DynamicPPL.assume(
     vi,
 )
     Turing.DEBUG && _debug("assuming...")
-    updategid!(vi, vn, spl)
-    r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
+    r = vi[vn, dist]
+    # acclogp!(vi, logpdf_with_trans(dist, r, islinked_and_trans(vi, vn)))
     # r
     Turing.DEBUG && _debug("dist = $dist")
     Turing.DEBUG && _debug("vn = $vn")
     Turing.DEBUG && _debug("r = $r, typeof(r)=$(typeof(r))")
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return r, logpdf_with_trans(dist, r, islinked_and_trans(vi, vn))
 end
 
 function DynamicPPL.dot_assume(
@@ -532,9 +535,9 @@ function DynamicPPL.dot_assume(
 )
     @assert length(dist) == size(var, 1)
     updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
+    r = vi[vns, dist]
     var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans(dist, r, islinked_and_trans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
     spl::Sampler{<:Hamiltonian},
@@ -544,9 +547,9 @@ function DynamicPPL.dot_assume(
     vi,
 )
     updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
+    r = vi[vns, dists]
     var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans.(dists, r, islinked_and_trans(vi, vns[1])))
 end
 
 function DynamicPPL.observe(
@@ -606,11 +609,11 @@ function HMCState(
     vi = spl.state.vi
 
     # Link everything if needed.
-    !islinked(vi, spl) && link!(vi, spl)
+    link!(vi, spl, model)
 
     # Get the initial log pdf and gradient functions.
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
+    ∂logπ∂θ = gen_∂logπ∂θ(link(vi), spl, model)
+    logπ = gen_logπ(link(vi), spl, model)
 
     # Get the metric type.
     metricT = getmetricT(spl.alg)
@@ -635,7 +638,7 @@ function HMCState(
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
 
     # Unlink everything.
-    invlink!(vi, spl)
+    invlink!(vi, spl, model)
 
     return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end

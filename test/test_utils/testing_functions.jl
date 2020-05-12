@@ -19,7 +19,7 @@ function randr(vi::Turing.VarInfo,
     else
         if count Turing.checkindex(vn, vi, spl) end
         Turing.updategid!(vi, vn, spl)
-        return vi[vn]
+        return vi[vn, dist]
     end
 end
 

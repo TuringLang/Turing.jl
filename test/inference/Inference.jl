@@ -26,7 +26,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7), gdemo_default)
+            sampler = Turing.Sampler(HMC(0.1, 7), gdemo_default)
             chains = sample(gdemo_default, sampler, MCMCThreads(), 1000, 4)
             @test chains isa MCMCChains.Chains
         end
@@ -56,10 +56,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chn2_contd = sample(gdemo_default, alg2, 1000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 1000; save_state=true)
+        chn3 = sample(gdemo_default, alg3, 5000; save_state=true)
         check_gdemo(chn3)
 
-        chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
+        chn3_contd = sample(gdemo_default, alg3, 5000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
     @testset "Contexts" begin

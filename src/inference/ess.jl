@@ -33,11 +33,11 @@ function Sampler(alg::ESS, model::Model, s::Selector)
     # sanity check
     vi = VarInfo(model)
     space = getspace(alg)
-    vns = _getvns(vi, s, Val(space))
+    vns = getvns(vi, s, Val(space))
     length(vns) == 1 ||
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
     for vn in vns[1]
-        dist = getdist(vi, vn)
+        dist = getinitdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("[ESS] only supports Gaussian prior distributions")
     end
@@ -102,9 +102,9 @@ end
 
 function ESSModel(model::Model, spl::Sampler{<:ESS})
     vi = spl.state.vi
-    vns = _getvns(vi, spl)
+    vns = getvns(vi, spl)
     μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
+        dist = getinitdist(vi, vn)
         vectorize(dist, mean(dist))
     end
 
@@ -115,7 +115,7 @@ end
 function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ESSModel)
     spl = model.spl
     vi = spl.state.vi
-    vns = _getvns(vi, spl)
+    vns = getvns(vi, spl)
     set_flag!(vi, vns[1][1], "del")
     model.model(vi, spl)
     return vi[spl]

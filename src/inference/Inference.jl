@@ -3,9 +3,9 @@ module Inference
 using ..Core
 using ..Core: logZ
 using ..Utilities
-using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
+using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, set_namedtuple!,
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!, _getvns, getdist, CACHERESET, AbstractSampler,
+    settrans!, getvns, getinitdist, CACHERESET, AbstractSampler,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
@@ -26,7 +26,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
-    VarName, _getranges, _getindex, getval, _getvns
+    VarName, getval, getvns
 import EllipticalSliceSampling
 import Random
 import MCMCChains
@@ -272,7 +272,6 @@ function initialize_parameters!(
     verbose::Bool=false,
     kwargs...
 )
-    islinked(spl.state.vi, spl) && invlink!(spl.state.vi, spl)
     # Get `init_theta`
     if init_theta !== nothing
         verbose && @info "Using passed-in initial variable values" init_theta

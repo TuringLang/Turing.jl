@@ -53,29 +53,16 @@ function AbstractMCMC.sample_init!(
     model::Model,
     spl::Sampler{<:DynamicNUTS},
     N::Integer;
-    kwargs...
+    kwargs...,
 )
     # Set up lp function.
     function _lp(x)
-        gradient_logp(x, spl.state.vi, model, spl)
+        gradient_logp(x, link(spl.state.vi), model, spl)
     end
 
     # Set the parameters to a starting value.
     initialize_parameters!(spl; kwargs...)
-
-    model(spl.state.vi, SampleFromUniform())
-    link!(spl.state.vi, spl)
-    l, dl = _lp(spl.state.vi[spl])
-    while !isfinite(l) || !isfinite(dl)
-        model(spl.state.vi, SampleFromUniform())
-        link!(spl.state.vi, spl)
-        l, dl = _lp(spl.state.vi[spl])
-    end
-
-    if spl.selector.tag == :default && !islinked(spl.state.vi, spl)
-        link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
-    end
+    link!(spl.state.vi, spl, model)
 
     results = mcmc_with_warmup(
         rng,
@@ -99,7 +86,8 @@ function AbstractMCMC.step!(
 )
     # Pop the next draw off the vector.
     draw = popfirst!(spl.state.draws)
-    spl.state.vi[spl] = draw
+    link(spl.state.vi)[spl] = draw
+    invlink!(spl.state.vi, spl, model)
     return Transition(spl)
 end
 
@@ -118,7 +106,7 @@ end
  # Disable the progress logging for DynamicHMC, since it has its own progress meter.
  function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.AbstractModel,
     alg::DynamicNUTS,
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -127,7 +115,7 @@ end
     kwargs...
 )
     if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+        @warn "[DynamicNUTS] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
     if resume_from === nothing
         return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
@@ -139,7 +127,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.AbstractModel,
     alg::DynamicNUTS,
     parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
@@ -149,7 +137,7 @@ function AbstractMCMC.sample(
     kwargs...
 )
     if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+        @warn "[DynamicNUTS] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
                                chain_type=chain_type, progress=false, kwargs...)
