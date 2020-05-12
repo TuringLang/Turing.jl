@@ -10,10 +10,10 @@ include("test_utils/AllUtils.jl")
 
 # Begin testing.
 @testset "Turing" begin
-    # @testset "core" begin
-        # include("core/ad.jl")
-        # include("core/container.jl")
-    # end
+    @testset "core" begin
+        include("core/ad.jl")
+        include("core/container.jl")
+    end
 
     test_adbackends = if VERSION >= v"1.2"
         [:forwarddiff, :tracker, :reversediff]
@@ -37,13 +37,13 @@ include("test_utils/AllUtils.jl")
             end
         end
 
-        # @testset "variational algorithms : $adbackend" begin
-            # include("variational/advi.jl")
-        # end
+        @testset "variational algorithms : $adbackend" begin
+            include("variational/advi.jl")
+        end
     end
-    # @testset "variational optimisers" begin
-    #     include("variational/optimisers.jl")
-    # end
+    @testset "variational optimisers" begin
+        include("variational/optimisers.jl")
+    end
 
     Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
