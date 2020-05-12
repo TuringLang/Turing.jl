@@ -69,7 +69,7 @@ function Sampler(
 end
 
 
-function gibbs_step!(
+function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:GibbsConditional{S}},

@@ -56,8 +56,7 @@ export  InferenceAlgorithm,
         assume,
         dot_assume,
         observe,
-        resume,
-        gibbs_step!
+        resume
 
 #######################
 # Sampler abstraction #

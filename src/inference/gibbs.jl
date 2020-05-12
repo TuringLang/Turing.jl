@@ -172,9 +172,9 @@ function AbstractMCMC.step!(
 
         # Step through the local sampler.
         if transition === nothing
-            trans = gibbs_step!(rng, model, local_spl, N, nothing; kwargs...)
+            trans = AbstractMCMC.step!(rng, model, local_spl, N, nothing; kwargs...)
         else
-            trans = gibbs_step!(rng, model, local_spl, N, transition.transitions[i]; kwargs...)
+            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i]; kwargs...)
         end
         
         # After the step, update the master varinfo.
@@ -184,24 +184,6 @@ function AbstractMCMC.step!(
     end
 
     return GibbsTransition(spl, transitions)
-end
-
-
-"""
-    gibbs_step!(rng, model, spl, N, transition; kwargs...)
-
-Perform a conditional sampling step of the local sampler `spl` within a `Gibbs` sampler.  If the
-sampler is based on an `InferenceAlgorithm`, this just falls back to `AbstractMCMC.step!`.
-"""
-function gibbs_step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler,
-    N,
-    transition;
-    kwargs...)
-    
-    return AbstractMCMC.step!(rng, model, spl, N, transition; kwargs...)
 end
 
 
