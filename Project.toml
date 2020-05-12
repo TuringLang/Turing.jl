@@ -57,6 +57,7 @@ CmdStan = "593b3428-ca2f-500c-ae53-031589ec8ddd"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73"
+NamedArrays = "86f7a689-2022-50b4-a561-43c23ac3c673"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PDMats = "90014a1f-27ba-587c-ab20-58faa44d9150"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -68,19 +69,4 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [targets]
-test = [
-    "Pkg",
-    "PDMats",
-    "TerminalLoggers",
-    "Test",
-    "UnicodePlots",
-    "StatsBase",
-    "FiniteDifferences",
-    "DynamicHMC",
-    "CmdStan",
-    "BenchmarkTools",
-    "Zygote",
-    "ReverseDiff",
-    "Memoization",
-    "Optim"
-]
+test = ["Pkg", "PDMats", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote", "ReverseDiff", "Memoization", "Optim", "NamedArrays"]
