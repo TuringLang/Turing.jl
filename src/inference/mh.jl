@@ -6,6 +6,9 @@ struct MH{space, P} <: InferenceAlgorithm
     proposals::P
 end
 
+proposal(p::AdvancedMH.Proposal) = p
+proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
+
 function MH(space...)
     syms = Symbol[]
 
@@ -32,11 +35,7 @@ function MH(space...)
             # If we hit this block, check to see if it's 
             # a run-of-the-mill proposal or covariance
             # matrix.
-            prop = if s isa AdvancedMH.Proposal
-                s
-            elseif typeof(s) <: Array{<:Real, 2}
-                AdvancedMH.RandomWalkProposal(MvNormal(s))
-            end
+            prop = proposal(s)
 
             # Return early, we got a covariance matrix. 
             return MH{(), typeof(prop)}(prop)
