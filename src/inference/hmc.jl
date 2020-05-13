@@ -411,12 +411,12 @@ function AbstractMCMC.step!(
     spl.state.eval_num = 0
 
     Turing.DEBUG && @debug "current ϵ: $ϵ"
+    updategid!(spl.state.vi, spl)
 
     # When a Gibbs component
     if spl.selector.tag != :default
         # Transform the space
         Turing.DEBUG && @debug "X-> R..."
-        updategid!(spl.state.vi, spl)
         link!(spl.state.vi, spl, model)
         model(link(spl.state.vi), spl)
     end
@@ -517,6 +517,7 @@ function DynamicPPL.assume(
     vi,
 )
     Turing.DEBUG && _debug("assuming...")
+    updategid!(vi, vn, spl)
     r = vi[vn, dist]
     # acclogp!(vi, logpdf_with_trans(dist, r, islinked_and_trans(vi, vn)))
     # r
