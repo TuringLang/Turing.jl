@@ -231,6 +231,53 @@ function AbstractMCMC.sample_end!(
 
 end
 
+# Make a proposal if we don't have a covariance proposal matrix (the default).
+function propose!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    proposal
+)
+    # Retrieve distribution and value NamedTuples.
+    dt, vt = dist_val_tuple(spl)
+
+    # Create a sampler and the previous transition.
+    mh_sampler = AMH.MetropolisHastings(dt)
+    prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
+
+    # Make a new transition.
+    densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl))
+    trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
+
+    # Update the values in the VarInfo.
+    set_namedtuple!(spl.state.vi, trans.params)
+    setlogp!(spl.state.vi, trans.lp)
+end
+
+# Make a proposal if we DO have a covariance proposal matrix.
+function propose!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    proposal::AdvancedMH.RandomWalkProposal{<:MvNormal}
+)
+    # If this is the case, we can just draw directly from the proposal
+    # matrix.
+    vals = spl.state.vi[spl]
+
+    # Create a sampler and the previous transition.
+    mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
+    prev_trans = AMH.Transition(vals, getlogp(spl.state.vi))
+
+    # Make a new transition.
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
+
+    # Update the values in the VarInfo.
+    spl.state.vi[spl] = trans.params
+    setlogp!(spl.state.vi, trans.lp)
+end
+
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -246,38 +293,7 @@ function AbstractMCMC.step!(
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    if spl.alg.proposals isa AdvancedMH.RandomWalkProposal{<:MvNormal}
-        # If this is the case, we can just draw directly from the proposal
-        # matrix.
-        vals = spl.state.vi[spl]
-
-        # Create a sampler and the previous transition.
-        mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-        prev_trans = AMH.Transition(vals, getlogp(spl.state.vi))
-
-        # Make a new transition.
-        densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
-        trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
-
-        # Update the values in the VarInfo.
-        spl.state.vi[spl] = trans.params
-        setlogp!(spl.state.vi, trans.lp)
-    else
-        # Retrieve distribution and value NamedTuples.
-        dt, vt = dist_val_tuple(spl)
-
-        # Create a sampler and the previous transition.
-        mh_sampler = AMH.MetropolisHastings(dt)
-        prev_trans = AMH.Transition(vt, getlogp(spl.state.vi))
-
-        # Make a new transition.
-        densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl))
-        trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
-
-        # Update the values in the VarInfo.
-        set_namedtuple!(spl.state.vi, trans.params)
-        setlogp!(spl.state.vi, trans.lp)
-    end
+    propose!(rng, model, spl, spl.alg.proposals)
 
     return Transition(spl)
 end
