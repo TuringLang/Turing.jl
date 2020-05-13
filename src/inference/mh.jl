@@ -187,6 +187,17 @@ end
     return expr
 end
 
+# Utility functions to link or 
+maybe_link!(varinfo, sampler, proposal) = nothing
+function maybe_link!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    link!(varinfo, sampler)
+end
+
+maybe_invlink!(varinfo, sampler, proposal) = nothing
+function maybe_invlink!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    invlink!(varinfo, sampler)
+end
+
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
@@ -204,9 +215,7 @@ function AbstractMCMC.sample_init!(
 
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
-    if spl.alg.proposals isa AdvancedMH.RandomWalkProposal{<:MvNormal}
-        link!(spl.state.vi, spl)
-    end
+    maybe_link!(spl.state.vi, spl, spl.alg.proposals)
 end
 
 function AbstractMCMC.sample_end!(
@@ -220,9 +229,8 @@ function AbstractMCMC.sample_end!(
     kwargs...
 )
     # We are doing a random walk, so we unlink everything when we're done.
-    if spl.alg.proposals isa AdvancedMH.RandomWalkProposal{<:MvNormal}
-        invlink!(spl.state.vi, spl)
-    end
+    maybe_invlink!(spl.state.vi, spl, spl.alg.proposals)
+
 end
 
 function AbstractMCMC.step!(
