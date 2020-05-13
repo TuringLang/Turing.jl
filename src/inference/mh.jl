@@ -224,8 +224,6 @@ function AbstractMCMC.sample_end!(
     spl::Sampler{<:MH},
     N::Integer,
     transitions;
-    verbose::Bool=true,
-    resume_from=nothing,
     kwargs...
 )
     # We are doing a random walk, so we unlink everything when we're done.
