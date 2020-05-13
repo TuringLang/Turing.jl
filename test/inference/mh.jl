@@ -87,6 +87,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
 
     @turing_testset "proposal matrix" begin
+        Random.seed!(100)
+        
         mat = [2.0 -0.15; -0.15 2.0]
 
         prop1 = mat # Matrix only constructor
@@ -100,8 +102,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test spl1.proposals.proposal.Σ.mat == spl2.proposals.proposal.Σ.mat
 
         # Test inference.
-        chain1 = sample(gdemo_default, spl1, 10000)
-        chain2 = sample(gdemo_default, spl2, 10000)
+        chain1 = sample(gdemo_default, spl1, 100000)
+        chain2 = sample(gdemo_default, spl2, 100000)
 
         check_gdemo(chain1)
         check_gdemo(chain2)
