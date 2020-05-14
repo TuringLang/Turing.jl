@@ -51,7 +51,7 @@ To transform from `[0, 1]` to `ℝ` we can use the `Logit` bijector:
 Bijectors.bijector(d::CustomUniform) = Logit(0., 1.)
 ```
 
-You'd do the exact same thing for `MultivariateDistribution`, `MatrixDistribution`, etc. For example, `Wishart` defines a distribution over positive-definite matrices and so `bijector` returns a `PDBijector` when called with a `Wishart` distribution as an argument.
+You'd do the exact same thing for `ContinuousMultivariateDistribution` and `ContinuousMatrixDistribution`. For example, `Wishart` defines a distribution over positive-definite matrices and so `bijector` returns a `PDBijector` when called with a `Wishart` distribution as an argument. For discrete distributions, there is no need to define a bijector; the `Identity` bijector is used by default.
 
 Alternatively, for `UnivariateDistribution` we can define the `minimum` and `maximum` of the distribution
 
