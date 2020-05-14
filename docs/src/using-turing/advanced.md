@@ -20,11 +20,9 @@ First, define a type of the distribution, as a subtype of a corresponding distri
 
 
 ```julia
-struct Flat <: ContinuousUnivariateDistribution
-  …
+struct CustomUniform <: ContinuousUnivariateDistribution
 end
 ```
-
 
 ### 2. Implement Sampling and Evaluation of the log-pdf
 
@@ -33,10 +31,9 @@ Second, define `rand` and `logpdf`, which will be used to run the model.
 
 
 ```julia
-Distributions.rand(rng::AbstractRNG, d::Flat) = rand(rng)
-Distributions.logpdf(d::Flat, x::Real) = zero(x)
+Distributions.rand(rng::AbstractRNG, d::Flat) = rand(rng) # sample in [0, 1]
+Distributions.logpdf(d::Flat, x::Real) = zero(x)          # p(x) = 1 → logp(x) = 0
 ```
-
 
 ### 3. Define Helper Functions
 
@@ -46,17 +43,24 @@ In most cases, it may be required to define helper functions, such as the `minim
 
 #### 3.1 Domain Transformation
 
+Certain samplers, such as `HMC`, require the domain of the priors to be unbounded. Therefore, to use our `CustomUniform` as a prior in a model we also need to define how to transform samples from `[0, 1]` to `ℝ`. To do this, we simply need to define the corresponding `Bijector` from `Bijectors.jl`, which is what `Turing.jl` uses internally.
 
-Some helper functions are necessary for domain transformation. For univariate distributions, the necessary ones to implement are `minimum` and `maximum`.
-
+To transform from `[0, 1]` to `ℝ` we can use the `Logit` bijector:
 
 ```julia
-Distributions.minimum(d::Flat) = -Inf
-Distributions.maximum(d::Flat) = +Inf
+Bijectors.bijector(d::CustomUniform) = Logit(0., 1.)
 ```
 
+You'd do the exact same thing for `ContinuousMultivariateDistribution` and `ContinuousMatrixDistribution`. For example, `Wishart` defines a distribution over positive-definite matrices and so `bijector` returns a `PDBijector` when called with a `Wishart` distribution as an argument. For discrete distributions, there is no need to define a bijector; the `Identity` bijector is used by default.
 
-Functions for domain transformation which may be required by multivariate or matrix-variate distributions are `size`, `link` and `invlink`. Please see Turing's [`transform.jl`](https://github.com/TuringLang/Turing.jl/blob/master/src/utilities/transform.jl) for examples.
+Alternatively, for `UnivariateDistribution` we can define the `minimum` and `maximum` of the distribution
+
+```julia
+Distributions.minimum(d::CustomUniform) = 0.
+Distributions.maximum(d::CustomUniform) = 1.
+```
+
+and `Bijectors.jl` will ensure that everything just works.
 
 
 #### 3.2 Vectorization Support
