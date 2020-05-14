@@ -1,8 +1,7 @@
 ---
 title: "Replication study: Estimating number of infections and impact of NPIs on COVID-19 in European countries (Imperial Report 13)"
 author: Tor Erlend Fjelde; Mohamed Tarek; Kai Xu; David Widmann; Martin Trapp; Cameron Pfiffer; Hong Ge 
-date: 2020-05-04
-draft: true
+date: 2020-05-14
 ---
 
 The Turing.jl team is currently exploring possibilities in an attempt to help with the ongoing SARS-CoV-2 crisis. As preparation for this and to get our feet wet, we decided to perform a replication study of the [Imperial Report 13](https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/), which attempts to estimate the real number of infections and impact of non-pharmaceutical interventions on COVID-19. In the report, the inference was performed using the probabilistic programming language (PPL) Stan. We have explicated their model and inference in Turing.jl, a Julia-based PPL. We believe the results and analysis of our study are relevant for the public, and for other researchers who are actively working on epidemiological models. To that end, our implementation and results are available [here](https://github.com/cambridge-mlg/Covid19).
