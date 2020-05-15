@@ -122,7 +122,7 @@ function AbstractMCMC.sample_init!(
     set_resume!(spl; resume_from=resume_from, kwargs...)
 
     # Get `init_theta`
-    initialize_parameters!(spl; verbose=verbose, kwargs...)
+    initialize_parameters!(spl; init_theta = init_theta, verbose=verbose, kwargs...)
     if init_theta !== nothing
         # Doesn't support dynamic models
         link!(spl.state.vi, spl)
