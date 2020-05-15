@@ -41,11 +41,13 @@ include("test_utils/AllUtils.jl")
             end
         end
     end
+
+    Turing.setadbackend(:forwarddiff)
+
     @testset "variational optimisers" begin
         include("variational/optimisers.jl")
     end
 
-    Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
         include("stdlib/distributions.jl")
         include("stdlib/RandomMeasures.jl")
