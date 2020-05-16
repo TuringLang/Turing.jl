@@ -136,6 +136,8 @@ const TURING_INTERNAL_VARS = (internals = [
     "nom_step_size",
     "tree_depth",
     "is_adapt",
+    "walker_id",
+    "iteration"
 ],)
 
 #########################################
@@ -535,12 +537,13 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
+include("emcee.jl")
 
 ################
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
