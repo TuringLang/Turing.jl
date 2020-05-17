@@ -131,7 +131,6 @@ function AbstractMCMC.step!(
 )
     # check that we received a real iteration number
     @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
-    remove_del!(spl.state.vi, spl)
 
     # grab the weight
     pc = spl.state.particles
@@ -238,7 +237,6 @@ function AbstractMCMC.step!(
 )
     # obtain or create reference particle
     vi = spl.state.vi
-    remove_del!(vi, spl)
     ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
 
     # reset the VarInfo before new sweep
@@ -321,11 +319,9 @@ function DynamicPPL.assume(
             r = rand(dist)
             push!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del")
+            DynamicPPL.removedel!(vi)
             r = rand(dist)
-            vi[vn, dist] = r
-            setgid!(vi, spl.selector, vn)
-            setorder!(vi, vn, get_num_produce(vi))
+            push!(vi, vn, r, dist, spl)
         else
             updategid!(vi, vn, spl)
             r = vi[vn, dist]
