@@ -12,13 +12,25 @@ include(dir*"/test/test_utils/AllUtils.jl")
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
             # Test that chains with the same seed will sample identically.
-            chain1 = sample(Random.seed!(5), gdemo_default, HMC(0.1, 7), MCMCThreads(),
-                            1000, 4)
-            chain2 = sample(Random.seed!(5), gdemo_default, HMC(0.1, 7), MCMCThreads(),
-                            1000, 4)
-            #https://github.com/TuringLang/Turing.jl/issues/1260
-            @test_skip all(chain1.value .== chain2.value)
-            check_gdemo(chain1)
+            @testset "rng" begin
+                model = gdemo_default
+
+                samplers = (HMC(0.1, 7),
+                            PG(10),
+                            IS(),
+                            MH(),
+                            Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
+                            Gibbs(HMC(0.1, 5, :s), ESS(:m)))
+                for sampler in samplers
+                    Random.seed!(5)
+                    chain1 = sample(model, sampler, MCMCThreads(), 1000, 4)
+
+                    Random.seed!(5)
+                    chain2 = sample(model, sampler, MCMCThreads(), 1000, 4)
+
+                    @test all(chain1.value .== chain2.value)
+                end
+            end
 
             # Smoke test for default sample call.
             chain = sample(gdemo_default, HMC(0.1, 7), MCMCThreads(), 1000, 4)
