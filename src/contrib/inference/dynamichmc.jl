@@ -41,7 +41,7 @@ function DynamicNUTS{AD}(space::Symbol...) where AD
     DynamicNUTS{AD, space}()
 end
 
-mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
+mutable struct DynamicNUTSState{V<:AbstractVarInfo, D} <: AbstractSamplerState
     vi::V
     draws::Vector{D}
 end

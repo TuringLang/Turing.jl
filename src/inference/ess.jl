@@ -25,7 +25,7 @@ struct ESS{space} <: InferenceAlgorithm end
 ESS() = ESS{()}()
 ESS(space::Symbol) = ESS{(space,)}()
 
-mutable struct ESSState{V<:VarInfo} <: AbstractSamplerState
+mutable struct ESSState{V<:AbstractVarInfo} <: AbstractSamplerState
     vi::V
 end
 

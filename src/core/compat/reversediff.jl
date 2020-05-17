@@ -17,7 +17,7 @@ end
 function gradient_logp(
     backend::ReverseDiffAD{false},
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
 )
@@ -54,7 +54,7 @@ end
     function gradient_logp(
         backend::ReverseDiffAD{true},
         θ::AbstractVector{<:Real},
-        vi::VarInfo,
+        vi::AbstractVarInfo,
         model::Model,
         sampler::AbstractSampler = SampleFromPrior(),
     )

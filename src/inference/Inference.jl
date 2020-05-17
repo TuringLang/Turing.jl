@@ -74,6 +74,12 @@ getADbackend(::Hamiltonian{AD}) where AD = AD()
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
 
+getindex(vi::MixedVarInfo, spl::Sampler{<:Hamiltonian}) = vi.tvi[spl]
+function setindex!(vi::MixedVarInfo, val, spl::Sampler{<:Hamiltonian})
+    vi.tvi[spl] = val
+    return vi
+end
+
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
@@ -519,7 +525,7 @@ end
 """
 A blank `AbstractSamplerState` that contains only `VarInfo` information.
 """
-mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
+mutable struct SamplerState{VIType<:AbstractVarInfo} <: AbstractSamplerState
     vi :: VIType
 end
 

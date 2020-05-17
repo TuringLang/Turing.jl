@@ -60,7 +60,7 @@ getADbackend(spl::Sampler) = getADbackend(spl.alg)
 """
     gradient_logp(
         θ::AbstractVector{<:Real},
-        vi::VarInfo,
+        vi::AbstractVarInfo,
         model::Model,
         sampler::AbstractSampler=SampleFromPrior(),
     )
@@ -71,7 +71,7 @@ tool is currently active.
 """
 function gradient_logp(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::Sampler
 )
@@ -82,7 +82,7 @@ end
 gradient_logp(
     backend::ADBackend,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
 )
@@ -93,7 +93,7 @@ specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{
 function gradient_logp(
     ::ForwardDiffAD,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
 )
@@ -120,7 +120,7 @@ end
 function gradient_logp(
     ::TrackerAD,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
 )

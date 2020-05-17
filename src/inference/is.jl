@@ -31,7 +31,7 @@ struct IS{space} <: InferenceAlgorithm end
 
 IS() = IS{()}()
 
-mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+mutable struct ISState{V<:AbstractVarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V
     final_logevidence  ::  F
 end

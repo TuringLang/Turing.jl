@@ -3,7 +3,7 @@
 ###
 
 mutable struct HMCState{
-    TV <: TypedVarInfo,
+    TV <: AbstractVarInfo,
     TTraj<:AHMC.AbstractTrajectory,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     PhType <: AHMC.PhasePoint

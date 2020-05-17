@@ -1,5 +1,5 @@
 using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra
-using PDMats, Zygote
+using PDMats, Zygote, ReverseDiff
 using Turing: Turing, invlink, link, SampleFromPrior, 
     TrackerAD, ZygoteAD
 using DynamicPPL: getval
