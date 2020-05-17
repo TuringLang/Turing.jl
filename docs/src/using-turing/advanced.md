@@ -162,6 +162,7 @@ Turing does not currently have built-in methods for calculating the [maximum a p
 
 ```julia
 using Turing
+using DynamicPPL
 
 # Define the simple gdemo model.
 @model gdemo(x, y) = begin
