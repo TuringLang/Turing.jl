@@ -162,7 +162,6 @@ Turing does not currently have built-in methods for calculating the [maximum a p
 
 ```julia
 using Turing
-using DynamicPPL
 
 # Define the simple gdemo model.
 @model gdemo(x, y) = begin
@@ -182,7 +181,7 @@ function get_nlogp(model)
         spl = Turing.SampleFromPrior()
         new_vi = Turing.VarInfo(vi, spl, sm)
         model(new_vi, spl)
-        -getlogp(new_vi)
+        -Turing.getlogp(new_vi)
     end
 
     return nlogp
