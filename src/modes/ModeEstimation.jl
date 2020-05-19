@@ -160,7 +160,7 @@ end
 
 Generate an unlinked (with no variable transformions) version of an existing `OptimLogDensity`.
 """
-function Bijectors.unlink(f::OptimLogDensity)
+function Bijectors.invlink(f::OptimLogDensity)
     init = VarInfo(f.model, f.context)
     return OptimLogDensity(f.model, f.context, init, false)
 end
@@ -222,7 +222,7 @@ end
 function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
     # Calculate Hessian and information matrix.
     varnames = StatsBase.coefnames(m)
-    f = unlink(m.f)
+    f = invlink(m.f)
     info = inv(hessian_function(x -> f(x), m.values.array[:, 1]))
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
