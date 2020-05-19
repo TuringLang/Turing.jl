@@ -160,7 +160,7 @@ end
 
 Generate an unlinked (with no variable transformions) version of an existing `OptimLogDensity`.
 """
-function unlink(f::OptimLogDensity)
+function Bijectors.unlink(f::OptimLogDensity)
     init = VarInfo(f.model, f.context)
     return OptimLogDensity(f.model, f.context, init, false)
 end
@@ -170,7 +170,7 @@ end
 
 Generate an linked (with variable transformions) version of an existing `OptimLogDensity`.
 """
-function link(f::OptimLogDensity)
+function Bijectors.link(f::OptimLogDensity)
     init = VarInfo(f.model, f.context)
     DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
     return OptimLogDensity(f.model, f.context, init, false)
