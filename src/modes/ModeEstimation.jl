@@ -25,7 +25,7 @@ does not use the density with respect to the transformation. This context is
 intended to allow an optimizer to sample in R^n freely.
 """
 struct OptimizationContext{C<:AbstractContext} <: AbstractContext
-	context::C
+    context::C
 end
 
 # assume
