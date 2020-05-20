@@ -84,7 +84,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
 
     @testset "Dot tilde test" begin
-        if VERSION >= v"1.0"
+        if VERSION > v"1.0"
             @model function dot_gdemo(x)
                 s ~ InverseGamma(2,3)
                 m ~ Normal(0, sqrt(s))
