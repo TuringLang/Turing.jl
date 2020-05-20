@@ -261,7 +261,6 @@ Estimate a mode, i.e., compute a MLE or MAP estimate.
 function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
     # Do some initialization.
     spl = DynamicPPL.SampleFromPrior()
-    init_params = model(f.vi, spl)
     init_vals = f.vi[spl]
 
     # Optimize!
