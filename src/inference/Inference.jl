@@ -30,6 +30,7 @@ import DynamicPPL: get_matching_type,
 import EllipticalSliceSampling
 import Random
 import MCMCChains
+import StatsBase
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -592,5 +593,106 @@ end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
+
+"""
+    predict(model::Turing.Model, chain::MCMCChains.Chains; include_all=false)
+​
+Predicts variables present in `model` but not present in `chain`, and returns a `Chains` with:
+- the predicted variables only (if `include_all == false`)
+- all variables in `model`, including variables fixed from `chain` (if `include_all == true`)
+​
+In a bit more detail, the process is as follows:
+1. For every `sample` in `chain`
+   1. For every variable in `sample`
+      1. Set `variable` in `model` to its value in `sample`
+   2. Execute `model` with variables fixed as above, sampling variables NOT present in `chain` using `SampleFromPrior`
+​
+#### Example
+```julia
+@model function linear_reg(x, y, σ = 0.1)
+    β ~ Normal(0, 1)
+​
+    for i ∈ eachindex(y)
+        y[i] ~ Normal(β * x[i], σ)
+    end
+end
+​
+xs = 0:0.1:10; ys = 2 .* xs .+ 0.1 .* randn(length(xs));
+​
+# Infer
+m_lin_reg = linear_reg(xs, ys);
+chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), 200);
+​
+# Predict
+m_lin_reg_test = linear_reg(xs[1:2], Vector{Union{Missing, Float64}}(undef, 2));
+predictions = predict(m_lin_reg_test, chain_lin_reg)
+```
+results in
+```julia
+julia> predictions = predict(m_lin_reg_test, chain_lin_reg)
+Object of type Chains, with data of type 100×2×1 Array{Float64,3}
+​
+Iterations        = 1:100
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 100
+parameters        = y[1], y[2]
+​
+2-element Array{ChainDataFrame,1}
+​
+Summary Statistics
+  parameters    mean     std  naive_se     mcse       ess   r_hat
+  ──────────  ──────  ──────  ────────  ───────  ────────  ──────
+        y[1]  0.0078  0.0843    0.0084  missing   72.0724  1.0072
+        y[2]  0.1948  0.0950    0.0095  missing  131.6113  0.9969
+​
+Quantiles
+  parameters     2.5%    25.0%   50.0%   75.0%   97.5%
+  ──────────  ───────  ───────  ──────  ──────  ──────
+        y[1]  -0.1581  -0.0567  0.0114  0.0550  0.1758
+        y[2]   0.0200   0.1198  0.2105  0.2667  0.3773
+​
+```
+"""
+function StatsBase.predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = false)
+    vi = Turing.VarInfo(model)
+    spl = DynamicPPL.SampleFromPrior()
+​
+    transitions = Array{Transition}(undef, length(chain))
+​
+    for i in 1:length(chain)
+        c = chain[i]
+        md = vi.metadata
+        for v in keys(md)
+            for vn in md[v].vns
+                vn_str = string(vn)
+                if vn_str ∈ c.name_map.parameters
+                    val = copy.(vec(c[Symbol(vn_str)].value))
+                    DynamicPPL.setval!(vi, val, vn)
+                    DynamicPPL.settrans!(vi, false, vn)
+                else
+                    # delete so we can sample from prior
+                    DynamicPPL.set_flag!(vi, vn, "del")
+                end
+            end
+        end
+        # Execute `model` on the parameters set in `vi` and sample thouse with `"del"` flag using `spl`
+        model(vi, spl)
+​
+        # Convert `VarInfo` into `NamedTuple` and save
+        theta = DynamicPPL.tonamedtuple(vi)
+        lp = Turing.getlogp(vi)
+        transitions[i] = Transition(theta, lp)
+    end
+    
+    # Let the Turing internals handle everything else for you
+    chain_result = AbstractMCMC.bundle_samples(Distributions.GLOBAL_RNG, model, spl, length(chain), transitions, Chains)
+    parameter_names = if include_all
+        names(chain_result, :parameters)
+    else
+        filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
+    end
+    return chain_result[string.(parameter_names)]
+end
 
 end # module
