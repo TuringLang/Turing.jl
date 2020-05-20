@@ -116,9 +116,9 @@ end
 Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
 """
 function OptimLogDensity(model::Model, context::AbstractContext)
-	init = VarInfo(model)
-	DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
-	return OptimLogDensity(model, context, init)
+    init = VarInfo(model)
+    DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
+    return OptimLogDensity(model, context, init)
 end
 
 """
