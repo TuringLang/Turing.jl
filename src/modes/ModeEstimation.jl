@@ -271,6 +271,7 @@ function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(
     f.vi[spl] = M.minimizer
     invlink!(f.vi, spl)
     vals = f.vi[spl]
+    link!(f.vi, spl)
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(f.vi), DynamicPPL.getlogp(f.vi))]
