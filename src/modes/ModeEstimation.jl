@@ -25,13 +25,13 @@ does not use the density with respect to the transformation. This context is
 intended to allow an optimizer to sample in R^n freely.
 """
 struct OptimizationContext{C<:AbstractContext} <: AbstractContext
-	context::C
+    context::C
 end
 
 # assume
 function DynamicPPL.tilde(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn::VarName, inds, vi)
     r = vi[vn]
-	return r, 0
+    return r, 0
 end
 
 function DynamicPPL.tilde(ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
