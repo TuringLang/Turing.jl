@@ -21,7 +21,6 @@ function Random.rand(rng::Random.AbstractRNG, ::DynamicDist)
 end
 
 @testset "io.jl" begin
-    #=
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -128,7 +127,6 @@ end
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
     end
-    =#
     @testset "stochastic control flow" begin
         @model demo(p) = begin
             x ~ Categorical(p)
