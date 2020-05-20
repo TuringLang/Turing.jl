@@ -31,7 +31,7 @@ end
 # assume
 function DynamicPPL.tilde(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn::VarName, inds, vi)
     r = vi[vn]
-	return r, 0
+    return r, 0
 end
 
 function DynamicPPL.tilde(ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
