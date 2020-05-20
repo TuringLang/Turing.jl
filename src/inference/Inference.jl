@@ -30,7 +30,7 @@ import DynamicPPL: get_matching_type,
 import EllipticalSliceSampling
 import Random
 import MCMCChains
-import StatsBase
+import StatsBase: predict
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -57,7 +57,8 @@ export  InferenceAlgorithm,
         dot_assume,
         observe,
         dot_observe,
-        resume
+        resume,
+        predict
 
 #######################
 # Sampler abstraction #
@@ -595,41 +596,46 @@ DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 
 """
-    predict(model::Turing.Model, chain::MCMCChains.Chains; include_all=false)
 
-Predicts variables present in `model` but not present in `chain`, and returns a `Chains` with:
-- the predicted variables only (if `include_all == false`)
-- all variables in `model`, including variables fixed from `chain` (if `include_all == true`)
+    predict(model::Model, chain::MCMCChains.Chains; include_all=false)
 
-In a bit more detail, the process is as follows:
-1. For every `sample` in `chain`
-   1. For every variable in `sample`
-      1. Set `variable` in `model` to its value in `sample`
-   2. Execute `model` with variables fixed as above, sampling variables NOT present in `chain` using `SampleFromPrior`
+Execute `model` conditioned on each sample in `chain`, and return the resulting `Chains`.
 
-#### Example
-```julia
-@model function linear_reg(x, y, σ = 0.1)
-    β ~ Normal(0, 1)
+If `include_all` is `false`, the returned `Chains` will contain only those variables
+sampled/not present in `chain`.
 
-    for i ∈ eachindex(y)
-        y[i] ~ Normal(β * x[i], σ)
-    end
-end
+# Details
+Internally calls `Turing.Inference.transitions_from_chain` to obtained the samples
+and then converts these into a `Chains` object using `AbstractMCMC.bundle_samples`.
 
-xs = 0:0.1:10; ys = 2 .* xs .+ 0.1 .* randn(length(xs));
+# Example
+```jldoctest
+julia> using Turing; Turing.turnprogress(false);
+[ Info: [Turing]: progress logging is disabled globally
 
-# Infer
-m_lin_reg = linear_reg(xs, ys);
-chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), 200);
+julia> @model function linear_reg(x, y, σ = 0.1)
+           β ~ Normal(0, 1)
 
-# Predict
-m_lin_reg_test = linear_reg(xs[1:2], Vector{Union{Missing, Float64}}(undef, 2));
-predictions = predict(m_lin_reg_test, chain_lin_reg)
-```
-results in
-```julia
-julia> predictions = predict(m_lin_reg_test, chain_lin_reg)
+           for i ∈ eachindex(y)
+               y[i] ~ Normal(β * x[i], σ)
+           end
+       end;
+
+julia> σ = 0.1; f(x) = 2 * x + 0.1 * randn();
+
+julia> Δ = 0.1; xs_train = 0:Δ:10; ys_train = f.(xs_train);
+
+julia> xs_test = [10 + Δ, 10 + 2 * Δ]; ys_test = f.(xs_test);
+
+julia> m_train = linear_reg(xs_train, ys_train, σ);
+
+julia> chain_lin_reg = sample(m_train, NUTS(100, 0.65), 200);
+┌ Info: Found initial step size
+└   ϵ = 0.003125
+
+julia> m_test = linear_reg(xs_test, Vector{Union{Missing, Float64}}(undef, length(ys_test)), σ);
+
+julia> predictions = Turing.Inference.predict(m_test, chain_lin_reg)
 Object of type Chains, with data of type 100×2×1 Array{Float64,3}
 
 Iterations        = 1:100
@@ -641,26 +647,103 @@ parameters        = y[1], y[2]
 2-element Array{ChainDataFrame,1}
 
 Summary Statistics
-  parameters    mean     std  naive_se     mcse       ess   r_hat
-  ──────────  ──────  ──────  ────────  ───────  ────────  ──────
-        y[1]  0.0078  0.0843    0.0084  missing   72.0724  1.0072
-        y[2]  0.1948  0.0950    0.0095  missing  131.6113  0.9969
+  parameters     mean     std  naive_se     mcse       ess   r_hat
+  ──────────  ───────  ──────  ────────  ───────  ────────  ──────
+        y[1]  20.1974  0.1007    0.0101  missing  101.0711  0.9922
+        y[2]  20.3867  0.1062    0.0106  missing  101.4889  0.9903
 
 Quantiles
-  parameters     2.5%    25.0%   50.0%   75.0%   97.5%
-  ──────────  ───────  ───────  ──────  ──────  ──────
-        y[1]  -0.1581  -0.0567  0.0114  0.0550  0.1758
-        y[2]   0.0200   0.1198  0.2105  0.2667  0.3773
+  parameters     2.5%    25.0%    50.0%    75.0%    97.5%
+  ──────────  ───────  ───────  ───────  ───────  ───────
+        y[1]  20.0342  20.1188  20.2135  20.2588  20.4188
+        y[2]  20.1870  20.3178  20.3839  20.4466  20.5895
 
+
+julia> ys_pred = collect(vec(mean(predictions[:y].value; dims = 1)));
+
+julia> sum(abs2, ys_test - ys_pred) ≤ 0.1
+true
 ```
 """
-function StatsBase.predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = false)
-    vi = Turing.VarInfo(model)
+function predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = false)
     spl = DynamicPPL.SampleFromPrior()
 
-    transitions = Array{Transition}(undef, length(chain))
+    # Sample transitions using `spl` conditioned on values in `chain`
+    transitions = transitions_from_chain(model, chain; sampler = spl)
+    
+    # Let the Turing internals handle everything else for you
+    chain_result = AbstractMCMC.bundle_samples(
+        Distributions.GLOBAL_RNG,
+        model,
+        spl,
+        length(chain),
+        transitions,
+        MCMCChains.Chains
+    )
+    parameter_names = if include_all
+        names(chain_result, :parameters)
+    else
+        filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
+    end
+    return chain_result[string.(parameter_names)]
+end
 
-    for i in 1:length(chain)
+"""
+
+    transitions_from_chain(
+        model::Model, 
+        chain::MCMCChains.Chains; 
+        sampler = DynamicPPL.SampleFromPrior()
+    )
+
+Execute `model` conditioned on each sample in `chain`, and return resulting transitions.
+
+The returned transitions are represented in a `Vector{<:Turing.Inference.Transition}`.
+
+# Details
+
+In a bit more detail, the process is as follows:
+1. For every `sample` in `chain`
+   1. For every `variable` in `sample`
+      1. Set `variable` in `model` to its value in `sample`
+   2. Execute `model` with variables fixed as above, sampling variables NOT present
+      in `chain` using `SampleFromPrior`
+   3. Return sampled variables and log-joint
+
+# Example
+```julia-repl
+julia> using Turing
+
+julia> @model function demo()
+           m ~ Normal(0, 1)
+           x ~ Normal(m, 1)
+       end;
+
+julia> m = demo();
+
+julia> chain = Chains(randn(2, 1, 1), ["m"]); # 2 samples of `m`
+
+julia> transitions = Turing.Inference.transitions_from_chain(m, chain);
+
+julia> [Turing.Inference.getlogp(t) for t in transitions] # extract the logjoints
+2-element Array{Float64,1}:
+ -3.6294991938628374
+ -2.5697948166987845
+
+julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
+2-element Array{Array{Float64,1},1}:
+ [-2.0844148956440796]
+ [-1.704630494695469]
+```
+"""
+function transitions_from_chain(
+    model::Turing.Model,
+    chain::MCMCChains.Chains;
+    sampler = DynamicPPL.SampleFromPrior()
+)
+    vi = Turing.VarInfo(model)
+
+    transitions = map(1:length(chain)) do i
         c = chain[i]
         md = vi.metadata
         for v in keys(md)
@@ -676,23 +759,16 @@ function StatsBase.predict(model::Turing.Model, chain::MCMCChains.Chains; includ
                 end
             end
         end
-        # Execute `model` on the parameters set in `vi` and sample thouse with `"del"` flag using `spl`
-        model(vi, spl)
+        # Execute `model` on the parameters set in `vi` and sample those with `"del"` flag using `sampler`
+        model(vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save
         theta = DynamicPPL.tonamedtuple(vi)
         lp = Turing.getlogp(vi)
-        transitions[i] = Transition(theta, lp)
+        Transition(theta, lp)
     end
-    
-    # Let the Turing internals handle everything else for you
-    chain_result = AbstractMCMC.bundle_samples(Distributions.GLOBAL_RNG, model, spl, length(chain), transitions, Chains)
-    parameter_names = if include_all
-        names(chain_result, :parameters)
-    else
-        filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
-    end
-    return chain_result[string.(parameter_names)]
+
+    return transitions
 end
 
 end # module
