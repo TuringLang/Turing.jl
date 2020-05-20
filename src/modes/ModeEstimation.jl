@@ -188,8 +188,25 @@ end
 
 function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
     # Calculate Hessian and information matrix.
+
+    # Convert the values to their unconstrained states to make sure the
+    # Hessian is computed with respect to the untransformed parameters.
+    spl = DynamicPPL.SampleFromPrior()
+
+    # NOTE: This should be converted to islinked(vi, spl) after
+    # https://github.com/TuringLang/DynamicPPL.jl/pull/124 goes through.
+    vns = DynamicPPL._getvns(m.f.vi, spl)
+    
+    linked = DynamicPPL._islinked(m.f.vi, vns)
+    linked && invlink!(m.f.vi, spl)
+
+    # Calculate the Hessian.
     varnames = StatsBase.coefnames(m)
     info = inv(hessian_function(m.f, m.values.array[:, 1]))
+
+    # Link it back if we invlinked it.
+    linked && link!(m.f.vi, spl)
+
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
 
@@ -255,7 +272,7 @@ end
 
 """
     Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
-
+0
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
