@@ -51,12 +51,13 @@ end
 # dot assume
 function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vn::VarName, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
-    return vi[vn], 0
+    r = getval(vi, vns)
+    return r, 0
 end
 
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn::VarName, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
-    r = vi[vn]
+    r = getval(vi, vns)
     return r, loglikelihood(dist, r)
 end
 
@@ -71,12 +72,28 @@ end
 
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
-    r = get_and_set_val!(vi, vns, dist, sampler)
+    r = getval(vi, vns)
     return loglikelihood(dist, r)
 end
 
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, dists, value, vi)
     return sum(Distributions.logpdf.(dists, value))
+end
+
+function getval(
+    vi,
+    vns::AbstractVector{<:VarName},
+)
+    r = vi[vns]
+    return r
+end
+
+function getval(
+    vi,
+    vns::AbstractArray{<:VarName},
+)
+    r = reshape(vi[vec(vns)], size(vns))
+    return r
 end
 
 """
