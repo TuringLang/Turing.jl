@@ -60,7 +60,7 @@ end
 
 @init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
     include("modes/ModeEstimation.jl")
-    export optimize
+    export MAP, MLE, optimize
 end
 
 ###########

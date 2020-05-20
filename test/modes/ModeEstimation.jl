@@ -31,7 +31,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         m2 = optimize(gdemo_default, MAP(), NelderMead())
         m3 = optimize(gdemo_default, MAP(), Newton())
         
-        true_value = [0.0625031, 1.75]
+        true_value = [49 / 54, 7 / 6]
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))

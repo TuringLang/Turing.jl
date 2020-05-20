@@ -14,8 +14,6 @@ import ..ForwardDiff
 import StatsBase
 import Printf
 
-export MAP, MLE, optimize
-
 struct MLE end
 struct MAP end
 
@@ -32,42 +30,12 @@ end
 
 # assume
 function DynamicPPL.tilde(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn::VarName, inds, vi)
-    if haskey(vi, vn)
-        # Always overwrite the parameters with new ones for `SampleFromUniform`.
-        if spl isa SampleFromUniform || is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del")
-            r = init(dist, spl)
-            vi[vn] = vectorize(dist, r)
-            settrans!(vi, false, vn)
-            setorder!(vi, vn, get_num_produce(vi))
-        else
-            r = vi[vn]
-        end
-    else
-        r = init(dist, spl)
-        push!(vi, vn, r, dist, spl)
-        settrans!(vi, false, vn)
-    end
+    r = vi[vn]
 	return r, 0
 end
 
 function DynamicPPL.tilde(ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
-    if haskey(vi, vn)
-        # Always overwrite the parameters with new ones for `SampleFromUniform`.
-        if spl isa SampleFromUniform || is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del")
-            r = init(dist, spl)
-            vi[vn] = vectorize(dist, r)
-            settrans!(vi, false, vn)
-            setorder!(vi, vn, get_num_produce(vi))
-        else
-            r = vi[vn]
-        end
-    else
-        r = init(dist, spl)
-        push!(vi, vn, r, dist, spl)
-        settrans!(vi, false, vn)
-    end
+    r = vi[vn]
     return r, Distributions.logpdf(dist, r)
 end
 
@@ -83,15 +51,13 @@ end
 # dot assume
 function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vn::VarName, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
-    r = get_and_set_val!(vi, vns, dist, sampler)
-    return r, 0
+    return vi[vn], 0
 end
 
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn::VarName, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
-    r = get_and_set_val!(vi, vns, dist, sampler)
-    lp = sum(logpdf(dist, r))
-    return r, lp
+    r = vi[vn]
+    return r, loglikelihood(dist, r)
 end
 
 # dot observe
@@ -106,8 +72,7 @@ end
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
     r = get_and_set_val!(vi, vns, dist, sampler)
-    lp = sum(logpdf(dist, r))
-    return lp
+    return loglikelihood(dist, r)
 end
 
 function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, dists, value, vi)
@@ -126,8 +91,6 @@ struct OptimLogDensity{M<:Model,C<:AbstractContext,V<:VarInfo}
     context::C
     "A `DynamicPPL.VarInfo` struct that will be used to update model parameters."
     vi::V
-    "Whether the to evaluate the model with transformed variables."
-    linked::Bool
 end
 
 """
@@ -135,45 +98,24 @@ end
 
 Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
 """
-function OptimLogDensity(model::Model, context::AbstractContext, linked::Bool)
-	init = VarInfo(model, context)
-	linked && DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
-	return OptimLogDensity(model, context, init, linked)
+function OptimLogDensity(model::Model, context::AbstractContext)
+	init = VarInfo(model)
+	DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
+	return OptimLogDensity(model, context, init)
 end
 
 """
-    (f::OptimLogDensity)(z; unlinked::Bool = false)
+    (f::OptimLogDensity)(z)
 
 Evaluate the log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
-at the array `z`. If `unlinked=true`, no change of variables will occur.
+at the array `z`.
 """
-function (f::OptimLogDensity)(z; linked::Bool = true)
+function (f::OptimLogDensity)(z)
     spl = DynamicPPL.SampleFromPrior()
 
     varinfo = DynamicPPL.VarInfo(f.vi, spl, z)
     f.model(varinfo, spl, f.context)
     return -DynamicPPL.getlogp(varinfo)
-end
-
-"""
-    unlink(f::OptimLogDensity)
-
-Generate an unlinked (with no variable transformions) version of an existing `OptimLogDensity`.
-"""
-function Bijectors.invlink(f::OptimLogDensity)
-    init = VarInfo(f.model, f.context)
-    return OptimLogDensity(f.model, f.context, init, false)
-end
-
-"""
-    link(f::OptimLogDensity)
-
-Generate an linked (with variable transformions) version of an existing `OptimLogDensity`.
-"""
-function Bijectors.link(f::OptimLogDensity)
-    init = VarInfo(f.model, f.context)
-    DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
-    return OptimLogDensity(f.model, f.context, init, false)
 end
 
 """
@@ -204,9 +146,17 @@ end
 # Various StatsBase methods #
 #############################
 
-function Base.show(io::IO, m::ModeResult)
-    println(io, Printf.@sprintf("ModeResult with minimized lp of %.2f", m.lp), "\n")
+
+
+function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
+    print(io, "ModeResult with minimized lp of ")
+    Printf.@printf(io, "%.2f", m.lp)
+    println(io)
     show(io, m.values)
+end
+
+function Base.show(io::IO, m::ModeResult)
+    show(io, m.values.array)
 end
 
 function StatsBase.coeftable(m::ModeResult)
@@ -222,8 +172,7 @@ end
 function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
     # Calculate Hessian and information matrix.
     varnames = StatsBase.coefnames(m)
-    f = invlink(m.f)
-    info = inv(hessian_function(x -> f(x), m.values.array[:, 1]))
+    info = inv(hessian_function(m.f, m.values.array[:, 1]))
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
 
@@ -244,7 +193,7 @@ Compute a maximum likelihood estimate of the `model`.
 
 # Examples
 
-```julia
+```julia-repl
 @model function f(x)
     m ~ Normal(0, 1)
     x ~ Normal(m, 1)
@@ -254,12 +203,12 @@ model = f(1.5)
 mle = optimize(model, MLE())
 
 # Use a different optimizer
-mle = optimize(model, MLE(), NelderMeade())
+mle = optimize(model, MLE(), NelderMead())
 ```
 """
 function Optim.optimize(model::Model, ::MLE, args...; kwargs...)
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
-    return optimize(model, OptimLogDensity(model, ctx, true), args...; kwargs...)
+    return optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -269,7 +218,7 @@ Compute a maximum a posterior estimate of the `model`.
 
 # Examples
 
-```julia
+```julia-repl
 @model function f(x)
     m ~ Normal(0, 1)
     x ~ Normal(m, 1)
@@ -279,12 +228,12 @@ model = f(1.5)
 map_est = optimize(model, MAP())
 
 # Use a different optimizer
-map_est = optimize(model, MAP(), NelderMeade())
+map_est = optimize(model, MAP(), NelderMead())
 ```
 """
 function Optim.optimize(model::Model, ::MAP, args...; kwargs...)
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
-    return optimize(model, OptimLogDensity(model, ctx, true), args...; kwargs...)
+    return optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
