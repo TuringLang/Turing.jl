@@ -84,24 +84,22 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
 
     @testset "Dot tilde test" begin
-        if VERSION > v"1.0"
-            @model function dot_gdemo(x)
-                s ~ InverseGamma(2,3)
-                m ~ Normal(0, sqrt(s))
-            
-                x .~ Normal(m, sqrt(s))
-            end
-            
-            model_dot = dot_gdemo([1.5, 2.0])
-
-            mle1 = optimize(gdemo_default, MLE())
-            mle2 = optimize(model_dot, MLE())
-
-            map1 = optimize(gdemo_default, MAP())
-            map2 = optimize(model_dot, MAP())
-
-            @test isapprox(mle1.values.array, mle2.values.array)
-            @test isapprox(map1.values.array, map2.values.array)
+        @model function dot_gdemo(x)
+            s ~ InverseGamma(2,3)
+            m ~ Normal(0, sqrt(s))
+        
+            (.~)(x, Normal(m, sqrt(s)))
         end
+        
+        model_dot = dot_gdemo([1.5, 2.0])
+
+        mle1 = optimize(gdemo_default, MLE())
+        mle2 = optimize(model_dot, MLE())
+
+        map1 = optimize(gdemo_default, MAP())
+        map2 = optimize(model_dot, MAP())
+
+        @test isapprox(mle1.values.array, mle2.values.array)
+        @test isapprox(map1.values.array, map2.values.array)
     end
 end
