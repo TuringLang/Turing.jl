@@ -50,7 +50,6 @@ end
 
 # dot assume
 function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vn::VarName, _, vi)
-    vns, dist = get_vns_and_dist(right, left, vn)
     return vi[vn], 0
 end
 
