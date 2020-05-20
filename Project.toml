@@ -42,6 +42,7 @@ ForwardDiff = "0.10.3"
 Libtask = "0.4"
 LogDensityProblems = "^0.9, 0.10"
 MCMCChains = "3.0.7"
+Optim = "0.20, 0.21"
 ProgressLogging = "0.1"
 Reexport = "0.2.0"
 Requires = "0.5, 1.0"
@@ -69,4 +70,4 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [targets]
-test = ["Pkg", "PDMats", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote", "ReverseDiff", "Memoization"]
+test = ["Pkg", "PDMats", "TerminalLoggers", "Test", "UnicodePlots", "StatsBase", "FiniteDifferences", "DynamicHMC", "CmdStan", "BenchmarkTools", "Zygote", "ReverseDiff", "Memoization", "Optim", "NamedArrays"]
