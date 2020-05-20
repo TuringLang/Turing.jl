@@ -40,7 +40,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(100)
         alg = Gibbs(
             CSMC(10, :s),
-            HMC(0.2, 4, :m))
+            HMC(0.2, 4, :m),
+        )
         chain = sample(gdemo(1.5, 2.0), alg, 3000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
@@ -48,13 +49,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         alg = Gibbs(
             MH(:s),
-            HMC(0.2, 4, :m))
+            HMC(0.2, 4, :m),
+        )
         chain = sample(gdemo(1.5, 2.0), alg, 5000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = Gibbs(
             CSMC(15, :s),
-            ESS(:m))
+            ESS(:m),
+        )
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
@@ -67,7 +70,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(200)
         gibbs = Gibbs(
             PG(10, :z1, :z2, :z3, :z4),
-            HMC(0.15, 3, :mu1, :mu2))
+            HMC(0.15, 3, :mu1, :mu2),
+        )
         chain = sample(MoGtest_default, gibbs, 1500)
         check_MoGtest_default(chain, atol = 0.15)
 
@@ -76,7 +80,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(200)
         gibbs = Gibbs(
             PG(10, :z1, :z2, :z3, :z4),
-            ESS(:mu1), ESS(:mu2))
+            ESS(:mu1), ESS(:mu2),
+        )
         chain = sample(MoGtest_default, gibbs, 1500)
         check_MoGtest_default(chain, atol = 0.15)
     end

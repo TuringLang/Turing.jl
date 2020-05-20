@@ -78,7 +78,7 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     vnvals = Vector{Float64}()
     for i in 1:length(syms)
         s = syms[i]
-        vnms[i] = getfield(vi.metadata, s).vns[1]
+        vnms[i] = getfield(vi.tvi.metadata, s).vns[1]
 
         vals = getval(vi, vnms[i])
         for i in eachindex(vals)

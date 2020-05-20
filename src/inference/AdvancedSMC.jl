@@ -22,6 +22,27 @@ struct ParticleTransition{T, F<:AbstractFloat}
     weight::F
 end
 
+function Base.promote_type(
+    ::Type{ParticleTransition{T1, F1}},
+    ::Type{ParticleTransition{T2, F2}},
+) where {T1, F1, T2, F2}
+    return ParticleTransition{
+        Union{T1, T2},
+        promote_type(F1, F2),
+    }
+end
+function Base.convert(
+    ::Type{ParticleTransition{T, F}},
+    t::ParticleTransition,
+) where {T, F}
+    return ParticleTransition{T, F}(
+        convert(T, t.θ),
+        convert(F, t.lp),
+        convert(F, t.le),
+        convert(F, t.weight),
+    )
+end
+
 function additional_parameters(::Type{<:ParticleTransition})
     return [:lp,:le, :weight]
 end
@@ -212,6 +233,10 @@ end
 function PGState(model::Model)
     vi = VarInfo(model)
     return PGState(vi, 0.0)
+end
+
+function replace_varinfo(s::PGState, vi::AbstractVarInfo)
+    return PGState(vi, s.average_logevidence)
 end
 
 const CSMC = PG # type alias of PG as Conditional SMC

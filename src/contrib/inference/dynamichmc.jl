@@ -97,7 +97,7 @@ function Sampler(
     s::Selector=Selector()
 )
     # Construct a state, using a default function.
-    state = DynamicNUTSState(VarInfo(model), [])
+    state = DynamicNUTSState(DynamicPPL.TypedVarInfo(model), [])
 
     # Return a new sampler.
     return Sampler(alg, Dict{Symbol,Any}(), s, state)

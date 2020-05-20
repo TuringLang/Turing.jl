@@ -28,6 +28,9 @@ ESS(space::Symbol) = ESS{(space,)}()
 mutable struct ESSState{V<:AbstractVarInfo} <: AbstractSamplerState
     vi::V
 end
+function replace_varinfo(::ESSState, vi::AbstractVarInfo)
+    return ESSState(vi)
+end
 
 function Sampler(alg::ESS, model::Model, s::Selector)
     # sanity check

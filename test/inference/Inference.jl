@@ -7,7 +7,21 @@ using Random
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
+struct DynamicDist <: DiscreteMultivariateDistribution end
+function Distributions.logpdf(::DynamicDist, dsl_numeric::AbstractVector{Int})
+    return sum([log(0.5) * 0.5^i for i in 1:length(dsl_numeric)])
+end
+function Random.rand(rng::Random.AbstractRNG, ::DynamicDist)
+    fst = rand(rng, [0, 1])
+    dsl_numeric = [fst]
+    while rand() < 0.5
+        push!(dsl_numeric, rand(rng, [0, 1]))
+    end
+    return dsl_numeric
+end
+
 @testset "io.jl" begin
+    #=
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -113,5 +127,28 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test all(haskey(x, :lp) for x in chains)
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+    end
+    =#
+    @testset "stochastic control flow" begin
+        @model demo(p) = begin
+            x ~ Categorical(p)
+            if x == 1
+                y ~ Normal()
+            elseif x == 2
+                z ~ Normal()
+            else 
+                k ~ Normal()
+            end
+        end
+        chain = sample(demo(fill(1/3, 3)), PG(4), 7000)
+        check_numerical(chain, [:x, :y, :z, :k], [2, 0, 0, 0], atol=0.05, skip_missing=true)
+
+        chain = sample(demo(fill(1/3, 3)), Gibbs(PG(4, :x, :y), PG(4, :z, :k)), 7000)
+        check_numerical(chain, [:x, :y, :z, :k], [2, 0, 0, 0], atol=0.05, skip_missing=true)
+
+        @model function mwe()
+		    dsl ~ DynamicDist()
+		end
+        chain = sample(mwe(), PG(10), 500)
     end
 end

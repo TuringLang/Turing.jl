@@ -10,19 +10,24 @@ include("test_utils/AllUtils.jl")
 
 # Begin testing.
 @testset "Turing" begin
+    #=
     @testset "core" begin
         include("core/ad.jl")
         include("core/container.jl")
     end
+    =#
+    Turing.setadbackend(:forwarddiff)
     @testset "inference" begin
         @testset "samplers" begin
             include("inference/gibbs.jl")
+            #=
             include("inference/is.jl")
             include("inference/mh.jl")
             include("inference/ess.jl")
             include("inference/AdvancedSMC.jl")
+            =#
             include("inference/Inference.jl")
-
+            #=
             test_adbackends = if VERSION >= v"1.2"
                 [:forwarddiff, :tracker, :reversediff]
             else
@@ -39,9 +44,11 @@ include("test_utils/AllUtils.jl")
                     include("variational/advi.jl")
                 end
             end
+            =#
         end
     end
 
+    #=
     Turing.setadbackend(:forwarddiff)
 
     @testset "variational optimisers" begin
@@ -56,4 +63,5 @@ include("test_utils/AllUtils.jl")
     @testset "utilities" begin
       # include("utilities/stan-interface.jl")
     end
+    =#
 end

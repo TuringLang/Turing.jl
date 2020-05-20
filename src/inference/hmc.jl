@@ -17,6 +17,18 @@ mutable struct HMCState{
     z        :: PhType
 end
 
+function replace_varinfo(s::HMCState, vi::AbstractVarInfo)
+    return HMCState(
+        vi,
+        s.eval_num,
+        s.i,
+        s.traj,
+        s.h,
+        s.adaptor,
+        s.z,
+    )
+end
+
 ##########################
 # Hamiltonian Transition #
 ##########################
@@ -25,6 +37,27 @@ struct HamiltonianTransition{T, NT<:NamedTuple, F<:AbstractFloat}
     θ    :: T
     lp   :: F
     stat :: NT
+end
+
+function Base.promote_type(
+    ::Type{HamiltonianTransition{T1, NT1, F1}},
+    ::Type{HamiltonianTransition{T2, NT2, F2}},
+) where {T1, NT1, F1, T2, NT2, F2}
+    return HamiltonianTransition{
+        Union{T1, T2},
+        promote_type(NT1, NT2),
+        promote_type(F1, F2),
+    }
+end
+function Base.convert(
+    ::Type{HamiltonianTransition{T, NT, F}},
+    t::HamiltonianTransition,
+) where {T, NT, F}
+    return HamiltonianTransition{T, NT, F}(
+        convert(T, t.θ),
+        convert(F, t.lp),
+        convert(NT, t.stat)
+    )
 end
 
 function HamiltonianTransition(spl::Sampler{<:Hamiltonian}, t::AHMC.Transition)
@@ -178,7 +211,7 @@ function AbstractMCMC.sample_init!(
     end
 end
 
-function AbstractMCMC.transitions_init(
+function AbstractMCMC.transitions(
     transition,
     ::AbstractModel,
     sampler::Sampler{<:Hamiltonian},
@@ -191,28 +224,26 @@ function AbstractMCMC.transitions_init(
     else
         n = N
     end
-    return Vector{typeof(transition)}(undef, n)
+    ts = Vector{typeof(transition)}(undef, 0)
+    sizehint!(ts, n)
+    return ts
 end
 
-function AbstractMCMC.transitions_save!(
+function AbstractMCMC.save!!(
     transitions::AbstractVector,
-    iteration::Integer,
     transition,
+    iteration::Integer,
     ::AbstractModel,
     sampler::Sampler{<:Hamiltonian},
     ::Integer;
     discard_adapt = true,
     kwargs...
 )
-    if discard_adapt && isdefined(sampler.alg, :n_adapts)
-        if iteration > sampler.alg.n_adapts
-            transitions[iteration - sampler.alg.n_adapts] = transition
-        end
-        return
+    if discard_adapt && isdefined(sampler.alg, :n_adapts) && iteration <= sampler.alg.n_adapts
+        return transitions
+    else
+        return BangBang.push!!(transitions, transition)
     end
-
-    transitions[iteration] = transition
-    return
 end
 
 """
@@ -375,7 +406,8 @@ function Sampler(
 )
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
-    initial_state = SamplerState(VarInfo(model))
+    varinfo  = getspace(alg) === () ? TypedVarInfo(model) : VarInfo(model)
+    initial_state = SamplerState(varinfo)
 
     # Create an initial sampler, to get all the initialization out of the way.
     initial_spl = Sampler(alg, info, s, initial_state)

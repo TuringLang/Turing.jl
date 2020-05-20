@@ -56,6 +56,10 @@ function GibbsState(model::Model, samplers::Tuple{Vararg{Sampler}})
     return GibbsState(VarInfo(model), samplers)
 end
 
+function replace_varinfo(s::GibbsState, vi::AbstractVarInfo)
+    return GibbsState(vi, s.samplers)
+end
+
 function Sampler(alg::Gibbs, model::Model, s::Selector)
     # sanity check for space
     space = getspace(alg)
@@ -72,16 +76,24 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         selector = Selector(Symbol(typeof(_alg)), rerun)
         Sampler(_alg, model, selector)
     end
+    varinfo = merge(ntuple(i -> samplers[i].state.vi, Val(length(samplers)))...)
+    samplers = map(samplers) do sampler
+        Sampler(
+            sampler.alg,
+            sampler.info,
+            sampler.selector,
+            replace_varinfo(sampler.state, varinfo),
+        )
+    end
     # create a state variable
-    state = GibbsState(model, samplers)
+    state = GibbsState(varinfo, samplers)
 
     # create the sampler
     info = Dict{Symbol, Any}()
     spl = Sampler(alg, info, s, state)
 
     # add Gibbs to gids for all variables
-    vi = spl.state.vi
-    DynamicPPL.updategid!(vi, (spl, samplers...))
+    DynamicPPL.updategid!(varinfo, (spl, samplers...))
 
     return spl
 end
@@ -98,6 +110,27 @@ struct GibbsTransition{T,F,S<:AbstractVector}
     θ::T
     lp::F
     transitions::S
+end
+
+function Base.promote_type(
+    ::Type{GibbsTransition{T1, F1, S1}},
+    ::Type{GibbsTransition{T2, F2, S2}},
+) where {T1, F1, S1, T2, F2, S2}
+    return GibbsTransition{
+        Union{T1, T2},
+        promote_type(F1, F2),
+        promote_type(S1, S2),
+    }
+end
+function Base.convert(
+    ::Type{GibbsTransition{T, F, S}},
+    t::GibbsTransition,
+) where {T, F, S}
+    return GibbsTransition{T, F, S}(
+        convert(T, t.θ),
+        convert(F, t.lp),
+        convert(S, t.transitions),
+    )
 end
 
 function GibbsTransition(spl::Sampler{<:Gibbs}, transitions::AbstractVector)
@@ -176,25 +209,26 @@ function AbstractMCMC.step!(
 end
 
 # Do not store transitions of subsamplers
-function AbstractMCMC.transitions_init(
+function AbstractMCMC.transitions(
     transition::GibbsTransition,
     ::Model,
     ::Sampler{<:Gibbs},
     N::Integer;
     kwargs...
 )
-    return Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, N)
+    ts = Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, 0)
+    sizehint!(ts, N)
+    return ts
 end
 
-function AbstractMCMC.transitions_save!(
+function AbstractMCMC.save!!(
     transitions::Vector{<:Transition},
-    iteration::Integer,
     transition::GibbsTransition,
+    iteration::Integer,
     ::Model,
     ::Sampler{<:Gibbs},
     ::Integer;
     kwargs...
 )
-    transitions[iteration] = Transition(transition.θ, transition.lp)
-    return
+    return BangBang.push!!(transitions, Transition(transition.θ, transition.lp))
 end

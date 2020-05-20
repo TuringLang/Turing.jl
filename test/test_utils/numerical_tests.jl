@@ -41,12 +41,19 @@ end
 function check_numerical(chain,
                         symbols::Vector,
                         exact_vals::Vector;
+                        skip_missing=false,
                         atol=0.2,
                         rtol=0.0)
     for (sym, val) in zip(symbols, exact_vals)
-        E = val isa Real ?
-            mean(chain[sym].value) :
-            vec(mean(chain[sym].value, dims=[1]))
+        if skip_missing
+            E = val isa Real ?
+                mean(skipmissing(chain[sym].value)) :
+                vec(mean(skipmissing(chain[sym].value), dims=[1]))
+        else
+            E = val isa Real ?
+                mean(chain[sym].value) :
+                vec(mean(chain[sym].value, dims=[1]))
+        end
         @info (symbol=sym, exact=val, evaluated=E)
         @test E ≈ val atol=atol rtol=rtol
     end

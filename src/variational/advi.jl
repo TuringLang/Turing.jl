@@ -62,7 +62,7 @@ Creates a mean-field approximation with multivariate normal as underlying distri
 meanfield(model::Model) = meanfield(GLOBAL_RNG, model)
 function meanfield(rng::AbstractRNG, model::Model)
     # setup
-    varinfo = Turing.VarInfo(model)
+    varinfo = DynamicPPL.TypedVarInfo(model)
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
                       for sym ∈ keys(varinfo.metadata)])
 
