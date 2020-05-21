@@ -7,9 +7,9 @@ import ..DynamicPPL
 import ..DynamicPPL: Model, AbstractContext, VarInfo, AbstractContext, VarName,
     _getindex, getsym, getfield, settrans!,  setorder!,
     get_and_set_val!, istrans, tilde, dot_tilde
-import Optim
-import Optim: optimize
-import NamedArrays
+import .Optim
+import .Optim: optimize
+import .NamedArrays
 import ..ForwardDiff
 import StatsBase
 import Printf
