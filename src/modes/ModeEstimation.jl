@@ -6,7 +6,7 @@ import ..AbstractMCMC: AbstractSampler
 import ..DynamicPPL
 import ..DynamicPPL: Model, AbstractContext, VarInfo, AbstractContext, VarName,
     _getindex, getsym, getfield, settrans!,  setorder!,
-    get_and_set_val!, istrans, tilde, dot_tilde
+    get_and_set_val!, istrans, tilde, dot_tilde, get_vns_and_dist
 import .Optim
 import .Optim: optimize
 import ..ForwardDiff
@@ -29,6 +29,10 @@ struct OptimizationContext{C<:AbstractContext} <: AbstractContext
 end
 
 # assume
+function DynamicPPL.tilde(rng, ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
+    return DynamicPPL.tilde(ctx, spl, dist, vn, inds, vi)
+end
+
 function DynamicPPL.tilde(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn::VarName, inds, vi)
     r = vi[vn]
     return r, 0
@@ -39,7 +43,12 @@ function DynamicPPL.tilde(ctx::OptimizationContext, spl, dist, vn::VarName, inds
     return r, Distributions.logpdf(dist, r)
 end
 
+
 # observe
+function DynamicPPL.tilde(rng, ctx::OptimizationContext, sampler, right, left, vi)
+    return DynamicPPL.tilde(ctx, sampler, right, left, vi)
+end
+
 function DynamicPPL.tilde(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
     return 0
 end
@@ -49,6 +58,10 @@ function DynamicPPL.tilde(ctx::OptimizationContext, sampler, dist, value, vi)
 end
 
 # dot assume
+function DynamicPPL.dot_tilde(rng, ctx::OptimizationContext, sampler, right, left, vn::VarName, inds, vi)
+    return DynamicPPL.dot_tilde(ctx, sampler, right, left, vn, inds, vi)
+end
+
 function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vn::VarName, _, vi)
     vns, dist = get_vns_and_dist(right, left, vn)
     r = getval(vi, vns)
@@ -202,7 +215,8 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Calculate the Hessian.
     varnames = StatsBase.coefnames(m)
-    info = inv(hessian_function(m.f, m.values.array[:, 1]))
+    H = hessian_function(m.f, m.values.array[:, 1])
+    info = inv(H)
 
     # Link it back if we invlinked it.
     linked && link!(m.f.vi, spl)
@@ -282,6 +296,11 @@ function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(
 
     # Optimize!
     M = Optim.optimize(f, init_vals, optimizer, args...; kwargs...)
+
+    # Warn the user if the optimization did not converge.
+    if !Optim.converged(M)
+        @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
+    end
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
     # correct dimensionality.
