@@ -115,8 +115,5 @@ export  @model,                 # modelling
         LogPoisson,
         NamedDist,
         filldist,
-        arraydist,
-
-        MLE,                    # mode estimation tools
-        MAP
+        arraydist
 end
