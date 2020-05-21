@@ -9,8 +9,8 @@ import ..DynamicPPL: Model, AbstractContext, VarInfo, AbstractContext, VarName,
     get_and_set_val!, istrans, tilde, dot_tilde
 import .Optim
 import .Optim: optimize
-import .NamedArrays
 import ..ForwardDiff
+import NamedArrays
 import StatsBase
 import Printf
 
