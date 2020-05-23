@@ -117,7 +117,7 @@ function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ES
     vi = spl.state.vi
     vns = _getvns(vi, spl)
     set_flag!(vi, vns[1][1], "del")
-    model.model(vi, spl)
+    model.model(rng, vi, spl)
     return vi[spl]
 end
 
@@ -144,11 +144,11 @@ function Distributions.loglikelihood(model::ESSModel, f)
     getlogp(vi)
 end
 
-function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
+function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
     if inspace(vn, sampler)
-        return DynamicPPL.tilde(LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
-        return DynamicPPL.tilde(ctx, SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
     end
 end
 
@@ -156,14 +156,14 @@ function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, l
     return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
+function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
     if inspace(vn, sampler)
-        return DynamicPPL.dot_tilde(LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
+        return DynamicPPL.dot_tilde(rng, LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
     else
-        return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vn, inds, vi)
+        return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vn, inds, vi)
     end
 end
 
-function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
 end

@@ -45,7 +45,7 @@ function Sampler(alg::IS, model::Model, s::Selector)
 end
 
 function AbstractMCMC.step!(
-    ::AbstractRNG,
+    rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:IS},
     ::Integer,
@@ -53,7 +53,7 @@ function AbstractMCMC.step!(
     kwargs...
 )
     empty!(spl.state.vi)
-    model(spl.state.vi, spl)
+    model(rng, spl.state.vi, spl)
 
     return Transition(spl)
 end
@@ -70,8 +70,8 @@ function AbstractMCMC.sample_end!(
     spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
 end
 
-function DynamicPPL.assume(spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
-    r = rand(dist)
+function DynamicPPL.assume(rng, spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
+    r = rand(rng, dist)
     push!(vi, vn, r, dist, spl)
     return r, 0
 end

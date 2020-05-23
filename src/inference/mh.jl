@@ -302,6 +302,7 @@ end
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
+    rng,
     spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
@@ -313,6 +314,7 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
     vn::VarName,
@@ -328,6 +330,7 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:MH},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
