@@ -33,6 +33,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
 
             # Smoke test for default sample call.
+            Random.seed!(100)
             chain = sample(gdemo_default, HMC(0.1, 7), MCMCThreads(), 1000, 4)
             check_gdemo(chain)
 
