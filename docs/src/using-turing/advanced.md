@@ -10,7 +10,7 @@ title: Advanced Usage
 Turing.jl supports the use of distributions from the Distributions.jl package. By extension it also supports the use of customized distributions, by defining them as subtypes of `Distribution` type of the Distributions.jl package, as well as corresponding functions.
 
 
-Below shows a workflow of how to define a customized distribution, using a flat prior as a simple example.
+Below shows a workflow of how to define a customized distribution, using our own implementation of a simple `Uniform` distribution as a simple example.
 
 
 ### 1. Define the Distribution Type
@@ -31,19 +31,18 @@ Second, define `rand` and `logpdf`, which will be used to run the model.
 
 
 ```julia
-Distributions.rand(rng::AbstractRNG, d::Flat) = rand(rng) # sample in [0, 1]
-Distributions.logpdf(d::Flat, x::Real) = zero(x)          # p(x) = 1 → logp(x) = 0
+Distributions.rand(rng::AbstractRNG, d::CustomUniform) = rand(rng) # sample in [0, 1]
+Distributions.logpdf(d::CustomUniform, x::Real) = zero(x)          # p(x) = 1 → logp(x) = 0
 ```
 
 ### 3. Define Helper Functions
 
 
-In most cases, it may be required to define helper functions, such as the `minimum`, `maximum`, `rand`, and `logpdf` functions, among others.
-
+In most cases, it may be required to define some helper functions.
 
 #### 3.1 Domain Transformation
 
-Certain samplers, such as `HMC`, require the domain of the priors to be unbounded. Therefore, to use our `CustomUniform` as a prior in a model we also need to define how to transform samples from `[0, 1]` to `ℝ`. To do this, we simply need to define the corresponding `Bijector` from `Bijectors.jl`, which is what `Turing.jl` uses internally.
+Certain samplers, such as `HMC`, require the domain of the priors to be unbounded. Therefore, to use our `CustomUniform` as a prior in a model we also need to define how to transform samples from `[0, 1]` to `ℝ`. To do this, we simply need to define the corresponding `Bijector` from `Bijectors.jl`, which is what `Turing.jl` uses internally to deal with constrained distributions.
 
 To transform from `[0, 1]` to `ℝ` we can use the `Logit` bijector:
 
@@ -60,8 +59,18 @@ Distributions.minimum(d::CustomUniform) = 0.
 Distributions.maximum(d::CustomUniform) = 1.
 ```
 
-and `Bijectors.jl` will ensure that everything just works.
+and `Bijectors.jl` will return a default `Bijector` called `TruncatedBijector` which makes use of `minimum` and `maximum` derive the correct transformation.
 
+Internally, Turing basically does the following when it needs to convert a constrained distribution to an unconstrained distribution, e.g. when sampling using `HMC`:
+```julia
+b = bijector(dist)
+transformed_dist = transformed(dist, b) # results in distribution with transformed support + correction for logpdf
+```
+and then we can call `rand` and `logpdf` as usual, where
+- `rand(transformed_dist)` returns a sample in the unconstrained space, and
+- `logpdf(transformed_dist, y)` returns the log density of the original distribution, but with `y` living in the unconstrained space.
+
+To read more about Bijectors.jl, check out [the project README](https://github.com/TuringLang/Bijectors.jl).
 
 #### 3.2 Vectorization Support
 
