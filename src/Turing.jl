@@ -58,6 +58,11 @@ using .Variational
     end
 end
 
+@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
+    include("modes/ModeEstimation.jl")
+    export MAP, MLE, optimize
+end
+
 ###########
 # Exports #
 ###########
@@ -87,7 +92,7 @@ export  @model,                 # modelling
         CSMC,
         PG,
 
-        vi,                    # variational inference
+        vi,                     # variational inference
         ADVI,
 
         sample,                 # inference

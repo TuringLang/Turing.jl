@@ -307,19 +307,21 @@ Return a named tuple of parameters.
 getparams(t) = t.θ
 getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
 
-function _params_to_array(ts)
-    names_set = Set{String}()
+function _params_to_array(ts::Vector)
+    names = Vector{String}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
         for nm in nms
-            push!(names_set, nm)
+            if !(nm in names)
+                push!(names, nm)
+            end
         end
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    names = collect(names_set)
-    vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
+    # names = collect(names_set)
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
         (j, key) in enumerate(names)]
 
     return names, vals
