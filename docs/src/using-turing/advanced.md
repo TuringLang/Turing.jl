@@ -66,7 +66,9 @@ Internally, Turing basically does the following when it needs to convert a const
 b = bijector(dist)
 transformed_dist = transformed(dist, b) # results in distribution with transformed support + correction for logpdf
 ```
-and then we can call `rand(transformed_dist)` and `logpdf(transformed_dist, y)` where `y` is any real number, as usual.
+and then we can call `rand` and `logpdf` as usual, where
+- `rand(transformed_dist)` returns a sample in the unconstrained space, and
+- `logpdf(transformed_dist, y)` returns the log density of the original distribution, but with `y` living in the unconstrained space.
 
 To read more about Bijectors.jl, check out [the project README](https://github.com/TuringLang/Bijectors.jl).
 
