@@ -179,9 +179,10 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    specialize_after=1,
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model; specialize_after=specialize_after), N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -239,9 +240,10 @@ function AbstractMCMC.sample(
     parallel::AbstractMCMC.AbstractMCMCParallel,
     N::Integer,
     n_chains::Integer;
+    specialize_after=1,
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model; specialize_after=specialize_after), parallel, N, n_chains;
                                kwargs...)
 end
 

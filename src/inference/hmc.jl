@@ -402,11 +402,12 @@ end
 function Sampler(
     alg::Union{StaticHamiltonian, AdaptiveHamiltonian},
     model::Model,
-    s::Selector=Selector()
+    s::Selector=Selector();
+    specialize_after=1
 )
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
-    varinfo  = getspace(alg) === () ? TypedVarInfo(model) : VarInfo(model)
+    varinfo  = getspace(alg) === () ? TypedVarInfo(model) : VarInfo(model, specialize_after)
     initial_state = SamplerState(varinfo)
 
     # Create an initial sampler, to get all the initialization out of the way.

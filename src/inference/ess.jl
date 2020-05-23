@@ -32,9 +32,9 @@ function replace_varinfo(::ESSState, vi::AbstractVarInfo)
     return ESSState(vi)
 end
 
-function Sampler(alg::ESS, model::Model, s::Selector)
+function Sampler(alg::ESS, model::Model, s::Selector; specialize_after=1)
     # sanity check
-    vi = VarInfo(model)
+    vi = VarInfo(model, specialize_after)
     space = getspace(alg)
     vns = getvns(vi, s, Val(space))
     length(vns) == 1 ||

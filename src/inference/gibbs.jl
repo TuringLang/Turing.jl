@@ -52,15 +52,15 @@ mutable struct GibbsState{V<:AbstractVarInfo, S<:Tuple{Vararg{Sampler}}} <: Abst
     samplers::S
 end
 
-function GibbsState(model::Model, samplers::Tuple{Vararg{Sampler}})
-    return GibbsState(VarInfo(model), samplers)
+function GibbsState(model::Model, samplers::Tuple{Vararg{Sampler}}; specialize_after=1)
+    return GibbsState(VarInfo(model, specialize_after), samplers)
 end
 
 function replace_varinfo(s::GibbsState, vi::AbstractVarInfo)
     return GibbsState(vi, s.samplers)
 end
 
-function Sampler(alg::Gibbs, model::Model, s::Selector)
+function Sampler(alg::Gibbs, model::Model, s::Selector; specialize_after=1)
     # sanity check for space
     space = getspace(alg)
     # create tuple of samplers
@@ -74,7 +74,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         end
         rerun = !(_alg isa MH) || prev_alg isa PG || prev_alg isa ESS
         selector = Selector(Symbol(typeof(_alg)), rerun)
-        Sampler(_alg, model, selector)
+        Sampler(_alg, model, selector; specialize_after=specialize_after)
     end
     varinfo = merge(ntuple(i -> samplers[i].state.vi, Val(length(samplers)))...)
     samplers = map(samplers) do sampler

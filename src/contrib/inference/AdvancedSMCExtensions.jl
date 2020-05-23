@@ -39,7 +39,7 @@ end
 
 PIMH(n_iters::Int, smc_alg::SMC) = PMMH(n_iters, tuple(smc_alg), ())
 
-function Sampler(alg::PMMH, model::Model, s::Selector)
+function Sampler(alg::PMMH, model::Model, s::Selector; specialize_after=1)
     info = Dict{Symbol, Any}()
     spl = Sampler(alg, info, s)
 
@@ -118,7 +118,8 @@ function sample(  model::Model,
                   alg::PMMH;
                   save_state=false,         # flag for state saving
                   resume_from=nothing,      # chain to continue
-                  reuse_spl_n=0             # flag for spl re-using
+                  reuse_spl_n=0,             # flag for spl re-using
+                  specialize_after=1
                 )
 
     spl = Sampler(alg, model)
@@ -140,7 +141,7 @@ function sample(  model::Model,
 
     # Init parameters
     vi = if resume_from === nothing
-        vi_ = VarInfo(model)
+        vi_ = VarInfo(model, specialize_after)
     else
         resume_from.info[:vi]
     end
@@ -279,7 +280,7 @@ function step(model, spl::Sampler{<:IPMCMC}, VarInfos::Array{VarInfo}, is_first:
     VarInfos[nodes_permutation]
 end
 
-function sample(model::Model, alg::IPMCMC)
+function sample(model::Model, alg::IPMCMC; specialize_after=1)
 
   spl = Sampler(alg)
 
@@ -295,7 +296,7 @@ function sample(model::Model, alg::IPMCMC)
   end
 
   # Init parameters
-  vi = empty!(VarInfo(model))
+  vi = empty!(VarInfo(model, specialize_after))
   VarInfos = Array{VarInfo}(undef, spl.alg.n_nodes)
   for j in 1:spl.alg.n_nodes
     VarInfos[j] = deepcopy(vi)

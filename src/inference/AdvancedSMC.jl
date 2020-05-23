@@ -97,16 +97,16 @@ mutable struct SMCState{V<:AbstractVarInfo, F<:AbstractFloat} <: AbstractSampler
     particles            ::   ParticleContainer
 end
 
-function SMCState(model::Model)
-    vi = VarInfo(model)
+function SMCState(model::Model; specialize_after=1)
+    vi = VarInfo(model, specialize_after)
     particles = ParticleContainer(Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
 
-function Sampler(alg::SMC, model::Model, s::Selector)
+function Sampler(alg::SMC, model::Model, s::Selector; specialize_after=1)
     dict = Dict{Symbol, Any}()
-    state = SMCState(model)
+    state = SMCState(model; specialize_after=specialize_after)
     return Sampler(alg, dict, s, state)
 end
 
@@ -230,8 +230,8 @@ mutable struct PGState{V<:AbstractVarInfo, F<:AbstractFloat} <: AbstractSamplerS
     average_logevidence  ::   F
 end
 
-function PGState(model::Model)
-    vi = VarInfo(model)
+function PGState(model::Model; specialize_after=1)
+    vi = VarInfo(model, specialize_after)
     return PGState(vi, 0.0)
 end
 
@@ -246,9 +246,9 @@ const CSMC = PG # type alias of PG as Conditional SMC
 
 Return a `Sampler` object for the PG algorithm.
 """
-function Sampler(alg::PG, model::Model, s::Selector)
+function Sampler(alg::PG, model::Model, s::Selector; specialize_after=1)
     info = Dict{Symbol, Any}()
-    state = PGState(model)
+    state = PGState(model; specialize_after=specialize_after)
     return Sampler(alg, info, s, state)
 end
 
