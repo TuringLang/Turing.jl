@@ -576,6 +576,7 @@ for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
 end
 
 floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
+floatof(::Type{Real}) = Real
 floatof(::Type) = Real # fallback if type inference failed
 
 function get_matching_type(
