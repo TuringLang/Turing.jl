@@ -286,7 +286,7 @@ end
 
 """
     Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
-0
+
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
