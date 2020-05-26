@@ -33,11 +33,11 @@ using Turing
 using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
-@model gdemo(x, y) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
+@model function gdemo(x, y)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
 end
 ```
 
@@ -96,7 +96,7 @@ In the following example, the defined model is conditioned to the date (arg*1 = 
 
 
 ```julia
-@model model_name(arg_1, arg_2) = begin
+@model function model_name(arg_1, arg_2)
   ...
 end
 ```
@@ -130,10 +130,10 @@ Turing does not have a declarative form. More generally, the order in which you 
 
 ```julia
 # Define a simple Normal model with unknown mean and variance.
-@model model_function(y) = begin
-  s ~ Poisson(1)
-  y ~ Normal(s, 1)
-  return y
+@model function model_function(y)
+    s ~ Poisson(1)
+    y ~ Normal(s, 1)
+    return y
 end
 
 sample(model_function(10), SMC(), 100)
@@ -145,10 +145,10 @@ But if we switch the `s ~ Poisson(1)` and `y ~ Normal(s, 1)` lines, the model wi
 
 ```julia
 # Define a simple Normal model with unknown mean and variance.
-@model model_function(y) = begin
-  y ~ Normal(s, 1)
-  s ~ Poisson(1)
-  return y
+@model function model_function(y)
+    y ~ Normal(s, 1)
+    s ~ Poisson(1)
+    return y
 end
 
 sample(model_function(10), SMC(), 100)
@@ -158,47 +158,100 @@ sample(model_function(10), SMC(), 100)
 
 ### Sampling Multiple Chains
 
-You can use multiple processes to sample chains in parallel:
+Turing supports distributed and threaded parallel sampling. To do so, call `sample(model, sampler, parallel_type, n, n_chains)`, where `parallel_type` can be either `MCMCThreads()` or `MCMCDistributed()` for thread and parallel sampling, respectively.
 
-```julia
-# Generate 4 chains, each with 1,000 samples.
-chains = sample(model, sampler, MCMCDistributed(), 1000, 4)
-```
+Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
 
-Alternatively, if you have Julia 1.3 or greater, you may sample multiple chains using
-multiple threads:
-
-```julia
-# Generate 4 chains, each with 1,000 samples.
-chains = sample(model, sampler, MCMCThreads(), 1000, 4)
-```
-
-For older versions of Julia, `sample` may not function correctly. If you wish to run
-multiple chains, you can do so with the `mapreduce` function:
-
+If you do not want parallelism or are on an older version Julia, you can sample multiple chains with the `mapreduce` function:
 
 ```julia
 # Replace num_chains below with however many chains you wish to sample.
 chains = mapreduce(c -> sample(model_fun, sampler, 1000), chainscat, 1:num_chains)
 ```
 
-The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`.
+The `chains` variable now contains a `Chains` object which can be indexed by chain. To pull out the first chain from the `chains` object, use `chains[:,:,1]`. The method is the same if you use either of the below parallel sampling methods.
 
-Having multiple chains in the same object is valuable for evaluating convergence. Some diagnostic functions like `gelmandiag` require multiple chains.
+#### Multithreaded sampling
+
+If you wish to perform multithreaded sampling and are running Julia 1.3 or greater, you can call `sample` with the following signature:
+
+```julia
+using Turing
+
+@model function gdemo(x)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+
+    for i in eachindex(x)
+        x[i] ~ Normal(m, sqrt(s))
+    end
+end
+
+model = gdemo([1.5, 2.0])
+
+# Sample four chains using multiple threads, each with 1000 samples.
+sample(model, NUTS(), MCMCThreads(), 1000, 4)
+```
+
+Be aware that Turing cannot add threads for you -- you must have started your Julia instance with multiple threads to experience any kind of parallelism. See the [Julia documentation](https://docs.julialang.org/en/v1/manual/parallel-computing/#man-multithreading-1) for details on how to achieve this.
+
+#### Distributed sampling
+
+To perform distributed sampling (using multiple processes), you must first import `Distributed`.
+
+Process parallel sampling can be done like so:
+
+```julia
+# Load Distributed to add processes and the @everywhere macro.
+using Distributed 
+
+# Load Turing.
+using Turing
+
+# Add four processes to use for sampling. 
+addprocs(4)
+
+# Initialize everything on all the processes.
+# Note: Make sure to do this after you've already loaded Turing,
+#       so each process does not have to precompile. 
+#       Parallel sampling may fail silently if you do not do this.
+@everywhere using Turing
+
+# Define a model on all processes.
+@everywhere @model function gdemo(x)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+
+    for i in eachindex(x)
+        x[i] ~ Normal(m, sqrt(s))
+    end
+end
+
+# Declare the model instance everywhere.
+@everywhere model = gdemo([1.5, 2.0])
+
+# Sample four chains using multiple processes, each with 1000 samples.
+sample(model, NUTS(), MCMCDistributed(), 1000, 4)
+```
 
 ### Sampling from an Unconditional Distribution (The Prior)
 
+Turing allows you to sample from a declared model's prior. If you wish to draw a chain from the prior to inspect your prior distributions, you can simply run
 
-Turing allows you to sample from a declared model's prior by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which returns two variables, `x` and `y`. The model includes `x` and `y` as arguments, but calling the function without passing in `x` or `y` means that Turing's compiler will assume they are missing values to draw from the relevant distribution. The `return` statement is necessary to retrieve the sampled `x` and `y` values.
+```julia
+chain = sample(model, Prior(), n_samples)
+```
+
+You can also run your model (as if it were a function) from the prior distribution, by calling the model without specifying inputs or a sampler. In the below example, we specify a `gdemo` model which returns two variables, `x` and `y`. The model includes `x` and `y` as arguments, but calling the function without passing in `x` or `y` means that Turing's compiler will assume they are missing values to draw from the relevant distribution. The `return` statement is necessary to retrieve the sampled `x` and `y` values.
 
 
 ```julia
-@model gdemo(x, y) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
-  return x, y
+@model function gdemo(x, y)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+    return x, y
 end
 ```
 
@@ -231,7 +284,7 @@ Inputs to the model that have a value `missing` are treated as parameters, aka r
 
 
 ```julia
-@model gdemo(x, ::Type{T} = Float64) where {T} = begin
+@model function gdemo(x, ::Type{T} = Float64) where {T}
     if x === missing
         # Initialize `x` if missing
         x = Vector{T}(undef, 2)
@@ -255,7 +308,7 @@ Turing also supports mixed `missing` and non-`missing` values in `x`, where the 
 
 
 ```julia
-@model gdemo(x) = begin
+@model function gdemo(x)
     s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     for i in eachindex(x)
@@ -277,7 +330,7 @@ Arguments to Turing models can have default values much like how default values 
 ```julia
 using Turing
 
-@model generative(x = missing, ::Type{T} = Float64) where {T <: Real} = begin
+@model function generative(x = missing, ::Type{T} = Float64) where {T <: Real}
     if x === missing
         # Initialize x when missing
         x = Vector{T}(undef, 10)
@@ -326,11 +379,11 @@ Similarly, when using a particle sampler, the Julia variable used should either 
 
 Consider the following `gdemo` model:
 ```julia
-@model gdemo(x, y) = begin
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
+@model function gdemo(x, y)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
 end
 ```
 
@@ -346,10 +399,119 @@ The following are examples of valid queries of the `Turing` model or chain:
 
 - After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain, model = gdemo"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
 
-- If `save_state=true` was used during sampling (i.e., `sample(model, sampler, N; save_state=true)`), you can simply do ``prob"x = 1.0, y = 1.0 | chain = chain"`.
+- If `save_state=true` was used during sampling (i.e., `sample(model, sampler, N; save_state=true)`), you can simply do `prob"x = 1.0, y = 1.0 | chain = chain"`.
 
 In all the above cases, `logprob` can be used instead of `prob` to calculate the log probabilities instead.
 
+
+### Maximum likelihood and maximum a posterior estimates
+
+Turing provides support for two mode estimation techniques, [maximum likelihood estimation](https://en.wikipedia.org/wiki/Maximum_likelihood_estimation) (MLE) and [maximum a posterior](https://en.wikipedia.org/wiki/Maximum_a_posteriori_estimation) (MAP) estimation. Optimization is performed by the [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl) package. Mode estimation is currently a optional tool, and will not be available to you unless you have manually installed Optim and loaded the package with a `using` statement. To install Optim, run `import Pkg; Pkg.add("Optim")`.
+
+Mode estimation only works when all model parameters are continuous -- discrete parameters cannot be estimated with MLE/MAP as of yet.
+
+To understand how mode estimation works, let us first load Turing and Optim to enable mode estimation, and then declare a model:
+
+```julia
+# Note that loading Optim explicitly is required for mode estimation to function,
+# as Turing does not load the opimization suite unless Optim is loaded as well.
+using Turing
+using Optim
+
+@model function gdemo(x)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+
+    for i in eachindex(x)
+        x[i] ~ Normal(m, sqrt(s))
+    end
+end
+```
+
+Once the model is defined, we can construct a model instance as we normally would:
+
+```julia
+# Create some data to pass to the model.
+data = [1.5, 2.0]
+
+# Instantiate the gdemo model with our data.
+model = gdemo(data)
+```
+
+Mode estimation is typically quick and easy at this point. Turing extends the function `Optim.optimize` and accepts the structs `MLE()` or `MAP()`, which inform Turing whether to provide an MLE or MAP estimate, respectively. By default, the [LBFGS optimizer](https://julianlsolvers.github.io/Optim.jl/stable/#algo/lbfgs/) is used, though this can be changed. Basic usage is:
+
+```julia
+# Generate a MLE estimate.
+mle_estimate = optimize(model, MLE())
+
+# Generate a MAP estimate.
+map_estimate = optimize(model, MAP())
+```
+
+If you wish to change to a different optimizer, such as `NelderMead`, simply place your optimizer in the third argument slot:
+
+```julia
+# Use NelderMead
+mle_estimate = optimize(model, MLE(), NelderMead())
+
+# Use SimulatedAnnealing
+mle_estimate = optimize(model, MLE(), SimulatedAnnealing())
+
+# Use ParticleSwarm
+mle_estimate = optimize(model, MLE(), ParticleSwarm())
+
+# Use Newton
+mle_estimate = optimize(model, MLE(), Newton())
+
+# Use AcceleratedGradientDescent
+mle_estimate = optimize(model, MLE(), AcceleratedGradientDescent())
+```
+
+Some methods may have trouble calculating the mode because not enough iterations were allowed, or the target function moved upwards between function calls. Turing will warn you if Optim fails to converge by running `Optim.converge`. A typical solution to this might be to add more iterations, or allow the optimizer to increase between function iterations:
+
+```julia
+# Increase the iterations and allow function eval to increase between calls.
+mle_estimate = optimize(model, MLE(), Newton(), Optim.Options(iterations=10_000, allow_f_increases=true))
+```
+
+More options for Optim are available [here](https://julianlsolvers.github.io/Optim.jl/stable/#user/config/).
+
+#### Analyzing your mode estimate
+
+Turing extends several methods from `StatsBase` that can be used to analyze your mode estimation results. Methods implemented include `vcov`, `informationmatrix`, `coeftable`, `params`, and `coef`, among others.
+
+For example, let's examine our ML estimate from above using `coeftable`:
+
+```julia
+# Import StatsBase to use it's statistical methods.
+using StatsBase
+
+# Print out the coefficient table.
+coeftable(mle_estimate)
+```
+
+```julia
+─────────────────────────────
+   estimate  stderror   tstat
+─────────────────────────────
+s    0.0625  0.0625    1.0
+m    1.75    0.176777  9.8995
+─────────────────────────────
+```
+
+Standard errors are calculated from the Fisher information matrix (inverse Hessian of the log likelihood or log joint). t-statistics will be familiar to frequentist statisticians. Warning -- standard errors calculated in this way may not always be appropriate for MAP estimates, so please be cautious in interpereting them.
+
+#### Sampling with the MAP/MLE as initial states
+
+You can begin sampling your chain from an MLE/MAP estimate by extracting the vector of parameter values and providing it to the `sample` function with the keyword `init_theta`. For example, here is how to sample from the full posterior using the MAP estimate as the starting point:
+
+```julia
+# Generate an MAP estimate.
+map_estimate = optimize(model, MAP())
+
+# Sample with the MAP estimate as the starting point.
+chain = sample(model, NUTS(), 1_000, init_theta = map_estimate.values.array)
+```
 
 ## Beyond the Basics
 
@@ -361,16 +523,16 @@ Turing.jl provides a Gibbs interface to combine different samplers. For example,
 
 
 ```julia
-@model simple_choice(xs) = begin
-  p ~ Beta(2, 2)
-  z ~ Bernoulli(p)
-  for i in 1:length(xs)
-    if z == 1
-      xs[i] ~ Normal(0, 1)
-    else
-      xs[i] ~ Normal(2, 1)
+@model function simple_choice(xs)
+    p ~ Beta(2, 2)
+    z ~ Bernoulli(p)
+    for i in 1:length(xs)
+        if z == 1
+            xs[i] ~ Normal(0, 1)
+        else
+            xs[i] ~ Normal(2, 1)
+        end
     end
-  end
 end
 
 simple_choice_f = simple_choice([1.5, 2.0, 0.3])
@@ -421,7 +583,7 @@ Here is an example of how the `TArray` (using a `TArray` constructor function ca
 
 ```julia
 # Turing model definition.
-@model BayesHmm(y) = begin
+@model function BayesHmm(y)
     # Declare a TArray with a length of N.
     s = tzeros(Int, N)
     m = Vector{Real}(undef, K)
