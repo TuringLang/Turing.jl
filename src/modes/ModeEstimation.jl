@@ -130,7 +130,6 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::Model, context::AbstractContext)
     init = VarInfo(model)
-    DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
     return OptimLogDensity(model, context, init)
 end
 
@@ -375,7 +374,6 @@ function _optimize(
 
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    invlink!(f.vi, spl)
     f.vi[spl] = init_vals
     link!(f.vi, spl)
     init_vals = f.vi[spl]
