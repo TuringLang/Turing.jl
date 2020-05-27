@@ -12,6 +12,27 @@ function Emcee(n_walkers::Int, d::MvNormal, stretch_length=2.0)
     return Emcee{(), typeof(prop)}(ensemble)
 end
 
+function gen_logπ_reject(vi, spl::Sampler, model)
+    function logπ(x)::Float64
+        try
+            x_old, lj_old = vi[spl], getlogp(vi)
+            vi[spl] = x
+            model(vi, spl)
+            lj = getlogp(vi)
+            vi[spl] = x_old
+            setlogp!(vi, lj_old)
+            return lj
+        catch e
+            if e isa DomainError
+                return -Inf
+            else
+                rethrow(e)
+            end
+        end
+    end
+    return logπ
+end
+
 function Sampler(
     alg::Emcee,
     model::Model,
@@ -70,12 +91,15 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    densitymodel = AMH.DensityModel(gen_logπ_reject(spl.state.vi, spl, model))
 
     # Make the first transition.
-    transition = AbstractMCMC.step!(rng, densitymodel, spl.alg.ensemble, 1)
+    # link!(spl.state.vi, spl)
+    transition = sample(rng, model, Prior(), spl.alg.ensemble.n_walkers, chain_type=Any, progress=false)
+    walkers = map(v -> AMH.Transition(identity.(v[DynamicPPL.SampleFromPrior()]), getlogp(v)), transition)
+    # invlink!(spl.state.vi, spl)
 
-    return transition
+    return walkers
 end
 
 function AbstractMCMC.step!(
@@ -87,28 +111,22 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    # densitymodel = AMH.DensityModel(Turing.OptimLogDensity(model, DynamicPPL.DefaultContext()))
+    densitymodel = AMH.DensityModel(gen_logπ_reject(spl.state.vi, spl, model))
 
     # Make the first transition.
-    transition = AbstractMCMC.step!(rng, densitymodel, spl.alg.ensemble, 1, transition)
-
-    return transition
+    new_transitions = AbstractMCMC.step!(rng, densitymodel, spl.alg.ensemble, 1, transition)
+    return new_transitions
 end
 
-function transform_transition(spl::Sampler{<:Emcee}, ts, t::Int, i::Int)
-    trans = ts[i][t]
-    DynamicPPL.link!(spl.state.vi, spl)
+function transform_transition(spl::Sampler{<:Emcee}, ts, w::Int, i::Int; linked=true)
+    trans = ts[i][w]
+    linked && DynamicPPL.link!(spl.state.vi, spl)
     spl.state.vi[spl] = trans.params
-    DynamicPPL.invlink!(spl.state.vi, spl)
+    linked && DynamicPPL.invlink!(spl.state.vi, spl)
     setlogp!(spl.state.vi, trans.lp)
 
-    if t == 1
-        println()
-        println(trans.params)
-        println(spl.state.vi[spl])
-    end
-
-    return Transition(spl, (walker_id=t, iteration=i))
+    return Transition(spl)
 end
 
 function AbstractMCMC.bundle_samples(
@@ -122,22 +140,36 @@ function AbstractMCMC.bundle_samples(
     kwargs...
 )
     # Transform the transitions.
-    ts_transform = mapreduce(
-        i -> map(t -> transform_transition(spl, ts, t, i), 1:spl.alg.ensemble.n_walkers),
-        vcat,
-        1:length(ts)
+    # ts_transform = mapreduce(
+    #     i -> map(t -> transform_transition(spl, ts, t, i), 1:spl.alg.ensemble.n_walkers),
+    #     vcat,
+    #     1:length(ts)
+    # )
+
+    ts_transform = map(
+        w -> map(i -> transform_transition(spl, ts, w, i), 1:N),
+        1:spl.alg.ensemble.n_walkers
     )
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(ts_transform)
+    params_vec = map(_params_to_array, ts_transform)
+
+    # Extract names and values separately.
+    nms = params_vec[1][1]
+    vals_vec = [p[2] for p in params_vec]
 
     # Get the values of the extra parameters in each transition.
-    extra_params, extra_values = get_transition_extras(ts_transform)
-    
+    extra_vec = map(get_transition_extras, ts_transform)
+
+    # Get the extra parameter names & values.
+    extra_params = extra_vec[1][1]
+    extra_values_vec = [e[2] for e in extra_vec]
+
     # Extract names & construct param array.
     nms = [nms; extra_params]
-    parray = hcat(vals, extra_values)
+    parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
+    parray = cat(parray..., dims=3)
 
     # Get the average or final log evidence, if it exists.
     le = getlogevidence(spl)
@@ -168,6 +200,7 @@ end
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
+    rng,
     spl::Sampler{<:Emcee},
     dist::Distribution,
     vn::VarName,
@@ -179,6 +212,7 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:Emcee},
     dist::MultivariateDistribution,
     vn::VarName,
@@ -194,6 +228,7 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:Emcee},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
