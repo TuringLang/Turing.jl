@@ -41,6 +41,7 @@ export  InferenceAlgorithm,
         SampleFromPrior,
         MH,
         ESS,
+        Emcee,
         Gibbs,      # classic sampling
         HMC,
         SGLD,

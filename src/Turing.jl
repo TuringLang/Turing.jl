@@ -76,6 +76,7 @@ export  @model,                 # modelling
 
         MH,                     # classic sampling
         RWMH,
+        Emcee,
         ESS,
         Gibbs,
 
