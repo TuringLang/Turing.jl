@@ -10,7 +10,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     # Note that the proposal distribution here is just a Normal(0,1)
     # because we do not need AdvancedMH to know the proposal for
     # ensemble sampling.
-    prop = AMH.StretchProposal(Normal(0, 1), stretch_length)
+    prop = AMH.StretchProposal(nothing, stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
     return Emcee{(), typeof(ensemble)}(ensemble)
 end
