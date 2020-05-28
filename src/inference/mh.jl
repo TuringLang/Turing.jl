@@ -36,13 +36,14 @@ end
 function Sampler(
     alg::MH,
     model::Model,
-    s::Selector=Selector()
+    s::Selector=Selector();
+    specialize_after=1,
 )
     # Set up info dict.
     info = Dict{Symbol, Any}()
 
     # Set up state struct.
-    state = SamplerState(VarInfo(model))
+    state = SamplerState(VarInfo(model, specialize_after))
 
     # Generate a sampler.
     return Sampler(alg, info, s, state)
@@ -98,7 +99,7 @@ Returns two `NamedTuples`. The first `NamedTuple` has symbols as keys and distri
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
 function dist_val_tuple(spl::Sampler{<:MH})
-    vi = spl.state.vi
+    vi = TypedVarInfo(spl.state.vi)
     vns = getvns(vi, spl)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)

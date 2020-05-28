@@ -271,10 +271,21 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
+    specialize_after=1,
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, SampleFromPrior(), parallel, N, n_chains;
-                               chain_type=chain_type, progress=progress, kwargs...)
+    vi = VarInfo(model, specialize_after)
+    return AbstractMCMC.sample(
+        rng,
+        model,
+        SampleFromPrior(vi),
+        parallel,
+        N,
+        n_chains;
+        chain_type=chain_type,
+        progress=progress,
+        kwargs...,
+    )
 end
 
 function AbstractMCMC.sample_init!(
