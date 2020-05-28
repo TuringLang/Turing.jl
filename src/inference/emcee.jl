@@ -2,35 +2,17 @@
 ### Sampler states
 ###
 
-struct Emcee{space, P} <: InferenceAlgorithm 
-    ensemble::AMH.Ensemble{P}
+struct Emcee{space, E<:AMH.Ensemble} <: InferenceAlgorithm 
+    ensemble::E
 end
 
-function Emcee(n_walkers::Int, d::MvNormal, stretch_length=2.0)
-    prop = AMH.StretchProposal(d, stretch_length)
+function Emcee(n_walkers::Int, stretch_length=2.0)
+    # Note that the proposal distribution here is just a Normal(0,1)
+    # because we do not need AdvancedMH to know the proposal for
+    # ensemble sampling.
+    prop = AMH.StretchProposal(Normal(0, 1), stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
-    return Emcee{(), typeof(prop)}(ensemble)
-end
-
-function gen_logπ_reject(vi, spl::Sampler, model)
-    function logπ(x)::Float64
-        try
-            x_old, lj_old = vi[spl], getlogp(vi)
-            vi[spl] = x
-            model(vi, spl)
-            lj = getlogp(vi)
-            vi[spl] = x_old
-            setlogp!(vi, lj_old)
-            return lj
-        catch e
-            if e isa DomainError
-                return -Inf
-            else
-                rethrow(e)
-            end
-        end
-    end
-    return logπ
+    return Emcee{(), typeof(ensemble)}(ensemble)
 end
 
 function Sampler(
@@ -65,8 +47,7 @@ function AbstractMCMC.sample_init!(
     # Get `init_theta`
     initialize_parameters!(spl; verbose=verbose, kwargs...)
 
-    # If we're doing random walk with a covariance matrix,
-    # just link everything before sampling.
+    # Link everything before sampling.
     link!(spl.state.vi, spl)
 end
 
@@ -78,7 +59,7 @@ function AbstractMCMC.sample_end!(
     transitions;
     kwargs...
 )
-    # We are doing a random walk, so we unlink everything when we're done.
+    # Invlink everything after sampling.
     invlink!(spl.state.vi, spl)
 end
 
@@ -91,14 +72,21 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    densitymodel = AMH.DensityModel(gen_logπ_reject(spl.state.vi, spl, model))
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
 
     # Make the first transition.
-    # link!(spl.state.vi, spl)
     transition = sample(rng, model, Prior(), spl.alg.ensemble.n_walkers, chain_type=Any, progress=false)
-    walkers = map(v -> AMH.Transition(identity.(v[DynamicPPL.SampleFromPrior()]), getlogp(v)), transition)
-    # invlink!(spl.state.vi, spl)
 
+    ss = DynamicPPL.SampleFromPrior()
+    walkers = Vector{AMH.Transition}(undef, spl.alg.ensemble.n_walkers)
+
+    for (i, t) in enumerate(transition)
+        DynamicPPL.invlink!(spl.state.vi, spl)
+        spl.state.vi[spl] = identity.(t[ss])
+        DynamicPPL.link!(spl.state.vi, spl)
+        walkers[i] = AMH.Transition(spl.state.vi[spl], getlogp(spl.state.vi))
+    end
+    
     return walkers
 end
 
@@ -111,8 +99,7 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    # densitymodel = AMH.DensityModel(Turing.OptimLogDensity(model, DynamicPPL.DefaultContext()))
-    densitymodel = AMH.DensityModel(gen_logπ_reject(spl.state.vi, spl, model))
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
 
     # Make the first transition.
     new_transitions = AbstractMCMC.step!(rng, densitymodel, spl.alg.ensemble, 1, transition)
@@ -139,13 +126,7 @@ function AbstractMCMC.bundle_samples(
     save_state = false,
     kwargs...
 )
-    # Transform the transitions.
-    # ts_transform = mapreduce(
-    #     i -> map(t -> transform_transition(spl, ts, t, i), 1:spl.alg.ensemble.n_walkers),
-    #     vcat,
-    #     1:length(ts)
-    # )
-
+    # Transform the transitions by linking them to the constrained space.
     ts_transform = map(
         w -> map(i -> transform_transition(spl, ts, w, i), 1:N),
         1:spl.alg.ensemble.n_walkers
@@ -181,7 +162,7 @@ function AbstractMCMC.bundle_samples(
         info = NamedTuple()
     end
 
-    # Conretize the array before giving it to MCMCChains.
+    # Concretize the array before giving it to MCMCChains.
     parray = MCMCChains.concretize(parray)
 
     # Chain construction.
