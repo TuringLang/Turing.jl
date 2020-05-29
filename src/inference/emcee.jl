@@ -64,7 +64,7 @@ function AbstractMCMC.sample_end!(
 end
 
 function _typed_draw(model, vi::VarInfo)
-    spl = DynamicPPL.SampleFromPrior()
+    spl = SampleFromPrior()
     empty!(vi)
     model(vi, spl)
     DynamicPPL.link!(vi, spl)
