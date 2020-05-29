@@ -482,7 +482,7 @@ end
 Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
 `(vi, spl, model)`.
 """
-function gen_logπ(vi, spl::Sampler, model)
+function gen_logπ(vi, spl::AbstractSampler, model)
     function logπ(x)::Float64
         x_old, lj_old = vi[spl], getlogp(vi)
         vi[spl] = x

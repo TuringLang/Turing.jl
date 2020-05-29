@@ -138,9 +138,7 @@ const TURING_INTERNAL_VARS = (internals = [
     "step_size",
     "nom_step_size",
     "tree_depth",
-    "is_adapt",
-    "walker_id",
-    "iteration"
+    "is_adapt"
 ],)
 
 #########################################
