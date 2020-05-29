@@ -63,6 +63,15 @@ function AbstractMCMC.sample_end!(
     invlink!(spl.state.vi, spl)
 end
 
+function _typed_draw(model, vi::VarInfo)
+    spl = DynamicPPL.SampleFromPrior()
+    empty!(vi)
+    model(vi, spl)
+    DynamicPPL.link!(vi, spl)
+    params = vi[spl]
+    return AMH.Transition(params, getlogp(vi))
+end
+
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -72,20 +81,10 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, DynamicPPL.SampleFromPrior(), model))
 
     # Make the first transition.
-    transition = sample(rng, model, Prior(), spl.alg.ensemble.n_walkers, chain_type=Any, progress=false)
-
-    ss = DynamicPPL.SampleFromPrior()
-    walkers = Vector{AMH.Transition}(undef, spl.alg.ensemble.n_walkers)
-
-    for (i, t) in enumerate(transition)
-        DynamicPPL.invlink!(spl.state.vi, spl)
-        spl.state.vi[spl] = identity.(t[ss])
-        DynamicPPL.link!(spl.state.vi, spl)
-        walkers[i] = AMH.Transition(spl.state.vi[spl], getlogp(spl.state.vi))
-    end
+    walkers = map(x -> _typed_draw(model, spl.state.vi), 1:spl.alg.ensemble.n_walkers)
     
     return walkers
 end
@@ -99,14 +98,14 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Generate a log joint function.
-    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, DynamicPPL.SampleFromPrior(), model))
 
     # Make the first transition.
     new_transitions = AbstractMCMC.step!(rng, densitymodel, spl.alg.ensemble, 1, transition)
     return new_transitions
 end
 
-function transform_transition(spl::Sampler{<:Emcee}, ts, w::Int, i::Int; linked=true)
+function transform_transition(spl::Sampler{<:Emcee}, ts::Vector{<:Vector}, w::Int, i::Int; linked=true)
     trans = ts[i][w]
     linked && DynamicPPL.link!(spl.state.vi, spl)
     spl.state.vi[spl] = trans.params
@@ -121,123 +120,28 @@ function AbstractMCMC.bundle_samples(
     model::AbstractModel,
     spl::Sampler{<:Emcee},
     N::Integer,
-    ts::Vector,
+    ts::Vector{<:Vector},
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
     kwargs...
 )
     # Transform the transitions by linking them to the constrained space.
-    ts_transform = map(
-        w -> map(i -> transform_transition(spl, ts, w, i), 1:N),
+    ts_transform = [map(i -> transform_transition(spl, ts, w, i), 1:N) for w in 1:spl.alg.ensemble.n_walkers]
+
+    # Construct individual chains by calling the default chain constructor.
+    chains = map(
+        w -> AbstractMCMC.bundle_samples(
+                rng, 
+                model, 
+                spl, 
+                N, 
+                ts_transform[w], 
+                chain_type; 
+                save_state=save_state, 
+                kwargs...),
         1:spl.alg.ensemble.n_walkers
     )
 
-    # Convert transitions to array format.
-    # Also retrieve the variable names.
-    params_vec = map(_params_to_array, ts_transform)
-
-    # Extract names and values separately.
-    nms = params_vec[1][1]
-    vals_vec = [p[2] for p in params_vec]
-
-    # Get the values of the extra parameters in each transition.
-    extra_vec = map(get_transition_extras, ts_transform)
-
-    # Get the extra parameter names & values.
-    extra_params = extra_vec[1][1]
-    extra_values_vec = [e[2] for e in extra_vec]
-
-    # Extract names & construct param array.
-    nms = [nms; extra_params]
-    parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
-    parray = cat(parray..., dims=3)
-
-    # Get the average or final log evidence, if it exists.
-    le = getlogevidence(spl)
-
-    # Set up the info tuple.
-    if save_state
-        info = (range = rng, model = model, spl = spl)
-    else
-        info = NamedTuple()
-    end
-
-    # Concretize the array before giving it to MCMCChains.
-    parray = MCMCChains.concretize(parray)
-
-    # Chain construction.
-    return MCMCChains.Chains(
-        parray,
-        string.(nms),
-        deepcopy(TURING_INTERNAL_VARS);
-        evidence=le,
-        info=info,
-        sorted=true
-    )
-end
-
-
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:Emcee},
-    dist::Distribution,
-    vn::VarName,
-    vi,
-)
-    updategid!(vi, vn, spl)
-    r = vi[vn]
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
-end
-
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:Emcee},
-    dist::MultivariateDistribution,
-    vn::VarName,
-    var::AbstractMatrix,
-    vi,
-)
-    @assert dim(dist) == size(var, 1)
-    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 2))
-    updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
-    var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
-end
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:Emcee},
-    dists::Union{Distribution, AbstractArray{<:Distribution}},
-    vn::VarName,
-    var::AbstractArray,
-    vi,
-)
-    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = getvn.(CartesianIndices(var))
-    updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
-    var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
-end
-
-function DynamicPPL.observe(
-    spl::Sampler{<:Emcee},
-    d::Distribution,
-    value,
-    vi,
-)
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
-end
-
-function DynamicPPL.dot_observe(
-    spl::Sampler{<:Emcee},
-    ds::Union{Distribution, AbstractArray{<:Distribution}},
-    value::AbstractArray,
-    vi,
-)
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+    # Concatenate all the chains.
+    return reduce(MCMCChains.chainscat, chains)
 end
