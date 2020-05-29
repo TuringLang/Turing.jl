@@ -76,7 +76,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector; specialize_after=1)
         selector = Selector(Symbol(typeof(_alg)), rerun)
         Sampler(_alg, model, selector; specialize_after=specialize_after)
     end
-    varinfo = merge(ntuple(i -> samplers[i].state.vi, Val(length(samplers)))...)
+    varinfo = samplers[1].state.vi
     samplers = map(samplers) do sampler
         Sampler(
             sampler.alg,
