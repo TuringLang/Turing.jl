@@ -128,20 +128,46 @@ function AbstractMCMC.bundle_samples(
     # Transform the transitions by linking them to the constrained space.
     ts_transform = [map(i -> transform_transition(spl, ts, w, i), 1:N) for w in 1:spl.alg.ensemble.n_walkers]
 
-    # Construct individual chains by calling the default chain constructor.
-    chains = map(
-        w -> AbstractMCMC.bundle_samples(
-                rng, 
-                model, 
-                spl, 
-                N, 
-                ts_transform[w], 
-                chain_type; 
-                save_state=save_state, 
-                kwargs...),
-        1:spl.alg.ensemble.n_walkers
-    )
+     # Convert transitions to array format.
+    # Also retrieve the variable names.
+    params_vec = map(_params_to_array, ts_transform)
 
-    # Concatenate all the chains.
-    return reduce(MCMCChains.chainscat, chains)
+    # Extract names and values separately.
+    nms = params_vec[1][1]
+    vals_vec = [p[2] for p in params_vec]
+
+    # Get the values of the extra parameters in each transition.
+    extra_vec = map(get_transition_extras, ts_transform)
+
+    # Get the extra parameter names & values.
+    extra_params = extra_vec[1][1]
+    extra_values_vec = [e[2] for e in extra_vec]
+
+    # Extract names & construct param array.
+    nms = [nms; extra_params]
+    parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
+    parray = cat(parray..., dims=3)
+    
+    # Get the average or final log evidence, if it exists.
+    le = getlogevidence(spl)
+
+    # Set up the info tuple.
+    if save_state
+        info = (range = rng, model = model, spl = spl)
+    else
+        info = NamedTuple()
+    end
+
+    # Concretize the array before giving it to MCMCChains.
+    parray = MCMCChains.concretize(parray)
+
+    # Chain construction.
+    return MCMCChains.Chains(
+        parray,
+        string.(nms),
+        deepcopy(TURING_INTERNAL_VARS);
+        evidence=le,
+        info=info,
+        sorted=true
+    )
 end
