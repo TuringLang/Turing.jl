@@ -344,9 +344,15 @@ function DynamicPPL.assume(
             r = rand(dist)
             push!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
-            DynamicPPL.removedel!(vi)
             r = rand(dist)
-            push!(vi, vn, r, dist, spl)
+            if length(vi[vn, dist]) == length(r)
+                vi[vn, dist] = r
+                unset_flag!(vi, vn, "del")
+                updategid!(vi, vn, spl)
+            else
+                DynamicPPL.removedel!(vi)
+                push!(vi, vn, r, dist, spl)
+            end
         else
             updategid!(vi, vn, spl)
             r = vi[vn, dist]
