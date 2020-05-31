@@ -72,6 +72,9 @@
 
   - title: "Variational Inference"
     url: "tutorials/9-variationalinference"
+    
+  - title: "Bayesian Differential Equation"
+    url: "tutorials/10-bayesiandiffeq
 
 - title: "API"
   url: "docs/library"
