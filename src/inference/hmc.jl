@@ -407,7 +407,7 @@ function Sampler(
 )
     info = Dict{Symbol, Any}()
     # Create an empty sampler state that just holds a typed VarInfo.
-    varinfo  = getspace(alg) === () ? TypedVarInfo(model) : VarInfo(model, specialize_after)
+    varinfo  = getspace(alg) === () && specialize_after > 0 ? TypedVarInfo(model) : VarInfo(model, specialize_after)
     initial_state = SamplerState(varinfo)
 
     # Create an initial sampler, to get all the initialization out of the way.
