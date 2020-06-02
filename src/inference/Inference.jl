@@ -618,6 +618,7 @@ function get_matching_type(
 ) where {T, N, TV <: Array{T, N}}
     return Array{get_matching_type(spl, vi, T), N}
 end
+#=
 function get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 
     vi,
@@ -625,6 +626,7 @@ function get_matching_type(
 ) where {T, N, TV <: Array{T, N}}
     return TArray{T, N}
 end
+=#
 
 ##############
 # Utilities  #
