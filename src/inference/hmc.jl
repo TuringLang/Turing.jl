@@ -78,6 +78,7 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
 end
 
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
+isgibbscomponent(::Type{<:Hamiltonian}) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
 function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
