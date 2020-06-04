@@ -186,11 +186,23 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     @turing_testset "Regression tests" begin
         # https://github.com/TuringLang/DynamicPPL.jl/issues/27
-        @model mwe(::Type{T}=Float64) where {T<:Real} = begin
+        @model function mwe(::Type{T}=Float64) where {T<:Real}
             m = Matrix{T}(undef, 2, 3)
             @. m ~ MvNormal(zeros(2), 1)
         end
-        
+        @test sample(mwe(), HMC(0.2, 4), 1_000) isa Chains
+
+        @model function mwe(::Type{T} = Matrix{Float64}) where T
+            m = T(undef, 2, 3)
+            @. m ~ MvNormal(zeros(2), 1)
+        end
+        @test sample(mwe(), HMC(0.2, 4), 1_000) isa Chains
+
+        # https://github.com/TuringLang/Turing.jl/issues/1308
+        @model function mwe(::Type{T} = Array{Float64}) where T
+            m = T(undef, 2, 3)
+            @. m ~ MvNormal(zeros(2), 1)
+        end
         @test sample(mwe(), HMC(0.2, 4), 1_000) isa Chains
     end
 end
