@@ -170,7 +170,7 @@ struct PG{space,R} <: ParticleInference
     resampler::R
 end
 
-isgibbscomponent(::Type{<:PG}) = true
+isgibbscomponent(::PG) = true
 
 """
     PG(n, space...)

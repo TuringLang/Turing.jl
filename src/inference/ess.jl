@@ -25,7 +25,7 @@ struct ESS{space} <: InferenceAlgorithm end
 ESS() = ESS{()}()
 ESS(space::Symbol) = ESS{(space,)}()
 
-isgibbscomponent(::Type{<:ESS}) = true
+isgibbscomponent(::ESS) = true
 
 mutable struct ESSState{V<:VarInfo} <: AbstractSamplerState
     vi::V

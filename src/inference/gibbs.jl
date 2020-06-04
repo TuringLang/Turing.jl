@@ -4,13 +4,11 @@
 
 
 """
-    isgibbscomponent(spl::A)
-    isgibbscomponent(::Type{A})
+    isgibbscomponent(alg)
 
-Marks the type `S` to be allowed withing a `Gibbs` sampler.
+Determine whether algorithm `alg` is allowed as a Gibbs component.
 """
-isgibbscomponent(::Type{<:InferenceAlgorithm}) = false
-isgibbscomponent(alg::InferenceAlgorithm) = isgibbscomponent(typeof(alg))
+isgibbscomponent(alg) = false
 
 
 """
@@ -43,7 +41,7 @@ struct Gibbs{space, A<:Tuple} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
 
     function Gibbs{space, A}(algs::A) where {space, A<:Tuple}
-        @assert all(isgibbscomponent, algs)
+        all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
         return new{space, A}(algs)
     end
 end
