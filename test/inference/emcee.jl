@@ -15,6 +15,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         spl = Emcee(n_walkers, 2.0)
         chain = sample(gdemo_default, spl, n_samples)
 
-        check_gdemo(chain[div(n_samples, 2):end])
+        check_gdemo(chain)
     end
 end
