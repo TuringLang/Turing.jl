@@ -12,7 +12,7 @@ using Requires, Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC
+@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
 using Tracker: Tracker
 
 import DynamicPPL: getspace, NoDist, NamedDist
