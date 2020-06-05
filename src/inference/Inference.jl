@@ -576,12 +576,11 @@ function get_matching_type(
 )
     return floatof(eltype(vi, spl))
 end
-function get_matching_type(
-    spl::AbstractSampler,
-    vi,
-    ::Type{TV},
-) where {T, N, TV <: Array{T, N}}
+function get_matching_type(spl::AbstractSampler, vi, ::Type{<:Array{T,N}}) where {T,N}
     return Array{get_matching_type(spl, vi, T), N}
+end
+function get_matching_type(spl::AbstractSampler, vi, ::Type{<:Array{T}}) where T
+    return Array{get_matching_type(spl, vi, T)}
 end
 function get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 
