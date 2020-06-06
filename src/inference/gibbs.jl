@@ -2,7 +2,14 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-const GibbsComponent = Union{Hamiltonian,MH,ESS,PG}
+
+"""
+    isgibbscomponent(alg)
+
+Determine whether algorithm `alg` is allowed as a Gibbs component.
+"""
+isgibbscomponent(alg) = false
+
 
 """
     Gibbs(algs...)
@@ -30,11 +37,16 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, A<:Tuple{Vararg{GibbsComponent}}} <: InferenceAlgorithm
+struct Gibbs{space, A<:Tuple} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
+
+    function Gibbs{space, A}(algs::A) where {space, A<:Tuple}
+        all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
+        return new{space, A}(algs)
+    end
 end
 
-function Gibbs(algs::GibbsComponent...)
+function Gibbs(algs...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
 

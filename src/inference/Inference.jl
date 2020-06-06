@@ -58,7 +58,8 @@ export  InferenceAlgorithm,
         observe,
         dot_observe,
         resume,
-        predict
+        predict,
+        isgibbscomponent
 
 #######################
 # Sampler abstraction #

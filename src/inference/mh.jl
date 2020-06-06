@@ -63,6 +63,7 @@ function Sampler(
 end
 
 alg_str(::Sampler{<:MH}) = "MH"
+isgibbscomponent(::MH) = true
 
 #####################
 # Utility functions #
