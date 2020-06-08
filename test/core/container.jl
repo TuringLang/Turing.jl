@@ -104,10 +104,12 @@ include(dir*"/test/test_utils/AllUtils.jl")
             while true
                 ct = current_trace()
                 vn = @varname x[n]
-                Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
-                produce(t[1]);
+                Turing.assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
+                n[] += 1
+                produce(t[1])
                 vn = @varname x[n]
-                Turing.assume(spl, dist, vn, ct.vi); n[] += 1;
+                Turing.assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
+                n[] += 1
                 t[1] = 1 + t[1]
             end
         end

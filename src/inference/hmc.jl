@@ -78,6 +78,7 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
 end
 
 alg_str(::Sampler{<:Hamiltonian}) = "HMC"
+isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
 function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
@@ -122,7 +123,7 @@ function AbstractMCMC.sample_init!(
     set_resume!(spl; resume_from=resume_from, kwargs...)
 
     # Get `init_theta`
-    initialize_parameters!(spl; verbose=verbose, kwargs...)
+    initialize_parameters!(spl; init_theta=init_theta, verbose=verbose, kwargs...)
     if init_theta !== nothing
         # Doesn't support dynamic models
         link!(spl.state.vi, spl)
@@ -507,6 +508,7 @@ gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
+    rng,
     spl::Sampler{<:Hamiltonian},
     dist::Distribution,
     vn::VarName,
@@ -524,6 +526,7 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:Hamiltonian},
     dist::MultivariateDistribution,
     vns::AbstractArray{<:VarName},
@@ -537,6 +540,7 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:Hamiltonian},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},

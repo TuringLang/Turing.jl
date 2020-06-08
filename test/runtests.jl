@@ -52,6 +52,11 @@ include("test_utils/AllUtils.jl")
     end
 
     @testset "utilities" begin
-      # include("utilities/stan-interface.jl")
+        # include("utilities/stan-interface.jl")
+        include("inference/utilities.jl")
+    end
+
+    @testset "modes" begin
+        include("modes/ModeEstimation.jl")
     end
 end

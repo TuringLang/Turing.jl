@@ -12,7 +12,7 @@ using Requires, Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC
+@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
 using Tracker: Tracker
 
 import DynamicPPL: getspace, NoDist, NamedDist
@@ -58,6 +58,11 @@ using .Variational
     end
 end
 
+@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
+    include("modes/ModeEstimation.jl")
+    export MAP, MLE, optimize
+end
+
 ###########
 # Exports #
 ###########
@@ -88,7 +93,7 @@ export  @model,                 # modelling
         CSMC,
         PG,
 
-        vi,                    # variational inference
+        vi,                     # variational inference
         ADVI,
 
         sample,                 # inference

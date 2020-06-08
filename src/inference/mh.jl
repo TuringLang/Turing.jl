@@ -6,6 +6,9 @@ struct MH{space, P} <: InferenceAlgorithm
     proposals::P
 end
 
+proposal(p::AdvancedMH.Proposal) = p
+proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
+
 function MH(space...)
     syms = Symbol[]
 
@@ -14,8 +17,11 @@ function MH(space...)
 
     for s in space
         if s isa Symbol
+            # If it's just a symbol, proceed as normal.
             push!(syms, s)
         elseif s isa Pair || s isa Tuple
+            # Check to see whether it's a pair that specifies a kernel
+            # or a specific proposal distribution.
             push!(prop_syms, s[1])
 
             if s[2] isa AMH.Proposal
@@ -25,6 +31,14 @@ function MH(space...)
             elseif s[2] isa Function
                 push!(props, AMH.StaticProposal(s[2]))
             end
+        elseif length(space) == 1
+            # If we hit this block, check to see if it's 
+            # a run-of-the-mill proposal or covariance
+            # matrix.
+            prop = proposal(s)
+
+            # Return early, we got a covariance matrix. 
+            return MH{(), typeof(prop)}(prop)
         end
     end
 
@@ -49,6 +63,7 @@ function Sampler(
 end
 
 alg_str(::Sampler{<:MH}) = "MH"
+isgibbscomponent(::MH) = true
 
 #####################
 # Utility functions #
@@ -173,6 +188,17 @@ end
     return expr
 end
 
+# Utility functions to link or 
+maybe_link!(varinfo, sampler, proposal) = nothing
+function maybe_link!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    link!(varinfo, sampler)
+end
+
+maybe_invlink!(varinfo, sampler, proposal) = nothing
+function maybe_invlink!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    invlink!(varinfo, sampler)
+end
+
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
@@ -187,20 +213,32 @@ function AbstractMCMC.sample_init!(
 
     # Get `init_theta`
     initialize_parameters!(spl; verbose=verbose, kwargs...)
+
+    # If we're doing random walk with a covariance matrix,
+    # just link everything before sampling.
+    maybe_link!(spl.state.vi, spl, spl.alg.proposals)
 end
 
-function AbstractMCMC.step!(
+function AbstractMCMC.sample_end!(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:MH},
     N::Integer,
-    transition;
+    transitions;
     kwargs...
 )
-    if spl.selector.rerun # Recompute joint in logp
-        model(spl.state.vi)
-    end
+    # We are doing a random walk, so we unlink everything when we're done.
+    maybe_invlink!(spl.state.vi, spl, spl.alg.proposals)
 
+end
+
+# Make a proposal if we don't have a covariance proposal matrix (the default).
+function propose!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    proposal
+)
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl)
 
@@ -215,6 +253,48 @@ function AbstractMCMC.step!(
     # Update the values in the VarInfo.
     set_namedtuple!(spl.state.vi, trans.params)
     setlogp!(spl.state.vi, trans.lp)
+end
+
+# Make a proposal if we DO have a covariance proposal matrix.
+function propose!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:MH},
+    proposal::AdvancedMH.RandomWalkProposal{<:MvNormal}
+)
+    # If this is the case, we can just draw directly from the proposal
+    # matrix.
+    vals = spl.state.vi[spl]
+
+    # Create a sampler and the previous transition.
+    mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
+    prev_trans = AMH.Transition(vals, getlogp(spl.state.vi))
+
+    # Make a new transition.
+    densitymodel = AMH.DensityModel(gen_logπ(spl.state.vi, spl, model))
+    trans = AbstractMCMC.step!(rng, densitymodel, mh_sampler, 1, prev_trans)
+
+    # Update the values in the VarInfo.
+    spl.state.vi[spl] = trans.params
+    setlogp!(spl.state.vi, trans.lp)
+end
+
+function AbstractMCMC.step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{MH{space, P}},
+    N::Integer,
+    transition;
+    kwargs...
+) where {space, P}
+    if spl.selector.rerun # Recompute joint in logp
+        model(spl.state.vi)
+    end
+
+    # Cases:
+    # 1. A covariance proposal matrix
+    # 2. A bunch of NamedTuples that specify the proposal space
+    propose!(rng, model, spl, spl.alg.proposals)
 
     return Transition(spl)
 end
@@ -223,6 +303,7 @@ end
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
+    rng,
     spl::Sampler{<:MH},
     dist::Distribution,
     vn::VarName,
@@ -234,6 +315,7 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
     vn::VarName,
@@ -249,6 +331,7 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
 end
 function DynamicPPL.dot_assume(
+    rng,
     spl::Sampler{<:MH},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,

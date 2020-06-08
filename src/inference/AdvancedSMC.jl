@@ -170,6 +170,8 @@ struct PG{space,R} <: ParticleInference
     resampler::R
 end
 
+isgibbscomponent(::PG) = true
+
 """
     PG(n, space...)
     PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
@@ -308,6 +310,7 @@ function AbstractMCMC.sample_end!(
 end
 
 function DynamicPPL.assume(
+    rng,
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
@@ -316,11 +319,11 @@ function DynamicPPL.assume(
     vi = current_trace().vi
     if inspace(vn, spl)
         if ~haskey(vi, vn)
-            r = rand(dist)
+            r = rand(rng, dist)
             push!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
-            r = rand(dist)
+            r = rand(rng, dist)
             vi[vn] = vectorize(dist, r)
             setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, get_num_produce(vi))
@@ -332,7 +335,7 @@ function DynamicPPL.assume(
         if haskey(vi, vn)
             r = vi[vn]
         else
-            r = rand(dist)
+            r = rand(rng, dist)
             push!(vi, vn, r, dist, Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))

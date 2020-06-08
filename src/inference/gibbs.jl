@@ -2,7 +2,14 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-const GibbsComponent = Union{Hamiltonian,MH,ESS,PG,GibbsConditional}
+
+"""
+    isgibbscomponent(alg)
+
+Determine whether algorithm `alg` is allowed as a Gibbs component.
+"""
+isgibbscomponent(alg) = false
+
 
 """
     Gibbs(algs...)
@@ -30,11 +37,16 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, A<:Tuple{Vararg{GibbsComponent}}} <: InferenceAlgorithm
+struct Gibbs{space, A<:Tuple} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
+
+    function Gibbs{space, A}(algs::A) where {space, A<:Tuple}
+        all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
+        return new{space, A}(algs)
+    end
 end
 
-function Gibbs(algs::GibbsComponent...)
+function Gibbs(algs...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
 
@@ -166,26 +178,26 @@ function AbstractMCMC.step!(
     # Iterate through each of the samplers.
     transitions = map(enumerate(spl.state.samplers)) do (i, local_spl)
         Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
-        
-        # Update the local sampler's VarInfo.
+
+        # Update the sampler's VarInfo.
         local_spl.state.vi = spl.state.vi
 
         # Step through the local sampler.
         if transition === nothing
             trans = AbstractMCMC.step!(rng, model, local_spl, N, nothing; kwargs...)
         else
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i]; kwargs...)
+            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i];
+                                       kwargs...)
         end
-        
+
         # After the step, update the master varinfo.
         spl.state.vi = local_spl.state.vi
 
-        return trans
+        trans
     end
 
     return GibbsTransition(spl, transitions)
 end
-
 
 # Do not store transitions of subsamplers
 function AbstractMCMC.transitions_init(

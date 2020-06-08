@@ -5,6 +5,14 @@ A "pseudo-sampler" to manually provide analytical Gibbs conditionals to `Gibbs`.
 `GibbsConditional(:x, cond)` will sample the variable `x` according to the conditional `cond`, which
 must therefore be a function from a `NamedTuple` of the conditioned variables to a `Distribution`.
 
+
+The `NamedTuple` that is passed in contains all random variables from the model in an unspecified
+order, taken from the [`VarInfo`](@ref) object over which the model is run.  Scalars and vectors are
+stored as their respective types, but all as floats.  The tuple also contains the value of the
+conditioned variable itself, which can be useful, but using it creates something that is not a Gibbs
+sampler anymore (see
+[here](https://github.com/TuringLang/Turing.jl/pull/1275#discussion_r434240387)).
+
 # Examples
 
 ```julia
@@ -56,7 +64,7 @@ struct GibbsConditional{S, C}
 end
 
 DynamicPPL.getspace(::GibbsConditional{S}) where {S} = (S,)
-alg_str(::GibbsConditional) = "GibbsConditional"
+DynamicPPL.alg_str(::GibbsConditional) = "GibbsConditional"
 isgibbscomponent(::GibbsConditional) = true
 
 
@@ -81,7 +89,7 @@ function AbstractMCMC.step!(
         model(spl.state.vi)
     end
 
-    condvals = conditioned(tonamedtuple(spl.state.vi), Val{S}())
+    condvals = conditioned(tonamedtuple(spl.state.vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
     spl.state.vi[VarName(S)] = [updated;]  # setindex allows only vectors in this case...
@@ -91,10 +99,10 @@ end
 
 
 """
-    conditioned(θ::NamedTuple, ::Val{S})
+    conditioned(θ::NamedTuple)
 
-Extract a `NamedTuple` of the values in `θ` conditioned on `S`; i.e., all names of `θ` except for
-`S`, mapping to their respecitve values.
+Extract a `NamedTuple` of the values in `θ`; i.e., all names of `θ`, mapping to their respective
+values.
 
 `θ` is assumed to come from `tonamedtuple(vi)`, which returns a `NamedTuple` of the form
 
@@ -102,21 +110,14 @@ Extract a `NamedTuple` of the values in `θ` conditioned on `S`; i.e., all names
 t = (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
 ```
 
-so this function does both the cleanup of indexing and filtering by name. `conditioned(t, Val{m}())`
-and `conditioned(t, Val{λ}())` will therefore return
+and this function implements the cleanup of indexing. `conditioned(t)` will therefore return
 
 ```julia
-(λ = 1.233,)
-```
-
-and
-
-```julia
-(m = [0.234, -1.23],)
+(λ = 1.233, m = [0.234, -1.23])
 ```
 """
-@generated function conditioned(θ::NamedTuple{names}, ::Val{S}) where {names, S}
-    condvals = [:($n = extractparam(θ.$n)) for n in names if n ≠ S]
+@generated function conditioned(θ::NamedTuple{names}) where {names}
+    condvals = [:($n = extractparam(θ.$n)) for n in names]
     return Expr(:tuple, condvals...)
 end
 
