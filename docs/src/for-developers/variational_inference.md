@@ -52,7 +52,7 @@ To approximate something you need a notion of what "close" means. In the context
 It's worth noting that unfortunately the KL-divergence is _not_ a metric/distance in the analysis-sense due to its lack of symmetry. On the other hand, it turns out that minimizing the KL-divergence that it's actually equivalent to maximizing the log-likelihood! Also, under reasonable restrictions on the densities at hand,
 
 \$\$
-\mathrm{D\_{KL}}\big(q(z), p(z \mid \\{ x\_i \\}\_{i = 1}^n) \big) = 0 \quad \iff \quad p(z) = p(z \mid \\{ x\_i \\}\_{i = 1}^n), \quad \forall z
+\mathrm{D\_{KL}}\big(q(z), p(z \mid \\{ x\_i \\}\_{i = 1}^n) \big) = 0 \quad \iff \quad q(z) = p(z \mid \\{ x\_i \\}\_{i = 1}^n), \quad \forall z
 \$\$
 
 Therefore one could (and we will) attempt to approximate \$\$p(z \mid \\{ x\_i \\}\_{i = 1}^n)\$\$ using a density \$\$q(z)\$\$ by minimizing the KL-divergence between these two!
