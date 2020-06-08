@@ -82,7 +82,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # see http://www.cs.columbia.edu/~blei/fogm/2015F/notes/mixtures-and-gibbs.pdf
         function cond_z(c)
             function mixtureweight(x)
-                p = π .* pdf.(Normal.(c.μ, σ), Ref(x))
+                p = π .* pdf.(Normal.(c.μ, σ), x)
                 return p ./ sum(p)
             end
             return arraydist(Categorical.(mixtureweight.(x)))
@@ -110,8 +110,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ))
         chain = sample(mixture(x), alg, 10000)
         μ_hat = dropdims(mean(chain[:μ].value, dims=1), dims=(1, 3))
+        @info (symbol=:μ, exact=μ_true, evaluated=μ_hat)
         @test isapprox(μ_hat, μ_true, atol=0.1) || isapprox(μ_hat, reverse(μ_true), atol=0.1)
         z_hat = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        @info (symbol=:z, exact=z_true, evaluated=z_hat)
         @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0) ||
             isapprox(z_hat, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
 
@@ -120,8 +122,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(GibbsConditional(:z, cond_z), MH(:μ))
         chain = sample(mixture(x), alg, 10000)
         μ_hat = dropdims(mean(chain[:μ].value, dims=1), dims=(1, 3))
+        @info (symbol=:μ, exact=μ_true, evaluated=μ_hat)
         @test isapprox(μ_hat, μ_true, atol=0.1) || isapprox(μ_hat, reverse(μ_true), atol=0.1)
         z_hat = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        @info (symbol=:z, exact=z_true, evaluated=z_hat)
         @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0) ||
             isapprox(z_hat, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
         
@@ -130,8 +134,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(GibbsConditional(:z, cond_z), HMC(0.05, 4, :μ,))
         chain = sample(mixture(x), alg, 10000)
         μ_hat = dropdims(mean(chain[:μ].value, dims=1), dims=(1, 3))
+        @info (symbol=:μ, exact=μ_true, evaluated=μ_hat)
         @test isapprox(μ_hat, μ_true, atol=0.1) || isapprox(μ_hat, reverse(μ_true), atol=0.1)
         z_hat = dropdims(mean(chain[:z].value, dims=1), dims=(1, 3))
+        @info (symbol=:z, exact=z_true, evaluated=z_hat)
         @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0) ||
             isapprox(z_hat, z_true[[11:20; 1:10]], atol=0.2, rtol=0.0)
     end
