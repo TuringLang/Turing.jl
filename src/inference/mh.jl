@@ -77,33 +77,35 @@ Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
+        nvns = length(vns)
 
-        n_vns = length(vns)
-        n_vals = length(vals)
-        v_isarr = vals isa AbstractArray
-
-        if v_isarr && n_vals == 1 && n_vns > 1
-            for (vn, val) in zip(vns, vals[1])
-                vi[vn] = val isa AbstractArray ? val : [val]
-            end
-        elseif v_isarr && n_vals > 1 && n_vns == 1
-            vi[vns[1]] = vals
-        elseif v_isarr && n_vals == n_vns > 1
-            for (vn, val) in zip(vns, vals)
-                if val isa AbstractArray
-                    vi[vn] = val
-                else
-                    vi[vn] = [val]
-                end
-            end
-        elseif v_isarr && n_vals == 1 && n_vns == 1
-            if vals[1] isa AbstractArray
-                vi[vns[1]] = vals[1]
+        # if there is a single variable only
+        if nvns == 1
+            # assign the unpacked values
+            if length(vals) == 1
+                vi[vns[1]] = [vals[1];]
+            # otherwise just assign the values
             else
-                vi[vns[1]] = [vals[1]]
+                vi[vns[1]] = [vals;]
             end
-        elseif !(v_isarr)
-            vi[vns[1]] = [vals]
+        # if there are multiple variables
+        elseif vals isa AbstractArray
+            nvals = length(vals)
+            # if values are provided as an array with a single element
+            if nvals == 1
+                # iterate over variables and unpacked values
+                for (vn, val) in zip(vns, vals[1])
+                    vi[vn] = [val;]
+                end
+            # otherwise number of variables and number of values have to be equal
+            elseif nvals == nvns
+                # iterate over variables and values
+                for (vn, val) in zip(vns, vals)
+                    vi[vn] = [val;]
+                end
+            else
+                error("Cannot assign `NamedTuple` to `VarInfo`")
+            end
         else
             error("Cannot assign `NamedTuple` to `VarInfo`")
         end
