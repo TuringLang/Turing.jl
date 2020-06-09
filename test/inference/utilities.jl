@@ -1,4 +1,8 @@
+using Random
+
 @testset "predict" begin
+    Random.seed!(100)
+
     @model function linear_reg(x, y, σ = 0.1)
         β ~ Normal(0, 1)
 
