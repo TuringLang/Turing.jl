@@ -41,6 +41,7 @@ export  InferenceAlgorithm,
         SampleFromPrior,
         MH,
         ESS,
+        Emcee,
         Gibbs,      # classic sampling
         HMC,
         SGLD,
@@ -138,7 +139,7 @@ const TURING_INTERNAL_VARS = (internals = [
     "step_size",
     "nom_step_size",
     "tree_depth",
-    "is_adapt",
+    "is_adapt"
 ],)
 
 #########################################
@@ -540,12 +541,13 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
+include("emcee.jl")
 
 ################
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
