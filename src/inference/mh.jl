@@ -90,7 +90,11 @@ function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
             vi[vns[1]] = vals
         elseif v_isarr && n_vals == n_vns > 1
             for (vn, val) in zip(vns, vals)
-                vi[vn] = [val]
+                if val isa AbstractArray
+                    vi[vn] = val
+                else
+                    vi[vn] = [val]
+                end
             end
         elseif v_isarr && n_vals == 1 && n_vns == 1
             if vals[1] isa AbstractArray
@@ -141,6 +145,19 @@ function reconstruct(
     val::AbstractVector
 )
     return val
+end
+function reconstruct(
+    dist::AbstractVector{<:MultivariateDistribution},
+    val::AbstractVector
+)
+    offset = 0
+    return map(dist) do d
+        n = length(d)
+        newoffset = offset + n
+        v = val[(offset + 1):newoffset]
+        offset = newoffset
+        return v
+    end
 end
 
 """
