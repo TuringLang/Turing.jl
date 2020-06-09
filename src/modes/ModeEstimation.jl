@@ -130,7 +130,6 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::Model, context::AbstractContext)
     init = VarInfo(model)
-    DynamicPPL.link!(init, DynamicPPL.SampleFromPrior())
     return OptimLogDensity(model, context, init)
 end
 
@@ -254,9 +253,29 @@ mle = optimize(model, MLE())
 mle = optimize(model, MLE(), NelderMead())
 ```
 """
-function Optim.optimize(model::Model, ::MLE, args...; kwargs...)
+function Optim.optimize(model::Model, ::MLE, options::Optim.Options=Optim.Options(); kwargs...) 
+    return _mle_optimize(model, options; kwargs...)
+end
+function Optim.optimize(model::Model, ::MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+    return _mle_optimize(model, init_vals, options; kwargs...)
+end
+function Optim.optimize(model::Model, ::MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+    return _mle_optimize(model, optimizer, options; kwargs...)
+end
+function Optim.optimize(
+    model::Model, 
+    ::MLE, 
+    init_vals::AbstractArray, 
+    optimizer::Optim.AbstractOptimizer, 
+    options::Optim.Options=Optim.Options(); 
+    kwargs...
+)
+    return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
+end
+
+function _mle_optimize(model::Model, args...; kwargs...)
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
-    return optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -279,23 +298,89 @@ map_est = optimize(model, MAP())
 map_est = optimize(model, MAP(), NelderMead())
 ```
 """
-function Optim.optimize(model::Model, ::MAP, args...; kwargs...)
+
+function Optim.optimize(model::Model, ::MAP, options::Optim.Options=Optim.Options(); kwargs...) 
+    return _map_optimize(model, options; kwargs...)
+end
+function Optim.optimize(model::Model, ::MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+    return _map_optimize(model, init_vals, options; kwargs...)
+end
+function Optim.optimize(model::Model, ::MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+    return _map_optimize(model, optimizer, options; kwargs...)
+end
+function Optim.optimize(
+    model::Model, 
+    ::MAP, 
+    init_vals::AbstractArray, 
+    optimizer::Optim.AbstractOptimizer, 
+    options::Optim.Options=Optim.Options(); 
+    kwargs...
+)
+    return _map_optimize(model, init_vals, optimizer, options; kwargs...)
+end
+
+function _map_optimize(model::Model, args...; kwargs...)
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
-    return optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
-    Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
+    _optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
 
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
-function Optim.optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
+function _optimize(
+    model::Model, 
+    f::OptimLogDensity, 
+    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
+    args...; 
+    kwargs...
+)
+    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], optimizer, args...; kwargs...)
+end
+
+function _optimize(
+    model::Model, 
+    f::OptimLogDensity, 
+    options::Optim.Options = Optim.Options(),
+    args...; 
+    kwargs...
+)
+    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], Optim.LBFGS(), args...; kwargs...)
+end
+
+function _optimize(
+    model::Model, 
+    f::OptimLogDensity, 
+    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
+    options::Optim.Options = Optim.Options(),
+    args...; 
+    kwargs...
+)
+    return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
+end
+
+function _optimize(
+    model::Model, 
+    f::OptimLogDensity, 
+    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
+    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
+    options::Optim.Options = Optim.Options(),
+    args...; 
+    kwargs...
+)
     # Do some initialization.
     spl = DynamicPPL.SampleFromPrior()
+
+    # Convert the initial values, since it is assumed that users provide them
+    # in the constrained space.
+    f.vi[spl] = init_vals
+    link!(f.vi, spl)
     init_vals = f.vi[spl]
 
+
     # Optimize!
-    M = Optim.optimize(f, init_vals, optimizer, args...; kwargs...)
+    M = Optim.optimize(f, init_vals, optimizer, options, args...; kwargs...)
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
