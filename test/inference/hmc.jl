@@ -1,6 +1,9 @@
 using Turing, Random, Test
 using Turing: Sampler, NUTS
 using MCMCChains: Chains
+using StatsFuns: logistic
+
+using LinearAlgebra
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -55,27 +58,20 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         model_f = hmcmatrixsup()
-        vs = []
-        chain = nothing
-        # n_adapts, n_samples = 1_000, 2_000
         n_samples = 1_000
-        for _ in 1:3
+        vs = map(1:3) do _
             chain = sample(model_f, HMC(0.15, 7), n_samples)
-            r = reshape(chain[:v].value, n_samples, 2, 2)
-            push!(vs, reshape(mean(r, dims = [1]), 2, 2))
+            r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
+            reshape(mean(r; dims = 1), 2, 2)
         end
 
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
     end
     @turing_testset "multivariate support" begin
-        function sigmoid(t)
-            return 1 / (1 + exp.(-t))
-        end
-
         # Define NN flow
         function nn(x, b1, w11, w12, w13, bo, wo)
-            h = tanh.([w11 w12 w13]' * x + b1)
-            return sigmoid((wo' * h)[1] + bo)
+            h = tanh.([w11 w12 w13]' * x .+ b1)
+            return logistic(dot(wo, h) + bo)
         end
 
         # Generating training data

@@ -8,7 +8,7 @@ include("simple_gauss.jl")
 mf = simple_gauss()
 chn = sample(mf, HMC(10000, 0.05, 10))
 
-println("mean of m: $(mean(chn[1000:end, :m, :].value))")
+println("mean of m: $(mean(chn[1000:end, :m]))")
 
 # Plain Julia
 
