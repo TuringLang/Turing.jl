@@ -61,7 +61,7 @@ HMC(0.05, 10)
 
 Tips:
 
-- If you are receiving gradient errors when using `HMC`, try reducing the `ϵ` parameter, e.g.
+- If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step-size `ϵ`, e.g.
 
 ```julia
 # Original step_size
