@@ -191,6 +191,44 @@ function distribution(d::StickBreakingProcess{<:PitmanYorProcess})
     return Beta(one(d_rpm_d)-d_rpm_d, d_rpm.θ + d_rpm.t*d_rpm_d)
 end
 
+@doc raw"""
+Stick-breaking function.
+
+    This function accepts a vector (`v`) of length $K - 1$ where each element
+    is assumed to be in the unit interval, and returns a simplex of length
+    $K$.  If the supplied vector `v` is a vector of independent draws from
+    a Beta distribution (i.e., vⱼ | a ~ Beta(1, a), for j=1,...,K), then
+    returned simplex is generated via a stick-breaking process where
+    the first element of the stick is w₁ = v₁, the last element w_K =
+    ∏ⱼ (1 - vⱼ), and the other elements are wₖ = vₖ ∏ⱼ₌₁ᵏ⁻¹(1 - vⱼ).
+    As $K$ goes to infinity, w is a draw from the Chinese Restaurant process
+    with mass parameter a.
+
+Arguments
+=========
+- `v`: A vector of length $K - 1$, where $K > 1$.
+
+Return
+======
+- A simplex (w) of dimension $K$. Where ∑ₖ wₖ = 1, and each wₖ ≥ 0.
+
+"""
+function stickbreak(v)
+    K = length(v) + 1
+    cumprod_one_minus_v = cumprod(1 .- v)
+
+    eta = [if k == 1
+               v[1]
+           elseif k == K
+               cumprod_one_minus_v[K - 1]
+           else
+               v[k] * cumprod_one_minus_v[k - 1]
+           end
+           for k in 1:K]
+
+    return eta
+end
+
 function distribution(d::SizeBiasedSamplingProcess{<:PitmanYorProcess})
     d_rpm = d.rpm
     d_rpm_d = d.rpm.d
