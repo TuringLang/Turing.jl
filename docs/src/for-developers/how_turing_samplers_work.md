@@ -16,7 +16,7 @@ Here `sample` takes as arguments a model, an algorithm, and a number of samples.
 
 ### Models
 
-To define a model, you declare a joint distribution on variables in the `@model` macro, and specify which variables are observed and which should be inferred, as well as the value of the observed variables. Thus `<code>` creates an instance of `Model`. This is all handled by DynamicPPL.
+To define a model, you declare a joint distribution on variables in the `@model` macro, and specify which variables are observed and which should be inferred, as well as the value of the observed variables. Thus `<code>` creates an instance of the struct `Model`. This is all handled by DynamicPPL, more specifically [here](https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl).
 
 More about models below.
 
@@ -60,23 +60,51 @@ By default, you can use `SamplerState` which *only* has a VarInfo attribute.
 
 ## 2. Implement the functions used inside `mcmcsample`
 
+A lot of the things here are method-specific. However Turing also has some functions that make it easier for you to implement these functions, for examples .
+
 ### Transitions
 
-abstractMCMC stores information corresponding to each individual sample in instances of Transition. 
+`AbstractMCMC` stores information corresponding to each individual sample in objects called `transition`, but does not specify what the structure of these objects could be. You could decide to implement a type `MyTransition` for transitions corresponding to the specifics of your methods. However, there are many situations in which the only information you need for each sample is:
 
-construct transition from a spl: just dump the contents of vi-made-nametuple into a transition 
+* its value: $\theta$ 
+* log of the joint probability of the observed data and this sample: `lp`
+
+`inference/Inference.jl` defines a struct `Transition`, which corresponds to this default situation, as well as a constructor that builds instances of `Transition` from instances of `Sampler`, by finding $\theta$ and `lp` in `spl.state.vi`.
+
+Construct transition from a `spl`: just dump the contents of vi-made-nametuple into a transition 
 
 ### How `sample` works
 
-it calls `mcmcsample`which calls `sample_init!` to set things up, `step!` to produce new transitions, `sample_end!` to perform final operations, and `bundle_samples` to convert a vector of transitions into a more palatable type, for instance a `Chain`.
+A crude summary, which ignores things like parallelism, is the following. `sample` calls `mcmcsample`, which calls 
 
-you get to implement all of these funtions. a lot of those will be method-specific, but there are things
+* `sample_init!` to set things up
+* `step!` repeatedly to produce multiple new transitions
+* `sample_end!` to perform operations once all samples have been obtained 
+* `bundle_samples` to convert a vector of transitions into a more palatable type, for instance a `Chain`.
+
+you can of course implement all of these functions, but `AbstractMCMC` as well 
 
 ## 3. Overload `assume` and `observe`
 
-we often want specific information from the model. in general:
+The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of course use information about the model in order to generate samples! In particular, these functions may need **samples from distributions** defined in the model, or to **evaluate the density of these distributions** at some values of the corresponding parameters or observations.
 
-* sample from prior etc.
-* compute log-likelihood
+For an example of the former, consider **Importance Sampling** as defined in `is.jl`. This implementation of importance sampling uses the model prior distribution as a proposal distribution, and therefore requires **samples from the prior distribution** of the model. Another example is **Approximate Bayesian Computation**, which requires multiple **samples from the model prior and likelihood distributions** in order to generate a single sample.
 
-etc.
+An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior $p(\theta \mid x_{\text{obs}})$, in order to compute the acceptance ratio, you need to **evaluate the model joint density** $p(\theta_{\text{prop}}, x_{\text{obs}})$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.
+
+Below is still very preliminary:
+
+This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. When the sampler needs to access model information, it executes the `m.f` function.
+
+@model macro to instance of Model. main attribute of Model is the mf function. a large part of building the Model object is building this function from the lines in the @macro statement. 
+
+among the arguments of `f` there is a sampler. this is because executing `f` runs the steps of the model in order and modifies the sampler for every tilde statement. how it modifies the sampler is defined by the assume and observe functions.
+
+general idea: given a `Model` instance `m` and a sampler `spl`
+
+* `step!` will call `m(..., spl, ...)` which is basically `m.f(..., spl, ...)`
+* for every tilde statement in, `m.f(..., spl, ...)` will add model-related information (samples, model density evaluation, etc.) to `spl` (often to `spl.state.vi`). How does it do that?
+  * recall that the code for `m.f(..., spl, ...)` is automatically generated by compilation of the `@model` macro
+  * for every tilde statement in the `@model` declaration, this code contains a call to `assume(..., spl, ...)` if the variable on the LHS of the tilde is a **model parameter to infer**, and `observe(..., spl, ...)` if the variable on the LHS of the tilde is an **observation**
+  * in the file corresponding to your sampling method (ie in `Turing.jl/src/inference/<your_method>.jl`), you have **overloaded** `assume` and `observe` (eg you have written code for `DynamicPPL.assume(rng, spl::Sampler{<:YourSamplingAlgorithm}, dist::Distribution, vn::VarName, vi)`, cf in `is.jl`) so that when `spl` uses your sampling method, `assume` and `observe` modify `spl` to include the information and samples that you care about!
+
