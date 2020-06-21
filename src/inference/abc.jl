@@ -35,12 +35,13 @@ function get_data(model::Model)
     return [x for x in spl.state.observations] # trying to infer type
 end
 
-# ABC stuff
+###################
+### AbstractABC ###
+###################
 abstract type AbstractABC <: InferenceAlgorithm end
 DynamicPPL.getspace(::Sampler{<:AbstractABC}) = ()
 
 function DynamicPPL.assume(rng, spl::Sampler{<:AbstractABC}, dist::Distribution, vn::VarName, vi)
-    # TODO: sample from proposal or something, similar to MH
     # Sample from prior
     r = rand(rng, dist)
     push!(vi, vn, r, dist, spl)
@@ -52,13 +53,49 @@ function DynamicPPL.observe(spl::Sampler{<:AbstractABC}, dist::Distribution, val
     proposed = rand(dist)
 
     # HACK: 2. Store proposal and observation (`value`) in sampler state so that we can later compute distance
-    # push!(spl.state.observations, value)
     push!(spl.state.proposed, proposed)
 
     return 0
 end
 
+function AbstractMCMC.sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    spl::Sampler{<:AbstractABC},
+    N::Integer,
+    ts::Vector{T};
+    kwargs...
+) where {T}
+    # HACK: rejecting samples after full sampling
+    results = T[]
+    push!(results, ts[1])
 
+    num_accepted = 1
+
+    for i = 2:length(ts)
+        if ts[i] !== ts[i - 1]
+            # if they're different, we accepted
+            push!(results, ts[i])
+            num_accepted += 1
+        # else
+        #     @info "Rejecting $(i) because $(ts[i].θ) === $(ts[i - 1].θ)"
+        end
+    end
+
+    if num_accepted == 0
+        error("No samples were accepted; try increasing the acceptance threshold.")
+    elseif num_accepted < length(ts)
+        @warn "Only accepted $(100 * num_accepted / length(ts))% of the samples"
+    end
+
+    empty!(ts)
+    append!(ts, results)
+end
+
+
+###########
+### ABC ###
+###########
 struct ABC{A, F1, F2, T} <: AbstractABC
     proposal::A
     distance::F1
@@ -76,7 +113,6 @@ struct ABCState{V<:VarInfo, A1, A2} <: AbstractSamplerState
 end
 
 function ABCState(model::Model)
-    # TODO: infer the type observations so we get a type-stable array
     data = get_data(model)
     proposals = similar(data)
     empty!(proposals)
@@ -99,7 +135,6 @@ function AbstractMCMC.step!(
     kwargs...
 )
     # Sample from model
-    # empty!(spl.state.observations)
     empty!(spl.state.proposed)
     empty!(spl.state.vi)
 
@@ -140,40 +175,10 @@ function AbstractMCMC.step!(
     end
 end
 
-function AbstractMCMC.sample_end!(
-    ::AbstractRNG,
-    ::Model,
-    spl::Sampler{<:AbstractABC},
-    N::Integer,
-    ts::Vector{T};
-    kwargs...
-) where {T}
-    # HACK: rejecting samples after full sampling
-    results = T[]
-    push!(results, ts[1])
 
-    num_accepted = 1
-
-    for i = 2:length(ts)
-        if ts[i] !== ts[i - 1]
-            # if they're different, we accepted
-            push!(results, ts[i])
-            num_accepted += 1
-        # else
-        #     @info "Rejecting $(i) because $(ts[i].θ) === $(ts[i - 1].θ)"
-        end
-    end
-
-    if num_accepted == 0
-        error("No samples were accepted; try increasing the acceptance threshold.")
-    elseif num_accepted < length(ts)
-        @warn "Only accepted $(100 * num_accepted / length(ts))% of the samples"
-    end
-
-    empty!(ts)
-    append!(ts, results)
-end
-
+#############
+### GPABC ###
+#############
 struct GPABC{F1, F2, T} <: AbstractABC
     summary_statistic::F1
     distance_function::F2
@@ -181,6 +186,26 @@ struct GPABC{F1, F2, T} <: AbstractABC
     n_particles::Int64
     max_iter::Int64
 end
+
+struct GPABCState{V, A1, A2} <: AbstractSamplerState
+    vi::V
+    proposed::A1
+    reference_summary_statistic::A2
+end
+
+function GPABCState(alg::Turing.Inference.GPABC, model::Model)
+    vi = Turing.VarInfo(model)
+
+    observations = get_data(model)
+    proposed = similar(observations)
+    empty!(proposed)
+
+    reference_summary_statistic = alg.summary_statistic(reshape(observations, (:, 1)))
+
+    return GPABCState(vi, proposed, reference_summary_statistic)
+end
+
+Sampler(alg::GPABC, model::Model, s::DynamicPPL.Selector) = Sampler(alg, Dict{Symbol, Any}(), s, GPABCState(alg, model))
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
@@ -252,23 +277,3 @@ function GpABC.simulate_distance(
     end
     return y
 end
-
-struct GPABCState{V, A1, A2} <: AbstractSamplerState
-    vi::V
-    proposed::A1
-    reference_summary_statistic::A2
-end
-
-function GPABCState(alg::Turing.Inference.GPABC, model::Model)
-    vi = Turing.VarInfo(model)
-
-    observations = get_data(model)
-    proposed = similar(observations)
-    empty!(proposed)
-
-    reference_summary_statistic = alg.summary_statistic(reshape(observations, (:, 1)))
-
-    return GPABCState(vi, proposed, reference_summary_statistic)
-end
-
-Sampler(alg::GPABC, model::Model, s::DynamicPPL.Selector) = Sampler(alg, Dict{Symbol, Any}(), s, GPABCState(alg, model))
