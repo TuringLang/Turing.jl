@@ -1,7 +1,7 @@
 using LinearAlgebra
 using GpABC
 
-struct GetData <: DynamicPPL.AbstractSampler end
+struct GetData <: InferenceAlgorithm end
 
 struct DataState{T} <: DynamicPPL.AbstractSamplerState
     observations::T
@@ -65,8 +65,8 @@ struct ABC{A, F1, F2, T} <: AbstractABC
     stat::F2
     epsilon::T
 end
-function ABC(proposal, dist, stat = identity; epsilon = 0.1)
-    return ABC{typeof(proposal), typeof(dist), typeof(stat), typeof(epsilon)}(proposal, dist, stat, epsilon)
+function ABC(proposal, dist; stat = identity, epsilon = 0.1)
+    return ABC(proposal, dist, stat, epsilon)
 end
 
 struct ABCState{V<:VarInfo, A1, A2} <: AbstractSamplerState
@@ -152,7 +152,7 @@ function AbstractMCMC.sample_end!(
     results = T[]
     push!(results, ts[1])
 
-    num_accepted = 0
+    num_accepted = 1
 
     for i = 2:length(ts)
         if ts[i] !== ts[i - 1]
@@ -172,7 +172,6 @@ function AbstractMCMC.sample_end!(
 
     empty!(ts)
     append!(ts, results)
-    @info length(ts) length(results)
 end
 
 struct GPABC{F1, F2, T} <: AbstractABC
