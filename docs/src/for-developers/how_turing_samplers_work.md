@@ -1,4 +1,8 @@
-# How Turing samplers work
+
+
+| title                    | toc  |
+| ------------------------ | ---- |
+| How Turing samplers work | true |
 
 Sources: https://github.com/TuringLang/Turing.jl/issues/895
 
@@ -58,7 +62,7 @@ By default, you can use `SamplerState` which *only* has a VarInfo attribute.
 
 
 
-## 2. Implement the functions used inside `mcmcsample`
+## 2. Overload the functions used inside `mcmcsample`
 
 A lot of the things here are method-specific. However Turing also has some functions that make it easier for you to implement these functions, for examples .
 
