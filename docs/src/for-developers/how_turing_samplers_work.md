@@ -8,7 +8,7 @@
 
 Prerequisite: [Interface guide](https://turing.ml/dev/docs/for-developers/interface).
 
-Consider the following Turing use case:
+Consider the following code:
 
 ```julia
 @model function gdemo(x, y)
