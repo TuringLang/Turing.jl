@@ -6,8 +6,6 @@
 
 # How Turing samplers work
 
-Sources: https://github.com/TuringLang/Turing.jl/issues/895
-
 Prerequisite: [Interface guide](https://turing.ml/dev/docs/for-developers/interface).
 
 Consider the following Turing use case:
@@ -27,9 +25,7 @@ n_samples = 1000
 chn = sample(mod, alg, n_samples)
 ```
 
-
-
-The `AbstractMCMC` interface defines a function `sample` that takes as inputs a model, a sampler and a number of samples, and outputs a `Chains` object. As explained in the interface guide, much of the sampling process consists in overloading functions  describes the roles of main structs and functions in `AbstractMCMC` and gives an example of their implementation, [`AdvancedMH.jl`](). 
+The function `sample` is part of the AbstractMCMC interface. As explained in the interface guide, building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`](). 
 
 Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing. I don't go into all the details: for instance, I don't address selectors or parallelism.
 
