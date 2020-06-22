@@ -4,63 +4,125 @@
 | ------------------------ | ---- |
 | How Turing samplers work | true |
 
+# How Turing samplers work
+
 Sources: https://github.com/TuringLang/Turing.jl/issues/895
 
 Prerequisite: [Interface guide](https://turing.ml/dev/docs/for-developers/interface).
 
-The `AbstractMCMC` interface defines a function `sample` that takes as inputs a model, a sampler and a number of samples, and outputs a `Chains` object. The interface guide describes the roles of main structs and functions in `AbstractMCMC` and gives an example of their implementation, [`AdvancedMH.jl`](). 
+Consider the following Turing use case:
 
-Turing sampling methods (see code [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)), also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing. It doesn't go into all the details
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+mod = gdemo(1.5, 2)
+alg = IS()
+n_samples = 1000
+
+chn = sample(mod, alg, n_samples)
+```
+
+
+
+The `AbstractMCMC` interface defines a function `sample` that takes as inputs a model, a sampler and a number of samples, and outputs a `Chains` object. As explained in the interface guide, much of the sampling process consists in overloading functions  describes the roles of main structs and functions in `AbstractMCMC` and gives an example of their implementation, [`AdvancedMH.jl`](). 
+
+Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing. I don't go into all the details: for instance, I don't address selectors or parallelism.
 
 ## 1. Define a `Sampler`
 
-Hello world:
+Recall the last line of the above code block:
 
-Here `sample` takes as arguments a model, an algorithm, and a number of samples.
+```julia
+chn = sample(mod, alg, n_samples)
+```
+
+Here `sample` takes as arguments a **model** `mod`, an **algorithm** `alg`, and a **number of samples** `n_samples`, and returns an instance `chn` of `Chains` which can be analysed using the functions in `MCMCChains`.
 
 ### Models
 
-To define a model, you declare a joint distribution on variables in the `@model` macro, and specify which variables are observed and which should be inferred, as well as the value of the observed variables. Thus `<code>` creates an instance of the struct `Model`. This is all handled by DynamicPPL, more specifically [here](https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl).
+To define a **model**, you declare a joint distribution on variables in the `@model` macro, and specify which variables are observed and which should be inferred, as well as the value of the observed variables. Thus, when implementing Importance Sampling,
 
-More about models below.
+```julia
+mod = gdemo(1.5, 2)
+```
+
+creates an instance `mod` of the struct `Model`, which corresponds to the observations of a value of `1.5` for `x`, and a value of `2` for `y`.
+
+This is all handled by DynamicPPL, more specifically [here](https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl). I will return to how models are used to inform sampling algorithms [below](). TODO: link
 
 ### Algorithms
 
-An algorithm is just a sampling method. Defining an algorithm may require specifying a few high-level parameters. For example, "Hamiltonian Monte-Carlo" may be too vague, but "Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01" is an algorithm. "Metropolis-Hastings" may be too vague, but "Metropolis-Hastings with proposal distribution `p`" is an algorithm. Thus `HMC()` creates an instance of `HMC`, which is a subtype of `InferenceAlgorithm`. 
+An **algorithm** is just a sampling method: in Turing, it is a subtype of the abstract type `InferenceAlgorithm`. Defining an algorithm may require specifying a few high-level parameters. For example, "Hamiltonian Monte-Carlo" may be too vague, but "Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01" is an algorithm. "Metropolis-Hastings" may be too vague, but "Metropolis-Hastings with proposal distribution `p`" is an algorithm. $\epsilon$
+
+Thus
+
+```julia
+stepsize = 0.01
+L = 10
+alg = HMC(stepsize, L)
+```
+
+defines a Hamiltonian Monte-Carlo algorithm, an instance of `HMC`, which is a subtype of `InferenceAlgorithm`.
+
+In the case of Importance Sampling, there is no need to specify additional parameters:
+
+```julia
+alg = IS()
+```
+
+defines an Importance Sampling algorithm, an instance of `IS` which is a subtype of `InferenceAlgorithm`. 
 
 When creating your own Turing sampling method, you must therefore build a subtype of `InferenceAlgorithm` corresponding to your method.
 
-> Importance sampling example here: 
-
 ### Samplers
 
-AbstractMCMC itself doesn't know about `InferenceAlgorithm`. Its native `sample` functions take as inputs (among other things) models (from `AbstractModel`) and **samplers** (from `AbstractSampler)`, not models and **algorithms**. Samplers are **not** the same as algorithms. An algorithm is a generic sampling method, a sampler is an object that stores information about how algorithm and model interact during sampling, and is modified as sampling progresses.
+Samplers are **not** the same as algorithms. An algorithm is a generic sampling method, a sampler is an object that stores information about how algorithm and model interact during sampling, and is modified as sampling progresses. The `Sampler` struct is defined in DynamicPPL.
 
 Turing implements `AbstractMCMC`'s `AbstractSampler` with the `Sampler` struct defined in `DynamicPPL`. The most important attributes of an instance `spl` of `Sampler` are:
 
 * `spl.alg`: the sampling method used, an instance of a subtype of `InferenceAlgorithm`
-* `spl.state`: information about the sampling process, eg which variables have been sampled so far, what has the
+* `spl.state`: information about the sampling process, see [below]() TODO: link
 
-When you call `sample(model, alg, N)`, Turing first uses `model` and `alg` to build an instance `spl` of `Sampler` , then calls the native `AbstractMCMC` function `sample(model, spl, N)`. 
+When you call `sample(mod, alg, n_samples)`, Turing first uses `model` and `alg` to build an instance `spl` of `Sampler` , then calls the native `AbstractMCMC` function `sample(mod, spl, n_samples)`. 
 
 When you define your own Turing sampling method, you must therefore build: 
 
-* a **state struct** implementing `AbstractSamplerState` corresponding to your method
-* a **sampler constructor** that initializes an instance of `Sampler` from a model and an algorithm.
+* a **sampler constructor** that uses a model and an algorithm to initialize an instance of `Sampler`. For Importance Sampling:
 
-> Show sampler constructor for Importance sampling, mention 
+```julia
+function Sampler(alg::IS, model::Model, s::Selector)
+    info = Dict{Symbol, Any}()
+    state = ISState(model)
+    return Sampler(alg, info, s, state)
+end
+```
+
+* a **state** struct implementing `AbstractSamplerState` corresponding to your method: we cover this in the following paragraph.
 
 ### States
 
-> Show `ISState` definition
+```julia
+mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    vi                 ::  V
+    final_logevidence  ::  F
+end
+
+# additional constructor
+ISState(model::Model) = ISState(VarInfo(model), 0.0)
+```
 
 VarInfo contains all the important information about sampling: names of model parameters, the distributions from which they are sampled, the value of the samples, and other metadata.
 
 As we will see below, many important steps during sampling correspond to queries or updates to `spl.state.vi`.
 
-By default, you can use `SamplerState` which *only* has a VarInfo attribute.
+By default, you can use `SamplerState`, a concrete type extending `AbstractSamplerState` which has no field apart from `vi`.
 
-
+![Untitled Diagram(1)](/Users/js/Downloads/Untitled Diagram(1).png)
 
 ## 2. Overload the functions used inside `mcmcsample`
 
@@ -73,7 +135,7 @@ A lot of the things here are method-specific. However Turing also has some funct
 * its value: $\theta$ 
 * log of the joint probability of the observed data and this sample: `lp`
 
-`inference/Inference.jl` defines a struct `Transition`, which corresponds to this default situation, as well as a constructor that builds instances of `Transition` from instances of `Sampler`, by finding $\theta$ and `lp` in `spl.state.vi`.
+`Inference.jl` defines a struct `Transition`, which corresponds to this default situation, as well as a constructor that builds instances of `Transition` from instances of `Sampler`, by finding $\theta$ and `lp` in `spl.state.vi`.
 
 Construct transition from a `spl`: just dump the contents of vi-made-nametuple into a transition 
 
@@ -92,7 +154,7 @@ you can of course implement all of these functions, but `AbstractMCMC` as well
 
 The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of course use information about the model in order to generate samples! In particular, these functions may need **samples from distributions** defined in the model, or to **evaluate the density of these distributions** at some values of the corresponding parameters or observations.
 
-For an example of the former, consider **Importance Sampling** as defined in `is.jl`. This implementation of importance sampling uses the model prior distribution as a proposal distribution, and therefore requires **samples from the prior distribution** of the model. Another example is **Approximate Bayesian Computation**, which requires multiple **samples from the model prior and likelihood distributions** in order to generate a single sample.
+For an example of the former, consider **Importance Sampling** as defined in `is.jl`. This implementation of Importance Sampling uses the model prior distribution as a proposal distribution, and therefore requires **samples from the prior distribution** of the model. Another example is **Approximate Bayesian Computation**, which requires multiple **samples from the model prior and likelihood distributions** in order to generate a single sample.
 
 An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior $p(\theta \mid x_{\text{obs}})$, in order to compute the acceptance ratio, you need to **evaluate the model joint density** $p(\theta_{\text{prop}}, x_{\text{obs}})$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.
 
