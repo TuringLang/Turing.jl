@@ -24,6 +24,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
+import AdvancedSMC
 import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
