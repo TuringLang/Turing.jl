@@ -1,13 +1,13 @@
 function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
     @testset "numerical" begin
         # Extract values.
-        chn_xs = chn[1:2:end, :x, :].value
+        chn_xs = Array(chn[1:2:end, namesingroup(chn, :x), :])
 
         # Check means.
         dist_mean = mean(dist)
         mean_shape = size(dist_mean)
         if !all(isnan, dist_mean) && !all(isinf, dist_mean)
-            chn_mean = Array(mean(chn_xs, dims=1))
+            chn_mean = vec(mean(chn_xs, dims=1))
             chn_mean = length(chn_mean) == 1 ?
                 chn_mean[1] :
                 reshape(chn_mean, mean_shape)
@@ -24,7 +24,7 @@ function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol
             dist_var = var(dist)
             var_shape = size(dist_var)
             if !all(isnan, dist_var) && !all(isinf, dist_var)
-                chn_var = Array(var(chn_xs, dims=1))
+                chn_var = vec(var(chn_xs, dims=1))
                 chn_var = length(chn_var) == 1 ?
                     chn_var[1] :
                     reshape(chn_var, var_shape)
@@ -45,8 +45,8 @@ function check_numerical(chain,
                         rtol=0.0)
     for (sym, val) in zip(symbols, exact_vals)
         E = val isa Real ?
-            mean(chain[sym].value) :
-            vec(mean(chain[sym].value, dims=[1]))
+            mean(chain[sym]) :
+            vec(mean(chain[sym], dims=1))
         @info (symbol=sym, exact=val, evaluated=E)
         @test E ≈ val atol=atol rtol=rtol
     end

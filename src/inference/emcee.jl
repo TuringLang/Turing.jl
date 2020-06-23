@@ -147,7 +147,7 @@ function AbstractMCMC.bundle_samples(
     nms = [nms; extra_params]
     parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
     parray = cat(parray..., dims=3)
-    
+
     # Get the average or final log evidence, if it exists.
     le = getlogevidence(spl)
 
@@ -164,10 +164,9 @@ function AbstractMCMC.bundle_samples(
     # Chain construction.
     return MCMCChains.Chains(
         parray,
-        string.(nms),
+        nms,
         deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
         info=info,
-        sorted=true
-    )
+    ) |> sort
 end

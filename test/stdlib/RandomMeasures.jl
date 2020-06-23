@@ -58,10 +58,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(2)
         iterations = 500
         model_fun = infiniteGMM(data);
-        chain = sample(model_fun, SMC(), iterations);
+        chain = sample(model_fun, SMC(), iterations)
 
         @test chain isa MCMCChains.Chains
-        @test eltype(chain.value.data) == Union{Float64, Missing}
+        @test eltype(chain.value) === Union{Float64, Missing}
     end
     # partitions = [
     #     [[1, 2, 3, 4]],
@@ -128,9 +128,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
     #     samples = sample(mf, sampler, 1000)
 
     #     # Check that there is no NaN value associated
-    #     z_samples = Int.(samples[:z].value)
-    #     @test all(!isnan, samples[:x].value[z_samples])
-    #     @test all(!ismissing, samples[:x].value[z_samples])
+    #     z_samples = Int.(samples[:z])
+    #     @test all(!isnan, samples[:x][z_samples])
+    #     @test all(!ismissing, samples[:x][z_samples])
 
     #     empirical_probs = zeros(length(partitions))
     #     w = map(x -> x.weight, samples.info[:samples])
@@ -286,9 +286,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
     #     samples = sample(mf, sampler, 10000)
 
     #     # Check that there is no NaN value associated
-    #     z_samples = Int.(samples[:z].value)
-    #     @test all(!isnan, samples[:x].value[z_samples])
-    #     @test all(!ismissing, samples[:x].value[z_samples])
+    #     z_samples = Int.(samples[:z])
+    #     @test all(!isnan, samples[:x][z_samples])
+    #     @test all(!ismissing, samples[:x][z_samples])
 
     #     empirical_probs = zeros(length(partitions))
     #     w = map(x -> x.weight, samples.info[:samples])
@@ -363,9 +363,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
     #     samples = sample(mf, sampler, 1000)
 
     #     # Check that there is no NaN value associated
-    #     z_samples = Int.(samples[:z].value)
-    #     @test all(!isnan, samples[:x].value[z_samples])
-    #     @test all(!ismissing, samples[:x].value[z_samples])
+    #     z_samples = Int.(samples[:z])
+    #     @test all(!isnan, samples[:x][z_samples])
+    #     @test all(!ismissing, samples[:x][z_samples])
 
     #     empirical_probs = zeros(length(partitions))
     #     w = map(x -> x.weight, samples.info[:samples])

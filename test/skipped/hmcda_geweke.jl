@@ -39,7 +39,7 @@ s = sample(gdemo_fw(), fw);
 
 N = div(NSamples, 50)
 
-x = [s[1,:y,:].value...]
+x = s[1, :y]
 s_bk = Array{Turing.Chain}(undef, N)
 
 simple_logger = Base.CoreLogging.SimpleLogger(stderr, Base.CoreLogging.Debug)
@@ -47,8 +47,8 @@ Base.CoreLogging.with_logger(simple_logger) do
   global x, bk, s_bk
   i = 1
   while i <= N
-    s_bk[i] = sample(gdemo_bk(x), bk);
-    x = [s_bk[i][end, :y, :]...];
+    s_bk[i] = sample(gdemo_bk(x), bk)
+    x = s_bk[i][end, :y]
     i += 1
   end
 end

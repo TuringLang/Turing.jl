@@ -49,7 +49,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(54321)
         mle_est = optimize(gdemo_default, MLE())
 
-        @test coefnames(mle_est) == ["s", "m"]
+        @test coefnames(mle_est) == [:s, :m]
 
         diffs = coef(mle_est).array - [0.0625031; 1.75001]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
