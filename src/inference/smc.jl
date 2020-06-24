@@ -43,7 +43,7 @@ end
 
 """
     SMC(space...)
-    SMC([resampler = ResampleWithESSThreshold(), space = ()])
+    SMC([resampler = AdvancedSMC.ResampleWithESSThreshold(), space = ()])
     SMC([resampler = resample_systematic, ]threshold[, space = ()])
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
@@ -51,19 +51,19 @@ Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler = Turing.Core.ResampleWithESSThreshold(), space::Tuple = ())
+function SMC(resampler = AdvancedSMC.ResampleWithESSThreshold(), space::Tuple = ())
     return SMC{space, typeof(resampler)}(resampler)
 end
 
 # Convenient constructors with ESS threshold
 function SMC(resampler, threshold::Real, space::Tuple = ())
-    return SMC(Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+    return SMC(AdvancedSMC.ResampleWithESSThreshold(resampler, threshold), space)
 end
 SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, space)
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
-SMC(space::Tuple) = SMC(Turing.Core.ResampleWithESSThreshold(), space)
+SMC(space::Tuple) = SMC(AdvancedSMC.ResampleWithESSThreshold(), space)
 
 mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
@@ -174,7 +174,7 @@ isgibbscomponent(::PG) = true
 
 """
     PG(n, space...)
-    PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
+    PG(n, [resampler = AdvancedSMC.ResampleWithESSThreshold(), space = ()])
     PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
@@ -185,7 +185,7 @@ is performed if the estimated effective sample size per particle drops below 0.5
 """
 function PG(
     nparticles::Int,
-    resampler = Turing.Core.ResampleWithESSThreshold(),
+    resampler = AdvancedSMC.ResampleWithESSThreshold(),
     space::Tuple = (),
 )
     return PG{space, typeof(resampler)}(nparticles, resampler)
@@ -193,7 +193,7 @@ end
 
 # Convenient constructors with ESS threshold
 function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
-    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+    return PG(nparticles, AdvancedSMC.ResampleWithESSThreshold(resampler, threshold), space)
 end
 function PG(nparticles::Int, threshold::Real, space::Tuple = ())
     return PG(nparticles, resample_systematic, threshold, space)
@@ -202,7 +202,7 @@ end
 # If only the number of particles and the space is defined
 PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
 function PG(nparticles::Int, space::Tuple)
-    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
+    return PG(nparticles, AdvancedSMC.ResampleWithESSThreshold(), space)
 end
 
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
