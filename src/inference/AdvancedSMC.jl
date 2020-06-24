@@ -1,6 +1,10 @@
-#########################################
-# Particle Transition (both SMC and PG) #
-#########################################
+###
+### Particle Filtering and Particle MCMC Samplers.
+###
+
+#######################
+# Particle Transition #
+#######################
 
 """
     ParticleTransition{T, F<:AbstractFloat}
@@ -24,9 +28,9 @@ end
 
 DynamicPPL.getlogp(t::ParticleTransition) = t.lp
 
-############################
-# Define a Sampler for SMC #
-############################
+####
+#### Generic Sequential Monte Carlo sampler.
+####
 
 """
 $(TYPEDEF)
@@ -43,7 +47,7 @@ end
 
 """
     SMC(space...)
-    SMC([resampler = AdvancedSMC.ResampleWithESSThreshold(), space = ()])
+    SMC([resampler = ResampleWithESSThreshold(), space = ()])
     SMC([resampler = resample_systematic, ]threshold[, space = ()])
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
@@ -51,19 +55,19 @@ Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler = AdvancedSMC.ResampleWithESSThreshold(), space::Tuple = ())
+function SMC(resampler = Turing.Core.ResampleWithESSThreshold(), space::Tuple = ())
     return SMC{space, typeof(resampler)}(resampler)
 end
 
 # Convenient constructors with ESS threshold
 function SMC(resampler, threshold::Real, space::Tuple = ())
-    return SMC(AdvancedSMC.ResampleWithESSThreshold(resampler, threshold), space)
+    return SMC(Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
 end
 SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, space)
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
-SMC(space::Tuple) = SMC(AdvancedSMC.ResampleWithESSThreshold(), space)
+SMC(space::Tuple) = SMC(Turing.Core.ResampleWithESSThreshold(), space)
 
 mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
@@ -84,10 +88,6 @@ function Sampler(alg::SMC, model::Model, s::Selector)
     state = SMCState(model)
     return Sampler(alg, dict, s, state)
 end
-
-################################################
-# Overload the functions in mcmcsample for SMC #
-################################################
 
 function AbstractMCMC.sample_init!(
     ::AbstractRNG,
@@ -147,9 +147,9 @@ function AbstractMCMC.step!(
     return ParticleTransition(params, lp, spl.state.average_logevidence, weight)
 end
 
-###########################
-# Define a Sampler for PG #
-###########################
+####
+#### Particle Gibbs sampler.
+####
 
 """
 $(TYPEDEF)
@@ -174,7 +174,7 @@ isgibbscomponent(::PG) = true
 
 """
     PG(n, space...)
-    PG(n, [resampler = AdvancedSMC.ResampleWithESSThreshold(), space = ()])
+    PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
     PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
@@ -185,7 +185,7 @@ is performed if the estimated effective sample size per particle drops below 0.5
 """
 function PG(
     nparticles::Int,
-    resampler = AdvancedSMC.ResampleWithESSThreshold(),
+    resampler = Turing.Core.ResampleWithESSThreshold(),
     space::Tuple = (),
 )
     return PG{space, typeof(resampler)}(nparticles, resampler)
@@ -193,7 +193,7 @@ end
 
 # Convenient constructors with ESS threshold
 function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
-    return PG(nparticles, AdvancedSMC.ResampleWithESSThreshold(resampler, threshold), space)
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
 end
 function PG(nparticles::Int, threshold::Real, space::Tuple = ())
     return PG(nparticles, resample_systematic, threshold, space)
@@ -202,7 +202,7 @@ end
 # If only the number of particles and the space is defined
 PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
 function PG(nparticles::Int, space::Tuple)
-    return PG(nparticles, AdvancedSMC.ResampleWithESSThreshold(), space)
+    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
 end
 
 mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
@@ -228,11 +228,6 @@ function Sampler(alg::PG, model::Model, s::Selector)
     state = PGState(model)
     return Sampler(alg, info, s, state)
 end
-
-
-###############################################
-# Overload the functions in mcmcsample for PG #
-###############################################
 
 function AbstractMCMC.step!(
     ::AbstractRNG,
@@ -314,10 +309,6 @@ function AbstractMCMC.sample_end!(
     spl.state.average_logevidence = loge
 end
 
-#################################################
-# Overload assume and observe (both SMC and PG) #
-#################################################
-
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
@@ -356,4 +347,157 @@ end
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
     return 0
+end
+
+####
+#### Resampling schemes for particle filters
+####
+
+# Some references
+#  - http://arxiv.org/pdf/1301.4019.pdf
+#  - http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
+# Code adapted from: http://uk.mathworks.com/matlabcentral/fileexchange/24968-resampling-methods-for-particle-filtering
+
+# Default resampling scheme
+function resample(w::AbstractVector{<:Real}, num_particles::Integer=length(w))
+    return resample_systematic(w, num_particles)
+end
+
+# More stable, faster version of rand(Categorical)
+function randcat(p::AbstractVector{<:Real})
+    T = eltype(p)
+    r = rand(T)
+    s = 1
+    for j in eachindex(p)
+        r -= p[j]
+        if r <= zero(T)
+            s = j
+            break
+        end
+    end
+    return s
+end
+
+function resample_multinomial(w::AbstractVector{<:Real}, num_particles::Integer)
+    return rand(Distributions.sampler(Categorical(w)), num_particles)
+end
+
+function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
+
+    M = length(w)
+
+    # "Repetition counts" (plus the random part, later on):
+    Ns = floor.(length(w) .* w)
+
+    # The "remainder" or "residual" count:
+    R = Int(sum(Ns))
+
+    # The number of particles which will be drawn stocastically:
+    M_rdn = num_particles - R
+
+    # The modified weights:
+    Ws = (M .* w - floor.(M .* w)) / M_rdn
+
+    # Draw the deterministic part:
+    indx1, i = Array{Int}(undef, R), 1
+    for j in 1:M
+        for k in 1:Ns[j]
+            indx1[i] = j
+            i += 1
+        end
+    end
+
+    # And now draw the stocastic (Multinomial) part:
+    return append!(indx1, rand(Distributions.sampler(Categorical(w)), M_rdn))
+end
+
+"""
+    resample_stratified(weights, n)
+
+Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
+generated by stratified resampling.
+
+In stratified resampling `n` ordered random numbers `u₁`, ..., `uₙ` are generated, where
+``uₖ \\sim U[(k - 1) / n, k / n)``. Based on these numbers the samples `x₁`, ..., `xₙ`
+are selected according to the multinomial distribution defined by the normalized `weights`,
+i.e., `xᵢ = j` if and only if
+``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
+"""
+function resample_stratified(weights::AbstractVector{<:Real}, n::Integer)
+    # check input
+    m = length(weights)
+    m > 0 || error("weight vector is empty")
+
+    # pre-calculations
+    @inbounds v = n * weights[1]
+
+    # generate all samples
+    samples = Array{Int}(undef, n)
+    sample = 1
+    @inbounds for i in 1:n
+        # sample next `u` (scaled by `n`)
+        u = oftype(v, i - 1 + rand())
+
+        # as long as we have not found the next sample
+        while v < u
+            # increase and check the sample
+            sample += 1
+            sample > m &&
+                error("sample could not be selected (are the weights normalized?)")
+
+            # update the cumulative sum of weights (scaled by `n`)
+            v += n * weights[sample]
+        end
+
+        # save the next sample
+        samples[i] = sample
+    end
+
+    return samples
+end
+
+"""
+    resample_systematic(weights, n)
+
+Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
+generated by systematic resampling.
+
+In systematic resampling a random number ``u \\sim U[0, 1)`` is used to generate `n` ordered
+numbers `u₁`, ..., `uₙ` where ``uₖ = (u + k − 1) / n``. Based on these numbers the samples
+`x₁`, ..., `xₙ` are selected according to the multinomial distribution defined by the
+normalized `weights`, i.e., `xᵢ = j` if and only if
+``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
+"""
+function resample_systematic(weights::AbstractVector{<:Real}, n::Integer)
+    # check input
+    m = length(weights)
+    m > 0 || error("weight vector is empty")
+
+    # pre-calculations
+    @inbounds v = n * weights[1]
+    u = oftype(v, rand())
+
+    # find all samples
+    samples = Array{Int}(undef, n)
+    sample = 1
+    @inbounds for i in 1:n
+        # as long as we have not found the next sample
+        while v < u
+            # increase and check the sample
+            sample += 1
+            sample > m &&
+                error("sample could not be selected (are the weights normalized?)")
+
+            # update the cumulative sum of weights (scaled by `n`)
+            v += n * weights[sample]
+        end
+
+        # save the next sample
+        samples[i] = sample
+
+        # update `u`
+        u += one(u)
+    end
+
+    return samples
 end
