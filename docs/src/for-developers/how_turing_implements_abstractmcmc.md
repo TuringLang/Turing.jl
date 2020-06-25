@@ -203,14 +203,22 @@ y &\sim \text{Normal}(m, \sqrt{s})
 $$
 The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m)$. Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y)$.
 
-Importance Sampling produces samples $(s_i, m_i)$ that are independent and all distributed according to the prior distribution. It also outputs weights $w_i = $ such that the empirical distribution $\sum_i w_i \delta_{(s_i, m_i)}$ is a good approximation of the posterior.
+Importance Sampling produces samples $(s_i, m_i)$ that are independent and all distributed according to the prior distribution. It also outputs unnormalized weights $w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$ such that the empirical distribution $\frac 1 N \sum\limits_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$ is a good approximation of the posterior.
 
-### Understanding `is.jl`
+### Understanding `is.jl` step by step
 
-```julia
-chn = sample(mod, alg, n_samples)
-```
+We focus on the AbstractMCMC functions that are overriden in `is.jl` and executed inside `mcmcsample`: `step!`, which is called `n_samples` times, and `sample_end!`, which is executed once after those `n_samples` iterations.
 
-Focusing on the AbstractMCMC functions that are overriden in `is.jl`, we know that inside `mcmcsample`, there will be `n_samples` executions of `step!`, followed by one execution of `sample_end!`.
-
-For each step 
+* During the $i$-th iteration, `step!` does 3 things:
+  * `empty!(spl.state.vi)`: remove information about the previous sample from the sampler's `VarInfo`
+  * `model(rng, spl.state.vi, spl)`: call the model evaluation function
+    * calls to `assume` add the samples from the prior $s_i$ and $m_i$ to `spl.state.vi`
+    * calls to both `assume` or `observe` are followed by the line `acclogp!(vi, lp)`, where `lp` is an output of `assume` and `observe`
+    * `lp` is set to 0 after `assume`, and to the value of the density at the observation after `observe`
+    * when all the tilde statements have been covered, `spl.state.vi.logp[]` is the sum of the `lp`, ie the likelihood $\log p(x, y \mid s_i, m_i) = \log p(x \mid s_i, m_i) + \log p(y \mid s_i, m_i)$ of the observations given the latent variable samples $s_i$ and $m_i$.
+  * `return Transition(spl)`: build a transition from the sampler, and return that transition
+    * the transition's `vi` field is simply `spl.state.vi`
+    * the `lp` field contains the likelihood `spl.state.vi.logp[]`
+* When the, `n_samples` iterations are completed, `sample_end!` fills the `final_logevidence` field of `spl.state` 
+  * the **true log evidence** is $\log p(x, y)$
+  * its **importance sampling estimate** is the logarithm of the average of the likelihoods $p(x,y \mid s_i, m_i)$
