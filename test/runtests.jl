@@ -31,7 +31,7 @@ include("test_utils/AllUtils.jl")
                 include("inference/mh.jl")
                 include("inference/ess.jl")
                 include("inference/emcee.jl")
-                include("inference/AdvancedSMC.jl")
+                include("inference/smc.jl")
                 include("inference/Inference.jl")
                 include("contrib/inference/dynamichmc.jl")
             end
