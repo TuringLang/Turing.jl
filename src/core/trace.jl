@@ -74,5 +74,3 @@ function forkr(trace::Trace)
 end
 
 current_trace() = current_task().storage[:turing_trace]
-
-const Particle = Trace

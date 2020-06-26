@@ -12,6 +12,7 @@ include("test_utils/AllUtils.jl")
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
+        include("core/trace.jl")
     end
 
     test_adbackends = if VERSION >= v"1.2"
