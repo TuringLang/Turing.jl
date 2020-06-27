@@ -84,3 +84,56 @@ Quantiles
            y  0.5608  5.4179  9.8601  14.8477  19.2020
 
 """
+
+struct NS{space, P} <: InferenceAlgorithm 
+    proposals::P  # refer mh.jl
+end
+
+# incomplete.. refer mh.jl style.. on proposal..
+
+NS() = NS{()}()
+NS(space::Symbol) = NS{(space,)}()
+
+isgibbscomponent(::NS) = true # verify this
+
+mutable struct NSState{V<:VarInfo} <: AbstractSamplerState
+       vi::V
+end
+
+function Sampler(alg::NS, model::Model, s::Selector)
+       # sanity check
+        
+       # incomplete #
+       
+       
+       state = NSState(vi)
+       info = Dict{Symbol, Any}()
+       
+       return Sampler(alg, info, s, state)
+end
+
+# incomplete
+
+
+function AbstractMCMC.step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:NS},
+    ::Integer,
+    transition;
+    kwargs...
+)
+      
+       
+    # incomplete   
+       
+    return Transition(spl)
+end
+
+struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel
+    model::M
+    spl::S
+    
+       
+       
+     
