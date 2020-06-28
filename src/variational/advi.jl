@@ -122,8 +122,7 @@ function ADVI(samples_per_step::Int=1, max_iters::Int=1000)
     return ADVI{ADBackend()}(samples_per_step, max_iters)
 end
 
-alg_str(::ADVI) = "ADVI"
-
+DynamicPPL.alg_str(::ADVI) = "ADVI"
 
 function vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
     q = meanfield(model)

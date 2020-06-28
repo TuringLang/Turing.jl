@@ -135,14 +135,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = HMCDA(0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = HMCDA(200, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
@@ -155,12 +158,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "nuts constructor" begin
         alg = NUTS(200, 0.65)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = NUTS(0.65)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = NUTS(200, 0.65, :m)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
     end
     @turing_testset "check discard" begin
         alg = NUTS(100, 0.8)

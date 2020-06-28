@@ -30,8 +30,6 @@ function Sampler(
     return Sampler(alg, info, s, state)
 end
 
-alg_str(::Sampler{<:Emcee}) = "Emcee"
-
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
