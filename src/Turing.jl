@@ -63,6 +63,10 @@ end
     export MAP, MLE, optimize
 end
 
+@init @require GpABC="e850a1a4-d859-11e8-3d54-a195e6d045d3" @eval begin
+    include("contrib/inference/gpabc.jl")
+end
+
 ###########
 # Exports #
 ###########
