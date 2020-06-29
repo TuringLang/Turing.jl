@@ -1,5 +1,4 @@
 using LinearAlgebra
-using GpABC
 
 struct GetData <: InferenceAlgorithm end
 
@@ -52,7 +51,7 @@ function DynamicPPL.observe(spl::Sampler{<:AbstractABC}, dist::Distribution, val
     # 1. Sample from likelihood
     proposed = rand(dist)
 
-    # HACK: 2. Store proposal and observation (`value`) in sampler state so that we can later compute distance
+    # HACK: 2. Store proposal in sampler state
     push!(spl.state.proposed, proposed)
 
     return 0
@@ -134,146 +133,51 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # Sample from model
-    empty!(spl.state.proposed)
-    empty!(spl.state.vi)
-
-    alg = spl.alg
-    state = spl.state
-
-    # 1. Propose parameters
-    # HACK: dunno
-    densitymodel = AMH.DensityModel(identity)
-    # Propose
-    θ_new = AMH._propose(rng, alg.proposal, densitymodel)
-    # HACK: Update
-    ranges = DynamicPPL._getranges(spl.state.vi, DynamicPPL.Selector(), Val(DynamicPPL.getspace(spl)))
-    num_params = length(spl.state.vi[spl])
-    tmp = zeros(num_params)
-    # TODO: `@generated`
-    for k in keys(θ_new)
-        tmp[ranges[k]] .= θ_new[k]
-    end
-    spl.state.vi[spl] = tmp
-
-    # 2. Run model to get proposals
-    model(rng, spl.state.vi, spl)
-
-    # 3. Accept/reject
-    if isnothing(transition)
-        # Early return if this is the first sample
-        return Transition(spl)
-    else
-        # If distance is within the required threshold, we update
-        # @info "stuff" length(spl.state.proposed) length(spl.state.observations) alg.distance(alg.stat(state.proposed), alg.stat(state.observations)) mean(state.proposed) mean(state.observations) transition.θ.m[1]
-        if alg.distance(alg.stat(state.proposed), alg.stat(state.observations)) > alg.epsilon
-            # Return old sample
-            return transition
-        else
-            return Transition(spl)
-        end
-    end
-end
-
-
-#############
-### GPABC ###
-#############
-struct GPABC{F1, F2, T} <: AbstractABC
-    summary_statistic::F1
-    distance_function::F2
-    threshold::T
-    n_particles::Int64
-    max_iter::Int64
-end
-
-struct GPABCState{V, A1, A2} <: AbstractSamplerState
-    vi::V
-    proposed::A1
-    reference_summary_statistic::A2
-end
-
-function GPABCState(alg::Turing.Inference.GPABC, model::Model)
-    vi = Turing.VarInfo(model)
-
-    observations = get_data(model)
-    proposed = similar(observations)
-    empty!(proposed)
-
-    reference_summary_statistic = alg.summary_statistic(reshape(observations, (:, 1)))
-
-    return GPABCState(vi, proposed, reference_summary_statistic)
-end
-
-Sampler(alg::GPABC, model::Model, s::DynamicPPL.Selector) = Sampler(alg, Dict{Symbol, Any}(), s, GPABCState(alg, model))
-
-function AbstractMCMC.step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:GPABC},
-    ::Integer,
-    transition;
-    kwargs...
-)
-    empty!(spl.state.proposed)
-    empty!(spl.state.vi)
-
-    state = spl.state
-    alg = spl.alg
-
-    θ = state.vi[spl]
-    logweight = getlogp(state.vi)
-
-    function simulator_function(θ)
+    # TODO: add some limit
+    num_iters = 0
+    while true
         # Sample from model
         empty!(spl.state.proposed)
         empty!(spl.state.vi)
 
-        spl.state.vi[spl] .= θ
-        model(spl.state.vi, spl)
+        alg = spl.alg
+        state = spl.state
 
-        # FIXME: current impl isn't going to work in general
-        if (spl.state.proposed isa AbstractVector{<:Real})
-            return reshape(deepcopy(spl.state.proposed), (:, 1))
-        else
-            return deepcopy(spl.state.proposed)
+        # 1. Propose parameters
+        # HACK: dunno
+        densitymodel = AMH.DensityModel(identity)
+        # Propose
+        θ_new = AMH._propose(rng, alg.proposal, densitymodel)
+        # HACK: Update
+        ranges = DynamicPPL._getranges(spl.state.vi, DynamicPPL.Selector(), Val(DynamicPPL.getspace(spl)))
+        num_params = length(spl.state.vi[spl])
+        tmp = zeros(num_params)
+        # TODO: `@generated`
+        for k in keys(θ_new)
+            tmp[ranges[k]] .= θ_new[k]
         end
-    end
+        spl.state.vi[spl] = tmp
 
-    distance = GpABC.simulate_distance(
-        reshape(θ, (1, :)),
-        simulator_function,
-        alg.summary_statistic,
-        state.reference_summary_statistic,
-        alg.distance_function
-    )
+        # 2. Run model to get proposals
+        model(rng, spl.state.vi, spl)
 
-    if isnothing(transition)
-        return Transition(spl)
-    else
-        if first(distance) > alg.threshold
-            return transition
-        else
+        # 3. Accept/reject
+        if isnothing(transition)
+            # Early return if this is the first sample
             return Transition(spl)
+        else
+            # If distance is within the required threshold, we update
+            if alg.distance(alg.stat(state.proposed), alg.stat(state.observations)) ≤ alg.epsilon
+                return Transition(spl)
+            # else
+            #     # Return old sample
+            #     return transition
+            end
+        end
+
+        num_iters += 1
+        if num_iters == 10
+            @warn "[ABC] ≥10 samples rejected before acceptance; maybe increase acceptance threshold?"
         end
     end
-end
-
-function GpABC.simulate_distance(
-    parameters::AbstractArray{Float64, 2},
-    simulator_function,
-    summary_statistic,
-    reference_summary_statistic,
-    distance_metric
-)
-    n_design_points = size(parameters, 1)
-    y = zeros(n_design_points)
-    for i in 1:n_design_points
-        model_output = simulator_function(parameters[i,:])
-        y[i] = distance_metric(
-            summary_statistic(model_output),
-            reference_summary_statistic
-        )
-    end
-    return y
 end
