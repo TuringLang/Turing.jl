@@ -191,7 +191,7 @@ function optimize!(
     θ::AbstractVector{<:Real};
     optimizer = TruncatedADAGrad(),
     progress = Turing.PROGRESS[],
-    progressname = "[$(alg_str(alg))] Optimizing..."
+    progressname = "[$(DynamicPPL.alg_str(alg))] Optimizing..."
 )
     # TODO: should we always assume `samples_per_step` and `max_iters` for all algos?
     samples_per_step = alg.samples_per_step
@@ -201,7 +201,7 @@ function optimize!(
     # not using the correct accumulator
     if optimizer isa TruncatedADAGrad && θ ∉ keys(optimizer.acc)
         # this message should only occurr once in the optimization process
-        @info "[$(alg_str(alg))] Should only be seen once: optimizer created for θ" objectid(θ)
+        @info "[$(DynamicPPL.alg_str(alg))] Should only be seen once: optimizer created for θ" objectid(θ)
     end
 
     diff_result = DiffResults.GradientResult(θ)

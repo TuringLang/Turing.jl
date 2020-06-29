@@ -76,7 +76,7 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-alg_str(::Sampler{<:Hamiltonian}) = "HMC"
+DynamicPPL.alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)

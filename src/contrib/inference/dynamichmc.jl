@@ -127,7 +127,7 @@ end
     kwargs...
 )
     if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+        @warn "[HMC] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
     if resume_from === nothing
         return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
@@ -149,7 +149,7 @@ function AbstractMCMC.sample(
     kwargs...
 )
     if progress
-        @warn "[$(alg_str(alg))] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
+        @warn "[HMC] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
                                chain_type=chain_type, progress=false, kwargs...)
