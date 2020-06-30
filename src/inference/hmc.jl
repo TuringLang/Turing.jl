@@ -513,14 +513,10 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    _debug("assuming...")
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    _debug("dist = $dist")
-    _debug("vn = $vn")
-    _debug("r = $r, typeof(r)=$(typeof(r))")
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
