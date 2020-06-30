@@ -94,7 +94,7 @@ end
 NS() = NS{()}()
 NS(space::Symbol) = NS{(space,)}()
 
-isgibbscomponent(::NS) = true # verify this
+isgibbscomponent(::NS) = true # this determines that NS alg is allowed as a Gibbs component
 
 mutable struct NSState{V<:VarInfo} <: AbstractSamplerState
        vi::V
