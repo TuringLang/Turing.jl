@@ -217,7 +217,7 @@ function optimize!(
             Δ = apply!(optimizer, θ, Δ)
             @. θ = θ - Δ
 
-            Turing.DEBUG && @debug "Step $i" Δ DiffResults.value(diff_result)
+            @debug "Step $i" Δ DiffResults.value(diff_result)
 
             # Update the progress bar.
             progress && ProgressLogging.@logprogress i/max_iters
