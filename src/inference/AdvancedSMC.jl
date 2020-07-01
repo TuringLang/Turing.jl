@@ -408,7 +408,7 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     end
 
     # And now draw the stocastic (Multinomial) part:
-    return append!(indx1, rand(Distributions.sampler(Categorical(Ws)), M_rdn))
+    return append!(indx1, rand(Categorical(Ws), M_rdn))
 end
 
 """
