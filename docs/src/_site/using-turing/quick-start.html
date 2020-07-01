@@ -1,0 +1,46 @@
+<h1 id="probablistic-programming-in-thirty-seconds">Probablistic Programming in Thirty Seconds</h1>
+
+<p>If you are already well-versed in probabalistic programming and just want to take a quick look at how Turing’s syntax works or otherwise just want a model to start with, we have provided a Bayesian coin-flipping model to play with.</p>
+
+<p>This example can be run on however you have Julia installed (see <a href="/docs/using-turing/get-started">Getting Started</a>), but you will need to install the packages <code class="language-plaintext highlighter-rouge">Turing</code>, <code class="language-plaintext highlighter-rouge">Distributions</code>, <code class="language-plaintext highlighter-rouge">MCMCChains</code>, and <code class="language-plaintext highlighter-rouge">StatsPlots</code> if you have not done so already.</p>
+
+<p>This is an excerpt from a more formal example introducing probabalistic programming which can be found in Jupyter notebook form <a href="https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb">here</a> or as part of the documentation website <a href="/tutorials">here</a>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import libraries.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">StatsPlots</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Set the true probability of heads in a coin.</span>
+<span class="n">p_true</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+<span class="c"># Iterate from having seen 0 observations to 100 observations.</span>
+<span class="n">Ns</span> <span class="o">=</span> <span class="mi">0</span><span class="o">:</span><span class="mi">100</span><span class="x">;</span>
+
+<span class="c"># Draw data from a Bernoulli distribution, i.e. draw heads or tails.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">12</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">rand</span><span class="x">(</span><span class="n">Bernoulli</span><span class="x">(</span><span class="n">p_true</span><span class="x">),</span> <span class="n">last</span><span class="x">(</span><span class="n">Ns</span><span class="x">))</span>
+
+<span class="c"># Declare our Turing model.</span>
+<span class="nd">@model</span> <span class="n">coinflip</span><span class="x">(</span><span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Our prior belief about the probability of heads in a coin.</span>
+    <span class="n">p</span> <span class="o">~</span><span class="err"> </span><span class="n">Beta</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="mi">1</span><span class="x">)</span>
+
+    <span class="c"># The number of observations.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">N</span>
+        <span class="c"># Heads or tails of a coin are drawn from a Bernoulli distribution.</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">n</span><span class="x">]</span> <span class="o">~</span> <span class="n">Bernoulli</span><span class="x">(</span><span class="n">p</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+
+<span class="c"># Settings of the Hamiltonian Monte Carlo (HMC) sampler.</span>
+<span class="n">iterations</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">ϵ</span> <span class="o">=</span> <span class="mf">0.05</span>
+<span class="n">τ</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="c"># Start sampling.</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">coinflip</span><span class="x">(</span><span class="n">data</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="n">ϵ</span><span class="x">,</span> <span class="n">τ</span><span class="x">),</span> <span class="n">iterations</span><span class="x">);</span>
+
+<span class="c"># Plot a summary of the sampling process for the parameter p, i.e. the probability of heads in a coin.</span>
+<span class="n">histogram</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">p</span><span class="x">])</span>
+</code></pre></div></div>
+
