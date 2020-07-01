@@ -387,7 +387,7 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     M = length(w)
 
     # "Repetition counts" (plus the random part, later on):
-    Ns = floor.(length(w) .* w)
+    Ns = floor.(M .* w)
 
     # The "remainder" or "residual" count:
     R = Int(sum(Ns))
@@ -408,7 +408,7 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     end
 
     # And now draw the stocastic (Multinomial) part:
-    return append!(indx1, rand(Distributions.sampler(Categorical(w)), M_rdn))
+    return append!(indx1, rand(Distributions.sampler(Categorical(Ws)), M_rdn))
 end
 
 """
