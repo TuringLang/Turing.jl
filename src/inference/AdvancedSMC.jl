@@ -387,7 +387,17 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     M = length(w)
 
     # "Repetition counts" (plus the random part, later on):
-    Ns = floor.(M .* w)
+    M_w = M .* w
+    Ns = floor(Int, M_w)
+    
+    # The "remainder" or "residual" count
+    R = sum(Ns)
+    
+    # The number of particles which will be drawn stochastically:
+    M_rdn = num_particles - R
+
+    # The modified weights:
+    Ws = @. (M_w - Ns) / M_rdn
 
     # The "remainder" or "residual" count:
     R = Int(sum(Ns))
