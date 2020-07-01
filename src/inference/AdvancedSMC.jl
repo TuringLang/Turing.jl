@@ -388,37 +388,27 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
 
     # "Repetition counts" (plus the random part, later on):
     M_w = M .* w
-    Ns = floor(Int, M_w)
+    residuals = similar(w)
+    indices = similar(Int, w)
+    # deterministic assignment
+    i = 1
+    m = length(w)
     
-    # The "remainder" or "residual" count
-    R = sum(Ns)
-    
-    # The number of particles which will be drawn stochastically:
-    M_rdn = num_particles - R
-
-    # The modified weights:
-    Ws = @. (M_w - Ns) / M_rdn
-
-    # The "remainder" or "residual" count:
-    R = Int(sum(Ns))
-
-    # The number of particles which will be drawn stocastically:
-    M_rdn = num_particles - R
-
-    # The modified weights:
-    Ws = (M .* w - floor.(M .* w)) / M_rdn
-
-    # Draw the deterministic part:
-    indx1, i = Array{Int}(undef, R), 1
-    for j in 1:M
-        for k in 1:Ns[j]
-            indx1[i] = j
+    @inbounds for j in 1:m
+        x = m * w[i]
+        floor_x = floor(Int, x)
+        for k in 1:floor_x
+            indices[i] = j
             i += 1
         end
+        residuals[j] = x - floor_x
     end
-
-    # And now draw the stocastic (Multinomial) part:
-    return append!(indx1, rand(Categorical(Ws), M_rdn))
+    
+    # sampling from residuals
+    residuals ./= sum(residuals)
+    rand!(Categorical(residuals), view(indices, i:m))
+    
+    return indices
 end
 
 """
