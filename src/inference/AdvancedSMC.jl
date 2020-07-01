@@ -383,16 +383,14 @@ function resample_multinomial(w::AbstractVector{<:Real}, num_particles::Integer)
 end
 
 function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
-    m = length(w)
-    @assert m==num_particles
     # "Repetition counts" (plus the random part, later on):
     residuals = similar(w)
-    indices = similar(w,Int)
+    indices = Vector{Int}(undef, num_particles)
     # deterministic assignment
     i = 1
     
-    @inbounds for j in 1:m
-        x = m * w[i]
+    @inbounds for j in 1:length(w)
+        x = num_particles * w[i]
         floor_x = floor(Int, x)
         for k in 1:floor_x
             indices[i] = j
@@ -402,8 +400,10 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
     end
     
     # sampling from residuals
-    residuals ./= sum(residuals)
-    rand!(Categorical(residuals), view(indices, i:m))
+    if i <= num_particles
+        residuals ./= sum(residuals)
+        rand!(Categorical(residuals), view(indices, i:num_particles))
+    end
     
     return indices
 end
