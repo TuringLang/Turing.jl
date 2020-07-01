@@ -8,7 +8,9 @@
 
 Prerequisite: [Interface guide](https://turing.ml/dev/docs/for-developers/interface).
 
-Consider the following code:
+## Introduction
+
+Consider the following Turing, code block:
 
 ```julia
 @model function gdemo(x, y)
@@ -25,9 +27,22 @@ n_samples = 1000
 chn = sample(mod, alg, n_samples)
 ```
 
-The function `sample` is part of the AbstractMCMC interface. As explained in the interface guide, building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`](). 
+The function `sample` is part of the AbstractMCMC interface. As explained in the [interface guide](https://turing.ml/dev/docs/for-developers/interface), building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`](). 
 
-Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing. I don't go into all the details: for instance, I don't address selectors or parallelism.
+Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing, using Importance Sampling as an example. I don't go into all the details: for instance, I don't address selectors or parallelism.
+
+First, we explain how Importance Sampling works in the abstract. Consider the model defined in the first code block. Mathematically, it can be written:
+$$
+\begin{align}
+s &\sim \text{InverseGamma}(2, 3) \\
+m &\sim \text{Normal}(0, \sqrt{s}) \\
+x &\sim \text{Normal}(m, \sqrt{s}) \\
+y &\sim \text{Normal}(m, \sqrt{s})
+\end{align}
+$$
+The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m)$. Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y)$.
+
+Importance Sampling produces independent samples $(s_i, m_i)$ from the prior distribution. It also outputs unnormalized weights $w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$ such that the empirical distribution $\frac 1 N \sum\limits_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$ is a good approximation of the posterior.
 
 ## 1. Define a `Sampler`
 
@@ -102,6 +117,23 @@ end
 
 ### States
 
+The `vi` field contains all the important information about sampling: first and foremost, the values of all the samples, but also the distributions from which they are sampled, the names of model parameters, and other metadata. As we will see below, many important steps during sampling correspond to queries or updates to `spl.state.vi`.
+
+By default, you can use `SamplerState`, a concrete type defined in `inference/Inference.jl`, which extends `AbstractSamplerState` and has no field except for `vi`:
+
+```julia
+mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
+    vi :: VIType
+end
+```
+
+When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average $\frac 1 N \sum\limits_{j=1}^N w_i = \frac 1 N \sum\limits_{j=1}^N p(x,y \mid s_i, m_i)$ of the sample weights is a particularly important quantity: 
+
+* it is used to **normalize** the **empirical approximation** of the posterior distribution (TODO: link to formula)
+* its logarithm is the importance sampling **estimate** of the **log evidence** $\log p(x, y)$
+
+To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing $\log \left( \frac 1 N \sum\limits_{j=1}^N w_i \right)$.
+
 ```julia
 mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V
@@ -112,11 +144,7 @@ end
 ISState(model::Model) = ISState(VarInfo(model), 0.0)
 ```
 
-VarInfo contains all the important information about sampling: names of model parameters, the distributions from which they are sampled, the value of the samples, and other metadata.
-
-As we will see below, many important steps during sampling correspond to queries or updates to `spl.state.vi`.
-
-By default, you can use `SamplerState`, a concrete type extending `AbstractSamplerState` which has no field apart from `vi`.
+The following diagram summarizes the hierarchy presented above.
 
 ![Untitled Diagram(1)](/Users/js/Downloads/Untitled Diagram(1).png)
 
@@ -145,8 +173,6 @@ A crude summary, which ignores things like parallelism, is the following. `sampl
 * `bundle_samples` to convert a vector of transitions into a more palatable type, for instance a `Chain`.
 
 you can of course implement all of these functions, but `AbstractMCMC` as well as Turing also provide default implementations for simple cases.
-
-
 
 ## 3. Overload `assume` and `observe`
 
@@ -188,24 +214,7 @@ end
 
 It simply returns the density (probability, in the discrete case) of the observed value under the distribution `dist`.
 
-## 4. Example: Importance Sampling
-
-### Quick description of Importance Sampling
-
-Consider the model defined in the first code block. Mathematically, it can be written:
-$$
-\begin{align}
-s &\sim \text{InverseGamma}(2, 3) \\
-m &\sim \text{Normal}(0, \sqrt{s}) \\
-x &\sim \text{Normal}(m, \sqrt{s}) \\
-y &\sim \text{Normal}(m, \sqrt{s})
-\end{align}
-$$
-The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m)$. Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y)$.
-
-Importance Sampling produces samples $(s_i, m_i)$ that are independent and all distributed according to the prior distribution. It also outputs unnormalized weights $w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$ such that the empirical distribution $\frac 1 N \sum\limits_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$ is a good approximation of the posterior.
-
-### Understanding `is.jl` step by step
+## 4. Summary: Importance Sampling step by step
 
 We focus on the AbstractMCMC functions that are overriden in `is.jl` and executed inside `mcmcsample`: `step!`, which is called `n_samples` times, and `sample_end!`, which is executed once after those `n_samples` iterations.
 
@@ -220,5 +229,4 @@ We focus on the AbstractMCMC functions that are overriden in `is.jl` and execute
     * the transition's `vi` field is simply `spl.state.vi`
     * the `lp` field contains the likelihood `spl.state.vi.logp[]`
 * When the, `n_samples` iterations are completed, `sample_end!` fills the `final_logevidence` field of `spl.state` 
-  * the **true log evidence** is $\log p(x, y)$
-  * its **importance sampling estimate** is the logarithm of the average of the likelihoods $p(x,y \mid s_i, m_i)$
+  * it simply takes the logarithm of the average of the sample weights, using the log weights for numerical stability
