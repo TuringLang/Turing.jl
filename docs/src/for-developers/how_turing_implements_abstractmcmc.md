@@ -161,7 +161,9 @@ A lot of the things here are method-specific. However Turing also has some funct
 
 `Inference.jl` defines a struct `Transition`, which corresponds to this default situation, as well as a constructor that builds instances of `Transition` from instances of `Sampler`, by finding $\theta$ and `lp` in `spl.state.vi`.
 
-Construct transition from a `spl`: just dump the contents of vi-made-nametuple into a transition 
+Construct transition from a `spl`: just dump the contents of vi-made-nametuple into a transition.
+
+TODO: this is what Importance sampling uses
 
 ### How `sample` works
 
@@ -174,7 +176,11 @@ A crude summary, which ignores things like parallelism, is the following. `sampl
 
 you can of course implement all of these functions, but `AbstractMCMC` as well as Turing also provide default implementations for simple cases.
 
+TODO: importance sampling uses the default implementations of `sample_init!` and `bundle_samples`.
+
 ## 3. Overload `assume` and `observe`
+
+TODO: mention at some point that related info [here](https://turing.ml/dev/docs/for-developers/compiler).
 
 The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of course use information about the model in order to generate samples! In particular, these functions may need **samples from distributions** defined in the model, or to **evaluate the density of these distributions** at some values of the corresponding parameters or observations.
 
