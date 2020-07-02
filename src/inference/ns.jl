@@ -86,15 +86,15 @@ Quantiles
 """
 
 struct NS{space, P} <: InferenceAlgorithm 
-    proposals::P  # refer mh.jl
+    proposals::P  
 end
 
-# incomplete.. refer mh.jl style.. on proposal..
+proposal(p::NestedSamplers.Proposals) = p
 
 NS() = NS{()}()
 NS(space::Symbol) = NS{(space,)}()
 
-isgibbscomponent(::NS) = true # this determines that NS alg is allowed as a Gibbs component
+isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
 
 mutable struct NSState{V<:VarInfo} <: AbstractSamplerState
        vi::V
@@ -102,38 +102,29 @@ end
 
 function Sampler(alg::NS, model::Model, s::Selector)
        # sanity check
-        
-       # incomplete #
-       
-       
+       vi = VarInfo(model)
+       info = Dict{Symbol, Any}()
        state = NSState(vi)
        info = Dict{Symbol, Any}()
-       
        return Sampler(alg, info, s, state)
 end
-
-# incomplete
-
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{<:NS},
+    spl::Sampler{NS{space, P}},
     ::Integer,
     transition;
     kwargs...
-)
-      
-       
-    # incomplete   
-       
+) where {space, P}
+    if spl.selector.rerun # Recompute joint in logp
+        model(spl.state.vi)
+    end
+    
     return Transition(spl)
 end
 
-struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel
-    model::M
-    spl::S
-    
-       
+# tilde operators
+
        
      
