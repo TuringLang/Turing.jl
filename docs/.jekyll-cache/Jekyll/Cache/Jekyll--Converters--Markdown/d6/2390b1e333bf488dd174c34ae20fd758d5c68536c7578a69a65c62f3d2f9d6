@@ -1,0 +1,46 @@
+I":
+<h1 id="news">News</h1>
+
+<p>Subscribe with <a href="/dev/feed.xml">RSS</a> to keep up with the latest news about Turing.
+
+
+   
+      <div class="post-preview">
+      <h2><a href="/dev/posts/2020-05-04-Imperial-Report13-analysis">Replication study: Estimating number of infections and impact of NPIs on COVID-19 in European countries (Imperial Report 13)</a></h2>
+      <span class="post-date">May 14, 2020</span><br />
+      
+      <p>The Turing.jl team is currently exploring possibilities in an attempt to help with the ongoing SARS-CoV-2 crisis. As preparation for this and to get our feet wet, we decided to perform a replication study of the <a href="https://www.imperial.ac.uk/mrc-global-infectious-disease-analysis/covid-19/report-13-europe-npi-impact/">Imperial Report 13</a>, which attempts to estimate the real number of infections and impact of non-pharmaceutical interventions on COVID-19. In the report, the inference was performed using the probabilistic programming language (PPL) Stan. We have explicated their model and inference in Turing.jl, a Julia-based PPL. We believe the results and analysis of our study are relevant for the public, and for other researchers who are actively working on epidemiological models. To that end, our implementation and results are available <a href="https://github.com/cambridge-mlg/Covid19">here</a>.</p>
+
+      <a href="/dev/posts/2020-05-04-Imperial-Report13-analysis">read more</a>
+      </div>
+      <hr />
+   
+
+   
+      <div class="post-preview">
+      <h2><a href="/dev/posts/2020-02-12-jsoc">Google Summer of Code/Julia Summer of Code</a></h2>
+      <span class="post-date">February 12, 2020</span><br />
+      
+      <p>Last year, Turing participated in the Google Summer of Code (GSoC) through the Julia language organization. It was a fun time, and the project was better for it. Turing plans to participate in the upcoming GSoC, and we wanted to outline some potential projects and expectations we have for applicants.</p>
+
+      <a href="/dev/posts/2020-02-12-jsoc">read more</a>
+      </div>
+      <hr />
+   
+
+   
+      <div class="post-preview">
+      <h2><a href="/dev/posts/2019-12-14-initial-post">Turing's Blog</a></h2>
+      <span class="post-date">December 14, 2019</span><br />
+      
+      <p>All good open source projects should have a blog, and Turing is one such project. Later on, members of the Turing team may be populating this feed with posts on topics like</p>
+
+      <a href="/dev/posts/2019-12-14-initial-post">read more</a>
+      </div>
+      <hr />
+   
+
+
+Want to see more? See the <a href="/dev/archive/">News Archive</a>.
+</p>
+:ET

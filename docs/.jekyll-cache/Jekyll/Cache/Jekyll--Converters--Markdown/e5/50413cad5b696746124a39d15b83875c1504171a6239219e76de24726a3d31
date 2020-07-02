@@ -1,0 +1,417 @@
+I"q�<h1 id="bayesian-poisson-regression">Bayesian Poisson Regression</h1>
+<p>This notebook is ported from the <a href="https://docs.pymc.io/notebooks/GLM-poisson-regression.html">example notebook</a> of PyMC3 on Poisson Regression.</p>
+
+<p><a href="https://en.wikipedia.org/wiki/Poisson_regression">Poisson Regression</a> is a technique commonly used to model count data. Some of the applications include predicting the number of people defaulting on their loans or the number of cars running on a highway on a given day. This example describes a method to implement the Bayesian version of this technique using Turing.</p>
+
+<p>We will generate the dataset that we will be working on which describes the relationship between number of times a person sneezes during the day with his alcohol consumption and medicinal intake.</p>
+
+<p>We start by importing the required libraries.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#Import Turing, Distributions and DataFrames</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Distributions</span><span class="x">,</span> <span class="n">DataFrames</span><span class="x">,</span> <span class="n">Distributed</span>
+
+<span class="c"># Import MCMCChain, Plots, and StatsPlots for visualizations and diagnostics.</span>
+<span class="k">using</span> <span class="n">MCMCChains</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">StatsPlots</span>
+
+<span class="c"># Set a seed for reproducibility.</span>
+<span class="k">using</span> <span class="n">Random</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">12</span><span class="x">);</span>
+
+<span class="c"># Turn off progress monitor.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">turnprogress</span><span class="x">(</span><span class="nb">false</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: [Turing]: progress logging is disabled globally
+└ @ Turing /home/cameron/.julia/packages/Turing/cReBm/src/Turing.jl:22
+
+
+
+
+
+false
+</code></pre></div></div>
+
+<h1 id="generating-data">Generating data</h1>
+<p>We start off by creating a toy dataset. We take the case of a person who takes medicine to prevent excessive sneezing. Alcohol consumption increases the rate of sneezing for that person. Thus, the two factors affecting the number of sneezes in a given day are alcohol consumption and whether the person has taken his medicine. Both these variable are taken as boolean valued while the number of sneezes will be a count valued variable. We also take into consideration that the interaction between the two boolean variables will affect the number of sneezes</p>
+
+<p>5 random rows are printed from the generated data to get a gist of the data generated.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">theta_noalcohol_meds</span> <span class="o">=</span> <span class="mi">1</span>    <span class="c"># no alcohol, took medicine</span>
+<span class="n">theta_alcohol_meds</span> <span class="o">=</span> <span class="mi">3</span>      <span class="c"># alcohol, took medicine</span>
+<span class="n">theta_noalcohol_nomeds</span> <span class="o">=</span> <span class="mi">6</span>  <span class="c"># no alcohol, no medicine</span>
+<span class="n">theta_alcohol_nomeds</span> <span class="o">=</span> <span class="mi">36</span>   <span class="c"># alcohol, no medicine</span>
+
+<span class="c"># no of samples for each of the above cases</span>
+<span class="n">q</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="c">#Generate data from different Poisson distributions</span>
+<span class="n">noalcohol_meds</span> <span class="o">=</span> <span class="n">Poisson</span><span class="x">(</span><span class="n">theta_noalcohol_meds</span><span class="x">)</span>
+<span class="n">alcohol_meds</span> <span class="o">=</span> <span class="n">Poisson</span><span class="x">(</span><span class="n">theta_alcohol_meds</span><span class="x">)</span>
+<span class="n">noalcohol_nomeds</span> <span class="o">=</span> <span class="n">Poisson</span><span class="x">(</span><span class="n">theta_noalcohol_nomeds</span><span class="x">)</span>
+<span class="n">alcohol_nomeds</span> <span class="o">=</span> <span class="n">Poisson</span><span class="x">(</span><span class="n">theta_alcohol_nomeds</span><span class="x">)</span>
+
+<span class="n">nsneeze_data</span> <span class="o">=</span> <span class="n">vcat</span><span class="x">(</span><span class="n">rand</span><span class="x">(</span><span class="n">noalcohol_meds</span><span class="x">,</span> <span class="n">q</span><span class="x">),</span> <span class="n">rand</span><span class="x">(</span><span class="n">alcohol_meds</span><span class="x">,</span> <span class="n">q</span><span class="x">),</span> <span class="n">rand</span><span class="x">(</span><span class="n">noalcohol_nomeds</span><span class="x">,</span> <span class="n">q</span><span class="x">),</span> <span class="n">rand</span><span class="x">(</span><span class="n">alcohol_nomeds</span><span class="x">,</span> <span class="n">q</span><span class="x">)</span> <span class="x">)</span>
+<span class="n">alcohol_data</span> <span class="o">=</span> <span class="n">vcat</span><span class="x">(</span><span class="n">zeros</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">ones</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">zeros</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">ones</span><span class="x">(</span><span class="n">q</span><span class="x">)</span> <span class="x">)</span>
+<span class="n">meds_data</span> <span class="o">=</span> <span class="n">vcat</span><span class="x">(</span><span class="n">zeros</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">zeros</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">ones</span><span class="x">(</span><span class="n">q</span><span class="x">),</span> <span class="n">ones</span><span class="x">(</span><span class="n">q</span><span class="x">)</span> <span class="x">)</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="x">(</span><span class="n">nsneeze</span> <span class="o">=</span> <span class="n">nsneeze_data</span><span class="x">,</span> <span class="n">alcohol_taken</span> <span class="o">=</span> <span class="n">alcohol_data</span><span class="x">,</span> <span class="n">nomeds_taken</span> <span class="o">=</span> <span class="n">meds_data</span><span class="x">,</span> <span class="n">product_alcohol_meds</span> <span class="o">=</span> <span class="n">meds_data</span><span class="o">.*</span><span class="n">alcohol_data</span><span class="x">)</span>
+<span class="n">df</span><span class="x">[</span><span class="n">sample</span><span class="x">(</span><span class="mi">1</span><span class="o">:</span><span class="n">nrow</span><span class="x">(</span><span class="n">df</span><span class="x">),</span> <span class="mi">5</span><span class="x">,</span> <span class="n">replace</span> <span class="o">=</span> <span class="nb">false</span><span class="x">),</span> <span class="o">:</span><span class="x">]</span>
+</code></pre></div></div>
+
+<table class="data-frame"><thead><tr><th></th><th>nsneeze</th><th>alcohol_taken</th><th>nomeds_taken</th><th>product_alcohol_meds</th></tr><tr><th></th><th>Int64</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>5 rows × 4 columns</p><tr><th>1</th><td>5</td><td>0.0</td><td>0.0</td><td>0.0</td></tr><tr><th>2</th><td>5</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>3</th><td>8</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>4</th><td>1</td><td>0.0</td><td>0.0</td><td>0.0</td></tr><tr><th>5</th><td>38</td><td>1.0</td><td>1.0</td><td>1.0</td></tr></tbody></table>
+
+<h1 id="visualisation-of-the-dataset">Visualisation of the dataset</h1>
+<p>We plot the distribution of the number of sneezes for the 4 different cases taken above. As expected, the person sneezes the most when he has taken alcohol and not taken his medicine. He sneezes the least when he doesn’t consume alcohol and takes his medicine.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#Data Plotting</span>
+
+<span class="n">p1</span> <span class="o">=</span> <span class="n">Plots</span><span class="o">.</span><span class="n">histogram</span><span class="x">(</span><span class="n">df</span><span class="x">[(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">alcohol_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">0</span><span class="x">)</span> <span class="o">.&amp;</span> <span class="x">(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">nomeds_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">0</span><span class="x">),</span> <span class="mi">1</span><span class="x">],</span> <span class="n">title</span> <span class="o">=</span> <span class="s">"no_alcohol+meds"</span><span class="x">)</span>  
+<span class="n">p2</span> <span class="o">=</span> <span class="n">Plots</span><span class="o">.</span><span class="n">histogram</span><span class="x">((</span><span class="n">df</span><span class="x">[(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">alcohol_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">1</span><span class="x">)</span> <span class="o">.&amp;</span> <span class="x">(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">nomeds_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">0</span><span class="x">),</span> <span class="mi">1</span><span class="x">]),</span> <span class="n">title</span> <span class="o">=</span> <span class="s">"alcohol+meds"</span><span class="x">)</span>  
+<span class="n">p3</span> <span class="o">=</span> <span class="n">Plots</span><span class="o">.</span><span class="n">histogram</span><span class="x">((</span><span class="n">df</span><span class="x">[(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">alcohol_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">0</span><span class="x">)</span> <span class="o">.&amp;</span> <span class="x">(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">nomeds_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">1</span><span class="x">),</span> <span class="mi">1</span><span class="x">]),</span> <span class="n">title</span> <span class="o">=</span> <span class="s">"no_alcohol+no_meds"</span><span class="x">)</span>  
+<span class="n">p4</span> <span class="o">=</span> <span class="n">Plots</span><span class="o">.</span><span class="n">histogram</span><span class="x">((</span><span class="n">df</span><span class="x">[(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">alcohol_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">1</span><span class="x">)</span> <span class="o">.&amp;</span> <span class="x">(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">nomeds_taken</span><span class="x">]</span> <span class="o">.==</span> <span class="mi">1</span><span class="x">),</span> <span class="mi">1</span><span class="x">]),</span> <span class="n">title</span> <span class="o">=</span> <span class="s">"alcohol+no_meds"</span><span class="x">)</span>  
+<span class="n">plot</span><span class="x">(</span><span class="n">p1</span><span class="x">,</span> <span class="n">p2</span><span class="x">,</span> <span class="n">p3</span><span class="x">,</span> <span class="n">p4</span><span class="x">,</span> <span class="n">layout</span> <span class="o">=</span> <span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">2</span><span class="x">),</span> <span class="n">legend</span> <span class="o">=</span> <span class="nb">false</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../7_PoissonRegression_files/7_PoissonRegression_5_0.svg" alt="svg" /></p>
+
+<p>We must convert our <code class="language-plaintext highlighter-rouge">DataFrame</code> data into the <code class="language-plaintext highlighter-rouge">Matrix</code> form as the manipulations that we are about are designed to work with <code class="language-plaintext highlighter-rouge">Matrix</code> data. We also separate the features from the labels which will be later used by the Turing sampler to generate samples from the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert the DataFrame object to matrices.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="kt">Matrix</span><span class="x">(</span><span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,[</span><span class="o">:</span><span class="n">alcohol_taken</span><span class="x">,</span> <span class="o">:</span><span class="n">nomeds_taken</span><span class="x">,</span> <span class="o">:</span><span class="n">product_alcohol_meds</span><span class="x">]])</span>
+<span class="n">data_labels</span> <span class="o">=</span> <span class="n">df</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="n">nsneeze</span><span class="x">]</span>
+<span class="n">data</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>400×3 Array{Float64,2}:
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ ⋮         
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+ 1.0  1.0  1.0
+</code></pre></div></div>
+
+<p>We must recenter our data about 0 to help the Turing sampler in initialising the parameter estimates. So, normalising the data in each column by subtracting the mean and dividing by the standard deviation:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># # Rescale our matrices.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="x">(</span><span class="n">data</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="n">dims</span><span class="o">=</span><span class="mi">1</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>400×3 Array{Float64,2}:
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+ -0.998749  -0.998749  -0.576628
+  ⋮                    
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+  0.998749   0.998749   1.72988
+</code></pre></div></div>
+
+<h1 id="declaring-the-model-poisson-regression">Declaring the Model: Poisson Regression</h1>
+<p>Our model, <code class="language-plaintext highlighter-rouge">poisson_regression</code> takes four arguments:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">x</code> is our set of independent variables;</li>
+  <li><code class="language-plaintext highlighter-rouge">y</code> is the element we want to predict;</li>
+  <li><code class="language-plaintext highlighter-rouge">n</code> is the number of observations we have; and</li>
+  <li><code class="language-plaintext highlighter-rouge">σ²</code> is the standard deviation we want to assume for our priors.</li>
+</ul>
+
+<p>Within the model, we create four coefficients (<code class="language-plaintext highlighter-rouge">b0</code>, <code class="language-plaintext highlighter-rouge">b1</code>, <code class="language-plaintext highlighter-rouge">b2</code>, and <code class="language-plaintext highlighter-rouge">b3</code>) and assign a prior of normally distributed with means of zero and standard deviations of <code class="language-plaintext highlighter-rouge">σ²</code>. We want to find values of these four coefficients to predict any given <code class="language-plaintext highlighter-rouge">y</code>.</p>
+
+<p>Intuitively, we can think of the coefficients as:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">b1</code> is the coefficient which represents the effect of taking alcohol on the number of sneezes;</li>
+  <li><code class="language-plaintext highlighter-rouge">b2</code> is the coefficient which represents the effect of taking in no medicines on the number of sneezes;</li>
+  <li><code class="language-plaintext highlighter-rouge">b3</code> is the coefficient which represents the effect of interaction between taking alcohol and no medicine on the number of sneezes;</li>
+</ul>
+
+<p>The <code class="language-plaintext highlighter-rouge">for</code> block creates a variable <code class="language-plaintext highlighter-rouge">theta</code> which is the weighted combination of the input features. We have defined the priors on these weights above. We then observe the likelihood of calculating <code class="language-plaintext highlighter-rouge">theta</code> given the actual label, <code class="language-plaintext highlighter-rouge">y[i]</code>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bayesian poisson regression (LR)</span>
+<span class="nd">@model</span> <span class="n">poisson_regression</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="n">σ²</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">b0</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ²</span><span class="x">)</span>
+    <span class="n">b1</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ²</span><span class="x">)</span>
+    <span class="n">b2</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ²</span><span class="x">)</span>
+    <span class="n">b3</span>  <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ²</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">b0</span> <span class="o">+</span> <span class="n">b1</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span> <span class="n">b2</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">2</span><span class="x">]</span> <span class="o">+</span> <span class="n">b3</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="mi">3</span><span class="x">]</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Poisson</span><span class="x">(</span><span class="n">exp</span><span class="x">(</span><span class="n">theta</span><span class="x">))</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<h1 id="sampling-from-the-posterior">Sampling from the posterior</h1>
+<p>We use the <code class="language-plaintext highlighter-rouge">NUTS</code> sampler to sample values from the posterior. We run multiple chains using the <code class="language-plaintext highlighter-rouge">mapreduce</code> function to nullify the effect of a problematic chain. We then use the Gelman, Rubin, and Brooks Diagnostic to check the convergence of these multiple chains.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Retrieve the number of observations.</span>
+<span class="n">n</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+
+<span class="c"># Sample using NUTS.</span>
+
+<span class="n">num_chains</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">mapreduce</span><span class="x">(</span>
+    <span class="n">c</span> <span class="o">-&gt;</span> <span class="n">sample</span><span class="x">(</span><span class="n">poisson_regression</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="n">data_labels</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="mi">10</span><span class="x">),</span> <span class="n">NUTS</span><span class="x">(</span><span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">),</span> <span class="mi">2500</span><span class="x">,</span> <span class="n">discard_adapt</span><span class="o">=</span><span class="nb">false</span><span class="x">),</span> 
+    <span class="n">chainscat</span><span class="x">,</span> 
+    <span class="mi">1</span><span class="o">:</span><span class="n">num_chains</span><span class="x">);</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Info: Found initial step size
+│   ϵ = 2.384185791015625e-8
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/cReBm/src/inference/hmc.jl:556
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Info: Found initial step size
+│   ϵ = 0.00078125
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/cReBm/src/inference/hmc.jl:556
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+┌ Info: Found initial step size
+│   ϵ = 0.000390625
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/cReBm/src/inference/hmc.jl:556
+┌ Info: Found initial step size
+│   ϵ = 0.05
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/cReBm/src/inference/hmc.jl:556
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/WJCQA/src/hamiltonian.jl:47
+</code></pre></div></div>
+
+<h1 id="viewing-the-diagnostics">Viewing the Diagnostics</h1>
+<p>We use the Gelman, Rubin, and Brooks Diagnostic to check whether our chains have converged. Note that we require multiple chains to use this diagnostic which analyses the difference between these multiple chains.</p>
+
+<p>We expect the chains to have converged. This is because we have taken sufficient number of iterations (1500) for the NUTS sampler. However, in case the test fails, then we will have to take a larger number of iterations, resulting in longer computation time.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">gelmandiag</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gelman, Rubin, and Brooks Diagnostic
+  parameters    PSRF   97.5%
+  ──────────  ──────  ──────
+          b0  1.1861  1.3924
+          b1  1.1307  1.2582
+          b2  1.1350  1.2865
+          b3  1.0660  1.1118
+</code></pre></div></div>
+
+<p>From the above diagnostic, we can conclude that the chains have converged because the PSRF values of the coefficients are close to 1.</p>
+
+<p>So, we have obtained the posterior distributions of the parameters. We transform the coefficients and recover theta values by taking the exponent of the meaned values of the coefficients <code class="language-plaintext highlighter-rouge">b0</code>, <code class="language-plaintext highlighter-rouge">b1</code>, <code class="language-plaintext highlighter-rouge">b2</code> and <code class="language-plaintext highlighter-rouge">b3</code>. We take the exponent of the means to get a better comparison of the relative values of the coefficients. We then compare this with the intuitive meaning that was described earlier.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Taking the first chain</span>
+<span class="n">c1</span> <span class="o">=</span> <span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="x">,</span><span class="mi">1</span><span class="x">]</span>
+
+<span class="c"># Calculating the exponentiated means</span>
+<span class="n">b0_exp</span> <span class="o">=</span> <span class="n">exp</span><span class="x">(</span><span class="n">mean</span><span class="x">(</span><span class="n">c1</span><span class="x">[</span><span class="o">:</span><span class="n">b0</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">))</span>
+<span class="n">b1_exp</span> <span class="o">=</span> <span class="n">exp</span><span class="x">(</span><span class="n">mean</span><span class="x">(</span><span class="n">c1</span><span class="x">[</span><span class="o">:</span><span class="n">b1</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">))</span>
+<span class="n">b2_exp</span> <span class="o">=</span> <span class="n">exp</span><span class="x">(</span><span class="n">mean</span><span class="x">(</span><span class="n">c1</span><span class="x">[</span><span class="o">:</span><span class="n">b2</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">))</span>
+<span class="n">b3_exp</span> <span class="o">=</span> <span class="n">exp</span><span class="x">(</span><span class="n">mean</span><span class="x">(</span><span class="n">c1</span><span class="x">[</span><span class="o">:</span><span class="n">b3</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">))</span>
+
+<span class="n">print</span><span class="x">(</span><span class="s">"The exponent of the meaned values of the weights (or coefficients are): </span><span class="se">\n</span><span class="s">"</span><span class="x">)</span>
+<span class="n">print</span><span class="x">(</span><span class="s">"b0: "</span><span class="x">,</span> <span class="n">b0_exp</span><span class="x">,</span> <span class="s">" </span><span class="se">\n</span><span class="s">"</span><span class="x">,</span> <span class="s">"b1: "</span><span class="x">,</span> <span class="n">b1_exp</span><span class="x">,</span> <span class="s">" </span><span class="se">\n</span><span class="s">"</span><span class="x">,</span> <span class="s">"b2: "</span><span class="x">,</span> <span class="n">b2_exp</span><span class="x">,</span> <span class="s">" </span><span class="se">\n</span><span class="s">"</span><span class="x">,</span> <span class="s">"b3: "</span><span class="x">,</span> <span class="n">b3_exp</span><span class="x">,</span> <span class="s">" </span><span class="se">\n</span><span class="s">"</span><span class="x">)</span>
+<span class="n">print</span><span class="x">(</span><span class="s">"The posterior distributions obtained after sampling can be visualised as :</span><span class="se">\n</span><span class="s">"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The exponent of the meaned values of the weights (or coefficients are): 
+b0: 5.116678482496325 
+b1: 1.8791946940293356 
+b2: 2.5245646467859904 
+b3: 1.3005130214177183 
+The posterior distributions obtained after sampling can be visualised as :
+</code></pre></div></div>
+
+<p>Visualising the posterior by plotting it:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../7_PoissonRegression_files/7_PoissonRegression_19_0.svg" alt="svg" /></p>
+
+<h1 id="interpreting-the-obtained-mean-values">Interpreting the Obtained Mean Values</h1>
+<p>The exponentiated mean of the coefficient <code class="language-plaintext highlighter-rouge">b1</code> is roughly half of that of <code class="language-plaintext highlighter-rouge">b2</code>. This makes sense because in the data that we generated, the number of sneezes was more sensitive to the medicinal intake as compared to the alcohol consumption. We also get a weaker dependence on the interaction between the alcohol consumption and the medicinal intake as can be seen from the value of <code class="language-plaintext highlighter-rouge">b3</code>.</p>
+
+<h1 id="removing-the-warmup-samples">Removing the Warmup Samples</h1>
+
+<p>As can be seen from the plots above, the parameters converge to their final distributions after a few iterations. These initial values during the warmup phase increase the standard deviations of the parameters and are not required after we get the desired distributions. Thus, we remove these warmup values and once again view the diagnostics.</p>
+
+<p>To remove these warmup values, we take all values except the first 200. This is because we set the second parameter of the NUTS sampler (which is the number of adaptations) to be equal to 200. <code class="language-plaintext highlighter-rouge">describe(chain)</code> is used to view the standard deviations in the estimates of the parameters. It also gives other useful information such as the means and the quantiles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Note the standard deviation before removing the warmup samples</span>
+<span class="n">describe</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse      ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ───────  ──────
+          b0  1.2639  2.1637    0.0216  0.2114  42.6654  1.0565
+          b1  0.7091  0.8433    0.0084  0.0728  41.7860  1.0620
+          b2  1.1998  1.7572    0.0176  0.1676  42.5718  1.0675
+          b3  0.2357  0.7392    0.0074  0.0596  91.3888  1.0240
+
+Quantiles
+  parameters     2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ───────  ──────  ──────  ──────  ──────
+          b0  -4.7815  1.6189  1.6409  1.6624  1.7026
+          b1   0.4366  0.5151  0.5548  0.5986  3.7771
+          b2   0.7707  0.8461  0.8848  0.9259  8.4861
+          b3  -1.7651  0.2497  0.2882  0.3275  0.4136
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Removing the first 200 values of the chains.</span>
+<span class="n">chains_new</span> <span class="o">=</span> <span class="n">chain</span><span class="x">[</span><span class="mi">201</span><span class="o">:</span><span class="mi">2500</span><span class="x">,</span><span class="o">:</span><span class="x">,</span><span class="o">:</span><span class="x">]</span>
+<span class="n">describe</span><span class="x">(</span><span class="n">chains_new</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse      ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ───────  ──────
+          b0  1.6378  0.0823    0.0009  0.0055  46.6518  1.0182
+          b1  0.5639  0.1729    0.0018  0.0117  45.5782  1.0196
+          b2  0.8932  0.1727    0.0018  0.0118  45.0961  1.0195
+          b3  0.2798  0.1544    0.0016  0.0104  46.0058  1.0195
+
+Quantiles
+  parameters    2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ──────  ──────  ──────  ──────  ──────
+          b0  1.5791  1.6226  1.6427  1.6637  1.7024
+          b1  0.4413  0.5142  0.5516  0.5919  0.6726
+          b2  0.7764  0.8448  0.8819  0.9187  0.9973
+          b3  0.1785  0.2544  0.2893  0.3266  0.3942
+</code></pre></div></div>
+
+<p>Visualising the new posterior by plotting it:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">chains_new</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../7_PoissonRegression_files/7_PoissonRegression_25_0.svg" alt="svg" /></p>
+
+<p>As can be seen from the numeric values and the plots above, the standard deviation values have decreased and all the plotted values are from the estimated posteriors. The exponentiated mean values, with the warmup samples removed, have not changed by much and they are still in accordance with their intuitive meanings as described earlier.</p>
+:ET

@@ -1,0 +1,507 @@
+I"��<h1 id="bayesian-estimation-of-differential-equations">Bayesian Estimation of Differential Equations</h1>
+
+<p>Most of the scientific community deals with the basic problem of trying to mathematically model the reality around them and this often involves dynamical systems. The general trend to model these complex dynamical systems is through the use of differential equations. Differential equation models often have non-measurable parameters. The popular “forward-problem” of simulation consists of solving the differential equations for a given set of parameters, the “inverse problem” to simulation, known as parameter estimation, is the process of utilizing data to determine these model parameters. Bayesian inference provides a robust approach to parameter estimation with quantified uncertainty.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Distributions</span><span class="x">,</span> <span class="n">DataFrames</span><span class="x">,</span> <span class="n">DifferentialEquations</span><span class="x">,</span> <span class="n">DiffEqSensitivity</span>
+
+<span class="c"># Import MCMCChain, Plots, and StatsPlots for visualizations and diagnostics.</span>
+<span class="k">using</span> <span class="n">MCMCChains</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">StatsPlots</span>
+
+<span class="c"># Set a seed for reproducibility.</span>
+<span class="k">using</span> <span class="n">Random</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">12</span><span class="x">);</span>
+
+<span class="c"># Disable Turing's progress meter for this tutorial.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">turnprogress</span><span class="x">(</span><span class="nb">false</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: [Turing]: progress logging is disabled globally
+└ @ Turing /home/cameron/.julia/packages/Turing/GMBTf/src/Turing.jl:22
+
+
+
+
+
+false
+</code></pre></div></div>
+
+<h2 id="the-lotka-volterra-model">The Lotka-Volterra Model</h2>
+
+<p>The Lotka–Volterra equations, also known as the predator–prey equations, are a pair of first-order nonlinear differential equations, frequently used to describe the dynamics of biological systems in which two species interact, one as a predator and the other as prey. The populations change through time according to the pair of equations:</p>
+
+\[\frac{dx}{dt} = (\alpha - \beta y)x\]
+
+\[\frac{dy}{dt} = (\delta x - \gamma)y\]
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span><span class="nf"> lotka_volterra</span><span class="x">(</span><span class="n">du</span><span class="x">,</span><span class="n">u</span><span class="x">,</span><span class="n">p</span><span class="x">,</span><span class="n">t</span><span class="x">)</span>
+  <span class="n">x</span><span class="x">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">u</span>
+  <span class="n">α</span><span class="x">,</span> <span class="n">β</span><span class="x">,</span> <span class="n">δ</span><span class="x">,</span> <span class="n">γ</span> <span class="o">=</span> <span class="n">p</span>
+  <span class="n">du</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">=</span> <span class="x">(</span><span class="n">α</span> <span class="o">-</span> <span class="n">β</span><span class="o">*</span><span class="n">y</span><span class="x">)</span><span class="n">x</span>
+  <span class="n">du</span><span class="x">[</span><span class="mi">2</span><span class="x">]</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">=</span> <span class="x">(</span><span class="n">δ</span><span class="o">*</span><span class="n">x</span> <span class="o">-</span> <span class="n">γ</span><span class="x">)</span><span class="n">y</span>
+<span class="k">end</span>
+<span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">]</span>
+<span class="n">u0</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">1.0</span><span class="x">]</span>
+<span class="n">prob</span> <span class="o">=</span> <span class="n">ODEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+<span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">Tsit5</span><span class="x">())</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">sol</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../10_diffeq_files/10_diffeq_3_0.svg" alt="svg" /></p>
+
+<p>We’ll generate the data to use for the parameter estimation from simulation. 
+With the <code class="language-plaintext highlighter-rouge">saveat</code> <a href="https://docs.sciml.ai/latest/basics/common_solver_opts/">argument</a> we specify that the solution is stored only at <code class="language-plaintext highlighter-rouge">0.1</code> time units.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">Tsit5</span><span class="x">(),</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">)</span>
+<span class="n">odedata</span> <span class="o">=</span> <span class="n">hcat</span><span class="x">([</span><span class="n">sol</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">.+</span> <span class="mf">0.01</span><span class="n">randn</span><span class="x">(</span><span class="mi">2</span><span class="x">)</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">size</span><span class="x">(</span><span class="n">sol</span><span class="x">,</span><span class="mi">2</span><span class="x">)]</span><span class="o">...</span><span class="x">)</span> 
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>2×101 Array{Float64,2}:
+ 0.997817  1.04585  1.07345  1.03149  …  0.122743  0.150842  0.163405
+ 0.982782  1.22727  1.53151  1.88856     0.489111  0.449427  0.423763
+</code></pre></div></div>
+
+<h2 id="fitting-lotka-volterra-with-diffeqbayes">Fitting Lotka-Volterra with DiffEqBayes</h2>
+
+<p><a href="https://github.com/SciML/DiffEqBayes.jl">DiffEqBayes.jl</a> is a high level package that set of extension functionality for estimating the parameters of differential equations using Bayesian methods. It allows the choice of using CmdStan.jl, Turing.jl, DynamicHMC.jl and ApproxBayes.jl to perform a Bayesian estimation of a differential equation problem specified via the DifferentialEquations.jl interface. You can read the <a href="https://docs.sciml.ai/latest/analysis/parameter_estimation/#Bayesian-Methods-1">docs</a> for an understanding of the available functionality.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">DiffEqBayes</span>
+<span class="n">t</span> <span class="o">=</span> <span class="mi">0</span><span class="o">:</span><span class="mf">0.1</span><span class="o">:</span><span class="mf">10.0</span>
+<span class="n">priors</span> <span class="o">=</span> <span class="x">[</span><span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.5</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.5</span><span class="x">,</span><span class="mf">2.5</span><span class="x">),</span><span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">),</span><span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">3.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">1</span><span class="x">,</span><span class="mi">4</span><span class="x">),</span><span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)]</span>
+<span class="n">bayesian_result_turing</span> <span class="o">=</span> <span class="n">turing_inference</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">Tsit5</span><span class="x">(),</span><span class="n">t</span><span class="x">,</span><span class="n">odedata</span><span class="x">,</span><span class="n">priors</span><span class="x">,</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">10_000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: Found initial step size
+│   ϵ = 0.2
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/GMBTf/src/inference/hmc.jl:629
+
+
+
+
+
+Object of type Chains, with data of type 9000×17×1 Array{Float64,3}
+
+Iterations        = 1:9000
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 9000
+internals         = acceptance_rate, hamiltonian_energy, hamiltonian_energy_error, is_accept, log_density, lp, max_hamiltonian_energy_error, n_steps, nom_step_size, numerical_error, step_size, tree_depth
+parameters        = theta[1], theta[2], theta[3], theta[4], σ[1]
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse        ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ─────────  ──────
+    theta[1]  1.5009  0.0081    0.0001  0.0001  2834.1174  0.9999
+    theta[2]  1.0002  0.0050    0.0001  0.0001  2936.2756  0.9999
+    theta[3]  3.0020  0.0063    0.0001  0.0001  4416.7504  0.9999
+    theta[4]  0.9996  0.0044    0.0000  0.0001  2824.1604  0.9999
+        σ[1]  0.0204  0.0013    0.0000  0.0000  4162.0540  1.0000
+
+Quantiles
+  parameters    2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ──────  ──────  ──────  ──────  ──────
+    theta[1]  1.4851  1.4954  1.5007  1.5063  1.5171
+    theta[2]  0.9904  0.9968  1.0002  1.0035  1.0102
+    theta[3]  2.9897  2.9978  3.0020  3.0063  3.0146
+    theta[4]  0.9908  0.9967  0.9997  1.0026  1.0082
+        σ[1]  0.0180  0.0195  0.0203  0.0212  0.0230
+</code></pre></div></div>
+
+<p>The estimated parameters are clearly very close to the desired parameter values. We can also check that the chains have converged in the plot.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">bayesian_result_turing</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../10_diffeq_files/10_diffeq_9_0.svg" alt="svg" /></p>
+
+<h2 id="direct-handling-of-bayesian-estimation-with-turing">Direct Handling of Bayesian Estimation with Turing</h2>
+
+<p>You could want to do some sort of reduction with the differential equation’s solution or use it in some other way as well. In those cases DiffEqBayes might not be useful. Turing and DifferentialEquations are completely composable and you can write of the differential equation inside a Turing <code class="language-plaintext highlighter-rouge">@model</code> and it will just work.</p>
+
+<p>We can rewrite the Lotka Volterra parameter estimation problem with a Turing <code class="language-plaintext highlighter-rouge">@model</code> interface as below</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Turing</span><span class="o">.</span><span class="n">setadbackend</span><span class="x">(</span><span class="o">:</span><span class="n">forwarddiff</span><span class="x">)</span>
+
+<span class="nd">@model</span> <span class="k">function</span><span class="nf"> fitlv</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+    <span class="n">σ</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    <span class="n">α</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.5</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.5</span><span class="x">,</span><span class="mf">2.5</span><span class="x">)</span>
+    <span class="n">β</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">γ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">3.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">1</span><span class="x">,</span><span class="mi">4</span><span class="x">)</span>
+    <span class="n">δ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="n">α</span><span class="x">,</span><span class="n">β</span><span class="x">,</span><span class="n">γ</span><span class="x">,</span><span class="n">δ</span><span class="x">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">ODEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+    <span class="n">predicted</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">Tsit5</span><span class="x">(),</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">predicted</span><span class="x">)</span>
+        <span class="n">data</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">predicted</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">fitlv</span><span class="x">(</span><span class="n">odedata</span><span class="x">)</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="o">.</span><span class="mi">65</span><span class="x">),</span><span class="mi">10000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Info: Found initial step size
+│   ϵ = 0.00625
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/GMBTf/src/inference/hmc.jl:629
+
+
+
+
+
+Object of type Chains, with data of type 9000×17×1 Array{Float64,3}
+
+Iterations        = 1:9000
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 9000
+internals         = acceptance_rate, hamiltonian_energy, hamiltonian_energy_error, is_accept, log_density, lp, max_hamiltonian_energy_error, n_steps, nom_step_size, numerical_error, step_size, tree_depth
+parameters        = α, β, γ, δ, σ
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse        ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ─────────  ──────
+           α  1.5006  0.0078    0.0001  0.0002  2436.2971  1.0001
+           β  1.0000  0.0049    0.0001  0.0001  2546.3374  1.0000
+           γ  3.0019  0.0062    0.0001  0.0001  4010.7689  0.9999
+           δ  0.9997  0.0042    0.0000  0.0001  2414.2788  1.0001
+           σ  0.0203  0.0013    0.0000  0.0000  4768.2941  1.0000
+
+Quantiles
+  parameters    2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ──────  ──────  ──────  ──────  ──────
+           α  1.4855  1.4954  1.5007  1.5059  1.5162
+           β  0.9905  0.9967  1.0000  1.0033  1.0097
+           γ  2.9898  2.9978  3.0019  3.0061  3.0141
+           δ  0.9914  0.9969  0.9997  1.0026  1.0080
+           σ  0.0180  0.0194  0.0202  0.0212  0.0230
+</code></pre></div></div>
+
+<h2 id="scaling-to-large-models-adjoint-sensitivities">Scaling to Large Models: Adjoint Sensitivities</h2>
+
+<p>DifferentialEquations.jl’s efficiency for large stiff models has been shown in multiple <a href="https://github.com/SciML/DiffEqBenchmarks.jl">benchmarks</a>. To learn more about how to optimize solving performance for stiff problems you can take a look at the <a href="https://docs.sciml.ai/latest/tutorials/advanced_ode_example/">docs</a>.</p>
+
+<p><a href="https://docs.sciml.ai/latest/analysis/sensitivity/">Sensitivity analysis</a>, or automatic differentiation (AD) of the solver, is provided by the DiffEq suite. The model sensitivities are the derivatives of the solution \(u(t)\) with respect to the parameters. Specifically, the local sensitivity of the solution to a parameter is defined by how much the solution would change by changes in the parameter. Sensitivity analysis provides a cheap way to calculate the gradient of the solution which can be used in parameter estimation and other optimization tasks.</p>
+
+<p>The AD ecosystem in Julia allows you to switch between forward mode, reverse mode, source to source and other choices of AD and have it work with any Julia code. For a user to make use of this within <a href="https://sciml.ai">SciML</a>, <a href="https://docs.sciml.ai/latest/analysis/sensitivity/#High-Level-Interface:-sensealg-1">high level interactions in <code class="language-plaintext highlighter-rouge">solve</code></a> automatically plug into those AD systems to allow for choosing advanced sensitivity analysis (derivative calculation) <a href="https://docs.sciml.ai/latest/analysis/sensitivity/#Sensitivity-Algorithms-1">methods</a>.</p>
+
+<p>More theoretical details on these methods can be found at: https://docs.sciml.ai/latest/extras/sensitivity_math/.</p>
+
+<p>While these sensitivity analysis methods may seem complicated (and they are!), using them is dead simple. Here is a version of the Lotka-Volterra model with adjoints enabled.</p>
+
+<p>All we had to do is switch the AD backend to one of the adjoint-compatible backends (ReverseDiff, Tracker, or Zygote) and boom the system takes over and we’re using adjoint methods! Notice that on this model adjoints are slower. This is because adjoints have a higher overhead on small parameter models and we suggest only using these methods for models with around 100 parameters or more. For more details, see https://arxiv.org/abs/1812.01892.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Turing</span><span class="o">.</span><span class="n">setadbackend</span><span class="x">(</span><span class="o">:</span><span class="n">zygote</span><span class="x">)</span>
+<span class="nd">@model</span> <span class="k">function</span><span class="nf"> fitlv</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+    <span class="n">σ</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    <span class="n">α</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.5</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.5</span><span class="x">,</span><span class="mf">2.5</span><span class="x">)</span>
+    <span class="n">β</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">γ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">3.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">1</span><span class="x">,</span><span class="mi">4</span><span class="x">)</span>
+    <span class="n">δ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="n">α</span><span class="x">,</span><span class="n">β</span><span class="x">,</span><span class="n">γ</span><span class="x">,</span><span class="n">δ</span><span class="x">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">ODEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+    <span class="n">predicted</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">predicted</span><span class="x">)</span>
+        <span class="n">data</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">predicted</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">fitlv</span><span class="x">(</span><span class="n">odedata</span><span class="x">)</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="o">.</span><span class="mi">65</span><span class="x">),</span><span class="mi">1000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: Found initial step size
+│   ϵ = 0.2
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/GMBTf/src/inference/hmc.jl:629
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+
+
+
+
+
+Object of type Chains, with data of type 500×17×1 Array{Float64,3}
+
+Iterations        = 1:500
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 500
+internals         = acceptance_rate, hamiltonian_energy, hamiltonian_energy_error, is_accept, log_density, lp, max_hamiltonian_energy_error, n_steps, nom_step_size, numerical_error, step_size, tree_depth
+parameters        = α, β, γ, δ, σ
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse       ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ────────  ──────
+           α  1.5007  0.0083    0.0004  0.0004  125.1112  0.9983
+           β  1.0001  0.0051    0.0002  0.0002  143.4142  0.9983
+           γ  3.0020  0.0064    0.0003  0.0005  118.3848  1.0005
+           δ  0.9997  0.0045    0.0002  0.0002  123.8078  0.9980
+           σ  0.0205  0.0013    0.0001  0.0001  232.9602  1.0016
+
+Quantiles
+  parameters    2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ──────  ──────  ──────  ──────  ──────
+           α  1.4847  1.4952  1.5002  1.5062  1.5164
+           β  0.9898  0.9969  0.9998  1.0034  1.0093
+           γ  2.9901  2.9975  3.0016  3.0064  3.0146
+           δ  0.9915  0.9966  0.9999  1.0028  1.0086
+           σ  0.0181  0.0195  0.0204  0.0213  0.0231
+</code></pre></div></div>
+
+<p>Now we can exercise control of the sensitivity analysis method that is used by using the <code class="language-plaintext highlighter-rouge">sensealg</code> keyword argument. Let’s choose the <code class="language-plaintext highlighter-rouge">InterpolatingAdjoint</code> from the available AD <a href="https://docs.sciml.ai/latest/analysis/sensitivity/#Sensitivity-Algorithms-1">methods</a> and enable a compiled ReverseDiff vector-Jacobian product:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="k">function</span><span class="nf"> fitlv</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+    <span class="n">σ</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    <span class="n">α</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.5</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.5</span><span class="x">,</span><span class="mf">2.5</span><span class="x">)</span>
+    <span class="n">β</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">γ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">3.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">1</span><span class="x">,</span><span class="mi">4</span><span class="x">)</span>
+    <span class="n">δ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="n">α</span><span class="x">,</span><span class="n">β</span><span class="x">,</span><span class="n">γ</span><span class="x">,</span><span class="n">δ</span><span class="x">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">ODEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+    <span class="n">predicted</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">,</span><span class="n">sensealg</span><span class="o">=</span><span class="n">InterpolatingAdjoint</span><span class="x">(</span><span class="n">autojacvec</span><span class="o">=</span><span class="n">ReverseDiffVJP</span><span class="x">(</span><span class="nb">true</span><span class="x">)))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">predicted</span><span class="x">)</span>
+        <span class="n">data</span><span class="x">[</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">predicted</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">fitlv</span><span class="x">(</span><span class="n">odedata</span><span class="x">)</span>
+<span class="nd">@time</span> <span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="o">.</span><span class="mi">65</span><span class="x">),</span><span class="mi">1000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: Found initial step size
+│   ϵ = 0.2
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/GMBTf/src/inference/hmc.jl:629
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+
+
+229.728827 seconds (1.56 G allocations: 72.157 GiB, 5.61% gc time)
+
+
+
+
+
+Object of type Chains, with data of type 500×17×1 Array{Float64,3}
+
+Iterations        = 1:500
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 500
+internals         = acceptance_rate, hamiltonian_energy, hamiltonian_energy_error, is_accept, log_density, lp, max_hamiltonian_energy_error, n_steps, nom_step_size, numerical_error, step_size, tree_depth
+parameters        = α, β, γ, δ, σ
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters    mean     std  naive_se    mcse       ess   r_hat
+  ──────────  ──────  ──────  ────────  ──────  ────────  ──────
+           α  2.3052  0.1128    0.0050  0.0038   77.0828  0.9981
+           β  1.5337  0.1018    0.0046  0.0036   97.4806  0.9982
+           γ  3.1633  0.2118    0.0095  0.0076  203.9501  0.9981
+           δ  1.8515  0.0869    0.0039  0.0034   70.1302  0.9980
+           σ  0.8609  0.0441    0.0020  0.0029  363.5746  1.0058
+
+Quantiles
+  parameters    2.5%   25.0%   50.0%   75.0%   97.5%
+  ──────────  ──────  ──────  ──────  ──────  ──────
+           α  2.0828  2.2115  2.3145  2.4050  2.4803
+           β  1.3478  1.4630  1.5281  1.6021  1.7472
+           γ  2.7728  3.0079  3.1501  3.3057  3.5996
+           δ  1.6968  1.7847  1.8538  1.9196  1.9978
+           σ  0.7826  0.8296  0.8580  0.8900  0.9473
+</code></pre></div></div>
+
+<p>For more examples of adjoint usage on large parameter models, consult the <a href="https://diffeqflux.sciml.ai/dev/">DiffEqFlux documentation</a></p>
+
+<h2 id="including-process-noise-estimation-of-stochastic-differential-equations">Including Process Noise: Estimation of Stochastic Differential Equations</h2>
+
+<p>This can be easily extended to Stochastic Differential Equations as well.</p>
+
+<p>Let’s create the Lotka Volterra equation with some noise and try out estimating it with the same framework we have set up before.</p>
+
+<p>Our equations now become:</p>
+
+\[dx = (\alpha - \beta y)xdt + \phi_1 xdW_1\]
+
+\[dy = (\delta x - \gamma)ydt + \phi_2 ydW_2\]
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span><span class="nf"> lotka_volterra_noise</span><span class="x">(</span><span class="n">du</span><span class="x">,</span><span class="n">u</span><span class="x">,</span><span class="n">p</span><span class="x">,</span><span class="n">t</span><span class="x">)</span>
+    <span class="n">du</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">=</span> <span class="n">p</span><span class="x">[</span><span class="mi">5</span><span class="x">]</span><span class="o">*</span><span class="n">u</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span>
+    <span class="n">du</span><span class="x">[</span><span class="mi">2</span><span class="x">]</span> <span class="o">=</span> <span class="n">p</span><span class="x">[</span><span class="mi">6</span><span class="x">]</span><span class="o">*</span><span class="n">u</span><span class="x">[</span><span class="mi">2</span><span class="x">]</span>
+<span class="k">end</span>
+<span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">]</span>
+<span class="n">prob</span> <span class="o">=</span> <span class="n">SDEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">lotka_volterra_noise</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[36mSDEProblem[0m with uType [36mArray{Float64,1}[0m and tType [36mFloat64[0m. In-place: [36mtrue[0m
+timespan: (0.0, 10.0)
+u0: [1.0, 1.0]
+</code></pre></div></div>
+
+<p>Solving it repeatedly confirms the randomness of the solution</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.01</span><span class="x">)</span>
+<span class="n">p1</span> <span class="o">=</span> <span class="n">plot</span><span class="x">(</span><span class="n">sol</span><span class="x">)</span>
+<span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.01</span><span class="x">)</span>
+<span class="n">p2</span> <span class="o">=</span> <span class="n">plot</span><span class="x">(</span><span class="n">sol</span><span class="x">)</span>
+<span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">prob</span><span class="x">,</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.01</span><span class="x">)</span>
+<span class="n">p3</span> <span class="o">=</span> <span class="n">plot</span><span class="x">(</span><span class="n">sol</span><span class="x">)</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">p1</span><span class="x">,</span><span class="n">p2</span><span class="x">,</span><span class="n">p3</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../10_diffeq_files/10_diffeq_23_0.svg" alt="svg" /></p>
+
+<p>With the <code class="language-plaintext highlighter-rouge">MonteCarloSummary</code> it is easy to summarize the results from multiple runs through the <code class="language-plaintext highlighter-rouge">EnsembleProblem</code> interface, here we run the problem for 1000 <code class="language-plaintext highlighter-rouge">trajectories</code> and visualize the summary:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">sol</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">EnsembleProblem</span><span class="x">(</span><span class="n">prob</span><span class="x">),</span><span class="n">SRIW1</span><span class="x">(),</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">,</span><span class="n">trajectories</span><span class="o">=</span><span class="mi">5000</span><span class="x">)</span>
+<span class="n">summ</span> <span class="o">=</span> <span class="n">EnsembleSummary</span><span class="x">(</span><span class="n">sol</span><span class="x">)</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">summ</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../10_diffeq_files/10_diffeq_25_0.svg" alt="svg" /></p>
+
+<p>Get data from the means to fit:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">DiffEqBase</span><span class="o">.</span><span class="n">EnsembleAnalysis</span>
+<span class="n">averagedata</span><span class="x">,</span><span class="n">real_vars</span> <span class="o">=</span> <span class="kt">Array</span><span class="o">.</span><span class="x">(</span><span class="n">timeseries_steps_meanvar</span><span class="x">(</span><span class="n">sol</span><span class="x">))</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>([1.0 1.0400463884597635 … 0.1980843645146118 0.20460750978325976; 1.0 1.2277580575923053 … 1.1419830467137746 1.1005642508077889], [0.0 0.009726793312102511 … 0.08749259603623169 0.09099844682724174; 0.0 0.013490995782097384 … 1.9542962007288056 1.8883474637853068])
+</code></pre></div></div>
+
+<p>Now fit the means with Turing.</p>
+
+<p>We will utilize multithreading with the <a href="https://docs.sciml.ai/stable/tutorials/sde_example/#Ensemble-Simulations-1"><code class="language-plaintext highlighter-rouge">EnsembleProblem</code></a> interface to speed up the SDE parameter estimation.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Threads</span><span class="o">.</span><span class="n">nthreads</span><span class="x">()</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>16
+</code></pre></div></div>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Turing</span><span class="o">.</span><span class="n">setadbackend</span><span class="x">(</span><span class="o">:</span><span class="n">forwarddiff</span><span class="x">)</span>
+
+<span class="nd">@model</span> <span class="k">function</span><span class="nf"> fitlv</span><span class="x">(</span><span class="n">data</span><span class="x">)</span>
+    <span class="n">σ1</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">()</span>
+    <span class="n">σ2</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">()</span>
+    <span class="n">α</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.5</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.5</span><span class="x">,</span><span class="mf">2.5</span><span class="x">)</span>
+    <span class="n">β</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">γ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">3.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">1</span><span class="x">,</span><span class="mi">4</span><span class="x">)</span>
+    <span class="n">δ</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.0</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mi">0</span><span class="x">,</span><span class="mi">2</span><span class="x">)</span>
+    <span class="n">ϕ1</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.1</span><span class="x">,</span><span class="mi">1</span><span class="x">)</span>
+    <span class="n">ϕ2</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(</span><span class="mf">1.2</span><span class="x">,</span><span class="mf">0.5</span><span class="x">),</span><span class="mf">0.1</span><span class="x">,</span><span class="mi">1</span><span class="x">)</span>
+
+    <span class="n">p</span> <span class="o">=</span> <span class="x">[</span><span class="n">α</span><span class="x">,</span><span class="n">β</span><span class="x">,</span><span class="n">γ</span><span class="x">,</span><span class="n">δ</span><span class="x">,</span><span class="n">ϕ1</span><span class="x">,</span><span class="n">ϕ2</span><span class="x">]</span>
+    <span class="n">prob</span> <span class="o">=</span> <span class="n">SDEProblem</span><span class="x">(</span><span class="n">lotka_volterra</span><span class="x">,</span><span class="n">lotka_volterra_noise</span><span class="x">,</span><span class="n">u0</span><span class="x">,(</span><span class="mf">0.0</span><span class="x">,</span><span class="mf">10.0</span><span class="x">),</span><span class="n">p</span><span class="x">)</span>
+    <span class="n">ensemble_predicted</span> <span class="o">=</span> <span class="n">solve</span><span class="x">(</span><span class="n">EnsembleProblem</span><span class="x">(</span><span class="n">prob</span><span class="x">),</span><span class="n">SRIW1</span><span class="x">(),</span><span class="n">saveat</span><span class="o">=</span><span class="mf">0.1</span><span class="x">,</span><span class="n">trajectories</span><span class="o">=</span><span class="mi">5000</span><span class="x">)</span>
+    <span class="n">predicted_means</span><span class="x">,</span> <span class="n">predicted_vars</span> <span class="o">=</span> <span class="n">timeseries_steps_meanvar</span><span class="x">(</span><span class="n">ensemble_predicted</span><span class="x">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">predicted_means</span><span class="x">)</span>
+        <span class="n">data</span><span class="x">[</span><span class="mi">1</span><span class="x">][</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">predicted_means</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ1</span><span class="x">)</span>
+        <span class="n">data</span><span class="x">[</span><span class="mi">2</span><span class="x">][</span><span class="o">:</span><span class="x">,</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">MvNormal</span><span class="x">(</span><span class="n">predicted_vars</span><span class="x">[</span><span class="n">i</span><span class="x">],</span> <span class="n">σ2</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">fitlv</span><span class="x">([</span><span class="n">averagedata</span><span class="x">,</span><span class="n">real_vars</span><span class="x">])</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="o">.</span><span class="mi">65</span><span class="x">),</span> <span class="mi">500</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Warning: The current proposal will be rejected due to numerical error(s).
+│   isfinite.((θ, r, ℓπ, ℓκ)) = (true, false, false, false)
+└ @ AdvancedHMC /home/cameron/.julia/packages/AdvancedHMC/P9wqk/src/hamiltonian.jl:47
+┌ Info: Found initial step size
+│   ϵ = 2.398434262074059e-5
+└ @ Turing.Inference /home/cameron/.julia/packages/Turing/GMBTf/src/inference/hmc.jl:629
+
+
+
+
+
+Object of type Chains, with data of type 250×20×1 Array{Float64,3}
+
+Iterations        = 1:250
+Thinning interval = 1
+Chains            = 1
+Samples per chain = 250
+internals         = acceptance_rate, hamiltonian_energy, hamiltonian_energy_error, is_accept, log_density, lp, max_hamiltonian_energy_error, n_steps, nom_step_size, numerical_error, step_size, tree_depth
+parameters        = α, β, γ, δ, σ1, σ2, ϕ1, ϕ2
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+  parameters     mean     std  naive_se    mcse     ess   r_hat
+  ──────────  ───────  ──────  ────────  ──────  ──────  ──────
+           α   1.5900  0.0000    0.0000  0.0000  2.0325  0.9960
+           β   0.9260  0.0000    0.0000  0.0000  2.0325  2.5501
+           γ   2.4580  0.0000    0.0000  0.0000  2.0325  2.9880
+           δ   0.3176  0.0000    0.0000  0.0000  2.0325  1.3689
+          σ1  -1.2667  0.0000    0.0000  0.0000  2.0325  2.6586
+          σ2  -1.0054  0.0000    0.0000  0.0000     NaN     NaN
+          ϕ1   0.3652  0.0000    0.0000  0.0000  2.0325     Inf
+          ϕ2   0.8059  0.0000    0.0000  0.0000  2.0325  2.9880
+
+Quantiles
+  parameters     2.5%    25.0%    50.0%    75.0%    97.5%
+  ──────────  ───────  ───────  ───────  ───────  ───────
+           α   1.5900   1.5900   1.5900   1.5900   1.5900
+           β   0.9260   0.9260   0.9260   0.9260   0.9260
+           γ   2.4580   2.4580   2.4580   2.4580   2.4580
+           δ   0.3176   0.3176   0.3176   0.3176   0.3176
+          σ1  -1.2667  -1.2667  -1.2667  -1.2667  -1.2667
+          σ2  -1.0054  -1.0054  -1.0054  -1.0054  -1.0054
+          ϕ1   0.3652   0.3652   0.3652   0.3652   0.3652
+          ϕ2   0.8059   0.8059   0.8059   0.8059   0.8059
+</code></pre></div></div>
+
+:ET

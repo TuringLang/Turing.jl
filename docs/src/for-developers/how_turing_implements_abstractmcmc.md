@@ -1,8 +1,7 @@
-
-
-| title                    | toc  |
-| ------------------------ | ---- |
-| How Turing samplers work | true |
+---
+title: How Turing implements AbstractMCMC
+toc: true
+---
 
 # How Turing implements AbstractMCMC
 

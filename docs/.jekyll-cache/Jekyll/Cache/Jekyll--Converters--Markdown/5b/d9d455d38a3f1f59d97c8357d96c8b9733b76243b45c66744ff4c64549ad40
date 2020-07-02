@@ -1,0 +1,152 @@
+I"H<p><a id="Performance-Tips"></a></p>
+
+<p><a id="Performance-Tips-1"></a></p>
+
+<h1 id="performance-tips">Performance Tips</h1>
+
+<p>This section briefly summarises a few common techniques to ensure good performance when using Turing. We refer to <a href="https://docs.julialang.org/en/v1/manual/performance-tips/index.html">julialang.org</a> for general techniques to ensure good performance of Julia programs.</p>
+
+<p><a id="Use-multivariate-distributions"></a></p>
+
+<p><a id="Use-multivariate-distributions-1"></a></p>
+
+<h2 id="use-multivariate-distributions">Use multivariate distributions</h2>
+
+<p>It is generally preferable to use multivariate distributions if possible.</p>
+
+<p>The following example:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">gmodel</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">m</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+        <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="mf">0.2</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>can be directly expressed more efficiently using a simple transformation:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">gmodel</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">m</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">()</span>
+    <span class="n">x</span> <span class="o">~</span><span class="err"> </span><span class="n">MvNormal</span><span class="x">(</span><span class="n">fill</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">length</span><span class="x">(</span><span class="n">x</span><span class="x">)),</span> <span class="mf">0.2</span><span class="x">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p><a id="Choose-your-AD-backend"></a></p>
+
+<p><a id="Choose-your-AD-backend-1"></a></p>
+
+<h2 id="choose-your-ad-backend">Choose your AD backend</h2>
+
+<p>Turing currently provides support for two different automatic differentiation (AD) backends.  Generally, try to use <code class="language-plaintext highlighter-rouge">:forwarddiff</code> for models with few parameters and <code class="language-plaintext highlighter-rouge">:reversediff</code>, <code class="language-plaintext highlighter-rouge">:tracker</code> or <code class="language-plaintext highlighter-rouge">:zygote</code> for models with large parameter vectors or linear algebra operations. See <a href="autodiff">Automatic Differentiation</a> for details.</p>
+
+<p><a id="Special-care-for-:tracker-and-:zygote"></a></p>
+
+<p><a id="Special-care-for-:tracker-and-:zygote-1"></a></p>
+
+<h2 id="special-care-for-tracker-and-zygote">Special care for <code class="language-plaintext highlighter-rouge">:tracker</code> and <code class="language-plaintext highlighter-rouge">:zygote</code></h2>
+
+<p>In case of <code class="language-plaintext highlighter-rouge">:tracker</code> and <code class="language-plaintext highlighter-rouge">:zygote</code>, it is necessary to avoid loops for now. This is mainly due to the reverse-mode AD backends <code class="language-plaintext highlighter-rouge">Tracker</code> and <code class="language-plaintext highlighter-rouge">Zygote</code> which are inefficient for such cases. <code class="language-plaintext highlighter-rouge">ReverseDiff</code> does better but vectorized operations will still perform better.</p>
+
+<p>Avoiding loops can be done using <code class="language-plaintext highlighter-rouge">filldist(dist, N)</code> and <code class="language-plaintext highlighter-rouge">arraydist(dists)</code>. <code class="language-plaintext highlighter-rouge">filldist(dist, N)</code> creates a multivariate distribution that is composed of <code class="language-plaintext highlighter-rouge">N</code> identical and independent copies of the univariate distribution <code class="language-plaintext highlighter-rouge">dist</code> if <code class="language-plaintext highlighter-rouge">dist</code> is univariate, or it creates a matrix-variate distribution composed of <code class="language-plaintext highlighter-rouge">N</code> identical and idependent copies of the multivariate distribution <code class="language-plaintext highlighter-rouge">dist</code> if <code class="language-plaintext highlighter-rouge">dist</code> is multivariate. <code class="language-plaintext highlighter-rouge">filldist(dist, N, M)</code> can also be used to create a matrix-variate distribution from a univariate distribution <code class="language-plaintext highlighter-rouge">dist</code>.  <code class="language-plaintext highlighter-rouge">arraydist(dists)</code> is similar to <code class="language-plaintext highlighter-rouge">filldist</code> but it takes an array of distributions <code class="language-plaintext highlighter-rouge">dists</code> as input. Writing a <a href="advanced">custom distribution</a> with a custom adjoint is another option to avoid loops.</p>
+
+<p><a id="Make-your-model-type-stable"></a></p>
+
+<p><a id="Make-your-model-type-stable-1"></a></p>
+
+<h2 id="make-your-model-type-stable">Make your model type-stable</h2>
+
+<p>For efficient gradient-based inference, e.g. using HMC, NUTS or ADVI, it is important to ensure the model is type-stable. We refer to <a href="https://docs.julialang.org/en/v1/manual/performance-tips/index.html#Write-&quot;type-stable&quot;-functions-1">julialang.org</a> for a general discussion on type-stability.</p>
+
+<p>The following example:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">tmodel</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">p</span><span class="x">,</span><span class="n">n</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Real</span><span class="x">}(</span><span class="nb">undef</span><span class="x">,</span> <span class="n">n</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span>
+        <span class="n">params</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(),</span> <span class="mi">0</span><span class="x">,</span> <span class="nb">Inf</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">params</span>
+    <span class="n">y</span> <span class="o">~</span><span class="err"> </span><span class="n">MvNormal</span><span class="x">(</span><span class="n">a</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>can be transformed into the following type-stable representation:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">tmodel</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">,</span> <span class="o">::</span><span class="kt">Type</span><span class="x">{</span><span class="n">T</span><span class="x">}</span><span class="o">=</span><span class="kt">Vector</span><span class="x">{</span><span class="kt">Float64</span><span class="x">})</span> <span class="k">where</span> <span class="x">{</span><span class="n">T</span><span class="x">}</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">p</span><span class="x">,</span><span class="n">n</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">T</span><span class="x">(</span><span class="nb">undef</span><span class="x">,</span> <span class="n">n</span><span class="x">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span>
+        <span class="n">params</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">truncated</span><span class="x">(</span><span class="n">Normal</span><span class="x">(),</span> <span class="mi">0</span><span class="x">,</span> <span class="nb">Inf</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">params</span>
+    <span class="n">y</span> <span class="o">~</span><span class="err"> </span><span class="n">MvNormal</span><span class="x">(</span><span class="n">a</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>Note that you can use <code class="language-plaintext highlighter-rouge">@code_warntype</code> to find type instabilities in your model definition.</p>
+
+<p>For example consider the following simple program</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">tmodel</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+	<span class="n">p</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Real</span><span class="x">}(</span><span class="nb">undef</span><span class="x">,</span> <span class="mi">1</span><span class="x">);</span> 
+	<span class="n">p</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">()</span>
+	<span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">.+</span> <span class="mi">1</span>
+	<span class="n">x</span> <span class="o">~</span><span class="err"> </span><span class="n">Normal</span><span class="x">(</span><span class="n">p</span><span class="x">[</span><span class="mi">1</span><span class="x">])</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>we can use</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">model</span> <span class="o">=</span> <span class="n">tmodel</span><span class="x">(</span><span class="mf">1.0</span><span class="x">)</span>
+<span class="n">varinfo</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">(</span><span class="n">model</span><span class="x">)</span>
+<span class="n">spl</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">()</span>
+
+<span class="nd">@code_warntype</span> <span class="n">model</span><span class="o">.</span><span class="n">f</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">varinfo</span><span class="x">,</span> <span class="n">spl</span><span class="x">,</span> <span class="n">Turing</span><span class="o">.</span><span class="n">DefaultContext</span><span class="x">())</span>
+</code></pre></div></div>
+
+<p>to inspect the type instabilities in the model.</p>
+
+<p><a id="Reuse-Computations-in-Gibbs-Sampling"></a></p>
+
+<p><a id="Reuse-Computations-in-Gibbs-Sampling-1"></a></p>
+
+<h2 id="reuse-computations-in-gibbs-sampling">Reuse Computations in Gibbs Sampling</h2>
+
+<p>Often when performing Gibbs sampling, one can save computational time by caching the output of expensive functions. The cached values can then be reused in future Gibbs sub-iterations which do not change the inputs to this expensive function. For example in the following model:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">demo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">a</span> <span class="o">~</span> <span class="n">Gamma</span><span class="x">()</span>
+    <span class="n">b</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">()</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">function1</span><span class="x">(</span><span class="n">a</span><span class="x">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">function2</span><span class="x">(</span><span class="n">b</span><span class="x">)</span>
+    <span class="n">x</span> <span class="o">.~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">c</span><span class="x">,</span> <span class="n">d</span><span class="x">)</span>
+<span class="k">end</span>
+<span class="n">alg</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="x">(</span><span class="n">MH</span><span class="x">(</span><span class="o">:</span><span class="n">a</span><span class="x">),</span> <span class="n">MH</span><span class="x">(</span><span class="o">:</span><span class="n">b</span><span class="x">))</span>
+<span class="n">sample</span><span class="x">(</span><span class="n">demo</span><span class="x">(</span><span class="n">zeros</span><span class="x">(</span><span class="mi">10</span><span class="x">)),</span> <span class="n">alg</span><span class="x">,</span> <span class="mi">1000</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>when only updating <code class="language-plaintext highlighter-rouge">a</code> in a Gibbs sub-iteration, keeping <code class="language-plaintext highlighter-rouge">b</code> the same, the value of <code class="language-plaintext highlighter-rouge">d</code> doesn’t change. And when only updating <code class="language-plaintext highlighter-rouge">b</code>, the value of <code class="language-plaintext highlighter-rouge">c</code> doesn’t change. However, if <code class="language-plaintext highlighter-rouge">function1</code> and <code class="language-plaintext highlighter-rouge">function2</code> are expensive and are both run in every Gibbs sub-iteration, a lot of time would be spent computing values that we already computed before. Such a problem can be overcome using <code class="language-plaintext highlighter-rouge">Memoization.jl</code>. Memoizing a function lets us store and reuse the output of the function for every input it is called with. This has a slight time overhead but for expensive functions, the savings will be far greater.</p>
+
+<p>To use <code class="language-plaintext highlighter-rouge">Memoization.jl</code>, simply define memoized versions of <code class="language-plaintext highlighter-rouge">function1</code> and <code class="language-plaintext highlighter-rouge">function2</code> as such:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">using</span> <span class="n">Memoization</span>
+
+<span class="nd">@memoize</span> <span class="n">memoized_function1</span><span class="x">(</span><span class="n">args</span><span class="o">...</span><span class="x">)</span> <span class="o">=</span> <span class="n">function1</span><span class="x">(</span><span class="n">args</span><span class="o">...</span><span class="x">)</span>
+<span class="nd">@memoize</span> <span class="n">memoized_function2</span><span class="x">(</span><span class="n">args</span><span class="o">...</span><span class="x">)</span> <span class="o">=</span> <span class="n">function2</span><span class="x">(</span><span class="n">args</span><span class="o">...</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p>Then define the <code class="language-plaintext highlighter-rouge">Turing</code> model using the new functions as such:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@model</span> <span class="n">demo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">a</span> <span class="o">~</span> <span class="n">Gamma</span><span class="x">()</span>
+    <span class="n">b</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">()</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">memoized_function1</span><span class="x">(</span><span class="n">a</span><span class="x">)</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">memoized_function2</span><span class="x">(</span><span class="n">b</span><span class="x">)</span>
+    <span class="n">x</span> <span class="o">.~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">c</span><span class="x">,</span> <span class="n">d</span><span class="x">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+:ET

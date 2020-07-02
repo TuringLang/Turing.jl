@@ -1,0 +1,169 @@
+I"�V<h1 id="bayesian-hidden-markov-models">Bayesian Hidden Markov Models</h1>
+<p>This tutorial illustrates training Bayesian <a href="https://en.wikipedia.org/wiki/Hidden_Markov_model">Hidden Markov Models</a> (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see <a href="http://mlg.eng.cam.ac.uk/zoubin/papers/ijprai.pdf">An introduction to Hidden Markov Models and Bayesian Networks</a> (Ghahramani, 2001).</p>
+
+<p>Let’s load the libraries we’ll need. We also set a random seed (for reproducibility) and the automatic differentiation backend to forward mode (more <a href="http://turing.ml/docs/autodiff/">here</a> on why this is useful).</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Load libraries.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">Random</span>
+
+<span class="c"># Turn off progress monitor.</span>
+<span class="n">Turing</span><span class="o">.</span><span class="n">turnprogress</span><span class="x">(</span><span class="nb">false</span><span class="x">);</span>
+
+<span class="c"># Set a random seed and use the forward_diff AD mode.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">1234</span><span class="x">);</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌ Info: [Turing]: progress logging is disabled globally
+└ @ Turing /home/cameron/.julia/packages/Turing/cReBm/src/Turing.jl:22
+</code></pre></div></div>
+
+<h2 id="simple-state-detection">Simple State Detection</h2>
+
+<p>In this example, we’ll use something where the states and emission parameters are straightforward.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Define the emission parameter.</span>
+<span class="n">y</span> <span class="o">=</span> <span class="x">[</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">3.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">1.0</span><span class="x">,</span> <span class="mf">1.0</span> <span class="x">];</span>
+<span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">);</span>  <span class="n">K</span> <span class="o">=</span> <span class="mi">3</span><span class="x">;</span>
+
+<span class="c"># Plot the data we just made.</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">xlim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">15</span><span class="x">),</span> <span class="n">ylim</span> <span class="o">=</span> <span class="x">(</span><span class="o">-</span><span class="mi">1</span><span class="x">,</span><span class="mi">5</span><span class="x">),</span> <span class="n">size</span> <span class="o">=</span> <span class="x">(</span><span class="mi">500</span><span class="x">,</span> <span class="mi">250</span><span class="x">))</span>
+</code></pre></div></div>
+
+<p><img src="../4_BayesHmm_files/4_BayesHmm_3_0.svg" alt="svg" /></p>
+
+<p>We can see that we have three states, one for each height of the plot (1, 2, 3). This height is also our emission parameter, so state one produces a value of one, state two produces a value of two, and so on.</p>
+
+<p>Ultimately, we would like to understand three major parameters:</p>
+
+<ol>
+  <li>The transition matrix. This is a matrix that assigns a probability of switching from one state to any other state, including the state that we are already in.</li>
+  <li>The emission matrix, which describes a typical value emitted by some state. In the plot above, the emission parameter for state one is simply one.</li>
+  <li>The state sequence is our understanding of what state we were actually in when we observed some data. This is very important in more sophisticated HMM models, where the emission value does not equal our state.</li>
+</ol>
+
+<p>With this in mind, let’s set up our model. We are going to use some of our knowledge as modelers to provide additional information about our system. This takes the form of the prior on our emission parameter.</p>
+
+<p>$$
+m_i \sim Normal(i, 0.5), \space m = {1,2,3}
+$$</p>
+
+<p>Simply put, this says that we expect state one to emit values in a Normally distributed manner, where the mean of each state’s emissions is that state’s value. The variance of 0.5 helps the model converge more quickly — consider the case where we have a variance of 1 or 2. In this case, the likelihood of observing a 2 when we are in state 1 is actually quite high, as it is within a standard deviation of the true emission value. Applying the prior that we are likely to be tightly centered around the mean prevents our model from being too confused about the state that is generating our observations.</p>
+
+<p>The priors on our transition matrix are noninformative, using <code class="language-plaintext highlighter-rouge">T[i] ~ Dirichlet(ones(K)/K)</code>. The Dirichlet prior used in this way assumes that the state is likely to change to any other state with equal probability. As we’ll see, this transition matrix prior will be overwritten as we observe data.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Turing model definition.</span>
+<span class="nd">@model</span> <span class="n">BayesHmm</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="c"># Get observation length.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">length</span><span class="x">(</span><span class="n">y</span><span class="x">)</span>
+
+    <span class="c"># State sequence.</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">tzeros</span><span class="x">(</span><span class="kt">Int</span><span class="x">,</span> <span class="n">N</span><span class="x">)</span>
+
+    <span class="c"># Emission matrix.</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">(</span><span class="nb">undef</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span>
+
+    <span class="c"># Transition matrix.</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">Vector</span><span class="x">}(</span><span class="nb">undef</span><span class="x">,</span> <span class="n">K</span><span class="x">)</span>
+
+    <span class="c"># Assign distributions to each element</span>
+    <span class="c"># of the transition matrix and the</span>
+    <span class="c"># emission matrix.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span>
+        <span class="n">T</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Dirichlet</span><span class="x">(</span><span class="n">ones</span><span class="x">(</span><span class="n">K</span><span class="x">)</span><span class="o">/</span><span class="n">K</span><span class="x">)</span>
+        <span class="n">m</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">i</span><span class="x">,</span> <span class="mf">0.5</span><span class="x">)</span>
+    <span class="k">end</span>
+
+    <span class="c"># Observe each point of the input.</span>
+    <span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">K</span><span class="x">)</span>
+    <span class="n">y</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="mi">1</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">2</span><span class="o">:</span><span class="n">N</span>
+        <span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Categorical</span><span class="x">(</span><span class="n">vec</span><span class="x">(</span><span class="n">T</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="x">]]))</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">[</span><span class="n">i</span><span class="x">]],</span> <span class="mf">0.1</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>We will use a combination of two samplers (<a href="http://turing.ml/docs/library/#Turing.HMC">HMC</a> and <a href="http://turing.ml/docs/library/#Turing.PG">Particle Gibbs</a>) by passing them to the <a href="http://turing.ml/docs/library/#Turing.Gibbs">Gibbs</a> sampler. The Gibbs sampler allows for compositional inference, where we can utilize different samplers on different parameters.</p>
+
+<p>In this case, we use HMC for <code class="language-plaintext highlighter-rouge">m</code> and <code class="language-plaintext highlighter-rouge">T</code>, representing the emission and transition matrices respectively. We use the Particle Gibbs sampler for <code class="language-plaintext highlighter-rouge">s</code>, the state sequence. You may wonder why it is that we are not assigning <code class="language-plaintext highlighter-rouge">s</code> to the HMC sampler, and why it is that we need compositional Gibbs sampling at all.</p>
+
+<p>The parameter <code class="language-plaintext highlighter-rouge">s</code> is not a continuous variable. It is a vector of <strong>integers</strong>, and thus Hamiltonian methods like HMC and <a href="http://turing.ml/docs/library/#-turingnuts--type">NUTS</a> won’t work correctly. Gibbs allows us to apply the right tools to the best effect. If you are a particularly advanced user interested in higher performance, you may benefit from setting up your Gibbs sampler to use <a href="http://turing.ml/docs/autodiff/#compositional-sampling-with-differing-ad-modes">different automatic differentiation</a> backends for each parameter space.</p>
+
+<p>Time to run our sampler.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">g</span> <span class="o">=</span> <span class="n">Gibbs</span><span class="x">(</span><span class="n">HMC</span><span class="x">(</span><span class="mf">0.001</span><span class="x">,</span> <span class="mi">7</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">,</span> <span class="o">:</span><span class="n">T</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">))</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">BayesHmm</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="mi">3</span><span class="x">),</span> <span class="n">g</span><span class="x">,</span> <span class="mi">100</span><span class="x">);</span>
+</code></pre></div></div>
+
+<p>Let’s see how well our chain performed. Ordinarily, using the <code class="language-plaintext highlighter-rouge">describe</code> function from <a href="https://github.com/TuringLang/MCMCChain.jl">MCMCChain</a> would be a good first step, but we have generated a lot of parameters here (<code class="language-plaintext highlighter-rouge">s[1]</code>, <code class="language-plaintext highlighter-rouge">s[2]</code>, <code class="language-plaintext highlighter-rouge">m[1]</code>, and so on). It’s a bit easier to show how our model performed graphically.</p>
+
+<p>The code below generates an animation showing the graph of the data above, and the data our model generates in each sample.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import StatsPlots for animating purposes.</span>
+<span class="k">using</span> <span class="n">StatsPlots</span>
+
+<span class="c"># Extract our m and s parameters from the chain.</span>
+<span class="n">m_set</span> <span class="o">=</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">m</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span>
+<span class="n">s_set</span> <span class="o">=</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">s</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">data</span>
+
+<span class="c"># Iterate through the MCMC samples.</span>
+<span class="n">Ns</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+
+<span class="c"># Make an animation.</span>
+<span class="n">animation</span> <span class="o">=</span> <span class="nd">@animate</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">Ns</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m_set</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="o">:</span><span class="x">];</span> 
+    <span class="n">s</span> <span class="o">=</span> <span class="kt">Int</span><span class="o">.</span><span class="x">(</span><span class="n">s_set</span><span class="x">[</span><span class="n">i</span><span class="x">,</span><span class="o">:</span><span class="x">]);</span>
+    <span class="n">emissions</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">skipmissing</span><span class="x">(</span><span class="n">m</span><span class="x">[</span><span class="n">s</span><span class="x">]))</span>
+    
+    <span class="n">p</span> <span class="o">=</span> <span class="n">plot</span><span class="x">(</span><span class="n">y</span><span class="x">,</span> <span class="n">c</span> <span class="o">=</span> <span class="o">:</span><span class="n">red</span><span class="x">,</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="x">(</span><span class="mi">500</span><span class="x">,</span> <span class="mi">250</span><span class="x">),</span>
+        <span class="n">xlabel</span> <span class="o">=</span> <span class="s">"Time"</span><span class="x">,</span>
+        <span class="n">ylabel</span> <span class="o">=</span> <span class="s">"State"</span><span class="x">,</span>
+        <span class="n">legend</span> <span class="o">=</span> <span class="o">:</span><span class="n">topright</span><span class="x">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s">"True data"</span><span class="x">,</span>
+        <span class="n">xlim</span> <span class="o">=</span> <span class="x">(</span><span class="mi">0</span><span class="x">,</span><span class="mi">15</span><span class="x">),</span>
+        <span class="n">ylim</span> <span class="o">=</span> <span class="x">(</span><span class="o">-</span><span class="mi">1</span><span class="x">,</span><span class="mi">5</span><span class="x">));</span>
+    <span class="n">plot!</span><span class="x">(</span><span class="n">emissions</span><span class="x">,</span> <span class="n">color</span> <span class="o">=</span> <span class="o">:</span><span class="n">blue</span><span class="x">,</span> <span class="n">label</span> <span class="o">=</span> <span class="s">"Sample </span><span class="si">$$</span><span class="s">N"</span><span class="x">)</span>
+<span class="k">end</span> <span class="n">every</span> <span class="mi">10</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><img src="https://user-images.githubusercontent.com/422990/50612436-de588980-0e8e-11e9-8635-4e3e97c0d7f9.gif" alt="animation" /></p>
+
+<p>Looks like our model did a pretty good job, but we should also check to make sure our chain converges. A quick check is to examine whether the diagonal (representing the probability of remaining in the current state) of the transition matrix appears to be stationary. The code below extracts the diagonal and shows a traceplot of each persistence probability.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Index the chain with the persistence probabilities.</span>
+<span class="n">subchain</span> <span class="o">=</span> <span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="x">,[</span><span class="s">"T[</span><span class="si">$$</span><span class="s">i][</span><span class="si">$$</span><span class="s">i]"</span> <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">K</span><span class="x">],</span><span class="o">:</span><span class="x">]</span>
+
+<span class="c"># Plot the chain.</span>
+<span class="n">plot</span><span class="x">(</span><span class="n">subchain</span><span class="x">,</span> 
+    <span class="n">colordim</span> <span class="o">=</span> <span class="o">:</span><span class="n">parameter</span><span class="x">,</span> 
+    <span class="n">seriestype</span><span class="o">=:</span><span class="n">traceplot</span><span class="x">,</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s">"Persistence Probability"</span><span class="x">,</span>
+    <span class="n">legend</span><span class="o">=:</span><span class="n">right</span>
+    <span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../4_BayesHmm_files/4_BayesHmm_11_0.svg" alt="svg" /></p>
+
+<p>A cursory examination of the traceplot above indicates that at least <code class="language-plaintext highlighter-rouge">T[3,3]</code> and possibly <code class="language-plaintext highlighter-rouge">T[2,2]</code> have converged to something resembling stationary. <code class="language-plaintext highlighter-rouge">T[1,1]</code>, on the other hand, has a slight “wobble”, and seems less consistent than the others. We can use the diagnostic functions provided by <a href="https://github.com/TuringLang/MCMCChain.jl">MCMCChain</a> to engage in some formal tests, like the Heidelberg and Welch diagnostic:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">heideldiag</span><span class="x">(</span><span class="n">c</span><span class="x">[</span><span class="o">:</span><span class="n">T</span><span class="x">])</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1-element Array{ChainDataFrame{NamedTuple{(:parameters, Symbol("Burn-in"), :Stationarity, Symbol("p-value"), :Mean, :Halfwidth, :Test),Tuple{Array{String,1},Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1}}}},1}:
+ Heidelberger and Welch Diagnostic - Chain 1
+  parameters  Burn-in  Stationarity  p-value    Mean  Halfwidth    Test
+  ──────────  ───────  ────────────  ───────  ──────  ─────────  ──────
+     T[1][1]  50.0000        0.0000   0.0001  0.5329     0.0063  1.0000
+     T[1][2]  50.0000        0.0000   0.0189  0.1291     0.0043  1.0000
+     T[1][3]  50.0000        0.0000   0.0230  0.3381     0.0032  1.0000
+     T[2][1]  30.0000        1.0000   0.2757  0.0037     0.0000  1.0000
+     T[2][2]   0.0000        1.0000   0.1689  0.0707     0.0022  1.0000
+     T[2][3]   0.0000        1.0000   0.1365  0.9255     0.0022  1.0000
+     T[3][1]  50.0000        0.0000   0.0454  0.4177     0.0147  1.0000
+     T[3][2]  40.0000        1.0000   0.0909  0.2549     0.0080  1.0000
+     T[3][3]  50.0000        0.0000   0.0098  0.3274     0.0067  1.0000
+</code></pre></div></div>
+
+<p>The p-values on the test suggest that we cannot reject the hypothesis that the observed sequence comes from a stationary distribution, so we can be somewhat more confident that our transition matrix has converged to something reasonable.</p>
+:ET
