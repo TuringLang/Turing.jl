@@ -31,15 +31,15 @@ The function `sample` is part of the AbstractMCMC interface. As explained in the
 Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing, using Importance Sampling as an example. I don't go into all the details: for instance, I don't address selectors or parallelism.
 
 First, we explain how Importance Sampling works in the abstract. Consider the model defined in the first code block. Mathematically, it can be written:
-$$
-\begin{align}
+
+$\begin{align}
 s &\sim \text{InverseGamma}(2, 3) \\
 m &\sim \text{Normal}(0, \sqrt{s}) \\
 x &\sim \text{Normal}(m, \sqrt{s}) \\
 y &\sim \text{Normal}(m, \sqrt{s})
-\end{align}
-$$
-The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m)$. Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y)$.
+\end{align}$
+
+The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m)$. Since \(x = 1.5\) and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y)$.
 
 Importance Sampling produces independent samples $(s_i, m_i)$ from the prior distribution. It also outputs unnormalized weights $w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$ such that the empirical distribution $\frac 1 N \sum\limits_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$ is a good approximation of the posterior.
 
