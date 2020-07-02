@@ -44,7 +44,7 @@ end
 """
     SMC(space...)
     SMC([resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    SMC([resampler = resample_systematic, ]threshold[, space = ()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
 
@@ -59,7 +59,7 @@ end
 function SMC(resampler, threshold::Real, space::Tuple = ())
     return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
-SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, space)
+SMC(threshold::Real, space::Tuple = ()) = SMC(AdvancedPS.resample_systematic, threshold, space)
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
@@ -69,12 +69,12 @@ mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                   ::   V
     # The logevidence after aggregating all samples together.
     average_logevidence  ::   F
-    particles            ::   ParticleContainer
+    particles            ::   AdvancedPS.ParticleContainer
 end
 
 function SMCState(model::Model)
     vi = VarInfo(model)
-    particles = ParticleContainer(Trace[])
+    particles = AdvancedPS.ParticleContainer(AdvancedPS.Trace[])
 
     return SMCState(vi, 0.0, particles)
 end
@@ -107,14 +107,14 @@ function AbstractMCMC.sample_init!(
     empty!(vi)
 
     # create a new set of particles
-    T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    particles = T[Trace(model, spl, vi) for _ in 1:N]
+    T = AdvancedPS.Trace{typeof(spl),typeof(vi),typeof(model)}
+    particles = T[AdvancedPS.Trace(model, spl, vi) for _ in 1:N]
 
     # create a new particle container
-    spl.state.particles = pc = ParticleContainer(particles)
+    spl.state.particles = pc = AdvancedPS.ParticleContainer(particles)
 
     # Perform particle sweep.
-    logevidence = sweep!(pc, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(pc, spl.alg.resampler)
     spl.state.average_logevidence = logevidence
 
     return
@@ -134,7 +134,7 @@ function AbstractMCMC.step!(
 
     # grab the weight
     pc = spl.state.particles
-    weight = getweight(pc, iteration)
+    weight = AdvancedPS.getweight(pc, iteration)
 
     # update the master vi
     particle = pc.vals[iteration]
@@ -175,7 +175,7 @@ isgibbscomponent(::PG) = true
 """
     PG(n, space...)
     PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
+    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
 in `space`.
@@ -196,7 +196,7 @@ function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
     return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
 function PG(nparticles::Int, threshold::Real, space::Tuple = ())
-    return PG(nparticles, resample_systematic, threshold, space)
+    return PG(nparticles, AdvancedPS.resample_systematic, threshold, space)
 end
 
 # If only the number of particles and the space is defined
@@ -244,7 +244,7 @@ function AbstractMCMC.step!(
 )
     # obtain or create reference particle
     vi = spl.state.vi
-    ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
+    ref_particle = isempty(vi) ? nothing : AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
 
     # reset the VarInfo before new sweep
     reset_num_produce!(vi)
@@ -253,26 +253,26 @@ function AbstractMCMC.step!(
 
     # create a new set of particles
     num_particles = spl.alg.nparticles
-    T = Trace{typeof(spl),typeof(vi),typeof(model)}
+    T = AdvancedPS.Trace{typeof(spl),typeof(vi),typeof(model)}
     if ref_particle === nothing
-        particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
+        particles = T[AdvancedPS.Trace(model, spl, vi) for _ in 1:num_particles]
     else
         particles = Vector{T}(undef, num_particles)
         @inbounds for i in 1:(num_particles - 1)
-            particles[i] = Trace(model, spl, vi)
+            particles[i] = AdvancedPS.Trace(model, spl, vi)
         end
         @inbounds particles[num_particles] = ref_particle
     end
 
     # create a new particle container
-    pc = ParticleContainer(particles)
+    pc = AdvancedPS.ParticleContainer(particles)
 
     # Perform a particle sweep.
-    logevidence = sweep!(pc, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(pc, spl.alg.resampler)
 
     # pick a particle to be retained.
-    Ws = getweights(pc)
-    indx = randcat(Ws)
+    Ws = AdvancedPS.getweights(pc)
+    indx = AdvancedPS.randcat(Ws)
 
     # extract the VarInfo from the retained particle.
     params = tonamedtuple(vi)
@@ -325,7 +325,7 @@ function DynamicPPL.assume(
     vn::VarName,
     ::Any
 )
-    vi = current_trace().vi
+    vi = AdvancedPS.current_trace().vi
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
