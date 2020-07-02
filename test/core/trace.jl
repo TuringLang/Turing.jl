@@ -1,4 +1,4 @@
-using AdvancedSMC
+using AdvancedPS
 using Random
 using Test
 

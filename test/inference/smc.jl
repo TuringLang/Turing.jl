@@ -1,5 +1,5 @@
 using Turing, Random, Test
-using AdvancedSMC
+using AdvancedPS
 using Turing.Inference: getspace
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
