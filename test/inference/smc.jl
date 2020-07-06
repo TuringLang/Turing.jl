@@ -1,6 +1,5 @@
 using Turing, Random, Test
 using Turing.Inference: getspace
-
 using AdvancedPS # TODO: maybe use import instead?
 # import AdvancedPS
 
@@ -28,7 +27,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # Create particle container.
         logps = [0.0, -1.0, -2.0]
-        particles = [Trace(fpc(logp), empty_model(), sampler, VarInfo()) for logp in logps]
+        particles = [Trace(fpc(logp), empty_model(), sampler, Turing.VarInfo()) for logp in logps]
         pc = ParticleContainer(particles)
 
         # Initial state.

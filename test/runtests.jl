@@ -6,6 +6,7 @@ using Turing: Sampler
 using Pkg
 using Random
 using Test
+using DynamicPPL: getlogp
 
 include("test_utils/AllUtils.jl")
 
