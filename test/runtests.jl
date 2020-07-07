@@ -13,8 +13,8 @@ include("test_utils/AllUtils.jl")
 # Begin testing.
 @testset "Turing" begin
     @testset "core" begin
-        # include("core/ad.jl")
-        # include("core/trace.jl")
+        include("core/ad.jl")
+        include("core/trace.jl")
     end
 
     test_adbackends = if VERSION >= v"1.2"
@@ -27,15 +27,15 @@ include("test_utils/AllUtils.jl")
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
-                # include("inference/gibbs.jl")
-                # include("inference/hmc.jl")
-                # include("inference/is.jl")
-                # include("inference/mh.jl")
-                # include("inference/ess.jl")
-                # include("inference/emcee.jl")
+                include("inference/gibbs.jl")
+                include("inference/hmc.jl")
+                include("inference/is.jl")
+                include("inference/mh.jl")
+                include("inference/ess.jl")
+                include("inference/emcee.jl")
                 include("inference/smc.jl")
                 include("inference/Inference.jl")
-                # include("contrib/inference/dynamichmc.jl")
+                include("contrib/inference/dynamichmc.jl")
             end
         end
 
