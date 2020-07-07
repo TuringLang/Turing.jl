@@ -2,7 +2,6 @@ using Turing, Random, Test
 using DynamicPPL: getlogp
 import MCMCChains
 using Random
-using AdvancedPS # for particlecontainer tests
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
