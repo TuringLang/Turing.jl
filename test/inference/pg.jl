@@ -56,7 +56,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @test logZ(pc) == log(sum(exp, 2 .* logps))
 
     # Resample and propagate particles.
-    resample_propagate!(pc)
+    resample_propagate!(pc, resample_systematic)
     @test all(iszero(getlogp(particle.vi)) for particle in pc.vals)
     @test pc.logWs == zeros(3)
     @test getweights(pc) == fill(1/3, 3)

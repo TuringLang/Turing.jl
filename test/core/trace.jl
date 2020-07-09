@@ -25,7 +25,7 @@ using Test
         end
 
         # Test task copy version of trace
-        tr = Trace(f2, empty_model(), spl, VarInfo())
+        tr = Trace(f2, empty_model(), spl, Turing.VarInfo())
 
         consume(tr); consume(tr)
         a = fork(tr);
