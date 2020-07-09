@@ -14,11 +14,11 @@ using Test
             while true
                 ct = current_trace()
                 vn = @varname x[n]
-                assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
+                Turing.assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
                 n[] += 1
                 produce(t[1])
                 vn = @varname x[n]
-                assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
+                Turing.assume(Random.GLOBAL_RNG, spl, dist, vn, ct.vi)
                 n[] += 1
                 t[1] = 1 + t[1]
             end
