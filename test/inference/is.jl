@@ -79,7 +79,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         chains = sample(test(), IS(), 10000)
 
-        @test all(isone, chains[:x].value)
+        @test all(isone, chains[:x])
         @test chains.logevidence ≈ - 2 * log(2)
     end
 end

@@ -62,7 +62,6 @@ function Sampler(
     return Sampler(alg, info, s, state)
 end
 
-alg_str(::Sampler{<:MH}) = "MH"
 isgibbscomponent(::MH) = true
 
 #####################

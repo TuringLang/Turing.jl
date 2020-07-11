@@ -25,7 +25,7 @@ using Random
     m_lin_reg_test = linear_reg(xs_test, Vector{Union{Missing, Float64}}(undef, length(ys_test)));
     predictions = Turing.Inference.predict(m_lin_reg_test, chain_lin_reg)
 
-    ys_pred = collect(vec(mean(predictions[:y].value; dims = 1)))
+    ys_pred = vec(mean(Array(group(predictions, :y)); dims = 1))
 
     @test sum(abs2, ys_test - ys_pred) ≤ 0.1
 end

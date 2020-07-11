@@ -94,7 +94,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         chains_smc = sample(test(), SMC(), 100)
 
-        @test all(isone, chains_smc[:x].value)
+        @test all(isone, chains_smc[:x])
         @test chains_smc.logevidence ≈ -2 * log(2)
     end
 end
@@ -172,7 +172,7 @@ end
 
         chains_pg = sample(test(), PG(10), 100)
 
-        @test all(isone, chains_pg[:x].value)
+        @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
     end
 end

@@ -1,6 +1,9 @@
 using Turing, Random, Test
 using Turing: Sampler, NUTS
 using MCMCChains: Chains
+using StatsFuns: logistic
+
+using LinearAlgebra
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -55,27 +58,20 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         model_f = hmcmatrixsup()
-        vs = []
-        chain = nothing
-        # n_adapts, n_samples = 1_000, 2_000
         n_samples = 1_000
-        for _ in 1:3
+        vs = map(1:3) do _
             chain = sample(model_f, HMC(0.15, 7), n_samples)
-            r = reshape(chain[:v].value, n_samples, 2, 2)
-            push!(vs, reshape(mean(r, dims = [1]), 2, 2))
+            r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
+            reshape(mean(r; dims = 1), 2, 2)
         end
 
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
     end
     @turing_testset "multivariate support" begin
-        function sigmoid(t)
-            return 1 / (1 + exp.(-t))
-        end
-
         # Define NN flow
         function nn(x, b1, w11, w12, w13, bo, wo)
-            h = tanh.([w11 w12 w13]' * x + b1)
-            return sigmoid((wo' * h)[1] + bo)
+            h = tanh.([w11 w12 w13]' * x .+ b1)
+            return logistic(dot(wo, h) + bo)
         end
 
         # Generating training data
@@ -139,14 +135,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = HMCDA(0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = HMCDA(200, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
@@ -159,12 +158,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "nuts constructor" begin
         alg = NUTS(200, 0.65)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = NUTS(0.65)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
 
         alg = NUTS(200, 0.65, :m)
         sampler = Sampler(alg, gdemo_default)
+        @test DynamicPPL.alg_str(sampler) == "HMC"
     end
     @turing_testset "check discard" begin
         alg = NUTS(100, 0.8)

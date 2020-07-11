@@ -13,8 +13,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         n_walkers = 250
         
         spl = Emcee(n_walkers, 2.0)
-        chain = sample(gdemo_default, spl, n_samples)
+        @test DynamicPPL.alg_str(Sampler(spl, gdemo_default)) == "Emcee"
 
+        chain = sample(gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
 end
