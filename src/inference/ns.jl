@@ -85,11 +85,15 @@ Quantiles
 
 """
 
-struct NS{space, P} <: InferenceAlgorithm 
-    proposals::P  
+struct NS{space, P, B} <: InferenceAlgorithm 
+    ndims::Int    # number of parameters
+    nactive::Int    # number of active points
+    proposals::P
+    bounds::B   
 end
 
 proposal(p::NestedSamplers.Proposals) = p
+bound(b::NestedSamplers.Bounds) = b
 
 NS() = NS{()}()
 NS(space::Symbol) = NS{(space,)}()
@@ -112,11 +116,12 @@ end
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{NS{space, P}},
+    spl::Sampler{NS{space, P, B}},
     ::Integer,
     transition;
     kwargs...
-) where {space, P}
+) 
+       where {space, P, B}
     if spl.selector.rerun # Recompute joint in logp
         model(spl.state.vi)
     end
