@@ -1,4 +1,4 @@
-I"��<p><a id="How-Turing-implements-AbstractMCMC"></a></p>
+I"0�<p><a id="How-Turing-implements-AbstractMCMC"></a></p>
 
 <p><a id="How-Turing-implements-AbstractMCMC-1"></a></p>
 
@@ -34,16 +34,14 @@
 
 <p>First, we explain how Importance Sampling works in the abstract. Consider the model defined in the first code block. Mathematically, it can be written:</p>
 
-\[\begin{align}
-s &amp;\sim \text{InverseGamma}(2, 3) \\
-m &amp;\sim \text{Normal}(0, \sqrt{s}) \\
-x &amp;\sim \text{Normal}(m, \sqrt{s}) \\
-y &amp;\sim \text{Normal}(m, \sqrt{s})
-\end{align}\]
+\[\begin{align} s &amp;\sim \text{InverseGamma}(2, 3) \
+m &amp;\sim \text{Normal}(0, \sqrt{s}) \
+x &amp;\sim \text{Normal}(m, \sqrt{s}) \
+y &amp;\sim \text{Normal}(m, \sqrt{s}) \end{align}\]
 
-<p>The <strong>latent</strong> variables are (s) and $m$, the <strong>observed</strong> variables are $x$ and $y$. The model <strong>joint</strong> distribution $p(s,m,x,y)$ decomposes into the <strong>prior</strong> $p(s,m)$ and the <strong>likelihood</strong> $p(x,y \mid s,m)$. Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the <strong>posterior</strong> distribution $p(s,m \mid x,y)$.</p>
+<p>The <strong>latent</strong> variables are \(s\) and \(m\), the <strong>observed</strong> variables are \(x\) and \(y\). The model <strong>joint</strong> distribution \(p(s,m,x,y)\) decomposes into the <strong>prior</strong> \(p(s,m)\) and the <strong>likelihood</strong> \(p(x,y \mid s,m)\). Since \(x = 1.5\) and \(y = 2\) are observed, the goal is to infer the <strong>posterior</strong> distribution \(p(s,m \mid x,y)\).</p>
 
-<p>Importance Sampling produces independent samples $(s_i, m_i)$ from the prior distribution. It also outputs unnormalized weights $w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$ such that the empirical distribution $\frac 1 N \sum\limits_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$ is a good approximation of the posterior.</p>
+<p>Importance Sampling produces independent samples \((s*i, m*i)\) from the prior distribution. It also outputs unnormalized weights \(w*i = \frac {p(x,y,s*i,m*i)} {p(s*i, m*i)} = p(x,y \mid s*i, m*i)\) such that the empirical distribution \(\frac 1 N \sum\limits*{i =1}^N \frac {w*i} {\sum\limits*{j=1}^N w*j} \delta*{(s*i, m*i)}\) is a good approximation of the posterior.</p>
 
 <p><a id=".-Define-a-Sampler"></a></p>
 
@@ -71,7 +69,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 
 <p>creates an instance <code class="language-plaintext highlighter-rouge">mod</code> of the struct <code class="language-plaintext highlighter-rouge">Model</code>, which corresponds to the observations of a value of <code class="language-plaintext highlighter-rouge">1.5</code> for <code class="language-plaintext highlighter-rouge">x</code>, and a value of <code class="language-plaintext highlighter-rouge">2</code> for <code class="language-plaintext highlighter-rouge">y</code>.</p>
 
-<p>This is all handled by DynamicPPL, more specifically <a href="https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl">here</a>. I will return to how models are used to inform sampling algorithms <a href="">below</a>. TODO: link</p>
+<p>This is all handled by DynamicPPL, more specifically <a href="https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl">here</a>. I will return to how models are used to inform sampling algorithms <a href="#assumeobserve">below</a>.</p>
 
 <p><a id="Algorithms"></a></p>
 
@@ -79,7 +77,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 
 <h3 id="algorithms">Algorithms</h3>
 
-<p>An <strong>algorithm</strong> is just a sampling method: in Turing, it is a subtype of the abstract type <code class="language-plaintext highlighter-rouge">InferenceAlgorithm</code>. Defining an algorithm may require specifying a few high-level parameters. For example, “Hamiltonian Monte-Carlo” may be too vague, but “Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01” is an algorithm. “Metropolis-Hastings” may be too vague, but “Metropolis-Hastings with proposal distribution <code class="language-plaintext highlighter-rouge">p</code>” is an algorithm. $\epsilon$</p>
+<p>An <strong>algorithm</strong> is just a sampling method: in Turing, it is a subtype of the abstract type <code class="language-plaintext highlighter-rouge">InferenceAlgorithm</code>. Defining an algorithm may require specifying a few high-level parameters. For example, “Hamiltonian Monte-Carlo” may be too vague, but “Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01” is an algorithm. “Metropolis-Hastings” may be too vague, but “Metropolis-Hastings with proposal distribution <code class="language-plaintext highlighter-rouge">p</code>” is an algorithm. \(\epsilon\)</p>
 
 <p>Thus</p>
 
@@ -111,7 +109,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 
 <ul>
   <li><code class="language-plaintext highlighter-rouge">spl.alg</code>: the sampling method used, an instance of a subtype of <code class="language-plaintext highlighter-rouge">InferenceAlgorithm</code></li>
-  <li><code class="language-plaintext highlighter-rouge">spl.state</code>: information about the sampling process, see <a href="">below</a> TODO: link</li>
+  <li><code class="language-plaintext highlighter-rouge">spl.state</code>: information about the sampling process, see <a href="#States">below</a></li>
 </ul>
 
 <p>When you call <code class="language-plaintext highlighter-rouge">sample(mod, alg, n_samples)</code>, Turing first uses <code class="language-plaintext highlighter-rouge">model</code> and <code class="language-plaintext highlighter-rouge">alg</code> to build an instance <code class="language-plaintext highlighter-rouge">spl</code> of <code class="language-plaintext highlighter-rouge">Sampler</code> , then calls the native <code class="language-plaintext highlighter-rouge">AbstractMCMC</code> function <code class="language-plaintext highlighter-rouge">sample(mod, spl, n_samples)</code>.</p>
@@ -133,11 +131,11 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
   <li>a <strong>state</strong> struct implementing <code class="language-plaintext highlighter-rouge">AbstractSamplerState</code> corresponding to your method: we cover this in the following paragraph.</li>
 </ul>
 
-<p><a id="States"></a></p>
+<p><a id="a-style&quot;text-decoration:none&quot;-name&quot;States&quot;States/a"></a></p>
 
-<p><a id="States-1"></a></p>
+<p><a id="a-style&quot;text-decoration:none&quot;-name&quot;States&quot;States/a-1"></a></p>
 
-<h3 id="states">States</h3>
+<h3 id="states"><a style="text-decoration:none" name="States">States</a></h3>
 
 <p>The <code class="language-plaintext highlighter-rouge">vi</code> field contains all the important information about sampling: first and foremost, the values of all the samples, but also the distributions from which they are sampled, the names of model parameters, and other metadata. As we will see below, many important steps during sampling correspond to queries or updates to <code class="language-plaintext highlighter-rouge">spl.state.vi</code>.</p>
 
@@ -148,14 +146,14 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 <span class="k">end</span>
 </code></pre></div></div>
 
-<p>When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to <code class="language-plaintext highlighter-rouge">spl.state.vi</code>. Moreover, the average $\frac 1 N \sum\limits_{j=1}^N w_i = \frac 1 N \sum\limits_{j=1}^N p(x,y \mid s_i, m_i)$ of the sample weights is a particularly important quantity:</p>
+<p>When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to <code class="language-plaintext highlighter-rouge">spl.state.vi</code>. Moreover, the average \(\frac 1 N \sum\limits*{j=1}^N w*i = \frac 1 N \sum\limits*{j=1}^N p(x,y \mid s*i, m_i)\) of the sample weights is a particularly important quantity:</p>
 
 <ul>
-  <li>it is used to <strong>normalize</strong> the <strong>empirical approximation</strong> of the posterior distribution (TODO: link to formula)</li>
-  <li>its logarithm is the importance sampling <strong>estimate</strong> of the <strong>log evidence</strong> $\log p(x, y)$</li>
+  <li>it is used to <strong>normalize</strong> the <strong>empirical approximation</strong> of the posterior distribution</li>
+  <li>its logarithm is the importance sampling <strong>estimate</strong> of the <strong>log evidence</strong> \(\log p(x, y)\)</li>
 </ul>
 
-<p>To avoid having to compute it over and over again, <code class="language-plaintext highlighter-rouge">is.jl</code>defines an IS-specific concrete type <code class="language-plaintext highlighter-rouge">ISState</code> for sampler states, with an additional field <code class="language-plaintext highlighter-rouge">final_logevidence</code> containing $\log \left( \frac 1 N \sum\limits_{j=1}^N w_i \right)$.</p>
+<p>To avoid having to compute it over and over again, <code class="language-plaintext highlighter-rouge">is.jl</code>defines an IS-specific concrete type <code class="language-plaintext highlighter-rouge">ISState</code> for sampler states, with an additional field <code class="language-plaintext highlighter-rouge">final_logevidence</code> containing \(\log \left( \frac 1 N \sum\limits*{j=1}^N w*i \right)\).</p>
 
 <div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">mutable struct</span><span class="nc"> ISState</span><span class="x">{</span><span class="n">V</span><span class="o">&lt;:</span><span class="n">VarInfo</span><span class="x">,</span> <span class="n">F</span><span class="o">&lt;:</span><span class="kt">AbstractFloat</span><span class="x">}</span> <span class="o">&lt;:</span> <span class="n">AbstractSamplerState</span>
     <span class="n">vi</span>                 <span class="o">::</span>  <span class="n">V</span>
@@ -187,15 +185,19 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 <p><code class="language-plaintext highlighter-rouge">AbstractMCMC</code> stores information corresponding to each individual sample in objects called <code class="language-plaintext highlighter-rouge">transition</code>, but does not specify what the structure of these objects could be. You could decide to implement a type <code class="language-plaintext highlighter-rouge">MyTransition</code> for transitions corresponding to the specifics of your methods. However, there are many situations in which the only information you need for each sample is:</p>
 
 <ul>
-  <li>its value: $\theta$</li>
+  <li>its value: \(\theta\)</li>
   <li>log of the joint probability of the observed data and this sample: <code class="language-plaintext highlighter-rouge">lp</code></li>
 </ul>
 
-<p><code class="language-plaintext highlighter-rouge">Inference.jl</code> defines a struct <code class="language-plaintext highlighter-rouge">Transition</code>, which corresponds to this default situation, as well as a constructor that builds instances of <code class="language-plaintext highlighter-rouge">Transition</code> from instances of <code class="language-plaintext highlighter-rouge">Sampler</code>, by finding $\theta$ and <code class="language-plaintext highlighter-rouge">lp</code> in <code class="language-plaintext highlighter-rouge">spl.state.vi</code>.</p>
+<p><code class="language-plaintext highlighter-rouge">Inference.jl</code> <a href="https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L103">defines</a> a struct <code class="language-plaintext highlighter-rouge">Transition</code>, which corresponds to this default situation</p>
 
-<p>Construct transition from a <code class="language-plaintext highlighter-rouge">spl</code>: just dump the contents of vi-made-nametuple into a transition.</p>
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span><span class="nc"> Transition</span><span class="x">{</span><span class="n">T</span><span class="x">,</span> <span class="n">F</span><span class="o">&lt;:</span><span class="kt">AbstractFloat</span><span class="x">}</span>
+    <span class="n">θ</span>  <span class="o">::</span> <span class="n">T</span>
+    <span class="n">lp</span> <span class="o">::</span> <span class="n">F</span>
+<span class="k">end</span>
+</code></pre></div></div>
 
-<p>TODO: this is what Importance sampling uses</p>
+<p>It also <a href="https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L108">contains</a> a constructor that builds an instance of <code class="language-plaintext highlighter-rouge">Transition</code> from an instance <code class="language-plaintext highlighter-rouge">spl</code> of <code class="language-plaintext highlighter-rouge">Sampler</code>: \(\theta\) is <code class="language-plaintext highlighter-rouge">spl.state.vi</code> converted to a <code class="language-plaintext highlighter-rouge">namedtuple</code>, and <code class="language-plaintext highlighter-rouge">lp</code> is <code class="language-plaintext highlighter-rouge">getlogp(spl.state.vi)</code>. <code class="language-plaintext highlighter-rouge">is.jl</code> uses this default constructor at the end of the <code class="language-plaintext highlighter-rouge">step!</code> function <a href="https://github.com/TuringLang/Turing.jl/blob/master/src/inference/is.jl#L58">here</a>.</p>
 
 <p><a id="How-sample-works"></a></p>
 
@@ -203,7 +205,9 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 
 <h3 id="how-sample-works">How <code class="language-plaintext highlighter-rouge">sample</code> works</h3>
 
-<p>A crude summary, which ignores things like parallelism, is the following. <code class="language-plaintext highlighter-rouge">sample</code> calls <code class="language-plaintext highlighter-rouge">mcmcsample</code>, which calls</p>
+<p>A crude summary, which ignores things like parallelism, is the following:</p>
+
+<p><code class="language-plaintext highlighter-rouge">sample</code> calls <code class="language-plaintext highlighter-rouge">mcmcsample</code>, which calls</p>
 
 <ul>
   <li><code class="language-plaintext highlighter-rouge">sample_init!</code> to set things up</li>
@@ -212,25 +216,21 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
   <li><code class="language-plaintext highlighter-rouge">bundle_samples</code> to convert a vector of transitions into a more palatable type, for instance a <code class="language-plaintext highlighter-rouge">Chain</code>.</li>
 </ul>
 
-<p>you can of course implement all of these functions, but <code class="language-plaintext highlighter-rouge">AbstractMCMC</code> as well as Turing also provide default implementations for simple cases.</p>
+<p>You can of course implement all of these functions, but <code class="language-plaintext highlighter-rouge">AbstractMCMC</code> as well as Turing also provide default implementations for simple cases. For instance, importance sampling uses the default implementations of <code class="language-plaintext highlighter-rouge">sample_init!</code> and <code class="language-plaintext highlighter-rouge">bundle_samples</code>, which is why you don’t see code for them inside <code class="language-plaintext highlighter-rouge">is.jl</code>.</p>
 
-<p>TODO: importance sampling uses the default implementations of <code class="language-plaintext highlighter-rouge">sample_init!</code> and <code class="language-plaintext highlighter-rouge">bundle_samples</code>.</p>
+<p><a id="a-style&quot;text-decoration:none&quot;-name&quot;assumeobserve&quot;3.-Overload-assume-and-observe/a"></a></p>
 
-<p><a id=".-Overload-assume-and-observe"></a></p>
+<p><a id="a-style&quot;text-decoration:none&quot;-name&quot;assumeobserve&quot;3.-Overload-assume-and-observe/a-1"></a></p>
 
-<p><a id=".-Overload-assume-and-observe-1"></a></p>
-
-<h2 id="3-overload-assume-and-observe">3. Overload <code class="language-plaintext highlighter-rouge">assume</code> and <code class="language-plaintext highlighter-rouge">observe</code></h2>
-
-<p>TODO: mention at some point that related info <a href="https://turing.ml/dev/docs/for-developers/compiler">here</a>.</p>
+<h2 id="3-overload-assume-and-observe"><a style="text-decoration:none" name="assumeobserve">3. Overload <code class="language-plaintext highlighter-rouge">assume</code> and <code class="language-plaintext highlighter-rouge">observe</code></a></h2>
 
 <p>The functions mentioned above, such as <code class="language-plaintext highlighter-rouge">sample_init!</code>, <code class="language-plaintext highlighter-rouge">step!</code>, etc.,  must of course use information about the model in order to generate samples! In particular, these functions may need <strong>samples from distributions</strong> defined in the model, or to <strong>evaluate the density of these distributions</strong> at some values of the corresponding parameters or observations.</p>
 
 <p>For an example of the former, consider <strong>Importance Sampling</strong> as defined in <code class="language-plaintext highlighter-rouge">is.jl</code>. This implementation of Importance Sampling uses the model prior distribution as a proposal distribution, and therefore requires <strong>samples from the prior distribution</strong> of the model. Another example is <strong>Approximate Bayesian Computation</strong>, which requires multiple <strong>samples from the model prior and likelihood distributions</strong> in order to generate a single sample.</p>
 
-<p>An example of the latter is the <strong>Metropolis-Hastings</strong> algorithm. At every step of sampling from a target posterior $p(\theta \mid x_{\text{obs}})$, in order to compute the acceptance ratio, you need to <strong>evaluate the model joint density</strong> $p(\theta_{\text{prop}}, x_{\text{obs}})$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.</p>
+<p>An example of the latter is the <strong>Metropolis-Hastings</strong> algorithm. At every step of sampling from a target posterior \(p(\theta \mid x*{\text{obs}})\), in order to compute the acceptance ratio, you need to <strong>evaluate the model joint density</strong> \(p(\theta*{\text{prop}}, x*{\text{obs}})\) with \(\theta*{\text{prop}}\) a sample from the proposal and \(x_{\text{obs}}\) the observed data.</p>
 
-<p>This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance <code class="language-plaintext highlighter-rouge">m</code> of <code class="language-plaintext highlighter-rouge">Model</code>. One of the attributes of <code class="language-plaintext highlighter-rouge">m</code> is the model evaluation function <code class="language-plaintext highlighter-rouge">m.f</code>, which is built by compiling the <code class="language-plaintext highlighter-rouge">@model</code> macro. Executing <code class="language-plaintext highlighter-rouge">f</code> runs the tilde statements of the model in order, and adds model information to the sampler (the instance of <code class="language-plaintext highlighter-rouge">Sampler</code> that stores information about the ongoing sampling process) at each step. The DynamicPPL functions <code class="language-plaintext highlighter-rouge">assume</code> and <code class="language-plaintext highlighter-rouge">observe</code> determine what kind of information to add to the sampler for every tilde statement.</p>
+<p>This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance <code class="language-plaintext highlighter-rouge">m</code> of <code class="language-plaintext highlighter-rouge">Model</code>. One of the attributes of <code class="language-plaintext highlighter-rouge">m</code> is the model evaluation function <code class="language-plaintext highlighter-rouge">m.f</code>, which is built by compiling the <code class="language-plaintext highlighter-rouge">@model</code> macro. Executing <code class="language-plaintext highlighter-rouge">f</code> runs the tilde statements of the model in order, and adds model information to the sampler (the instance of <code class="language-plaintext highlighter-rouge">Sampler</code> that stores information about the ongoing sampling process) at each step (see <a href="https://turing.ml/dev/docs/for-developers/compiler">here</a> for more information about how the <code class="language-plaintext highlighter-rouge">@model</code> macro is compiled). The DynamicPPL functions <code class="language-plaintext highlighter-rouge">assume</code> and <code class="language-plaintext highlighter-rouge">observe</code> determine what kind of information to add to the sampler for every tilde statement.</p>
 
 <p>Consider an instance <code class="language-plaintext highlighter-rouge">m</code> of <code class="language-plaintext highlighter-rouge">Model</code> and a sampler <code class="language-plaintext highlighter-rouge">spl</code>, with associated <code class="language-plaintext highlighter-rouge">VarInfo</code> <code class="language-plaintext highlighter-rouge">vi = spl.state.vi</code>. At some point during the sampling process, an AbstractMCMC function such as <code class="language-plaintext highlighter-rouge">step!</code> calls  <code class="language-plaintext highlighter-rouge">m(vi, ...)</code>, which calls the model evaluation function <code class="language-plaintext highlighter-rouge">m.f(vi, ...)</code>.</p>
 
@@ -265,7 +265,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 <span class="k">end</span>
 </code></pre></div></div>
 
-<p>It simply returns the density (probability, in the discrete case) of the observed value under the distribution <code class="language-plaintext highlighter-rouge">dist</code>.</p>
+<p>It simply returns the density (in the discrete case, the probability) of the observed value under the distribution <code class="language-plaintext highlighter-rouge">dist</code>.</p>
 
 <p><a id=".-Summary:-Importance-Sampling-step-by-step"></a></p>
 
@@ -277,7 +277,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
 
 <ul>
   <li>
-    <p>During the $i$-th iteration, <code class="language-plaintext highlighter-rouge">step!</code> does 3 things:</p>
+    <p>During the \(i\)-th iteration, <code class="language-plaintext highlighter-rouge">step!</code> does 3 things:</p>
 
     <ul>
       <li><code class="language-plaintext highlighter-rouge">empty!(spl.state.vi)</code>: remove information about the previous sample from the sampler’s <code class="language-plaintext highlighter-rouge">VarInfo</code></li>
@@ -285,10 +285,10 @@ y &amp;\sim \text{Normal}(m, \sqrt{s})
         <p><code class="language-plaintext highlighter-rouge">model(rng, spl.state.vi, spl)</code>: call the model evaluation function</p>
 
         <ul>
-          <li>calls to <code class="language-plaintext highlighter-rouge">assume</code> add the samples from the prior $s_i$ and $m_i$ to <code class="language-plaintext highlighter-rouge">spl.state.vi</code></li>
+          <li>calls to <code class="language-plaintext highlighter-rouge">assume</code> add the samples from the prior \(s*i\) and \(m*i\) to <code class="language-plaintext highlighter-rouge">spl.state.vi</code></li>
           <li>calls to both <code class="language-plaintext highlighter-rouge">assume</code> or <code class="language-plaintext highlighter-rouge">observe</code> are followed by the line <code class="language-plaintext highlighter-rouge">acclogp!(vi, lp)</code>, where <code class="language-plaintext highlighter-rouge">lp</code> is an output of <code class="language-plaintext highlighter-rouge">assume</code> and <code class="language-plaintext highlighter-rouge">observe</code></li>
           <li><code class="language-plaintext highlighter-rouge">lp</code> is set to 0 after <code class="language-plaintext highlighter-rouge">assume</code>, and to the value of the density at the observation after <code class="language-plaintext highlighter-rouge">observe</code></li>
-          <li>when all the tilde statements have been covered, <code class="language-plaintext highlighter-rouge">spl.state.vi.logp[]</code> is the sum of the <code class="language-plaintext highlighter-rouge">lp</code>, ie the likelihood $\log p(x, y \mid s_i, m_i) = \log p(x \mid s_i, m_i) + \log p(y \mid s_i, m_i)$ of the observations given the latent variable samples $s_i$ and $m_i$.</li>
+          <li>when all the tilde statements have been covered, <code class="language-plaintext highlighter-rouge">spl.state.vi.logp[]</code> is the sum of the <code class="language-plaintext highlighter-rouge">lp</code>, ie the likelihood \(\log p(x, y \mid s*i, m*i) = \log p(x \mid s*i, m*i) + \log p(y \mid s*i, m*i)\) of the observations given the latent variable samples \(s*i\) and \(m*i\).</li>
         </ul>
       </li>
       <li>
