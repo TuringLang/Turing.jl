@@ -1,0 +1,24 @@
+I"<p><a id="Turing-Documentation"></a></p>
+
+<p><a id="Turing-Documentation-1"></a></p>
+
+<h1 id="turing-documentation">Turing Documentation</h1>
+
+<p>Welcome to the documentation for Turing.</p>
+
+<p><a id="Introduction"></a></p>
+
+<p><a id="Introduction-1"></a></p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p><strong>Turing</strong> is a general-purpose probabilistic programming language for robust, efficient Bayesian inference and decision making. Current features include:</p>
+
+<ul>
+  <li><strong>General-purpose</strong> probabilistic programming with an intuitive modelling interface;</li>
+  <li>Robust, efficient <a href="https://github.com/TuringLang/AdvancedHMC.jl">Hamiltonian Monte Carlo (HMC)</a> sampling for differentiable posterior distributions;</li>
+  <li><strong>Particle MCMC</strong> sampling for complex posterior distributions involving discrete variables and stochastic control flow; and</li>
+  <li>Compositional inference via <strong>Gibbs sampling</strong> that combines particle MCMC, HMC and random-walk MH (RWMH).</li>
+</ul>
+
+:ET

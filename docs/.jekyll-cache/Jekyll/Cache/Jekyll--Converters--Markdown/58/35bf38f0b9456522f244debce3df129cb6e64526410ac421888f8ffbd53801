@@ -1,0 +1,3 @@
+I"<h1 id="bayesian-hidden-markov-models">Bayesian Hidden Markov Models</h1>
+<p>This tutorial illustrates training Bayesian <a href="https://en.wikipedia.org/wiki/Hidden_Markov_model">Hidden Markov Models</a> (HMM) using Turing. The main goals are learning the transition matrix, emission parameter, and hidden states. For a more rigorous academic overview on Hidden Markov Models, see <a href="http://mlg.eng.cam.ac.uk/zoubin/papers/ijprai.pdf">An introduction to Hidden Markov Models and Bayesian Networks</a> (Ghahramani, 2001).</p>
+:ET

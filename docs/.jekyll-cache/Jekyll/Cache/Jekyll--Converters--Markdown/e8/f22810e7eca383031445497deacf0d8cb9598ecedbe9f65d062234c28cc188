@@ -1,0 +1,321 @@
+I"�<h1 id="bayesian-multinomial-logistic-regression">Bayesian Multinomial Logistic Regression</h1>
+<p><a href="https://en.wikipedia.org/wiki/Multinomial_logistic_regression">Multinomial logistic regression</a> is an extension of logistic regression. Logistic regression is used to model problems in which there are exactly two possible discrete outcomes. Multinomial logistic regression is used to model problems in which there are two or more possible discrete outcomes.</p>
+
+<p>In our example, we’ll be using the iris dataset. The goal of the iris multiclass problem is to predict the species of a flower given measurements (in centimeters) of sepal length and width and petal length and width. There are three possible species: Iris setosa, Iris versicolor, and Iris virginica.</p>
+
+<p>To start, let’s import all the libraries we’ll need.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import Turing and Distributions.</span>
+<span class="k">using</span> <span class="n">Turing</span><span class="x">,</span> <span class="n">Distributions</span>
+
+<span class="c"># Import RDatasets.</span>
+<span class="k">using</span> <span class="n">RDatasets</span>
+
+<span class="c"># Import MCMCChains, Plots, and StatsPlots for visualizations and diagnostics.</span>
+<span class="k">using</span> <span class="n">MCMCChains</span><span class="x">,</span> <span class="n">Plots</span><span class="x">,</span> <span class="n">StatsPlots</span>
+
+<span class="c"># We need a softmax function, which is provided by NNlin.</span>
+<span class="k">using</span> <span class="n">NNlib</span><span class="o">:</span> <span class="n">softmax</span>
+
+<span class="c"># Set a seed for reproducibility.</span>
+<span class="k">using</span> <span class="n">Random</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">);</span>
+</code></pre></div></div>
+
+<h2 id="data-cleaning--set-up">Data Cleaning &amp; Set Up</h2>
+
+<p>Now we’re going to import our dataset. Twenty rows of the dataset are shown below so you can get a good feel for what kind of data we have.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Import the "iris" dataset.</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">RDatasets</span><span class="o">.</span><span class="n">dataset</span><span class="x">(</span><span class="s">"datasets"</span><span class="x">,</span> <span class="s">"iris"</span><span class="x">);</span>
+
+<span class="c"># Randomly shuffle the rows of the dataset</span>
+<span class="n">num_rows</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mi">1</span><span class="x">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="x">[</span><span class="n">Random</span><span class="o">.</span><span class="n">shuffle</span><span class="x">(</span><span class="mi">1</span><span class="o">:</span><span class="n">num_rows</span><span class="x">),</span> <span class="o">:</span><span class="x">]</span>
+
+<span class="c"># Show twenty rows</span>
+<span class="n">first</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mi">20</span><span class="x">)</span>
+</code></pre></div></div>
+
+<table class="data-frame"><thead><tr><th></th><th>SepalLength</th><th>SepalWidth</th><th>PetalLength</th><th>PetalWidth</th><th>Species</th></tr><tr><th></th><th>Float64</th><th>Float64</th><th>Float64</th><th>Float64</th><th>Categorical…</th></tr></thead><tbody><p>20 rows × 5 columns</p><tr><th>1</th><td>6.9</td><td>3.2</td><td>5.7</td><td>2.3</td><td>virginica</td></tr><tr><th>2</th><td>5.8</td><td>2.7</td><td>5.1</td><td>1.9</td><td>virginica</td></tr><tr><th>3</th><td>6.6</td><td>2.9</td><td>4.6</td><td>1.3</td><td>versicolor</td></tr><tr><th>4</th><td>6.3</td><td>2.5</td><td>5.0</td><td>1.9</td><td>virginica</td></tr><tr><th>5</th><td>5.0</td><td>2.0</td><td>3.5</td><td>1.0</td><td>versicolor</td></tr><tr><th>6</th><td>5.8</td><td>4.0</td><td>1.2</td><td>0.2</td><td>setosa</td></tr><tr><th>7</th><td>6.7</td><td>3.1</td><td>4.7</td><td>1.5</td><td>versicolor</td></tr><tr><th>8</th><td>5.7</td><td>2.8</td><td>4.5</td><td>1.3</td><td>versicolor</td></tr><tr><th>9</th><td>6.3</td><td>2.9</td><td>5.6</td><td>1.8</td><td>virginica</td></tr><tr><th>10</th><td>5.6</td><td>3.0</td><td>4.1</td><td>1.3</td><td>versicolor</td></tr><tr><th>11</th><td>5.6</td><td>2.7</td><td>4.2</td><td>1.3</td><td>versicolor</td></tr><tr><th>12</th><td>5.1</td><td>3.4</td><td>1.5</td><td>0.2</td><td>setosa</td></tr><tr><th>13</th><td>6.7</td><td>3.3</td><td>5.7</td><td>2.1</td><td>virginica</td></tr><tr><th>14</th><td>5.8</td><td>2.6</td><td>4.0</td><td>1.2</td><td>versicolor</td></tr><tr><th>15</th><td>6.4</td><td>2.9</td><td>4.3</td><td>1.3</td><td>versicolor</td></tr><tr><th>16</th><td>4.8</td><td>3.0</td><td>1.4</td><td>0.1</td><td>setosa</td></tr><tr><th>17</th><td>6.3</td><td>3.4</td><td>5.6</td><td>2.4</td><td>virginica</td></tr><tr><th>18</th><td>4.9</td><td>2.5</td><td>4.5</td><td>1.7</td><td>virginica</td></tr><tr><th>19</th><td>4.8</td><td>3.4</td><td>1.6</td><td>0.2</td><td>setosa</td></tr><tr><th>20</th><td>5.0</td><td>2.3</td><td>3.3</td><td>1.0</td><td>versicolor</td></tr></tbody></table>
+
+<p>In this data set, the outcome <code class="language-plaintext highlighter-rouge">Species</code> is currently coded as a string. We need to convert the <code class="language-plaintext highlighter-rouge">Species</code> into 1s and 0s.</p>
+
+<p>We will create three new columns: <code class="language-plaintext highlighter-rouge">Species_setosa</code>, <code class="language-plaintext highlighter-rouge">Species_versicolor</code> and <code class="language-plaintext highlighter-rouge">Species_virginica</code>.</p>
+
+<ul>
+  <li>If a row has <code class="language-plaintext highlighter-rouge">setosa</code> as the species, then it will have <code class="language-plaintext highlighter-rouge">Species_setosa = 1</code>, <code class="language-plaintext highlighter-rouge">Species_versicolor = 0</code>, and <code class="language-plaintext highlighter-rouge">Species_virginica = 0</code>.</li>
+  <li>If a row has <code class="language-plaintext highlighter-rouge">versicolor</code> as the species, then it will have <code class="language-plaintext highlighter-rouge">Species_setosa = 0</code>, <code class="language-plaintext highlighter-rouge">Species_versicolor = 1</code>, and <code class="language-plaintext highlighter-rouge">Species_virginica = 0</code>.</li>
+  <li>If a row has <code class="language-plaintext highlighter-rouge">virginica</code> as the species, then it will have <code class="language-plaintext highlighter-rouge">Species_setosa = 0</code>, <code class="language-plaintext highlighter-rouge">Species_versicolor = 0</code>, and <code class="language-plaintext highlighter-rouge">Species_virginica = 1</code>.</li>
+</ul>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Recode the `Species` column</span>
+<span class="n">data</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_setosa</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">r</span><span class="o">.</span><span class="n">Species</span> <span class="o">==</span> <span class="s">"setosa"</span> <span class="o">?</span> <span class="mf">1.0</span> <span class="o">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">r</span> <span class="k">in</span> <span class="n">eachrow</span><span class="x">(</span><span class="n">data</span><span class="x">)]</span>
+<span class="n">data</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_versicolor</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">r</span><span class="o">.</span><span class="n">Species</span> <span class="o">==</span> <span class="s">"versicolor"</span> <span class="o">?</span> <span class="mf">1.0</span> <span class="o">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">r</span> <span class="k">in</span> <span class="n">eachrow</span><span class="x">(</span><span class="n">data</span><span class="x">)]</span>
+<span class="n">data</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_virginica</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">r</span><span class="o">.</span><span class="n">Species</span> <span class="o">==</span> <span class="s">"virginica"</span> <span class="o">?</span> <span class="mf">1.0</span> <span class="o">:</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">r</span> <span class="k">in</span> <span class="n">eachrow</span><span class="x">(</span><span class="n">data</span><span class="x">)]</span>
+
+<span class="c"># Show twenty rows of the new species columns</span>
+<span class="n">first</span><span class="x">(</span><span class="n">data</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="x">[</span><span class="o">:</span><span class="n">Species</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_setosa</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_virginica</span><span class="x">]],</span> <span class="mi">20</span><span class="x">)</span>
+</code></pre></div></div>
+
+<table class="data-frame"><thead><tr><th></th><th>Species</th><th>Species_setosa</th><th>Species_versicolor</th><th>Species_virginica</th></tr><tr><th></th><th>Categorical…</th><th>Float64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>20 rows × 4 columns</p><tr><th>1</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>2</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>3</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>4</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>5</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>6</th><td>setosa</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>7</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>8</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>9</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>10</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>11</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>12</th><td>setosa</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>13</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>14</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>15</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr><tr><th>16</th><td>setosa</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>17</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>18</th><td>virginica</td><td>0.0</td><td>0.0</td><td>1.0</td></tr><tr><th>19</th><td>setosa</td><td>1.0</td><td>0.0</td><td>0.0</td></tr><tr><th>20</th><td>versicolor</td><td>0.0</td><td>1.0</td><td>0.0</td></tr></tbody></table>
+
+<p>After we’ve done that tidying, it’s time to split our dataset into training and testing sets, and separate the labels from the data. We separate our data into two halves, <code class="language-plaintext highlighter-rouge">train</code> and <code class="language-plaintext highlighter-rouge">test</code>.</p>
+
+<p>We must rescale our feature variables so that they are centered around zero by subtracting each column by the mean and dividing it by the standard deviation. Without this step, Turing’s sampler will have a hard time finding a place to start searching for parameter estimates.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Function to split samples.</span>
+<span class="k">function</span><span class="nf"> split_data</span><span class="x">(</span><span class="n">df</span><span class="x">,</span> <span class="n">at</span><span class="x">)</span>
+    <span class="x">(</span><span class="n">r</span><span class="x">,</span> <span class="n">_</span><span class="x">)</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">df</span><span class="x">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="kt">Int</span><span class="x">(</span><span class="n">round</span><span class="x">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">at</span><span class="x">))</span>
+    <span class="n">train</span> <span class="o">=</span> <span class="n">df</span><span class="x">[</span><span class="mi">1</span><span class="o">:</span><span class="n">index</span><span class="x">,</span> <span class="o">:</span><span class="x">]</span>
+    <span class="n">test</span>  <span class="o">=</span> <span class="n">df</span><span class="x">[(</span><span class="n">index</span><span class="o">+</span><span class="mi">1</span><span class="x">)</span><span class="o">:</span><span class="k">end</span><span class="x">,</span> <span class="o">:</span><span class="x">]</span>
+    <span class="k">return</span> <span class="n">train</span><span class="x">,</span> <span class="n">test</span>
+<span class="k">end</span>
+
+<span class="c"># Rescale our feature variables.</span>
+<span class="n">data</span><span class="o">.</span><span class="n">SepalLength</span> <span class="o">=</span> <span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalLength</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalLength</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalLength</span><span class="x">)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">SepalWidth</span> <span class="o">=</span> <span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalWidth</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalWidth</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">SepalWidth</span><span class="x">)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">PetalLength</span> <span class="o">=</span> <span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalLength</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalLength</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalLength</span><span class="x">)</span>
+<span class="n">data</span><span class="o">.</span><span class="n">PetalWidth</span> <span class="o">=</span> <span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalWidth</span> <span class="o">.-</span> <span class="n">mean</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalWidth</span><span class="x">))</span> <span class="o">./</span> <span class="n">std</span><span class="x">(</span><span class="n">data</span><span class="o">.</span><span class="n">PetalWidth</span><span class="x">)</span>
+
+<span class="c"># Split our dataset 50/50 into training/test sets.</span>
+<span class="n">train</span><span class="x">,</span> <span class="n">test</span> <span class="o">=</span> <span class="n">split_data</span><span class="x">(</span><span class="n">data</span><span class="x">,</span> <span class="mf">0.50</span><span class="x">);</span>
+
+<span class="n">label_names</span> <span class="o">=</span> <span class="x">[</span><span class="o">:</span><span class="n">Species_setosa</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">Species_virginica</span><span class="x">]</span>
+<span class="n">feature_names</span> <span class="o">=</span> <span class="x">[</span><span class="o">:</span><span class="n">SepalLength</span><span class="x">,</span> <span class="o">:</span><span class="n">SepalWidth</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalLength</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalWidth</span><span class="x">]</span>
+
+<span class="c"># Create our labels. These are the values we are trying to predict.</span>
+<span class="n">train_labels</span> <span class="o">=</span> <span class="n">train</span><span class="x">[</span><span class="o">:</span><span class="x">,</span> <span class="n">label_names</span><span class="x">]</span>
+<span class="n">test_labels</span> <span class="o">=</span> <span class="n">test</span><span class="x">[</span><span class="o">:</span><span class="x">,</span> <span class="n">label_names</span><span class="x">]</span>
+
+<span class="c"># Create our features. These are our predictors.</span>
+<span class="n">train_features</span> <span class="o">=</span> <span class="n">train</span><span class="x">[</span><span class="o">:</span><span class="x">,</span> <span class="n">feature_names</span><span class="x">];</span>
+<span class="n">test_features</span> <span class="o">=</span> <span class="n">test</span><span class="x">[</span><span class="o">:</span><span class="x">,</span> <span class="n">feature_names</span><span class="x">];</span>
+</code></pre></div></div>
+
+<p>Our <code class="language-plaintext highlighter-rouge">train</code> and <code class="language-plaintext highlighter-rouge">test</code> matrices are still in the <code class="language-plaintext highlighter-rouge">DataFrame</code> format, which tends not to play too well with the kind of manipulations we’re about to do, so we convert them into <code class="language-plaintext highlighter-rouge">Matrix</code> objects.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert the DataFrame objects to matrices.</span>
+<span class="n">train_labels</span> <span class="o">=</span> <span class="kt">Matrix</span><span class="x">(</span><span class="n">train_labels</span><span class="x">);</span>
+<span class="n">test_labels</span> <span class="o">=</span> <span class="kt">Matrix</span><span class="x">(</span><span class="n">test_labels</span><span class="x">);</span>
+
+<span class="n">train_features</span> <span class="o">=</span> <span class="kt">Matrix</span><span class="x">(</span><span class="n">train_features</span><span class="x">);</span>
+<span class="n">test_features</span> <span class="o">=</span> <span class="kt">Matrix</span><span class="x">(</span><span class="n">test_features</span><span class="x">);</span>
+</code></pre></div></div>
+
+<h2 id="model-declaration">Model Declaration</h2>
+<p>Finally, we can define our model.</p>
+
+<p><code class="language-plaintext highlighter-rouge">logistic_regression</code> takes four arguments:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">x</code> is our set of independent variables;</li>
+  <li><code class="language-plaintext highlighter-rouge">y</code> is the element we want to predict;</li>
+  <li><code class="language-plaintext highlighter-rouge">n</code> is the number of observations we have; and</li>
+  <li><code class="language-plaintext highlighter-rouge">σ</code> is the standard deviation we want to assume for our priors.</li>
+</ul>
+
+<p>We need to create our coefficients. To do so, we first need to select one of the species as the baseline species. The selection of the baseline class does not matter. Then we create our coefficients against that baseline.</p>
+
+<p>Let us select <code class="language-plaintext highlighter-rouge">"setosa"</code> as the baseline. We create ten coefficients (<code class="language-plaintext highlighter-rouge">intercept_versicolor</code>, <code class="language-plaintext highlighter-rouge">intercept_virginica</code>, <code class="language-plaintext highlighter-rouge">SepalLength_versicolor</code>, <code class="language-plaintext highlighter-rouge">SepalLength_virginica</code>, <code class="language-plaintext highlighter-rouge">SepalWidth_versicolor</code>, <code class="language-plaintext highlighter-rouge">SepalWidth_virginica</code>, <code class="language-plaintext highlighter-rouge">PetalLength_versicolor</code>, <code class="language-plaintext highlighter-rouge">PetalLength_virginica</code>, <code class="language-plaintext highlighter-rouge">PetalWidth_versicolor</code>, and <code class="language-plaintext highlighter-rouge">PetalWidth_virginica</code>) and assign a prior of normally distributed with means of zero and standard deviations of <code class="language-plaintext highlighter-rouge">σ</code>. We want to find values of these ten coefficients to predict any given <code class="language-plaintext highlighter-rouge">y</code>.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">for</code> block creates a variable <code class="language-plaintext highlighter-rouge">v</code> which is the softmax function. We then observe the liklihood of calculating <code class="language-plaintext highlighter-rouge">v</code> given the actual label, <code class="language-plaintext highlighter-rouge">y[i]</code>.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bayesian multinomial logistic regression</span>
+<span class="nd">@model</span> <span class="n">logistic_regression</span><span class="x">(</span><span class="n">x</span><span class="x">,</span> <span class="n">y</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">intercept_versicolor</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">intercept_virginica</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    
+    <span class="n">SepalLength_versicolor</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">SepalLength_virginica</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    
+    <span class="n">SepalWidth_versicolor</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">SepalWidth_virginica</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    
+    <span class="n">PetalLength_versicolor</span>  <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">PetalLength_virginica</span>  <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    
+    <span class="n">PetalWidth_versicolor</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+    <span class="n">PetalWidth_virginica</span>  <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">σ</span><span class="x">)</span>
+
+
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">softmax</span><span class="x">([</span><span class="mi">0</span><span class="x">,</span> <span class="c"># this 0 corresponds to the base category `setosa`</span>
+                     <span class="n">intercept_versicolor</span> <span class="o">+</span> <span class="n">SepalLength_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">SepalWidth_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">PetalLength_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">2</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">PetalWidth_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">2</span><span class="x">],</span>
+                     <span class="n">intercept_virginica</span> <span class="o">+</span> <span class="n">SepalLength_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">3</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">SepalWidth_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">3</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">PetalLength_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">4</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">PetalWidth_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">4</span><span class="x">]])</span>
+        <span class="n">y</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="o">:</span><span class="x">]</span> <span class="o">~</span> <span class="n">Multinomial</span><span class="x">(</span><span class="mi">1</span><span class="x">,</span> <span class="n">v</span><span class="x">)</span>
+    <span class="k">end</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<h2 id="sampling">Sampling</h2>
+
+<p>Now we can run our sampler. This time we’ll use <a href="http://turing.ml/docs/library/#Turing.HMC"><code class="language-plaintext highlighter-rouge">HMC</code></a> to sample from our posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Retrieve the number of observations.</span>
+<span class="n">n</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">train_features</span><span class="x">)</span>
+
+<span class="c"># Sample using HMC.</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">mapreduce</span><span class="x">(</span><span class="n">c</span> <span class="o">-&gt;</span> <span class="n">sample</span><span class="x">(</span><span class="n">logistic_regression</span><span class="x">(</span><span class="n">train_features</span><span class="x">,</span> <span class="n">train_labels</span><span class="x">,</span> <span class="n">n</span><span class="x">,</span> <span class="mi">1</span><span class="x">),</span> <span class="n">HMC</span><span class="x">(</span><span class="mf">0.05</span><span class="x">,</span> <span class="mi">10</span><span class="x">),</span> <span class="mi">1500</span><span class="x">),</span>
+    <span class="n">chainscat</span><span class="x">,</span>
+    <span class="mi">1</span><span class="o">:</span><span class="mi">3</span>
+<span class="x">)</span>
+
+<span class="n">describe</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[32mSampling: 100%|█████████████████████████████████████████| Time: 0:00:05[39m
+[32mSampling: 100%|█████████████████████████████████████████| Time: 0:00:04[39m
+[32mSampling: 100%|█████████████████████████████████████████| Time: 0:00:04[39m
+
+
+
+
+
+2-element Array{ChainDataFrame,1}
+
+Summary Statistics
+              parameters     mean     std  naive_se    mcse        ess   r_hat
+  ──────────────────────  ───────  ──────  ────────  ──────  ─────────  ──────
+  PetalLength_versicolor  -0.7982  0.7341    0.0109  0.0353   330.7338  1.0022
+   PetalLength_virginica   1.7376  0.8532    0.0127  0.0424   415.6667  1.0023
+   PetalWidth_versicolor  -0.7018  0.7335    0.0109  0.0339   355.4789  1.0017
+    PetalWidth_virginica   1.6843  0.8452    0.0126  0.0382   447.2635  1.0089
+  SepalLength_versicolor   0.8642  0.7315    0.0109  0.0357   370.1195  1.0052
+   SepalLength_virginica   1.5303  0.8641    0.0129  0.0452   321.9949  1.0078
+   SepalWidth_versicolor   0.8227  0.7506    0.0112  0.0363   364.8514  1.0036
+    SepalWidth_virginica   1.5765  0.8516    0.0127  0.0468   405.3356  1.0078
+    intercept_versicolor   1.0275  0.4539    0.0068  0.0156  1004.6000  1.0029
+     intercept_virginica  -0.9449  0.6155    0.0092  0.0246   700.5740  1.0033
+
+Quantiles
+              parameters     2.5%    25.0%    50.0%    75.0%   97.5%
+  ──────────────────────  ───────  ───────  ───────  ───────  ──────
+  PetalLength_versicolor  -2.2429  -1.2926  -0.7839  -0.2936  0.5790
+   PetalLength_virginica   0.0566   1.1492   1.7495   2.3157  3.4072
+   PetalWidth_versicolor  -2.1443  -1.2000  -0.7049  -0.2173  0.7632
+    PetalWidth_virginica  -0.0565   1.1274   1.6940   2.2695  3.2582
+  SepalLength_versicolor  -0.5667   0.3953   0.8762   1.3547  2.2408
+   SepalLength_virginica  -0.1067   0.9405   1.5259   2.0997  3.2549
+   SepalWidth_versicolor  -0.5795   0.3072   0.8086   1.3063  2.3417
+    SepalWidth_virginica  -0.1364   1.0034   1.5684   2.1657  3.2340
+    intercept_versicolor   0.1491   0.7267   1.0235   1.3287  1.9327
+     intercept_virginica  -2.1602  -1.3516  -0.9434  -0.5233  0.2201
+</code></pre></div></div>
+
+<p>Since we ran multiple chains, we may as well do a spot check to make sure each chain converges around similar points.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">plot</span><span class="x">(</span><span class="n">chain</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="../8_MultinomialLogisticRegression_files/8_MultinomialLogisticRegression_15_0.svg" alt="svg" /></p>
+
+<p>Looks good!</p>
+
+<p>We can also use the <code class="language-plaintext highlighter-rouge">corner</code> function from MCMCChains to show the distributions of the various parameters of our multinomial logistic regression. The corner function requires MCMCChains and StatsPlots.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">corner</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="x">[</span><span class="o">:</span><span class="n">SepalLength_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">SepalWidth_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalLength_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalWidth_versicolor</span><span class="x">])</span>
+</code></pre></div></div>
+
+<p><img src="../8_MultinomialLogisticRegression_files/8_MultinomialLogisticRegression_17_0.svg" alt="svg" /></p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">corner</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="x">[</span><span class="o">:</span><span class="n">SepalLength_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">SepalWidth_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalLength_versicolor</span><span class="x">,</span> <span class="o">:</span><span class="n">PetalWidth_versicolor</span><span class="x">])</span>
+</code></pre></div></div>
+
+<p><img src="../8_MultinomialLogisticRegression_files/8_MultinomialLogisticRegression_18_0.svg" alt="svg" /></p>
+
+<p>Fortunately the corner plots appear to demonstrate unimodal distributions for each of our parameters, so it should be straightforward to take the means of each parameter’s sampled values to estimate our model to make predictions.</p>
+
+<h2 id="making-predictions">Making Predictions</h2>
+<p>How do we test how well the model actually predicts whether someone is likely to default? We need to build a prediction function that takes the <code class="language-plaintext highlighter-rouge">test</code> object we made earlier and runs it through the average parameter calculated during sampling.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">prediction</code> function below takes a <code class="language-plaintext highlighter-rouge">Matrix</code> and a <code class="language-plaintext highlighter-rouge">Chain</code> object. It takes the mean of each parameter’s sampled values and re-runs the softmax function using those mean values for every element in the test set.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">function</span><span class="nf"> prediction</span><span class="x">(</span><span class="n">x</span><span class="o">::</span><span class="kt">Matrix</span><span class="x">,</span> <span class="n">chain</span><span class="x">)</span>
+    <span class="c"># Pull the means from each parameter's sampled values in the chain.</span>
+    <span class="n">intercept_versicolor</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">intercept_versicolor</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">intercept_virginica</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">intercept_virginica</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">SepalLength_versicolor</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">SepalLength_versicolor</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">SepalLength_virginica</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">SepalLength_virginica</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">SepalWidth_versicolor</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">SepalWidth_versicolor</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">SepalWidth_virginica</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">SepalWidth_virginica</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">PetalLength_versicolor</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">PetalLength_versicolor</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">PetalLength_virginica</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">PetalLength_virginica</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">PetalWidth_versicolor</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">PetalWidth_versicolor</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+    <span class="n">PetalWidth_virginica</span> <span class="o">=</span> <span class="n">mean</span><span class="x">(</span><span class="n">chain</span><span class="x">[</span><span class="o">:</span><span class="n">PetalWidth_virginica</span><span class="x">]</span><span class="o">.</span><span class="n">value</span><span class="x">)</span>
+
+    <span class="c"># Retrieve the number of rows.</span>
+    <span class="n">n</span><span class="x">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">size</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+
+    <span class="c"># Generate a vector to store our predictions.</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="kt">Vector</span><span class="x">{</span><span class="kt">String</span><span class="x">}(</span><span class="nb">undef</span><span class="x">,</span> <span class="n">n</span><span class="x">)</span>
+
+    <span class="c"># Calculate the softmax function for each element in the test set.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="mi">1</span><span class="o">:</span><span class="n">n</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="n">softmax</span><span class="x">([</span><span class="mi">0</span><span class="x">,</span> <span class="c"># this 0 corresponds to the base category `setosa`</span>
+                     <span class="n">intercept_versicolor</span> <span class="o">+</span> <span class="n">SepalLength_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">SepalWidth_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">1</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">PetalLength_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">2</span><span class="x">]</span> <span class="o">+</span>
+                                            <span class="n">PetalWidth_versicolor</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">2</span><span class="x">],</span>
+                     <span class="n">intercept_virginica</span> <span class="o">+</span> <span class="n">SepalLength_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">3</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">SepalWidth_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">3</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">PetalLength_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">4</span><span class="x">]</span> <span class="o">+</span>
+                                           <span class="n">PetalWidth_virginica</span><span class="o">*</span><span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">,</span> <span class="mi">4</span><span class="x">]])</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">argmax</span><span class="x">(</span><span class="n">num</span><span class="x">)</span> <span class="c"># we pick the class with the highest probability</span>
+        <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="n">v</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="s">"setosa"</span>
+        <span class="k">elseif</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="n">v</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="s">"versicolor"</span>
+        <span class="k">else</span> <span class="c"># c == 3</span>
+            <span class="nd">@assert</span> <span class="n">c</span> <span class="o">==</span> <span class="mi">3</span>
+            <span class="n">v</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">=</span> <span class="s">"virginica"</span>
+        <span class="k">end</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">v</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p>Let’s see how we did! We run the test matrix through the prediction function, and compute the accuracy for our prediction.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Make the predictions.</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">prediction</span><span class="x">(</span><span class="n">test_features</span><span class="x">,</span> <span class="n">chain</span><span class="x">)</span>
+
+<span class="c"># Calculate accuracy for our test set.</span>
+<span class="n">mean</span><span class="x">(</span><span class="n">predictions</span> <span class="o">.==</span> <span class="n">test</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species</span><span class="x">])</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0.8933333333333333
+</code></pre></div></div>
+
+<p>Perhaps more important is to see the accuracy per class.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">setosa_rows</span> <span class="o">=</span> <span class="n">test</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species</span><span class="x">]</span> <span class="o">.==</span> <span class="s">"setosa"</span>
+<span class="n">versicolor_rows</span> <span class="o">=</span> <span class="n">test</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species</span><span class="x">]</span> <span class="o">.==</span> <span class="s">"versicolor"</span>
+<span class="n">virginica_rows</span> <span class="o">=</span> <span class="n">test</span><span class="x">[</span><span class="o">!</span><span class="x">,</span> <span class="o">:</span><span class="n">Species</span><span class="x">]</span> <span class="o">.==</span> <span class="s">"virginica"</span>
+
+<span class="n">println</span><span class="x">(</span><span class="s">"Number of setosa: </span><span class="si">$$</span><span class="s">(sum(setosa_rows))"</span><span class="x">)</span>
+<span class="n">println</span><span class="x">(</span><span class="s">"Number of versicolor: </span><span class="si">$$</span><span class="s">(sum(versicolor_rows))"</span><span class="x">)</span>
+<span class="n">println</span><span class="x">(</span><span class="s">"Number of virginica: </span><span class="si">$$</span><span class="s">(sum(virginica_rows))"</span><span class="x">)</span>
+
+<span class="n">println</span><span class="x">(</span><span class="s">"Percentage of setosa predicted correctly: </span><span class="si">$$</span><span class="s">(mean(predictions[setosa_rows] .== test[setosa_rows, :Species]))"</span><span class="x">)</span>
+<span class="n">println</span><span class="x">(</span><span class="s">"Percentage of versicolor predicted correctly: </span><span class="si">$$</span><span class="s">(mean(predictions[versicolor_rows] .== test[versicolor_rows, :Species]))"</span><span class="x">)</span>
+<span class="n">println</span><span class="x">(</span><span class="s">"Percentage of virginica predicted correctly: </span><span class="si">$$</span><span class="s">(mean(predictions[virginica_rows] .== test[virginica_rows, :Species]))"</span><span class="x">)</span>
+</code></pre></div></div>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Number of setosa: 32
+Number of versicolor: 25
+Number of virginica: 18
+Percentage of setosa predicted correctly: 0.96875
+Percentage of versicolor predicted correctly: 0.76
+Percentage of virginica predicted correctly: 0.9444444444444444
+</code></pre></div></div>
+
+<p>This tutorial has demonstrated how to use Turing to perform Bayesian multinomial logistic regression.</p>
+:ET

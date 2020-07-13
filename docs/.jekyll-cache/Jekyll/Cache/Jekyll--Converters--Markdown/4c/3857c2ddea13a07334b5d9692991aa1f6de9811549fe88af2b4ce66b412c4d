@@ -1,0 +1,11 @@
+I"„<h1 id="tutorials">Tutorials</h1>
+
+<p>This section contains tutorials on how to implement common models in Turing. If you prefer to have an interactive Jupyter notebook, please fork or download the <a href="https://github.com/TuringLang/TuringTutorials">TuringTutorials</a> repository.</p>
+
+<p>A list of all the tutorials available can be found to the left. The <a href="/dev/tutorials/0-introduction">introduction</a> tutorial contains an introduction to coin flipping with Turing and a brief overview of probabalistic programming.</p>
+
+<p>Tutorials are under continuous development, but there are some older version available at the TuringTutorials within the <a href="https://github.com/TuringLang/TuringTutorials/tree/master/old-notebooks/"><code class="language-plaintext highlighter-rouge">old-notebooks</code></a> section. Some of these were built using prior versions of Turing and may not function correctly, but they can assist in the syntax used for common models.</p>
+
+<p>If there is a tutorial you would like to request, please open an issue on the  <a href="https://github.com/TuringLang/TuringTutorials">TuringTutorials</a> repository.</p>
+
+:ET

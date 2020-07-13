@@ -1,0 +1,232 @@
+I" ^<p><a id="Sampler-Visualization"></a></p>
+
+<p><a id="Sampler-Visualization-1"></a></p>
+
+<h1 id="sampler-visualization">Sampler Visualization</h1>
+
+<p><a id="Introduction"></a></p>
+
+<p><a id="Introduction-1"></a></p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p><a id="The-Code"></a></p>
+
+<p><a id="The-Code-1"></a></p>
+
+<h2 id="the-code">The Code</h2>
+
+<p>For each sampler, we will use the same code to plot sampler paths. The block below loads the relevant libraries and defines a function for plotting the sampler’s trajectory across the posterior.</p>
+
+<p>The Turing model definition used here is not especially practical, but it is designed in such a way as to produce visually interesting posterior surfaces to show how different samplers move along the distribution.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ENV</span><span class="x">[</span><span class="s">"GKS_ENCODING"</span><span class="x">]</span> <span class="o">=</span> <span class="s">"utf-8"</span> <span class="c"># Allows the use of unicode characters in Plots.jl</span>
+<span class="k">using</span> <span class="n">Plots</span>
+<span class="k">using</span> <span class="n">StatsPlots</span>
+<span class="k">using</span> <span class="n">Turing</span>
+<span class="k">using</span> <span class="n">Bijectors</span>
+<span class="k">using</span> <span class="n">Random</span>
+<span class="k">using</span> <span class="n">DynamicPPL</span><span class="o">:</span> <span class="n">getlogp</span><span class="x">,</span> <span class="n">settrans!</span><span class="x">,</span> <span class="n">getval</span><span class="x">,</span> <span class="n">reconstruct</span><span class="x">,</span> <span class="n">vectorize</span><span class="x">,</span> <span class="n">setval!</span>
+
+<span class="c"># Set a seed.</span>
+<span class="n">Random</span><span class="o">.</span><span class="n">seed!</span><span class="x">(</span><span class="mi">0</span><span class="x">)</span>
+
+<span class="c"># Define a strange model.</span>
+<span class="nd">@model</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span> <span class="o">=</span> <span class="k">begin</span>
+    <span class="n">s</span> <span class="o">~</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="mi">0</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="n">bumps</span> <span class="o">=</span> <span class="n">sin</span><span class="x">(</span><span class="n">m</span><span class="x">)</span> <span class="o">+</span> <span class="n">cos</span><span class="x">(</span><span class="n">m</span><span class="x">)</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">m</span> <span class="o">+</span> <span class="mi">5</span><span class="o">*</span><span class="n">bumps</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="k">in</span> <span class="n">eachindex</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+      <span class="n">x</span><span class="x">[</span><span class="n">i</span><span class="x">]</span> <span class="o">~</span> <span class="n">Normal</span><span class="x">(</span><span class="n">m</span><span class="x">,</span> <span class="n">sqrt</span><span class="x">(</span><span class="n">s</span><span class="x">))</span>
+    <span class="k">end</span>
+    <span class="k">return</span> <span class="n">s</span><span class="x">,</span> <span class="n">m</span>
+<span class="k">end</span>
+
+<span class="c"># Define our data points.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="x">[</span><span class="mf">1.5</span><span class="x">,</span> <span class="mf">2.0</span><span class="x">,</span> <span class="mf">13.0</span><span class="x">,</span> <span class="mf">2.1</span><span class="x">,</span> <span class="mf">0.0</span><span class="x">]</span>
+
+<span class="c"># Set up the model call, sample from the prior.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">gdemo</span><span class="x">(</span><span class="n">x</span><span class="x">)</span>
+<span class="n">vi</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">VarInfo</span><span class="x">(</span><span class="n">model</span><span class="x">)</span>
+
+<span class="c"># Convert the variance parameter to the real line before sampling.</span>
+<span class="c"># Note: We only have to do this here because we are being very hands-on.</span>
+<span class="c"># Turing will handle all of this for you during normal sampling.</span>
+<span class="n">dist</span> <span class="o">=</span> <span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span><span class="mi">3</span><span class="x">)</span>
+<span class="n">svn</span> <span class="o">=</span> <span class="n">vi</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">s</span><span class="o">.</span><span class="n">vns</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span>
+<span class="n">mvn</span> <span class="o">=</span> <span class="n">vi</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">vns</span><span class="x">[</span><span class="mi">1</span><span class="x">]</span>
+<span class="n">setval!</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">vectorize</span><span class="x">(</span><span class="n">dist</span><span class="x">,</span> <span class="n">Bijectors</span><span class="o">.</span><span class="n">link</span><span class="x">(</span><span class="n">dist</span><span class="x">,</span> <span class="n">reconstruct</span><span class="x">(</span><span class="n">dist</span><span class="x">,</span> <span class="n">getval</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">svn</span><span class="x">)))),</span> <span class="n">svn</span><span class="x">)</span>
+<span class="n">settrans!</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="nb">true</span><span class="x">,</span> <span class="n">svn</span><span class="x">)</span>
+
+<span class="c"># Evaluate surface at coordinates.</span>
+<span class="k">function</span><span class="nf"> evaluate</span><span class="x">(</span><span class="n">m1</span><span class="x">,</span> <span class="n">m2</span><span class="x">)</span>
+    <span class="n">spl</span> <span class="o">=</span> <span class="n">Turing</span><span class="o">.</span><span class="n">SampleFromPrior</span><span class="x">()</span>
+    <span class="n">vi</span><span class="x">[</span><span class="n">svn</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">m1</span><span class="x">]</span>
+    <span class="n">vi</span><span class="x">[</span><span class="n">mvn</span><span class="x">]</span> <span class="o">=</span> <span class="x">[</span><span class="n">m2</span><span class="x">]</span>
+    <span class="n">model</span><span class="x">(</span><span class="n">vi</span><span class="x">,</span> <span class="n">spl</span><span class="x">)</span>
+    <span class="n">getlogp</span><span class="x">(</span><span class="n">vi</span><span class="x">)</span>
+<span class="k">end</span>
+
+<span class="k">function</span><span class="nf"> plot_sampler</span><span class="x">(</span><span class="n">chain</span><span class="x">;</span> <span class="n">label</span><span class="o">=</span><span class="s">""</span><span class="x">)</span>
+    <span class="c"># Extract values from chain.</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">get</span><span class="x">(</span><span class="n">chain</span><span class="x">,</span> <span class="x">[</span><span class="o">:</span><span class="n">s</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">,</span> <span class="o">:</span><span class="n">lp</span><span class="x">])</span>
+    <span class="n">ss</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="x">(</span><span class="kt">Ref</span><span class="x">(</span><span class="n">InverseGamma</span><span class="x">(</span><span class="mi">2</span><span class="x">,</span> <span class="mi">3</span><span class="x">)),</span> <span class="n">val</span><span class="o">.</span><span class="n">s</span><span class="x">)</span>
+    <span class="n">ms</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">m</span>
+    <span class="n">lps</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">lp</span>
+
+    <span class="c"># How many surface points to sample.</span>
+    <span class="n">granularity</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="c"># Range start/stop points.</span>
+    <span class="n">spread</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">σ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span> <span class="n">σ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ss</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ss</span><span class="x">);</span>
+    <span class="n">μ_start</span> <span class="o">=</span> <span class="n">minimum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">-</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span> <span class="n">μ_stop</span> <span class="o">=</span> <span class="n">maximum</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span> <span class="o">+</span> <span class="n">spread</span> <span class="o">*</span> <span class="n">std</span><span class="x">(</span><span class="n">ms</span><span class="x">);</span>
+    <span class="n">σ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">σ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">σ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+    <span class="n">μ_rng</span> <span class="o">=</span> <span class="n">collect</span><span class="x">(</span><span class="n">range</span><span class="x">(</span><span class="n">μ_start</span><span class="x">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">μ_stop</span><span class="x">,</span> <span class="n">length</span><span class="o">=</span><span class="n">granularity</span><span class="x">))</span>
+
+    <span class="c"># Make surface plot.</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">surface</span><span class="x">(</span><span class="n">σ_rng</span><span class="x">,</span> <span class="n">μ_rng</span><span class="x">,</span> <span class="n">evaluate</span><span class="x">,</span>
+          <span class="n">camera</span><span class="o">=</span><span class="x">(</span><span class="mi">30</span><span class="x">,</span> <span class="mi">65</span><span class="x">),</span>
+        <span class="c">#   ticks=nothing,</span>
+          <span class="n">colorbar</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span>
+          <span class="n">color</span><span class="o">=:</span><span class="n">inferno</span><span class="x">,</span>
+          <span class="n">title</span><span class="o">=</span><span class="n">label</span><span class="x">)</span>
+
+    <span class="n">line_range</span> <span class="o">=</span> <span class="mi">1</span><span class="o">:</span><span class="n">length</span><span class="x">(</span><span class="n">ms</span><span class="x">)</span>
+
+    <span class="n">scatter3d!</span><span class="x">(</span><span class="n">ss</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="n">ms</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span> <span class="n">lps</span><span class="x">[</span><span class="n">line_range</span><span class="x">],</span>
+        <span class="n">mc</span> <span class="o">=:</span><span class="n">viridis</span><span class="x">,</span> <span class="n">marker_z</span><span class="o">=</span><span class="n">collect</span><span class="x">(</span><span class="n">line_range</span><span class="x">),</span> <span class="n">msw</span><span class="o">=</span><span class="mi">0</span><span class="x">,</span>
+        <span class="n">legend</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="nb">false</span><span class="x">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="x">,</span>
+        <span class="n">xlabel</span><span class="o">=</span><span class="s">"σ"</span><span class="x">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s">"μ"</span><span class="x">,</span> <span class="n">zlabel</span><span class="o">=</span><span class="s">"Log probability"</span><span class="x">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">label</span><span class="x">)</span>
+
+    <span class="k">return</span> <span class="n">p</span>
+<span class="k">end</span><span class="x">;</span>
+</code></pre></div></div>
+
+<p><a id="Samplers"></a></p>
+
+<p><a id="Samplers-1"></a></p>
+
+<h2 id="samplers">Samplers</h2>
+
+<p><a id="Gibbs"></a></p>
+
+<p><a id="Gibbs-1"></a></p>
+
+<h3 id="gibbs">Gibbs</h3>
+
+<p>Gibbs sampling tends to exhibit a “jittery” trajectory. The example below combines <code class="language-plaintext highlighter-rouge">HMC</code> and <code class="language-plaintext highlighter-rouge">PG</code> sampling to traverse the posterior.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">Gibbs</span><span class="x">(</span><span class="n">HMC</span><span class="x">(</span><span class="mf">0.01</span><span class="x">,</span> <span class="mi">5</span><span class="x">,</span> <span class="o">:</span><span class="n">s</span><span class="x">),</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">,</span> <span class="o">:</span><span class="n">m</span><span class="x">)),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-1.svg" alt="" /></p>
+
+<p><a id="HMC"></a></p>
+
+<p><a id="HMC-1"></a></p>
+
+<h3 id="hmc">HMC</h3>
+
+<p>Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the <code class="language-plaintext highlighter-rouge">NUTS</code> sampler is often easier to run if you don’t want to spend too much time fiddling with step size and and the number of steps to take. Note however that <code class="language-plaintext highlighter-rouge">HMC</code> does not explore the positive values μ very well, likely due to the leapfrop and step size parameter settings.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMC</span><span class="x">(</span><span class="mf">0.01</span><span class="x">,</span> <span class="mi">10</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-2.svg" alt="" /></p>
+
+<p><a id="HMCDA"></a></p>
+
+<p><a id="HMCDA-1"></a></p>
+
+<h3 id="hmcda">HMCDA</h3>
+
+<p>The HMCDA sampler is an implementation of the Hamiltonian Monte Carlo with Dual Averaging algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">HMCDA</span><span class="x">(</span><span class="mi">200</span><span class="x">,</span> <span class="mf">0.65</span><span class="x">,</span> <span class="mf">0.3</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-3.svg" alt="" /></p>
+
+<p><a id="MH"></a></p>
+
+<p><a id="MH-1"></a></p>
+
+<h3 id="mh">MH</h3>
+
+<p>Metropolis-Hastings (MH) sampling is one of the earliest Markov Chain Monte Carlo methods. MH sampling does not “move” a lot, unlike many of the other samplers implemented in Turing. Typically a much longer chain is required to converge to an appropriate parameter estimate.</p>
+
+<p>The plot below only uses 1,000 iterations of Metropolis-Hastings.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">MH</span><span class="x">(),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-4.svg" alt="" /></p>
+
+<p>As you can see, the MH sampler doesn’t move parameter estimates very often.</p>
+
+<p><a id="NUTS"></a></p>
+
+<p><a id="NUTS-1"></a></p>
+
+<h3 id="nuts">NUTS</h3>
+
+<p>The No U-Turn Sampler (NUTS) is an implementation of the algorithm found in the paper “The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo” by Hoffman and Gelman (2011). The paper can be found on <a href="https://arxiv.org/abs/1111.4246">arXiv</a> for the interested reader.</p>
+
+<p>NUTS tends to be very good at traversing complex posteriors quickly.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mf">0.65</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-5.svg" alt="" /></p>
+
+<p>The only parameter that needs to be set other than the number of iterations to run is the target acceptance rate. In the Hoffman and Gelman paper, they note that a target acceptance rate of 0.65 is typical.</p>
+
+<p>Here is a plot showing a very high acceptance rate. Note that it appears to “stick” to a mode and is not particularly good at exploring the posterior as compared to the 0.65 target acceptance ratio case.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mf">0.95</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-6.svg" alt="" /></p>
+
+<p>An exceptionally low acceptance rate will show very few moves on the posterior:</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">NUTS</span><span class="x">(</span><span class="mf">0.2</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-7.svg" alt="" /></p>
+
+<p><a id="PG"></a></p>
+
+<p><a id="PG-1"></a></p>
+
+<h3 id="pg">PG</h3>
+
+<p>The Particle Gibbs (PG) sampler is an implementation of an algorithm from the paper “Particle Markov chain Monte Carlo methods” by Andrieu, Doucet, and Holenstein (2010). The interested reader can learn more <a href="https://rss.onlinelibrary.wiley.com/doi/full/10.1111/j.1467-9868.2009.00736.x">here</a>.</p>
+
+<p>The two parameters are the number of particles, and the number of iterations. The plot below shows the use of 20 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">20</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-8.svg" alt="" /></p>
+
+<p>Next, we plot using 50 particles.</p>
+
+<div class="language-julia highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">c</span> <span class="o">=</span> <span class="n">sample</span><span class="x">(</span><span class="n">model</span><span class="x">,</span> <span class="n">PG</span><span class="x">(</span><span class="mi">50</span><span class="x">),</span> <span class="mi">1000</span><span class="x">)</span>
+<span class="n">plot_sampler</span><span class="x">(</span><span class="n">c</span><span class="x">)</span>
+</code></pre></div></div>
+
+<p><img src="sampler-figs/samplers-9.svg" alt="" /></p>
+
+:ET
