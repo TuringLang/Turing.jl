@@ -15,11 +15,11 @@
   <li><a href="/dev/docs/library/bijectors/#Bijectors.bijector-Tuple{Distribution{Univariate,Discrete}}"><code class="language-plaintext highlighter-rouge">Bijectors.bijector</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.composel-Union{Tuple{Vararg{Bijector{N},N1} where N1}, Tuple{N}} where N"><code class="language-plaintext highlighter-rouge">Bijectors.composel</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.composer-Union{Tuple{Vararg{Bijector{N},N1} where N1}, Tuple{N}} where N"><code class="language-plaintext highlighter-rouge">Bijectors.composer</code></a></li>
-  <li><a href="/dev/docs/library/bijectors/#Bijectors.forward-Tuple{Bijector,Any}"><code class="language-plaintext highlighter-rouge">Bijectors.forward</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.forward-Tuple{Distribution}"><code class="language-plaintext highlighter-rouge">Bijectors.forward</code></a></li>
+  <li><a href="/dev/docs/library/bijectors/#Bijectors.forward-Tuple{Bijector,Any}"><code class="language-plaintext highlighter-rouge">Bijectors.forward</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.isclosedform-Tuple{Bijector}"><code class="language-plaintext highlighter-rouge">Bijectors.isclosedform</code></a></li>
-  <li><a href="/dev/docs/library/bijectors/#Bijectors.logabsdetjac-Tuple{ADBijector,Real}"><code class="language-plaintext highlighter-rouge">Bijectors.logabsdetjac</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.logabsdetjac-Tuple{Inverse{#s23,N} where N where #s23&lt;:Bijector,Any}"><code class="language-plaintext highlighter-rouge">Bijectors.logabsdetjac</code></a></li>
+  <li><a href="/dev/docs/library/bijectors/#Bijectors.logabsdetjac-Tuple{ADBijector,Real}"><code class="language-plaintext highlighter-rouge">Bijectors.logabsdetjac</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.logabsdetjacinv-Tuple{Bijector,Any}"><code class="language-plaintext highlighter-rouge">Bijectors.logabsdetjacinv</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.logabsdetjacinv-Tuple{Bijectors.TransformedDistribution{#s88,#s87,Univariate} where #s87&lt;:Bijector where #s88&lt;:Distribution,Real}"><code class="language-plaintext highlighter-rouge">Bijectors.logabsdetjacinv</code></a></li>
   <li><a href="/dev/docs/library/bijectors/#Bijectors.logpdf_with_jac-Tuple{Bijectors.TransformedDistribution{#s88,#s87,Univariate} where #s87&lt;:Bijector where #s88&lt;:Distribution,Real}"><code class="language-plaintext highlighter-rouge">Bijectors.logpdf_with_jac</code></a></li>
