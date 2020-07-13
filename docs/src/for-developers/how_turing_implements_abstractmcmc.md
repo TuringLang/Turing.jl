@@ -32,12 +32,12 @@ Turing sampling methods (most of which are written [here](https://github.com/Tur
 
 First, we explain how Importance Sampling works in the abstract. Consider the model defined in the first code block. Mathematically, it can be written:
 
-\$\$\begin{align}
+$\begin{align}
 s &\sim \text{InverseGamma}(2, 3) \\
 m &\sim \text{Normal}(0, \sqrt{s}) \\
 x &\sim \text{Normal}(m, \sqrt{s}) \\
 y &\sim \text{Normal}(m, \sqrt{s})
-\end{align}\$\$
+\end{align}$
 
 The **latent** variables are \$\$s\$\$ and \$\$m\$\$, the **observed** variables are \$\$x\$\$ and \$\$y\$\$. The model **joint** distribution \$\$p(s,m,x,y)\$\$ decomposes into the **prior** \$\$p(s,m)\$\$ and the **likelihood** \$\$p(x,y \mid s,m)\$\$. Since \$\$x = 1.5\$\$ and \$\$y = 2\$\$ are observed, the goal is to infer the **posterior** distribution \$\$p(s,m \mid x,y)\$\$.
 
