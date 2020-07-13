@@ -64,7 +64,7 @@ mod = gdemo(1.5, 2)
 
 creates an instance `mod` of the struct `Model`, which corresponds to the observations of a value of `1.5` for `x`, and a value of `2` for `y`.
 
-This is all handled by DynamicPPL, more specifically [here](https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl). I will return to how models are used to inform sampling algorithms [below](). TODO: link
+This is all handled by DynamicPPL, more specifically [here](https://github.com/TuringLang/DynamicPPL.jl/blob/master/src/model.jl). I will return to how models are used to inform sampling algorithms [below](#assumeobserve).
 
 ### Algorithms
 
@@ -97,7 +97,7 @@ Samplers are **not** the same as algorithms. An algorithm is a generic sampling 
 Turing implements `AbstractMCMC`'s `AbstractSampler` with the `Sampler` struct defined in `DynamicPPL`. The most important attributes of an instance `spl` of `Sampler` are:
 
 * `spl.alg`: the sampling method used, an instance of a subtype of `InferenceAlgorithm`
-* `spl.state`: information about the sampling process, see [below]() TODO: link
+* `spl.state`: information about the sampling process, see [below](#States)
 
 When you call `sample(mod, alg, n_samples)`, Turing first uses `model` and `alg` to build an instance `spl` of `Sampler` , then calls the native `AbstractMCMC` function `sample(mod, spl, n_samples)`. 
 
@@ -115,7 +115,7 @@ end
 
 * a **state** struct implementing `AbstractSamplerState` corresponding to your method: we cover this in the following paragraph.
 
-### States
+### <a style="text-decoration:none" name="States">States</a>
 
 The `vi` field contains all the important information about sampling: first and foremost, the values of all the samples, but also the distributions from which they are sampled, the names of model parameters, and other metadata. As we will see below, many important steps during sampling correspond to queries or updates to `spl.state.vi`.
 
@@ -129,7 +129,7 @@ end
 
 When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average $\frac 1 N \sum\limits_{j=1}^N w_i = \frac 1 N \sum\limits_{j=1}^N p(x,y \mid s_i, m_i)$ of the sample weights is a particularly important quantity: 
 
-* it is used to **normalize** the **empirical approximation** of the posterior distribution (TODO: link to formula)
+* it is used to **normalize** the **empirical approximation** of the posterior distribution
 * its logarithm is the importance sampling **estimate** of the **log evidence** $\log p(x, y)$
 
 To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing $\log \left( \frac 1 N \sum\limits_{j=1}^N w_i \right)$.
@@ -159,28 +159,31 @@ A lot of the things here are method-specific. However Turing also has some funct
 * its value: $\theta$ 
 * log of the joint probability of the observed data and this sample: `lp`
 
-`Inference.jl` defines a struct `Transition`, which corresponds to this default situation, as well as a constructor that builds instances of `Transition` from instances of `Sampler`, by finding $\theta$ and `lp` in `spl.state.vi`.
+`Inference.jl` [defines](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L103) a struct `Transition`, which corresponds to this default situation
 
-Construct transition from a `spl`: just dump the contents of vi-made-nametuple into a transition.
+```julia
+struct Transition{T, F<:AbstractFloat}
+    θ  :: T
+    lp :: F
+end
+```
 
-TODO: this is what Importance sampling uses
+It also [contains](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L108) a constructor that builds an instance of `Transition` from an instance `spl` of `Sampler`: $\theta$ is `spl.state.vi` converted to a `namedtuple`, and `lp` is `getlogp(spl.state.vi)`. `is.jl` uses this default constructor at the end of the `step!` function [here](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/is.jl#L58).
 
 ### How `sample` works
 
-A crude summary, which ignores things like parallelism, is the following. `sample` calls `mcmcsample`, which calls 
+A crude summary, which ignores things like parallelism, is the following:
+
+ `sample` calls `mcmcsample`, which calls 
 
 * `sample_init!` to set things up
 * `step!` repeatedly to produce multiple new transitions
 * `sample_end!` to perform operations once all samples have been obtained 
 * `bundle_samples` to convert a vector of transitions into a more palatable type, for instance a `Chain`.
 
-you can of course implement all of these functions, but `AbstractMCMC` as well as Turing also provide default implementations for simple cases.
+You can of course implement all of these functions, but `AbstractMCMC` as well as Turing also provide default implementations for simple cases. For instance, importance sampling uses the default implementations of `sample_init!` and `bundle_samples`, which is why you don't see code for them inside `is.jl`.
 
-TODO: importance sampling uses the default implementations of `sample_init!` and `bundle_samples`.
-
-## 3. Overload `assume` and `observe`
-
-TODO: mention at some point that related info [here](https://turing.ml/dev/docs/for-developers/compiler).
+## <a style="text-decoration:none" name="assumeobserve">3. Overload `assume` and `observe`</a>
 
 The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of course use information about the model in order to generate samples! In particular, these functions may need **samples from distributions** defined in the model, or to **evaluate the density of these distributions** at some values of the corresponding parameters or observations.
 
@@ -188,7 +191,7 @@ For an example of the former, consider **Importance Sampling** as defined in `is
 
 An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior $p(\theta \mid x_{\text{obs}})$, in order to compute the acceptance ratio, you need to **evaluate the model joint density** $p(\theta_{\text{prop}}, x_{\text{obs}})$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.
 
-This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step. The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement. 
+This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement. 
 
 Consider an instance `m` of `Model` and a sampler `spl`, with associated `VarInfo` `vi = spl.state.vi`. At some point during the sampling process, an AbstractMCMC function such as `step!` calls  `m(vi, ...)`, which calls the model evaluation function `m.f(vi, ...)`.
 
@@ -218,7 +221,7 @@ function DynamicPPL.observe(spl::Sampler{<:IS}, dist::Distribution, value, vi)
 end
 ```
 
-It simply returns the density (probability, in the discrete case) of the observed value under the distribution `dist`.
+It simply returns the density (in the discrete case, the probability) of the observed value under the distribution `dist`.
 
 ## 4. Summary: Importance Sampling step by step
 
