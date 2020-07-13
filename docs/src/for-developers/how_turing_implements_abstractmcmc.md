@@ -145,7 +145,7 @@ ISState(model::Model) = ISState(VarInfo(model), 0.0)
 
 The following diagram summarizes the hierarchy presented above.
 
-![hierarchy](how_turing_samplers_work_files/hierarchy.png)
+![hierarchy](how_turing_implements_abstractmcmc_files/hierarchy.png)
 
 ## 2. Overload the functions used inside `mcmcsample`
 

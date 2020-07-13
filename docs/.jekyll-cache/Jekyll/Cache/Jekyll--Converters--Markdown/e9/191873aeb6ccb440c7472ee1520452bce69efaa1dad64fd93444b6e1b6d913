@@ -1,4 +1,4 @@
-I"0Œ<p><a id="How-Turing-implements-AbstractMCMC"></a></p>
+I"1Œ<p><a id="How-Turing-implements-AbstractMCMC"></a></p>
 
 <p><a id="How-Turing-implements-AbstractMCMC-1"></a></p>
 
@@ -166,7 +166,7 @@ y &amp;\sim \text{Normal}(m, \sqrt{s}) \end{align}\]
 
 <p>The following diagram summarizes the hierarchy presented above.</p>
 
-<p><img src="/Users/js/Downloads/Untitled Diagram(1).png" alt="Untitled Diagram(1)" /></p>
+<p><img src="how_turing_implements_abstractmcmc_files/hierarchy.png" alt="hierarchy" /></p>
 
 <p><a id=".-Overload-the-functions-used-inside-mcmcsample"></a></p>
 
