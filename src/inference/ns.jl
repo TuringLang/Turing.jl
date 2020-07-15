@@ -116,11 +116,12 @@ end
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{NS{space, P, B}},
+    spl::Sampler{<:NS{space, P, B}},
     ::Integer,
     transition;
     kwargs...
 ) 
+       ## incomplete
        where {space, P, B}
     if spl.selector.rerun # Recompute joint in logp
         model(spl.state.vi)
@@ -129,6 +130,16 @@ function AbstractMCMC.step!(
     return Transition(spl)
 end
 
+function AbstractMCMC.sample_end!(
+    ::AbstractRNG,
+    ::Model,
+    spl::Sampler{<:NS{space, P, B}},
+    N::Integer,
+    ts::Vector;
+    kwargs...
+)
+    ## incomplete
+end
 # tilde operators
 
        
