@@ -85,6 +85,15 @@ Quantiles
 
 """
 
+## what all to setup here:
+## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters
+## 2. A function sample_init! which performs any necessary set-up (default: do not perform any set-up)
+## 3. A function step! which returns a transition that represents a single draw from the sampler.
+## 4. A function transitions_init which returns a container for the transitions obtained from the sampler (default: return a Vector{T} of length N where T is the type of the transition obtained in the first step and N is the number of requested samples).
+## 5. A function transitions_save! which saves transitions to the container (default: save the transition of iteration i at position i in the vector of transitions)
+## 6. A function sample_end! which handles any sampler wrap-up (default: do not perform any wrap-up)
+## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)
+
 struct NS{space, P, B} <: InferenceAlgorithm 
     ndims::Int    # number of parameters
     nactive::Int    # number of active points
@@ -140,6 +149,8 @@ function AbstractMCMC.sample_end!(
 )
     ## incomplete
 end
+
+
 # tilde operators
 
        
