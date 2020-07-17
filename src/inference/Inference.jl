@@ -766,7 +766,7 @@ function transitions_from_chain(
                     # only contains a single sample, and the
                     # last dimension is of size 1 since
                     # we're assuming we're working with a single chain.
-                    val = copy.(vec(c[ks].value))
+                    val = copy(vec(c[ks].value))
                     DynamicPPL.setval!(vi, val, vn)
                     DynamicPPL.settrans!(vi, false, vn)
                 else
