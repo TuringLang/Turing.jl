@@ -755,19 +755,21 @@ function transitions_from_chain(
             for vn in md[v].vns
                 vn_sym = Symbol(vn)
 
-                # This returns `()` if `vn` not present in `c`
-                # Otherwise it returns `(a = ..., )` even if
-                # `a` represents non-univariate.
-                res = get(c, vn_sym; flatten = false)
-                if !isempty(res)
-                    # FIXME: this does not handle the cases where
-                    # only a subset of the indices are set, e.g.
-                    # if `a[1]` is in `chain` but `a[2]` is not.
-                    val = copy.(vec(c[vn_sym].value))
+                # Cannot use `vn_sym` to index in the chain
+                # so we have to extract the corresponding "linear"
+                # indices and use those.
+                # `ks` is empty if `vn_sym` not in `c`.
+                ks = MCMCChains.namesingroup(c, vn_sym)
+
+                if !isempty(ks)
+                    # 1st dimension is of size 1 since `c`
+                    # only contains a single sample, and the
+                    # last dimension is of size 1 since
+                    # we're assuming we're working with a single chain.
+                    val = copy.(vec(c[ks].value))
                     DynamicPPL.setval!(vi, val, vn)
                     DynamicPPL.settrans!(vi, false, vn)
                 else
-                    # delete so we can sample from prior
                     DynamicPPL.set_flag!(vi, vn, "del")
                 end
             end
