@@ -753,9 +753,17 @@ function transitions_from_chain(
         md = vi.metadata
         for v in keys(md)
             for vn in md[v].vns
-                vn_symbol = Symbol(vn)
-                if vn_symbol ∈ c.name_map.parameters
-                    val = c[vn_symbol]
+                vn_sym = Symbol(vn)
+
+                # This returns `()` if `vn` not present in `c`
+                # Otherwise it returns `(a = ..., )` even if
+                # `a` represents non-univariate.
+                res = get(c, vn_sym; flatten = false)
+                if !isempty(res)
+                    # FIXME: this does not handle the cases where
+                    # only a subset of the indices are set, e.g.
+                    # if `a[1]` is in `chain` but `a[2]` is not.
+                    val = copy.(vec(c[vn_sym].value))
                     DynamicPPL.setval!(vi, val, vn)
                     DynamicPPL.settrans!(vi, false, vn)
                 else
