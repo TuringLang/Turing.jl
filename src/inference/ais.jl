@@ -1,7 +1,4 @@
-# TODO: decide how to handle multiple particles. a few possibilities:
-# 1. prefered: each time we call step!, we create a new particle as a transition (like in is.jl - how does that handle parallelization)
-# 2. this whole file focuses on a single particle, parallelization handled at a higher level (problem: combining particles to estimate log-evidence?)
-# 3. something more like in advancedPS (more complex, doesn't seem necessary?)
+# TODO: fix convention to refer to MCMC steps within a transition, and independent AISTransition transitions ie particles...
 
 ## A. Sampler
 
@@ -12,18 +9,12 @@
 # - transition kernels are MCMC kernels with the same proposal
 # - acceptance ratios vary to ensure invariance
 
-# to simplify even more, maybe require symmetric proposals: no need to evaluate proposal density?
-
-# TODO: check out how RandomWalkProposal and MH handle these
-struct Proposal 
-end
-
 # TODO: maybe do something for schedule here, maybe not
 
 struct AIS <: InferenceAlgorithm 
     num_steps :: Integer # number of MCMC steps = number of intermediate distributions + 1
-    proposal :: Distributions.Sampleable
-    schedule :: S # probably a list - that must contain num_steps elements
+    proposal :: Distributions.Distribution # must be able to sample AND to compute densities (technically, only the former if symmetric)
+    schedule :: Array{<:Integer,1} # probably a list - that must contain num_steps elements
 end
 
 # A.2. state: same as for vanilla IS
@@ -46,23 +37,28 @@ end
 
 ## B. Implement AbstractMCMC
 
-# B.1. new transition type, with an additional attribute weight
+# TODO: decide how to handle multiple particles. a few possibilities:
+# 1. preferred: each time we call step!, we create a new particle as a transition like in is.jl (how does is.jl handle parallelization?)
+# 2. maybe: this whole file focuses on a single particle, parallelization handled at a higher level (problem: combining particles to estimate log-evidence?)
+# 3. maybe: something more like in advancedPS (more complex, doesn't seem necessary?)
 
-struct Transition{T, F<:AbstractFloat}
+# B.1. new transition type AISTransition, with an additional attribute logweight
+
+struct AISTransition{T, F<:AbstractFloat}
     θ  :: T
     lp :: F
-    weight :: F
+    logweight :: F
 end
 
-function Transition(spl::Sampler, weight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
+function AISTransition(spl::Sampler, logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp, weight)
+    return AISTransition{typeof(theta), typeof(lp)}(theta, lp, logweight)
 end
 
 # idk what this function is for
-function additional_parameters(::Type{<:Transition})
-    return [:lp, :weight]
+function additional_parameters(::Type{<:AISTransition})
+    return [:lp, :logweight]
 end
 
 # B.2. step function 
@@ -76,37 +72,43 @@ function AbstractMCMC.step!(
     kwargs...
 )
     empty!(spl.state.vi) # particles are independent: previous step doesn't matter
-    # TODO: sample from prior
+    
+    # TODO: sample from prior - but I don't want to add it to vi? should I create a new artificial vi?
 
-    # initial weight
-    weight = 
+    # initial logweight
+    logweight = 
     current_pos = 
     for current_target in 1:num_steps
         # TODO: define new target using schedule
 
         # TODO: perform MCMC transition
         
-        # - generate proposal
+        # generate proposal
         prop = current_pos + rand(proposal)
         
-        # - compute acceptance ratio
+        # compute acceptance ratio
         # query MCMC kernel density
-        q_for = logpdf(proposal, prop - current_pos)
-        q_back = logpdf(proposal, current_pos - prop)
+        T_forward = logpdf(proposal, prop - current_pos)
+        T_backward = logpdf(proposal, current_pos - prop) # this is NOT \tilde{T} from the AIS paper
         # query tempered distribution at prop and current_pos
         tempered_current_pos = tempered_log_prob(current_pos, beta, ???????)
         tempered_prop = tempered_log_prob(prop, beta, ???????)
         # deduce acceptance ratio
-
-        # - accept or reject 
+        ratio = min(1, exp(tempered_prop + T_backward - tempered_current_pos - T_forward))
         
-
-        # TODO: update weight
+        # accept or reject: if accept update current_pos and logweight, if reject both stay the same
+        if rand() < ratio
+            logweight += tempered_current_pos - tempered_prop
+            current_pos = prop
+        end
     end
-    return Transition(spl)
+
+    # final logweight update
+    logweight += # evaluate log joint density at current_pos
+    return AISTransition(spl)
 end
 
-# B.3. sample_end! combines the individual weights to obtain final_logevidence, as in vanilla IS 
+# B.3. sample_end! combines the individual logweights to obtain final_logevidence, as in vanilla IS 
 
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
@@ -116,8 +118,8 @@ function AbstractMCMC.sample_end!(
     ts::Vector;
     kwargs...
 )
-    # Calculate evidence using weight attribute of new transition struct
-    spl.state.final_logevidence = logsumexp(map(x->x.weight, ts)) - log(N)
+    # use AISTransition logweight attribute
+    spl.state.final_logevidence = logsumexp(map(x->x.logweight, ts)) - log(N)
 end
 
 
@@ -129,7 +131,7 @@ end
 
 # generic problem: logjoint, loglikelihood, etc. modify a vi
 # but sometimes I just want the output value so that i can operate over it, and then modify a vi
-function tempered_log_prob(x, beta, ???????) # spl? model?
+function tempered_log_prob(x, beta, spl)
     logprior = 
     logjoint = 
 end
