@@ -1,13 +1,25 @@
+# TODO: decide how to handle multiple particles. a few possibilities:
+# 1. each time we call step!, we create a new particle as a transition (like in is.jl, problem = lack of parallelization)
+# 2.. this whole file focuses on a single particle, parallelization is handled by sample at a higher level (problem: where to combine particles to estimate log-evidence?)
+# 3. something more like in advancedPS (more complex, doesn't seem necessary?)
+
 ## Sampler
 
 # algorithm
-# TODO: actually implement structs for proposal, ratio and schedule - maybe do something similar to mh.jl
+# TODO: actually implement structs for proposal, ratio and schedule
+
+
+## TODO: check out how RandomWalkProposal and MH handle these
+struct Proposal 
+end
+
+@enum Ratio Barker Metropolis
 
 struct AIS <: InferenceAlgorithm 
-    num_steps :: Integer # should I use some other type here?
-    proposal :: P
-    ratio :: R 
-    schedule :: S
+    num_steps :: Integer # number of MCMC steps = number of intermediate distributions + 1
+    proposal :: Proposal
+    ratio :: Ratio # can be Barker or Metropolis - check out enums
+    schedule :: S # probably a list - that must contain num_steps elements
 end
 
 # state: same as for vanilla IS
@@ -30,8 +42,6 @@ end
 
 ## implement abstractMCMC
 
-# TODO: here I chose to do things inside step! like in vanilla IS, but perhaps it would be better to do things inside sample_init! as in SMC?
-
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -40,9 +50,12 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # TODO: modify - for now this is the same as in IS
     empty!(spl.state.vi)
-    model(rng, spl.state.vi, spl)
+    for current_target in 1:num_steps
+        # TODO: define new target using schedule
+        # TODO: perform MCMC transition
+        # TODO: update weight
+    end
 
     return Transition(spl)
 end
