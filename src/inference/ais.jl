@@ -29,6 +29,7 @@ AISState(model::Model) = AISState(VarInfo(model), 0.0)
 # A.3. Sampler constructor: same as for vanilla IS
 
 function Sampler(alg::AIS, model::Model, s::Selector)
+    @assert length(alg.schedule == num_steps)
     info = Dict{Symbol, Any}()
     state = AISState(model)
     return Sampler(alg, info, s, state)
@@ -39,8 +40,7 @@ end
 
 # TODO: decide how to handle multiple particles. a few possibilities:
 # 1. preferred: each time we call step!, we create a new particle as a transition like in is.jl (how does is.jl handle parallelization?)
-# 2. maybe: this whole file focuses on a single particle, parallelization handled at a higher level (problem: combining particles to estimate log-evidence?)
-# 3. maybe: something more like in advancedPS (more complex, doesn't seem necessary?)
+# 2. maybe: something more like in advancedPS could help with parallelization? (particles are independent here, can probably manage something less complex?)
 
 # B.1. new transition type AISTransition, with an additional attribute logweight
 
@@ -96,10 +96,11 @@ function AbstractMCMC.step!(
         # deduce acceptance ratio
         ratio = min(1, exp(tempered_prop + T_backward - tempered_current_pos - T_forward))
         
-        # accept or reject: if accept update current_pos and logweight, if reject both stay the same
-        if rand() < ratio
+        # accept or reject:
+        if rand() < ratio # if accept update current_pos and logweight
             logweight += tempered_current_pos - tempered_prop
             current_pos = prop
+        # if reject current_pos and logweight stay the same
         end
     end
 
