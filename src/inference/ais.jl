@@ -3,7 +3,7 @@
 # 2.. this whole file focuses on a single particle, parallelization is handled by sample at a higher level (problem: where to combine particles to estimate log-evidence?)
 # 3. something more like in advancedPS (more complex, doesn't seem necessary?)
 
-## Sampler
+## A. Sampler
 
 # algorithm
 # TODO: actually implement structs for proposal, ratio and schedule
@@ -14,6 +14,12 @@ struct Proposal
 end
 
 @enum Ratio Barker Metropolis
+
+
+# we consider a simple version of AIS (not fully general): 
+# - sequence of distributions is defined by tempering
+# - transition kernels are MCMC kernels with the same proposals
+# - acceptance ratios vary to ensure invariance
 
 struct AIS <: InferenceAlgorithm 
     num_steps :: Integer # number of MCMC steps = number of intermediate distributions + 1
@@ -40,7 +46,7 @@ function Sampler(alg::AIS, model::Model, s::Selector)
 end
 
 
-## implement abstractMCMC
+## B. Implement AbstractMCMC
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
@@ -50,10 +56,17 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    empty!(spl.state.vi)
+    empty!(spl.state.vi) # particles are independent
+    # TODO: sample from prior
+    
     for current_target in 1:num_steps
         # TODO: define new target using schedule
+
         # TODO: perform MCMC transition
+        # - proposal
+        # - compute acceptance ratio -> requires model information
+        # - accept or reject
+
         # TODO: update weight
     end
 
@@ -76,6 +89,13 @@ function AbstractMCMC.sample_end!(
 end
 
 
-## overload assume and observe
+## C. If necessary, overload assume and observe
 
 # don't know exactly how i'll proceed here...
+
+## D. helper functions 
+
+# must be careful with 
+function tempered_log_prob(self, beta)
+
+end
