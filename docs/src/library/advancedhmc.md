@@ -1,8 +1,3 @@
----
-title: AdvancedHMC
-permalink: /docs/library/advancedhmc/
-toc: true
----
 
 ## Index
 

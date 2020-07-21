@@ -1,6 +1,3 @@
----
-title: Turing Compiler Design
----
 
 In this section, I will describe the current design of Turing's model compiler which enables Turing to perform various types of Bayesian inference without changing the model definition. What we call "compiler" is essentially just a macro that transforms the user's code to something that Julia's dispatch can operate on and that Julia's compiler can successfully do type inference on for efficient machine code generation.
 

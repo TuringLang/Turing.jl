@@ -1,7 +1,3 @@
----
-title: Variational Inference
-toc: true
----
 
 # Overview
 

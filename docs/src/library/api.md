@@ -1,8 +1,3 @@
----
-title: API
-permalink: /docs/library/
-toc: true
----
 
 ```@meta
 CurrentModule = Turing

@@ -1,6 +1,3 @@
----
-title: Probablistic Programming in Thirty Seconds
----
 
 # Probablistic Programming in Thirty Seconds
 

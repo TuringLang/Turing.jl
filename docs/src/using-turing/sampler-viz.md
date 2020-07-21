@@ -1,7 +1,3 @@
----
-title: Sampler Visualization
-mathjax: true
----
 
 # Sampler Visualization
 

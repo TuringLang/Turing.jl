@@ -1,7 +1,3 @@
----
-title: How Turing implements AbstractMCMC
-toc: true
----
 
 # How Turing implements AbstractMCMC
 
