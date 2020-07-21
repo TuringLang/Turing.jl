@@ -541,6 +541,7 @@ include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
+include("abc.jl")
 
 ################
 # Typing tools #
