@@ -8,7 +8,7 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
-    getspace, inspace
+    getspace, inspace, setlogp!
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra

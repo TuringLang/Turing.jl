@@ -5,22 +5,22 @@
 # A.1. algorithm
 
 # simple version of AIS (not fully general): 
-# - sequence of distributions defined by tempering
-# - transition kernels are MCMC kernels with the same proposal
-# - acceptance ratios vary to ensure invariance
-
-# TODO: maybe do something for schedule here, maybe not
+# - sequence of num_steps distributions defined by tempering
+# - list of num_steps proposals Markov kernels
+# - MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
 
 struct AIS <: InferenceAlgorithm 
-    num_steps :: Integer # number of MCMC steps = number of intermediate distributions + 1
-    proposal :: Distributions.Distribution # must be able to sample AND to compute densities (technically, only the former if symmetric)
-    schedule :: Array{<:Integer,1} # probably a list - that must contain num_steps elements
+    "array of `num_steps` AdvancedMH proposals"
+    proposals :: Array{<:Proposal{P}}
+    "array of `num_steps` inverse temperatures"
+    schedule :: Array{<:Integer}
 end
 
 # A.2. state: same as for vanilla IS
 
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V # reset for every step ie particle
+    "log of the average of the particle weights: estimator of the log evidence"
     final_logevidence  ::  F
 end
 
@@ -29,7 +29,7 @@ AISState(model::Model) = AISState(VarInfo(model), 0.0)
 # A.3. Sampler constructor: same as for vanilla IS
 
 function Sampler(alg::AIS, model::Model, s::Selector)
-    @assert length(alg.schedule == num_steps)
+    @assert length(alg.schedule) == length(alg.proposals)
     info = Dict{Symbol, Any}()
     state = AISState(model)
     return Sampler(alg, info, s, state)
@@ -38,30 +38,55 @@ end
 
 ## B. Implement AbstractMCMC
 
-# TODO: decide how to handle multiple particles. a few possibilities:
-# 1. preferred: each time we call step!, we create a new particle as a transition like in is.jl (how does is.jl handle parallelization?)
-# 2. maybe: something more like in advancedPS could help with parallelization? (particles are independent here, can probably manage something less complex?)
+# each time we call step!, we create a new particle as a transition like in is.jl
 
-# B.1. new transition type AISTransition, with an additional attribute logweight
+# B.1. new transition type AISTransition, with an additional attribute accum_logweight
 
 struct AISTransition{T, F<:AbstractFloat}
+    "parameter"
     θ  :: T
+    "logjoint evaluated at θ"
     lp :: F
-    logweight :: F
+    "logarithm of the particle's AIS weight - accumulated during annealing run"
+    accum_logweight :: F
 end
 
-function AISTransition(spl::Sampler, logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
+function AISTransition(spl::Sampler, accum_logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
-    return AISTransition{typeof(theta), typeof(lp)}(theta, lp, logweight)
+    return AISTransition{typeof(theta), typeof(lp)}(theta, lp, accum_logweight)
 end
 
 # idk what this function is for
 function additional_parameters(::Type{<:AISTransition})
-    return [:lp, :logweight]
+    return [:lp, :accum_logweight]
 end
 
-# B.2. step function 
+
+# B.2. sample_init! function
+
+function AbstractMCMC.sample_init!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:AIS},
+    N::Integer;
+    verbose::Bool=true,
+    resume_from=nothing,
+    kwargs...
+)
+    log_prior = gen_log_prior(spl.state.vi, model)
+    log_joint = gen_log_joint(spl.state.vi, model)
+    for i in 1:length(spl.alg.proposals)
+        beta = spl.alg.schedule[i]
+        log_unnorm_tempered = gen_log_unnorm_tempered(log_prior, log_joint, beta)
+        densitymodel = AdvancedMH.DensityModel(log_unnorm_tempered)
+        
+        proposal = spl.alg.proposals[i]
+        mh_sampler = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
+end
+
+# B.3. step function 
+
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
@@ -73,43 +98,17 @@ function AbstractMCMC.step!(
 )
     empty!(spl.state.vi) # particles are independent: previous step doesn't matter
     
-    # TODO: sample from prior - but I don't want to add it to vi? should I create a new artificial vi?
+    # TODO: sample from prior and initialize accum_logweight as minus log the prior evaluated at the sample
 
-    # initial logweight
-    logweight = 
-    current_pos = 
-    for current_target in 1:num_steps
-        # TODO: define new target using schedule
+    # for every intermediate distribution:
+    # - we have the associated mh_sampler and densitymodel
+    # - we have access to the previous sample (with AMH.Transition(vals, getlogp(spl.state.vi))?)
+    # - do pretty much what is done there https://github.com/TuringLang/AdvancedMH.jl/blob/master/src/mh-core.jl#L195 AND update accum_logweight
 
-        # TODO: perform MCMC transition
-        
-        # generate proposal
-        prop = current_pos + rand(proposal)
-        
-        # compute acceptance ratio
-        # query MCMC kernel density
-        T_forward = logpdf(proposal, prop - current_pos)
-        T_backward = logpdf(proposal, current_pos - prop) # this is NOT \tilde{T} from the AIS paper
-        # query tempered distribution at prop and current_pos
-        tempered_current_pos = tempered_log_prob(current_pos, beta, ???????)
-        tempered_prop = tempered_log_prob(prop, beta, ???????)
-        # deduce acceptance ratio
-        ratio = min(1, exp(tempered_prop + T_backward - tempered_current_pos - T_forward))
-        
-        # accept or reject:
-        if rand() < ratio # if accept update current_pos and logweight
-            logweight += tempered_current_pos - tempered_prop
-            current_pos = prop
-        # if reject current_pos and logweight stay the same
-        end
-    end
-
-    # final logweight update
-    logweight += # evaluate log joint density at current_pos
-    return AISTransition(spl)
+    # do a last accum_logweight update
 end
 
-# B.3. sample_end! combines the individual logweights to obtain final_logevidence, as in vanilla IS 
+# B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
 
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
@@ -119,20 +118,108 @@ function AbstractMCMC.sample_end!(
     ts::Vector;
     kwargs...
 )
-    # use AISTransition logweight attribute
-    spl.state.final_logevidence = logsumexp(map(x->x.logweight, ts)) - log(N)
+    # use AISTransition accum_logweight attribute
+    spl.state.final_logevidence = logsumexp(map(x->x.accum_logweight, ts)) - log(N)
 end
 
 
-## C. If necessary, overload assume and observe
+## C. overload assume and observe: same as for MH, so that gen_log_joint and gen_log_prior work
 
-# don't know exactly how i'll proceed here...
-
-## D. helper functions 
-
-# generic problem: logjoint, loglikelihood, etc. modify a vi
-# but sometimes I just want the output value so that i can operate over it, and then modify a vi
-function tempered_log_prob(x, beta, spl)
-    logprior = 
-    logjoint = 
+function DynamicPPL.assume(
+    rng,
+    spl::Sampler{<:MH},
+    dist::Distribution,
+    vn::VarName,
+    vi,
+)
+    updategid!(vi, vn, spl)
+    r = vi[vn]
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
+
+function DynamicPPL.dot_assume(
+    rng,
+    spl::Sampler{<:MH},
+    dist::MultivariateDistribution,
+    vn::VarName,
+    var::AbstractMatrix,
+    vi,
+)
+    @assert dim(dist) == size(var, 1)
+    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
+    vns = getvn.(1:size(var, 2))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = vi[vns]
+    var .= r
+    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+end
+function DynamicPPL.dot_assume(
+    rng,
+    spl::Sampler{<:MH},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    vn::VarName,
+    var::AbstractArray,
+    vi,
+)
+    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
+    vns = getvn.(CartesianIndices(var))
+    updategid!.(Ref(vi), vns, Ref(spl))
+    r = reshape(vi[vec(vns)], size(var))
+    var .= r
+    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+end
+
+function DynamicPPL.observe(
+    spl::Sampler{<:MH},
+    d::Distribution,
+    value,
+    vi,
+)
+    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
+end
+
+function DynamicPPL.dot_observe(
+    spl::Sampler{<:MH},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    value::AbstractArray,
+    vi,
+)
+    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+end
+
+# D. helper functions
+
+
+function gen_log_joint(v, model)
+    function log_joint(z)::Float64
+        z_old, lj_old = v[spl], getlogp(v)
+        v[spl] = z
+        model(v, spl)
+        lj = getlogp(v)
+        v[spl] = z_old
+        setlogp!(v, lj_old)
+        return lj
+    end
+    return log_joint
+end
+
+function gen_log_prior(v, model)
+    function log_prior(z)::Float64
+        z_old, lj_old = v[spl], getlogp(v)
+        v[spl] = z
+        model(v, SampleFromPrior(), PriorContext())
+        lj = getlogp(v)
+        v[spl] = z_old
+        setlogp!(v, lj_old)
+        return lj
+    end
+    return log_prior
+end
+
+function gen_log_unnorm_tempered(log_prior, log_joint, beta)
+    function log_unnorm_tempered(z)
+        return (1 - beta) * log_prior(z) + beta * log_joint(z)
+    end
+    return log_unnorm_tempered
+end
+
