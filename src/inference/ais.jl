@@ -87,7 +87,6 @@ end
 
 # B.3. step function 
 
-
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -98,11 +97,18 @@ function AbstractMCMC.step!(
 )
     empty!(spl.state.vi) # particles are independent: previous step doesn't matter
     
-    # TODO: sample from prior and initialize accum_logweight as minus log the prior evaluated at the sample
+    # sample from prior 
+    prior_vi = VarInfo()
+    prior_spl = SampleFromPrior()
+    model(prior_vi, prior_spl)
+    current_state = prior_vi[prior_spl]
+
+    # initialize accum_logweight as minus log the prior evaluated at the sample
+    accum_logweight = - log_prior(current_state)
 
     # for every intermediate distribution:
     # - we have the associated mh_sampler and densitymodel
-    # - we have access to the previous sample (with AMH.Transition(vals, getlogp(spl.state.vi))?)
+    # - we have access to the previous sample 
     # - do pretty much what is done there https://github.com/TuringLang/AdvancedMH.jl/blob/master/src/mh-core.jl#L195 AND update accum_logweight
 
     # do a last accum_logweight update
@@ -123,11 +129,11 @@ function AbstractMCMC.sample_end!(
 end
 
 
-## C. overload assume and observe: same as for MH, so that gen_log_joint and gen_log_prior work
+## C. overload assume and observe: similar to MH, so that gen_log_joint and gen_log_prior work
 
 function DynamicPPL.assume(
     rng,
-    spl::Sampler{<:MH},
+    spl::Sampler{<:AIS},
     dist::Distribution,
     vn::VarName,
     vi,
@@ -139,7 +145,7 @@ end
 
 function DynamicPPL.dot_assume(
     rng,
-    spl::Sampler{<:MH},
+    spl::Sampler{<:AIS},
     dist::MultivariateDistribution,
     vn::VarName,
     var::AbstractMatrix,
@@ -155,7 +161,7 @@ function DynamicPPL.dot_assume(
 end
 function DynamicPPL.dot_assume(
     rng,
-    spl::Sampler{<:MH},
+    spl::Sampler{<:AIS},
     dists::Union{Distribution, AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
@@ -170,7 +176,7 @@ function DynamicPPL.dot_assume(
 end
 
 function DynamicPPL.observe(
-    spl::Sampler{<:MH},
+    spl::Sampler{<:AIS},
     d::Distribution,
     value,
     vi,
@@ -179,7 +185,7 @@ function DynamicPPL.observe(
 end
 
 function DynamicPPL.dot_observe(
-    spl::Sampler{<:MH},
+    spl::Sampler{<:AIS},
     ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi,
