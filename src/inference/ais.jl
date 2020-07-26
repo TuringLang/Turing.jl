@@ -29,6 +29,8 @@ mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     list_densitymodels :: Array{DensityModel} # TODO: check type here
     "list of intermediate MH kernels"
     list_mh_samplers :: Array{MetropolisHastings} # TODO: check type here
+    "log joint density"
+    log_joint_density :: F # TODO: check type here, this is the function rather than the density model
 end
 
 AISState(model::Model) = AISState(VarInfo(model), 0.0)
@@ -95,6 +97,7 @@ function AbstractMCMC.sample_init!(
         mh_sampler = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
         append!(spl.state.list_mh_samplers, mh_sampler)
     end
+    spl.state.log_joint_density = log_joint
 end
 
 # B.3. step function 
@@ -127,18 +130,21 @@ function AbstractMCMC.step!(
         # Generate a new proposal.
         proposed_state = propose(rng, mh_sampler, densitymodel, current_state)
 
+        # compute difference between intermediate logdensity at proposed and current positions
+        diff_logdensity = logdensity(densitymodel, proposed_state) - logdensity(densitymodel, current_state)
         # Calculate the log acceptance probability.
-        logα = densitymodel.logdensity(model, proposed_state) - densitymodel.logdensity(model, current_state) +
-            q(mh_sampler, current_state, proposed_state) - q(mh_sampler, proposed_state, current_state)
+        logα =  diff_logdensity + q(mh_sampler, current_state, proposed_state) - q(mh_sampler, proposed_state, current_state)
 
         # Decide whether to accept or reject proposal
         if -Random.randexp(rng) < logα
-            # TODO: accept: update current_state and accum_logweight
-        else
-            # TODO: reject: update current_state and accum_logweight
+            # accept: update current_state and accum_logweight
+            accum_logweight -= diff_logdensity(densitymodel, current_state)
+            current_state = proposed_state
+        # reject: no updates necessary
         end
     end
     # do a last accum_logweight update
+    accum_logweight += spl.state.log_joint_density(current_state)
 end
 
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
