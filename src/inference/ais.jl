@@ -1,12 +1,12 @@
 # TODO: fix convention to refer to MCMC steps within a transition, and independent AISTransition transitions ie particles...
-
+# TODO: ensure correct typing in samplers, states, etc.
 ## A. Sampler
 
 # A.1. algorithm
 
 # simple version of AIS (not fully general): 
-# - sequence of num_steps distributions defined by tempering
-# - list of num_steps proposals Markov kernels
+# - sequence of tempered distributions
+# - list of proposal Markov kernels
 # - MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
 
 struct AIS <: InferenceAlgorithm 
@@ -16,12 +16,19 @@ struct AIS <: InferenceAlgorithm
     schedule :: Array{<:Integer}
 end
 
-# A.2. state: same as for vanilla IS
+# TODO: add default constructor both for schedule and proposals
+# TODO: distinguish static and dynamic proposals
+
+# A.2. state: similar to vanilla IS, with intermediate density models and MC proposals added
 
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     vi                 ::  V # reset for every step ie particle
     "log of the average of the particle weights: estimator of the log evidence"
     final_logevidence  ::  F
+    "list of density models corresponding to intermediate target distributions - computed in sample_init!"
+    list_densitymodels :: Array{DensityModel} # TODO: check type here
+    "list of intermediate MH kernels"
+    list_mh_samplers :: Array{MetropolisHastings} # TODO: check type here
 end
 
 AISState(model::Model) = AISState(VarInfo(model), 0.0)
@@ -63,7 +70,7 @@ function additional_parameters(::Type{<:AISTransition})
 end
 
 
-# B.2. sample_init! function
+# B.2. sample_init! function: initializes the AISState attributes list_densitymodels and list_mh_samplers # TODO: perhaps this could be done even earlier, in the AISState constructor?
 
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -74,19 +81,24 @@ function AbstractMCMC.sample_init!(
     resume_from=nothing,
     kwargs...
 )
+    spl.state.list_densitymodels = []
+    spl.state.list_mh_samplers = []
     log_prior = gen_log_prior(spl.state.vi, model)
     log_joint = gen_log_joint(spl.state.vi, model)
     for i in 1:length(spl.alg.proposals)
         beta = spl.alg.schedule[i]
         log_unnorm_tempered = gen_log_unnorm_tempered(log_prior, log_joint, beta)
         densitymodel = AdvancedMH.DensityModel(log_unnorm_tempered)
+        append!(spl.state.list_densitymodels, densitymodel)
         
         proposal = spl.alg.proposals[i]
         mh_sampler = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
+        append!(spl.state.list_mh_samplers, mh_sampler)
+    end
 end
 
 # B.3. step function 
-
+# TODO: should we memorize full path?
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -97,7 +109,7 @@ function AbstractMCMC.step!(
 )
     empty!(spl.state.vi) # particles are independent: previous step doesn't matter
     
-    # sample from prior 
+    # sample from prior to initialize current_state
     prior_vi = VarInfo()
     prior_spl = SampleFromPrior()
     model(prior_vi, prior_spl)
@@ -107,10 +119,25 @@ function AbstractMCMC.step!(
     accum_logweight = - log_prior(current_state)
 
     # for every intermediate distribution:
-    # - we have the associated mh_sampler and densitymodel
-    # - we have access to the previous sample 
-    # - do pretty much what is done there https://github.com/TuringLang/AdvancedMH.jl/blob/master/src/mh-core.jl#L195 AND update accum_logweight
+    for j in 1:length(spl.alg.schedule)
+        # mh_sampler and densitymodel for this intermediate step
+        densitymodel = spl.state.list_densitymodels[j]
+        mh_sampler = spl.state.list_mh_samplers[j]
+        
+        # Generate a new proposal.
+        proposed_state = propose(rng, mh_sampler, densitymodel, current_state)
 
+        # Calculate the log acceptance probability.
+        logα = densitymodel.logdensity(model, proposed_state) - densitymodel.logdensity(model, current_state) +
+            q(mh_sampler, current_state, proposed_state) - q(mh_sampler, proposed_state, current_state)
+
+        # Decide whether to accept or reject proposal
+        if -Random.randexp(rng) < logα
+            # TODO: accept: update current_state and accum_logweight
+        else
+            # TODO: reject: update current_state and accum_logweight
+        end
+    end
     # do a last accum_logweight update
 end
 
@@ -124,7 +151,7 @@ function AbstractMCMC.sample_end!(
     ts::Vector;
     kwargs...
 )
-    # use AISTransition accum_logweight attribute
+    # update AISTransition accum_logweight attribute to store estimate of log evidence
     spl.state.final_logevidence = logsumexp(map(x->x.accum_logweight, ts)) - log(N)
 end
 
