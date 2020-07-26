@@ -4,11 +4,11 @@
 
 # A.1. algorithm
 
-# simple version of AIS (not fully general): 
-# - sequence of tempered distributions
-# - list of proposal Markov kernels
-# - MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
-
+""" simple version of AIS (not fully general): 
+- sequence of tempered distributions
+- list of proposal Markov kernels
+- MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
+"""
 struct AIS <: InferenceAlgorithm 
     "array of `num_steps` AdvancedMH proposals"
     proposals :: Array{<:Proposal{P}}
@@ -22,15 +22,16 @@ end
 # A.2. state: similar to vanilla IS, with intermediate density models and MC proposals added
 
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+    "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
-    "log of the average of the particle weights: estimator of the log evidence"
+    "log of the average of the particle weights: estimator of the log evidence - computed in sample_end!"
     final_logevidence  ::  F
     "list of density models corresponding to intermediate target distributions - computed in sample_init!"
     list_densitymodels :: Array{DensityModel} # TODO: check type here
-    "list of intermediate MH kernels"
+    "list of intermediate MH kernels - computed in sample_init!"
     list_mh_samplers :: Array{MetropolisHastings} # TODO: check type here
-    "log joint density"
-    log_joint_density :: F # TODO: check type here, this is the function rather than the density model
+    "log joint density - computed in sample_init!"
+    log_joint_density :: G # TODO: check type here, this is the function rather than the density model
 end
 
 AISState(model::Model) = AISState(VarInfo(model), 0.0)
@@ -72,7 +73,7 @@ function additional_parameters(::Type{<:AISTransition})
 end
 
 
-# B.2. sample_init! function: initializes the AISState attributes list_densitymodels and list_mh_samplers # TODO: perhaps this could be done even earlier, in the AISState constructor?
+# B.2. sample_init! function: initializes the AISState attributes list_densitymodels and list_mh_samplers 
 
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -85,8 +86,10 @@ function AbstractMCMC.sample_init!(
 )
     spl.state.list_densitymodels = []
     spl.state.list_mh_samplers = []
-    log_prior = gen_log_prior(spl.state.vi, model)
     log_joint = gen_log_joint(spl.state.vi, model)
+    spl.state.log_joint_density = log_joint
+    
+    log_prior = gen_log_prior(spl.state.vi, model)
     for i in 1:length(spl.alg.proposals)
         beta = spl.alg.schedule[i]
         log_unnorm_tempered = gen_log_unnorm_tempered(log_prior, log_joint, beta)
@@ -97,7 +100,6 @@ function AbstractMCMC.sample_init!(
         mh_sampler = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
         append!(spl.state.list_mh_samplers, mh_sampler)
     end
-    spl.state.log_joint_density = log_joint
 end
 
 # B.3. step function 
@@ -121,7 +123,7 @@ function AbstractMCMC.step!(
     # initialize accum_logweight as minus log the prior evaluated at the sample
     accum_logweight = - log_prior(current_state)
 
-    # for every intermediate distribution:
+    # for every intermediate distribution: maybe create an additional function for this
     for j in 1:length(spl.alg.schedule)
         # mh_sampler and densitymodel for this intermediate step
         densitymodel = spl.state.list_densitymodels[j]
@@ -227,7 +229,6 @@ function DynamicPPL.dot_observe(
 end
 
 # D. helper functions
-
 
 function gen_log_joint(v, model)
     function log_joint(z)::Float64
