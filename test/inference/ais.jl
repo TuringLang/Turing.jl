@@ -38,22 +38,22 @@ spl = Sampler(alg, model)
 interval = -3:0.01:3
 list_args = [[z] for z in interval]
 
-# test gen_log_joint
+# test gen_logjoint
 
-log_joint = gen_log_joint(spl.state.vi, model)
-log_joint_values = log_joint.(list_args)
-p = plot(interval, log_joint_values)
+logjoint = gen_logjoint(spl.state.vi, model)
+logjoint_values = logjoint.(list_args)
+p = plot(interval, logjoint_values)
 
-# test gen_log_prior
+# test gen_logprior
 
-log_prior = gen_log_prior(spl.state.vi, model)
-log_prior_values = log_prior.(list_args)
-plot!(p, interval, log_prior_values)
+logprior = gen_logprior(spl.state.vi, model)
+logprior_values = logprior.(list_args)
+plot!(p, interval, logprior_values)
 
 # test gen_log_unnorm_tempered
 
 for beta in 0.1:0.1:0.9
-    log_unnorm_tempered = gen_log_unnorm_tempered(log_prior, log_joint, beta)
+    log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
     log_unnorm_tempered_values = log_unnorm_tempered.(list_args)
     plot!(p, interval, log_unnorm_tempered_values)
 end
