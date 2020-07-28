@@ -150,7 +150,7 @@ mf(vi, sampler, ctx, model) = begin
 end
 
 # Instantiate a Model object.
-model = DynamicPPL.Model(mf, data, DyanamicPPL.ModelGen{()}(nothing, nothing))
+model = DynamicPPL.Model(mf, data, DynamicPPL.ModelGen{()}(nothing, nothing))
 
 # Sample the model.
 chain = sample(model, HMC(0.1, 5), 1000)
