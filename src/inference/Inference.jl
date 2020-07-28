@@ -1,4 +1,5 @@
 module Inference
+# TODO: add functions from inference/ais.jl
 
 using ..Core
 using ..Utilities

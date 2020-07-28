@@ -27,6 +27,7 @@ include("test_utils/AllUtils.jl")
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
+                include("inference/ais.jl")
                 include("inference/gibbs.jl")
                 include("inference/hmc.jl")
                 include("inference/is.jl")

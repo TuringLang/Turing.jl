@@ -1,6 +1,3 @@
-# convention: 
-# 1. `particles` are also called `transitions` (as they are instances of AISTransition, which are created by the step! function)
-# 2. for each particle, sampling involves a number of `steps`
 # TODO: ensure correct typing in samplers, states, etc.
 ## A. Sampler
 
@@ -31,7 +28,7 @@ mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "list of density models corresponding to intermediate target distributions - computed in sample_init!"
     densitymodels :: Array{DensityModel} # TODO: check type here
     "list of intermediate MH kernels - computed in sample_init!"
-    mh_proposals :: Array{MetropolisHastings} # TODO: check type here
+    proposal_kernels :: Array{MetropolisHastings} # TODO: check type here
     "log joint density - computed in sample_init!"
     logjoint :: G # TODO: check type here, this is the function rather than the density model
 end
@@ -75,7 +72,7 @@ function additional_parameters(::Type{<:AISTransition})
 end
 
 
-# B.2. sample_init! function: initializes the AISState attributes densitymodels and mh_proposals 
+# B.2. sample_init! function: initializes the AISState attributes densitymodels and proposal_kernels 
 
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -87,7 +84,7 @@ function AbstractMCMC.sample_init!(
     kwargs...
 )
     spl.state.densitymodels = []
-    spl.state.mh_proposals = []
+    spl.state.proposal_kernels = []
     logjoint = gen_logjoint(spl.state.vi, model)
     spl.state.logjoint = logjoint
     
@@ -99,8 +96,8 @@ function AbstractMCMC.sample_init!(
         append!(spl.state.densitymodels, densitymodel)
         
         proposal = spl.alg.proposals[i]
-        mh_proposal = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
-        append!(spl.state.mh_proposals, mh_proposal)
+        proposal_kernel = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
+        append!(spl.state.proposal_kernels, proposal_kernel)
     end
 end
 
@@ -114,40 +111,18 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    empty!(spl.state.vi) # particles are independent: previous step doesn't matter
-    
-    # sample from prior to initialize current_state
-    prior_vi = VarInfo()
-    prior_spl = SampleFromPrior()
-    model(prior_vi, prior_spl)
-    current_state = prior_vi[prior_spl]
+    # particles are independent: forget previous particle's VarInfo
+    empty!(spl.state.vi)
 
-    # initialize accum_logweight as minus log the prior evaluated at the sample
-    accum_logweight = - logprior(current_state)
+    # sample from prior and compute first term in accum_logweight
+    current_state, accum_logweight = prior_step(model)
 
-    # for every intermediate distribution: maybe create an additional function for this
+    # for every intermediate distribution
     for j in 1:length(spl.alg.schedule)
-        # mh_proposal and densitymodel for this intermediate step
-        densitymodel = spl.state.densitymodels[j]
-        mh_proposal = spl.state.mh_proposals[j]
-        
-        # Generate a new proposal.
-        proposed_state = propose(rng, mh_proposal, densitymodel, current_state)
-
-        # compute difference between intermediate logdensity at proposed and current positions
-        diff_logdensity = logdensity(densitymodel, proposed_state) - logdensity(densitymodel, current_state)
-        # Calculate the log acceptance probability.
-        logα =  diff_logdensity + q(mh_proposal, current_state, proposed_state) - q(mh_proposal, proposed_state, current_state)
-
-        # Decide whether to accept or reject proposal
-        if -Random.randexp(rng) < logα
-            # accept: update current_state and accum_logweight
-            accum_logweight -= diff_logdensity(densitymodel, current_state)
-            current_state = proposed_state
-        # reject: no updates necessary
-        end
+        current_state, accum_logweight = intermediate_step(j, spl, current_state, accum_logweight)
     end
-    # do a last accum_logweight update
+
+    # add final term to accum_logweight
     accum_logweight += spl.state.logjoint(current_state)
 end
 
@@ -165,8 +140,82 @@ function AbstractMCMC.sample_end!(
     spl.state.final_logevidence = logsumexp(map(x->x.accum_logweight, ts)) - log(N)
 end
 
+# C. helper functions
 
-## C. overload assume and observe: similar to MH, so that gen_logjoint and gen_logprior work
+function gen_logjoint(v, model)
+    function logjoint(z)::Float64
+        z_old, lj_old = v[spl], getlogp(v)
+        v[spl] = z
+        model(v, spl)
+        lj = getlogp(v)
+        v[spl] = z_old
+        setlogp!(v, lj_old)
+        return lj
+    end
+    return logjoint
+end
+
+function gen_logprior(v, model)
+    function logprior(z)::Float64
+        z_old, lj_old = v[spl], getlogp(v)
+        v[spl] = z
+        model(v, SampleFromPrior(), PriorContext())
+        lj = getlogp(v)
+        v[spl] = z_old
+        setlogp!(v, lj_old)
+        return lj
+    end
+    return logprior
+end
+
+function gen_log_unnorm_tempered(logprior, logjoint, beta)
+    function log_unnorm_tempered(z)
+        return (1 - beta) * logprior(z) + beta * logjoint(z)
+    end
+    return log_unnorm_tempered
+end
+
+function prior_step(model)
+    # sample from prior
+    prior_vi = VarInfo()
+    prior_spl = SampleFromPrior()
+    model(prior_vi, prior_spl)
+
+    # initialize current_state
+    current_state = prior_vi[prior_spl]
+
+    # initialize accum_logweight
+    accum_logweight = - logprior(current_state)
+
+    return current_state, accum_logweight
+end
+
+function intermediate_step(j, spl, current_state, accum_logweight)
+    # fetch proposal_kernel and densitymodel for this intermediate step
+    densitymodel = spl.state.densitymodels[j]
+    proposal_kernel = spl.state.proposal_kernels[j]
+    
+    # generate new proposal
+    proposed_state = propose(rng, proposal_kernel, densitymodel, current_state)
+
+    # compute difference between intermediate logdensity at proposed and current positions
+    diff_logdensity = logdensity(densitymodel, proposed_state) - logdensity(densitymodel, current_state)
+
+    # calculate log acceptance probability.
+    logα =  diff_logdensity + q(proposal_kernel, current_state, proposed_state) - q(proposal_kernel, proposed_state, current_state)
+
+    # decide whether to accept or reject proposal
+    if -Random.randexp(rng) < logα
+        # accept: update current_state and accum_logweight
+        accum_logweight -= diff_logdensity(densitymodel, current_state)
+        current_state = proposed_state
+    # reject: no updates necessary
+    end
+
+    return current_state, accum_logweight
+end
+
+## D. overload assume and observe: similar to MH, so that gen_logjoint and gen_logprior work
 
 function DynamicPPL.assume(
     rng,
@@ -229,39 +278,3 @@ function DynamicPPL.dot_observe(
 )
     return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end
-
-# D. helper functions
-
-function gen_logjoint(v, model)
-    function logjoint(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v)
-        v[spl] = z
-        model(v, spl)
-        lj = getlogp(v)
-        v[spl] = z_old
-        setlogp!(v, lj_old)
-        return lj
-    end
-    return logjoint
-end
-
-function gen_logprior(v, model)
-    function logprior(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v)
-        v[spl] = z
-        model(v, SampleFromPrior(), PriorContext())
-        lj = getlogp(v)
-        v[spl] = z_old
-        setlogp!(v, lj_old)
-        return lj
-    end
-    return logprior
-end
-
-function gen_log_unnorm_tempered(logprior, logjoint, beta)
-    function log_unnorm_tempered(z)
-        return (1 - beta) * logprior(z) + beta * logjoint(z)
-    end
-    return log_unnorm_tempered
-end
-
