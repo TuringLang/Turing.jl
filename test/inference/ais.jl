@@ -37,11 +37,9 @@ model_2 = model_2(5.)
 alg = MH() # TODO: change this to AIS !!!
 spl = Sampler(alg, model)
 
-
 # TODO: these are related to plotting, probably irrelevant?
 interval = -3:0.01:3
 list_args = [[z] for z in interval]
-
 
 # TODO: test sample_init!
 

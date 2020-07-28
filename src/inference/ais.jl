@@ -3,16 +3,21 @@
 
 # A.1. algorithm
 
-""" simple version of AIS (not fully general): 
-- sequence of tempered distributions
-- list of proposal Markov kernels
+""" 
+    AIS
+
+Simple version of AIS (not fully general).
+
+Contains:
+- intermediate distributions that come from tempering according to a schedule
+- user-specified list of proposal Markov kernels
 - MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
 """
 struct AIS <: InferenceAlgorithm 
     "array of `num_steps` AdvancedMH proposals"
     proposals :: Array{<:Proposal{P}}
     "array of `num_steps` inverse temperatures"
-    schedule :: Array{<:Integer}
+    schedule :: Array{<:AbstractFloat}
 end
 
 # TODO: add default constructor both for schedule and proposals
@@ -20,6 +25,11 @@ end
 
 # A.2. state: similar to vanilla IS, with intermediate density models and MC proposals added
 
+"""
+    AISState{V<:VarInfo, F<:AbstractFloat}
+
+State struct for AIS: contains information about intermediate distributions and proposal kernels that are needed for all particles.
+"""
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
@@ -33,10 +43,15 @@ mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     logjoint :: G # TODO: check type here, this is the function rather than the density model
 end
 
-AISState(model::Model) = AISState(VarInfo(model), 0.0)
+AISState(model::Model) = AISState(VarInfo(model), 0.0, [], [], x->0.)
 
 # A.3. Sampler constructor: same as for vanilla IS
 
+"""
+    Sampler(alg::AIS, model::Model, s::Selector)
+
+Sampler constructor: similar to vanilla IS.
+"""
 function Sampler(alg::AIS, model::Model, s::Selector)
     @assert length(alg.schedule) == length(alg.proposals)
     info = Dict{Symbol, Any}()
@@ -44,13 +59,17 @@ function Sampler(alg::AIS, model::Model, s::Selector)
     return Sampler(alg, info, s, state)
 end
 
-
 ## B. Implement AbstractMCMC
-
-# each time we call step!, we create a new particle as a transition like in is.jl
 
 # B.1. new transition type AISTransition, with an additional attribute accum_logweight
 
+"""
+    AISTransition{T, F<:AbstractFloat}
+
+AIS-specific Transition struct. 
+
+Necessary because we care both about a particle's weight and the logjoint density evaluated at its final position.
+"""
 struct AISTransition{T, F<:AbstractFloat}
     "parameter"
     θ  :: T
@@ -60,6 +79,13 @@ struct AISTransition{T, F<:AbstractFloat}
     accum_logweight :: F
 end
 
+# TODO: change this constructor, should use current_state rather than spl...
+# TODO: problem: current_state is an array when it should be a NamedTuple - we want the names of the variables...
+"""
+    AISTransition(spl::Sampler, accum_logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
+
+AISTransition constructor.
+"""
 function AISTransition(spl::Sampler, accum_logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(spl.state.vi), nt)
     lp = getlogp(spl.state.vi)
@@ -74,6 +100,11 @@ end
 
 # B.2. sample_init! function: initializes the AISState attributes densitymodels and proposal_kernels 
 
+"""
+    AbstractMCMC.sample_init!
+
+Initialize AISState attributes densitymodels, proposal_kernels and logjoint in spl.state.
+"""
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
     model::Model,
@@ -102,7 +133,9 @@ function AbstractMCMC.sample_init!(
 end
 
 # B.3. step function 
+
 # TODO: should we memorize full path?
+
 function AbstractMCMC.step!(
     rng::AbstractRNG,
     model::Model,
@@ -124,10 +157,18 @@ function AbstractMCMC.step!(
 
     # add final term to accum_logweight
     accum_logweight += spl.state.logjoint(current_state)
+
+    # TODO: return an instance of AISTransition - must update the AISTransition constructor
+    return AISTransition(spl, accum_logweight)
 end
 
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
 
+"""
+    AbstractMCMC.sample_end!( ::AbstractRNG, ::Model, spl::Sampler{<:IS}, N::Integer, ts::Vector; kwargs...)
+
+Store estimate of the log evidence in the AISState attribute final_logevidence of spl.state.
+"""
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
@@ -136,12 +177,17 @@ function AbstractMCMC.sample_end!(
     ts::Vector;
     kwargs...
 )
-    # update AISTransition accum_logweight attribute to store estimate of log evidence
+    # use AISTransition accum_logweight attribute to store estimate of log evidence
     spl.state.final_logevidence = logsumexp(map(x->x.accum_logweight, ts)) - log(N)
 end
 
 # C. helper functions
 
+"""
+    gen_logjoint(v, model)
+
+Return the log joint density function corresponding to model.
+"""
 function gen_logjoint(v, model)
     function logjoint(z)::Float64
         z_old, lj_old = v[spl], getlogp(v)
@@ -155,6 +201,11 @@ function gen_logjoint(v, model)
     return logjoint
 end
 
+"""
+    gen_logprior(v, model)
+
+Return the log prior density function corresponding to model.
+"""
 function gen_logprior(v, model)
     function logprior(z)::Float64
         z_old, lj_old = v[spl], getlogp(v)
@@ -168,6 +219,11 @@ function gen_logprior(v, model)
     return logprior
 end
 
+"""
+    gen_log_unnorm_tempered(logprior, logjoint, beta)
+
+Return the log unnormalized tempered density function corresponding to model, ie a convex combination of the logprior and logjoint densities with parameter beta.
+"""
 function gen_log_unnorm_tempered(logprior, logjoint, beta)
     function log_unnorm_tempered(z)
         return (1 - beta) * logprior(z) + beta * logjoint(z)
@@ -175,6 +231,11 @@ function gen_log_unnorm_tempered(logprior, logjoint, beta)
     return log_unnorm_tempered
 end
 
+"""
+    prior_step(model)
+
+Sample from prior to return inital values of current_state and accum_logweight.
+"""
 function prior_step(model)
     # sample from prior
     prior_vi = VarInfo()
@@ -190,6 +251,11 @@ function prior_step(model)
     return current_state, accum_logweight
 end
 
+"""
+    intermediate_step(j, spl, current_state, accum_logweight)
+
+Perform the MCMC step corresponding to the j-th intermediate distribution, with the j-th MH proposal. Return updated current_state and accum_logweight.
+"""
 function intermediate_step(j, spl, current_state, accum_logweight)
     # fetch proposal_kernel and densitymodel for this intermediate step
     densitymodel = spl.state.densitymodels[j]
