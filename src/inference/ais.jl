@@ -14,7 +14,7 @@ Contains:
 """
 struct AIS <: InferenceAlgorithm 
     "array of intermediate MH kernels"
-    proposal_kernels :: Array{MetropolisHastings}
+    proposal_kernels :: Array{AdvancedMH.MetropolisHastings}
     "array of inverse temperatures"
     schedule :: Array{<:AbstractFloat}
 end
@@ -32,7 +32,7 @@ mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
     "list of density models corresponding to intermediate target distributions, ending with the logjoint density model - computed in sample_init!"
-    densitymodels      :: Array{DensityModel}
+    densitymodels      :: Array{AdvancedMH.DensityModel}
     "log of the average of the particle weights: estimator of the log evidence - computed in sample_end!"
     final_logevidence  ::  F
 end
@@ -253,18 +253,18 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     proposal_kernel = spl.alg.proposal_kernels[j]
     
     # generate new proposal: this is a Transition...
-    proposed_state = propose(rng, proposal_kernel, densitymodel, current_state)
+    proposed_state = AdvancedMH.propose(rng, proposal_kernel, densitymodel, current_state)
 
     # compute difference between intermediate logdensity at proposed and current positions
-    diff_logdensity = logdensity(densitymodel, proposed_state) - logdensity(densitymodel, current_state)
+    diff_logdensity = AdvancedMH.logdensity(densitymodel, proposed_state) - AdvancedMH.logdensity(densitymodel, current_state)
 
     # calculate log acceptance probability.
-    logα =  diff_logdensity + q(proposal_kernel, current_state, proposed_state) - q(proposal_kernel, proposed_state, current_state)
+    logα =  diff_logdensity + AdvancedMH.q(proposal_kernel, current_state, proposed_state) - AdvancedMH.q(proposal_kernel, proposed_state, current_state)
 
     # decide whether to accept or reject proposal
     if -Random.randexp(rng) < logα
         # accept: update current_state and accum_logweight
-        accum_logweight -= diff_logdensity(densitymodel, current_state)
+        accum_logweight -= diff_logdensity
         current_state = proposed_state
     # reject: no updates necessary
     end

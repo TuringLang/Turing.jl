@@ -34,12 +34,10 @@ model_2 = model_2(5.)
 
 # declare algorithm and sampler
 
-alg = MH() # TODO: change this to AIS !!!
+schedule = 0.1:0.1:0.9
+proposal_kernels = [AdvancedMH.RWMH(Normal()) for i in 1:9]
+alg = AIS(proposal_kernels, schedule)
 spl = Sampler(alg, model)
-
-# TODO: these are related to plotting, probably irrelevant?
-interval = -3:0.01:3
-list_args = [[z] for z in interval]
 
 # TODO: test sample_init!
 
@@ -53,7 +51,6 @@ p = histogram(list_samples)
 png(p, "/Users/js/prior_samples_hist.png")
 
 # TODO: test intermediate_step(j, spl, current_state, accum_logweight)
-
 
 # test gen_logjoint
 
