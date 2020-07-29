@@ -165,6 +165,14 @@ end
 
 # C. helper functions
 
+# TODO: make current_state and proposed_state NamedTuples
+# propose() returns an AdvancedMH.Transition, which has a params field of type T<:Union{Vector, Real, NamedTuple} (in this case, NamedTuple)
+# to change: 
+# - make prior_step generate a NamedTuple
+# - make proposed_state = propose(...).params a NamedTuple
+# - make logdensities apply to NamedTuples rather than just arrays
+
+
 """
     gen_logjoint(v, model)
 
@@ -212,13 +220,6 @@ function gen_log_unnorm_tempered(logprior, logjoint, beta)
     end
     return log_unnorm_tempered
 end
-
-# TODO: make current_state and proposed_state NamedTuples
-# propose() returns an AdvancedMH.Transition, which has a params field of type T<:Union{Vector, Real, NamedTuple} (in this case, NamedTuple)
-# to change: 
-# - prior_step must generate a NamedTuple
-# - make proposed_state = propose(...).params a NamedTuple
-# - for now logdensities apply to arrays: extend it to NamedTuples
 
 """
     prior_step(model)
