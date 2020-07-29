@@ -1,4 +1,3 @@
-# TODO: ensure correct typing in samplers, states, etc.
 ## A. Sampler
 
 # A.1. algorithm
@@ -14,16 +13,15 @@ Contains:
 - MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
 """
 struct AIS <: InferenceAlgorithm 
-    "array of `num_steps` AdvancedMH proposals"
-    proposals :: Array{<:Proposal{P}}
-    "array of `num_steps` inverse temperatures"
+    "array of intermediate MH kernels"
+    proposal_kernels :: Array{MetropolisHastings}
+    "array of inverse temperatures"
     schedule :: Array{<:AbstractFloat}
 end
 
-# TODO: add default constructor both for schedule and proposals
-# TODO: distinguish static and dynamic proposals
+# TODO: add default constructor both for schedule (maybe 0.1:0.1:0.9?) and proposals (maybe Normals all the way, problem = dimension)
 
-# A.2. state: similar to vanilla IS, with intermediate density models and MC proposals added
+# A.2. state: similar to vanilla IS, with densitymodels for intermediate distributions added
 
 """
     AISState{V<:VarInfo, F<:AbstractFloat}
@@ -33,17 +31,13 @@ State struct for AIS: contains information about intermediate distributions and 
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
+    "list of density models corresponding to intermediate target distributions, ending with the logjoint density model - computed in sample_init!"
+    densitymodels      :: Array{DensityModel}
     "log of the average of the particle weights: estimator of the log evidence - computed in sample_end!"
     final_logevidence  ::  F
-    "list of density models corresponding to intermediate target distributions - computed in sample_init!"
-    densitymodels :: Array{DensityModel} # TODO: check type here
-    "list of intermediate MH kernels - computed in sample_init!"
-    proposal_kernels :: Array{MetropolisHastings} # TODO: check type here
-    "log joint density - computed in sample_init!"
-    logjoint :: G # TODO: check type here, this is the function rather than the density model
 end
 
-AISState(model::Model) = AISState(VarInfo(model), 0.0, [], [], x->0.)
+AISState(model::Model) = AISState(VarInfo(model), [], 0.0)
 
 # A.3. Sampler constructor: same as for vanilla IS
 
@@ -68,7 +62,7 @@ end
 
 AIS-specific Transition struct. 
 
-Necessary because we care both about a particle's weight and the logjoint density evaluated at its final position.
+Necessary because we care both about a particle's weight (accum_logweight) and the logjoint density evaluated at its final position (lp).
 """
 struct AISTransition{T, F<:AbstractFloat}
     "parameter"
@@ -79,31 +73,18 @@ struct AISTransition{T, F<:AbstractFloat}
     accum_logweight :: F
 end
 
-# TODO: change this constructor, should use current_state rather than spl...
-# TODO: problem: current_state is an array when it should be a NamedTuple - we want the names of the variables...
-"""
-    AISTransition(spl::Sampler, accum_logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
-
-AISTransition constructor.
-"""
-function AISTransition(spl::Sampler, accum_logweight::F<:AbstractFloat, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(spl.state.vi), nt)
-    lp = getlogp(spl.state.vi)
-    return AISTransition{typeof(theta), typeof(lp)}(theta, lp, accum_logweight)
-end
-
 # idk what this function is for
 function additional_parameters(::Type{<:AISTransition})
     return [:lp, :accum_logweight]
 end
 
 
-# B.2. sample_init! function: initializes the AISState attributes densitymodels and proposal_kernels 
+# B.2. sample_init! function 
 
 """
     AbstractMCMC.sample_init!
 
-Initialize AISState attributes densitymodels, proposal_kernels and logjoint in spl.state.
+Initialize AISState attributes densitymodels and logjoint in spl.state.
 """
 function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
@@ -114,27 +95,26 @@ function AbstractMCMC.sample_init!(
     resume_from=nothing,
     kwargs...
 )
-    spl.state.densitymodels = []
-    spl.state.proposal_kernels = []
     logjoint = gen_logjoint(spl.state.vi, model)
-    spl.state.logjoint = logjoint
-    
     logprior = gen_logprior(spl.state.vi, model)
-    for i in 1:length(spl.alg.proposals)
-        beta = spl.alg.schedule[i]
+
+    spl.state.densitymodels = [] 
+
+    # densitymodels for intermediate distributions
+    for beta in spl.alg.schedule
         log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
         densitymodel = AdvancedMH.DensityModel(log_unnorm_tempered)
         append!(spl.state.densitymodels, densitymodel)
-        
-        proposal = spl.alg.proposals[i]
-        proposal_kernel = AMH.MetropolisHastings(proposal) # maybe use RWMH(d) with d the associated distribution
-        append!(spl.state.proposal_kernels, proposal_kernel)
     end
+
+    # densitymodel for the logjoint, ie the final target
+    final_densitymodel = AdvancedMH.DensityModel(logjoint)
+    append!(spl.state.densitymodels, final_densitymodel)
 end
 
 # B.3. step function 
 
-# TODO: should we memorize full path?
+# TODO: modify to memorize full path
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
@@ -155,11 +135,13 @@ function AbstractMCMC.step!(
         current_state, accum_logweight = intermediate_step(j, spl, current_state, accum_logweight)
     end
 
-    # add final term to accum_logweight
-    accum_logweight += spl.state.logjoint(current_state)
+    # evaluate logjoint at current_state
+    lp = logdensity(last(spl.alg.densitymodels), current_state)
+    
+    # add lp as final term to accum_logweight
+    accum_logweight += lp
 
-    # TODO: return an instance of AISTransition - must update the AISTransition constructor
-    return AISTransition(spl, accum_logweight)
+    return AISTransition(current_state, lp, accum_logweight)
 end
 
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
@@ -190,7 +172,7 @@ Return the log joint density function corresponding to model.
 """
 function gen_logjoint(v, model)
     function logjoint(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v)
+        z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
         v[spl] = z
         model(v, spl)
         lj = getlogp(v)
@@ -208,7 +190,7 @@ Return the log prior density function corresponding to model.
 """
 function gen_logprior(v, model)
     function logprior(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v)
+        z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
         v[spl] = z
         model(v, SampleFromPrior(), PriorContext())
         lj = getlogp(v)
@@ -231,11 +213,19 @@ function gen_log_unnorm_tempered(logprior, logjoint, beta)
     return log_unnorm_tempered
 end
 
+# TODO: make current_state and proposed_state NamedTuples
+# propose() returns an AdvancedMH.Transition, which has a params field of type T<:Union{Vector, Real, NamedTuple} (in this case, NamedTuple)
+# to change: 
+# - prior_step must generate a NamedTuple
+# - make proposed_state = propose(...).params a NamedTuple
+# - for now logdensities apply to arrays: extend it to NamedTuples
+
 """
     prior_step(model)
 
 Sample from prior to return inital values of current_state and accum_logweight.
 """
+# TODO: make current_state a NamedTuple
 function prior_step(model)
     # sample from prior
     prior_vi = VarInfo()
@@ -259,9 +249,9 @@ Perform the MCMC step corresponding to the j-th intermediate distribution, with 
 function intermediate_step(j, spl, current_state, accum_logweight)
     # fetch proposal_kernel and densitymodel for this intermediate step
     densitymodel = spl.state.densitymodels[j]
-    proposal_kernel = spl.state.proposal_kernels[j]
+    proposal_kernel = spl.alg.proposal_kernels[j]
     
-    # generate new proposal
+    # generate new proposal: this is a Transition...
     proposed_state = propose(rng, proposal_kernel, densitymodel, current_state)
 
     # compute difference between intermediate logdensity at proposed and current positions
