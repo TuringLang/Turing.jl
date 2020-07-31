@@ -1,5 +1,4 @@
 module Inference
-# TODO: add functions from inference/ais.jl
 
 using ..Core
 using ..Utilities
@@ -44,6 +43,7 @@ export  InferenceAlgorithm,
         ESS,
         Emcee,
         Gibbs,      # classic sampling
+        AIS,
         HMC,
         SGLD,
         SGHMC,
@@ -565,6 +565,7 @@ end
 #######################################
 
 include("ess.jl")
+include("ais.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")

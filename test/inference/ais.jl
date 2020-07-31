@@ -1,11 +1,12 @@
 # TODO: lots of imports will have been done in runtests.jl hence irrelevant
 using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
-using Turing: Sampler
+using Turing: AIS, Sampler
 using Pkg
 using Random
 using Test
 using DynamicPPL: getlogp, setlogp!, SampleFromPrior, PriorContext, VarInfo
 using Plots
+using AdvancedMH
 
 # TODO: replace plots by some other testing metric
 
@@ -13,16 +14,16 @@ using Plots
 
 # declare models
 
-# TODO: compute exact posterior
 @model model_1(x) = begin
     # latent
-    z ~ Normal()
+    z = Vector{Real}(undef, 2)
+    z[1] ~ Normal()
+    z[2] ~ Normal()
     # observed
-    x ~ Normal(z, 1.)
+    x ~ Normal(z[1], z[2] * z[2])
 end
 model_1 = model_1(1.)
 
-# TODO: compute exact posterior, and vectorize x
 @model model_2(x) = begin
     # latent
     inv_theta ~ Gamma(2,3)
@@ -37,7 +38,7 @@ model_2 = model_2(5.)
 schedule = 0.1:0.1:0.9
 proposal_kernels = [AdvancedMH.RWMH(Normal()) for i in 1:9]
 alg = AIS(proposal_kernels, schedule)
-spl = Sampler(alg, model)
+spl = Sampler(alg, model_1)
 
 # TODO: test sample_init!
 
@@ -54,13 +55,13 @@ png(p, "/Users/js/prior_samples_hist.png")
 
 # test gen_logjoint
 
-logjoint = gen_logjoint(spl.state.vi, model)
+logjoint = gen_logjoint(spl.state.vi, model, spl)
 logjoint_values = logjoint.(list_args)
 p = plot(interval, logjoint_values)
 
 # test gen_logprior
 
-logprior = gen_logprior(spl.state.vi, model)
+logprior = gen_logprior(spl.state.vi, model, spl)
 logprior_values = logprior.(list_args)
 plot!(p, interval, logprior_values)
 

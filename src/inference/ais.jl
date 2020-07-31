@@ -14,9 +14,9 @@ Contains:
 """
 struct AIS <: InferenceAlgorithm 
     "array of intermediate MH kernels"
-    proposal_kernels :: Array{AdvancedMH.MetropolisHastings}
+    proposal_kernels # :: Array{AdvancedMH.MetropolisHastings}
     "array of inverse temperatures"
-    schedule :: Array{<:AbstractFloat}
+    schedule #  :: Array{<:AbstractFloat}
 end
 
 # TODO: add default constructor both for schedule (maybe 0.1:0.1:0.9?) and proposals (maybe Normals all the way, problem = dimension)
@@ -28,11 +28,11 @@ end
 
 State struct for AIS: contains information about intermediate distributions and proposal kernels that are needed for all particles.
 """
-mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+mutable struct AISState {V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
     "list of density models corresponding to intermediate target distributions, ending with the logjoint density model - computed in sample_init!"
-    densitymodels      :: Array{AdvancedMH.DensityModel}
+    densitymodels      #:: Array{AdvancedMH.DensityModel}
     "log of the average of the particle weights: estimator of the log evidence - computed in sample_end!"
     final_logevidence  ::  F
 end
@@ -47,7 +47,7 @@ AISState(model::Model) = AISState(VarInfo(model), [], 0.0)
 Sampler constructor: similar to vanilla IS.
 """
 function Sampler(alg::AIS, model::Model, s::Selector)
-    @assert length(alg.schedule) == length(alg.proposals)
+    @assert length(alg.schedule) == length(alg.proposal_kernels)
     info = Dict{Symbol, Any}()
     state = AISState(model)
     return Sampler(alg, info, s, state)
@@ -95,8 +95,8 @@ function AbstractMCMC.sample_init!(
     resume_from=nothing,
     kwargs...
 )
-    logjoint = gen_logjoint(spl.state.vi, model)
-    logprior = gen_logprior(spl.state.vi, model)
+    logjoint = gen_logjoint(spl.state.vi, model, spl)
+    logprior = gen_logprior(spl.state.vi, model, spl)
 
     spl.state.densitymodels = [] 
 
@@ -147,14 +147,14 @@ end
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
 
 """
-    AbstractMCMC.sample_end!( ::AbstractRNG, ::Model, spl::Sampler{<:IS}, N::Integer, ts::Vector; kwargs...)
+    AbstractMCMC.sample_end!( ::AbstractRNG, ::Model, spl::Sampler{<:AIS}, N::Integer, ts::Vector; kwargs...)
 
 Store estimate of the log evidence in the AISState attribute final_logevidence of spl.state.
 """
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
-    spl::Sampler{<:IS},
+    spl::Sampler{<:AIS},
     N::Integer,
     ts::Vector;
     kwargs...
@@ -172,13 +172,22 @@ end
 # - make proposed_state = propose(...).params a NamedTuple
 # - make logdensities apply to NamedTuples rather than just arrays
 
+# TypedVarInfo -> NamedTuple: via tonamedtuple
+# output namedtuple has keys which are latent variable names 
+# for each variable name, the corresponding value is a tuple containing a) the array of associated values b) the strings for the names of the individual components inside the variable
+
+# question: am i dealing with Typed or Untyped varinfos here?
+# for sampling from prior, untyped. in which case I have to build the 
+
+# question: what do I keep, what do I change?
+
 
 """
-    gen_logjoint(v, model)
+    gen_logjoint(v, model, spl)
 
 Return the log joint density function corresponding to model.
 """
-function gen_logjoint(v, model)
+function gen_logjoint(v, model, spl)
     function logjoint(z)::Float64
         z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
         v[spl] = z
@@ -192,11 +201,11 @@ function gen_logjoint(v, model)
 end
 
 """
-    gen_logprior(v, model)
+    gen_logprior(v, model, spl)
 
 Return the log prior density function corresponding to model.
 """
-function gen_logprior(v, model)
+function gen_logprior(v, model, spl)
     function logprior(z)::Float64
         z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
         v[spl] = z
