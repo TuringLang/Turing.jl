@@ -150,7 +150,7 @@ mf(vi, sampler, ctx, model) = begin
 end
 
 # Instantiate a Model object.
-model = DynamicPPL.Model(mf, data, DyanamicPPL.ModelGen{()}(nothing, nothing))
+model = DynamicPPL.Model(mf, data, DynamicPPL.ModelGen{()}(nothing, nothing))
 
 # Sample the model.
 chain = sample(model, HMC(0.1, 5), 1000)
@@ -160,6 +160,6 @@ chain = sample(model, HMC(0.1, 5), 1000)
 ## Task Copying
 
 
-Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires we use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
+Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires us to use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
 
 
