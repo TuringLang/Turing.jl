@@ -28,7 +28,7 @@ end
 
 State struct for AIS: contains information about intermediate distributions and proposal kernels that are needed for all particles.
 """
-mutable struct AISState {V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
+mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
     "list of density models corresponding to intermediate target distributions, ending with the logjoint density model - computed in sample_init!"
@@ -104,12 +104,12 @@ function AbstractMCMC.sample_init!(
     for beta in spl.alg.schedule
         log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
         densitymodel = AdvancedMH.DensityModel(log_unnorm_tempered)
-        append!(spl.state.densitymodels, densitymodel)
+        push!(spl.state.densitymodels, densitymodel)
     end
 
     # densitymodel for the logjoint, ie the final target
     final_densitymodel = AdvancedMH.DensityModel(logjoint)
-    append!(spl.state.densitymodels, final_densitymodel)
+    push!(spl.state.densitymodels, final_densitymodel)
 end
 
 # B.3. step function 
