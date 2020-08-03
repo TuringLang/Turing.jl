@@ -78,6 +78,7 @@ export  @model,                 # modelling
         RWMH,
         Emcee,
         ESS,
+        NS,
         Gibbs,
 
         HMC,                    # Hamiltonian-like sampling
