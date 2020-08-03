@@ -61,7 +61,12 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent
+        isgibbscomponent,
+        gen_logjoint,
+        gen_logprior,
+        gen_log_unnorm_tempered, 
+        prior_step,
+        intermediate_step
 
 #######################
 # Sampler abstraction #
