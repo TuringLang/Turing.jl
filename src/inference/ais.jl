@@ -14,12 +14,14 @@ Contains:
 """
 struct AIS <: InferenceAlgorithm 
     "array of intermediate MH kernels"
-    proposal_kernels # :: Array{AdvancedMH.MetropolisHastings}
+    proposal_kernels # :: Array{AdvancedMH.RandomWalkProposal}
     "array of inverse temperatures"
     schedule #  :: Array{<:AbstractFloat}
 end
 
-# TODO: add default constructor both for schedule (maybe 0.1:0.1:0.9?) and proposals (maybe Normals all the way, problem = dimension)
+DynamicPPL.getspace(::AIS) = ()
+
+# TODO: add default constructor both for schedule (maybe 0.1:0.1:0.9?) and proposals (eg given a centered Gaussian vector's covariance matrix - this probably exists in AdvancedMh)
 
 # A.2. state: similar to vanilla IS, with densitymodels for intermediate distributions added
 
@@ -128,7 +130,7 @@ function AbstractMCMC.step!(
     empty!(spl.state.vi)
 
     # sample from prior and compute first term in accum_logweight
-    current_state, accum_logweight = prior_step(model)
+    current_state, accum_logweight = prior_step(spl, model)
 
     # for every intermediate distribution
     for j in 1:length(spl.alg.schedule)
@@ -140,6 +142,8 @@ function AbstractMCMC.step!(
     
     # add lp as final term to accum_logweight
     accum_logweight += lp
+
+    # TODO: at this point current_state is an array - make it a named tuple or something for AISTransition - I think this can be handled using the vi[spl] trick
 
     return AISTransition(current_state, lp, accum_logweight)
 end
@@ -165,23 +169,6 @@ end
 
 # C. helper functions
 
-# TODO: make current_state and proposed_state NamedTuples
-# propose() returns an AdvancedMH.Transition, which has a params field of type T<:Union{Vector, Real, NamedTuple} (in this case, NamedTuple)
-# to change: 
-# - make prior_step generate a NamedTuple
-# - make proposed_state = propose(...).params a NamedTuple
-# - make logdensities apply to NamedTuples rather than just arrays
-
-# TypedVarInfo -> NamedTuple: via tonamedtuple
-# output namedtuple has keys which are latent variable names 
-# for each variable name, the corresponding value is a tuple containing a) the array of associated values b) the strings for the names of the individual components inside the variable
-
-# question: am i dealing with Typed or Untyped varinfos here?
-# for sampling from prior, untyped. in which case I have to build the 
-
-# question: what do I keep, what do I change?
-
-
 """
     gen_logjoint(v, model, spl)
 
@@ -189,7 +176,7 @@ Return the log joint density function corresponding to model.
 """
 function gen_logjoint(v, model, spl)
     function logjoint(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
+        z_old, lj_old = v[spl], getlogp(v) 
         v[spl] = z
         model(v, spl)
         lj = getlogp(v)
@@ -207,7 +194,7 @@ Return the log prior density function corresponding to model.
 """
 function gen_logprior(v, model, spl)
     function logprior(z)::Float64
-        z_old, lj_old = v[spl], getlogp(v) # TODO: figure out what spl is here
+        z_old, lj_old = v[spl], getlogp(v)
         v[spl] = z
         model(v, SampleFromPrior(), PriorContext())
         lj = getlogp(v)
@@ -231,12 +218,11 @@ function gen_log_unnorm_tempered(logprior, logjoint, beta)
 end
 
 """
-    prior_step(model)
+    prior_step(spl, model)
 
 Sample from prior to return inital values of current_state and accum_logweight.
 """
-# TODO: make current_state a NamedTuple
-function prior_step(model)
+function prior_step(spl, model)
     # sample from prior
     prior_vi = VarInfo()
     prior_spl = SampleFromPrior()
@@ -246,6 +232,7 @@ function prior_step(model)
     current_state = prior_vi[prior_spl]
 
     # initialize accum_logweight
+    logprior = gen_logprior(spl.state.vi, model, spl)
     accum_logweight = - logprior(current_state)
 
     return current_state, accum_logweight
@@ -261,8 +248,8 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     densitymodel = spl.state.densitymodels[j]
     proposal_kernel = spl.alg.proposal_kernels[j]
     
-    # generate new proposal: this is a Transition...
-    proposed_state = AdvancedMH.propose(rng, proposal_kernel, densitymodel, current_state)
+    # TODO: generalize - for now, proposal_kernel can only be a RandomWalkProposal
+    proposed_state = current_state + rand(proposal_kernel)
 
     # compute difference between intermediate logdensity at proposed and current positions
     diff_logdensity = AdvancedMH.logdensity(densitymodel, proposed_state) - AdvancedMH.logdensity(densitymodel, current_state)
@@ -271,7 +258,7 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     logα =  diff_logdensity + AdvancedMH.q(proposal_kernel, current_state, proposed_state) - AdvancedMH.q(proposal_kernel, proposed_state, current_state)
 
     # decide whether to accept or reject proposal
-    if -Random.randexp(rng) < logα
+    if -Random.randexp() < logα
         # accept: update current_state and accum_logweight
         accum_logweight -= diff_logdensity
         current_state = proposed_state
