@@ -1,6 +1,6 @@
 # TODO: lots of imports will have been done in runtests.jl hence irrelevant
 using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
-using Turing: AIS, Sampler
+using Turing: AIS, Sampler, prior_step, intermediate_step
 using Pkg
 using Random
 using Test
@@ -12,12 +12,13 @@ using AdvancedMH
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
+
 @turing_testset "ais.jl" begin
 
     # 1. declare models and associated samplers
 
     # model_1: normal distributions, but multidimensional
-    @model model_1_macro(x, y) begin
+    @model model_1_macro(x, y) = begin
         # latent
         z = Vector{Real}(undef, 2)
         z[1] ~ Normal()
@@ -36,7 +37,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     spl_1 = Sampler(alg_1, model_1)
 
     # model_2: non-normal distributions, but unidimensional
-    @model model_2_macro(x) begin
+    @model model_2_macro(x) = begin
         # latent
         inv_theta ~ Gamma(2,3)
         theta = 1/inv_theta
