@@ -41,6 +41,7 @@ export  InferenceAlgorithm,
         SampleFromPrior,
         MH,
         ESS,
+        NS,
         Emcee,
         Gibbs,      # classic sampling
         HMC,
@@ -533,6 +534,7 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("ns.jl")
 include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
@@ -546,7 +548,7 @@ include("emcee.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :NS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
