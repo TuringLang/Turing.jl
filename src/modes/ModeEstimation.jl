@@ -147,6 +147,44 @@ function (f::OptimLogDensity)(z)
     return -DynamicPPL.getlogp(varinfo)
 end
 
+function (f::OptimLogDensity)(F, G, z)
+    spl = DynamicPPL.SampleFromPrior()
+
+    if G !== nothing && F !== nothing
+        f, g = gradient_logp(
+            z, 
+            DynamicPPL.VarInfo(f.vi, spl, z), 
+            f.model, 
+            DynamicPPL.SampleFromPrior(),
+            f.context
+        )
+        G[:] = -g[:]
+        F = -f
+        @info "" F G
+        return F
+    end
+    if G !== nothing
+        _, g = gradient_logp(
+            z, 
+            DynamicPPL.VarInfo(f.vi, spl, z), 
+            f.model, 
+            DynamicPPL.SampleFromPrior(),
+            f.context
+        )
+        G[:] = g
+    end
+    if F !== nothing
+        spl = DynamicPPL.SampleFromPrior()
+
+        varinfo = DynamicPPL.VarInfo(f.vi, spl, z)
+        f.model(varinfo, spl, f.context)
+        F = -DynamicPPL.getlogp(varinfo)
+        @info "" F G z
+        return F
+    end
+    return nothing
+end
+
 """
     ModeResult{
         V<:NamedArrays.NamedArray, 
@@ -360,6 +398,8 @@ function _optimize(
     return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
 end
 
+
+
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
@@ -378,9 +418,8 @@ function _optimize(
     link!(f.vi, spl)
     init_vals = f.vi[spl]
 
-
     # Optimize!
-    M = Optim.optimize(f, init_vals, optimizer, options, args...; kwargs...)
+    M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
