@@ -149,39 +149,27 @@ end
 
 function (f::OptimLogDensity)(F, G, z)
     spl = DynamicPPL.SampleFromPrior()
+    
+    # Calculate log joint and the gradient
+    l, g = gradient_logp(
+        z, 
+        DynamicPPL.VarInfo(f.vi, spl, z), 
+        f.model, 
+        DynamicPPL.SampleFromPrior(),
+        f.context
+    )
 
-    if G !== nothing && F !== nothing
-        f, g = gradient_logp(
-            z, 
-            DynamicPPL.VarInfo(f.vi, spl, z), 
-            f.model, 
-            DynamicPPL.SampleFromPrior(),
-            f.context
-        )
-        G[:] = -g[:]
-        F = -f
-        @info "" F G
-        return F
-    end
     if G !== nothing
-        _, g = gradient_logp(
-            z, 
-            DynamicPPL.VarInfo(f.vi, spl, z), 
-            f.model, 
-            DynamicPPL.SampleFromPrior(),
-            f.context
-        )
-        G[:] = g
+        # Use the negative gradient because we are minimizing.
+        G[:] = -g
     end
-    if F !== nothing
-        spl = DynamicPPL.SampleFromPrior()
 
-        varinfo = DynamicPPL.VarInfo(f.vi, spl, z)
-        f.model(varinfo, spl, f.context)
-        F = -DynamicPPL.getlogp(varinfo)
-        @info "" F G z
+    if F !== nothing
+        # Return the negative log joint because we are minimizing.
+        F = -l
         return F
     end
+
     return nothing
 end
 
@@ -398,8 +386,6 @@ function _optimize(
     return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
 end
 
-
-
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
@@ -409,6 +395,11 @@ function _optimize(
     args...; 
     kwargs...
 )
+    # Throw an error if we received a second-order optimizer.
+    if optimizer isa Optim.SecondOrderOptimizer
+        throw(ArgumentError("Second order optimizers for MLE/MAP are not yet supported."))
+    end
+
     # Do some initialization.
     spl = DynamicPPL.SampleFromPrior()
 
