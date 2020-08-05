@@ -150,27 +150,45 @@ end
 function (f::OptimLogDensity)(F, G, z)
     spl = DynamicPPL.SampleFromPrior()
     
-    # Calculate log joint and the gradient
-    l, g = gradient_logp(
-        z, 
-        DynamicPPL.VarInfo(f.vi, spl, z), 
-        f.model, 
-        DynamicPPL.SampleFromPrior(),
-        f.context
-    )
 
     if G !== nothing
+        # Calculate log joint and the gradient
+        l, g = gradient_logp(
+            z, 
+            DynamicPPL.VarInfo(f.vi, spl, z), 
+            f.model, 
+            DynamicPPL.SampleFromPrior(),
+            f.context
+        )
+
         # Use the negative gradient because we are minimizing.
         G[:] = -g
+
+        # If F is something, return that since we already have the 
+        # log joint.
+        if F !== nothing
+            F = -l
+            return F
+        end
     end
 
+    # No gradient necessary, just return the log joint.
     if F !== nothing
-        # Return the negative log joint because we are minimizing.
-        F = -l
+        F = f(z)
         return F
     end
 
     return nothing
+end
+
+function (f::OptimLogDensity)(F, G, H, z)
+    # Throw an error if a second order method was used.
+    if H !== nothing
+        error("Second order optimization is not yet supported.")
+    end
+
+    # Otherwise, just do the function and gradient info.
+    return f(F, G, z)
 end
 
 """
@@ -396,9 +414,9 @@ function _optimize(
     kwargs...
 )
     # Throw an error if we received a second-order optimizer.
-    if optimizer isa Optim.SecondOrderOptimizer
-        throw(ArgumentError("Second order optimizers for MLE/MAP are not yet supported."))
-    end
+    # if optimizer isa Optim.SecondOrderOptimizer
+    #     throw(ArgumentError("Second order optimizers for MLE/MAP are not yet supported."))
+    # end
 
     # Do some initialization.
     spl = DynamicPPL.SampleFromPrior()
@@ -410,7 +428,11 @@ function _optimize(
     init_vals = f.vi[spl]
 
     # Optimize!
-    M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
+    M = if optimizer isa Optim.SecondOrderOptimizer
+        Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
+    else
+        Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
+    end
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
