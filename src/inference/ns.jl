@@ -25,7 +25,7 @@ An example
 ## model:: Nestedmodel
 ## sampler:: Nested
 
-## comment on each step of the code
+## comment on each step of the code and also include docstrings for sections of the code
 
 struct NS{space, P, B} <: InferenceAlgorithm  ## check what is T in T, B ??
     ndims::Int    # number of parameters
