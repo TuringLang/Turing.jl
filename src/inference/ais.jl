@@ -116,7 +116,11 @@ end
 
 # B.3. step function 
 
-# TODO: modify to memorize full path
+# TODO: memorize full path: not much to change, but check what we care about exactly
+# - all proposals?
+# - all values of accum_logweight?
+# - all values of diff_logdensity?
+# - all values of f_j(x_j)?
 
 function AbstractMCMC.step!(
     rng::AbstractRNG,
@@ -138,14 +142,18 @@ function AbstractMCMC.step!(
     end
 
     # evaluate logjoint at current_state
-    lp = logdensity(last(spl.alg.densitymodels), current_state)
+    lp = AdvancedMH.logdensity(last(spl.state.densitymodels), current_state)
     
     # add lp as final term to accum_logweight
     accum_logweight += lp
 
-    # TODO: at this point current_state is an array - make it a named tuple or something for AISTransition - I think this can be handled using the vi[spl] trick
+    # update spl to set the path VarInfo
+    spl.state.vi[spl] = current_state
 
-    return AISTransition(current_state, lp, accum_logweight)
+    # use path VarInfo to build instance of AISTransition
+    nt = NamedTuple()
+    theta = merge(DynamicPPL.tonamedtuple(spl.state.vi), NamedTuple())
+    return AISTransition(theta, lp, accum_logweight)
 end
 
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
