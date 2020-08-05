@@ -94,11 +94,13 @@ end
 we can use
 
 ```julia
+using Random
+
 model = tmodel(1.0)
 varinfo = Turing.VarInfo(model)
 spl = Turing.SampleFromPrior()
 
-@code_warntype model.f(model, varinfo, spl, Turing.DefaultContext())
+@code_warntype model.f(Random.GLOBAL_RNG, model, varinfo, spl, Turing.DefaultContext())
 ```
 to inspect the type instabilities in the model.
 
