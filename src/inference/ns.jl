@@ -14,25 +14,52 @@ An example
 """
 
 ## what all to setup here:
-## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters... Partially done in  mutable struct NSState ?? check
-## 2. A function sample_init! which performs any necessary set-up (default: do not perform any set-up)... Partially done in: function AbstractMCMC.sample_init! ?? check
-## 3. A function step! which returns a transition that represents a single draw from the sampler... Partially done with: 2 function AbstractMCMC.step! ?? check
+## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters... Partially done in  mutable struct NSState ? check
+## 2. A function sample_init! which performs any necessary set-up (default: do not perform any set-up)... Partially done in: function AbstractMCMC.sample_init! ? check
+## 3. A function step! which returns a transition that represents a single draw from the sampler... Partially done with: 2 function AbstractMCMC.step! ? check
 ## 4. A function transitions_init which returns a container for the transitions obtained from the sampler (default: return a Vector{T} of length N where T is the type of the transition obtained in the first step and N is the number of requested samples).
 ## 5. A function transitions_save! which saves transitions to the container (default: save the transition of iteration i at position i in the vector of transitions)
-## 6. A function sample_end! which handles any sampler wrap-up (default: do not perform any wrap-up)... Partially done in: function AbstractMCMC.sample_end! ?? check
-## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)... Partially done with: 2 function AbstractMCMC.bundle_samples ?? check
+## 6. A function sample_end! which handles any sampler wrap-up (default: do not perform any wrap-up)... Partially done in: function AbstractMCMC.sample_end! ? check
+## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)... Partially done with: 2 function AbstractMCMC.bundle_samples ? check
 
-## model:: Nestedmodel
+## model:: NestedModel
 ## sampler:: Nested
 
-## comment on each step of the code and also include docstrings for sections of the code
+## How the struct NestedModel is defined:
+##struct NestedModel <: AbstractModel
+##    loglike::Function
+##    prior_transform::Function
+##end
 
-struct NS{space, P, B} <: InferenceAlgorithm  ## check what is T in T, B ??
-    ndims::Int    # number of parameters
-    nactive::Int    # number of active points
-    proposals::P
-    bounds::B   
-end
+##function NestedModel(loglike, priors::AbstractVector{<:UnivariateDistribution})
+##    prior_transform(X) = quantile.(priors, X)
+##    return NestedModel(loglike, prior_transform)
+##end
+
+## revisit the Nested sampler definition here: https://github.com/TuringLang/NestedSamplers.jl/blob/master/src/staticsampler.jl
+
+## comment on each step of the code and also include docstrings for sections of the code
+## both NestedModel and Nested are to be utilized in this code
+
+struct NS{space, T, P <: AbstractProposal, B <: AbstractBoundingSpace{T}} <: InferenceAlgorithm  ## refer the comment on line 39
+    ndims::Int    # number of parameters    ## check this step
+    nactive::Int    # number of active points    ## check this step
+    active_us::Matrix{T}
+    active_points::Matrix{T}
+    active_logl::Vector{T}
+    log_vol::Float64
+    logz::Float64
+    h::Float64
+    update_interval::Int
+    since_update::Int
+    enlarge::Float64
+    has_bounds::Bool
+    ncall::Int
+    min_ncall::Int
+    min_eff::Floaat64
+    proposal::P
+    active_bound::B   
+end  
 
 proposal(p::NestedSamplers.Proposals) = p
 bound(b::NestedSamplers.Bounds) = b
@@ -42,32 +69,48 @@ NS(space::Symbol) = NS{(space,)}()
 
 isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
 
-mutable struct NSState{V<:VarInfo} <: AbstractSamplerState
+## Define a general `funtion NS` here ?
+
+mutable struct NSState{V<:VarInfo} <: AbstractSamplerState   ## where is this being used? in the function Sampler ?
        vi::V
 end
 
-function Sampler(alg::NS, model::Model, s::Selector)
+NSState(model::Model) = NSState(VarInfo(model))
+
+function Sampler(
+       alg::NS,
+       model::Model,
+       s::Selector=Selector()
+)
        # sanity check
        vi = VarInfo(model)
+       
+       # set up info dict
        info = Dict{Symbol, Any}()
+    
+       # set up state struct
        state = NSState(vi)
-       info = Dict{Symbol, Any}()
+    
+       # generate a sampler
        return Sampler(alg, info, s, state)
 end
 
-function AbstractMCMC.sample_init!(    ## model::Model??, use spl instead of s (sampler) ?? check , ref mh.jl
+function AbstractMCMC.sample_init!(    
     rng::AbstractRNG,
-    model::NestedModel,
-    s::Nested{T,B},
-    ::Integer;
-    debug::Bool = false,
-    kwargs...) where {T,B}
+    model::Model,   ## check `NestedModel`?
+    spl::Sampler{<:NS},    ## `Nested{T,B}` ## s == spl ## or `Sampler{<:NS{space, T, P, B}}`
+    N::Integer,
+    verbose::Bool=true,
+    resume_from=nothing,
+    debug::Bool = false;
+    kwargs...
+) where {T, P, B}
 
     debug && @info "Initializing sampler"
     local us, vs, logl
     ntries = 0
     while true
-        us = rand(rng, s.ndims, s.nactive)
+        us = rand(rng, spl.ndims, spl.nactive)
         vs = mapslices(model.prior_transform, us, dims=1)
         logl = mapslices(model.loglike, vs, dims=1)
         any(isfinite, logl) && break
@@ -78,105 +121,93 @@ function AbstractMCMC.sample_init!(    ## model::Model??, use spl instead of s (
     @. logl[logl == -Inf] = -1e300
 
     # samples in unit space
-    s.active_us .= us
-    s.active_points .= vs
-    s.active_logl .= logl[1, :]
+    spl.active_us .= us
+    spl.active_points .= vs
+    spl.active_logl .= logl[1, :]
 
     return nothing
 end
 
-##function AbstractMCMC.step!(   ## check ??
-##    rng::AbstractRNG,
-##    model::Model,
-##    spl::Sampler{<:NS{space, P, B}},
-##    ::Integer,
-##    transition;
-##    kwargs...
-##) 
-##       ## incomplete
-##       where {space, P, B}
-##    if spl.selector.rerun # Recompute joint in logp
-##        model(spl.state.vi)
-##    end
-    
-##    return Transition(spl)
-##end
-
-function AbstractMCMC.step!(::AbstractRNG,     ## check ?? 2 such functions to always accept in the first step??
-    ::AbstractModel,
-    s::Nested,
-    ::Integer;
-    kwargs...)
+function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
+    ::AbstractRNG,     
+    model::Model,     ## or `AbstractModel`?
+    spl::Sampler{<:NS},     ## or `Nested` or `Sampler{<:NS{space, T, P, B}}`
+    ::Integer,
+    ::Nothing;
+    kwargs...
+)
     # Find least likely point
-    logL, idx = findmin(s.active_logl)
-    draw = s.active_points[:, idx]
-    log_wt = s.log_vol + logL
+    logL, idx = findmin(spl.active_logl)
+    draw = spl.active_points[:, idx]
+    log_wt = spl.log_vol + logL
 
     # update sampler
-    logz = logaddexp(s.logz, log_wt)
-    s.h = (exp(log_wt - logz) * logL +
-           exp(s.logz - logz) * (s.h + s.logz) - logz)
-    s.logz = logz
+    logz = logaddexp(spl.logz, log_wt)
+    spl.h = (exp(log_wt - logz) * logL +
+           exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
+    spl.logz = logz
 
-    return NestedTransition(draw, logL, log_wt)
+    return NestedTransition(draw, logL, log_wt)     ## or `Transition(spl)`
 end
 
-function AbstractMCMC.step!(rng::AbstractRNG,    ## check ?? why 2 such step!?? (also check if ! in both ??)
-    model::NestedModel,
-    s::Nested{T,B},
+function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
+    rng::AbstractRNG,    
+    model::Model,    ## or `NestedModel`
+    spl::Sampler{<:NS},      ## or `Nested{T,B}`
     ::Integer,
-    prev::NestedTransition;
+    prev::NestedTransition;    ## or `prev::Transition` or only `transition`
     iteration,
     debug::Bool = false,
-    kwargs...) where {T,B}
+    kwargs...
+) where {T, P, B}
 
     # Find least likely point
-    logL, idx = findmin(s.active_logl)
-    draw = s.active_points[:, idx]
-    log_wt = s.log_vol + logL
+    logL, idx = findmin(spl.active_logl)
+    draw = spl.active_points[:, idx]
+    log_wt = spl.log_vol + logL
 
     # update evidence and information
-    logz = logaddexp(s.logz, prev.log_wt)
-    s.h = (exp(prev.log_wt - logz) * prev.logL +
-           exp(s.logz - logz) * (s.h + s.logz) - logz)
-    s.logz = logz
+    logz = logaddexp(spl.logz, prev.log_wt)
+    spl.h = (exp(prev.log_wt - logz) * prev.logL +
+           exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
+    spl.logz = logz
 
     # check if ready for first update
-    if !s.has_bounds && s.ncall > s.min_ncall && iteration / s.ncall < s.min_eff
-        debug && @info "First update: it=$iteration, ncall=$(s.ncall), eff=$(iteration / s.ncall)"
-        s.has_bounds = true
-        pointvol = exp(s.log_vol) / s.nactive
-        s.active_bound = Bounds.scale!(Bounds.fit(B, s.active_us, pointvol = pointvol), s.enlarge)
-        s.since_update = 0
+    if !spl.has_bounds && spl.ncall > spl.min_ncall && iteration / spl.ncall < spl.min_eff
+        debug && @info "First update: it=$iteration, ncall=$(spl.ncall), eff=$(iteration / spl.ncall)"
+        spl.has_bounds = true
+        pointvol = exp(spl.log_vol) / spl.nactive
+        spl.active_bound = NestedSamplers.Bounds.scale!(NestedSamplers.Bounds.fit(B, spl.active_us, pointvol = pointvol), spl.enlarge)   ## `NestedSamplers.Bounds` or only `Bounds`
+        spl.since_update = 0
     # if accepted first update, is it time to update again?
-    elseif iszero(s.since_update % s.update_interval)
-        debug && @info "Updating bounds: it=$iteration, ncall=$(s.ncall), eff=$(iteration / s.ncall)"
-        pointvol = exp(s.log_vol) / s.nactive
-        s.active_bound = Bounds.scale!(Bounds.fit(B, s.active_us, pointvol = pointvol), s.enlarge)
-        s.since_update = 0
+    elseif iszero(spl.since_update % spl.update_interval)
+        debug && @info "Updating bounds: it=$iteration, ncall=$(spl.ncall), eff=$(iteration / spl.ncall)"
+        pointvol = exp(spl.log_vol) / spl.nactive
+        spl.active_bound = NestedSamplers.Bounds.scale!(NestedSamplers.Bounds.fit(B, spl.active_us, pointvol = pointvol), spl.enlarge)
+        spl.since_update = 0
     end
     
     # Get a live point to use for evolving with proposal
-    if s.has_bounds
-        point, bound = rand_live(rng, s.active_bound, s.active_us)
-        u, v, logl, ncall = s.proposal(rng, point, logL, bound, model.loglike, model.prior_transform)
+    if spl.has_bounds
+        point, bound = rand_live(rng, spl.active_bound, spl.active_us)
+        u, v, logl, ncall = spl.proposal(rng, point, logL, bound, model.loglike, model.prior_transform)
     else
         point = rand(rng, T, s.ndims)
-        bound = Bounds.NoBounds(T, s.ndims)
-        proposal = Proposals.Uniform()
+        bound = NestedSamplers.Bounds.NoBounds(T, spl.ndims)
+        proposal = NestedSamplers.Proposals.Uniform()
         u, v, logl, ncall = proposal(rng, point, logL, bound, model.loglike, model.prior_transform)
     end
 
     # Get new point and log like
-    s.active_us[:, idx] = u
-    s.active_points[:, idx] = v
-    s.active_logl[idx] = logl
-    s.ndecl = log_wt < prev.log_wt ? s.ndecl + 1 : 0
-    s.ncall += ncall
-    s.since_update += 1
+    spl.active_us[:, idx] = u
+    spl.active_points[:, idx] = v
+    spl.active_logl[idx] = logl
+    spl.ndecl = log_wt < prev.log_wt ? spl.ndecl + 1 : 0
+    spl.ncall += ncall
+    spl.since_update += 1
 
     # Shrink interval
-    s.log_vol -=  1 / s.nactive
+    spl.log_vol -=  1 / spl.nactive
 
     return NestedTransition(draw, logL, log_wt)
 end
@@ -188,7 +219,10 @@ struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel    ## 
     μ::T
 end
 
-function NSModel(model::Model, spl::Sampler{<:NS})    ## or NestedModel ?? check
+function NSModel(    ## or NestedModel ? check  ## check where the struct `NSModel` & corresponding function to include
+    model::Model, 
+    spl::Sampler{<:NS}
+)    
     vi = spl.state.vi
     vns = _getvns(vi, spl)
     μ = mapreduce(vcat, vns[1]) do vn
@@ -210,59 +244,63 @@ end
 ##    ## incomplete
 ##end
 
-function AbstractMCMC.sample_end!(::AbstractRNG,    ## check ??
-    ::AbstractModel,
-    s::Nested,
-    ::Integer,
+function AbstractMCMC.sample_end!(
+    rng::AbstractRNG,    ## check ??
+    model::Model,     ## or `AbstractModel`
+    spl::Sampler{<:NS},      ## or `Nested`
+    N::Integer,
     transitions;
     debug::Bool = false,
-    kwargs...)
+    kwargs...
+)
     # Pop remaining points in ellipsoid
     N = length(transitions)
-    s.log_vol = -N / s.nactive - log(s.nactive)
-    @inbounds for i in eachindex(s.active_logl)
+    spl.log_vol = -N / spl.nactive - log(spl.nactive)
+    @inbounds for i in eachindex(spl.active_logl)
         # get new point
-        draw = s.active_points[:, i]
-        logL = s.active_logl[i]
-        log_wt = s.log_vol + logL
+        draw = spl.active_points[:, i]
+        logL = spl.active_logl[i]
+        log_wt = spl.log_vol + logL
 
         # update sampler
-        logz = logaddexp(s.logz, log_wt)
-        s.h = (exp(log_wt - logz) * logL +
-               exp(s.logz - logz) * (s.h + s.logz) - logz)
-        s.logz = logz
+        logz = logaddexp(spl.logz, log_wt)
+        spl.h = (exp(log_wt - logz) * logL +
+               exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
+        spl.logz = logz
 
         prev = NestedTransition(draw, logL, log_wt)
         push!(transitions, prev)
     end
 
     # h should always be non-negative. Numerical error can arise from pathological corner cases
-    if s.h < 0
-        s.h ≉ 0 && @warn "Negative h encountered h=$(s.h). This is likely a bug"
-        s.h = zero(s.h)
+    if spl.h < 0
+        spl.h ≉ 0 && @warn "Negative h encountered h=$(spl.h). This is likely a bug"
+        spl.h = zero(spl.h)
     end
 
     return nothing
 end
 
-function AbstractMCMC.bundle_samples(::AbstractRNG,   ## check?? why 2 ?? is AbstractMCMC.bundle_samples ?? (also check if or not ! in both)
-    ::AbstractModel,
-    s::Nested,
+function AbstractMCMC.bundle_samples(    ## 2 `AbstractMCMC.bundle_samples` functions
+    ::AbstractRNG,  
+    model::Model,    ## or `AbstractModel`
+    spl::Sampler{<:NS},    ## or `Nested`
     ::Integer,
     transitions,
     Chains;
     param_names = missing,
     check_wsum = true,
-    kwargs...)
+    kwargs...
+)
 
     vals = copy(mapreduce(t->vcat(t.draw, t.log_wt), hcat, transitions)')
     # update weights based on evidence
-    @. vals[:, end, 1] = exp(vals[:, end, 1] - s.logz)
+    @. vals[:, end, 1] = exp(vals[:, end, 1] - spl.logz)
     wsum = sum(vals[:, end, 1])
     @. vals[:, end, 1] /= wsum
 
     if check_wsum
-        err = !iszero(s.h) ? 3sqrt(s.h / s.nactive) : 1e-3
+        err = !iszero(spl.h) ? 3sqrt(spl.h / spl.nactive) : 1e-3
         isapprox(wsum, 1, atol = err) || @warn "Weights sum to $wsum instead of 1; possible bug"
     end
 
@@ -272,42 +310,36 @@ function AbstractMCMC.bundle_samples(::AbstractRNG,   ## check?? why 2 ?? is Abs
     end
     push!(param_names, "weights")
 
-    return Chains(vals, param_names, Dict(:internals => ["weights"]), evidence = s.logz)
+    return Chains(vals, param_names, Dict(:internals => ["weights"]), evidence = spl.logz)
 end
 
-function AbstractMCMC.bundle_samples(::AbstractRNG,    ## check?? why 2?? is AbstractMCMC.bundle_samples ??
-    ::AbstractModel,
-    s::Nested,
+function AbstractMCMC.bundle_samples(    ## 2 `AbstractMCMC.bundle_samples` functions
+    rng::AbstractRNG,   
+    model::Model,    ## or `AbstractModel`
+    spl::Sampler{<:NS},     ## or `Nested`
     ::Integer,
     transitions,
     A::Type{<:AbstractArray};
     check_wsum = true,
-    kwargs...)
+    kwargs...
+)
 
     vals = convert(A, mapreduce(t->t.draw, hcat, transitions)')
 
     if check_wsum
         # get weights
-        wsum = mapreduce(t->exp(t.log_wt - s.logz), +, transitions)
+        wsum = mapreduce(t->exp(t.log_wt - spl.logz), +, transitions)
 
         # check with h
-        err = s.h ≠ 0 ? 3sqrt(s.h / s.nactive) : 1e-3
+        err = spl.h ≠ 0 ? 3sqrt(spl.h / spl.nactive) : 1e-3
         isapprox(wsum, 1, atol = err) || @warn "Weights sum to $wsum instead of 1; possible bug"
     end
 
     return vals
 end
 
-# evaluate log-likelihood
-function Distributions.loglikelihood(model::NSModel, f)  ## or NestedModel ?? check
-    spl = model.spl
-    vi = spl.state.vi
-    vi[spl] = f
-    model.model(vi, spl)
-    getlogp(vi)
-end
+## tilde operators  ## or experiment with assume, dot_assume, observe and dot_observe
 
-# tilde operators
 function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, right, vn::VarName, inds, vi)
     if inspace(vn, sampler)
         return DynamicPPL.tilde(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
