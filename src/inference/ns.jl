@@ -233,17 +233,6 @@ function NSModel(    ## or NestedModel ? check  ## check where the struct `NSMod
     NSModel(model, spl, μ)    ## or NestedModel ?? check
 end
 
-##function AbstractMCMC.sample_end!(
-##    ::AbstractRNG,
-##    ::Model,
-##    spl::Sampler{<:NS{space, P, B}},
-##    N::Integer,
-##    ts::Vector;
-##    kwargs...
-##)
-##    ## incomplete
-##end
-
 function AbstractMCMC.sample_end!(
     rng::AbstractRNG,    ## check ??
     model::Model,     ## or `AbstractModel`
