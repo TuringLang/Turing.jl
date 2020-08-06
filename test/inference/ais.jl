@@ -1,17 +1,13 @@
-# TODO: lots of imports will have been done in runtests.jl hence irrelevant
-using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
-using Turing: AIS, Sampler, prior_step, intermediate_step
-using Pkg
-using Random
-using Test
-using DynamicPPL: getlogp, setlogp!, SampleFromPrior, PriorContext, VarInfo
-using Plots
-using AdvancedMH
+using Plots: histogram
+using Turing: AIS, gen_logjoint, gen_logprior, gen_log_unnorm_tempered, prior_step, intermediate_step
+
+using AdvancedMH: RandomWalkProposal
+using AbstractMCMC: sample_init!, step!, sample_end!
+using DynamicPPL 
 
 # part of the header for all tests in inference
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
-
 
 @turing_testset "ais.jl" begin
 
@@ -32,7 +28,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     # declare algorithm and sampler for model_1
     schedule_1 = 0.1:0.1:0.9
-    proposal_kernels_1 = [AdvancedMH.RWMH([Normal(), Normal()], Normal()) for i in 1:9]
+    proposal_kernels_1 = [RandomWalkProposal(MvNormal(3, 1.)) for i in 1:9]
     alg_1 = AIS(proposal_kernels_1, schedule_1)
     spl_1 = Sampler(alg_1, model_1)
 
@@ -48,25 +44,63 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     # declare algorithm and sampler for model_2
     schedule_2 = 0.1:0.1:0.9
-    proposal_kernels_2 = [AdvancedMH.RWMH([Normal(), Normal()], Normal()) for i in 1:9]
+    proposal_kernels_2 = [RandomWalkProposal(MvNormal(1, 1.)) for i in 1:9]
     alg_2 = AIS(proposal_kernels_2, schedule_2)
     spl_2 = Sampler(alg_2, model_2)
 
     # 2. test lower level functions: gen_logjoint, gen_logprior, gen_log_unnorm_tempered
 
     @turing_testset "gen_logjoint" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_1" begin
+            logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
+            # @test logjoint_1([???]) === ??? # TODO: set
+            # @test logjoint_1([???]) === ??? # TODO: set
+            # @test logjoint_1([???]) === ??? # TODO: set
+        end
+
+        @testset "model_2" begin
+            logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
+            # @test logjoint_2([???]) === ??? # TODO: set
+            # @test logjoint_2([???]) === ??? # TODO: set
+            # @test logjoint_2([???]) === ??? # TODO: set
+        end
     end
 
     @turing_testset "gen_logprior" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_1" begin
+            logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
+            # @test logprior_1([???]) === ??? # TODO: set
+            # @test logprior_1([???]) === ??? # TODO: set
+            # @test logprior_1([???]) === ??? # TODO: set
+        end
+
+        @testset "model_2" begin
+            logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
+            # @test logprior_2([???]) === ??? # TODO: set
+            # @test logprior_2([???]) === ??? # TODO: set
+            # @test logprior_2([???]) === ??? # TODO: set
+        end
     end
 
     @turing_testset "gen_log_unnorm_tempered" begin
-        println("model_1:")
-        println("model_2:")
+        beta = 0.5
+        @testset "model_1" begin
+            logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
+            logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
+            log_unnorm_tempered_1 = gen_log_unnorm_tempered(logprior_1, logjoint_1, beta)
+            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
+        end
+
+        @testset "model_2" begin
+            logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
+            logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
+            log_unnorm_tempered_2 = gen_log_unnorm_tempered(logprior_2, logjoint_2, beta)
+            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
+        end
     end
 
     @testset "plots for gen_logjoint, gen_logprior, gen_log_unnorm_tempered" begin
@@ -74,60 +108,82 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # test gen_logjoint for model 2: plot
         logjoint = gen_logjoint(spl_2.state.vi, model_2, spl_2)
-        logjoint_values = logjoint.(list_args)
+        logjoint_values = logjoint.(interval)
         density_plots = plot(interval, logjoint_values)
 
         # test gen_logprior for model 2: plot
         logprior = gen_logprior(spl_2.state.vi, model_2, spl_2)
-        logprior_values = logprior.(list_args)
+        logprior_values = logprior.(interval)
         plot!(density_plots, interval, logprior_values)
 
         # test gen_log_unnorm_tempered for model 2: plot
         for beta in 0.1:0.1:0.9
             log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
-            log_unnorm_tempered_values = log_unnorm_tempered.(list_args)
+            log_unnorm_tempered_values = log_unnorm_tempered.(interval)
             plot!(density_plots, interval, log_unnorm_tempered_values)
         end
 
         display(density_plots)
     end
 
-    # 3. test mid level functions: prior_step, intermediate_step
+    # 3. tests related to sample_init!
+
+    @testset "sample_init!" begin
+        @testset "model_1" begin
+            @test length(spl_1.state.densitymodels) == 0
+            sample_init!(MersenneTwister(1234), model_1, spl_1, 1)
+            @test length(spl_1.state.densitymodels) > 0
+        end
+
+        @testset "model_2" begin
+            @test length(spl_2.state.densitymodels) == 0
+            sample_init!(MersenneTwister(1234), model_2, spl_2, 1)
+            @test length(spl_2.state.densitymodels) > 0
+        end
+    end
+
+    # 4. tests related to step!
 
     @testset "prior_step" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_1" begin
+        end 
+
+        @testset "model_2" begin
+        end
     end
     
     @testset "plots for prior_step" begin
         list_samples = []
         for i in 1:50
-            append!(list_samples, prior_step(model_2)[1]) # TODO: prior_step(model) currently returns an array, probably shouldn't
+            push!(list_samples, first(prior_step(spl_2, model_2)))
         end
         prior_step_hist = histogram(list_samples)
-
         display(prior_step_hist)
     end
     
     @testset "intermediate_step" begin
-        println("model_1:") 
-        println("model_2:")
-    end
+        @testset "model_1" begin
+        end 
 
-    # 4. test high level functions: implementations of AbstractMCMC, ie sample_init!, step!, sample_end! 
-
-    @testset "sample_init!" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_2" begin
+        end
     end
 
     @testset "step!" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_1" begin
+        end 
+
+        @testset "model_2" begin
+        end
     end
 
+    # 5. tests related to sample_end! 
+
     @testset "sample_end!" begin
-        println("model_1:")
-        println("model_2:")
+        @testset "model_1" begin
+        end 
+
+        @testset "model_2" begin
+        end
     end
 end

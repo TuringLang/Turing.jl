@@ -14,9 +14,9 @@ Contains:
 """
 struct AIS <: InferenceAlgorithm 
     "array of intermediate MH kernels"
-    proposal_kernels # :: Array{AdvancedMH.RandomWalkProposal}
+    proposal_kernels # :: Array{<:AdvancedMH.RandomWalkProposal} TODO: fix
     "array of inverse temperatures"
-    schedule #  :: Array{<:AbstractFloat}
+    schedule # :: Array{<:AbstractFloat} TODO: fix
 end
 
 DynamicPPL.getspace(::AIS) = ()
@@ -34,7 +34,7 @@ mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
     vi                 ::  V # reset for every step ie particle
     "list of density models corresponding to intermediate target distributions, ending with the logjoint density model - computed in sample_init!"
-    densitymodels      #:: Array{AdvancedMH.DensityModel}
+    densitymodels      # :: Array{<:AdvancedMH.DensityModel} TODO: fix
     "log of the average of the particle weights: estimator of the log evidence - computed in sample_end!"
     final_logevidence  ::  F
 end
@@ -177,6 +177,7 @@ end
 
 # C. helper functions
 
+
 """
     gen_logjoint(v, model, spl)
 
@@ -276,7 +277,7 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     return current_state, accum_logweight
 end
 
-## D. overload assume and observe: similar to MH, so that gen_logjoint and gen_logprior work
+## D. overload assume and observe: similar to HMC, so that gen_logjoint and gen_logprior work
 
 function DynamicPPL.assume(
     rng,
