@@ -2,7 +2,11 @@
 # Global variables/constants #
 ##############################
 const ADBACKEND = Ref(:forwarddiff)
-setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
+function setadbackend(backend_sym::Symbol)
+    setadbackend(Val(backend_sym))
+    AdvancedVI.setadbackend(Val(backend_sym))
+    Bijectors.setadbackend(Val(backend_sym))
+end
 function setadbackend(::Val{:forward_diff})
     Base.depwarn("`Turing.setadbackend(:forward_diff)` is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.", :setadbackend)
     setadbackend(Val(:forwarddiff))

@@ -383,33 +383,31 @@ function resample_multinomial(w::AbstractVector{<:Real}, num_particles::Integer)
 end
 
 function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
+    # Pre-allocate array for resampled particles
+    indices = Vector{Int}(undef, num_particles)
 
-    M = length(w)
-
-    # "Repetition counts" (plus the random part, later on):
-    Ns = floor.(length(w) .* w)
-
-    # The "remainder" or "residual" count:
-    R = Int(sum(Ns))
-
-    # The number of particles which will be drawn stocastically:
-    M_rdn = num_particles - R
-
-    # The modified weights:
-    Ws = (M .* w - floor.(M .* w)) / M_rdn
-
-    # Draw the deterministic part:
-    indx1, i = Array{Int}(undef, R), 1
-    for j in 1:M
-        for k in 1:Ns[j]
-            indx1[i] = j
+    # deterministic assignment
+    residuals = similar(w)
+    i = 1
+    @inbounds for j in 1:length(w)
+        x = num_particles * w[j]
+        floor_x = floor(Int, x)
+        for k in 1:floor_x
+            indices[i] = j
             i += 1
         end
+        residuals[j] = x - floor_x
     end
-
-    # And now draw the stocastic (Multinomial) part:
-    return append!(indx1, rand(Distributions.sampler(Categorical(w)), M_rdn))
+    
+    # sampling from residuals
+    if i <= num_particles
+        residuals ./= sum(residuals)
+        rand!(Categorical(residuals), view(indices, i:num_particles))
+    end
+    
+    return indices
 end
+
 
 """
     resample_stratified(weights, n)

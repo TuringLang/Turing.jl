@@ -2,7 +2,7 @@ using DistributionsAD
 
 using Turing, Random, Test, LinearAlgebra
 using Turing: Variational
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad
+using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 include("../test_utils/AllUtils.jl")
 
@@ -45,7 +45,7 @@ include("../test_utils/AllUtils.jl")
         @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.07
 
         # OR: implement `update` and pass a `Distribution`
-        function Variational.update(d::TuringDiagMvNormal, θ::AbstractArray{<:Real})
+        function AdvancedVI.update(d::TuringDiagMvNormal, θ::AbstractArray{<:Real})
             return TuringDiagMvNormal(θ[1:length(q)], exp.(θ[length(q) + 1:end]))
         end
 
