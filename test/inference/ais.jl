@@ -1,4 +1,4 @@
-using Plots: histogram
+using Plots: histogram, plot, plot!, display
 using Turing: AIS, gen_logjoint, gen_logprior, gen_log_unnorm_tempered, prior_step, intermediate_step
 
 using AdvancedMH: RandomWalkProposal
@@ -53,32 +53,32 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "gen_logjoint" begin
         @testset "model_1" begin
             logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
-            # @test logjoint_1([???]) === ??? # TODO: set
-            # @test logjoint_1([???]) === ??? # TODO: set
-            # @test logjoint_1([???]) === ??? # TODO: set
+            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
         end
 
         @testset "model_2" begin
             logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
-            # @test logjoint_2([???]) === ??? # TODO: set
-            # @test logjoint_2([???]) === ??? # TODO: set
-            # @test logjoint_2([???]) === ??? # TODO: set
+            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
         end
     end
 
     @turing_testset "gen_logprior" begin
         @testset "model_1" begin
             logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
-            # @test logprior_1([???]) === ??? # TODO: set
-            # @test logprior_1([???]) === ??? # TODO: set
-            # @test logprior_1([???]) === ??? # TODO: set
+            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
         end
 
         @testset "model_2" begin
             logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
-            # @test logprior_2([???]) === ??? # TODO: set
-            # @test logprior_2([???]) === ??? # TODO: set
-            # @test logprior_2([???]) === ??? # TODO: set
+            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
         end
     end
 
@@ -88,18 +88,18 @@ include(dir*"/test/test_utils/AllUtils.jl")
             logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
             logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
             log_unnorm_tempered_1 = gen_log_unnorm_tempered(logprior_1, logjoint_1, beta)
-            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
-            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
-            # @test log_unnorm_tempered_1([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
         end
 
         @testset "model_2" begin
             logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
             logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
             log_unnorm_tempered_2 = gen_log_unnorm_tempered(logprior_2, logjoint_2, beta)
-            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
-            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
-            # @test log_unnorm_tempered_2([???]) === ??? # TODO: set
+            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
+            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
         end
     end
 
@@ -108,18 +108,18 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # test gen_logjoint for model 2: plot
         logjoint = gen_logjoint(spl_2.state.vi, model_2, spl_2)
-        logjoint_values = logjoint.(interval)
+        logjoint_values = logjoint.([[x] for x in interval])
         density_plots = plot(interval, logjoint_values)
 
         # test gen_logprior for model 2: plot
         logprior = gen_logprior(spl_2.state.vi, model_2, spl_2)
-        logprior_values = logprior.(interval)
+        logprior_values = logprior.([[x] for x in interval])
         plot!(density_plots, interval, logprior_values)
 
         # test gen_log_unnorm_tempered for model 2: plot
         for beta in 0.1:0.1:0.9
             log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
-            log_unnorm_tempered_values = log_unnorm_tempered.(interval)
+            log_unnorm_tempered_values = log_unnorm_tempered.([[x] for x in interval])
             plot!(density_plots, interval, log_unnorm_tempered_values)
         end
 
@@ -186,4 +186,14 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @testset "model_2" begin
         end
     end
+
+    # 6. test general performance
+    @testset "general performance" begin
+        @testset "model_1" begin
+            # what is the logevidence
+        end 
+
+        @testset "model_2" begin
+        end
+    end 
 end
