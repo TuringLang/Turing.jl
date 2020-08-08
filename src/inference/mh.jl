@@ -12,7 +12,7 @@ proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
 """
     MH(space...)
 
-Construct a Metropolis-Hastings sampler. 
+Construct a Metropolis-Hastings algorithm. 
 
 The arguments `space` can be 
 
