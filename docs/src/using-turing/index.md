@@ -1,3 +1,6 @@
+---
+title: Turing Documentation
+---
 
 # Turing Documentation
 

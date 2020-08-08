@@ -1,3 +1,8 @@
+---
+title: Bijectors
+permalink: /docs/library/bijectors/
+toc: true
+---
 
 ## Index
 

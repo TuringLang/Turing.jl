@@ -1,3 +1,6 @@
+---
+title: Contributing
+---
 
 # Contributing
 

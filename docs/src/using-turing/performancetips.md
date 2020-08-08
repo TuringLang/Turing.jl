@@ -1,3 +1,6 @@
+---
+title: Performance Tips
+---
 
 # Performance Tips
 

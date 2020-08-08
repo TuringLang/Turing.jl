@@ -1,3 +1,6 @@
+---
+title: Using DynamicHMC
+---
 
 # Using DynamicHMC
 

@@ -1,3 +1,7 @@
+---
+title: Interface Guide
+toc: true
+---
 
 # The sampling interface
 
