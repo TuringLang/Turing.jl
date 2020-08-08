@@ -413,11 +413,6 @@ function _optimize(
     args...; 
     kwargs...
 )
-    # Throw an error if we received a second-order optimizer.
-    # if optimizer isa Optim.SecondOrderOptimizer
-    #     throw(ArgumentError("Second order optimizers for MLE/MAP are not yet supported."))
-    # end
-
     # Do some initialization.
     spl = DynamicPPL.SampleFromPrior()
 
@@ -428,11 +423,7 @@ function _optimize(
     init_vals = f.vi[spl]
 
     # Optimize!
-    M = if optimizer isa Optim.SecondOrderOptimizer
-        Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
-    else
-        Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
-    end
+    M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
