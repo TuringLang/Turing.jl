@@ -123,9 +123,9 @@ chain = sample(
 mean(chain)
 ````
 
-Providing a variance covariance matrix will cause `MH` to perform random-walk
+Providing a covariance matrix will cause `MH` to perform random-walk
 sampling in the transformed space with proposals drawn from a multivariate
-normal distribution:
+normal distribution. The provided matrix must be positive semi-definite and square. Usage:
 
 ```julia
 @model function gdemo(x, y)
