@@ -147,17 +147,21 @@ function (f::OptimLogDensity)(z)
     return -DynamicPPL.getlogp(varinfo)
 end
 
-function (f::OptimLogDensity)(F, G, z)
+function (f::OptimLogDensity)(F, G, H, z)
+    # Throw an error if a second order method was used.
+    if H !== nothing
+        error("Second order optimization is not yet supported.")
+    end
+
     spl = DynamicPPL.SampleFromPrior()
     
-
     if G !== nothing
         # Calculate log joint and the gradient
         l, g = gradient_logp(
             z, 
             DynamicPPL.VarInfo(f.vi, spl, z), 
             f.model, 
-            DynamicPPL.SampleFromPrior(),
+            spl,
             f.context
         )
 
@@ -179,16 +183,6 @@ function (f::OptimLogDensity)(F, G, z)
     end
 
     return nothing
-end
-
-function (f::OptimLogDensity)(F, G, H, z)
-    # Throw an error if a second order method was used.
-    if H !== nothing
-        error("Second order optimization is not yet supported.")
-    end
-
-    # Otherwise, just do the function and gradient info.
-    return f(F, G, z)
 end
 
 """
