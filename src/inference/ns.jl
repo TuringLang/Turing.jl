@@ -41,41 +41,46 @@ An example
 ## comment on each step of the code and also include docstrings for sections of the code
 ## both NestedModel and Nested are to be utilized in this code
 
-struct NS{space, T, P <: AbstractProposal, B <: AbstractBoundingSpace{T}} <: InferenceAlgorithm  ## refer the comment on line 39
-    ndims::Int    # number of parameters    ## check this step
-    nactive::Int    # number of active points    ## check this step
-    active_us::Matrix{T}
-    active_points::Matrix{T}
-    active_logl::Vector{T}
-    log_vol::Float64
-    logz::Float64
-    h::Float64
-    update_interval::Int
-    since_update::Int
-    enlarge::Float64
-    has_bounds::Bool
-    ncall::Int
-    min_ncall::Int
-    min_eff::Floaat64
-    proposal::P
-    active_bound::B   
+struct NS{space, P, B} <: InferenceAlgorithm  ## refer the comment on line 39
+    proposals::P
+    bounds::B   
 end  
 
 proposal(p::NestedSamplers.Proposals) = p
 bound(b::NestedSamplers.Bounds) = b
 
-NS() = NS{()}()
-NS(space::Symbol) = NS{(space,)}()
+##NS() = NS{()}()
+##NS(space::Symbol) = NS{(space,)}()
+
+function NS(
 
 isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
-
-## Define a general `funtion NS` here ?
 
 mutable struct NSState{V<:VarInfo} <: AbstractSamplerState   ## where is this being used? in the function Sampler ?
        vi::V
 end
 
 NSState(model::Model) = NSState(VarInfo(model))
+
+struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... this struct & function were placed above sample_end! earlier (better to define all such wraps here at the beginning)
+    model::M
+    spl::S
+    μ::T
+end
+
+function NSModel(    ## or NestedModel ? check  ## check where the struct `NSModel` & corresponding function to include
+    model::Model, 
+    spl::Sampler{<:NS}
+)    
+    vi = spl.state.vi
+    vns = _getvns(vi, spl)
+    μ = mapreduce(vcat, vns[1]) do vn
+        dist = getdist(vi, vn)
+        vectorize(dist, mean(dist))
+    end
+
+    NSModel(model, spl, μ)    ## or NestedModel ?? check
+end
 
 function Sampler(
        alg::NS,
@@ -105,27 +110,10 @@ function AbstractMCMC.sample_init!(
     debug::Bool = false;
     kwargs...
 ) where {T, P, B}
-
-    debug && @info "Initializing sampler"
-    local us, vs, logl
-    ntries = 0
-    while true
-        us = rand(rng, spl.ndims, spl.nactive)
-        vs = mapslices(model.prior_transform, us, dims=1)
-        logl = mapslices(model.loglike, vs, dims=1)
-        any(isfinite, logl) && break
-        ntries += 1
-        ntries > 100 && error("After 100 attempts, could not initialize any live points with finite loglikelihood. Please check your prior transform and loglikelihood method.")
-    end
-    # force -Inf to be a finite but small number to keep estimators from breaking
-    @. logl[logl == -Inf] = -1e300
-
-    # samples in unit space
-    spl.active_us .= us
-    spl.active_points .= vs
-    spl.active_logl .= logl[1, :]
-
-    return nothing
+    # You need to make a `NestedModel` somehow
+    # spl.nested is what I imagine you'd call `Nested` if you placed it in `NS` and just wrapped around everything in 
+    # NestedSamplers.jl
+    AbstractMCMC.sample_init(rng, nested_model, spl.nested, N)
 end
 
 function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
@@ -212,27 +200,6 @@ function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
     return NestedTransition(draw, logL, log_wt)
 end
 
-
-struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check
-    model::M
-    spl::S
-    μ::T
-end
-
-function NSModel(    ## or NestedModel ? check  ## check where the struct `NSModel` & corresponding function to include
-    model::Model, 
-    spl::Sampler{<:NS}
-)    
-    vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
-        vectorize(dist, mean(dist))
-    end
-
-    NSModel(model, spl, μ)    ## or NestedModel ?? check
-end
-
 function AbstractMCMC.sample_end!(
     rng::AbstractRNG,    ## check ??
     model::Model,     ## or `AbstractModel`
@@ -268,63 +235,6 @@ function AbstractMCMC.sample_end!(
     end
 
     return nothing
-end
-
-function AbstractMCMC.bundle_samples(    ## 2 `AbstractMCMC.bundle_samples` functions
-    ::AbstractRNG,  
-    model::Model,    ## or `AbstractModel`
-    spl::Sampler{<:NS},    ## or `Nested`
-    ::Integer,
-    transitions,
-    Chains;
-    param_names = missing,
-    check_wsum = true,
-    kwargs...
-)
-
-    vals = copy(mapreduce(t->vcat(t.draw, t.log_wt), hcat, transitions)')
-    # update weights based on evidence
-    @. vals[:, end, 1] = exp(vals[:, end, 1] - spl.logz)
-    wsum = sum(vals[:, end, 1])
-    @. vals[:, end, 1] /= wsum
-
-    if check_wsum
-        err = !iszero(spl.h) ? 3sqrt(spl.h / spl.nactive) : 1e-3
-        isapprox(wsum, 1, atol = err) || @warn "Weights sum to $wsum instead of 1; possible bug"
-    end
-
-    # Parameter names
-    if param_names === missing
-        param_names = ["Parameter $i" for i in 1:length(vals[1, :]) - 1]
-    end
-    push!(param_names, "weights")
-
-    return Chains(vals, param_names, Dict(:internals => ["weights"]), evidence = spl.logz)
-end
-
-function AbstractMCMC.bundle_samples(    ## 2 `AbstractMCMC.bundle_samples` functions
-    rng::AbstractRNG,   
-    model::Model,    ## or `AbstractModel`
-    spl::Sampler{<:NS},     ## or `Nested`
-    ::Integer,
-    transitions,
-    A::Type{<:AbstractArray};
-    check_wsum = true,
-    kwargs...
-)
-
-    vals = convert(A, mapreduce(t->t.draw, hcat, transitions)')
-
-    if check_wsum
-        # get weights
-        wsum = mapreduce(t->exp(t.log_wt - spl.logz), +, transitions)
-
-        # check with h
-        err = spl.h ≠ 0 ? 3sqrt(spl.h / spl.nactive) : 1e-3
-        isapprox(wsum, 1, atol = err) || @warn "Weights sum to $wsum instead of 1; possible bug"
-    end
-
-    return vals
 end
 
 ## tilde operators  ## or experiment with assume, dot_assume, observe and dot_observe
