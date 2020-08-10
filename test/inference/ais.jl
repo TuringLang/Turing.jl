@@ -28,17 +28,16 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     # declare algorithm and sampler for model_1
     schedule_1 = 0.1:0.1:0.9
-    proposal_kernels_1 = [RandomWalkProposal(MvNormal(3, 1.)) for i in 1:9]
+    proposal_kernels_1 = [RandomWalkProposal(MvNormal(2, 1.)) for i in 1:9]
     alg_1 = AIS(proposal_kernels_1, schedule_1)
     spl_1 = Sampler(alg_1, model_1)
 
-    # model_2: non-normal distributions, but unidimensional
+    # model_2: very simple unidimensional model
     @model model_2_macro(x) = begin
         # latent
-        inv_theta ~ Gamma(2,3)
-        theta = 1/inv_theta
+        z ~ Normal()
         # observed
-        x ~ Weibull(1,theta) 
+        x ~ Normal(z)
     end
     model_2 = model_2_macro(5.)
 
@@ -53,32 +52,32 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "gen_logjoint" begin
         @testset "model_1" begin
             logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
-            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logjoint_1([???]) == ??? # TODO: set - maybe use check_numerical
+            @test logjoint_1([0., 0.]) ≈ -3. - 2.5 * log(2pi)
+            @test logjoint_1([1., -1.]) ≈ -3. - 2.5 * log(2pi)
         end
 
         @testset "model_2" begin
             logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
-            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logjoint_2([???]) == ??? # TODO: set - maybe use check_numerical
+            @test logjoint_2([0.0]) ≈ -12.5 - log(2pi)
+            @test logjoint_2([2.5]) ≈ -6.25 - log(2pi)
+            @test logjoint_2([5.0]) ≈ -12.5 - log(2pi)
+            
         end
     end
 
     @turing_testset "gen_logprior" begin
         @testset "model_1" begin
             logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
-            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logprior_1([???]) == ??? # TODO: set - maybe use check_numerical
+            @test logprior_1([0., 0.]) ≈ - log(2pi)
+            @test logprior_1([1., -1.]) ≈ -1. - log(2pi)
+            @test logprior_1([2.5, -4.]) ≈ logprior_1([-2.5, 4.])
         end
 
         @testset "model_2" begin
             logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
-            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test logprior_2([???]) == ??? # TODO: set - maybe use check_numerical
+            @test logprior_2([0.0]) ≈ - 0.5 * log(2pi)
+            @test logprior_2([2.5]) ≈ -3.125 - 0.5 * log(2pi)
+            @test logprior_2([5.0]) ≈ -12.5 - 0.5 * log(2pi)
         end
     end
 
@@ -88,9 +87,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
             logjoint_1 = gen_logjoint(spl_1.state.vi, model_1, spl_1)
             logprior_1 = gen_logprior(spl_1.state.vi, model_1, spl_1)
             log_unnorm_tempered_1 = gen_log_unnorm_tempered(logprior_1, logjoint_1, beta)
-            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test log_unnorm_tempered_1([???]) == ??? # TODO: set - maybe use check_numerical
+            @test log_unnorm_tempered_1([0., 0.]) ≈ -7/4 * log(2pi) - 1.5
+            @test log_unnorm_tempered_1([1., -1.]) ≈ -2 - 7/4 * log(2pi)
         end
 
         @testset "model_2" begin
@@ -132,13 +130,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @testset "model_1" begin
             @test length(spl_1.state.densitymodels) == 0
             sample_init!(MersenneTwister(1234), model_1, spl_1, 1)
-            @test length(spl_1.state.densitymodels) > 0
+            @test length(spl_1.state.densitymodels) == 10
         end
 
         @testset "model_2" begin
             @test length(spl_2.state.densitymodels) == 0
             sample_init!(MersenneTwister(1234), model_2, spl_2, 1)
-            @test length(spl_2.state.densitymodels) > 0
+            @test length(spl_2.state.densitymodels) == 10
         end
     end
 
@@ -146,9 +144,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     @testset "prior_step" begin
         @testset "model_1" begin
+            current_state_1, accum_logweight_1 = prior_step(spl_1, model_1)
+            @test length(current_state_1) == 2
         end 
 
         @testset "model_2" begin
+            current_state_2, accum_logweight_2 = prior_step(spl_2, model_2)
+            @test length(current_state_2) == 1
         end
     end
     
@@ -163,9 +165,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     
     @testset "intermediate_step" begin
         @testset "model_1" begin
+            current_state_1, accum_logweight_1 = prior_step(spl_1, model_1)
+            current_state_1, accum_logweight_1 = intermediate_step(1, spl_1, current_state_1, accum_logweight_1)
+            @test length(current_state_1) == 2
         end 
 
         @testset "model_2" begin
+            current_state_2, accum_logweight_2 = prior_step(spl_2, model_2)
+            current_state_2, accum_logweight_2 = intermediate_step(1, spl_2, current_state_2, accum_logweight_2)
+            @test length(current_state_2) == 1
         end
     end
 
@@ -190,10 +198,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
     # 6. test general performance
     @testset "general performance" begin
         @testset "model_1" begin
-            # what is the logevidence
         end 
 
         @testset "model_2" begin
+        chn_2 = sample(model_2, alg_2, 1000)
+        @test_broken abs(mean(get(chn_2, :z)[1]) - 2.5) < 0.5 # AIS doesn't work...
+        chn_hmc = sample(model_2, HMC(0.01, 10), 1000)
+        @test abs(mean(get(chn_hmc, :z)[1]) - 2.5) < 0.5 # HMC works
         end
     end 
 end

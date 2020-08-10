@@ -130,9 +130,6 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # particles are independent: forget previous particle's VarInfo
-    empty!(spl.state.vi)
-
     # sample from prior and compute first term in accum_logweight
     current_state, accum_logweight = prior_step(spl, model)
 
