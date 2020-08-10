@@ -15,7 +15,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @model inverse_gdemo(x) = begin
             λ ~ Gamma(α_0, θ_0)
             m ~ Normal(0, sqrt(1 / λ))
-            x .~ Normal(m, sqrt(1 / λ))
+            @. x ~ $(Normal(m, sqrt(1 / λ)))
         end
 
         function gdemo_statistics(x)
