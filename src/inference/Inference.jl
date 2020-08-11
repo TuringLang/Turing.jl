@@ -41,6 +41,7 @@ export  InferenceAlgorithm,
         SampleFromPrior,
         MH,
         ESS,
+        Emcee,
         Gibbs,      # classic sampling
         GibbsConditional,
         HMC,
@@ -139,7 +140,7 @@ const TURING_INTERNAL_VARS = (internals = [
     "step_size",
     "nom_step_size",
     "tree_depth",
-    "is_adapt",
+    "is_adapt"
 ],)
 
 #########################################
@@ -310,7 +311,7 @@ getparams(t) = t.θ
 getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
 
 function _params_to_array(ts::Vector)
-    names = Vector{String}()
+    names = Vector{Symbol}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
@@ -333,7 +334,7 @@ function flatten_namedtuple(nt::NamedTuple)
     names_vals = mapreduce(vcat, keys(nt)) do k
         v = nt[k]
         if length(v) == 1
-            return [(string(k), v)]
+            return [(Symbol(k), v)]
         else
             return mapreduce(vcat, zip(v[1], v[2])) do (vnval, vn)
                 return collect(FlattenIterator(vn, vnval))
@@ -345,7 +346,7 @@ end
 
 function get_transition_extras(ts::AbstractVector{<:VarInfo})
     valmat = reshape([getlogp(t) for t in ts], :, 1)
-    return ["lp"], valmat
+    return [:lp], valmat
 end
 
 function get_transition_extras(ts::AbstractVector)
@@ -359,7 +360,7 @@ function get_transition_extras(ts::AbstractVector)
 
     # Iterate through each transition.
     for t in ts
-        extra_names = String[]
+        extra_names = Symbol[]
         vals = []
 
         # Iterate through each of the additional field names
@@ -371,11 +372,11 @@ function get_transition_extras(ts::AbstractVector)
             prop = getproperty(t, p)
             if prop isa NamedTuple
                 for (k, v) in pairs(prop)
-                    push!(extra_names, string(k))
+                    push!(extra_names, Symbol(k))
                     push!(vals, v)
                 end
             else
-                push!(extra_names, string(p))
+                push!(extra_names, Symbol(p))
                 push!(vals, prop)
             end
         end
@@ -438,12 +439,11 @@ function AbstractMCMC.bundle_samples(
     # Chain construction.
     return MCMCChains.Chains(
         parray,
-        string.(nms),
+        nms,
         deepcopy(TURING_INTERNAL_VARS);
         evidence=le,
         info=info,
-        sorted=true
-    )
+    ) |> sort
 end
 
 # This is type piracy (for SampleFromPrior).
@@ -542,12 +542,13 @@ include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("gibbs_conditional.jl")
 include("../contrib/inference/sghmc.jl")
+include("emcee.jl")
 
 ################
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
@@ -663,7 +664,7 @@ Quantiles
         y[2]  20.1870  20.3178  20.3839  20.4466  20.5895
 
 
-julia> ys_pred = collect(vec(mean(predictions[:y].value; dims = 1)));
+julia> ys_pred = vec(mean(Array(group(predictions, :y)); dims = 1));
 
 julia> sum(abs2, ys_test - ys_pred) ≤ 0.1
 true
@@ -674,7 +675,7 @@ function predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = fa
 
     # Sample transitions using `spl` conditioned on values in `chain`
     transitions = transitions_from_chain(model, chain; sampler = spl)
-    
+
     # Let the Turing internals handle everything else for you
     chain_result = AbstractMCMC.bundle_samples(
         Distributions.GLOBAL_RNG,
@@ -684,12 +685,14 @@ function predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = fa
         transitions,
         MCMCChains.Chains
     )
+
     parameter_names = if include_all
         names(chain_result, :parameters)
     else
         filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
     end
-    return chain_result[string.(parameter_names)]
+
+    return chain_result[parameter_names]
 end
 
 """
@@ -752,13 +755,23 @@ function transitions_from_chain(
         md = vi.metadata
         for v in keys(md)
             for vn in md[v].vns
-                vn_str = string(vn)
-                if vn_str ∈ c.name_map.parameters
-                    val = copy.(vec(c[Symbol(vn_str)].value))
+                vn_sym = Symbol(vn)
+
+                # Cannot use `vn_sym` to index in the chain
+                # so we have to extract the corresponding "linear"
+                # indices and use those.
+                # `ks` is empty if `vn_sym` not in `c`.
+                ks = MCMCChains.namesingroup(c, vn_sym)
+
+                if !isempty(ks)
+                    # 1st dimension is of size 1 since `c`
+                    # only contains a single sample, and the
+                    # last dimension is of size 1 since
+                    # we're assuming we're working with a single chain.
+                    val = copy(vec(c[ks].value))
                     DynamicPPL.setval!(vi, val, vn)
                     DynamicPPL.settrans!(vi, false, vn)
                 else
-                    # delete so we can sample from prior
                     DynamicPPL.set_flag!(vi, vn, "del")
                 end
             end

@@ -25,19 +25,7 @@ println("s=$s, β=$β")
 mf = bayes_lr(xs, ys)
 chn = sample(mf, HMC(0.005, 3), 2000)
 
-println("mean of β: $(mean(chn[1000:end, :β, :].value))")
-
-
-
-
-
-
-
-
-
-
-
-
+println("mean of β: ", mean(chn[1000:end, :β]))
 
 θ_dim = 1
 function lj_func(θ)

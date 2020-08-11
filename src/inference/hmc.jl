@@ -61,14 +61,13 @@ HMC(0.05, 10)
 
 Tips:
 
-- If you are receiving gradient errors when using `HMC`, try reducing the
-`step_size` parameter, e.g.
+- If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step size `ϵ`, e.g.
 
 ```julia
-# Original step_size
+# Original step size
 sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 
-# Reduced step_size.
+# Reduced step size
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
@@ -77,7 +76,7 @@ mutable struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltoni
     n_leapfrog  ::  Int       # leapfrog step number
 end
 
-alg_str(::Sampler{<:Hamiltonian}) = "HMC"
+DynamicPPL.alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
@@ -483,7 +482,7 @@ end
 Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
 `(vi, spl, model)`.
 """
-function gen_logπ(vi, spl::Sampler, model)
+function gen_logπ(vi, spl::AbstractSampler, model)
     function logπ(x)::Float64
         x_old, lj_old = vi[spl], getlogp(vi)
         vi[spl] = x

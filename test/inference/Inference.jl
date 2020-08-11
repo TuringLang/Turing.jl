@@ -28,7 +28,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                     Random.seed!(5)
                     chain2 = sample(model, sampler, MCMCThreads(), 1000, 4)
 
-                    @test all(chain1.value .== chain2.value)
+                    @test chain1.value == chain2.value
                 end
             end
 

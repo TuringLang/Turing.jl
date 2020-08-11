@@ -9,6 +9,145 @@ end
 proposal(p::AdvancedMH.Proposal) = p
 proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
 
+"""
+    MH(space...)
+
+Construct a Metropolis-Hastings algorithm. 
+
+The arguments `space` can be 
+
+- Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
+- A set of one or more symbols to sample with `MH` in conjunction with `Gibbs`, i.e. `Gibbs(MH(:m), PG(10, :s))`
+- An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function` 
+  that generates returns a conditional proposal distribution.
+- A covariance matrix to use as for mean-zero multivariate normal proposals.
+
+# Examples
+
+The default `MH` will use propose samples from the prior distribution using `AdvancedMH.StaticProposal`.
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
+mean(chain)
+```
+
+Alternatively, you can specify particular parameters to sample if you want to combine sampling
+from multiple samplers:
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+# Samples s with MH and m with PG
+chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s), PG(10, :m)), 1_000)
+mean(chain)
+````
+
+Using custom distributions defaults to using static MH:
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+# Use a static proposal for s and random walk with proposal 
+# standard deviation of 0.25 for m.
+chain = sample(
+    gdemo(1.5, 2.0), 
+    MH(
+        :s => InverseGamma(2, 3),
+        :m => Normal(0, 1)
+    ), 
+    1_000
+)
+mean(chain)
+````
+
+Specifying explicit proposals using the `AdvancedMH` interface:
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+# Use a static proposal for s and random walk with proposal 
+# standard deviation of 0.25 for m.
+chain = sample(
+    gdemo(1.5, 2.0), 
+    MH(
+        :s => AdvancedMH.StaticProposal(InverseGamma(2,3)),
+        :m => AdvancedMH.RandomWalkProposal(Normal(0, 0.25))
+    ), 
+    1_000
+)
+mean(chain)
+````
+
+Using a custom function to specify a conditional distribution:
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+# Use a static proposal for s and and a conditional proposal for m,
+# where the proposal is centered around the current sample.
+chain = sample(
+    gdemo(1.5, 2.0), 
+    MH(
+        :s => InverseGamma(2, 3),
+        :m => x -> Normal(x, 1)
+    ), 
+    1_000
+)
+mean(chain)
+````
+
+Providing a covariance matrix will cause `MH` to perform random-walk
+sampling in the transformed space with proposals drawn from a multivariate
+normal distribution. The provided matrix must be positive semi-definite and square. Usage:
+
+```julia
+@model function gdemo(x, y)
+    s ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+    y ~ Normal(m, sqrt(s))
+end
+
+# Providing a custom variance-covariance matrix
+chain = sample(
+    gdemo(1.5, 2.0), 
+    MH(
+        [0.25 0.05; 
+         0.05 0.50]
+    ), 
+    1_000
+)
+mean(chain)
+````
+
+"""
 function MH(space...)
     syms = Symbol[]
 
@@ -62,7 +201,6 @@ function Sampler(
     return Sampler(alg, info, s, state)
 end
 
-alg_str(::Sampler{<:MH}) = "MH"
 isgibbscomponent(::MH) = true
 
 #####################
@@ -77,29 +215,35 @@ Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
+        nvns = length(vns)
 
-        n_vns = length(vns)
-        n_vals = length(vals)
-        v_isarr = vals isa AbstractArray
-
-        if v_isarr && n_vals == 1 && n_vns > 1
-            for (vn, val) in zip(vns, vals[1])
-                vi[vn] = val isa AbstractArray ? val : [val]
-            end
-        elseif v_isarr && n_vals > 1 && n_vns == 1
-            vi[vns[1]] = vals
-        elseif v_isarr && n_vals == n_vns > 1
-            for (vn, val) in zip(vns, vals)
-                vi[vn] = [val]
-            end
-        elseif v_isarr && n_vals == 1 && n_vns == 1
-            if vals[1] isa AbstractArray
-                vi[vns[1]] = vals[1]
+        # if there is a single variable only
+        if nvns == 1
+            # assign the unpacked values
+            if length(vals) == 1
+                vi[vns[1]] = [vals[1];]
+            # otherwise just assign the values
             else
-                vi[vns[1]] = [vals[1]]
+                vi[vns[1]] = [vals;]
             end
-        elseif !(v_isarr)
-            vi[vns[1]] = [vals]
+        # if there are multiple variables
+        elseif vals isa AbstractArray
+            nvals = length(vals)
+            # if values are provided as an array with a single element
+            if nvals == 1
+                # iterate over variables and unpacked values
+                for (vn, val) in zip(vns, vals[1])
+                    vi[vn] = [val;]
+                end
+            # otherwise number of variables and number of values have to be equal
+            elseif nvals == nvns
+                # iterate over variables and values
+                for (vn, val) in zip(vns, vals)
+                    vi[vn] = [val;]
+                end
+            else
+                error("Cannot assign `NamedTuple` to `VarInfo`")
+            end
         else
             error("Cannot assign `NamedTuple` to `VarInfo`")
         end
@@ -141,6 +285,19 @@ function reconstruct(
     val::AbstractVector
 )
     return val
+end
+function reconstruct(
+    dist::AbstractVector{<:MultivariateDistribution},
+    val::AbstractVector
+)
+    offset = 0
+    return map(dist) do d
+        n = length(d)
+        newoffset = offset + n
+        v = val[(offset + 1):newoffset]
+        offset = newoffset
+        return v
+    end
 end
 
 """

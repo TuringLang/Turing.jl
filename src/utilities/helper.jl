@@ -1,23 +1,24 @@
-struct FlattenIterator{Tname, Tvalue}
-    name::Tname
-    value::Tvalue
+struct FlattenIterator{T}
+    name::Symbol
+    value::T
 end
 
+FlattenIterator(name, value) = FlattenIterator(Symbol(name), value)
+
 Base.length(iter::FlattenIterator) = _length(iter.value)
+_length(a) = length(a)
 _length(a::AbstractArray) = sum(_length, a)
-_length(a::AbstractArray{<:Number}) = length(a)
-_length(::Number) = 1
 
-Base.eltype(iter::FlattenIterator{String}) = Tuple{String, _eltype(typeof(iter.value))}
-_eltype(::Type{TA}) where {TA <: AbstractArray} = _eltype(eltype(TA))
-_eltype(::Type{T}) where {T <: Number} = T
+Base.eltype(::Type{FlattenIterator{T}}) where T = Tuple{Symbol,_eltype(T)}
+_eltype(::Type{T}) where T = eltype(T)
+_eltype(::Type{TA}) where {TA<:AbstractArray} = _eltype(eltype(TA))
 
-@inline function Base.iterate(iter::FlattenIterator{String, <:Number}, i = 1)
+@inline function Base.iterate(iter::FlattenIterator{<:Number}, i = 1)
     i === 1 && return (iter.name, iter.value), 2
     return nothing
 end
 @inline function Base.iterate(
-    iter::FlattenIterator{String, <:AbstractArray{<:Number}}, 
+    iter::FlattenIterator{<:AbstractArray{<:Number}},
     ind = (1,),
 )
     i = ind[1]
@@ -26,7 +27,7 @@ end
     return (name, iter.value[i]), (i+1,)
 end
 @inline function Base.iterate(
-    iter::FlattenIterator{String, T},
+    iter::FlattenIterator{T},
     ind = startind(T),
 ) where {T <: AbstractArray}
     i = ind[1]
@@ -50,11 +51,6 @@ end
 @inline startind(::Type{<:Number}) = ()
 @inline startind(::Type{<:Any}) = throw("Type not supported.")
 @inline function getname(iter::FlattenIterator, i::Int)
-    name = string(ind2sub(size(iter.value), i))
-    name = replace(name, "(" => "[");
-    name = replace(name, ",)" => "]");
-    name = replace(name, ")" => "]");
-    name = iter.name * name
-    return name
+    return Symbol(iter.name, "[", join(ind2sub(size(iter.value), i), ","), "]")
 end
 @inline ind2sub(v, i) = Tuple(CartesianIndices(v)[i])

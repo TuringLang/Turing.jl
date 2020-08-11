@@ -20,14 +20,19 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "ESS constructor" begin
         Random.seed!(0)
         N = 500
+
         s1 = ESS()
         s2 = ESS(:m)
-        s3 = Gibbs(ESS(:m), MH(:s))
+        for s in (s1, s2)
+            @test DynamicPPL.alg_str(Sampler(s, demo_default)) == "ESS"
+        end
 
         c1 = sample(demo_default, s1, N)
         c2 = sample(demo_default, s2, N)
         c3 = sample(demodot_default, s1, N)
         c4 = sample(demodot_default, s2, N)
+
+        s3 = Gibbs(ESS(:m), MH(:s))
         c5 = sample(gdemo_default, s3, N)
     end
 

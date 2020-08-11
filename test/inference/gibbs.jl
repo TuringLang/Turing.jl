@@ -16,7 +16,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
         s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m))
         s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m))
         s6 = Gibbs(HMC(0.1, 5, :s), ESS(:m))
-
+        for s in (s1, s2, s3, s4, s5, s6)
+            @test DynamicPPL.alg_str(Sampler(s, gdemo_default)) == "Gibbs"
+        end
 
         c1 = sample(gdemo_default, s1, N)
         c2 = sample(gdemo_default, s2, N)
