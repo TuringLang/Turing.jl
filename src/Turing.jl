@@ -23,8 +23,6 @@ function turnprogress(switch::Bool)
     PROGRESS[] = switch
 end
 
-const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
-
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")

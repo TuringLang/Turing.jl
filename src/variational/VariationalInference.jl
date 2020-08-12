@@ -26,7 +26,6 @@ export
     TruncatedADAGrad,
     DecayedADAGrad
 
-
 """
     make_logjoint(model::Model; weight = 1.0)
 Constructs the logjoint as a function of latent variables, i.e. the map z → p(x ∣ z) p(z).

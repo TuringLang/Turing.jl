@@ -410,12 +410,12 @@ function AbstractMCMC.step!(
     spl.state.i += 1
     spl.state.eval_num = 0
 
-    Turing.DEBUG && @debug "current ϵ: $ϵ"
+    @debug "current ϵ: $ϵ"
 
     # When a Gibbs component
     if spl.selector.tag != :default
         # Transform the space
-        Turing.DEBUG && @debug "X-> R..."
+        @debug "X-> R..."
         link!(spl.state.vi, spl)
         model(spl.state.vi, spl)
     end
@@ -439,7 +439,7 @@ function AbstractMCMC.step!(
                         spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
     end
 
-    Turing.DEBUG && @debug "decide whether to accept..."
+    @debug "decide whether to accept..."
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
@@ -452,7 +452,7 @@ function AbstractMCMC.step!(
 
     # Gibbs component specified cares
     # Transform the space back
-    Turing.DEBUG && @debug "R -> X..."
+    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
     return HamiltonianTransition(spl, t)
@@ -513,14 +513,10 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    Turing.DEBUG && _debug("assuming...")
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    Turing.DEBUG && _debug("dist = $dist")
-    Turing.DEBUG && _debug("vn = $vn")
-    Turing.DEBUG && _debug("r = $r, typeof(r)=$(typeof(r))")
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 
