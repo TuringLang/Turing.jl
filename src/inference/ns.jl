@@ -41,6 +41,11 @@ An example
 ## comment on each step of the code and also include docstrings for sections of the code
 ## both NestedModel and Nested are to be utilized in this code
 
+struct ESS{space} <: InferenceAlgorithm end
+
+ESS() = ESS{()}()
+ESS(space::Symbol) = ESS{(space,)}()
+
 struct NS{space, P, B} <: InferenceAlgorithm  ## refer the comment on line 39
     proposals::P
     bounds::B   
@@ -62,29 +67,18 @@ end
 
 NSState(model::Model) = NSState(VarInfo(model))
 
-struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... this struct & function were placed above sample_end! earlier (better to define all such wraps here at the beginning)
-    model::M
-    spl::S
-    μ::T
+struct NSModel <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... this struct & function were placed above sample_end! earlier (better to define all such wraps here at the beginning)
+    loglike::Function
+    prior_transform::Function
 end
 
-function NSModel(    ## or NestedModel ? check  ## check where the struct `NSModel` & corresponding function to include
-    model::Model, 
-    spl::Sampler{<:NS}
-)    
-    vi = spl.state.vi
-    vns = _getvns(vi, spl)
-    μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
-        vectorize(dist, mean(dist))
-    end
-
-    NSModel(model, spl, μ)    ## or NestedModel ?? check
+function NSModel(loglike, prior_transform)  
+    return NestedSamplers.NestedModel(loglike, prior_transform)   
 end
 
 function Sampler(
        alg::NS,
-       model::Model,
+       model::NSModel,    ## check this everywhere   ## when NSmodel is defined, then in which function is it used?
        s::Selector=Selector()
 )
        # sanity check
@@ -102,7 +96,7 @@ end
 
 function AbstractMCMC.sample_init!(    
     rng::AbstractRNG,
-    model::Model,   ## check `NestedModel`?
+    model::NSModel,   ## check `NestedModel`?
     spl::Sampler{<:NS},    ## `Nested{T,B}` ## s == spl ## or `Sampler{<:NS{space, T, P, B}}`
     N::Integer,
     verbose::Bool=true,
@@ -118,7 +112,7 @@ end
 
 function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
     ::AbstractRNG,     
-    model::Model,     ## or `AbstractModel`?
+    model::NSModel,     ## or `AbstractModel`?
     spl::Sampler{<:NS},     ## or `Nested` or `Sampler{<:NS{space, T, P, B}}`
     ::Integer,
     ::Nothing;
@@ -140,7 +134,7 @@ end
 
 function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
     rng::AbstractRNG,    
-    model::Model,    ## or `NestedModel`
+    model::NSModel,    ## or `NestedModel`
     spl::Sampler{<:NS},      ## or `Nested{T,B}`
     ::Integer,
     prev::NestedTransition;    ## or `prev::Transition` or only `transition`
@@ -202,7 +196,7 @@ end
 
 function AbstractMCMC.sample_end!(
     rng::AbstractRNG,    ## check ??
-    model::Model,     ## or `AbstractModel`
+    model::NSModel,     ## or `AbstractModel`
     spl::Sampler{<:NS},      ## or `Nested`
     N::Integer,
     transitions;
