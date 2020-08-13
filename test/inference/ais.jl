@@ -1,4 +1,6 @@
-using Plots: histogram, plot, plot!, display
+using Plots
+unicodeplots()
+
 using Turing: AIS, gen_logjoint, gen_logprior, gen_log_unnorm_tempered, prior_step, intermediate_step
 
 using AdvancedMH: RandomWalkProposal
@@ -42,8 +44,8 @@ include(dir*"/test/test_utils/AllUtils.jl")
     model_2 = model_2_macro(5.)
 
     # declare algorithm and sampler for model_2
-    schedule_2 = 0.1:0.1:0.9
-    proposal_kernels_2 = [RandomWalkProposal(MvNormal(1, 1.)) for i in 1:9]
+    schedule_2 = 0.025:0.025:0.975
+    proposal_kernels_2 = [RandomWalkProposal(MvNormal(1, 1.)) for i in 1:39]
     alg_2 = AIS(proposal_kernels_2, schedule_2)
     spl_2 = Sampler(alg_2, model_2)
 
@@ -75,7 +77,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @testset "model_2" begin
             logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
-            @test logprior_2([0.0]) ≈ - 0.5 * log(2pi)
+            @test logprior_2([0.0]) ≈ -0.5 * log(2pi)
             @test logprior_2([2.5]) ≈ -3.125 - 0.5 * log(2pi)
             @test logprior_2([5.0]) ≈ -12.5 - 0.5 * log(2pi)
         end
@@ -95,9 +97,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             logjoint_2 = gen_logjoint(spl_2.state.vi, model_2, spl_2)
             logprior_2 = gen_logprior(spl_2.state.vi, model_2, spl_2)
             log_unnorm_tempered_2 = gen_log_unnorm_tempered(logprior_2, logjoint_2, beta)
-            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
-            # @test log_unnorm_tempered_2([???]) == ??? # TODO: set - maybe use check_numerical
+            @test log_unnorm_tempered_2([0.]) ≈ -6.25 - 0.75 * log(2pi)
         end
     end
 
@@ -115,7 +115,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         plot!(density_plots, interval, logprior_values)
 
         # test gen_log_unnorm_tempered for model 2: plot
-        for beta in 0.1:0.1:0.9
+        for beta in 0.2:0.2:0.8
             log_unnorm_tempered = gen_log_unnorm_tempered(logprior, logjoint, beta)
             log_unnorm_tempered_values = log_unnorm_tempered.([[x] for x in interval])
             plot!(density_plots, interval, log_unnorm_tempered_values)
@@ -136,7 +136,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @testset "model_2" begin
             @test length(spl_2.state.densitymodels) == 0
             sample_init!(MersenneTwister(1234), model_2, spl_2, 1)
-            @test length(spl_2.state.densitymodels) == 10
+            @test length(spl_2.state.densitymodels) == 40
         end
     end
 
@@ -157,7 +157,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @testset "plots for prior_step" begin
         list_samples = []
         for i in 1:50
-            push!(list_samples, first(prior_step(spl_2, model_2)))
+            push!(list_samples, first(first(prior_step(spl_2, model_2))))
         end
         prior_step_hist = histogram(list_samples)
         display(prior_step_hist)
@@ -202,9 +202,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         @testset "model_2" begin
         chn_2 = sample(model_2, alg_2, 1000)
-        @test_broken abs(mean(get(chn_2, :z)[1]) - 2.5) < 0.5 # AIS doesn't work...
-        chn_hmc = sample(model_2, HMC(0.01, 10), 1000)
-        @test abs(mean(get(chn_hmc, :z)[1]) - 2.5) < 0.5 # HMC works
+        @test abs(mean(get(chn_2, :z)[1]) - 2.5) < 0.5 # works with 40 tempering steps, not with 10 tempering steps
         end
     end 
 end
