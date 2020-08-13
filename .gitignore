@@ -18,6 +18,7 @@ docs/_docs/
 docs/_tutorials/
 docs/_site/
 docs/.gems/
+docs/.jekyll-cache/
 docs/Gemfile.lock
 docs/.jekyll-cache
 

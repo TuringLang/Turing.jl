@@ -34,6 +34,9 @@
   - title: "Interface Guide"
     url: "docs/for-developers/interface"
 
+  - title: "How Turing implements AbstractMCMC"
+    url: "docs/for-developers/how_turing_implements_abstractmcmc"
+
   - title: "Variational Inference"
     url: "docs/for-developers/variational_inference"
 

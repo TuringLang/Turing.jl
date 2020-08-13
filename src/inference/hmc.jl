@@ -126,21 +126,21 @@ function AbstractMCMC.sample_init!(
     if init_theta !== nothing
         # Doesn't support dynamic models
         link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
+        model(rng, spl.state.vi, spl)
         theta = spl.state.vi[spl]
         update_hamiltonian!(spl, model, length(theta))
         # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
     else
         # Samples new values and sets trans to true, then computes the logp
-        model(empty!(spl.state.vi), SampleFromUniform())
+        model(rng, empty!(spl.state.vi), SampleFromUniform())
         link!(spl.state.vi, spl)
         theta = spl.state.vi[spl]
         update_hamiltonian!(spl, model, length(theta))
         # Refresh the internal cache phase point z's hamiltonian energy.
         spl.state.z = AHMC.phasepoint(rng, theta, spl.state.h)
         while !isfinite(spl.state.z.ℓπ.value) || !isfinite(spl.state.z.ℓπ.gradient)
-            model(empty!(spl.state.vi), SampleFromUniform())
+            model(rng, empty!(spl.state.vi), SampleFromUniform())
             link!(spl.state.vi, spl)
             theta = spl.state.vi[spl]
             update_hamiltonian!(spl, model, length(theta))
@@ -171,10 +171,10 @@ function AbstractMCMC.sample_init!(
     # non-Gibbs sampling.
     if !islinked(spl.state.vi, spl) && spl.selector.tag == :default
         link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
+        model(rng, spl.state.vi, spl)
     elseif islinked(spl.state.vi, spl) && spl.selector.tag != :default
         invlink!(spl.state.vi, spl)
-        model(spl.state.vi, spl)        
+        model(rng, spl.state.vi, spl)        
     end
 end
 
@@ -410,14 +410,14 @@ function AbstractMCMC.step!(
     spl.state.i += 1
     spl.state.eval_num = 0
 
-    Turing.DEBUG && @debug "current ϵ: $ϵ"
+    @debug "current ϵ: $ϵ"
 
     # When a Gibbs component
     if spl.selector.tag != :default
         # Transform the space
-        Turing.DEBUG && @debug "X-> R..."
+        @debug "X-> R..."
         link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
+        model(rng, spl.state.vi, spl)
     end
     # Get position and log density before transition
     θ_old, log_density_old = spl.state.vi[spl], getlogp(spl.state.vi)
@@ -439,7 +439,7 @@ function AbstractMCMC.step!(
                         spl.state.i, spl.alg.n_adapts, t.z.θ, t.stat.acceptance_rate)
     end
 
-    Turing.DEBUG && @debug "decide whether to accept..."
+    @debug "decide whether to accept..."
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
@@ -452,7 +452,7 @@ function AbstractMCMC.step!(
 
     # Gibbs component specified cares
     # Transform the space back
-    Turing.DEBUG && @debug "R -> X..."
+    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(spl.state.vi, spl)
 
     return HamiltonianTransition(spl, t)
@@ -513,14 +513,10 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    Turing.DEBUG && _debug("assuming...")
     updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
-    Turing.DEBUG && _debug("dist = $dist")
-    Turing.DEBUG && _debug("vn = $vn")
-    Turing.DEBUG && _debug("r = $r, typeof(r)=$(typeof(r))")
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
 

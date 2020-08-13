@@ -102,8 +102,9 @@ function AdvancedVI.vi(model::Model, alg::ADVI; optimizer = TruncatedADAGrad())
     return AdvancedVI.vi(model, alg, q; optimizer = optimizer)
 end
 
+
 function AdvancedVI.vi(model::Model, alg::ADVI, q::TransformedDistribution{<:TuringDiagMvNormal}; optimizer = TruncatedADAGrad())
-    Turing.DEBUG && @debug "Optimizing ADVI..."
+    @debug "Optimizing ADVI..."
     # Initial parameters for mean-field approx
     μ, σs = params(q)
     θ = vcat(μ, invsoftplus.(σs))
