@@ -25,47 +25,22 @@ An example
 ## model:: NestedModel
 ## sampler:: Nested
 
-## How the struct NestedModel is defined:
-##struct NestedModel <: AbstractModel
-##    loglike::Function
-##    prior_transform::Function
-##end
-
-##function NestedModel(loglike, priors::AbstractVector{<:UnivariateDistribution})
-##    prior_transform(X) = quantile.(priors, X)
-##    return NestedModel(loglike, prior_transform)
-##end
-
-## revisit the Nested sampler definition here: https://github.com/TuringLang/NestedSamplers.jl/blob/master/src/staticsampler.jl
-
 ## comment on each step of the code and also include docstrings for sections of the code
-## both NestedModel and Nested are to be utilized in this code
 
-struct ESS{space} <: InferenceAlgorithm end
-
-ESS() = ESS{()}()
-ESS(space::Symbol) = ESS{(space,)}()
-
-struct NS{space, P, B} <: InferenceAlgorithm  ## refer the comment on line 39
-    proposals::P
-    bounds::B   
-end  
-
-proposal(p::NestedSamplers.Proposals) = p
-bound(b::NestedSamplers.Bounds) = b
-
-##NS() = NS{()}()
-##NS(space::Symbol) = NS{(space,)}()
-
-function NS(
-
-isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
-
-mutable struct NSState{V<:VarInfo} <: AbstractSamplerState   ## where is this being used? in the function Sampler ?
-       vi::V
+struct NS{space} <: InferenceAlgorithm 
+    ndims::Int
+    nactive::Int
 end
 
-NSState(model::Model) = NSState(VarInfo(model))
+##NS() = NS{()}()    ... remove both of these, you need `ndims` and `nactive`, at the minimum for `Nested` to work
+##NS(space::Symbol) = NS{(space,)}()
+
+function NS(ndims, nactive)
+        nested = NestedSamplers.Nested(ndims, nactive)    ##  using the fact that the module `NestedSamplers` exports `Nested`
+        ## revisit this to understand how can you incorporate change in proposal, bounds and other kwargs of `Nested` 
+end    
+
+isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
 
 struct NSModel <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... this struct & function were placed above sample_end! earlier (better to define all such wraps here at the beginning)
     loglike::Function
@@ -73,12 +48,12 @@ struct NSModel <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... 
 end
 
 function NSModel(loglike, prior_transform)  
-    return NestedSamplers.NestedModel(loglike, prior_transform)   
+    return NestedSamplers.NestedModel(loglike, prior_transform)   ## using the fact that the module `NestedSamplers` exports `NestedModel`: 
 end
 
 function Sampler(
        alg::NS,
-       model::NSModel,    ## check this everywhere   ## when NSmodel is defined, then in which function is it used?
+       model::NSModel,    ## check this everywhere   
        s::Selector=Selector()
 )
        # sanity check
@@ -88,32 +63,31 @@ function Sampler(
        info = Dict{Symbol, Any}()
     
        # set up state struct
-       state = NSState(vi)
+       state = SamplerState(vi)
     
        # generate a sampler
        return Sampler(alg, info, s, state)
 end
 
+## Initializing the Nested Sampler
 function AbstractMCMC.sample_init!(    
     rng::AbstractRNG,
-    model::NSModel,   ## check `NestedModel`?
-    spl::Sampler{<:NS},    ## `Nested{T,B}` ## s == spl ## or `Sampler{<:NS{space, T, P, B}}`
+    model::NSModel,  
+    spl::Sampler{<:NS},    
     N::Integer,
     verbose::Bool=true,
     resume_from=nothing,
     debug::Bool = false;
     kwargs...
-) where {T, P, B}
-    # You need to make a `NestedModel` somehow
-    # spl.nested is what I imagine you'd call `Nested` if you placed it in `NS` and just wrapped around everything in 
-    # NestedSamplers.jl
-    AbstractMCMC.sample_init(rng, nested_model, spl.nested, N)
+)
+
+    AbstractMCMC.sample_init(rng, model, spl.nested, N)    ## traceback `spl.nested` & check if correctly implemented
 end
 
-function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
+function AbstractMCMC.step!(    ## 2 AbstractMCMC.step! functions ?
     ::AbstractRNG,     
-    model::NSModel,     ## or `AbstractModel`?
-    spl::Sampler{<:NS},     ## or `Nested` or `Sampler{<:NS{space, T, P, B}}`
+    model::NSModel,     
+    spl::Sampler{<:NS},   
     ::Integer,
     ::Nothing;
     kwargs...
@@ -134,8 +108,8 @@ end
 
 function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
     rng::AbstractRNG,    
-    model::NSModel,    ## or `NestedModel`
-    spl::Sampler{<:NS},      ## or `Nested{T,B}`
+    model::NSModel,   
+    spl::Sampler{<:NS},     
     ::Integer,
     prev::NestedTransition;    ## or `prev::Transition` or only `transition`
     iteration,
@@ -194,41 +168,18 @@ function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
     return NestedTransition(draw, logL, log_wt)
 end
 
+## Finalizing the Nested Sampler
 function AbstractMCMC.sample_end!(
-    rng::AbstractRNG,    ## check ??
-    model::NSModel,     ## or `AbstractModel`
-    spl::Sampler{<:NS},      ## or `Nested`
+    rng::AbstractRNG,    
+    model::NSModel,    
+    spl::Sampler{<:NS},      
     N::Integer,
     transitions;
     debug::Bool = false,
     kwargs...
 )
-    # Pop remaining points in ellipsoid
-    N = length(transitions)
-    spl.log_vol = -N / spl.nactive - log(spl.nactive)
-    @inbounds for i in eachindex(spl.active_logl)
-        # get new point
-        draw = spl.active_points[:, i]
-        logL = spl.active_logl[i]
-        log_wt = spl.log_vol + logL
-
-        # update sampler
-        logz = logaddexp(spl.logz, log_wt)
-        spl.h = (exp(log_wt - logz) * logL +
-               exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
-        spl.logz = logz
-
-        prev = NestedTransition(draw, logL, log_wt)
-        push!(transitions, prev)
-    end
-
-    # h should always be non-negative. Numerical error can arise from pathological corner cases
-    if spl.h < 0
-        spl.h ≉ 0 && @warn "Negative h encountered h=$(spl.h). This is likely a bug"
-        spl.h = zero(spl.h)
-    end
-
-    return nothing
+    
+    AbstractMCMC.sample_end(rng, model, spl.nested, N)    ## traceback `spl.nested` to ensure correct implementation
 end
 
 ## tilde operators  ## or experiment with assume, dot_assume, observe and dot_observe
