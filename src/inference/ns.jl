@@ -2,7 +2,6 @@
 ------------------------------------
 not working yet
 still being built
-refering ess.jl which is similar
 -------------------------------------
 
 Nested sampling algorithm.
@@ -14,13 +13,13 @@ An example
 """
 
 ## what all to setup here:
-## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters... Partially done in  mutable struct NSState ? check
+## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters
 ## 2. A function sample_init! which performs any necessary set-up (default: do not perform any set-up)... Partially done in: function AbstractMCMC.sample_init! ? check
 ## 3. A function step! which returns a transition that represents a single draw from the sampler... Partially done with: 2 function AbstractMCMC.step! ? check
 ## 4. A function transitions_init which returns a container for the transitions obtained from the sampler (default: return a Vector{T} of length N where T is the type of the transition obtained in the first step and N is the number of requested samples).
 ## 5. A function transitions_save! which saves transitions to the container (default: save the transition of iteration i at position i in the vector of transitions)
 ## 6. A function sample_end! which handles any sampler wrap-up (default: do not perform any wrap-up)... Partially done in: function AbstractMCMC.sample_end! ? check
-## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)... Partially done with: 2 function AbstractMCMC.bundle_samples ? check
+## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)
 
 ## model:: NestedModel
 ## sampler:: Nested
@@ -32,12 +31,13 @@ struct NS{space} <: InferenceAlgorithm
     nactive::Int
 end
 
-##NS() = NS{()}()    ... remove both of these, you need `ndims` and `nactive`, at the minimum for `Nested` to work
+## should both these constructors be defined? as `ndims` and `nactive`, at the minimum, are required for `Nested` to work
+##NS() = NS{()}()    
 ##NS(space::Symbol) = NS{(space,)}()
 
 function NS(ndims, nactive)
         nested = NestedSamplers.Nested(ndims, nactive)    ##  using the fact that the module `NestedSamplers` exports `Nested`
-        ## revisit this to understand how can you incorporate change in proposal, bounds and other kwargs of `Nested` 
+        ## revisit this to understand how can you incorporate changes in proposal, bounds and other kwargs of `Nested` 
 end    
 
 isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
@@ -53,7 +53,7 @@ end
 
 function Sampler(
        alg::NS,
-       model::NSModel,    ## check this everywhere   
+       model::NSModel,    ## check this everywhere, `NSModel` or `Model`   
        s::Selector=Selector()
 )
        # sanity check
@@ -69,7 +69,7 @@ function Sampler(
        return Sampler(alg, info, s, state)
 end
 
-## Initializing the Nested Sampler
+# initialize nested sampler
 function AbstractMCMC.sample_init!(    
     rng::AbstractRNG,
     model::NSModel,  
@@ -80,11 +80,10 @@ function AbstractMCMC.sample_init!(
     debug::Bool = false;
     kwargs...
 )
-
     AbstractMCMC.sample_init(rng, model, spl.nested, N)    ## traceback `spl.nested` & check if correctly implemented
 end
 
-function AbstractMCMC.step!(    ## 2 AbstractMCMC.step! functions ?
+function AbstractMCMC.step!(   
     ::AbstractRNG,     
     model::NSModel,     
     spl::Sampler{<:NS},   
@@ -92,83 +91,31 @@ function AbstractMCMC.step!(    ## 2 AbstractMCMC.step! functions ?
     ::Nothing;
     kwargs...
 )
-    # Find least likely point
-    logL, idx = findmin(spl.active_logl)
-    draw = spl.active_points[:, idx]
-    log_wt = spl.log_vol + logL
-
-    # update sampler
-    logz = logaddexp(spl.logz, log_wt)
-    spl.h = (exp(log_wt - logz) * logL +
-           exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
-    spl.logz = logz
-
-    return NestedTransition(draw, logL, log_wt)     ## or `Transition(spl)`
+    return Transition(spl)    
 end
 
-function AbstractMCMC.step!(    ## check 2 AbstractMCMC.step! functions ?
+function AbstractMCMC.step!(    
     rng::AbstractRNG,    
     model::NSModel,   
     spl::Sampler{<:NS},     
     ::Integer,
-    prev::NestedTransition;    ## or `prev::Transition` or only `transition`
+    transition;    
     iteration,
     debug::Bool = false,
     kwargs...
-) where {T, P, B}
+)
+    # random variable to be sampled
+    vi = spl.state.vi
 
-    # Find least likely point
-    logL, idx = findmin(spl.active_logl)
-    draw = spl.active_points[:, idx]
-    log_wt = spl.log_vol + logL
-
-    # update evidence and information
-    logz = logaddexp(spl.logz, prev.log_wt)
-    spl.h = (exp(prev.log_wt - logz) * prev.logL +
-           exp(spl.logz - logz) * (spl.h + spl.logz) - logz)
-    spl.logz = logz
-
-    # check if ready for first update
-    if !spl.has_bounds && spl.ncall > spl.min_ncall && iteration / spl.ncall < spl.min_eff
-        debug && @info "First update: it=$iteration, ncall=$(spl.ncall), eff=$(iteration / spl.ncall)"
-        spl.has_bounds = true
-        pointvol = exp(spl.log_vol) / spl.nactive
-        spl.active_bound = NestedSamplers.Bounds.scale!(NestedSamplers.Bounds.fit(B, spl.active_us, pointvol = pointvol), spl.enlarge)   ## `NestedSamplers.Bounds` or only `Bounds`
-        spl.since_update = 0
-    # if accepted first update, is it time to update again?
-    elseif iszero(spl.since_update % spl.update_interval)
-        debug && @info "Updating bounds: it=$iteration, ncall=$(spl.ncall), eff=$(iteration / spl.ncall)"
-        pointvol = exp(spl.log_vol) / spl.nactive
-        spl.active_bound = NestedSamplers.Bounds.scale!(NestedSamplers.Bounds.fit(B, spl.active_us, pointvol = pointvol), spl.enlarge)
-        spl.since_update = 0
-    end
-    
-    # Get a live point to use for evolving with proposal
-    if spl.has_bounds
-        point, bound = rand_live(rng, spl.active_bound, spl.active_us)
-        u, v, logl, ncall = spl.proposal(rng, point, logL, bound, model.loglike, model.prior_transform)
-    else
-        point = rand(rng, T, s.ndims)
-        bound = NestedSamplers.Bounds.NoBounds(T, spl.ndims)
-        proposal = NestedSamplers.Proposals.Uniform()
-        u, v, logl, ncall = proposal(rng, point, logL, bound, model.loglike, model.prior_transform)
-    end
-
-    # Get new point and log like
-    spl.active_us[:, idx] = u
-    spl.active_points[:, idx] = v
-    spl.active_logl[idx] = logl
-    spl.ndecl = log_wt < prev.log_wt ? spl.ndecl + 1 : 0
-    spl.ncall += ncall
-    spl.since_update += 1
-
-    # Shrink interval
-    spl.log_vol -=  1 / spl.nactive
-
-    return NestedTransition(draw, logL, log_wt)
+    ## more steps to include here
+    ## define previous sample, previous sampler state, next state, and update sample and loglike
+        
+    return Transition(spl)
 end
 
-## Finalizing the Nested Sampler
+## check if `AbstractMCMC.transitions_init` and `AbstractMCMC.transitions_save!` needed here, also if a NSTransition struct is needed?
+
+# finalize nested sampler
 function AbstractMCMC.sample_end!(
     rng::AbstractRNG,    
     model::NSModel,    
@@ -177,14 +124,21 @@ function AbstractMCMC.sample_end!(
     transitions;
     debug::Bool = false,
     kwargs...
-)
-    
+)  
     AbstractMCMC.sample_end(rng, model, spl.nested, N)    ## traceback `spl.nested` to ensure correct implementation
 end
 
 ## tilde operators  ## or experiment with assume, dot_assume, observe and dot_observe
 
-function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, right, vn::VarName, inds, vi)
+function DynamicPPL.tilde(
+    rng, 
+    ctx::DefaultContext, 
+    sampler::Sampler{<:NS}, 
+    right, 
+    vn::VarName,
+    inds, 
+    vi
+)
     if inspace(vn, sampler)
         return DynamicPPL.tilde(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
@@ -192,11 +146,26 @@ function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, righ
     end
 end
 
-function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:NS}, right, left, vi)
+function DynamicPPL.tilde(
+    ctx::DefaultContext, 
+    sampler::Sampler{<:NS},
+    right,
+    left,
+    vi
+)
     return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, right, left, vn::VarName, inds, vi)
+function DynamicPPL.dot_tilde(
+    rng, 
+    ctx::DefaultContext, 
+    sampler::Sampler{<:NS}, 
+    right, 
+    left, 
+    vn::VarName, 
+    inds, 
+    vi
+)
     if inspace(vn, sampler)
         return DynamicPPL.dot_tilde(rng, LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
     else
@@ -204,6 +173,13 @@ function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, 
     end
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:NS}, right, left, vi)
+function DynamicPPL.dot_tilde(
+    rng, 
+    ctx::DefaultContext, 
+    sampler::Sampler{<:NS}, 
+    right, 
+    left, 
+    vi
+)
     return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
 end
