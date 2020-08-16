@@ -11,7 +11,7 @@ main-feature_row:
   - title: "Modular"
     excerpt: "Turing is modular, written fully in Julia, and can be modified to suit your needs."
   - title: "High-performance"
-    excerpt: "Turing is fast."
+    excerpt: "Turing is [fast](https://arxiv.org/abs/2002.02702)."
 
 
 code-sample:
@@ -107,7 +107,7 @@ support:
         <div class="col-lg-3 main-feature_row">
             <div class="text-content">
               <h2>{{ f.title }}</h2>
-              <div>{{ f.excerpt }}</div>
+              <div>{{ f.excerpt | markdownify }}</div>
             </div>
         </div>
         {% endfor %}
