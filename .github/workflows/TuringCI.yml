@@ -23,6 +23,8 @@ jobs:
           - x86
           - x64
         exclude:
+          - os: windows-latest
+            arch: x86
           - os: macOS-latest
             arch: x86
     steps:
