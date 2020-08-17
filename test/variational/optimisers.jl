@@ -1,5 +1,5 @@
 using Random, Test, LinearAlgebra, ForwardDiff
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, apply!
+using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
 
 function test_opt(ADPack, opt)
     θ = randn(10, 10)

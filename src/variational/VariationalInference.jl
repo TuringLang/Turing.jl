@@ -1,23 +1,16 @@
 module Variational
 
-using ..Core, ..Utilities
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
-using Distributions, Bijectors, DynamicPPL
-using LinearAlgebra
-using ..Turing: PROGRESS, Turing
-using DynamicPPL: Model, SampleFromPrior, SampleFromUniform
-using Random: AbstractRNG
+import AdvancedVI
+import Bijectors
+import DistributionsAD
+import DynamicPPL
+import StatsBase
+import StatsFuns
 
-using ForwardDiff
-using Tracker
+import Random
 
-import ..Core: getchunksize, getADbackend
-
-import AbstractMCMC
-import ProgressLogging
-
-using AdvancedVI
-
+# Reexports
+using AdvancedVI: vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
 export
     vi,
     ADVI,
@@ -34,38 +27,38 @@ use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_o
 ## Notes
 - For sake of efficiency, the returned function is closes over an instance of `VarInfo`. This means that you *might* run into some weird behaviour if you call this method sequentially using different types; if that's the case, just generate a new one for each type using `make_logjoint`.
 """
-function make_logjoint(model::Model; weight = 1.0)
+function make_logjoint(model::DynamicPPL.Model; weight = 1.0)
     # setup
     ctx = DynamicPPL.MiniBatchContext(
         DynamicPPL.DefaultContext(),
         weight
     )
-    varinfo_init = Turing.VarInfo(model, ctx)
+    varinfo_init = DynamicPPL.VarInfo(model, ctx)
 
     function logπ(z)
-        varinfo = VarInfo(varinfo_init, SampleFromUniform(), z)
+        varinfo = DynamicPPL.VarInfo(varinfo_init, DynamicPPL.SampleFromUniform(), z)
         model(varinfo)
 
-        return getlogp(varinfo)
+        return DynamicPPL.getlogp(varinfo)
     end
 
     return logπ
 end
 
-function logjoint(model::Model, varinfo, z)
-    varinfo = VarInfo(varinfo, SampleFromUniform(), z)
+function logjoint(model::DynamicPPL.Model, varinfo, z)
+    varinfo = DynamicPPL.VarInfo(varinfo, DynamicPPL.SampleFromUniform(), z)
     model(varinfo)
 
-    return getlogp(varinfo)
+    return DynamicPPL.getlogp(varinfo)
 end
 
 
 # objectives
 function (elbo::ELBO)(
-    rng::AbstractRNG,
-    alg::VariationalInference,
+    rng::Random.AbstractRNG,
+    alg::AdvancedVI.VariationalInference,
     q,
-    model::Model,
+    model::DynamicPPL.Model,
     num_samples;
     weight = 1.0,
     kwargs...
