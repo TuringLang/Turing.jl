@@ -27,6 +27,7 @@ import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
+import NestedSamplers
 import Random
 import MCMCChains
 import StatsBase: predict
