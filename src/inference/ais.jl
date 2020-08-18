@@ -274,7 +274,7 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     return current_state, accum_logweight
 end
 
-## D. overload assume and observe: similar to HMC, so that gen_logjoint and gen_logprior work
+## D. overload assume and observe: similar to hmc.jl, so that gen_logjoint and gen_logprior work
 
 function DynamicPPL.assume(
     rng,
