@@ -15,12 +15,14 @@ using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
 using Tracker: Tracker
 
+import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
     @info "[Turing]: progress logging is $(switch ? "enabled" : "disabled") globally"
     PROGRESS[] = switch
+    AdvancedVI.turnprogress(switch)
 end
 
 # Random probability measures.
