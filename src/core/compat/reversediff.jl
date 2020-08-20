@@ -20,6 +20,7 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     T = typeof(getlogp(vi))
     
