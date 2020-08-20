@@ -173,11 +173,11 @@ function AbstractMCMC.step!(
     transition::Union{Nothing,GibbsTransition};
     kwargs...
 )
-    Turing.DEBUG && @debug "Gibbs stepping..."
+    @debug "Gibbs stepping..."
 
     # Iterate through each of the samplers.
     transitions = map(enumerate(spl.state.samplers)) do (i, local_spl)
-        Turing.DEBUG && @debug "$(typeof(local_spl)) stepping..."
+        @debug "$(typeof(local_spl)) stepping..."
 
         # Update the sampler's VarInfo.
         local_spl.state.vi = spl.state.vi

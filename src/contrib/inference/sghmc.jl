@@ -82,29 +82,29 @@ function step(
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
     spl.info[:eval_num] = 0
 
-    Turing.DEBUG && @debug "X-> R..."
+    @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
         model(vi, spl)
     end
 
-    Turing.DEBUG && @debug "recording old variables..."
+    @debug "recording old variables..."
     θ, v = vi[spl], spl.info[:v]
     _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
     # Implements the update equations from (15) of Chen et al. (2014).
-    Turing.DEBUG && @debug "update latent variables and velocity..."
+    @debug "update latent variables and velocity..."
     θ .+= v
     v .= (1 - α) .* v .+ η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
 
-    Turing.DEBUG && @debug "saving new latent variables..."
+    @debug "saving new latent variables..."
     vi[spl] = θ
 
-    Turing.DEBUG && @debug "R -> X..."
+    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(vi, spl)
 
-    Turing.DEBUG && @debug "always accept..."
+    @debug "always accept..."
     return vi, true
 end
 
@@ -189,30 +189,30 @@ function step(
     spl.info[:i] += 1
     spl.info[:eval_num] = 0
 
-    Turing.DEBUG && @debug "compute current step size..."
+    @debug "compute current step size..."
     γ = .35
     ϵ_t = spl.alg.ϵ / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
     mssa = spl.info[:adaptor].ssa
     mssa.state.ϵ = ϵ_t
 
-    Turing.DEBUG && @debug "X-> R..."
+    @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
         model(vi, spl)
     end
 
-    Turing.DEBUG && @debug "recording old variables..."
+    @debug "recording old variables..."
     θ = vi[spl]
     _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
-    Turing.DEBUG && @debug "update latent variables..."
+    @debug "update latent variables..."
     θ .+= ϵ_t .* grad ./ 2 .- rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
-    Turing.DEBUG && @debug "always accept..."
+    @debug "always accept..."
     vi[spl] = θ
 
-    Turing.DEBUG && @debug "R -> X..."
+    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(vi, spl)
 
     return vi, true

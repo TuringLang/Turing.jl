@@ -10,6 +10,9 @@ main-feature_row:
     excerpt: "Turing supports models with discrete parameters and stochastic control flow. Specify complex models quickly and easily."
   - title: "Modular"
     excerpt: "Turing is modular, written fully in Julia, and can be modified to suit your needs."
+  - title: "High-performance"
+    excerpt: "Turing is [fast](https://arxiv.org/abs/2002.02702)."
+
 
 code-sample:
   excerpt: "Turing's modelling syntax allows you to specify a model quickly and easily. Straightforward models can be expressed in the same way as complex, hierarchical models with stochastic control flow."
@@ -101,10 +104,10 @@ support:
     <div class="container-fluid">
       <div class="row">
         {% for f in page.main-feature_row %}
-        <div class="col-lg-4 main-feature_row">
+        <div class="col-lg-3 main-feature_row">
             <div class="text-content">
               <h2>{{ f.title }}</h2>
-              <div>{{ f.excerpt }}</div>
+              <div>{{ f.excerpt | markdownify }}</div>
             </div>
         </div>
         {% endfor %}
