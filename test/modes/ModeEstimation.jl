@@ -13,19 +13,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
 @testset "ModeEstimation.jl" begin
     @testset "MLE" begin
         Random.seed!(222)
-        true_value = [0.0625031, 1.75]
+        true_value = [0.0625, 1.75]
         
         m1 = optimize(gdemo_default, MLE())
         m2 = optimize(gdemo_default, MLE(), NelderMead())
-        m3 = optimize(gdemo_default, MLE(), Newton())
-        m4 = optimize(gdemo_default, MLE(), true_value, Newton())
-        m5 = optimize(gdemo_default, MLE(), true_value)
+        m3 = optimize(gdemo_default, MLE(), true_value, LBFGS())
+        m4 = optimize(gdemo_default, MLE(), true_value)
 
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m5.values.array - true_value, 0.0, atol=0.01))
     end
 
     @testset "MAP" begin
@@ -34,15 +32,13 @@ include(dir*"/test/test_utils/AllUtils.jl")
         
         m1 = optimize(gdemo_default, MAP())
         m2 = optimize(gdemo_default, MAP(), NelderMead())
-        m3 = optimize(gdemo_default, MAP(), Newton())
-        m4 = optimize(gdemo_default, MAP(), true_value, Newton())
-        m5 = optimize(gdemo_default, MAP(), true_value)
+        m3 = optimize(gdemo_default, MAP(), true_value, LBFGS())
+        m4 = optimize(gdemo_default, MAP(), true_value)
         
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m5.values.array - true_value, 0.0, atol=0.01))
     end
 
     @testset "StatsBase integration" begin
