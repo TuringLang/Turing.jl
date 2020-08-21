@@ -149,7 +149,7 @@ button:focus {
 
 [data-md-color-primary=red] .md-typeset a {
     color: #102738;
-    text-decoration: none;
+    text-decoration: underline;
 }
 
 .resource-card {

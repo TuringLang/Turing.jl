@@ -60,6 +60,7 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
+getADbackend(spl::SampleFromPrior) = ADBackend()()
 
 """
     gradient_logp(
@@ -77,9 +78,10 @@ function gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Sampler
+    sampler::AbstractSampler,
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler)
+    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler, ctx)
 end
 
 """
@@ -100,12 +102,13 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     # Define function to compute log joint.
     logp_old = getlogp(vi)
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, ctx)
         logp = getlogp(new_vi)
         setlogp!(vi, ForwardDiff.value(logp))
         return logp
@@ -127,13 +130,14 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     T = typeof(getlogp(vi))
 
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, ctx)
         return getlogp(new_vi)
     end
 
