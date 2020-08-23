@@ -24,6 +24,7 @@ docs/.jekyll-cache
 
 .vscode
 .DS_Store
+Manifest.toml
 /Manifest.toml
 /test/Manifest.toml
 
