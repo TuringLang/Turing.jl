@@ -3,6 +3,7 @@ name: CompatHelper
 on:
   schedule:
     - cron: '00 00 * * *'
+  workflow_dispatch:
 
 jobs:
   CompatHelper:
@@ -14,4 +15,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMPATHELPER_PRIV: ${{ secrets.COMPATHELPER_PRIV }}
-        run: julia -e 'using CompatHelper; CompatHelper.main()'
+        run: julia -e 'using CompatHelper; CompatHelper.main(; subdirs = ["", "test"])'
