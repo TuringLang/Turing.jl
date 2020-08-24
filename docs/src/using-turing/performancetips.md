@@ -111,10 +111,15 @@ We can use
 using Random
 
 model = tmodel(1.0)
-varinfo = Turing.VarInfo(model)
-spl = Turing.SampleFromPrior()
 
-@code_warntype model.f(Random.GLOBAL_RNG, model, varinfo, spl, Turing.DefaultContext())
+@code_warntype model.f(
+    Random.GLOBAL_RNG,
+    model,
+    Turing.VarInfo(model),
+    Turing.SampleFromPrior(),
+    Turing.DefaultContext(),
+    model.args...,
+)
 ```
 
 to inspect type inference in the model.
