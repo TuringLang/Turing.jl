@@ -20,7 +20,7 @@ Here is a brief example of how to apply `DynamicNUTS`:
 using LogDensityProblems, DynamicHMC, Turing
 
 # Model definition.
-@model gdemo(x, y) = begin
+@model function gdemo(x, y)
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
   x ~ Normal(m, sqrt(s))
