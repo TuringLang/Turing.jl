@@ -86,13 +86,12 @@ Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 ## Model Internals
 
 
-The `@model` macro accepts a function definition and generates a `Turing.Model` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
-
+The `@model` macro accepts a function definition and rewrites it such that call of the function generates a `Model` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the macro-based definition
 
 ```julia
 using Turing
 
-@model gdemo(x) = begin
+@model function gdemo(x)
   # Set priors.
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
@@ -101,61 +100,45 @@ using Turing
   @. x ~ Normal(m, sqrt(s))
 end
 
-sample(gdemo([1.5, 2.0]), HMC(0.1, 5), 1000)
+model = gdemo([1.5, 2.0])
 ```
 
+is equivalent to the macro-free version
 
 ```julia
 using Turing
 
-# Initialize a NamedTuple containing our data variables.
-data = (x = [1.5, 2.0],)
-
 # Create the model function.
-mf(vi, sampler, ctx, model) = begin
-    # Set the accumulated logp to zero.
-    resetlogp!(vi)
-    x = model.args.x
-
+function modelf(rng, model, varinfo, sampler, context, x)
     # Assume s has an InverseGamma distribution.
-    s, lp = Turing.Inference.tilde(
-        ctx,
+    s = Turing.DynamicPPL.tilde_assume(
+        rng,
+        context,
         sampler,
         InverseGamma(2, 3),
         Turing.@varname(s),
         (),
-        vi,
+        varinfo,
     )
-
-    # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
-
+    
     # Assume m has a Normal distribution.
-    m, lp = Turing.Inference.tilde(
-        ctx,
+    m = Turing.DynamicPPL.tilde_assume(
+        rng,
+        context,
         sampler,
         Normal(0, sqrt(s)),
         Turing.@varname(m),
         (),
-        vi,
+        varinfo,
     )
 
-    # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
-
-    # Observe each value of x[i], according to a
-    # Normal distribution.
-    lp = Turing.Inference.dot_tilde(ctx, sampler, Normal(m, sqrt(s)), x, vi)
-    acclogp!(vi, lp)
+    # Observe each value of x[i] according to a Normal distribution.
+    Turing.DynamicPPL.dot_tilde_observe(context, sampler, Normal(m, sqrt(s)), x, varinfo)
 end
 
-# Instantiate a Model object.
-model = DynamicPPL.Model(mf, data, DynamicPPL.ModelGen{()}(nothing, nothing))
-
-# Sample the model.
-chain = sample(model, HMC(0.1, 5), 1000)
+# Instantiate a Model object with our data variables.
+model = Turing.Model(modelf, (x = [1.5, 2.0],))
 ```
-
 
 ## Task Copying
 
