@@ -94,7 +94,7 @@ end
 Note that you can use `@code_warntype` to find types in your model definition that the compiler cannot infer.
 They are marked in red in the Julia REPL.
 
-For example consider the following simple program:
+For example, consider the following simple program:
 
 ```julia
 @model function tmodel(x)

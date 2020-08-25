@@ -84,7 +84,7 @@ Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 
 ## Update the accumulated log probability in the model definition
 
-Turing accumulates log probabilities internally in an internal datastructure that is accessible through
+Turing accumulates log probabilities internally in an internal data structure that is accessible through
 the internal variable `_varinfo` inside of the model definition (see below for more details about model internals).
 However, since users should not have to deal with internal data structures, a macro `Turing.@addlogprob!` is provided
 that increases the accumulated log probability. For instance, this allows you to
@@ -193,5 +193,4 @@ model = Turing.Model(modelf, (x = [1.5, 2.0],))
 
 
 Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires us to use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
-
 
