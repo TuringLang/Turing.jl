@@ -297,7 +297,7 @@ Arguments:
 
 - `n_adapts::Int` : The number of samples to use with adaptation.
 - `δ::Float64` : Target acceptance rate for dual averaging.
-- `max_depth::Float64` : Maximum doubling tree depth.
+- `max_depth::Int` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
 - `ϵ::Float64` : Inital step size; 0 means automatically searching using a heuristic procedure.
 
