@@ -23,7 +23,7 @@ Turing supports intermixed automatic differentiation methods for different varia
 using Turing
 
 # Define a simple Normal model with unknown mean and variance.
-@model gdemo(x, y) = begin
+@model function gdemo(x, y)
     s ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s))
     x ~ Normal(m, sqrt(s))
@@ -37,7 +37,7 @@ c = sample(
     	HMC{Turing.ForwardDiffAD{1}}(0.1, 5, :m),
         HMC{Turing.TrackerAD}(0.1, 5, :s)
     ),
-    1000
+    1000,
 )
 ```
 

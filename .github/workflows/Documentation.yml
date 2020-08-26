@@ -5,6 +5,7 @@ on:
     branches:
       - 'master'
     tags: '*'
+  workflow_dispatch:
 
 jobs:
   docs:
