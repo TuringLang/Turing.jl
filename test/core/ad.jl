@@ -355,15 +355,13 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         end
 
         N = 1000
-
-        for emptycache in (true, false)
-            for i in 1:10
-                d = Normal(0.0, i)
-                data = rand(d, N)
-                chn = sample(demo(data), NUTS(0.65), 1000)
-                @test mean(Array(chn[:sigma])) ≈ std(data) atol=0.5
-                emptycache && Turing.emptyrdcache()
-            end
+        for i in 1:5
+            d = Normal(0.0, i)
+            data = rand(d, N)
+            chn = sample(demo(data), NUTS(0.65), 1000)
+            @test mean(Array(chn[:sigma])) ≈ std(data) atol=0.5
         end
+
+        Turing.emptyrdcache()
     end
 end
