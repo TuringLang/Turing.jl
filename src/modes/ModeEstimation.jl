@@ -216,7 +216,7 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
-    print(io, "ModeResult with minimized lp of ")
+    print(io, "ModeResult with maximized lp of ")
     Printf.@printf(io, "%.2f", m.lp)
     println(io)
     show(io, m.values)
