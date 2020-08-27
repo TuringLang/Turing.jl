@@ -1,6 +1,5 @@
 """
 ------------------------------------
-not working yet
 still being built
 -------------------------------------
 
@@ -12,174 +11,177 @@ An example
 
 """
 
-## what all to setup here:
-## 1. A subtype of AbstractSampler, defined as a mutable struct containing state information or sampler parameters
-## 2. A function sample_init! which performs any necessary set-up (default: do not perform any set-up)... Partially done in: function AbstractMCMC.sample_init! ? check
-## 3. A function step! which returns a transition that represents a single draw from the sampler... Partially done with: 2 function AbstractMCMC.step! ? check
-## 4. A function transitions_init which returns a container for the transitions obtained from the sampler (default: return a Vector{T} of length N where T is the type of the transition obtained in the first step and N is the number of requested samples).
-## 5. A function transitions_save! which saves transitions to the container (default: save the transition of iteration i at position i in the vector of transitions)
-## 6. A function sample_end! which handles any sampler wrap-up (default: do not perform any wrap-up)... Partially done in: function AbstractMCMC.sample_end! ? check
-## 7. A function bundle_samples which accepts the container of transitions and returns a collection of samples (default: return the vector of transitions)
-
 ## model:: NestedModel
 ## sampler:: Nested
 
-## comment on each step of the code and also include docstrings for sections of the code
+## include docstrings for sections of the code
 
-struct NS{space} <: InferenceAlgorithm 
-    ndims::Int
-    nactive::Int
+# InferenceAlgorithm struct
+
+struct NS{space, N<:NestedSamplers.Nested} <: InferenceAlgorithm
+    nested::N
 end
 
-## should both these constructors be defined? as `ndims` and `nactive`, at the minimum, are required for `Nested` to work
-##NS() = NS{()}()    
-##NS(space::Symbol) = NS{(space,)}()
-
-function NS(ndims, nactive)
-        nested = NestedSamplers.Nested(ndims, nactive)    ##  using the fact that the module `NestedSamplers` exports `Nested`
-        ## revisit this to understand how can you incorporate changes in proposal, bounds and other kwargs of `Nested` 
-end    
-
-isgibbscomponent(::NS) = true # this states that NS alg is allowed as a Gibbs component
-
-struct NSModel <: AbstractMCMC.AbstractModel    ## or NestedModel ?? check  ... this struct & function were placed above sample_end! earlier (better to define all such wraps here at the beginning)
-    loglike::Function
-    prior_transform::Function
+function NS(
+    ndims::Int,
+    nactive::Int,
+    bound_type,    # To be input as, for instance, NestedSamplers.Bounds.Ellipsoid
+    proposal_type,    # To be input as, for instance, NestedSamplers.Proposals.Uniform()
+    enlarge=1.25,
+    min_eff=0.10
+)
+    ##bounds = bound_type 
+    ##proposal = proposal_type
+    update_interval = default_update_interval(proposal_type, ndims) 
+    min_ncall = 2 * nactive
+    nested = NestedSamplers.Nested(ndims, nactive, bound_type, proposal_type, enlarge, update_interval,
+                                   min_ncall, min_eff)
+    return NS{(), typeof(nested)}(nested)
 end
 
-function NSModel(loglike, prior_transform)  
-    return NestedSamplers.NestedModel(loglike, prior_transform)   ## using the fact that the module `NestedSamplers` exports `NestedModel`: 
-end
+## isgibbscomponent(::NS) = true    # This states that NS alg is allowed as a Gibbs component
+
+# Sampler
 
 function Sampler(
        alg::NS,
-       model::NSModel,    ## check this everywhere, `NSModel` or `Model`   
+       model::Model,
        s::Selector=Selector()
 )
-       # sanity check
-       vi = VarInfo(model)
-       
-       # set up info dict
-       info = Dict{Symbol, Any}()
-    
-       # set up state struct
-       state = SamplerState(vi)
-    
-       # generate a sampler
-       return Sampler(alg, info, s, state)
+       vi = VarInfo(model)    # Sanity check
+       info = Dict{Symbol, Any}()    # Set up info dict
+       state = SamplerState(vi)    # Set up state struct
+       return Sampler(alg, info, s, state)    # Generate a sampler
 end
 
-# initialize nested sampler
-function AbstractMCMC.sample_init!(    
+# Initialize nested sampler
+
+function AbstractMCMC.sample_init!(
     rng::AbstractRNG,
-    model::NSModel,  
-    spl::Sampler{<:NS},    
-    N::Integer,
+    model::Model,
+    spl::Sampler{<:NS},
+    N::Integer;
     verbose::Bool=true,
     resume_from=nothing,
-    debug::Bool = false;
     kwargs...
 )
-    AbstractMCMC.sample_init(rng, model, spl.nested, N)    ## traceback `spl.nested` & check if correctly implemented
+    set_resume!(spl; resume_from=resume_from, kwargs...)    # Resume the sampler
+    initialize_parameters!(spl; verbose=verbose, kwargs...)    # Get initial parameters
+    link!(spl.state.vi, spl)    # Link everything before sampling 
 end
 
-function AbstractMCMC.step!(   
-    ::AbstractRNG,     
-    model::NSModel,     
-    spl::Sampler{<:NS},   
-    ::Integer,
-    ::Nothing;
+# First step
+
+function AbstractMCMC.step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:NS},
+    N::Integer,
+    transition::Nothing;
     kwargs...
 )
-    return Transition(spl)    
-end
-
-function AbstractMCMC.step!(    
-    rng::AbstractRNG,    
-    model::NSModel,   
-    spl::Sampler{<:NS},     
-    ::Integer,
-    transition;    
-    iteration,
-    debug::Bool = false,
-    kwargs...
-)
-    # random variable to be sampled
-    vi = spl.state.vi
-
-    ## more steps to include here
-    ## define previous sample, previous sampler state, next state, and update sample and loglike
-        
     return Transition(spl)
 end
 
-## check if `AbstractMCMC.transitions_init` and `AbstractMCMC.transitions_save!` needed here, also if a NSTransition struct is needed?
+# Subsequent steps
 
-# finalize nested sampler
+function AbstractMCMC.step!(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:NS},
+    ::Integer,
+    transition;
+    kwargs...
+)
+    vi = spl.state.vi    # Random variable to be sampled
+    earlier_sample = vi[spl]    # Earlier sample
+    if spl.selector.tag !== :default    # Recompute log-likelihood in logp
+        model(vi, spl)
+    end
+    earlier_state = SamplerState(earlier_sample, getlogp(vi))    # Earlier sampler state           ## check this step, if both arguments are correct
+    nested_model = NestedSamplers.NestedModel(DynamicPPL.loglikelihood(vi), SampleFromPrior())    # Generate a nested model        ## check this step:
+    ## 1. NestedModel uses Distributions.quantile to transform the prior, does the usage of SampleFromPrior(), take this into account? or we need
+    ## to have some another approach? 
+    ## 2. Also the first argument of NestedModel is loglikelihood function. Using DynamicPPL.loglikelihood(vi) in its place. Is this the correct usage?
+    subsequent_state = AbstractMCMC.step!(rng, nested_model, spl.alg.nested, 1, earlier_state)    # Subsequent state
+    vi[spl] = subsequent_state.sample    # Update sample and log-likelihood
+    setlogp!(vi, subsequent_state.loglikelihood)
+    return Transition(spl)
+end
+
+# Nested model struct     ## not used anywhere so far
+
+struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel
+    model::M
+    spl::S
+    μ::T
+end
+
+# Finalize nested sampler
+
 function AbstractMCMC.sample_end!(
-    rng::AbstractRNG,    
-    model::NSModel,    
-    spl::Sampler{<:NS},      
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:NS},
     N::Integer,
     transitions;
-    debug::Bool = false,
     kwargs...
-)  
-    AbstractMCMC.sample_end(rng, model, spl.nested, N)    ## traceback `spl.nested` to ensure correct implementation
+)
+    invlink!(spl.state.vi, spl)    # Invlink everything after sampling  
 end
 
-## tilde operators  ## or experiment with assume, dot_assume, observe and dot_observe
+# Tilde operators
 
 function DynamicPPL.tilde(
-    rng, 
-    ctx::DefaultContext, 
-    sampler::Sampler{<:NS}, 
-    right, 
-    vn::VarName,
-    inds, 
-    vi
+   rng,
+   ctx::DefaultContext,
+   sampler::Sampler{<:NS},
+   right,
+   vn::VarName,
+   inds,
+   vi
 )
-    if inspace(vn, sampler)
+   if inspace(vn, sampler)
         return DynamicPPL.tilde(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
-    else
+   else
         return DynamicPPL.tilde(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
-    end
+   end
 end
 
 function DynamicPPL.tilde(
-    ctx::DefaultContext, 
-    sampler::Sampler{<:NS},
-    right,
-    left,
-    vi
+   ctx::DefaultContext,
+   sampler::Sampler{<:NS},
+   right,
+   left,
+   vi
 )
-    return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
+   return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
 end
 
 function DynamicPPL.dot_tilde(
-    rng, 
-    ctx::DefaultContext, 
-    sampler::Sampler{<:NS}, 
-    right, 
-    left, 
-    vn::VarName, 
-    inds, 
-    vi
+   rng,
+   ctx::DefaultContext,
+   sampler::Sampler{<:NS},
+   right,
+   left,
+   vn::VarName,
+   inds,
+   vi
 )
-    if inspace(vn, sampler)
+   if inspace(vn, sampler)
         return DynamicPPL.dot_tilde(rng, LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
-    else
+   else
         return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vn, inds, vi)
-    end
+   end
 end
 
 function DynamicPPL.dot_tilde(
-    rng, 
-    ctx::DefaultContext, 
-    sampler::Sampler{<:NS}, 
-    right, 
-    left, 
-    vi
+   rng,
+   ctx::DefaultContext,
+   sampler::Sampler{<:NS},
+   right,
+   left,
+   vi
 )
-    return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
+   return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
 end
