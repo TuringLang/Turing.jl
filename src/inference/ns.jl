@@ -6,7 +6,7 @@ still being built
 Nested sampling algorithm.
 
 An example
-#Note-to-self: set a seed here
+## set a seed here
 ## write an example here
 
 """
@@ -92,8 +92,8 @@ function AbstractMCMC.step!(
         model(vi, spl)
     end
     earlier_state = SamplerState(earlier_sample, getlogp(vi))    # Earlier sampler state           ## check this step, if both arguments are correct
-    nested_model = NestedSamplers.NestedModel(DynamicPPL.loglikelihood(vi), SampleFromPrior())    # Generate a nested model        ## check this step:
-    ## 1. NestedModel uses Distributions.quantile to transform the prior, does the usage of SampleFromPrior(), take this into account? or we need
+    nested_model = NestedSamplers.NestedModel(DynamicPPL.loglikelihood(vi), DynamicPPL.SampleFromPrior())    # Generate a nested model        ## check this step:
+    ## 1. NestedModel uses Distributions.quantile to transform the prior, does the usage of DynamicPPL.SampleFromPrior(), take this into account? or we need
     ## to have some another approach? 
     ## 2. Also the first argument of NestedModel is loglikelihood function. Using DynamicPPL.loglikelihood(vi) in its place. Is this the correct usage?
     subsequent_state = AbstractMCMC.step!(rng, nested_model, spl.alg.nested, 1, earlier_state)    # Subsequent state
