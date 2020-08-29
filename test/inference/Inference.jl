@@ -19,7 +19,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
                             PG(10),
                             IS(),
                             MH(),
-                            NS(),
                             Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
                             Gibbs(HMC(0.1, 5, :s), ESS(:m)))    ##, \n can include NS similarly within Gibbs ?? Gibbs(HMC(...), NS(...)) ??
                 
