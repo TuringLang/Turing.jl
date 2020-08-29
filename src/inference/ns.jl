@@ -117,18 +117,18 @@ struct NSModel{M<:Model,S<:Sampler{<:NS},T} <: AbstractMCMC.AbstractModel
     μ::T
 end
 
-# Finalize nested sampler
+## Finalize nested sampler
 
-function AbstractMCMC.sample_end!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:NS},
-    N::Integer,
-    transitions;
-    kwargs...
-)
-    invlink!(spl.state.vi, spl)    # Invlink everything after sampling  
-end
+#function AbstractMCMC.sample_end!(
+#    rng::AbstractRNG,
+#    model::Model,
+#    spl::Sampler{<:NS},
+#    N::Integer,
+#    transitions;
+#    kwargs...
+#)
+#    invlink!(spl.state.vi, spl)    # Invlink everything after sampling  
+#end
 
 # Tilde operators
 
