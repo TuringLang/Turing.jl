@@ -27,16 +27,9 @@ function NS(
     nactive::Int,
     bound_type,    # To be input as, for instance, NestedSamplers.Bounds.Ellipsoid
     proposal_type,    # To be input as, for instance, NestedSamplers.Proposals.Uniform()
-    enlarge=1.25,
-    min_eff=0.10
 )
-    ##bounds = bound_type 
-    ##proposal = proposal_type
-    update_interval = default_update_interval(proposal_type, ndims) 
-    min_ncall = 2 * nactive
-    nested = NestedSamplers.Nested(ndims, nactive, bound_type, proposal_type, enlarge, update_interval,
-                                   min_ncall, min_eff)
-    return NS{(), typeof(nested)}(nested)
+    nested = NestedSamplers.Nested(ndims, nactive, bounds=bound_type, proposal=proposal_type)
+    return nested
 end
 
 ## isgibbscomponent(::NS) = true    # This states that NS alg is allowed as a Gibbs component
