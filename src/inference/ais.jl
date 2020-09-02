@@ -5,17 +5,16 @@
 """ 
     AIS
 
-Simple version of AIS (not fully general).
+Simple version of AIS (not fully general). MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions.
 
-Contains:
-- intermediate distributions that come from tempering according to a schedule
-- user-specified list of proposal Markov kernels
-- MCMC acceptance ratios enforce invariance of kernels wrt intermediate distributions
+# Fields
+
+$(TYPEDFIELDS)
 """
 struct AIS <: InferenceAlgorithm 
-    "array of intermediate MH kernels"
+    "user-specified list of intermediate proposal Markov kernels"
     proposal_kernels # :: Array{<:AdvancedMH.RandomWalkProposal} TODO: fix
-    "array of inverse temperatures"
+    "array of inverse temperatures defining intermediate tempered distributions"
     schedule # :: Array{<:AbstractFloat} TODO: fix
 end
 
@@ -29,6 +28,10 @@ DynamicPPL.getspace(::AIS) = ()
     AISState{V<:VarInfo, F<:AbstractFloat}
 
 State struct for AIS: contains information about intermediate distributions and proposal kernels that are needed for all particles.
+
+# Fields
+
+$(TYPEDFIELDS)
 """
 mutable struct AISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
     "varinfo - reset and computed in step!"
@@ -65,6 +68,10 @@ end
 AIS-specific Transition struct. 
 
 Necessary because we care both about a particle's weight (accum_logweight) and the logjoint density evaluated at its final position (lp).
+
+# Fields
+
+$(TYPEDFIELDS)
 """
 struct AISTransition{T, F<:AbstractFloat}
     "parameter"
