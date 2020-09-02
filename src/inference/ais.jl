@@ -163,11 +163,6 @@ end
 
 # B.4. sample_end! combines the individual accum_logweights to obtain final_logevidence, as in vanilla IS 
 
-"""
-    AbstractMCMC.sample_end!( ::AbstractRNG, ::Model, spl::Sampler{<:AIS}, N::Integer, ts::Vector; kwargs...)
-
-Store estimate of the log evidence in the AISState attribute final_logevidence of spl.state.
-"""
 function AbstractMCMC.sample_end!(
     ::AbstractRNG,
     ::Model,
