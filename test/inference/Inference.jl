@@ -1,6 +1,7 @@
 using Turing, Random, Test
 using DynamicPPL: getlogp
 import MCMCChains
+
 using Random
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]

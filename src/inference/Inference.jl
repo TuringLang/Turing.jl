@@ -1,6 +1,7 @@
 module Inference
 
 using ..Core
+using ..Core: logZ
 using ..Utilities
 using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
@@ -23,7 +24,6 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
-import AdvancedPS
 import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
@@ -574,8 +574,7 @@ include("ais.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
-include("smc.jl")
-include("pg.jl")
+include("AdvancedSMC.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")

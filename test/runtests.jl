@@ -14,7 +14,7 @@ include("test_utils/AllUtils.jl")
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
-        include("core/trace.jl")
+        include("core/container.jl")
     end
 
     test_adbackends = if VERSION >= v"1.2"
@@ -34,8 +34,7 @@ include("test_utils/AllUtils.jl")
                 include("inference/mh.jl")
                 include("inference/ess.jl")
                 include("inference/emcee.jl")
-                include("inference/smc.jl")
-                include("inference/pg.jl")
+                include("inference/AdvancedSMC.jl")
                 include("inference/Inference.jl")
                 include("contrib/inference/dynamichmc.jl")
             end
