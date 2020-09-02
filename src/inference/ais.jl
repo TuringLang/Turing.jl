@@ -171,7 +171,7 @@ function AbstractMCMC.sample_end!(
     ts::Vector;
     kwargs...
 )
-    # use AISTransition accum_logweight attribute to store estimate of log evidence
+    # use `AISTransition` `accum_logweight` attribute to store estimate of log evidence
     spl.state.final_logevidence = logsumexp(map(x->x.accum_logweight, ts)) - log(N)
 end
 
@@ -229,7 +229,7 @@ end
 """
     prior_step(spl, model)
 
-Sample from prior to return inital values of current_state and accum_logweight.
+Sample from prior to return initial values of `current_state` and `accum_logweight`.
 """
 function prior_step(spl, model)
     # sample from prior
@@ -250,7 +250,8 @@ end
 """
     intermediate_step(j, spl, current_state, accum_logweight)
 
-Perform the MCMC step corresponding to the j-th intermediate distribution, with the j-th MH proposal. Return updated current_state and accum_logweight.
+Perform the MCMC step corresponding to the j-th intermediate distribution, with the j-th MH proposal. Return updated 
+`current_state` and `accum_logweight`.
 """
 function intermediate_step(densitymodel, proposal_kernel, current_state, accum_logweight)
     # fetch `proposal_kernel` and `densitymodel` for this intermediate step
