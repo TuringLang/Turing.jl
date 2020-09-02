@@ -145,7 +145,7 @@ struct ParticleTransition{T, F<:AbstractFloat}
 end
 
 function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le, :weight]
+    return [:lp, :le, :weight]
 end
 
 DynamicPPL.getlogp(t::ParticleTransition) = t.lp
