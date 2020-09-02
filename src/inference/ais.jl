@@ -217,7 +217,8 @@ end
 """
     gen_log_unnorm_tempered(logprior, logjoint, beta)
 
-Return the log unnormalized tempered density function corresponding to model, ie a convex combination of the logprior and logjoint densities with parameter beta.
+Return the log unnormalized tempered density function corresponding to model
+ie a convex combination of the logprior and logjoint densities with parameter beta.
 """
 function gen_log_unnorm_tempered(logprior, logjoint, beta)
     function log_unnorm_tempered(z)
