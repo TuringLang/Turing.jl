@@ -123,35 +123,6 @@ end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
-
-#######################
-# Particle Transition #
-#######################
-
-"""
-    ParticleTransition{T, F<:AbstractFloat}
-
-Fields:
-- `θ`: The parameters for any given sample.
-- `lp`: The log pdf for the sample's parameters.
-- `le`: The log evidence retrieved from the particle.
-- `weight`: The weight of the particle the sample was retrieved from.
-"""
-struct ParticleTransition{T, F<:AbstractFloat}
-    θ::T
-    lp::F
-    le::F
-    weight::F
-end
-
-function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp, :le, :weight]
-end
-
-DynamicPPL.getlogp(t::ParticleTransition) = t.lp
-
-
-
 ##########################################
 # Internal variable names for MCMCChains #
 ##########################################
