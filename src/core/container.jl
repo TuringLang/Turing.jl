@@ -118,6 +118,7 @@ end
 
 """
     reset_logweights!(pc::ParticleContainer)
+
 Reset all unnormalized logarithmic weights to zero.
 """
 function reset_logweights!(pc::ParticleContainer)
@@ -127,6 +128,7 @@ end
 
 """
     increase_logweight!(pc::ParticleContainer, i::Int, x)
+
 Increase the unnormalized logarithmic weight of the `i`th particle with `x`.
 """
 function increase_logweight!(pc::ParticleContainer, i, logw)
@@ -136,24 +138,28 @@ end
 
 """
     getweights(pc::ParticleContainer)
+
 Compute the normalized weights of the particles.
 """
 getweights(pc::ParticleContainer) = softmax(pc.logWs)
 
 """
     getweight(pc::ParticleContainer, i)
+
 Compute the normalized weight of the `i`th particle.
 """
 getweight(pc::ParticleContainer, i) = exp(pc.logWs[i] - logZ(pc))
 
 """
     logZ(pc::ParticleContainer)
+
 Return the logarithm of the normalizing constant of the unnormalized logarithmic weights.
 """
 logZ(pc::ParticleContainer) = logsumexp(pc.logWs)
 
 """
     effectiveSampleSize(pc::ParticleContainer)
+
 Compute the effective sample size ``1 / ∑ wᵢ²``, where ``wᵢ```are the normalized weights.
 """
 function effectiveSampleSize(pc::ParticleContainer)
@@ -164,7 +170,9 @@ end
 """
     resample_propagate!(pc::ParticleContainer[, randcat = resample_systematic, ref = nothing;
                         weights = getweights(pc)])
+
 Resample and propagate the particles in `pc`.
+
 Function `randcat` is used for sampling ancestor indices from the categorical distribution
 of the particle `weights`. For Particle Gibbs sampling, one can provide a reference particle
 `ref` that is ensured to survive the resampling step.
@@ -225,6 +233,7 @@ end
 
 """
     reweight!(pc::ParticleContainer)
+
 Check if the final time step is reached, and otherwise reweight the particles by
 considering the next observation.
 """
@@ -271,9 +280,13 @@ end
 
 """
     sweep!(pc::ParticleContainer, resampler)
+
 Perform a particle sweep and return an unbiased estimate of the log evidence.
+
 The resampling steps use the given `resampler`.
+
 # Reference
+
 Del Moral, P., Doucet, A., & Jasra, A. (2006). Sequential monte carlo samplers.
 Journal of the Royal Statistical Society: Series B (Statistical Methodology), 68(3), 411-436.
 """
