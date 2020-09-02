@@ -142,7 +142,9 @@ function AbstractMCMC.step!(
 
     # for every intermediate distribution
     for j in 1:length(spl.alg.schedule)
-        current_state, accum_logweight = intermediate_step(j, spl, current_state, accum_logweight)
+        densitymodel = spl.state.densitymodels[j]
+        proposal_kernel = spl.alg.proposal_kernels[j]
+        current_state, accum_logweight = intermediate_step(densitymodel, proposal_kernel, current_state, accum_logweight)
     end
 
     # evaluate logjoint at `current_state`
