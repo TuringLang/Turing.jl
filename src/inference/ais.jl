@@ -144,7 +144,7 @@ function AbstractMCMC.step!(
     # add `lp` as final term to `accum_logweight`
     accum_logweight += lp
 
-    # update spl to set the path VarInfo
+    # update `spl` to set the path `VarInfo`
     spl.state.vi[spl] = current_state
 
     # use path VarInfo to build instance of AISTransition
