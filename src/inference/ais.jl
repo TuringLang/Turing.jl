@@ -258,8 +258,6 @@ Perform the MCMC step corresponding to the j-th intermediate distribution, with 
 """
 function intermediate_step(j, spl, current_state, accum_logweight)
     # fetch `proposal_kernel` and `densitymodel` for this intermediate step
-    densitymodel = spl.state.densitymodels[j]
-    proposal_kernel = spl.alg.proposal_kernels[j]
     
     # TODO: generalize - for now, proposal_kernel can only be a RandomWalkProposal
     proposed_state = current_state + rand(proposal_kernel)
