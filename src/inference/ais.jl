@@ -265,10 +265,12 @@ function intermediate_step(j, spl, current_state, accum_logweight)
     proposed_state = current_state + rand(proposal_kernel)
 
     # compute difference between intermediate logdensity at proposed and current positions
-    diff_logdensity = AdvancedMH.logdensity(densitymodel, proposed_state) - AdvancedMH.logdensity(densitymodel, current_state)
+    diff_logdensity = AdvancedMH.logdensity(densitymodel, proposed_state) -
+                    AdvancedMH.logdensity(densitymodel, current_state)
 
     # calculate log acceptance probability.
-    logα =  diff_logdensity + AdvancedMH.q(proposal_kernel, current_state, proposed_state) - AdvancedMH.q(proposal_kernel, proposed_state, current_state)
+    logα =  diff_logdensity + AdvancedMH.q(proposal_kernel, current_state, proposed_state) -
+            AdvancedMH.q(proposal_kernel, proposed_state, current_state)
 
     # decide whether to accept or reject proposal
     if -Random.randexp() < logα
