@@ -138,7 +138,7 @@ function AbstractMCMC.step!(
         current_state, accum_logweight = intermediate_step(j, spl, current_state, accum_logweight)
     end
 
-    # evaluate logjoint at current_state
+    # evaluate logjoint at `current_state`
     lp = AdvancedMH.logdensity(last(spl.state.densitymodels), current_state)
     
     # add lp as final term to accum_logweight
