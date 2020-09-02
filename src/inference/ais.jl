@@ -157,8 +157,7 @@ function AbstractMCMC.step!(
     spl.state.vi[spl] = current_state
 
     # use path VarInfo to build instance of AISTransition
-    nt = NamedTuple()
-    theta = merge(DynamicPPL.tonamedtuple(spl.state.vi), NamedTuple())
+    theta = DynamicPPL.tonamedtuple(spl.state.vi)
     return AISTransition(theta, lp, accum_logweight)
 end
 
