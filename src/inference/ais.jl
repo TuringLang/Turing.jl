@@ -130,7 +130,7 @@ function AbstractMCMC.step!(
     transition;
     kwargs...
 )
-    # sample from prior and compute first term in accum_logweight
+    # sample from prior and compute first term in `accum_logweight`
     current_state, accum_logweight = prior_step(spl, model)
 
     # for every intermediate distribution
