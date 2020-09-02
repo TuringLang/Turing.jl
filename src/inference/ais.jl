@@ -250,7 +250,7 @@ end
 Perform the MCMC step corresponding to the j-th intermediate distribution, with the j-th MH proposal. Return updated current_state and accum_logweight.
 """
 function intermediate_step(j, spl, current_state, accum_logweight)
-    # fetch proposal_kernel and densitymodel for this intermediate step
+    # fetch `proposal_kernel` and `densitymodel` for this intermediate step
     densitymodel = spl.state.densitymodels[j]
     proposal_kernel = spl.alg.proposal_kernels[j]
     
