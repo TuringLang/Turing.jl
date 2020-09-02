@@ -9,7 +9,7 @@ using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     Selector, AbstractSamplerState, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
-    getspace, inspace
+    getspace, inspace, setlogp!
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -42,6 +42,7 @@ export  InferenceAlgorithm,
         ESS,
         Emcee,
         Gibbs,      # classic sampling
+        AIS,
         HMC,
         SGLD,
         SGHMC,
@@ -59,7 +60,12 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent
+        isgibbscomponent,
+        gen_logjoint,
+        gen_logprior,
+        gen_log_unnorm_tempered, 
+        prior_step,
+        intermediate_step
 
 #######################
 # Sampler abstraction #
@@ -533,6 +539,7 @@ end
 #######################################
 
 include("ess.jl")
+include("ais.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")

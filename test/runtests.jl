@@ -2,9 +2,11 @@
 # Master file for running all test cases #
 ##########################################
 using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
+using Turing: Sampler
 using Pkg
 using Random
 using Test
+using DynamicPPL: getlogp
 
 include("test_utils/AllUtils.jl")
 
@@ -25,6 +27,7 @@ include("test_utils/AllUtils.jl")
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
+                include("inference/ais.jl")
                 include("inference/gibbs.jl")
                 include("inference/hmc.jl")
                 include("inference/is.jl")
