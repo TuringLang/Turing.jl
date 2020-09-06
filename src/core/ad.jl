@@ -2,26 +2,22 @@
 # Global variables/constants #
 ##############################
 const ADBACKEND = Ref(:forwarddiff)
-function setadbackend(backend_sym::Symbol)
-    setadbackend(Val(backend_sym))
-    AdvancedVI.setadbackend(Val(backend_sym))
-    Bijectors.setadbackend(Val(backend_sym))
+setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
+function setadbackend(backend::Val)
+    _setadbackend(backend)
+    AdvancedVI.setadbackend(backend)
+    Bijectors.setadbackend(backend)
 end
-function setadbackend(::Val{:forward_diff})
-    Base.depwarn("`Turing.setadbackend(:forward_diff)` is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.", :setadbackend)
-    setadbackend(Val(:forwarddiff))
-end
-function setadbackend(::Val{:forwarddiff})
+
+function _setadbackend(::Val{:forwarddiff})
     CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forwarddiff
 end
-
-function setadbackend(::Val{:reverse_diff})
-    Base.depwarn("`Turing.setadbackend(:reverse_diff)` is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.",  :setadbackend)
-    setadbackend(Val(:tracker))
-end
-function setadbackend(::Val{:tracker})
+function _setadbackend(::Val{:tracker})
     ADBACKEND[] = :tracker
+end
+function _setadbackend(::Val{:zygote})
+    ADBACKEND[] = :zygote
 end
 
 const ADSAFE = Ref(false)
@@ -46,12 +42,14 @@ getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
 getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
 
 struct TrackerAD <: ADBackend end
+struct ZygoteAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
 ADBackend(::Val{:tracker}) = TrackerAD
+ADBackend(::Val{:zygote}) = ZygoteAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
@@ -149,6 +147,30 @@ function gradient_logp(
     return l, ∂l∂θ
 end
 
+function gradient_logp(
+    backend::ZygoteAD,
+    θ::AbstractVector{<:Real},
+    vi::VarInfo,
+    model::Model,
+    sampler::AbstractSampler = SampleFromPrior(),
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
+)
+    T = typeof(getlogp(vi))
+
+    # Specify objective function.
+    function f(θ)
+        new_vi = VarInfo(vi, sampler, θ)
+        model(new_vi, sampler)
+        return getlogp(new_vi)
+    end
+
+    # Compute forward and reverse passes.
+    l::T, ȳ = ZygoteRules.pullback(f, θ)
+    ∂l∂θ::typeof(θ) = ȳ(1)[1]
+
+    return l, ∂l∂θ
+end
+
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
         @warn("Numerical error in gradients. Rejecting current proposal...")
@@ -173,4 +195,13 @@ for F in (:link, :invlink)
             end
         end
     end
+end
+
+# TODO: move to DynamicPPL and use ChainRulesCore
+ZygoteRules.@adjoint function DynamicPPL.updategid!(
+    vi::AbstractVarInfo,
+    vn::VarName,
+    spl::Sampler,
+)
+    return DynamicPPL.updategid!(vi, vn, spl), _ -> nothing
 end
