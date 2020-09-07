@@ -196,12 +196,3 @@ for F in (:link, :invlink)
         end
     end
 end
-
-# TODO: move to DynamicPPL and use ChainRulesCore
-ZygoteRules.@adjoint function DynamicPPL.updategid!(
-    vi::AbstractVarInfo,
-    vn::VarName,
-    spl::Sampler,
-)
-    return DynamicPPL.updategid!(vi, vn, spl), _ -> nothing
-end
