@@ -10,7 +10,7 @@ function emptyrdcache end
 
 getrdcache() = RDCache[]
 ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
-function setadbackend(::Val{:reversediff})
+function _setadbackend(::Val{:reversediff})
     ADBACKEND[] = :reversediff
 end
 
