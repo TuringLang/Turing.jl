@@ -15,7 +15,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         s3 = Gibbs(PG(3, :s), HMC( 0.4, 8, :m))
         s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m))
         s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m))
-        s6 = Gibbs(HMC(0.1, 5, :s), ESS(:m))
+        s6 = Gibbs(HMC(0.1, 5, :s), ESS(:m))    ## Gibbs(HMC(...), NS(...)) to be included here?? check
         for s in (s1, s2, s3, s4, s5, s6)
             @test DynamicPPL.alg_str(Sampler(s, gdemo_default)) == "Gibbs"
         end
@@ -78,7 +78,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(200)
         gibbs = Gibbs(
             PG(10, :z1, :z2, :z3, :z4),
-            ESS(:mu1), ESS(:mu2))
+            ESS(:mu1), ESS(:mu2))           ## similarly for NS(...) ??
         chain = sample(MoGtest_default, gibbs, 1500)
         check_MoGtest_default(chain, atol = 0.15)
     end
