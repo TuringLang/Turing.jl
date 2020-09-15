@@ -6,6 +6,7 @@ using NamedArrays
 using ReverseDiff
 using Random
 using LinearAlgebra
+using Zygote
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")

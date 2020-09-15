@@ -65,7 +65,8 @@ getADbackend(spl::SampleFromPrior) = ADBackend()()
         θ::AbstractVector{<:Real},
         vi::VarInfo,
         model::Model,
-        sampler::AbstractSampler=SampleFromPrior(),
+        sampler::AbstractSampler,
+        ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
 
 Computes the value of the log joint of `θ` and its gradient for the model
@@ -89,6 +90,7 @@ gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
 
 Compute the value of the log joint of `θ` and its gradient for the model
@@ -160,7 +162,7 @@ function gradient_logp(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, context)
         return getlogp(new_vi)
     end
 

@@ -40,6 +40,10 @@ include("test_utils/AllUtils.jl")
         @testset "variational algorithms : $adbackend" begin
             include("variational/advi.jl")
         end
+
+        @testset "modes" begin
+            include("modes/ModeEstimation.jl")
+        end
     end
     @testset "variational optimisers" begin
         include("variational/optimisers.jl")
@@ -54,9 +58,5 @@ include("test_utils/AllUtils.jl")
     @testset "utilities" begin
         # include("utilities/stan-interface.jl")
         include("inference/utilities.jl")
-    end
-
-    @testset "modes" begin
-        include("modes/ModeEstimation.jl")
     end
 end
