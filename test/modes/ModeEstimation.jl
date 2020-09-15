@@ -48,19 +48,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
         
         Turing.setadbackend(:forwarddiff)
         m1 = optimize(gdemo_default, MLE())
-        display(m1)
         
         Turing.setadbackend(:reversediff)
         m2 = optimize(gdemo_default, MLE())
-        display(m2)
 
         Turing.setadbackend(:tracker)
         m3 = optimize(gdemo_default, MLE())
-        display(m3)
 
         Turing.setadbackend(:zygote)
         m4 = optimize(gdemo_default, MLE())
-        display(m4)
 
         # Go back to normal forwarddiff for the rest of the tests
         Turing.setadbackend(:forwarddiff)
