@@ -42,31 +42,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
     end
 
-    @testset "AD backends" begin
-        Random.seed!(222)
-        true_value = [0.0625, 1.75]
-        
-        Turing.setadbackend(:forwarddiff)
-        m1 = optimize(gdemo_default, MLE())
-        
-        Turing.setadbackend(:reversediff)
-        m2 = optimize(gdemo_default, MLE())
-
-        Turing.setadbackend(:tracker)
-        m3 = optimize(gdemo_default, MLE())
-
-        Turing.setadbackend(:zygote)
-        m4 = optimize(gdemo_default, MLE())
-
-        # Go back to normal forwarddiff for the rest of the tests
-        Turing.setadbackend(:forwarddiff)
-
-        @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
-    end
-
     @testset "StatsBase integration" begin
         Random.seed!(54321)
         mle_est = optimize(gdemo_default, MLE())
