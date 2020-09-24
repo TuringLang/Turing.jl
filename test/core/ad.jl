@@ -276,9 +276,13 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setrdcache(true)
         sample(dir(), HMC(0.01, 1), 1000);
-        @test length(Memoization.caches) == 1
+        caches = Memoization.find_caches(Turing.Core.memoized_taperesult)
+        @test length(caches) == 1
+        @test !isempty(first(values(caches)))
         Turing.emptyrdcache()
-        @test length(Memoization.caches) == 0
+        caches = Memoization.find_caches(Turing.Core.memoized_taperesult)
+        @test length(caches) == 1
+        @test isempty(first(values(caches)))
     end
     # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
@@ -339,5 +343,25 @@ _to_cov(B) = B * B' + Matrix(I, size(B)...)
         H_r = ReverseDiff.hessian(target, zeros(2))
         @test H_f == [1.0 0.0; 0.0 1.0]
         @test H_f == H_r
+    end
+
+    @testset "memoization: issue #1393" begin
+        Turing.setadbackend(:reversediff)
+        Turing.setrdcache(true)
+
+        @model function demo(data)
+            sigma ~ Uniform(0.0, 20.0)
+            data ~ Normal(0, sigma)
+        end
+
+        N = 1000
+        for i in 1:5
+            d = Normal(0.0, i)
+            data = rand(d, N)
+            chn = sample(demo(data), NUTS(0.65), 1000)
+            @test mean(Array(chn[:sigma])) ≈ std(data) atol=0.5
+        end
+
+        Turing.emptyrdcache()
     end
 end
