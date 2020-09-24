@@ -36,8 +36,8 @@ include("test_utils/AllUtils.jl")
             include("variational/advi.jl")
         end
 
-        @testset "modes" begin
-            include("modes/ModeEstimation.jl")
+        @testset "optimization techniques : $adbackend" begin
+            include("optim/Optimization.jl")
         end
     end
     @testset "variational optimisers" begin
