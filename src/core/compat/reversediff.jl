@@ -23,7 +23,7 @@ function gradient_logp(
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     T = typeof(getlogp(vi))
-    
+
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
@@ -59,7 +59,7 @@ end
         context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
         T = typeof(getlogp(vi))
-        
+
         # Specify objective function.
         function f(θ)
             new_vi = VarInfo(vi, sampler, θ)
@@ -81,10 +81,10 @@ end
     end
     function Memoization._get!(f, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Any})
         key = keys[1][1]
-        return Memoization._get!(f, d, (key.f, typeof(key.x), size(key.x)))
+        return Memoization._get!(f, d, (key.f, typeof(key.x), size(key.x), Threads.threadid()))
     end
     memoized_taperesult(f, x) = memoized_taperesult(RDTapeKey(f, x))
-    Memoization.@memoize function memoized_taperesult(k::RDTapeKey)
+    Memoization.@memoize Dict function memoized_taperesult(k::RDTapeKey)
         return compiledtape(k.f, k.x), GradientResult(k.x)
     end
     compiledtape(f, x) = compile(GradientTape(f, x))
