@@ -79,7 +79,7 @@ end
         f::F
         x::Tx
     end
-    function Memoization._get!(f, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Any})
+    function Memoization._get!(f, d::Dict, keys::Tuple{Tuple{RDTapeKey}, Any})
         key = keys[1][1]
         return Memoization._get!(f, d, (key.f, typeof(key.x), size(key.x), Threads.threadid()))
     end
