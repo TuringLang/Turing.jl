@@ -67,7 +67,7 @@ end
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: elementwise_loglikelihoods, generated_quantities
+using DynamicPPL: elementwise_loglikelihoods, generated_quantities, logprior, logjoint
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
@@ -121,5 +121,7 @@ export  @model,                 # modelling
         arraydist,
 
         elementwise_loglikelihoods,
-        genereated_quantities
+        genereated_quantities,
+        logprior,
+        logjoint
 end
