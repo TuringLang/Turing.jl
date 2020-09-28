@@ -16,7 +16,7 @@ using Libtask
 using Tracker: Tracker
 
 import AdvancedVI
-import DynamicPPL: getspace, NoDist, NamedDist, elementwise_loglikelihoods, generated_quantities
+import DynamicPPL: getspace, NoDist, NamedDist
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
@@ -66,6 +66,8 @@ end
 ###########
 # Exports #
 ###########
+# `using` statements for stuff to re-export
+using DynamicPPL: elementwise_loglikelihoods, generated_quantities
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
