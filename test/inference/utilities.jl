@@ -42,7 +42,7 @@ using Random
     @test sum(abs2, ys_test - ys_pred_vec) ≤ 0.1
 
     # Multiple chains
-    chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), 200, 2);
+    chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), MCMCThreads(), 200, 2);
     m_lin_reg_test = linear_reg(xs_test, fill(missing, length(ys_test)));
     predictions = Turing.Inference.predict(m_lin_reg_test, chain_lin_reg)
 
