@@ -683,7 +683,7 @@ function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; inclu
     chain_result = reduce(
         MCMCChains.chainscat, [
             AbstractMCMC.bundle_samples(
-                Distributions.GLOBAL_RNG,
+                rng,
                 model,
                 spl,
                 length(chain),
