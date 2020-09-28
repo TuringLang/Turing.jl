@@ -67,6 +67,8 @@ end
 # Exports #
 ###########
 
+using StatsBase: predict
+
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
         @varname,
@@ -116,5 +118,7 @@ export  @model,                 # modelling
         LogPoisson,
         NamedDist,
         filldist,
-        arraydist
+        arraydist,
+
+        predict
 end
