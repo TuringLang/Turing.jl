@@ -599,7 +599,7 @@ DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 
 """
 
-    predict(model::Model, chain::MCMCChains.Chains; include_all=false)
+    predict([rng::AbstractRNG,] model::Model, chain::MCMCChains.Chains; include_all=false)
 
 Execute `model` conditioned on each sample in `chain`, and return the resulting `Chains`.
 
@@ -667,18 +667,21 @@ julia> sum(abs2, ys_test - ys_pred) ≤ 0.1
 true
 ```
 """
-function predict(model::Model, chain::MCMCChains.Chains; include_all = false)
+function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
+    return predict(Random.GLOBAL_RNG, model, chain; kwargs...)
+end
+function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
     transitions = [
-        transitions_from_chain(model, chain[:. :, chn_idx]; sampler = spl)
+        transitions_from_chain(rng, model, chain[:, :, chn_idx]; sampler = spl)
         for chn_idx = 1:size(chain, 3)
     ]
 
     # Let the Turing internals handle everything else for you
     chain_result = reduce(
-        cat, [
+        MCMCChains.chainscat, [
             AbstractMCMC.bundle_samples(
                 Distributions.GLOBAL_RNG,
                 model,
@@ -702,6 +705,7 @@ end
 """
 
     transitions_from_chain(
+        [rng::AbstractRNG,]
         model::Model, 
         chain::MCMCChains.Chains; 
         sampler = DynamicPPL.SampleFromPrior()
@@ -750,6 +754,14 @@ julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
 function transitions_from_chain(
     model::Turing.Model,
     chain::MCMCChains.Chains;
+    kwargs...
+)
+    return transitions_from_chain(Random.GLOBAL_RNG, model, chain; kwargs...)
+end
+function transitions_from_chain(
+    rng::AbstractRNG,
+    model::Turing.Model,
+    chain::MCMCChains.Chains;
     sampler = DynamicPPL.SampleFromPrior()
 )
     vi = Turing.VarInfo(model)
@@ -781,7 +793,7 @@ function transitions_from_chain(
             end
         end
         # Execute `model` on the parameters set in `vi` and sample those with `"del"` flag using `sampler`
-        model(vi, sampler)
+        model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save
         theta = DynamicPPL.tonamedtuple(vi)
