@@ -16,7 +16,7 @@ using Libtask
 using Tracker: Tracker
 
 import AdvancedVI
-import DynamicPPL: getspace, NoDist, NamedDist
+import DynamicPPL: getspace, NoDist, NamedDist, elementwise_loglikelihoods
 
 const PROGRESS = Ref(true)
 function turnprogress(switch::Bool)
@@ -116,5 +116,7 @@ export  @model,                 # modelling
         LogPoisson,
         NamedDist,
         filldist,
-        arraydist
+        arraydist,
+
+        elementwise_loglikelihoods
 end
