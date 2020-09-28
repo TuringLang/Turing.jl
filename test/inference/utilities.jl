@@ -27,7 +27,7 @@ using Random
     chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), 200);
 
     # Predict on two last indices
-    m_lin_reg_test = linear_reg(xs_test, Vector{Union{Missing, Float64}}(undef, length(ys_test)));
+    m_lin_reg_test = linear_reg(xs_test, fill(missing, length(ys_test)));
     predictions = Turing.Inference.predict(m_lin_reg_test, chain_lin_reg)
 
     ys_pred = vec(mean(Array(group(predictions, :y)); dims = 1))
@@ -40,4 +40,26 @@ using Random
     ys_pred_vec = vec(mean(Array(group(predictions_vec, :y)); dims = 1))
 
     @test sum(abs2, ys_test - ys_pred_vec) ≤ 0.1
+
+    # Multiple chains
+    chain_lin_reg = sample(m_lin_reg, NUTS(100, 0.65), 200, 2);
+    m_lin_reg_test = linear_reg(xs_test, fill(missing, length(ys_test)));
+    predictions = Turing.Inference.predict(m_lin_reg_test, chain_lin_reg)
+
+    for chain_idx in MCMCChains.chains(chain_lin_reg)
+        ys_pred = vec(mean(Array(group(predictions[:, :, chain_idx], :y)); dims = 1))
+        @test sum(abs2, ys_test - ys_pred) ≤ 0.1
+    end
+
+    # Predict on two last indices for vectorized
+    m_lin_reg_test = linear_reg_vec(xs_test, missing);
+    predictions_vec = Turing.Inference.predict(m_lin_reg_test, chain_lin_reg)
+
+    for chain_idx in MCMCChains.chains(chain_lin_reg)
+        ys_pred_vec = vec(mean(
+            Array(group(predictions_vec[:, :, chain_idx], :y));
+            dims = 1
+        ))
+        @test sum(abs2, ys_test - ys_pred_vec) ≤ 0.1
+    end
 end

@@ -671,20 +671,24 @@ function predict(model::Model, chain::MCMCChains.Chains; include_all = false)
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
-    chain_result = mapreduce(MCMCChains.chainscat, MCMCChains.chains(chain)) do chain_idx
-        transitions = transitions_from_chain(
-            model, chain[:, :, chain_idx];
-            sampler = spl
-        )
-        AbstractMCMC.bundle_samples(
-            Distributions.GLOBAL_RNG,
-            model,
-            spl,
-            length(transitions),
-            transitions,
-            MCMCChains.Chains
-        )
-    end
+    transitions = [
+        transitions_from_chain(model, chain[:. :, chn_idx]; sampler = spl)
+        for chn_idx = 1:size(chain, 3)
+    ]
+
+    # Let the Turing internals handle everything else for you
+    chain_result = reduce(
+        cat, [
+            AbstractMCMC.bundle_samples(
+                Distributions.GLOBAL_RNG,
+                model,
+                spl,
+                length(chain),
+                transitions[chn_idx],
+                MCMCChains.Chains
+            ) for chn_idx = 1:size(chain, 3)
+        ]
+    )
 
     parameter_names = if include_all
         names(chain_result, :parameters)
