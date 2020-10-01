@@ -52,7 +52,7 @@ end
 # Samples s with MH and m with PG
 chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s), PG(10, :m)), 1_000)
 mean(chain)
-````
+```
 
 Using custom distributions defaults to using static MH:
 
@@ -75,7 +75,7 @@ chain = sample(
     1_000
 )
 mean(chain)
-````
+```
 
 Specifying explicit proposals using the `AdvancedMH` interface:
 
@@ -98,7 +98,7 @@ chain = sample(
     1_000
 )
 mean(chain)
-````
+```
 
 Using a custom function to specify a conditional distribution:
 
@@ -121,7 +121,7 @@ chain = sample(
     1_000
 )
 mean(chain)
-````
+```
 
 Providing a covariance matrix will cause `MH` to perform random-walk
 sampling in the transformed space with proposals drawn from a multivariate
@@ -145,7 +145,7 @@ chain = sample(
     1_000
 )
 mean(chain)
-````
+```
 
 """
 function MH(space...)
