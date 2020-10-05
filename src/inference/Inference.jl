@@ -612,7 +612,7 @@ and then converts these into a `Chains` object using `AbstractMCMC.bundle_sample
 
 # Example
 ```jldoctest
-julia> using Turing; Turing.turnprogress(false);
+julia> using Turing; setprogress!(false);
 [ Info: [Turing]: progress logging is disabled globally
 
 julia> @model function linear_reg(x, y, σ = 0.1)

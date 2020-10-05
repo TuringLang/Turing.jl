@@ -627,7 +627,7 @@ For more information on Turing's automatic differentiation backend, please see t
 
 Turing.jl uses ProgressLogging.jl to log the progress of sampling. Progress
 logging is enabled as default but might slow down inference. It can be turned on
-or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `turnprogress(true)` or `turnprogress(false)`, respectively.
+or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `setprogress!(true)` or `setprogress!(false)`, respectively.
 
 Turing uses heuristics to select an appropriate visualization backend. If you
 use [Juno](https://junolab.org/), the progress is displayed with a
