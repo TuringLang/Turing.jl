@@ -1,10 +1,12 @@
 ##########################################
 # Master file for running all test cases #
 ##########################################
-using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
+using Zygote, ReverseDiff, Memoization, Turing
 using Pkg
 using Random
 using Test
+
+setprogress!(false)
 
 include("test_utils/AllUtils.jl")
 
