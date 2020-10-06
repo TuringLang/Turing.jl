@@ -174,7 +174,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         c1 = sample(gdemo_default, alg, 500, discard_adapt = true)
         c2 = sample(gdemo_default, alg, 500, discard_adapt = false)
 
-        @test size(c1, 1) == 400
+        @test size(c1, 1) == 500
         @test size(c2, 1) == 500
     end
     @turing_testset "AHMC resize" begin
