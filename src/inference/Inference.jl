@@ -5,9 +5,9 @@ using ..Core: logZ
 using ..Utilities
 using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!, _getvns, getdist, CACHERESET, AbstractSampler,
+    settrans!, _getvns, getdist, CACHERESET,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, AbstractSamplerState, DefaultContext, PriorContext,
+    Selector, DefaultContext, PriorContext,
     LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
     getspace, inspace
 using Distributions, Libtask, Bijectors
@@ -15,7 +15,7 @@ using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp
-using Random: GLOBAL_RNG, AbstractRNG, randexp
+using Random: AbstractRNG
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
@@ -23,6 +23,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
+import BangBang
 import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
     VarName, _getranges, _getindex, getval, _getvns
@@ -104,9 +105,9 @@ struct Transition{T, F<:AbstractFloat}
     lp :: F
 end
 
-function Transition(spl::Sampler, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(spl.state.vi), nt)
-    lp = getlogp(spl.state.vi)
+function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
+    theta = merge(tonamedtuple(vi), nt)
+    lp = getlogp(vi)
     return Transition{typeof(theta), typeof(lp)}(theta, lp)
 end
 
@@ -115,31 +116,6 @@ function additional_parameters(::Type{<:Transition})
 end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
-
-##########################################
-# Internal variable names for MCMCChains #
-##########################################
-
-const TURING_INTERNAL_VARS = (internals = [
-    "elapsed",
-    "eval_num",
-    "lf_eps",
-    "lp",
-    "weight",
-    "le",
-    "acceptance_rate",
-    "hamiltonian_energy",
-    "hamiltonian_energy_error",
-    "max_hamiltonian_energy_error",
-    "is_accept",
-    "log_density",
-    "n_steps",
-    "numerical_error",
-    "step_size",
-    "nom_step_size",
-    "tree_depth",
-    "is_adapt"
-],)
 
 #########################################
 # Default definitions for the interface #
@@ -255,47 +231,6 @@ function AbstractMCMC.sample(
                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
-function AbstractMCMC.sample_init!(
-    ::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:InferenceAlgorithm},
-    N::Integer;
-    kwargs...
-)
-    # Resume the sampler.
-    set_resume!(spl; kwargs...)
-
-    # Set the parameters to a starting value.
-    initialize_parameters!(spl; kwargs...)
-end
-
-function initialize_parameters!(
-    spl::Sampler;
-    init_theta::Union{Nothing,Vector}=nothing,
-    verbose::Bool=false,
-    kwargs...
-)
-    islinked(spl.state.vi, spl) && invlink!(spl.state.vi, spl)
-    # Get `init_theta`
-    if init_theta !== nothing
-        verbose && @info "Using passed-in initial variable values" init_theta
-        # Convert individual numbers to length 1 vector; `ismissing(v)` is needed as `size(missing)` is undefined`
-        init_theta = [ismissing(v) || size(v) == () ? [v] : v for v in init_theta]
-        # Flatten `init_theta`
-        init_theta_flat = foldl(vcat, map(vec, init_theta))
-        # Create a mask to inidicate which values are not missing
-        theta_mask = map(x -> !ismissing(x), init_theta_flat)
-        # Get all values
-        theta = spl.state.vi[spl]
-        @assert length(theta) == length(init_theta_flat) "Provided initial value doesn't match the dimension of the model"
-        # Update those which are provided (i.e. not missing)
-        theta[theta_mask] .= init_theta_flat[theta_mask]
-        # Update in `vi`
-        spl.state.vi[spl] = theta
-    end
-end
-
-
 ##########################
 # Chain making utilities #
 ##########################
@@ -387,25 +322,15 @@ function get_transition_extras(ts::AbstractVector)
     return extra_names, valmat
 end
 
-getlogevidence(sampler) = missing
-function getlogevidence(sampler::Sampler)
-    if isdefined(sampler.state, :average_logevidence)
-        return sampler.state.average_logevidence
-    elseif isdefined(sampler.state, :final_logevidence)
-        return sampler.state.final_logevidence
-    else
-        return missing
-    end
-end
+getlogevidence(transitions, sampler, state) = missing
 
 # Default MCMCChains.Chains constructor.
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    rng::AbstractRNG,
+    ts::Vector,
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
-    N::Integer,
-    ts::Vector,
+    state,
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
     kwargs...
@@ -422,11 +347,11 @@ function AbstractMCMC.bundle_samples(
     parray = hcat(vals, extra_values)
 
     # Get the average or final log evidence, if it exists.
-    le = getlogevidence(spl)
+    le = getlogevidence(ts, spl, state)
 
     # Set up the info tuple.
     if save_state
-        info = (range = rng, model = model, spl = spl)
+        info = (model = model, sampler = spl, samplerstate = state)
     else
         info = NamedTuple()
     end
@@ -438,7 +363,7 @@ function AbstractMCMC.bundle_samples(
     return MCMCChains.Chains(
         parray,
         nms,
-        deepcopy(TURING_INTERNAL_VARS);
+        (internals = extra_params,);
         evidence=le,
         info=info,
     ) |> sort
@@ -446,87 +371,46 @@ end
 
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    rng::AbstractRNG,
+    ts::Vector,
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
-    N::Integer,
-    ts::Vector,
+    state,
     chain_type::Type{Vector{NamedTuple}};
-    discard_adapt::Bool=true,
-    save_state=false,
     kwargs...
 )
-    nts = Vector{NamedTuple}(undef, N)
-
-    for (i, t) in enumerate(ts)
-        params = getparams(t)
-
-        k = collect(keys(params))
-        vs = []
-        for v in values(params)
-            push!(vs, v[1])
-        end
-
-        push!(k, :lp)
-
-        nts[i] = NamedTuple{tuple(k...)}(tuple(vs..., getlogp(t)))
+    return map(ts) do t
+        params = map(first, getparams(t))
+        return merge(params, (lp = getlogp(t),))
     end
-
-    return map(identity, nts)
 end
 
 function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
-    nt = NamedTuple{(:spl, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
+    nt = NamedTuple{(:sampler, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(
-    c::MCMCChains.Chains,
-    n_iter::Int;
-    chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
-    kwargs...
-)
-    @assert !isempty(c.info) "[Turing] cannot resume from a chain without state info"
+function resume(chain::MCMCChains.Chains, args...; kwargs...)
+    return resume(Random.GLOBAL_RNG, chain, args...; kwargs...)
+end
+
+function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
+                progress=PROGRESS[], kwargs...)
+    isempty(chain.info) && error("[Turing] cannot resume from a chain without state info")
 
     # Sample a new chain.
-    newchain = AbstractMCMC.mcmcsample(
-        c.info[:range],
-        c.info[:model],
-        c.info[:spl],
-        n_iter;
-        resume_from=c,
-        reuse_spl_n=n_iter,
-        chain_type=MCMCChains.Chains,
-        progress=progress,
+    return AbstractMCMC.mcmcsample(
+        rng,
+        chain.info[:model],
+        chain.info[:sampler],
+        args...;
+        resume_from = chain,
+        chain_type = MCMCChains.Chains,
+        progress = progress,
         kwargs...
     )
-
-    # Stick the new samples at the end of the old chain.
-    return vcat(c, newchain)
 end
 
-function set_resume!(
-    s::Sampler;
-    resume_from::Union{MCMCChains.Chains, Nothing}=nothing,
-    kwargs...
-)
-    # If we're resuming, grab the sampler info.
-    if resume_from !== nothing
-        s = resume_from.info[:spl]
-    end
-end
-
-#########################
-# Default sampler state #
-#########################
-
-"""
-A blank `AbstractSamplerState` that contains only `VarInfo` information.
-"""
-mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
-    vi :: VIType
-end
+DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
 
 #######################################
 # Concrete algorithm implementations. #
@@ -612,7 +496,7 @@ and then converts these into a `Chains` object using `AbstractMCMC.bundle_sample
 
 # Example
 ```jldoctest
-julia> using Turing; setprogress!(false);
+julia> using Turing; Turing.turnprogress(false);
 [ Info: [Turing]: progress logging is disabled globally
 
 julia> @model function linear_reg(x, y, σ = 0.1)
@@ -683,11 +567,10 @@ function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; inclu
     chain_result = reduce(
         MCMCChains.chainscat, [
             AbstractMCMC.bundle_samples(
-                rng,
+                transitions[chn_idx],
                 model,
                 spl,
-                length(chain),
-                transitions[chn_idx],
+                nothing,
                 MCMCChains.Chains
             ) for chn_idx = 1:size(chain, 3)
         ]

@@ -27,15 +27,16 @@ ESS(space::Symbol) = ESS{(space,)}()
 
 isgibbscomponent(::ESS) = true
 
-mutable struct ESSState{V<:VarInfo} <: AbstractSamplerState
-    vi::V
-end
-
-function Sampler(alg::ESS, model::Model, s::Selector)
-    # sanity check
-    vi = VarInfo(model)
-    space = getspace(alg)
-    vns = _getvns(vi, s, Val(space))
+# always accept in the first step
+function DynamicPPL.initialstep(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:ESS},
+    vi::AbstractVarInfo;
+    kwargs...
+)
+    # Sanity check
+    vns = _getvns(vi, spl)
     length(vns) == 1 ||
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
     for vn in vns[1]
@@ -44,79 +45,59 @@ function Sampler(alg::ESS, model::Model, s::Selector)
             error("[ESS] only supports Gaussian prior distributions")
     end
 
-    state = ESSState(vi)
-    info = Dict{Symbol, Any}()
-
-    return Sampler(alg, info, s, state)
+    return Transition(vi), vi
 end
 
-# always accept in the first step
-function AbstractMCMC.step!(
-    ::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:ESS},
-    ::Integer,
-    ::Nothing;
-    kwargs...
-)
-    return Transition(spl)
-end
-
-function AbstractMCMC.step!(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:ESS},
-    ::Integer,
-    transition;
+    vi::AbstractVarInfo;
     kwargs...
 )
-    # obtain random variable that should be sampled
-    vi = spl.state.vi
-
     # obtain previous sample
     f = vi[spl]
 
     # recompute log-likelihood in logp
     if spl.selector.tag !== :default
-        model(vi, spl)
+        model(rng, vi, spl)
     end
 
     # define previous sampler state
-    oldstate = EllipticalSliceSampling.EllipticalSliceSamplerState(f, getlogp(vi))
+    oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi))
 
     # compute next state
-    state = AbstractMCMC.step!(rng, ESSModel(model, spl),
-                               EllipticalSliceSampling.EllipticalSliceSampler(), 1, oldstate;
-                               progress = false)
+    _, state = AbstractMCMC.step(rng, ESSModel(model, spl, vi),
+                                 EllipticalSliceSampling.ESS(), oldstate)
 
     # update sample and log-likelihood
     vi[spl] = state.sample
     setlogp!(vi, state.loglikelihood)
 
-    return Transition(spl)
+    return Transition(vi), vi
 end
 
-struct ESSModel{M<:Model,S<:Sampler{<:ESS},T} <: AbstractMCMC.AbstractModel
+struct ESSModel{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T} <: AbstractMCMC.AbstractModel
     model::M
     spl::S
+    vi::V
     μ::T
 end
 
-function ESSModel(model::Model, spl::Sampler{<:ESS})
-    vi = spl.state.vi
+function ESSModel(model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo)
     vns = _getvns(vi, spl)
     μ = mapreduce(vcat, vns[1]) do vn
         dist = getdist(vi, vn)
         vectorize(dist, mean(dist))
     end
 
-    ESSModel(model, spl, μ)
+    ESSModel(model, spl, vi, μ)
 end
 
 # sample from the prior
 function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ESSModel)
     spl = model.spl
-    vi = spl.state.vi
+    vi = model.vi
     vns = _getvns(vi, spl)
     set_flag!(vi, vns[1][1], "del")
     model.model(rng, vi, spl)
@@ -140,7 +121,7 @@ end
 # evaluate log-likelihood
 function Distributions.loglikelihood(model::ESSModel, f)
     spl = model.spl
-    vi = spl.state.vi
+    vi = model.vi
     vi[spl] = f
     model.model(vi, spl)
     getlogp(vi)

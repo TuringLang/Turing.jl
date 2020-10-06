@@ -59,40 +59,62 @@ end
 Stores a `VarInfo` for use in sampling, and a `Tuple` of `Samplers` that
 the `Gibbs` sampler iterates through for each `step!`.
 """
-mutable struct GibbsState{V<:VarInfo, S<:Tuple{Vararg{Sampler}}} <: AbstractSamplerState
+struct GibbsState{V<:VarInfo,S<:Tuple{Vararg{Sampler}},T}
     vi::V
     samplers::S
+    states::T
 end
 
-function GibbsState(model::Model, samplers::Tuple{Vararg{Sampler}})
-    return GibbsState(VarInfo(model), samplers)
+struct GibbsTransition{T,F}
+    "The parameters for any given sample."
+    θ::T
+    "The joint log probability for the sample's parameters."
+    lp::F
 end
 
-function Sampler(alg::Gibbs, model::Model, s::Selector)
-    # sanity check for space
-    space = getspace(alg)
-    # create tuple of samplers
+function GibbsTransition(vi::AbstractVarInfo)
+    theta = tonamedtuple(vi)
+    lp = getlogp(vi)
+    return GibbsTransition(theta, lp)
+end
+
+function additional_parameters(::Type{<:GibbsTransition})
+    return [:lp]
+end
+
+DynamicPPL.getlogp(t::GibbsTransition) = t.lp
+
+# extract varinfo object from state
+getvarinfo(state) = state.vi
+getvarinfo(state::AbstractVarInfo) = state
+
+# update state with new varinfo object
+gibbs_update_state(state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
+
+# Initialize the Gibbs sampler.
+function DynamicPPL.initialstep(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Gibbs},
+    vi::AbstractVarInfo;
+    kwargs...
+)
+    # Create tuple of samplers
     i = 0
-    samplers = map(alg.algs) do _alg
+    algs = spl.alg.algs
+    samplers = map(algs) do alg
         i += 1
         if i == 1
-            prev_alg = alg.algs[end]
+            prev_alg = algs[end]
         else
-            prev_alg = alg.algs[i-1]
+            prev_alg = algs[i-1]
         end
-        rerun = !(_alg isa MH) || prev_alg isa PG || prev_alg isa ESS
-        selector = Selector(Symbol(typeof(_alg)), rerun)
-        Sampler(_alg, model, selector)
+        rerun = !isa(alg, MH) || prev_alg isa PG || prev_alg isa ESS
+        selector = Selector(Symbol(typeof(alg)), rerun)
+        Sampler(alg, model, selector)
     end
-    # create a state variable
-    state = GibbsState(model, samplers)
 
-    # create the sampler
-    info = Dict{Symbol, Any}()
-    spl = Sampler(alg, info, s, state)
-
-    # add Gibbs to gids for all variables
-    vi = spl.state.vi
+    # Add Gibbs to gids for all variables.
     for sym in keys(vi.metadata)
         vns = getfield(vi.metadata, sym).vns
 
@@ -107,118 +129,50 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         end
     end
 
-    return spl
-end
+    # Compute initial states of the local samplers.
+    states = map(samplers) do local_spl
+        state = last(DynamicPPL.initialstep(rng, model, local_spl, vi; kwargs...))
 
-"""
-    GibbsTransition
+        # update VarInfo object
+        vi = getvarinfo(state)
 
-Fields:
-- `θ`: The parameters for any given sample.
-- `lp`: The log pdf for the sample's parameters.
-- `transitions`: The transitions of the samplers.
-"""
-struct GibbsTransition{T,F,S<:AbstractVector}
-    θ::T
-    lp::F
-    transitions::S
-end
-
-function GibbsTransition(spl::Sampler{<:Gibbs}, transitions::AbstractVector)
-    theta = tonamedtuple(spl.state.vi)
-    lp = getlogp(spl.state.vi)
-    return GibbsTransition(theta, lp, transitions)
-end
-
-function additional_parameters(::Type{<:GibbsTransition})
-    return [:lp]
-end
-
-DynamicPPL.getlogp(t::GibbsTransition) = t.lp
-
-# Initialize the Gibbs sampler.
-function AbstractMCMC.sample_init!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    # Initialize each local sampler.
-    for local_spl in spl.state.samplers
-        AbstractMCMC.sample_init!(rng, model, local_spl, N; kwargs...)
+        return state
     end
+
+    # Compute initial transition and state.
+    transition = GibbsTransition(vi)
+    state = GibbsState(vi, samplers, states)
+
+    return transition, state
 end
 
-# Finalize the Gibbs sampler.
-function AbstractMCMC.sample_end!(
+# Subsequent steps
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    # Finalize each local sampler.
-    for local_spl in spl.state.samplers
-        AbstractMCMC.sample_end!(rng, model, local_spl, N; kwargs...)
-    end
-end
-
-# Steps 2
-function AbstractMCMC.step!(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    N::Integer,
-    transition::Union{Nothing,GibbsTransition};
+    state::GibbsState;
     kwargs...
 )
     @debug "Gibbs stepping..."
 
     # Iterate through each of the samplers.
-    transitions = map(enumerate(spl.state.samplers)) do (i, local_spl)
-        @debug "$(typeof(local_spl)) stepping..."
+    vi = state.vi
+    samplers = state.samplers
+    states = map(samplers, state.states) do _sampler, _state
+        @debug "$(typeof(_sampler)) stepping..."
 
-        # Update the sampler's VarInfo.
-        local_spl.state.vi = spl.state.vi
+        # Update state of current sampler with updated `VarInfo` object.
+        current_state = gibbs_update_state(_state, vi)
 
         # Step through the local sampler.
-        if transition === nothing
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, nothing; kwargs...)
-        else
-            trans = AbstractMCMC.step!(rng, model, local_spl, N, transition.transitions[i];
-                                       kwargs...)
-        end
+        newstate = last(AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...))
 
-        # After the step, update the master varinfo.
-        spl.state.vi = local_spl.state.vi
+        # Update `VarInfo` object.
+        vi = getvarinfo(newstate)
 
-        trans
+        return newstate
     end
 
-    return GibbsTransition(spl, transitions)
-end
-
-# Do not store transitions of subsamplers
-function AbstractMCMC.transitions_init(
-    transition::GibbsTransition,
-    ::Model,
-    ::Sampler{<:Gibbs},
-    N::Integer;
-    kwargs...
-)
-    return Vector{Transition{typeof(transition.θ),typeof(transition.lp)}}(undef, N)
-end
-
-function AbstractMCMC.transitions_save!(
-    transitions::Vector{<:Transition},
-    iteration::Integer,
-    transition::GibbsTransition,
-    ::Model,
-    ::Sampler{<:Gibbs},
-    ::Integer;
-    kwargs...
-)
-    transitions[iteration] = Transition(transition.θ, transition.lp)
-    return
+    return GibbsTransition(vi), GibbsState(vi, samplers, states)
 end
