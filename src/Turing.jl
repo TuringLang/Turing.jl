@@ -17,6 +17,7 @@ using Tracker: Tracker
 
 import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
+import Random
 
 const PROGRESS = Ref(true)
 
