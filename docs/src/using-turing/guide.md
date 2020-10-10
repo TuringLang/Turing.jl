@@ -545,6 +545,19 @@ The `Gibbs` sampler can be used to specify unique automatic differentation backe
 
 For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://proceedings.mlr.press/v84/ge18b.html).
 
+### Indexed Group Variables
+
+The function `filldist(distribution,n)` provides a simplified interface for defining a set of model variables that share the same structure, but vary by group.
+
+For example, with in the following model ``x ~ Normal(\mu_i)`` where ``\mu_i ~ Normal()`` for each group. The group should be a numeric index.
+
+```julia
+@model function demo(x, g)
+  a ~ filldist(Normal(), length(unique(g)))
+  mu = a[g]
+  x .~ Normal.(mu)
+end
+```
 
 ### Working with MCMCChains.jl
 
