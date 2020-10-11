@@ -50,6 +50,9 @@ end
         return
     end
 
+    # This function will call emptyrdcache only if ReverseDiff & Memoization are loaded
+    clearcache() = emptyrdcache()
+
     function gradient_logp(
         backend::ReverseDiffAD{true},
         θ::AbstractVector{<:Real},

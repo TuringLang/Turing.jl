@@ -198,3 +198,7 @@ for F in (:link, :invlink)
         end
     end
 end
+
+# This function will call emptyrdcache only if ReverseDiff & Memoization are loaded
+# See Turing issue #1418
+clearcache(x=nothing) = ()

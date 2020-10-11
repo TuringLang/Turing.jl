@@ -419,6 +419,9 @@ function _optimize(
     # Optimize!
     M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
 
+    # Clear the cache if Memoization & ReverseDiff are loaded.
+    Turing.Core.clearcache()
+
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
         @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
