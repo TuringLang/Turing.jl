@@ -357,9 +357,9 @@ You can access the values inside a chain several ways:
 3. Create a three-dimensional `Array` object
 
 For example, let `c` be a `Chain`:
-    1. `DataFrame(c)` converts `c` to a `DataFrame`,
-    2. `c.value` retrieves the values inside `c` as an `AxisArray`, and
-    3. `c.value.data` retrieves the values inside `c` as a 3D `Array`.
+1. `DataFrame(c)` converts `c` to a `DataFrame`,
+2. `c.value` retrieves the values inside `c` as an `AxisArray`, and
+3. `c.value.data` retrieves the values inside `c` as a 3D `Array`.
 
 
 #### Variable Types and Type Parameters
