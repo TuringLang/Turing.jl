@@ -133,7 +133,7 @@ export  @model,                 # modelling
         predict,
         pointwise_loglikelihoods,
         elementwise_loglikelihoods,
-        genereated_quantities,
+        generated_quantities,
         logprior,
         logjoint
 
