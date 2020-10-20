@@ -18,7 +18,6 @@ using StatsFuns: logsumexp
 using Random: GLOBAL_RNG, AbstractRNG, randexp
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
-using Bijectors: _debug
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 
 import AbstractMCMC
@@ -602,7 +601,7 @@ DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 
 """
 
-    predict(model::Model, chain::MCMCChains.Chains; include_all=false)
+    predict([rng::AbstractRNG,] model::Model, chain::MCMCChains.Chains; include_all=false)
 
 Execute `model` conditioned on each sample in `chain`, and return the resulting `Chains`.
 
@@ -615,7 +614,7 @@ and then converts these into a `Chains` object using `AbstractMCMC.bundle_sample
 
 # Example
 ```jldoctest
-julia> using Turing; Turing.turnprogress(false);
+julia> using Turing; setprogress!(false);
 [ Info: [Turing]: progress logging is disabled globally
 
 julia> @model function linear_reg(x, y, σ = 0.1)
@@ -640,7 +639,7 @@ julia> chain_lin_reg = sample(m_train, NUTS(100, 0.65), 200);
 
 julia> m_test = linear_reg(xs_test, Vector{Union{Missing, Float64}}(undef, length(ys_test)), σ);
 
-julia> predictions = Turing.Inference.predict(m_test, chain_lin_reg)
+julia> predictions = predict(m_test, chain_lin_reg)
 Object of type Chains, with data of type 100×2×1 Array{Float64,3}
 
 Iterations        = 1:100
@@ -670,20 +669,30 @@ julia> sum(abs2, ys_test - ys_pred) ≤ 0.1
 true
 ```
 """
-function predict(model::Turing.Model, chain::MCMCChains.Chains; include_all = false)
+function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
+    return predict(Random.GLOBAL_RNG, model, chain; kwargs...)
+end
+function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
-    transitions = transitions_from_chain(model, chain; sampler = spl)
+    transitions = [
+        transitions_from_chain(rng, model, chain[:, :, chn_idx]; sampler = spl)
+        for chn_idx = 1:size(chain, 3)
+    ]
 
     # Let the Turing internals handle everything else for you
-    chain_result = AbstractMCMC.bundle_samples(
-        Distributions.GLOBAL_RNG,
-        model,
-        spl,
-        length(chain),
-        transitions,
-        MCMCChains.Chains
+    chain_result = reduce(
+        MCMCChains.chainscat, [
+            AbstractMCMC.bundle_samples(
+                rng,
+                model,
+                spl,
+                length(chain),
+                transitions[chn_idx],
+                MCMCChains.Chains
+            ) for chn_idx = 1:size(chain, 3)
+        ]
     )
 
     parameter_names = if include_all
@@ -698,6 +707,7 @@ end
 """
 
     transitions_from_chain(
+        [rng::AbstractRNG,]
         model::Model, 
         chain::MCMCChains.Chains; 
         sampler = DynamicPPL.SampleFromPrior()
@@ -746,6 +756,14 @@ julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
 function transitions_from_chain(
     model::Turing.Model,
     chain::MCMCChains.Chains;
+    kwargs...
+)
+    return transitions_from_chain(Random.GLOBAL_RNG, model, chain; kwargs...)
+end
+function transitions_from_chain(
+    rng::AbstractRNG,
+    model::Turing.Model,
+    chain::MCMCChains.Chains;
     sampler = DynamicPPL.SampleFromPrior()
 )
     vi = Turing.VarInfo(model)
@@ -777,7 +795,7 @@ function transitions_from_chain(
             end
         end
         # Execute `model` on the parameters set in `vi` and sample those with `"del"` flag using `sampler`
-        model(vi, sampler)
+        model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save
         theta = DynamicPPL.tonamedtuple(vi)

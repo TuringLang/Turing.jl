@@ -147,6 +147,44 @@ function (f::OptimLogDensity)(z)
     return -DynamicPPL.getlogp(varinfo)
 end
 
+function (f::OptimLogDensity)(F, G, H, z)
+    # Throw an error if a second order method was used.
+    if H !== nothing
+        error("Second order optimization is not yet supported.")
+    end
+
+    spl = DynamicPPL.SampleFromPrior()
+    
+    if G !== nothing
+        # Calculate log joint and the gradient
+        l, g = gradient_logp(
+            z, 
+            DynamicPPL.VarInfo(f.vi, spl, z), 
+            f.model, 
+            spl,
+            f.context
+        )
+
+        # Use the negative gradient because we are minimizing.
+        G[:] = -g
+
+        # If F is something, return that since we already have the 
+        # log joint.
+        if F !== nothing
+            F = -l
+            return F
+        end
+    end
+
+    # No gradient necessary, just return the log joint.
+    if F !== nothing
+        F = f(z)
+        return F
+    end
+
+    return nothing
+end
+
 """
     ModeResult{
         V<:NamedArrays.NamedArray, 
@@ -178,7 +216,7 @@ end
 
 
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
-    print(io, "ModeResult with minimized lp of ")
+    print(io, "ModeResult with maximized lp of ")
     Printf.@printf(io, "%.2f", m.lp)
     println(io)
     show(io, m.values)
@@ -378,9 +416,8 @@ function _optimize(
     link!(f.vi, spl)
     init_vals = f.vi[spl]
 
-
     # Optimize!
-    M = Optim.optimize(f, init_vals, optimizer, options, args...; kwargs...)
+    M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)

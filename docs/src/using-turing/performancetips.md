@@ -5,7 +5,7 @@ title: Performance Tips
 # Performance Tips
 
 This section briefly summarises a few common techniques to ensure good performance when using Turing.
-We refer to [julialang.org](https://docs.julialang.org/en/v1/manual/performance-tips/index.html) for general techniques to ensure good performance of Julia programs.
+We refer to [the Julia documentation](https://docs.julialang.org/en/v1/manual/performance-tips/index.html) for general techniques to ensure good performance of Julia programs.
 
 
 ## Use multivariate distributions
@@ -15,7 +15,7 @@ It is generally preferable to use multivariate distributions if possible.
 The following example:
 
 ```julia
-@model gmodel(x) = begin
+@model function gmodel(x)
     m ~ Normal()
     for i = 1:length(x)
         x[i] ~ Normal(m, 0.2)
@@ -25,9 +25,11 @@ end
 can be directly expressed more efficiently using a simple transformation:
 
 ```julia
-@model gmodel(x) = begin
+using FillArrays
+
+@model function gmodel(x)
     m ~ Normal()
-    x ~ MvNormal(fill(m, length(x)), 0.2)
+    x ~ MvNormal(Fill(m, length(x)), 0.2)
 end
 ```
 
@@ -45,15 +47,14 @@ This is mainly due to the reverse-mode AD backends `Tracker` and `Zygote` which 
 Avoiding loops can be done using `filldist(dist, N)` and `arraydist(dists)`. `filldist(dist, N)` creates a multivariate distribution that is composed of `N` identical and independent copies of the univariate distribution `dist` if `dist` is univariate, or it creates a matrix-variate distribution composed of `N` identical and idependent copies of the multivariate distribution `dist` if `dist` is multivariate. `filldist(dist, N, M)` can also be used to create a matrix-variate distribution from a univariate distribution `dist`.  `arraydist(dists)` is similar to `filldist` but it takes an array of distributions `dists` as input. Writing a [custom distribution](advanced) with a custom adjoint is another option to avoid loops.
 
 
-## Make your model type-stable
+## Ensure that types in your model can be inferred
 
-For efficient gradient-based inference, e.g. using HMC, NUTS or ADVI, it is important to ensure the model is type-stable.
-We refer to [julialang.org](https://docs.julialang.org/en/v1/manual/performance-tips/index.html#Write-"type-stable"-functions-1) for a general discussion on type-stability.
+For efficient gradient-based inference, e.g. using HMC, NUTS or ADVI, it is important to ensure the types in your model can be inferred.
 
-The following example:
+The following example with abstract types
 
 ```julia
-@model tmodel(x, y) = begin
+@model function tmodel(x, y)
     p,n = size(x)
     params = Vector{Real}(undef, n)
     for i = 1:n
@@ -64,12 +65,13 @@ The following example:
     y ~ MvNormal(a, 1.0)
 end
 ```
-can be transformed into the following type-stable representation:
+
+can be transformed into the following representation with concrete types:
 
 ```julia
-@model tmodel(x, y, ::Type{T}=Vector{Float64}) where {T} = begin
+@model function tmodel(x, y, ::Type{T} = Float64) where {T}
     p,n = size(x)
-    params = T(undef, n)
+    params = Vector{T}(undef, n)
     for i = 1:n
         params[i] ~ truncated(Normal(), 0, Inf)
     end
@@ -79,37 +81,55 @@ can be transformed into the following type-stable representation:
 end
 ```
 
-Note that you can use `@code_warntype` to find type instabilities in your model definition.
-
-For example consider the following simple program
+Alternatively, you could use `filldist` in this example:
 
 ```julia
-@model tmodel(x) = begin
-	p = Vector{Real}(undef, 1); 
-	p[1] ~ Normal()
-	p = p .+ 1
-	x ~ Normal(p[1])
+@model function tmodel(x, y)
+    params = filldist(truncated(Normal(), 0, Inf), size(x, 2))
+    a = x * params
+    y ~ MvNormal(a, 1.0)
 end
 ```
-we can use
+
+Note that you can use `@code_warntype` to find types in your model definition that the compiler cannot infer.
+They are marked in red in the Julia REPL.
+
+For example, consider the following simple program:
+
+```julia
+@model function tmodel(x)
+    p = Vector{Real}(undef, 1)
+    p[1] ~ Normal()
+    p = p .+ 1
+    x ~ Normal(p[1])
+end
+```
+
+We can use
 
 ```julia
 using Random
 
 model = tmodel(1.0)
-varinfo = Turing.VarInfo(model)
-spl = Turing.SampleFromPrior()
 
-@code_warntype model.f(Random.GLOBAL_RNG, model, varinfo, spl, Turing.DefaultContext())
+@code_warntype model.f(
+    Random.GLOBAL_RNG,
+    model,
+    Turing.VarInfo(model),
+    Turing.SampleFromPrior(),
+    Turing.DefaultContext(),
+    model.args...,
+)
 ```
-to inspect the type instabilities in the model.
+
+to inspect type inference in the model.
 
 
 ## Reuse Computations in Gibbs Sampling
 
-Often when performing Gibbs sampling, one can save computational time by caching the output of expensive functions. The cached values can then be reused in future Gibbs sub-iterations which do not change the inputs to this expensive function. For example in the following model:
+Often when performing Gibbs sampling, one can save computational time by caching the output of expensive functions. The cached values can then be reused in future Gibbs sub-iterations which do not change the inputs to this expensive function. For example in the following model
 ```julia
-@model demo(x) = begin
+@model function demo(x)
     a ~ Gamma()
     b ~ Normal()
     c = function1(a)
@@ -130,7 +150,7 @@ using Memoization
 ```
 Then define the `Turing` model using the new functions as such:
 ```julia
-@model demo(x) = begin
+@model function demo(x)
     a ~ Gamma()
     b ~ Normal()
     c = memoized_function1(a)

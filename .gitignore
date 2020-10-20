@@ -25,6 +25,7 @@ docs/.jekyll-cache
 .vscode
 .DS_Store
 Manifest.toml
-test/Project.toml
+/Manifest.toml
+/test/Manifest.toml
 
 benchmarks/output/

@@ -120,9 +120,8 @@ var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 
 
 The key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")` or `chn["x[1]"]`.
-
-
-The benefit of using a `Symbol` to index allows you to retrieve all the parameters associated with that symbol. As an example, if you have the parameters `"x[1]"`, `"x[2]"`, and `"x[3]"`, calling `chn[:x]` will return a new chain with only `"x[1]"`, `"x[2]"`, and `"x[3]"`.
+If you want to retrieve all parameters associated with a specific symbol, you can use `group`. As an example, if you have the
+parameters `"x[1]"`, `"x[2]"`, and `"x[3]"`, calling `group(chn, :x)` or `group(chn, "x")` will return a new chain with only `"x[1]"`, `"x[2]"`, and `"x[3]"`.
 
 
 Turing does not have a declarative form. More generally, the order in which you place the lines of a `@model` macro matters. For example, the following example works:
@@ -358,9 +357,9 @@ You can access the values inside a chain several ways:
 3. Create a three-dimensional `Array` object
 
 For example, let `c` be a `Chain`:
-    1. `DataFrame(c)` converts `c` to a `DataFrame`,
-    2. `c.value` retrieves the values inside `c` as an `AxisArray`, and
-    3. `c.value.data` retrieves the values inside `c` as a 3D `Array`.
+1. `DataFrame(c)` converts `c` to a `DataFrame`,
+2. `c.value` retrieves the values inside `c` as an `AxisArray`, and
+3. `c.value.data` retrieves the values inside `c` as a 3D `Array`.
 
 
 #### Variable Types and Type Parameters
@@ -628,7 +627,7 @@ For more information on Turing's automatic differentiation backend, please see t
 
 Turing.jl uses ProgressLogging.jl to log the progress of sampling. Progress
 logging is enabled as default but might slow down inference. It can be turned on
-or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `turnprogress(true)` or `turnprogress(false)`, respectively.
+or off by setting the keyword argument `progress` of `sample` to `true` or `false`, respectively. Moreover, you can enable or disable progress logging globally by calling `setprogress!(true)` or `setprogress!(false)`, respectively.
 
 Turing uses heuristics to select an appropriate visualization backend. If you
 use [Juno](https://junolab.org/), the progress is displayed with a

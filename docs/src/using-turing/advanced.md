@@ -82,17 +82,65 @@ The vectorization syntax follows `rv ~ [distribution]`, which requires `rand` an
 Distributions.logpdf(d::Flat, x::AbstractVector{<:Real}) = zero(x)
 ```
 
+## Update the accumulated log probability in the model definition
 
-## Model Internals
-
-
-The `@model` macro accepts a function definition and generates a `Turing.Model` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the two code sections below (macro and macro-free) are equivalent.
-
+Turing accumulates log probabilities internally in an internal data structure that is accessible through
+the internal variable `_varinfo` inside of the model definition (see below for more details about model internals).
+However, since users should not have to deal with internal data structures, a macro `Turing.@addlogprob!` is provided
+that increases the accumulated log probability. For instance, this allows you to
+[include arbitrary terms in the likelihood](https://github.com/TuringLang/Turing.jl/issues/1332)
 
 ```julia
 using Turing
 
-@model gdemo(x) = begin
+myloglikelihood(x, μ) = loglikelihood(Normal(μ, 1), x)
+
+@model function demo(x)
+    μ ~ Normal()
+    Turing.@addlogprob! myloglikelihood(x, μ)
+end
+```
+
+and to [reject samples](https://github.com/TuringLang/Turing.jl/issues/1328):
+
+```julia
+using Turing
+using LinearAlgebra
+
+@model function demo(x)
+    m ~ MvNormal(length(x))
+    if dot(m, x) < 0
+        Turing.@addlogprob! -Inf
+        # Exit the model evaluation early
+        return
+    end
+    
+    x ~ MvNormal(m, 1.0)
+    return
+end
+```
+
+Note that `@addlogprob!` always increases the accumulated log probability, regardless of the provided
+sampling context. For instance, if you do not want to apply `Turing.@addlogprob!` when evaluating the
+prior of your model but only when computing the log likelihood and the log joint probability, then you
+should [check the type of the internal variable `_context`](https://github.com/TuringLang/DynamicPPL.jl/issues/154)
+such as
+
+```julia
+if !isa(_context, Turing.PriorContext)
+    Turing.@addlogprob! myloglikelihood(x, μ)
+end
+```
+
+## Model Internals
+
+
+The `@model` macro accepts a function definition and rewrites it such that call of the function generates a `Model` struct for use by the sampler. Models can be constructed by hand without the use of a macro. Taking the `gdemo` model as an example, the macro-based definition
+
+```julia
+using Turing
+
+@model function gdemo(x)
   # Set priors.
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
@@ -101,65 +149,48 @@ using Turing
   @. x ~ Normal(m, sqrt(s))
 end
 
-sample(gdemo([1.5, 2.0]), HMC(0.1, 5), 1000)
+model = gdemo([1.5, 2.0])
 ```
 
+is equivalent to the macro-free version
 
 ```julia
 using Turing
 
-# Initialize a NamedTuple containing our data variables.
-data = (x = [1.5, 2.0],)
-
 # Create the model function.
-mf(vi, sampler, ctx, model) = begin
-    # Set the accumulated logp to zero.
-    resetlogp!(vi)
-    x = model.args.x
-
+function modelf(rng, model, varinfo, sampler, context, x)
     # Assume s has an InverseGamma distribution.
-    s, lp = Turing.Inference.tilde(
-        ctx,
+    s = Turing.DynamicPPL.tilde_assume(
+        rng,
+        context,
         sampler,
         InverseGamma(2, 3),
         Turing.@varname(s),
         (),
-        vi,
+        varinfo,
     )
-
-    # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
-
+    
     # Assume m has a Normal distribution.
-    m, lp = Turing.Inference.tilde(
-        ctx,
+    m = Turing.DynamicPPL.tilde_assume(
+        rng,
+        context,
         sampler,
         Normal(0, sqrt(s)),
         Turing.@varname(m),
         (),
-        vi,
+        varinfo,
     )
 
-    # Add the lp to the accumulated logp.
-    acclogp!(vi, lp)
-
-    # Observe each value of x[i], according to a
-    # Normal distribution.
-    lp = Turing.Inference.dot_tilde(ctx, sampler, Normal(m, sqrt(s)), x, vi)
-    acclogp!(vi, lp)
+    # Observe each value of x[i] according to a Normal distribution.
+    Turing.DynamicPPL.dot_tilde_observe(context, sampler, Normal(m, sqrt(s)), x, varinfo)
 end
 
-# Instantiate a Model object.
-model = DynamicPPL.Model(mf, data, DynamicPPL.ModelGen{()}(nothing, nothing))
-
-# Sample the model.
-chain = sample(model, HMC(0.1, 5), 1000)
+# Instantiate a Model object with our data variables.
+model = Turing.Model(modelf, (x = [1.5, 2.0],))
 ```
-
 
 ## Task Copying
 
 
 Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires us to use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
-
 

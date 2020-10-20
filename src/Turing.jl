@@ -15,15 +15,23 @@ using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
 using Tracker: Tracker
 
+import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
+import Random
 
 const PROGRESS = Ref(true)
-function turnprogress(switch::Bool)
-    @info "[Turing]: progress logging is $(switch ? "enabled" : "disabled") globally"
-    PROGRESS[] = switch
-end
 
-const DEBUG = Bool(parse(Int, get(ENV, "DEBUG_TURING", "0")))
+"""
+    setprogress!(progress::Bool)
+
+Enable progress logging in Turing if `progress` is `true`, and disable it otherwise.
+"""
+function setprogress!(progress::Bool)
+    @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
+    PROGRESS[] = progress
+    AdvancedVI.turnprogress(progress)
+    return progress
+end
 
 # Random probability measures.
 include("stdlib/distributions.jl")
@@ -66,6 +74,10 @@ end
 ###########
 # Exports #
 ###########
+# `using` statements for stuff to re-export
+using DynamicPPL: pointwise_loglikelihoods, elementwise_loglikelihoods,
+    generated_quantities, logprior, logjoint
+using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
@@ -107,7 +119,7 @@ export  @model,                 # modelling
         setadbackend,
         setadsafe,
 
-        turnprogress,           # debugging
+        setprogress!,           # debugging
 
         Flat,
         FlatPos,
@@ -117,5 +129,16 @@ export  @model,                 # modelling
         LogPoisson,
         NamedDist,
         filldist,
-        arraydist
+        arraydist,
+
+        predict,
+        pointwise_loglikelihoods,
+        elementwise_loglikelihoods,
+        generated_quantities,
+        logprior,
+        logjoint
+
+# deprecations
+include("deprecations.jl")
+
 end

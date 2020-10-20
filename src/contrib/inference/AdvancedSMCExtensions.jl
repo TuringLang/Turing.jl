@@ -79,9 +79,9 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
     new_likelihood_estimate = 0.0
     old_θ = copy(vi[spl])
 
-    Turing.DEBUG && @debug "Propose new parameters from proposals..."
+    @debug "Propose new parameters from proposals..."
     for local_spl in spl.info[:samplers][1:end-1]
-        Turing.DEBUG && @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
+        @debug "$(typeof(local_spl)) proposing $(local_spl.alg.space)..."
         propose(model, local_spl, vi)
         if local_spl.info[:violating_support] violating_support=true; break end
         new_prior_prob += local_spl.info[:prior_prob]
@@ -92,11 +92,11 @@ function step(model, spl::Sampler{<:PMMH}, vi::VarInfo, is_first::Bool)
         # do not run SMC if going to refuse anyway
         accepted = false
     else
-        Turing.DEBUG && @debug "Propose new state with SMC..."
+        @debug "Propose new state with SMC..."
         vi, _ = step(model, spl.info[:samplers][end], vi)
         new_likelihood_estimate = spl.info[:samplers][end].info[:logevidence][end]
 
-        Turing.DEBUG && @debug "Decide whether to accept..."
+        @debug "Decide whether to accept..."
         accepted = mh_accept(
           spl.info[:old_likelihood_estimate] + spl.info[:old_prior_prob],
           new_likelihood_estimate + new_prior_prob,
@@ -150,7 +150,7 @@ function sample(  model::Model,
     accept_his = Bool[]
     PROGRESS[] && (spl.info[:progress] = ProgressMeter.Progress(n, 1, "[$alg_str] Sampling...", 0))
     for i = 1:n
-      Turing.DEBUG && @debug "$alg_str stepping..."
+      @debug "$alg_str stepping..."
       time_elapsed = @elapsed vi, is_accept = step(model, spl, vi, i==1)
 
       if is_accept # accepted => store the new predcits
@@ -305,7 +305,7 @@ function sample(model::Model, alg::IPMCMC)
   # IPMCMC steps
   if PROGRESS[] spl.info[:progress] = ProgressMeter.Progress(n, 1, "[IPMCMC] Sampling...", 0) end
   for i = 1:n
-    Turing.DEBUG && @debug "IPMCMC stepping..."
+    @debug "IPMCMC stepping..."
     time_elapsed = @elapsed VarInfos = step(model, spl, VarInfos, i==1)
 
     # Save each CSMS retained path as a sample

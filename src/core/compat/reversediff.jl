@@ -10,7 +10,7 @@ function emptyrdcache end
 
 getrdcache() = RDCache[]
 ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
-function setadbackend(::Val{:reversediff})
+function _setadbackend(::Val{:reversediff})
     ADBACKEND[] = :reversediff
 end
 
@@ -20,13 +20,14 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     T = typeof(getlogp(vi))
-    
+
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, context)
         return getlogp(new_vi)
     end
     tp, result = taperesult(f, θ)
@@ -45,25 +46,24 @@ end
 @require Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73" @eval begin
     setrdcache(::Val{true}) = RDCache[] = true
     function emptyrdcache()
-        for k in keys(Memoization.caches)
-            if k[1] === typeof(memoized_taperesult)
-                pop!(Memoization.caches, k)
-            end
-        end
+        Memoization.empty_cache!(memoized_taperesult)
+        return
     end
+
     function gradient_logp(
         backend::ReverseDiffAD{true},
         θ::AbstractVector{<:Real},
         vi::VarInfo,
         model::Model,
         sampler::AbstractSampler = SampleFromPrior(),
+        context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
         T = typeof(getlogp(vi))
-        
+
         # Specify objective function.
         function f(θ)
             new_vi = VarInfo(vi, sampler, θ)
-            model(new_vi, sampler)
+            model(new_vi, sampler, context)
             return getlogp(new_vi)
         end
         ctp, result = memoized_taperesult(f, θ)
@@ -79,15 +79,13 @@ end
         f::F
         x::Tx
     end
-    function Memoization._get!(f::Union{Function, Type}, d::IdDict, keys::Tuple{Tuple{RDTapeKey}, Any})
+    function Memoization._get!(f, d::Dict, keys::Tuple{Tuple{RDTapeKey}, Any})
         key = keys[1][1]
-        return Memoization._get!(f, d, (typeof(key.f), typeof(key.x), size(key.x)))
+        return Memoization._get!(f, d, (key.f, typeof(key.x), size(key.x), Threads.threadid()))
     end
     memoized_taperesult(f, x) = memoized_taperesult(RDTapeKey(f, x))
-    Memoization.@memoize function memoized_taperesult(k::RDTapeKey)
+    Memoization.@memoize Dict function memoized_taperesult(k::RDTapeKey)
         return compiledtape(k.f, k.x), GradientResult(k.x)
     end
-    memoized_tape(f, x) = memoized_tape(RDTapeKey(f, x))
-    Memoization.@memoize memoized_tape(k::RDTapeKey) = compiledtape(k.f, k.x)
     compiledtape(f, x) = compile(GradientTape(f, x))
 end

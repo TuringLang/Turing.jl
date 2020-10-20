@@ -2,26 +2,22 @@
 # Global variables/constants #
 ##############################
 const ADBACKEND = Ref(:forwarddiff)
-function setadbackend(backend_sym::Symbol)
-    setadbackend(Val(backend_sym))
-    AdvancedVI.setadbackend(Val(backend_sym))
-    Bijectors.setadbackend(Val(backend_sym))
+setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
+function setadbackend(backend::Val)
+    _setadbackend(backend)
+    AdvancedVI.setadbackend(backend)
+    Bijectors.setadbackend(backend)
 end
-function setadbackend(::Val{:forward_diff})
-    Base.depwarn("`Turing.setadbackend(:forward_diff)` is deprecated. Please use `Turing.setadbackend(:forwarddiff)` to use `ForwardDiff`.", :setadbackend)
-    setadbackend(Val(:forwarddiff))
-end
-function setadbackend(::Val{:forwarddiff})
+
+function _setadbackend(::Val{:forwarddiff})
     CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forwarddiff
 end
-
-function setadbackend(::Val{:reverse_diff})
-    Base.depwarn("`Turing.setadbackend(:reverse_diff)` is deprecated. Please use `Turing.setadbackend(:tracker)` to use `Tracker` or `Turing.setadbackend(:reversediff)` to use `ReverseDiff`. To use `ReverseDiff`, please make sure it is loaded separately with `using ReverseDiff`.",  :setadbackend)
-    setadbackend(Val(:tracker))
-end
-function setadbackend(::Val{:tracker})
+function _setadbackend(::Val{:tracker})
     ADBACKEND[] = :tracker
+end
+function _setadbackend(::Val{:zygote})
+    ADBACKEND[] = :zygote
 end
 
 const ADSAFE = Ref(false)
@@ -46,12 +42,14 @@ getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
 getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
 
 struct TrackerAD <: ADBackend end
+struct ZygoteAD <: ADBackend end
 
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
 ADBackend(::Val{:tracker}) = TrackerAD
+ADBackend(::Val{:zygote}) = ZygoteAD
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
@@ -60,13 +58,15 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
+getADbackend(spl::SampleFromPrior) = ADBackend()()
 
 """
     gradient_logp(
         θ::AbstractVector{<:Real},
         vi::VarInfo,
         model::Model,
-        sampler::AbstractSampler=SampleFromPrior(),
+        sampler::AbstractSampler,
+        ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
 
 Computes the value of the log joint of `θ` and its gradient for the model
@@ -77,9 +77,10 @@ function gradient_logp(
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
-    sampler::Sampler
+    sampler::AbstractSampler,
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler)
+    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler, ctx)
 end
 
 """
@@ -89,6 +90,7 @@ gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
 
 Compute the value of the log joint of `θ` and its gradient for the model
@@ -100,12 +102,13 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     # Define function to compute log joint.
     logp_old = getlogp(vi)
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, ctx)
         logp = getlogp(new_vi)
         setlogp!(vi, ForwardDiff.value(logp))
         return logp
@@ -127,13 +130,14 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
+    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
     T = typeof(getlogp(vi))
 
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler)
+        model(new_vi, sampler, ctx)
         return getlogp(new_vi)
     end
 
@@ -141,6 +145,30 @@ function gradient_logp(
     l_tracked, ȳ = Tracker.forward(f, θ)
     # Remove tracking info from variables in model (because mutable state).
     l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
+
+    return l, ∂l∂θ
+end
+
+function gradient_logp(
+    backend::ZygoteAD,
+    θ::AbstractVector{<:Real},
+    vi::VarInfo,
+    model::Model,
+    sampler::AbstractSampler = SampleFromPrior(),
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
+)
+    T = typeof(getlogp(vi))
+
+    # Specify objective function.
+    function f(θ)
+        new_vi = VarInfo(vi, sampler, θ)
+        model(new_vi, sampler, context)
+        return getlogp(new_vi)
+    end
+
+    # Compute forward and reverse passes.
+    l::T, ȳ = ZygoteRules.pullback(f, θ)
+    ∂l∂θ::typeof(θ) = ȳ(1)[1]
 
     return l, ∂l∂θ
 end

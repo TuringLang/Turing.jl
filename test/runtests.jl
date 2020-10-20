@@ -1,10 +1,12 @@
 ##########################################
 # Master file for running all test cases #
 ##########################################
-using Zygote, ReverseDiff, Memoization, Turing; turnprogress(false)
+using Zygote, ReverseDiff, Memoization, Turing
 using Pkg
 using Random
 using Test
+
+setprogress!(false)
 
 include("test_utils/AllUtils.jl")
 
@@ -15,13 +17,8 @@ include("test_utils/AllUtils.jl")
         include("core/container.jl")
     end
 
-    test_adbackends = if VERSION >= v"1.2"
-        [:forwarddiff, :tracker, :reversediff]
-    else
-        [:forwarddiff, :tracker]
-    end
     Turing.setrdcache(false)
-    for adbackend in test_adbackends
+    for adbackend in (:forwarddiff, :tracker, :reversediff)
         Turing.setadbackend(adbackend)
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
@@ -41,6 +38,10 @@ include("test_utils/AllUtils.jl")
         @testset "variational algorithms : $adbackend" begin
             include("variational/advi.jl")
         end
+
+        @testset "modes" begin
+            include("modes/ModeEstimation.jl")
+        end
     end
     @testset "variational optimisers" begin
         include("variational/optimisers.jl")
@@ -55,9 +56,5 @@ include("test_utils/AllUtils.jl")
     @testset "utilities" begin
         # include("utilities/stan-interface.jl")
         include("inference/utilities.jl")
-    end
-
-    @testset "modes" begin
-        include("modes/ModeEstimation.jl")
     end
 end
