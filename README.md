@@ -35,7 +35,7 @@ Turing is an open source project so if you feel you have some relevant skills an
 
 ### Slack
 
-Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in the Julia Slack chat for help, discussion, or general communication with the Turing team. If you do not already have an invitation to Julia's Slack, you can get one by going [here](https://slackinvite.julialang.org/).
+Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in the Julia Slack chat for help, discussion, or general communication with the Turing team. If you do not already have an invitation to Julia's Slack, you can get one by going [here](https://julialang.org/slack/).
 
 ## Related projects
 - The Stan language for probabilistic programming - [Stan.jl](https://github.com/StanJulia/Stan.jl)
