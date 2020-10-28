@@ -68,7 +68,12 @@ end
 
 @init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
     include("modes/ModeEstimation.jl")
-    export MAP, MLE, optimize
+    export MAP, MLE, optimize, constrained, unconstrained, instantiate_optimisation_problem
+end
+
+@init @require GalacticOptim = "a75be94c-b780-496d-a8a9-0878b188d577" @eval begin
+    include("modes/GalacticBridge.jl")
+    export instantiate_galacticoptim_function
 end
 
 ###########
