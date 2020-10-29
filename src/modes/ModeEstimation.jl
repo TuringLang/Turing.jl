@@ -199,26 +199,6 @@ end
 # Generic optimisation objective initialisation #
 #################################################
 
-# function (f::Turing.OptimLogDensity)(G, z)
-#   spl = DynamicPPL.SampleFromPrior()
-  
-#   # Calculate log joint and the gradient
-#   l, g = Turing.gradient_logp(
-#       z, 
-#       DynamicPPL.VarInfo(f.vi, spl, z), 
-#       f.model, 
-#       spl,
-#       f.context
-#   )
-
-#   # Use the negative gradient because we are minimizing.
-#   G[:] = -g
-
-#   return nothing
-# end
-
-
-
 function transform!(f::OptimLogDensity)
   spl = DynamicPPL.SampleFromPrior()
 
