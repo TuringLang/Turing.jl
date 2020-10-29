@@ -1,24 +1,30 @@
-using ..Turing
-using ..Bijectors
-using LinearAlgebra
+module ModeEstimation
 
-import ..AbstractMCMC: AbstractSampler
-import ..DynamicPPL
-import ..DynamicPPL: Model, AbstractContext, VarInfo, AbstractContext, VarName,
+using ..Turing
+using Bijectors
+using DiffEqBase: OptimizationFunction
+
+using DynamicPPL
+import DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield, settrans!,  setorder!,
     get_and_set_val!, istrans, tilde, dot_tilde, get_vns_and_dist
-import .Optim
-import .Optim: optimize
-import ..ForwardDiff
-import NamedArrays
-import StatsBase
-import Printf
 
-struct MLE end
-struct MAP end
+export  MAP,
+        MLE,
+        OptimLogDensity,
+        OptimizationContext,
+        instantiate_optimisation_problem, 
+        instantiate_galacticoptim_function
 
-struct constrained end
-struct unconstrained end
+
+struct MLE{constrained} end
+struct MAP{constrained} end
+
+MLE(constrained) = MLE{constrained}()
+MAP(constrained) = MAP{constrained}()
+MLE() = MLE{true}()
+MAP() = MAP{true}()
+
 """
     OptimizationContext{C<:AbstractContext} <: AbstractContext
 
@@ -159,7 +165,7 @@ function (f::OptimLogDensity)(F, G, H, z)
     
     if G !== nothing
         # Calculate log joint and the gradient
-        l, g = gradient_logp(
+        l, g = Turing.gradient_logp(
             z, 
             DynamicPPL.VarInfo(f.vi, spl, z), 
             f.model, 
@@ -187,284 +193,29 @@ function (f::OptimLogDensity)(F, G, H, z)
     return nothing
 end
 
-"""
-    ModeResult{
-        V<:NamedArrays.NamedArray, 
-        M<:NamedArrays.NamedArray, 
-        O<:Optim.MultivariateOptimizationResults, 
-        S<:NamedArrays.NamedArray
-    }
-
-A wrapper struct to store various results from a MAP or MLE estimation.
-"""
-struct ModeResult{
-    V<:NamedArrays.NamedArray, 
-    O<:Optim.MultivariateOptimizationResults,
-    M<:OptimLogDensity
-} <: StatsBase.StatisticalModel
-    "A vector with the resulting point estimates."
-    values :: V
-    "The stored Optim.jl results."
-    optim_result :: O
-    "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run."
-    lp :: Float64
-    "The evaluation function used to calculate the output."
-    f :: M
-end
-#############################
-# Various StatsBase methods #
-#############################
-
-
-
-function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
-    print(io, "ModeResult with maximized lp of ")
-    Printf.@printf(io, "%.2f", m.lp)
-    println(io)
-    show(io, m.values)
-end
-
-function Base.show(io::IO, m::ModeResult)
-    show(io, m.values.array)
-end
-
-function StatsBase.coeftable(m::ModeResult)
-    # Get columns for coeftable.
-    terms = StatsBase.coefnames(m)
-    estimates = m.values.array[:,1]
-    stderrors = StatsBase.stderror(m)
-    tstats = estimates ./ stderrors
-
-    StatsBase.CoefTable([estimates, stderrors, tstats], ["estimate", "stderror", "tstat"], terms)
-end
-
-function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
-    # Calculate Hessian and information matrix.
-
-    # Convert the values to their unconstrained states to make sure the
-    # Hessian is computed with respect to the untransformed parameters.
-    spl = DynamicPPL.SampleFromPrior()
-
-    # NOTE: This should be converted to islinked(vi, spl) after
-    # https://github.com/TuringLang/DynamicPPL.jl/pull/124 goes through.
-    vns = DynamicPPL._getvns(m.f.vi, spl)
-    
-    linked = DynamicPPL._islinked(m.f.vi, vns)
-    linked && invlink!(m.f.vi, spl)
-
-    # Calculate the Hessian.
-    varnames = StatsBase.coefnames(m)
-    H = hessian_function(m.f, m.values.array[:, 1])
-    info = inv(H)
-
-    # Link it back if we invlinked it.
-    linked && link!(m.f.vi, spl)
-
-    return NamedArrays.NamedArray(info, (varnames, varnames))
-end
-
-StatsBase.coef(m::ModeResult) = m.values
-StatsBase.coefnames(m::ModeResult) = names(m.values)[1]
-StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
-StatsBase.vcov(m::ModeResult) = StatsBase.informationmatrix(m)
-StatsBase.loglikelihood(m::ModeResult) = m.lp
-
-####################
-# Optim.jl methods #
-####################
-
-"""
-    Optim.optimize(model::Model, ::MLE, args...; kwargs...)
-
-Compute a maximum likelihood estimate of the `model`.
-
-# Examples
-
-```julia-repl
-@model function f(x)
-    m ~ Normal(0, 1)
-    x ~ Normal(m, 1)
-end
-
-model = f(1.5)
-mle = optimize(model, MLE())
-
-# Use a different optimizer
-mle = optimize(model, MLE(), NelderMead())
-```
-"""
-function Optim.optimize(model::Model, ::MLE, options::Optim.Options=Optim.Options(); kwargs...) 
-    return _mle_optimize(model, options; kwargs...)
-end
-function Optim.optimize(model::Model, ::MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
-    return _mle_optimize(model, init_vals, options; kwargs...)
-end
-function Optim.optimize(model::Model, ::MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
-    return _mle_optimize(model, optimizer, options; kwargs...)
-end
-function Optim.optimize(
-    model::Model, 
-    ::MLE, 
-    init_vals::AbstractArray, 
-    optimizer::Optim.AbstractOptimizer, 
-    options::Optim.Options=Optim.Options(); 
-    kwargs...
-)
-    return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
-end
-
-function _mle_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
-end
-
-"""
-    Optim.optimize(model::Model, ::MAP, args...; kwargs...)
-
-Compute a maximum a posterior estimate of the `model`.
-
-# Examples
-
-```julia-repl
-@model function f(x)
-    m ~ Normal(0, 1)
-    x ~ Normal(m, 1)
-end
-
-model = f(1.5)
-map_est = optimize(model, MAP())
-
-# Use a different optimizer
-map_est = optimize(model, MAP(), NelderMead())
-```
-"""
-
-function Optim.optimize(model::Model, ::MAP, options::Optim.Options=Optim.Options(); kwargs...) 
-    return _map_optimize(model, options; kwargs...)
-end
-function Optim.optimize(model::Model, ::MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
-    return _map_optimize(model, init_vals, options; kwargs...)
-end
-function Optim.optimize(model::Model, ::MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
-    return _map_optimize(model, optimizer, options; kwargs...)
-end
-function Optim.optimize(
-    model::Model, 
-    ::MAP, 
-    init_vals::AbstractArray, 
-    optimizer::Optim.AbstractOptimizer, 
-    options::Optim.Options=Optim.Options(); 
-    kwargs...
-)
-    return _map_optimize(model, init_vals, optimizer, options; kwargs...)
-end
-
-function _map_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
-end
-
-"""
-    _optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
-
-Estimate a mode, i.e., compute a MLE or MAP estimate.
-"""
-function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
-    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
-    args...; 
-    kwargs...
-)
-    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], optimizer, args...; kwargs...)
-end
-
-function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
-    options::Optim.Options = Optim.Options(),
-    args...; 
-    kwargs...
-)
-    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], Optim.LBFGS(), args...; kwargs...)
-end
-
-function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
-    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
-    options::Optim.Options = Optim.Options(),
-    args...; 
-    kwargs...
-)
-    return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
-end
-
-function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
-    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
-    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
-    options::Optim.Options = Optim.Options(),
-    args...; 
-    kwargs...
-)
-    # Do some initialization.
-    spl = DynamicPPL.SampleFromPrior()
-
-    # Convert the initial values, since it is assumed that users provide them
-    # in the constrained space.
-    f.vi[spl] = init_vals
-    link!(f.vi, spl)
-    init_vals = f.vi[spl]
-
-    # Optimize!
-    M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
-
-    # Warn the user if the optimization did not converge.
-    if !Optim.converged(M)
-        @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
-    end
-
-    # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
-    # correct dimensionality.
-    f.vi[spl] = M.minimizer
-    invlink!(f.vi, spl)
-    vals = f.vi[spl]
-    link!(f.vi, spl)
-
-    # Make one transition to get the parameter names.
-    ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(f.vi), DynamicPPL.getlogp(f.vi))]
-    varnames, _ = Turing.Inference._params_to_array(ts)
-
-    # Store the parameters and their names in an array.
-    vmat = NamedArrays.NamedArray(vals, varnames)
-
-    return ModeResult(vmat, M, -M.minimum, f)
-end
 
 
 #################################################
 # Generic optimisation objective initialisation #
 #################################################
 
-function (f::Turing.OptimLogDensity)(G, z)
-  spl = DynamicPPL.SampleFromPrior()
+# function (f::Turing.OptimLogDensity)(G, z)
+#   spl = DynamicPPL.SampleFromPrior()
   
-  # Calculate log joint and the gradient
-  l, g = Turing.gradient_logp(
-      z, 
-      DynamicPPL.VarInfo(f.vi, spl, z), 
-      f.model, 
-      spl,
-      f.context
-  )
+#   # Calculate log joint and the gradient
+#   l, g = Turing.gradient_logp(
+#       z, 
+#       DynamicPPL.VarInfo(f.vi, spl, z), 
+#       f.model, 
+#       spl,
+#       f.context
+#   )
 
-  # Use the negative gradient because we are minimizing.
-  G[:] = -g
+#   # Use the negative gradient because we are minimizing.
+#   G[:] = -g
 
-  return nothing
-end
+#   return nothing
+# end
 
 
 
@@ -476,7 +227,7 @@ function transform!(f::OptimLogDensity)
 
   ## transform into constrained or unconstrained space depending on current state of vi
   if !linked
-    f.vi[spl] = f.vi[DynamicPPL.SampleFromPrior()]
+    #f.vi[spl] = f.vi[DynamicPPL.SampleFromPrior()]
     DynamicPPL.link!(f.vi, spl)
   else
     DynamicPPL.invlink!(f.vi, spl)
@@ -486,146 +237,106 @@ function transform!(f::OptimLogDensity)
 end
 
 
-function transform2constrained(par::AbstractArray, vi::DynamicPPL.VarInfo)
+function transform2constrained!(p::AbstractArray, vi::DynamicPPL.VarInfo)
   spl = DynamicPPL.SampleFromPrior()
 
   linked = DynamicPPL.islinked(vi, spl)
   
   !linked && DynamicPPL.link!(vi, spl)
-  vi[spl] = par
+  vi[spl] = p
   DynamicPPL.invlink!(vi,spl)
-  tpar = vi[spl]
+  p .= vi[spl]
   
   linked && DynamicPPL.link!(vi,spl)
 
-  return tpar
-end
-
-function transform2constrained!(par::AbstractArray, vi::DynamicPPL.VarInfo)
-  par .= transform2constrained(par, vi)
   return nothing
 end
 
-function transform2unconstrained(par::AbstractArray, vi::DynamicPPL.VarInfo)
+function transform2constrained(p::AbstractArray, vi::DynamicPPL.VarInfo)
+    tp = copy(p)
+    transform2constrained!(tp, vi)
+  return tp
+end
+
+function transform2unconstrained!(p::AbstractArray, vi::DynamicPPL.VarInfo)
   spl = DynamicPPL.SampleFromPrior()
 
   linked = DynamicPPL.islinked(vi, spl)
   linked && DynamicPPL.invlink!(vi, spl)
-  vi[spl] = par
+  vi[spl] = p
   DynamicPPL.link!(vi, spl)
-  tpar = vi[spl]
+  p .= vi[spl]
   !linked && DynamicPPL.invlink!(vi, spl)
 
-  return tpar
-end
-
-function transform2unconstrained!(par::AbstractArray, vi::DynamicPPL.VarInfo)
-  par .= transform2unconstrained(par, vi)
   return nothing
 end
 
-
-function _orderpar(par::NamedTuple, vi::DynamicPPL.VarInfo)
-  tmp_idx = indexin(collect(keys(vi.metadata)), collect(keys(par)))
-  tmp = collect(par)[tmp_idx]
-  return tmp, tmp_idx
+function transform2unconstrained(p::AbstractArray, vi::DynamicPPL.VarInfo)
+  tp = copy(p)
+  transform2unconstrained!(tp, vi)
+  return tp
 end
 
-
-function transform2unconstrained(par::NamedTuple, vi::DynamicPPL.VarInfo; order::Bool=true, array::Bool=true)
-  par_sor, par_idx = _orderpar(par, vi)
-
-  transform2unconstrained!(par_sor, vi)
-
-  if order
-    if array
-      return par_sor
-    else
-      return (; zip(keys(vi.metadata), par_sor)...)
-    end
-  else
-    if array
-      return par_sor[tmp_idx]
-    else
-      return (; zip(keys(par),par_sor[par_idx])...)
-    end
-  end
+struct TransformFunction
+    vi::DynamicPPL.VarInfo
+    transform
 end
-
-function transform2constrained(par::NamedTuple, vi::DynamicPPL.VarInfo; order::Bool=true, array::Bool=true)
-  par_sor, par_idx = _orderpar(par, vi)
-
-  transform2constrained!(par_sor, vi)
-
-  if order
-    if array
-      return par_sor
-    else
-      return (; zip(keys(vi.metadata), par_sor)...)
-    end
-  else
-    if array
-      return par_sor[tmp_idx]
-    else
-      return (; zip(keys(par),par_sor[par_idx])...)
-    end
-  end
-end
-
-
-function transform2constrained(res::Optim.MultivariateOptimizationResults, vi::DynamicPPL.VarInfo)
-  tres = deepcopy(res)
-  if !any(isnan.(tres.minimizer))
-    tres.minimizer = transform2constrained(tres.minimizer, vi)
-  else
-      @warn "Could not transform optimisation results due to NaNs in ':minimizer'."
-  end
-
-  if !any(isnan.(tres.initial_x))
-    tres.initial_x = transform2constrained(tres.initial_x, vi)
-  else
-    @warn "Could not transform initial values due to NaNs in ':initial_x'."
-  end
-
-  return tres
-end
+  
+function (t::TransformFunction)(p::AbstractArray)
+    return t.transform(p,t.vi)
+end 
 
 
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP , ::unconstrained)
-  obj = OptimLogDensity(model, OptimizationContext(DynamicPPL.DefaultContext()))
+function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{false})
+  ctx = OptimizationContext(DynamicPPL.DefaultContext())
+  obj = OptimLogDensity(model, ctx)
 
   transform!(obj)
-
-  init(init_vals) = transform2unconstrained(init_vals, obj.vi)
-  t(res) = transform2constrained(res, obj.vi)
+  init = TransformFunction(obj.vi, transform2unconstrained)
+  t = TransformFunction(obj.vi, transform2constrained)
 
   return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP , ::constrained)
-  obj = OptimLogDensity(model, OptimizationContext(DynamicPPL.DefaultContext()))
+function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{true})
+    ctx = OptimizationContext(DynamicPPL.DefaultContext())
+    obj = OptimLogDensity(model, ctx)
+  
+    init(init_vals::AbstractArray) = identity(init_vals) 
+    t(p::AbstractArray) = identity(p)
+      
+    return (obj=obj, init = init, transform=t)
+  end
 
-  init(init_vals) = isa(init_vals, NamedTuple) ? _orderpar(init_vals, obj.vi)[1] : identity(init_vals) 
-
-  return (obj=obj, init = init, transform=identity)
+function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{false})
+    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
+    obj = OptimLogDensity(model, ctx)
+  
+    transform!(obj)
+    init = TransformFunction(obj.vi, transform2unconstrained)
+    t = TransformFunction(obj.vi, transform2constrained)
+  
+    return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE , ::unconstrained)
-  obj = OptimLogDensity(model, OptimizationContext(DynamicPPL.LikelihoodContext()))
-
-  transform!(obj)
-
-  init(init_vals) = transform2unconstrained(init_vals, obj.vi)
-  t(res) = transform2constrained(res, obj.vi)
-
-  return (obj=obj, init = init, transform=t)
+function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{true})
+    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
+    obj = OptimLogDensity(model, ctx)
+  
+    init(init_vals::AbstractArray) = identity(init_vals) 
+    t(p::AbstractArray) = identity(p)
+      
+    return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE, ::constrained)
-  obj = OptimLogDensity(model, OptimizationContext(DynamicPPL.LikelihoodContext()))
+function instantiate_galacticoptim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
+  obj, init, t = instantiate_optimisation_problem(model, estimator)
+  
+  l(x,p) = obj(x)
+  f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
 
-  init(init_vals) = isa(init_vals, NamedTuple) ? _orderpar(init_vals, obj.vi)[1] : identity(init_vals) 
+  return (f=f, init=init, transform = t)
+end
 
-  return (obj=obj, init = init, transform=identity)
 end

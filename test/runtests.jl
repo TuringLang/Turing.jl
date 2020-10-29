@@ -40,7 +40,7 @@ include("test_utils/AllUtils.jl")
 
         @testset "modes" begin
             include("modes/ModeEstimation.jl")
-            include("modes/GalacticBridge.jl")
+            include("modes/OptimInterface.jl")
         end
     end
     @testset "variational optimisers" begin

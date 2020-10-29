@@ -66,15 +66,14 @@ using .Variational
     end
 end
 
+include("modes/ModeEstimation.jl")
+using .ModeEstimation
+
 @init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/ModeEstimation.jl")
-    export MAP, MLE, optimize, constrained, unconstrained, instantiate_optimisation_problem
+    include("modes/OptimInterface.jl")
+    export  optimize
 end
 
-@init @require GalacticOptim = "a75be94c-b780-496d-a8a9-0878b188d577" @eval begin
-    include("modes/GalacticBridge.jl")
-    export instantiate_galacticoptim_function
-end
 
 ###########
 # Exports #
@@ -140,7 +139,12 @@ export  @model,                 # modelling
         elementwise_loglikelihoods,
         generated_quantities,
         logprior,
-        logjoint
+        logjoint,
+
+        MAP,                    # optimisation interface
+        MLE, 
+        instantiate_optimisation_problem, 
+        instantiate_galacticoptim_function
 
 # deprecations
 include("deprecations.jl")
