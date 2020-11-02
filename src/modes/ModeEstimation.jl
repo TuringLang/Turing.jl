@@ -207,7 +207,6 @@ function transform!(f::OptimLogDensity)
 
   ## transform into constrained or unconstrained space depending on current state of vi
   if !linked
-    #f.vi[spl] = f.vi[DynamicPPL.SampleFromPrior()]
     DynamicPPL.link!(f.vi, spl)
   else
     DynamicPPL.invlink!(f.vi, spl)
@@ -257,15 +256,32 @@ function transform2unconstrained(p::AbstractArray, vi::DynamicPPL.VarInfo)
   return tp
 end
 
-struct TransformFunction
+abstract type AbstractTransformFunction end
+abstract type AbstractParameterTransformFunction <: AbstractTransformFunction end
+abstract type AbstractInitTransformFunction <: AbstractParameterTransformFunction end
+
+
+struct ParameterTransformFunction <: AbstractParameterTransformFunction
     vi::DynamicPPL.VarInfo
     transform
 end
-  
-function (t::TransformFunction)(p::AbstractArray)
-    return t.transform(p,t.vi)
+
+struct InitTransformFunction <: AbstractInitTransformFunction
+    vi::DynamicPPL.VarInfo
+    transform
+end
+
+function (t::ParameterTransformFunction)(p::AbstractArray)
+    return t.transform(p, t.vi)
 end 
 
+function (t::InitTransformFunction)(p::AbstractArray)
+    return t.transform(p, t.vi)
+end 
+
+function (t::InitTransformFunction)()
+    return t.vi[DynamicPPL.SampleFromPrior()]
+end 
 
 
 function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{false})
@@ -273,8 +289,8 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{false})
   obj = OptimLogDensity(model, ctx)
 
   transform!(obj)
-  init = TransformFunction(obj.vi, transform2unconstrained)
-  t = TransformFunction(obj.vi, transform2constrained)
+  init = InitTransformFunction(obj.vi, transform2unconstrained)
+  t = ParameterTransformFunction(obj.vi, transform2constrained)
 
   return (obj=obj, init = init, transform=t)
 end
@@ -283,8 +299,8 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{true})
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
   
-    init(init_vals::AbstractArray) = identity(init_vals) 
-    t(p::AbstractArray) = identity(p)
+    init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
+    t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
       
     return (obj=obj, init = init, transform=t)
   end
@@ -294,8 +310,8 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{false})
     obj = OptimLogDensity(model, ctx)
   
     transform!(obj)
-    init = TransformFunction(obj.vi, transform2unconstrained)
-    t = TransformFunction(obj.vi, transform2constrained)
+    init = InitTransformFunction(obj.vi, transform2unconstrained)
+    t = ParameterTransformFunction(obj.vi, transform2constrained)
   
     return (obj=obj, init = init, transform=t)
 end
@@ -304,8 +320,8 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{true})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
-    init(init_vals::AbstractArray) = identity(init_vals) 
-    t(p::AbstractArray) = identity(p)
+    init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
+    t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
       
     return (obj=obj, init = init, transform=t)
 end
