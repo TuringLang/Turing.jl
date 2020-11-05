@@ -80,7 +80,7 @@ function Sampler(alg::Gibbs, model::Model, s::Selector)
         else
             prev_alg = alg.algs[i-1]
         end
-        rerun = !(_alg isa MH) || prev_alg isa PG || prev_alg isa ESS
+        rerun = !(_alg isa MH) || prev_alg isa PG || prev_alg isa ESS || prev_alg isa GibbsConditional
         selector = Selector(Symbol(typeof(_alg)), rerun)
         Sampler(_alg, model, selector)
     end

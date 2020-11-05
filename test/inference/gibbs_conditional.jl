@@ -1,4 +1,5 @@
 using Random, Turing, Test
+using Clustering
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
@@ -55,6 +56,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
     end
 
+    Random.seed!(100)
     let π = [0.5, 0.5],
         K = length(π),
         m = 0.5,
@@ -94,22 +96,27 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
 
         estimate(chain, var) = dropdims(mean(Array(group(chain, var)), dims=1), dims=1)
+        function estimatez(chain, var, range)
+            z = Int.(Array(group(chain, var)))
+            return map(i -> findmax(counts(z[:,i], range))[2], 1:size(z,2))
+        end        
         
         # Both variables sampled using the Gibbs conditional
-        # We can't be sure about the order of cluster assignment, so we check both
         Random.seed!(100)
         for alg in (Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ)),
                     Gibbs(GibbsConditional(:z, cond_z), MH(:μ)),
-                    Gibbs(GibbsConditional(:z, cond_z), HMC(0.1, 10, :μ)))
+                    Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ)), )
+
             chain = sample(mixture(x), alg, 10000)
             
             μ_hat = estimate(chain, :μ)
-            @info (symbol=:μ, exact=μ_true, evaluated=μ_hat)
-            @test isapprox(μ_hat, μ_true, atol=0.1)
+            lμ_hat, uμ_hat = minimum(μ_hat), maximum(μ_hat)
+            lμ_true, uμ_true = minimum(μ_true), maximum(μ_true)
+            @test isapprox([lμ_true, uμ_true], [lμ_hat, uμ_hat], atol=0.1)
             
-            z_hat = estimate(chain, :z)
-            @info (symbol=:z, exact=z_true, evaluated=z_hat)
-            @test isapprox(z_hat, z_true, atol=0.2, rtol=0.0)
+            z_hat = estimatez(chain, :z, 1:2)
+            ari, _, _, _ = randindex(z_true, Int.(z_hat))
+            @test isapprox(ari, 1, atol=0.1)
         end
     end
 end
