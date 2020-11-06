@@ -22,8 +22,8 @@ struct MAP{constrained} end
 
 MLE(constrained) = MLE{constrained}()
 MAP(constrained) = MAP{constrained}()
-MLE() = MLE{true}()
-MAP() = MAP{true}()
+MLE() = MLE{false}()
+MAP() = MAP{false}()
 
 """
     OptimizationContext{C<:AbstractContext} <: AbstractContext
