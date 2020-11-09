@@ -15,7 +15,7 @@ This is an excerpt from a more formal example introducing probabilistic programm
 
 ```julia
 # Import libraries.
-using Turing, StatsPlots, Random
+using Turing, StatsPlots, Random, Distributions
 
 # Set the true probability of heads in a coin.
 p_true = 0.5
