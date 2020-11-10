@@ -114,7 +114,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
         sample(model, alg, 100; callback = callback)
     end
-    
     @turing_testset "dynamic model" begin
         @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
             N = length(y)
@@ -138,5 +137,5 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model = imm(randn(100), 1.0);
         sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
-    end    
+    end
 end

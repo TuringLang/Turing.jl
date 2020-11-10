@@ -110,7 +110,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             chain = sample(mixture(x), alg, 10000)
             
             μ_hat = estimate(chain, :μ)
-            lμ_hat, uμ_hat = minimum(μ_hat), maximum(μ_hat)
+            lμ_hat, uμ_hat = extrema(μ_hat)
             lμ_true, uμ_true = minimum(μ_true), maximum(μ_true)
             @test isapprox([lμ_true, uμ_true], [lμ_hat, uμ_hat], atol=0.1)
             
