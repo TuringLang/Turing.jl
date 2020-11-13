@@ -136,8 +136,4 @@ export  @model,                 # modelling
         generated_quantities,
         logprior,
         logjoint
-
-# deprecations
-include("deprecations.jl")
-
 end
