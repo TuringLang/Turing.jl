@@ -38,8 +38,8 @@ function HMCTransition(vi::AbstractVarInfo, t::AHMC.Transition)
     return HMCTransition(theta, lp, t.stat)
 end
 
-function additional_parameters(::Type{<:HMCTransition})
-    return [:lp, :stat]
+function metadata(t::HMCTransition)
+    return merge((lp = t.lp,), t.stat)
 end
 
 DynamicPPL.getlogp(t::HMCTransition) = t.lp
@@ -81,7 +81,6 @@ struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     n_leapfrog::Int # leapfrog step number
 end
 
-DynamicPPL.alg_str(::Sampler{<:Hamiltonian}) = "HMC"
 isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)

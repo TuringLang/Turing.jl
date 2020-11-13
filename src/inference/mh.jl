@@ -186,7 +186,6 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-alg_str(::Sampler{<:MH}) = "MH"
 isgibbscomponent(::MH) = true
 
 #####################

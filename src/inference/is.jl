@@ -46,7 +46,7 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
-    spl::Sampler,
+    spl::Sampler{<:IS},
     ::Nothing;
     kwargs...
 )

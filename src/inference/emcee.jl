@@ -15,8 +15,6 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     return Emcee{(), typeof(ensemble)}(ensemble)
 end
 
-alg_str(::Sampler{<:Emcee}) = "Emcee"
-
 struct EmceeState{V<:AbstractVarInfo,S}
     vi::V
     states::S
@@ -125,7 +123,7 @@ function AbstractMCMC.bundle_samples(
 
     # Set up the info tuple.
     if save_state
-        info = (range = rng, model = model, sampler = spl, samplerstate = state)
+        info = (model = model, sampler = spl, samplerstate = state)
     else
         info = NamedTuple()
     end

@@ -62,9 +62,7 @@ function SMCTransition(vi::AbstractVarInfo, weight)
     return SMCTransition(theta, lp, weight)
 end
 
-function additional_parameters(::Type{<:SMCTransition})
-    return [:lp, :weight]
-end
+metadata(t::SMCTransition) = (lp = t.lp, weight = t.weight)
 
 DynamicPPL.getlogp(t::SMCTransition) = t.lp
 
@@ -234,9 +232,7 @@ function PGTransition(vi::AbstractVarInfo, logevidence)
     return PGTransition(theta, lp, logevidence)
 end
 
-function additional_parameters(::Type{<:PGTransition})
-    return [:lp, :logevidence]
-end
+metadata(t::PGTransition) = (lp = t.lp, logevidence = t.logevidence)
 
 DynamicPPL.getlogp(t::PGTransition) = t.lp
 

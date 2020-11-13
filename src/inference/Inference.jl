@@ -111,9 +111,7 @@ function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
     return Transition{typeof(theta), typeof(lp)}(theta, lp)
 end
 
-function additional_parameters(::Type{<:Transition})
-    return [:lp]
-end
+metadata(t::Transition) = (lp = t.lp,)
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
@@ -283,43 +281,33 @@ function get_transition_extras(ts::AbstractVector{<:VarInfo})
 end
 
 function get_transition_extras(ts::AbstractVector)
-    # Get the extra field names from the sampler state type.
-    # This handles things like :lp or :weight.
-    extra_params = additional_parameters(eltype(ts))
+    # Extract all metadata.
+    extra_data = map(metadata, ts)
+    return names_values(extra_data)
+end
 
-    # Get the values of the extra parameters.
-    local extra_names
-    all_vals = []
+function names_values(extra_data::AbstractVector{<:NamedTuple{names}}) where names
+    values = [getfield(data, name) for data in extra_data, name in names]
+    return collect(names), values
+end
 
-    # Iterate through each transition.
-    for t in ts
-        extra_names = Symbol[]
-        vals = []
-
-        # Iterate through each of the additional field names
-        # in the struct.
-        for p in extra_params
-            # Check whether the field contains a NamedTuple,
-            # in which case we need to iterate through each
-            # key/value pair.
-            prop = getproperty(t, p)
-            if prop isa NamedTuple
-                for (k, v) in pairs(prop)
-                    push!(extra_names, Symbol(k))
-                    push!(vals, v)
-                end
-            else
-                push!(extra_names, Symbol(p))
-                push!(vals, prop)
-            end
+function names_values(extra_data::AbstractVector{<:NamedTuple})
+    # Obtain all parameter names.
+    names_set = Set(Symbol[])
+    for data in extra_data
+        for name in names(data)
+            push!(extra_names_set, name)
         end
-        push!(all_vals, vals)
     end
+    extra_names = collect(extra_names_set)
 
-    # Convert the vector-of-vectors to a matrix.
-    valmat = [all_vals[i][j] for i in 1:length(ts), j in 1:length(all_vals[1])]
+    # Extract all values as matrix.
+    values = [
+        hasfield(data, name) ? missing : getfield(data, name)
+        for data in extra_data, name in extra_names
+    ]
 
-    return extra_names, valmat
+    return extra_names, values
 end
 
 getlogevidence(transitions, sampler, state) = missing
