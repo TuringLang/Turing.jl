@@ -17,6 +17,7 @@ using Tracker: Tracker
 
 import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
+import Random
 
 const PROGRESS = Ref(true)
 
@@ -74,7 +75,8 @@ end
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: elementwise_loglikelihoods, generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, elementwise_loglikelihoods,
+    generated_quantities, logprior, logjoint
 using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
@@ -129,8 +131,9 @@ export  @model,                 # modelling
         arraydist,
 
         predict,
+        pointwise_loglikelihoods,
         elementwise_loglikelihoods,
-        genereated_quantities,
+        generated_quantities,
         logprior,
         logjoint
 
