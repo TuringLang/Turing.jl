@@ -24,7 +24,7 @@ N = length(x)
     λ ~ Gamma(α_0, θ_0)
     σ = sqrt(1 / λ)
     m ~ Normal(0, σ)
-    @. x ~ $(Normal(m, σ))
+    @. x ~ \$(Normal(m, σ))
 end
 
 # The conditionals can be formulated in terms of the following statistics:

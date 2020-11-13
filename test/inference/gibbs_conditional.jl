@@ -53,8 +53,6 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
     end
 
-    
-
     @turing_testset "GMM" begin
         π = [0.5, 0.5] # cluster weights
         K = length(π)  # number of clusters
