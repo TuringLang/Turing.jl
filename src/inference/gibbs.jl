@@ -107,7 +107,8 @@ function DynamicPPL.initialstep(
         else
             prev_alg = algs[i-1]
         end
-        rerun = !isa(alg, MH) || prev_alg isa PG || prev_alg isa ESS
+        rerun = !isa(alg, MH) || prev_alg isa PG || prev_alg isa ESS ||
+            prev_alg isa GibbsConditional
         selector = Selector(Symbol(typeof(alg)), rerun)
         Sampler(alg, model, selector)
     end

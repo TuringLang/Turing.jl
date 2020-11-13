@@ -23,6 +23,7 @@ include("test_utils/AllUtils.jl")
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
+                include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
                 include("inference/is.jl")
                 include("inference/mh.jl")
