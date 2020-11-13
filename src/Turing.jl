@@ -91,6 +91,7 @@ export  @model,                 # modelling
         Emcee,
         ESS,
         Gibbs,
+        GibbsConditional,
 
         HMC,                    # Hamiltonian-like sampling
         SGLD,

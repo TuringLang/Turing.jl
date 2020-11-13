@@ -42,6 +42,7 @@ export  InferenceAlgorithm,
         ESS,
         Emcee,
         Gibbs,      # classic sampling
+        GibbsConditional,
         HMC,
         SGLD,
         SGHMC,
@@ -538,6 +539,7 @@ include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs.jl")
+include("gibbs_conditional.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
 
