@@ -369,7 +369,7 @@ function AbstractMCMC.bundle_samples(
 )
     return map(ts) do t
         params = map(first, getparams(t))
-        return merge(params, (lp = getlogp(t),))
+        return merge(params, metadata(t))
     end
 end
 
