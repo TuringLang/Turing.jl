@@ -48,7 +48,6 @@ end
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-# initial step: general interface for resuming and
 DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = SampleFromUniform()
 
 function DynamicPPL.initialstep(
