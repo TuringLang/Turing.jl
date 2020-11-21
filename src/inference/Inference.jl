@@ -554,36 +554,6 @@ for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval DynamicPPL.getspace(::$alg{<:Any, space}) where {space} = space
 end
 
-floatof(::Type{T}) where {T <: Real} = typeof(one(T)/one(T))
-floatof(::Type) = Real # fallback if type inference failed
-
-function get_matching_type(
-    spl::AbstractSampler, 
-    vi,
-    ::Type{T},
-) where {T}
-    return T
-end
-function get_matching_type(
-    spl::AbstractSampler, 
-    vi, 
-    ::Type{<:Union{Missing, AbstractFloat}},
-)
-    return Union{Missing, floatof(eltype(vi, spl))}
-end
-function get_matching_type(
-    spl::AbstractSampler,
-    vi,
-    ::Type{<:AbstractFloat},
-)
-    return floatof(eltype(vi, spl))
-end
-function get_matching_type(spl::AbstractSampler, vi, ::Type{<:Array{T,N}}) where {T,N}
-    return Array{get_matching_type(spl, vi, T), N}
-end
-function get_matching_type(spl::AbstractSampler, vi, ::Type{<:Array{T}}) where T
-    return Array{get_matching_type(spl, vi, T)}
-end
 function get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 
     vi,
