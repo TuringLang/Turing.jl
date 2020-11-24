@@ -53,7 +53,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test pc.logWs == logps
         @test getweights(pc) ≈ exp.(logps) ./ sum(exp, logps)
         @test all(getweight(pc, i) ≈ exp(logps[i]) / sum(exp, logps) for i in 1:3)
-        @test logZ(pc) == log(sum(exp, logps))
+        @test logZ(pc) ≈ log(sum(exp, logps))
 
         # Reweight particles.
         reweight!(pc)
@@ -61,7 +61,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test pc.logWs == 2 .* logps
         @test getweights(pc) == exp.(2 .* logps) ./ sum(exp, 2 .* logps)
         @test all(getweight(pc, i) ≈ exp(2 * logps[i]) / sum(exp, 2 .* logps) for i in 1:3)
-        @test logZ(pc) == log(sum(exp, 2 .* logps))
+        @test logZ(pc) ≈ log(sum(exp, 2 .* logps))
 
         # Resample and propagate particles.
         resample_propagate!(pc)
@@ -78,7 +78,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         @test pc.logWs ⊆ logps
         @test getweights(pc) == exp.(pc.logWs) ./ sum(exp, pc.logWs)
         @test all(getweight(pc, i) ≈ exp(pc.logWs[i]) / sum(exp, pc.logWs) for i in 1:3)
-        @test logZ(pc) == log(sum(exp, pc.logWs))
+        @test logZ(pc) ≈ log(sum(exp, pc.logWs))
 
         # Increase unnormalized logarithmic weights.
         logws = copy(pc.logWs)
