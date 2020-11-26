@@ -260,14 +260,18 @@ function AbstractMCMC.step(
     # Get position and log density before transition
     θ_old = vi[spl]
     log_density_old = getlogp(vi)
-    if spl.selector.tag !== :default
-        hamiltonian = get_hamiltonian(model, spl, vi, state, length(θ_old))
-        z = state.z
-        resize!(z.θ, length(θ_old))
-        z.θ .= θ_old
+    hamiltonian = if spl.selector.tag === :default
+        state.hamiltonian
     else
-        hamiltonian = state.hamiltonian
-        z = state.z
+        get_hamiltonian(model, spl, vi, state, length(θ_old))
+    end
+
+    z = if spl.selector.tag === :default
+        state.z
+    else
+        resize!(state.z.θ, length(θ_old))
+        state.z.θ .= θ_old
+        state.z
     end
 
     # Compute transition.
