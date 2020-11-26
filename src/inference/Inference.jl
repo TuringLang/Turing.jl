@@ -116,6 +116,9 @@ metadata(t::Transition) = (lp = t.lp,)
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
+# Metadata of VarInfo object
+metadata(vi::AbstractVarInfo) = (lp = getlogp(vi),)
+
 #########################################
 # Default definitions for the interface #
 #########################################

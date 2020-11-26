@@ -119,7 +119,7 @@ function AbstractMCMC.bundle_samples(
     parray = cat(parray..., dims=3)
 
     # Get the average or final log evidence, if it exists.
-    le = getlogevidence(ts, state, spl)
+    le = getlogevidence(samples, state, spl)
 
     # Set up the info tuple.
     if save_state
