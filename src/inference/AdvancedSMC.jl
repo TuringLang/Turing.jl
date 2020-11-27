@@ -2,32 +2,6 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
-#######################
-# Particle Transition #
-#######################
-
-"""
-    ParticleTransition{T, F<:AbstractFloat}
-
-Fields:
-- `θ`: The parameters for any given sample.
-- `lp`: The log pdf for the sample's parameters.
-- `le`: The log evidence retrieved from the particle.
-- `weight`: The weight of the particle the sample was retrieved from.
-"""
-struct ParticleTransition{T, F<:AbstractFloat}
-    θ::T
-    lp::F
-    le::F
-    weight::F
-end
-
-function additional_parameters(::Type{<:ParticleTransition})
-    return [:lp,:le, :weight]
-end
-
-DynamicPPL.getlogp(t::ParticleTransition) = t.lp
-
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -69,82 +43,114 @@ SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, sp
 SMC(space::Symbol...) = SMC(space)
 SMC(space::Tuple) = SMC(Turing.Core.ResampleWithESSThreshold(), space)
 
-mutable struct SMCState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
-    vi                   ::   V
+struct SMCTransition{T,F<:AbstractFloat}
+    "The parameters for any given sample."
+    θ::T
+    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
+    lp::F
+    "The weight of the particle the sample was retrieved from."
+    weight::F
+end
+
+function SMCTransition(vi::AbstractVarInfo, weight)
+    theta = tonamedtuple(vi)
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
+    lp = getlogp(vi)
+
+    return SMCTransition(theta, lp, weight)
+end
+
+metadata(t::SMCTransition) = (lp = t.lp, weight = t.weight)
+
+DynamicPPL.getlogp(t::SMCTransition) = t.lp
+
+struct SMCState{P,F<:AbstractFloat}
+    particles::P
+    particleindex::Int
     # The logevidence after aggregating all samples together.
-    average_logevidence  ::   F
-    particles            ::   ParticleContainer
+    average_logevidence::F
 end
 
-function SMCState(model::Model)
-    vi = VarInfo(model)
-    particles = ParticleContainer(Trace[])
-
-    return SMCState(vi, 0.0, particles)
+function getlogevidence(samples, sampler::Sampler{<:SMC}, state::SMCState)
+    return state.average_logevidence
 end
 
-function Sampler(alg::SMC, model::Model, s::Selector)
-    dict = Dict{Symbol, Any}()
-    state = SMCState(model)
-    return Sampler(alg, dict, s, state)
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    sampler::Sampler{<:SMC},
+    N::Integer;
+    chain_type=MCMCChains.Chains,
+    resume_from=nothing,
+    progress=PROGRESS[],
+    kwargs...
+)
+    if resume_from === nothing
+        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       chain_type=chain_type,
+                                       progress=progress,
+                                       nparticles=N,
+                                       kwargs...)
+    else
+        return resume(resume_from, N;
+                      chain_type=chain_type, progress=progress, nparticles=N, kwargs...)
+    end
 end
 
-function AbstractMCMC.sample_init!(
+function DynamicPPL.initialstep(
     ::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:SMC},
-    N::Integer;
+    vi::AbstractVarInfo;
+    nparticles::Int,
     kwargs...
 )
-    # set the parameters to a starting value
-    initialize_parameters!(spl; kwargs...)
-
-    # reset the VarInfo
-    vi = spl.state.vi
+    # Reset the VarInfo.
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
     empty!(vi)
 
-    # create a new set of particles
+    # Create a new set of particles.
     T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    particles = T[Trace(model, spl, vi) for _ in 1:N]
-
-    # create a new particle container
-    spl.state.particles = pc = ParticleContainer(particles)
+    particles = ParticleContainer(T[Trace(model, spl, vi) for _ in 1:nparticles])
 
     # Perform particle sweep.
-    logevidence = sweep!(pc, spl.alg.resampler)
-    spl.state.average_logevidence = logevidence
+    logevidence = sweep!(particles, spl.alg.resampler)
 
-    return
+    # Extract the first particle and its weight.
+    particle = particles.vals[1]
+    weight = getweight(particles, 1)
+
+    # Compute the first transition and the first state.
+    transition = SMCTransition(particle.vi, weight)
+    state = SMCState(particles, 2, logevidence)
+
+    return transition, state
 end
 
-function AbstractMCMC.step!(
+function AbstractMCMC.step(
     ::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:SMC},
-    ::Integer,
-    transition;
-    iteration=-1,
+    state::SMCState;
     kwargs...
 )
-    # check that we received a real iteration number
-    @assert iteration >= 1 "step! needs to be called with an 'iteration' keyword argument."
+    # Extract the index of the current particle.
+    index = state.particleindex
 
-    # grab the weight
-    pc = spl.state.particles
-    weight = getweight(pc, iteration)
+    # Extract the current particle and its weight.
+    particles = state.particles
+    particle = particles.vals[index]
+    weight = getweight(particles, index)
 
-    # update the master vi
-    particle = pc.vals[iteration]
-    params = tonamedtuple(particle.vi)
+    # Compute the transition and the next state.
+    transition = SMCTransition(particle.vi, weight)
+    nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
-    lp = getlogp(particle.vi)
-
-    return ParticleTransition(params, lp, spl.state.average_logevidence, weight)
+    return transition, nextstate
 end
 
 ####
@@ -205,108 +211,103 @@ function PG(nparticles::Int, space::Tuple)
     return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
 end
 
-mutable struct PGState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
-    vi                   ::   V
-    # The logevidence after aggregating all samples together.
-    average_logevidence  ::   F
-end
-
-function PGState(model::Model)
-    vi = VarInfo(model)
-    return PGState(vi, 0.0)
-end
-
 const CSMC = PG # type alias of PG as Conditional SMC
 
-"""
-    Sampler(alg::PG, model::Model, s::Selector)
-
-Return a `Sampler` object for the PG algorithm.
-"""
-function Sampler(alg::PG, model::Model, s::Selector)
-    info = Dict{Symbol, Any}()
-    state = PGState(model)
-    return Sampler(alg, info, s, state)
+struct PGTransition{T,F<:AbstractFloat}
+    "The parameters for any given sample."
+    θ::T
+    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
+    lp::F
+    "The log evidence of the sample."
+    logevidence::F
 end
 
-function AbstractMCMC.step!(
-    ::AbstractRNG,
+function PGTransition(vi::AbstractVarInfo, logevidence)
+    theta = tonamedtuple(vi)
+
+    # This is pretty useless since we reset the log probability continuously in the
+    # particle sweep.
+    lp = getlogp(vi)
+
+    return PGTransition(theta, lp, logevidence)
+end
+
+metadata(t::PGTransition) = (lp = t.lp, logevidence = t.logevidence)
+
+DynamicPPL.getlogp(t::PGTransition) = t.lp
+
+function getlogevidence(samples, sampler::Sampler{<:PG}, vi::AbstractVarInfo)
+    return mean(x.logevidence for x in samples)
+end
+
+function DynamicPPL.initialstep(
+    rng::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:PG},
-    ::Integer,
-    transition;
+    vi::AbstractVarInfo;
     kwargs...
 )
-    # obtain or create reference particle
-    vi = spl.state.vi
-    ref_particle = isempty(vi) ? nothing : forkr(Trace(model, spl, vi))
-
-    # reset the VarInfo before new sweep
+    # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
 
-    # create a new set of particles
+    # Create a new set of particles
     num_particles = spl.alg.nparticles
     T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    if ref_particle === nothing
-        particles = T[Trace(model, spl, vi) for _ in 1:num_particles]
-    else
-        particles = Vector{T}(undef, num_particles)
-        @inbounds for i in 1:(num_particles - 1)
-            particles[i] = Trace(model, spl, vi)
-        end
-        @inbounds particles[num_particles] = ref_particle
-    end
-
-    # create a new particle container
-    pc = ParticleContainer(particles)
+    particles = ParticleContainer(T[Trace(model, spl, vi) for _ in 1:num_particles])
 
     # Perform a particle sweep.
-    logevidence = sweep!(pc, spl.alg.resampler)
+    logevidence = sweep!(particles, spl.alg.resampler)
 
-    # pick a particle to be retained.
-    Ws = getweights(pc)
+    # Pick a particle to be retained.
+    Ws = getweights(particles)
     indx = randcat(Ws)
+    reference = particles.vals[indx]
 
-    # extract the VarInfo from the retained particle.
-    params = tonamedtuple(vi)
-    spl.state.vi = pc.vals[indx].vi
+    # Compute the first transition.
+    _vi = reference.vi
+    transition = PGTransition(_vi, logevidence)
 
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
-    lp = getlogp(spl.state.vi)
-
-    # update the master vi.
-    return ParticleTransition(params, lp, logevidence, 1.0)
+    return transition, _vi
 end
 
-function AbstractMCMC.sample_end!(
+function AbstractMCMC.step(
     ::AbstractRNG,
-    ::AbstractModel,
-    spl::Sampler{<:ParticleInference},
-    N::Integer,
-    ts::Vector{<:ParticleTransition};
-    resume_from = nothing,
+    model::AbstractModel,
+    spl::Sampler{<:PG},
+    vi::AbstractVarInfo;
     kwargs...
 )
-    # Exponentiate the average log evidence.
-    # loge = exp(mean([t.le for t in ts]))
-    loge = mean(t.le for t in ts)
+    # Reset the VarInfo before new sweep.
+    reset_num_produce!(vi)
+    set_retained_vns_del_by_spl!(vi, spl)
+    resetlogp!(vi)
 
-    # If we already had a chain, grab the logevidence.
-    if resume_from isa MCMCChains.Chains
-        # pushfirst!(samples, resume_from.info[:samples]...)
-        pre_loge = resume_from.logevidence
-        # Calculate new log-evidence
-        pre_n = length(resume_from)
-        loge = (pre_loge * pre_n + loge * N) / (pre_n + N)
-    elseif resume_from !== nothing
-        error("keyword argument `resume_from` has to be `nothing` or a `MCMCChains.Chains` object")
+    # Create a new set of particles.
+    num_particles = spl.alg.nparticles
+    T = Trace{typeof(spl),typeof(vi),typeof(model)}
+    x = Vector{T}(undef, num_particles)
+    @inbounds for i in 1:(num_particles - 1)
+        x[i] = Trace(model, spl, vi)
     end
+    # Create reference particle.
+    @inbounds x[num_particles] = forkr(Trace(model, spl, vi))
+    particles = ParticleContainer(x)
 
-    # Store the logevidence.
-    spl.state.average_logevidence = loge
+    # Perform a particle sweep.
+    logevidence = sweep!(particles, spl.alg.resampler)
+
+    # Pick a particle to be retained.
+    Ws = getweights(particles)
+    indx = randcat(Ws)
+    newreference = particles.vals[indx]
+
+    # Compute the transition.
+    _vi = newreference.vi
+    transition = PGTransition(_vi, logevidence)
+
+    return transition, _vi
 end
 
 function DynamicPPL.assume(

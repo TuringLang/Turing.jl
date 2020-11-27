@@ -8,60 +8,51 @@ dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
 @turing_testset "is.jl" begin
-    function reference(n :: Int)
-        logweights = zeros(Float64, n)
-        samples = Array{Dict{Symbol,Any}}(undef, n)
-        for i = 1:n
-            samples[i] = reference()
-            logweights[i] = samples[i][:logweight]
+    function reference(n)
+        as = Vector{Float64}(undef, n)
+        bs = Vector{Float64}(undef, n)
+        logps = Vector{Float64}(undef, n)
+
+        for i in 1:n
+            as[i], bs[i], logps[i] = reference()
         end
-        logevidence = logsumexp(logweights) - log(n)
-        results = Dict{Symbol,Any}()
-        results[:lp] = logevidence
-        results[:lp] = logweights
-        results[:samples] = samples
-        return results
+        logevidence = logsumexp(logps) - log(n)
+
+        return (as = as, bs = bs, logps = logps, logevidence = logevidence)
     end
 
     function reference()
         x = rand(Normal(4,5))
         y = rand(Normal(x,1))
-        log_lik = logpdf(Normal(x,2), 3) + logpdf(Normal(y,2), 1.5)
-        d = Dict()
-        d[:logweight] = log_lik
-        d[:a] = x
-        d[:b] = y
-        return d
+        loglik = logpdf(Normal(x,2), 3) + logpdf(Normal(y,2), 1.5)
+        return x, y, loglik
     end
 
-    let n = 10
-      @model normal() = begin
+    @model function normal()
         a ~ Normal(4,5)
         3 ~ Normal(a,2)
         b ~ Normal(a,1)
         1.5 ~ Normal(b,2)
         a, b
-      end
+    end
 
-      alg = IS()
-      seed = 0
+    alg = IS()
+    seed = 0
+    n = 10
 
-      _f = normal();
-      for i=1:100
+    model = normal()
+    for i in 1:100
         Random.seed!(seed)
-        # Move the rng twice - equivalent to sampling from prior
-        rand(Normal(4,5))
-        rand(Normal(0,1))
-        exact = reference(n)
+        ref = reference(n)
+
         Random.seed!(seed)
-        tested = sample(_f, alg, n)
-        t_vals = get(tested, [:a, :b, :lp])
-        for i = 1:n
-            @test exact[:samples][i][:a] == t_vals.a[i]
-            @test exact[:samples][i][:b] == t_vals.b[i]
-            @test exact[:lp][i] == t_vals.lp[i]
-        end
-      end
+        chain = sample(model, alg, n)
+        sampled = get(chain, [:a, :b, :lp])
+
+        @test vec(sampled.a) == ref.as
+        @test vec(sampled.b) == ref.bs
+        @test vec(sampled.lp) == ref.logps
+        @test chain.logevidence == ref.logevidence
     end
 
     @turing_testset "logevidence" begin

@@ -73,7 +73,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_gdemo(chn3)
 
         chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
-        check_gdemo(chn3_contd)
+        check_gdemo(chn3_contd; atol=0.25)
     end
     @testset "Contexts" begin
         # Test LikelihoodContext

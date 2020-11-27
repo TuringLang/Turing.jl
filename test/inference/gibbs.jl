@@ -30,9 +30,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         # Test gid of each samplers
         g = Turing.Sampler(s3, gdemo_default)
 
-        @test g.state.samplers[1].selector != g.selector
-        @test g.state.samplers[2].selector != g.selector
-        @test g.state.samplers[1].selector != g.state.samplers[2].selector
+        _, state = AbstractMCMC.step(Random.GLOBAL_RNG, gdemo_default, g)
+        @test state.samplers[1].selector != g.selector
+        @test state.samplers[2].selector != g.selector
+        @test state.samplers[1].selector != state.samplers[2].selector
 
         # run sampler: progress logging should be disabled and
         # it should return a Chains object
@@ -62,7 +63,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         alg = CSMC(10)
         chain = sample(gdemo(1.5, 2.0), alg, 5000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.25)
 
         setadsafe(true)
 
@@ -71,7 +72,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             PG(10, :z1, :z2, :z3, :z4),
             HMC(0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol = 0.15)
+        check_MoGtest_default(chain, atol=0.2)
 
         setadsafe(false)
 
@@ -93,21 +94,21 @@ include(dir*"/test/test_utils/AllUtils.jl")
         end
         model = gdemo_copy()
 
-        function AbstractMCMC.sample_end!(
-            ::AbstractRNG,
+        function AbstractMCMC.bundle_samples(
+            samples::Vector,
             ::typeof(model),
             ::Turing.Sampler{<:Gibbs},
-            ::Integer,
-            transitions::Vector;
+            state,
+            ::Type{MCMCChains.Chains};
             kwargs...
         )
-            transitions isa Vector{<:Inference.Transition} ||
+            samples isa Vector{<:Inference.GibbsTransition} ||
                 error("incorrect transitions")
             return
         end
 
-        function callback(rng, model, sampler, transition, i; kwargs...)
-            transition isa Inference.GibbsTransition || error("incorrect transition")
+        function callback(rng, model, sampler, sample, i; kwargs...)
+            sample isa Inference.GibbsTransition || error("incorrect sample")
             return
         end
 

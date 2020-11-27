@@ -58,37 +58,36 @@ struct GibbsConditional{S, C}
 end
 
 DynamicPPL.getspace(::GibbsConditional{S}) where {S} = (S,)
-DynamicPPL.alg_str(::GibbsConditional) = "GibbsConditional"
+
 isgibbscomponent(::GibbsConditional) = true
 
-
-function Sampler(
-    alg::GibbsConditional,
-    model::Model,
-    s::Selector=Selector()
-)
-    return Sampler(alg, Dict{Symbol, Any}(), s, SamplerState(VarInfo(model)))
-end
-
-
-function AbstractMCMC.step!(
+function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::Model,
-    spl::Sampler{<:GibbsConditional{S}},
-    N::Integer,
-    transition;
+    spl::Sampler{<:GibbsConditional},
+    vi::AbstractVarInfo;
     kwargs...
-) where {S}
+)
+    return AbstractMCMC.step(rng, model, spl, vi; kwargs...)
+end
+
+function AbstractMCMC.step(
+    rng::AbstractRNG,
+    model::Model,
+    spl::Sampler{<:GibbsConditional},
+    vi::AbstractVarInfo;
+    kwargs...
+)
     if spl.selector.rerun # Recompute joint in logp
-        model(spl.state.vi)
+        model(rng, vi)
     end
 
-    condvals = conditioned(tonamedtuple(spl.state.vi))
+    condvals = conditioned(tonamedtuple(vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    spl.state.vi[VarName(S)] = [updated;]  # setindex allows only vectors in this case...
-    
-    return transition
+    vi[spl] = [updated;]  # setindex allows only vectors in this case...
+
+    return nothing, vi
 end
 
 
