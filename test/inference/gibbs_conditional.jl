@@ -1,4 +1,5 @@
 using Random, Turing, Test
+using StatsFuns
 using Clustering
 
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
@@ -9,88 +10,121 @@ include(dir*"/test/test_utils/AllUtils.jl")
     Random.seed!(100)
 
     @turing_testset "gdemo" begin
-        N = 1000
-        (α_0, θ_0) = (2.0, inv(3.0))
-        λ_true = rand(Gamma(α_0, θ_0))
-        σ_true = sqrt(1 / λ_true)
-        m_true = rand(Normal(0, σ_true))
-        x = rand(Normal(m_true, σ_true), N)
+        # We consider the model
+        # ```math
+        # s ~ InverseGamma(2, 3)
+        # m ~ Normal(0, √s)
+        # xᵢ ~ Normal(m, √s), i = 1, …, N,
+        # ```
+        # with ``N = 2`` observations ``x₁ = 1.5`` and ``x₂ = 2``.
 
         # The conditionals and posterior can be formulated in terms of the following statistics:
-        x_bar = mean(x) # sample mean
-        s2 = var(x; mean=x_bar, corrected=false) # sample variance
-        m_n = N * x_bar / (N + 1)
+        N = 2
+        x_mean = 1.75 # sample mean ``∑ xᵢ / N``
+        x_var = 0.0625 # sample variance ``∑ (xᵢ - x_bar)^2 / N``
+        m_n = 3.5 / 3 # ``∑ xᵢ / (N + 1)``
 
-        @model function inverse_gdemo(x)
-            λ ~ Gamma(α_0, θ_0)
-            σ = sqrt(1 / λ)
-            m ~ Normal(0, σ)
-            @. x ~ $(Normal(m, σ))
+        # Conditional distribution
+        # ```math
+        # m | s, x ~ Normal(m_n, sqrt(s / (N + 1)))
+        # ```
+        cond_m = let N=N, m_n=m_n
+            c -> Normal(m_n, sqrt(c.s / (N + 1)))
         end
 
-        function cond_m(c)
-            λ_n = c.λ * (N + 1)
-            σ_n = sqrt(1 / λ_n)
-            return Normal(m_n, σ_n)
+        # Conditional distribution
+        # ```math
+        # s | m, x ~ InverseGamma(2 + (N + 1) / 2, 3 + (m^2 + ∑ (xᵢ - m)^2) / 2) =
+        #            InverseGamma(2 + (N + 1) / 2, 3 + m^2 / 2 + N / 2 * (x_var + (x_mean - m)^2))
+        # ```
+        cond_s = let N=N, x_mean=x_mean, x_var=x_var
+            c -> InverseGamma(2 + (N + 1) / 2, 3 + c.m^2 / 2 + N / 2 * (x_var + (x_mean - c.m)^2))
         end
 
-        function cond_λ(c)
-            α_n = α_0 + (N - 1) / 2 + 1
-            β_n = s2 * N / 2 + c.m^2 / 2 + inv(θ_0)
-            return Gamma(α_n, inv(β_n))
-        end
+        # Three Gibbs samplers:
+        # one for each variable fixed to the posterior mean
+        s_posterior_mean = 49/24
+        sampler1 = Gibbs(
+            GibbsConditional(:m, cond_m),
+            GibbsConditional(:s, _ -> Normal(s_posterior_mean, 0)),
+        )
+        chain = sample(gdemo_default, sampler1, 10_000)
+        cond_m_mean = mean(cond_m((s = s_posterior_mean,)))
+        check_numerical(chain, [:m, :s], [cond_m_mean, s_posterior_mean])
+        @test all(==(s_posterior_mean), chain[:s])
 
-        # Three tests: one for each variable fixed to the true value, and one for both
-        # using the conditional
-        for alg in (Gibbs(GibbsConditional(:m, cond_m),
-                          GibbsConditional(:λ, c -> Normal(λ_true, 0))),
-                    Gibbs(GibbsConditional(:m, c -> Normal(m_true, 0)),
-                          GibbsConditional(:λ, cond_λ)),
-                    Gibbs(GibbsConditional(:m, cond_m),
-                          GibbsConditional(:λ, cond_λ)))
-            chain = sample(inverse_gdemo(x), alg, 10_000)
-            check_numerical(chain, [:m, :λ], [m_true, λ_true], atol=0.2)
-        end
+        m_posterior_mean = 7/6
+        sampler2 = Gibbs(
+            GibbsConditional(:m, _ -> Normal(m_posterior_mean, 0)),
+            GibbsConditional(:s, cond_s),
+        )
+        chain = sample(gdemo_default, sampler2, 10_000)
+        cond_s_mean = mean(cond_s((m = m_posterior_mean,)))
+        check_numerical(chain, [:m, :s], [m_posterior_mean, cond_s_mean])
+        @test all(==(m_posterior_mean), chain[:m])
+
+        # and one for both using the conditional
+        sampler3 = Gibbs(GibbsConditional(:m, cond_m), GibbsConditional(:s, cond_s))
+        chain = sample(gdemo_default, sampler3, 10_000)
+        check_gdemo(chain)
     end
 
     @turing_testset "GMM" begin
-        π = [0.5, 0.5] # cluster weights
-        K = length(π)  # number of clusters
-        m = 0.5 # prior mean
-        s = 2.0 # prior variance
-        σ = 0.1 # observation variance
+        # We consider the model
+        # ```math
+        # μₖ ~ Normal(m, σ_μ), k = 1, …, K,
+        # zᵢ ~ Categorical(π), i = 1, …, N,
+        # xᵢ ~ Normal(μ_{zᵢ}, σₓ), i = 1, …, N,
+        # ```
+        # with ``K = 2`` clusters, ``N = 20`` observations, and the following parameters:
+        K = 2 # number of clusters
+        π = fill(1/K, K) # uniform cluster weights
+        m = 0.5 # prior mean of μₖ
+        σ_μ = 2.0 # prior variance of μₖ
+        σ_x = 0.1 # observation variance
         N = 20  # number of observations
 
-        μ_true = rand(Normal(m, s), K)
-        z_true = rand(Categorical(π), N)
-        x = rand(MvNormal(μ_true[z_true], σ))
+        # We generate data
+        μ_data = rand(Normal(m, σ_μ), K)
+        z_data = rand(Categorical(π), N)
+        x_data = rand(MvNormal(μ_data[z_data], σ_x))
 
         @model function mixture(x)
-            μ ~ MvNormal(fill(m, K), s)
-            z ~ filldist(Categorical(π), N)
-            x ~ MvNormal(μ[z], σ)
+            μ ~ $(MvNormal(fill(m, K), σ_μ))
+            z ~ $(filldist(Categorical(π), N))
+            x ~ MvNormal(μ[z], $(σ_x))
             return x
         end
+        model = mixture(x_data)
 
+        # Conditional distribution ``z | μ, x``
         # see http://www.cs.columbia.edu/~blei/fogm/2015F/notes/mixtures-and-gibbs.pdf
-        function cond_z(c)
-            function mixtureweight(x)
-                p = π .* pdf.(Normal.(c.μ, σ), x)
-                return p ./ sum(p)
+        cond_z = let x=x_data, log_π=log.(π), σ_x=σ_x
+            c -> begin
+                dists = map(x) do xi
+                    logp = log_π .+ logpdf.(Normal.(c.μ, σ_x), xi)
+                    return Categorical(softmax!(logp))
+                end
+                return arraydist(dists)
             end
-            return arraydist(Categorical.(mixtureweight.(x)))
         end
 
-        function cond_μ(c)
-            z = c.z
-            n = [count(z .== k) for k = 1:K]
+        # Conditional distribution ``μ | z, x``
+        # see http://www.cs.columbia.edu/~blei/fogm/2015F/notes/mixtures-and-gibbs.pdf
+        cond_μ = let K=K, x_data=x_data, inv_σ_μ2=inv(σ_μ^2), inv_σ_x2=inv(σ_x^2)
+            c -> begin
+                # Convert cluster assignments to one-hot encodings
+                z_onehot = c.z .== (1:K)'
 
-            # If there were no observations assigned to center `k`, `n[k] == 0`, and
-            # we use the prior instead.
-            s_hat = [(n[k] != 0) ? inv(n[k] / σ^2 + 1/s^2) : s for k = 1:K]
-            μ_hat = [(n[k] != 0) ? (sum(x[z .== k]) / σ^2) * s_hat[k] : m for k = 1:K]
+                # Count number of observations in each cluster
+                n = vec(sum(z_onehot; dims=1))
 
-            return MvNormal(μ_hat, s_hat)
+                # Compute mean and variance of the conditional distribution
+                μ_var = @. inv(inv_σ_x2 * n + inv_σ_μ2)
+                μ_mean = (z_onehot' * x_data) .* inv_σ_x2 .* μ_var
+
+                return MvNormal(μ_mean, μ_var)
+            end
         end
 
         estimate(chain, var) = dropdims(mean(Array(group(chain, var)), dims=1), dims=1)
@@ -99,20 +133,21 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return map(i -> findmax(counts(z[:,i], range))[2], 1:size(z,2))
         end
 
-        lμ_true, uμ_true = extrema(μ_true)
+        lμ_data, uμ_data = extrema(μ_data)
 
-        for alg in (Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ)),
-                    Gibbs(GibbsConditional(:z, cond_z), MH(:μ)),
-                    Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ)), )
-
-            chain = sample(mixture(x), alg, 10000)
+        # Compare three Gibbs samplers
+        sampler1 = Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ))
+        sampler2 = Gibbs(GibbsConditional(:z, cond_z), MH(:μ))
+        sampler3 = Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ))
+        for sampler in (sampler1, sampler2, sampler3)
+            chain = sample(model, sampler, 10_000)
 
             μ_hat = estimate(chain, :μ)
             lμ_hat, uμ_hat = extrema(μ_hat)
-            @test isapprox([lμ_true, uμ_true], [lμ_hat, uμ_hat], atol=0.1)
+            @test isapprox([lμ_data, uμ_data], [lμ_hat, uμ_hat], atol=0.1)
 
             z_hat = estimatez(chain, :z, 1:2)
-            ari, _, _, _ = randindex(z_true, Int.(z_hat))
+            ari, _, _, _ = randindex(z_data, Int.(z_hat))
             @test isapprox(ari, 1, atol=0.1)
         end
     end

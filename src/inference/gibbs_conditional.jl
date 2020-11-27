@@ -68,7 +68,7 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...
 )
-    return nothing, vi
+    return AbstractMCMC.step(rng, model, spl, vi; kwargs...)
 end
 
 function AbstractMCMC.step(
