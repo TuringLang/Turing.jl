@@ -1,7 +1,6 @@
 module Inference
 
 using ..Core
-using ..Core: logZ
 using ..Utilities
 using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
@@ -23,6 +22,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
+import AdvancedPS
 import BangBang
 import ..Core: getchunksize, getADbackend
 import DynamicPPL: get_matching_type,
