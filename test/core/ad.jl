@@ -12,7 +12,6 @@ const FDM = FiniteDifferences
 dir = splitdir(splitdir(pathof(Turing))[1])[1]
 include(dir*"/test/test_utils/AllUtils.jl")
 
-_to_cov(B) = B * B' + Matrix(I, size(B)...)
 @testset "ad.jl" begin
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
