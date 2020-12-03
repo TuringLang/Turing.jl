@@ -15,6 +15,7 @@ using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
 using Requires
 
+import AdvancedPS
 import ZygoteRules
 
 include("container.jl")

@@ -21,27 +21,27 @@ end
 
 """
     SMC(space...)
-    SMC([resampler = ResampleWithESSThreshold(), space = ()])
-    SMC([resampler = resample_systematic, ]threshold[, space = ()])
+    SMC([resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
+    SMC([resampler = AdvancedPS.resample, ]threshold[, space = ()])
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler = Turing.Core.ResampleWithESSThreshold(), space::Tuple = ())
+function SMC(resampler = AdvancedPS.ResampleWithESSThreshold(), space::Tuple = ())
     return SMC{space, typeof(resampler)}(resampler)
 end
 
 # Convenient constructors with ESS threshold
 function SMC(resampler, threshold::Real, space::Tuple = ())
-    return SMC(Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+    return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
-SMC(threshold::Real, space::Tuple = ()) = SMC(resample_systematic, threshold, space)
+SMC(threshold::Real, space::Tuple = ()) = SMC(AdvancedPS.resample, threshold, space)
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
-SMC(space::Tuple) = SMC(Turing.Core.ResampleWithESSThreshold(), space)
+SMC(space::Tuple) = SMC(AdvancedPS.ResampleWithESSThreshold(), space)
 
 struct SMCTransition{T,F<:AbstractFloat}
     "The parameters for any given sample."
@@ -114,18 +114,19 @@ function DynamicPPL.initialstep(
     empty!(vi)
 
     # Create a new set of particles.
-    T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    particles = ParticleContainer(T[Trace(model, spl, vi) for _ in 1:nparticles])
+    particles = AdvancedPS.ParticleContainer(
+        [AdvancedPS.Trace(model, spl, vi) for _ in 1:nparticles],
+    )
 
     # Perform particle sweep.
-    logevidence = sweep!(particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(particles, spl.alg.resampler)
 
     # Extract the first particle and its weight.
     particle = particles.vals[1]
-    weight = getweight(particles, 1)
+    weight = AdvancedPS.getweight(particles, 1)
 
     # Compute the first transition and the first state.
-    transition = SMCTransition(particle.vi, weight)
+    transition = SMCTransition(particle.f.varinfo, weight)
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -144,10 +145,10 @@ function AbstractMCMC.step(
     # Extract the current particle and its weight.
     particles = state.particles
     particle = particles.vals[index]
-    weight = getweight(particles, index)
+    weight = AdvancedPS.getweight(particles, index)
 
     # Compute the transition and the next state.
-    transition = SMCTransition(particle.vi, weight)
+    transition = SMCTransition(particle.f.varinfo, weight)
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -180,8 +181,8 @@ isgibbscomponent(::PG) = true
 
 """
     PG(n, space...)
-    PG(n, [resampler = ResampleWithESSThreshold(), space = ()])
-    PG(n, [resampler = resample_systematic, ]threshold[, space = ()])
+    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
+    PG(n, [resampler = AdvancedPS.resample, ]threshold[, space = ()])
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
 in `space`.
@@ -191,7 +192,7 @@ is performed if the estimated effective sample size per particle drops below 0.5
 """
 function PG(
     nparticles::Int,
-    resampler = Turing.Core.ResampleWithESSThreshold(),
+    resampler = AdvancedPS.ResampleWithESSThreshold(),
     space::Tuple = (),
 )
     return PG{space, typeof(resampler)}(nparticles, resampler)
@@ -199,16 +200,16 @@ end
 
 # Convenient constructors with ESS threshold
 function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
-    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(resampler, threshold), space)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
 function PG(nparticles::Int, threshold::Real, space::Tuple = ())
-    return PG(nparticles, resample_systematic, threshold, space)
+    return PG(nparticles, AdvancedPS.resample, threshold, space)
 end
 
 # If only the number of particles and the space is defined
 PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
 function PG(nparticles::Int, space::Tuple)
-    return PG(nparticles, Turing.Core.ResampleWithESSThreshold(), space)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(), space)
 end
 
 const CSMC = PG # type alias of PG as Conditional SMC
@@ -254,19 +255,20 @@ function DynamicPPL.initialstep(
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
-    T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    particles = ParticleContainer(T[Trace(model, spl, vi) for _ in 1:num_particles])
+    particles = AdvancedPS.ParticleContainer(
+        [AdvancedPS.Trace(model, spl, vi) for _ in 1:num_particles],
+    )
 
     # Perform a particle sweep.
-    logevidence = sweep!(particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(particles, spl.alg.resampler)
 
     # Pick a particle to be retained.
-    Ws = getweights(particles)
-    indx = randcat(Ws)
+    Ws = AdvancedPS.getweights(particles)
+    indx = AdvancedPS.randcat(Ws)
     reference = particles.vals[indx]
 
     # Compute the first transition.
-    _vi = reference.vi
+    _vi = reference.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
     return transition, _vi
@@ -286,25 +288,26 @@ function AbstractMCMC.step(
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
-    T = Trace{typeof(spl),typeof(vi),typeof(model)}
-    x = Vector{T}(undef, num_particles)
-    @inbounds for i in 1:(num_particles - 1)
-        x[i] = Trace(model, spl, vi)
+    x = map(1:num_particles) do i
+        if i != num_particles
+            return AdvancedPS.Trace(model, spl, vi)
+        else
+        # Create reference particle.
+            return AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
+        end
     end
-    # Create reference particle.
-    @inbounds x[num_particles] = forkr(Trace(model, spl, vi))
-    particles = ParticleContainer(x)
+    particles = AdvancedPS.ParticleContainer(x)
 
     # Perform a particle sweep.
-    logevidence = sweep!(particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(particles, spl.alg.resampler)
 
     # Pick a particle to be retained.
-    Ws = getweights(particles)
-    indx = randcat(Ws)
+    Ws = AdvancedPS.getweights(particles)
+    indx = AdvancedPS.randcat(Ws)
     newreference = particles.vals[indx]
 
     # Compute the transition.
-    _vi = newreference.vi
+    _vi = newreference.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
     return transition, _vi
@@ -317,7 +320,7 @@ function DynamicPPL.assume(
     vn::VarName,
     ::Any
 )
-    vi = current_trace().vi
+    vi = AdvancedPS.current_trace().f.varinfo
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
@@ -350,153 +353,14 @@ function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, v
     return 0
 end
 
-####
-#### Resampling schemes for particle filters
-####
-
-# Some references
-#  - http://arxiv.org/pdf/1301.4019.pdf
-#  - http://people.isy.liu.se/rt/schon/Publications/HolSG2006.pdf
-# Code adapted from: http://uk.mathworks.com/matlabcentral/fileexchange/24968-resampling-methods-for-particle-filtering
-
-# Default resampling scheme
-function resample(w::AbstractVector{<:Real}, num_particles::Integer=length(w))
-    return resample_systematic(w, num_particles)
-end
-
-# More stable, faster version of rand(Categorical)
-function randcat(p::AbstractVector{<:Real})
-    T = eltype(p)
-    r = rand(T)
-    s = 1
-    for j in eachindex(p)
-        r -= p[j]
-        if r <= zero(T)
-            s = j
-            break
-        end
-    end
-    return s
-end
-
-function resample_multinomial(w::AbstractVector{<:Real}, num_particles::Integer)
-    return rand(Distributions.sampler(Categorical(w)), num_particles)
-end
-
-function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer)
-    # Pre-allocate array for resampled particles
-    indices = Vector{Int}(undef, num_particles)
-
-    # deterministic assignment
-    residuals = similar(w)
-    i = 1
-    @inbounds for j in 1:length(w)
-        x = num_particles * w[j]
-        floor_x = floor(Int, x)
-        for k in 1:floor_x
-            indices[i] = j
-            i += 1
-        end
-        residuals[j] = x - floor_x
-    end
-    
-    # sampling from residuals
-    if i <= num_particles
-        residuals ./= sum(residuals)
-        rand!(Categorical(residuals), view(indices, i:num_particles))
-    end
-    
-    return indices
-end
-
-
-"""
-    resample_stratified(weights, n)
-
-Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
-generated by stratified resampling.
-
-In stratified resampling `n` ordered random numbers `u₁`, ..., `uₙ` are generated, where
-``uₖ \\sim U[(k - 1) / n, k / n)``. Based on these numbers the samples `x₁`, ..., `xₙ`
-are selected according to the multinomial distribution defined by the normalized `weights`,
-i.e., `xᵢ = j` if and only if
-``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
-"""
-function resample_stratified(weights::AbstractVector{<:Real}, n::Integer)
-    # check input
-    m = length(weights)
-    m > 0 || error("weight vector is empty")
-
-    # pre-calculations
-    @inbounds v = n * weights[1]
-
-    # generate all samples
-    samples = Array{Int}(undef, n)
-    sample = 1
-    @inbounds for i in 1:n
-        # sample next `u` (scaled by `n`)
-        u = oftype(v, i - 1 + rand())
-
-        # as long as we have not found the next sample
-        while v < u
-            # increase and check the sample
-            sample += 1
-            sample > m &&
-                error("sample could not be selected (are the weights normalized?)")
-
-            # update the cumulative sum of weights (scaled by `n`)
-            v += n * weights[sample]
-        end
-
-        # save the next sample
-        samples[i] = sample
-    end
-
-    return samples
-end
-
-"""
-    resample_systematic(weights, n)
-
-Return a vector of `n` samples `x₁`, ..., `xₙ` from the numbers 1, ..., `length(weights)`,
-generated by systematic resampling.
-
-In systematic resampling a random number ``u \\sim U[0, 1)`` is used to generate `n` ordered
-numbers `u₁`, ..., `uₙ` where ``uₖ = (u + k − 1) / n``. Based on these numbers the samples
-`x₁`, ..., `xₙ` are selected according to the multinomial distribution defined by the
-normalized `weights`, i.e., `xᵢ = j` if and only if
-``uᵢ \\in [\\sum_{s=1}^{j-1} weights_{s}, \\sum_{s=1}^{j} weights_{s})``.
-"""
-function resample_systematic(weights::AbstractVector{<:Real}, n::Integer)
-    # check input
-    m = length(weights)
-    m > 0 || error("weight vector is empty")
-
-    # pre-calculations
-    @inbounds v = n * weights[1]
-    u = oftype(v, rand())
-
-    # find all samples
-    samples = Array{Int}(undef, n)
-    sample = 1
-    @inbounds for i in 1:n
-        # as long as we have not found the next sample
-        while v < u
-            # increase and check the sample
-            sample += 1
-            sample > m &&
-                error("sample could not be selected (are the weights normalized?)")
-
-            # update the cumulative sum of weights (scaled by `n`)
-            v += n * weights[sample]
-        end
-
-        # save the next sample
-        samples[i] = sample
-
-        # update `u`
-        u += one(u)
-    end
-
-    return samples
+# Convenient constructor
+function AdvancedPS.Trace(
+    model::Model,
+    sampler::Sampler{<:Union{SMC,PG}},
+    varinfo::AbstractVarInfo,
+)
+    newvarinfo = deepcopy(varinfo)
+    DynamicPPL.reset_num_produce!(newvarinfo)
+    f = Turing.Core.TracedModel(model, sampler, newvarinfo)
+    return AdvancedPS.Trace(f)
 end
