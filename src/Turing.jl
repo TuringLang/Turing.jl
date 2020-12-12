@@ -75,8 +75,7 @@ end
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: pointwise_loglikelihoods, elementwise_loglikelihoods,
-    generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint
 using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
@@ -137,8 +136,4 @@ export  @model,                 # modelling
         generated_quantities,
         logprior,
         logjoint
-
-# deprecations
-include("deprecations.jl")
-
 end

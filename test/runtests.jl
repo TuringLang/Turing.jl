@@ -14,7 +14,6 @@ include("test_utils/AllUtils.jl")
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
-        include("core/container.jl")
     end
 
     Turing.setrdcache(false)

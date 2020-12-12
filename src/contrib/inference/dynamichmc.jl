@@ -41,82 +41,82 @@ function DynamicNUTS{AD}(space::Symbol...) where AD
     DynamicNUTS{AD, space}()
 end
 
-mutable struct DynamicNUTSState{V<:VarInfo, D} <: AbstractSamplerState
+struct DynamicNUTSState{V<:AbstractVarInfo,D}
     vi::V
     draws::Vector{D}
 end
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-function AbstractMCMC.sample_init!(
+DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = SampleFromUniform()
+
+function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
-    N::Integer;
+    vi::AbstractVarInfo;
+    N::Int,
     kwargs...
 )
     # Set up lp function.
     function _lp(x)
-        gradient_logp(x, spl.state.vi, model, spl)
+        gradient_logp(x, vi, model, spl)
     end
 
-    # Set the parameters to a starting value.
-    initialize_parameters!(spl; kwargs...)
-
-    model(spl.state.vi, SampleFromUniform())
-    link!(spl.state.vi, spl)
-    l, dl = _lp(spl.state.vi[spl])
+    link!(vi, spl)
+    l, dl = _lp(vi[spl])
     while !isfinite(l) || !isfinite(dl)
-        model(spl.state.vi, SampleFromUniform())
-        link!(spl.state.vi, spl)
-        l, dl = _lp(spl.state.vi[spl])
+        model(vi, SampleFromUniform())
+        link!(vi, spl)
+        l, dl = _lp(vi[spl])
     end
 
-    if spl.selector.tag == :default && !islinked(spl.state.vi, spl)
-        link!(spl.state.vi, spl)
-        model(spl.state.vi, spl)
+    if spl.selector.tag == :default && !islinked(vi, spl)
+        link!(vi, spl)
+        model(vi, spl)
     end
 
     results = mcmc_with_warmup(
         rng,
         FunctionLogDensity(
-            length(spl.state.vi[spl]),
+            length(vi[spl]),
             _lp
         ),
         N
     )
+    draws = results.chain
 
-    spl.state.draws = results.chain
+    # Compute first transition and state.
+    draw = popfirst!(draws)
+    vi[spl] = draw
+    transition = Transition(vi)
+    state = DynamicNUTSState(vi, draws)
+
+    return transition, state
 end
 
-function AbstractMCMC.step!(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:DynamicNUTS},
-    N::Integer,
-    transition;
+    state::DynamicNUTSState;
     kwargs...
 )
+    # Extract VarInfo object.
+    vi = state.vi
+
     # Pop the next draw off the vector.
-    draw = popfirst!(spl.state.draws)
-    spl.state.vi[spl] = draw
-    return Transition(spl)
+    draw = popfirst!(state.draws)
+    vi[spl] = draw
+
+    # Compute next transition.
+    transition = Transition(vi)
+
+    return transition, state
 end
 
-function Sampler(
-    alg::DynamicNUTS,
-    model::Model,
-    s::Selector=Selector()
-)
-    # Construct a state, using a default function.
-    state = DynamicNUTSState(VarInfo(model), [])
-
-    # Return a new sampler.
-    return Sampler(alg, Dict{Symbol,Any}(), s, state)
-end
-
- # Disable the progress logging for DynamicHMC, since it has its own progress meter.
- function AbstractMCMC.sample(
+# Disable the progress logging for DynamicHMC, since it has its own progress meter.
+function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::DynamicNUTS,
@@ -131,9 +131,9 @@ end
     end
     if resume_from === nothing
         return AbstractMCMC.sample(rng, model, Sampler(alg, model), N;
-                                   chain_type=chain_type, progress=false, kwargs...)
+                                   chain_type=chain_type, progress=false, N=N, kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=false, kwargs...)
+        return resume(resume_from, N; chain_type=chain_type, progress=false, N=N, kwargs...)
     end
 end
 
@@ -152,5 +152,5 @@ function AbstractMCMC.sample(
         @warn "[HMC] Progress logging in Turing is disabled since DynamicHMC provides its own progress meter"
     end
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
-                               chain_type=chain_type, progress=false, kwargs...)
+                               chain_type=chain_type, progress=false, N=N, kwargs...)
 end

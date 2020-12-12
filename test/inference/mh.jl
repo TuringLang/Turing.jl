@@ -74,7 +74,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         model = M(zeros(2), ones(2), 1)
         sampler = Inference.Sampler(MH(), model)
 
-        dt, vt = Inference.dist_val_tuple(sampler)
+        dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
 
         @test dt[:z] isa AdvancedMH.StaticProposal{<:MvNormal}
         @test dt[:m] isa AdvancedMH.StaticProposal{Vector{ContinuousUnivariateDistribution}}

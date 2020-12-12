@@ -135,17 +135,17 @@ include(dir*"/test/test_utils/AllUtils.jl")
         alg = HMCDA(0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         alg = HMCDA(200, 0.8, 0.75)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         alg = HMCDA(200, 0.8, 0.75, :s)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
@@ -158,15 +158,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
     @turing_testset "nuts constructor" begin
         alg = NUTS(200, 0.65)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(0.65)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(200, 0.65, :m)
         sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMC"
+        @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
     @turing_testset "check discard" begin
         alg = NUTS(100, 0.8)
@@ -174,7 +174,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         c1 = sample(gdemo_default, alg, 500, discard_adapt = true)
         c2 = sample(gdemo_default, alg, 500, discard_adapt = false)
 
-        @test size(c1, 1) == 400
+        @test size(c1, 1) == 500
         @test size(c2, 1) == 500
     end
     @turing_testset "AHMC resize" begin
