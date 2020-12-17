@@ -64,67 +64,82 @@ function AbstractMCMC.step(
     end
 
     # define previous sampler state
-    oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi))
+    # (do not use cache to avoid in-place sampling from prior)
+    oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi), nothing)
 
     # compute next state
-    _, state = AbstractMCMC.step(rng, ESSModel(model, spl, vi),
-                                 EllipticalSliceSampling.ESS(), oldstate)
+    sample, state = AbstractMCMC.step(
+        rng,
+        EllipticalSliceSampling.ESSModel(
+            ESSPrior(model, spl, vi), ESSLogLikelihood(model, spl, vi),
+        ),
+        EllipticalSliceSampling.ESS(),
+        oldstate,
+    )
 
     # update sample and log-likelihood
-    vi[spl] = state.sample
+    vi[spl] = sample
     setlogp!(vi, state.loglikelihood)
 
     return Transition(vi), vi
 end
 
-struct ESSModel{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T} <: AbstractMCMC.AbstractModel
+# Prior distribution of considered random variable
+struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     model::M
-    spl::S
-    vi::V
+    sampler::S
+    varinfo::V
     μ::T
-end
-
-function ESSModel(model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo)
-    vns = _getvns(vi, spl)
-    μ = mapreduce(vcat, vns[1]) do vn
-        dist = getdist(vi, vn)
-        vectorize(dist, mean(dist))
+    
+    function ESSPrior{M,S,V}(model::M, sampler::S, varinfo::V) where {
+        M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo
+    }
+        vns = _getvns(varinfo, sampler)
+        μ = mapreduce(vcat, vns[1]) do vn
+            dist = getdist(varinfo, vn)
+            EllipticalSliceSampling.isgaussian(typeof(dist)) ||
+                error("[ESS] only supports Gaussian prior distributions")
+            vectorize(dist, mean(dist))
+        end
+        return new{M,S,V,typeof(μ)}(model, sampler, varinfo, μ)
     end
-
-    ESSModel(model, spl, vi, μ)
 end
 
-# sample from the prior
-function EllipticalSliceSampling.sample_prior(rng::Random.AbstractRNG, model::ESSModel)
-    spl = model.spl
-    vi = model.vi
-    vns = _getvns(vi, spl)
-    set_flag!(vi, vns[1][1], "del")
-    model.model(rng, vi, spl)
-    return vi[spl]
+function ESSPrior(model::Model, sampler::Sampler{<:ESS}, varinfo::AbstractVarInfo)
+    return ESSPrior{typeof(model),typeof(sampler),typeof(varinfo)}(
+        model, sampler, varinfo,
+    )
 end
 
-# compute proposal and apply correction for distributions with nonzero mean
-function EllipticalSliceSampling.proposal(model::ESSModel, f, ν, θ)
-    sinθ, cosθ = sincos(θ)
-    a = 1 - (sinθ + cosθ)
-    return @. cosθ * f + sinθ * ν + a * model.μ
+# Ensure that the prior is a Gaussian distribution (checked in the constructor)
+EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
+
+# Only define out-of-place sampling
+function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
+    sampler = p.sampler
+    varinfo = p.varinfo
+    vns = _getvns(varinfo, sampler)
+    set_flag!(varinfo, vns[1][1], "del")
+    p.model(rng, varinfo, sampler)
+    return varinfo[sampler]
 end
 
-function EllipticalSliceSampling.proposal!(out, model::ESSModel, f, ν, θ)
-    sinθ, cosθ = sincos(θ)
-    a = 1 - (sinθ + cosθ)
-    @. out = cosθ * f + sinθ * ν + a * model.μ
-    return out
+# Mean of prior distribution
+Distributions.mean(p::ESSPrior) = p.μ
+
+# Evaluate log-likelihood of proposals
+struct ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo}
+    model::M
+    sampler::S
+    varinfo::V
 end
 
-# evaluate log-likelihood
-function Distributions.loglikelihood(model::ESSModel, f)
-    spl = model.spl
-    vi = model.vi
-    vi[spl] = f
-    model.model(vi, spl)
-    getlogp(vi)
+function (ℓ::ESSLogLikelihood)(f)
+    sampler = ℓ.sampler
+    varinfo = ℓ.varinfo
+    varinfo[sampler] = f
+    ℓ.model(varinfo, sampler)
+    return getlogp(varinfo)
 end
 
 function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
