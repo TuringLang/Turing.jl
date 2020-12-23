@@ -10,6 +10,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "hmc.jl" begin
     @numerical_testset "constrained bounded" begin
+        # Set a seed
+        Random.seed!(5)
+        
         obs = [0,1,0,1,1,1,1,1,1,1]
 
         @model constrained_test(obs) = begin
