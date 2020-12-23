@@ -181,7 +181,7 @@ function AbstractMCMC.step(
         _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
 
         # Update `VarInfo` object.
-        vi = gibbs_varinfo(model, _sampler, _state)
+        vi = gibbs_varinfo(model, _sampler, newstate)
 
         return newstate
     end
