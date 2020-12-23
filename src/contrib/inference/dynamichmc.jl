@@ -64,7 +64,6 @@ function gibbs_state(
     varinfo::AbstractVarInfo,
 )
     # Update the previous evaluation.
-    #DynamicPPL.link!(vi, spl)
     ℓ = DynamicHMCLogDensity(model, spl, varinfo)
     Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
     return DynamicNUTSState(varinfo, Q, state.metric, state.stepsize)
