@@ -68,7 +68,6 @@ function DynamicPPL.initialstep(
 )
     # Ensure that initial sample is in unconstrained space.
     if !DynamicPPL.islinked(vi, spl)
-        @debug "X -> R..."
         DynamicPPL.link!(vi, spl)
         model(rng, vi, spl)
     end
@@ -90,7 +89,6 @@ function DynamicPPL.initialstep(
 
     # If a Gibbs component, transform the values back to the constrained space.
     if spl.selector.tag !== :default
-        @debug "R -> X..."
         DynamicPPL.invlink!(vi, spl)
     end
 
@@ -121,7 +119,6 @@ function AbstractMCMC.step(
     Q = if spl.selector.tag !== :default
         # When a Gibbs component, transform values to the unconstrained space
         # and update the previous evaluation.
-        @debug "X -> R..."
         DynamicPPL.link!(vi, spl)
         DynamicHMC.evaluate_ℓ(ℓ, vi[spl])
     else
@@ -135,7 +132,6 @@ function AbstractMCMC.step(
 
     # If a Gibbs component, transform the values back to the constrained space.
     if spl.selector.tag !== :default
-        @debug "R -> X..."
         DynamicPPL.invlink!(vi, spl)
     end
 
