@@ -117,7 +117,6 @@ function AdvancedVI.vi(
     q::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal};
     optimizer = AdvancedVI.TruncatedADAGrad(),
 )
-    @debug "Optimizing ADVI..."
     # Initial parameters for mean-field approx
     μ, σs = StatsBase.params(q)
     θ = vcat(μ, StatsFuns.invsoftplus.(σs))
