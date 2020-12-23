@@ -230,7 +230,6 @@ function DynamicPPL.initialstep(
     end
 
     # Update `vi` based on acceptance
-    @debug "decide whether to accept..."
     if t.stat.is_accept
         vi[spl] = t.z.θ
         setlogp!(vi, t.stat.log_density)
@@ -254,23 +253,15 @@ function AbstractMCMC.step(
     kwargs...
 )
     # Get step size
-    ϵ = getstepsize(spl, state)
-    @debug "current ϵ" ϵ
-
-    # Get VarInfo object
-    vi = state.vi
-    i = state.i + 1
-
-    # Get position and log density before transition
-    θ_old = vi[spl]
-    log_density_old = getlogp(vi)
-    hamiltonian = state.hamiltonian
-    z = state.z
+    @debug "current ϵ" getstepsize(spl, state)
 
     # Compute transition.
+    hamiltonian = state.hamiltonian
+    z = state.z
     t = AHMC.step(rng, hamiltonian, state.traj, z)
 
     # Adaptation
+    i = state.i + 1
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, traj, _ =
             AHMC.adapt!(hamiltonian, state.traj, state.adaptor,
@@ -279,14 +270,11 @@ function AbstractMCMC.step(
         traj = state.traj
     end
 
-    # Update `vi` based on acceptance
-    @debug "decide whether to accept..."
+    # Update variables
+    vi = state.vi
     if t.stat.is_accept
         vi[spl] = t.z.θ
         setlogp!(vi, t.stat.log_density)
-    else
-        vi[spl] = θ_old
-        setlogp!(vi, log_density_old)
     end
 
     # Compute next transition and state.

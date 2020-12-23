@@ -166,14 +166,10 @@ function AbstractMCMC.step(
     state::GibbsState;
     kwargs...
 )
-    @debug "Gibbs stepping..."
-
     # Iterate through each of the samplers.
     vi = state.vi
     samplers = state.samplers
     states = map(samplers, state.states) do _sampler, _state
-        @debug "$(typeof(_sampler)) stepping..."
-
         # Update state of current sampler with updated `VarInfo` object.
         current_state = gibbs_state(model, _sampler, _state, vi)
 

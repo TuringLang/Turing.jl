@@ -82,29 +82,26 @@ function step(
     η, α = spl.alg.learning_rate, spl.alg.momentum_decay
     spl.info[:eval_num] = 0
 
-    @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
         model(vi, spl)
     end
 
-    @debug "recording old variables..."
+    # Record old variables
     θ, v = vi[spl], spl.info[:v]
     _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
-    # Implements the update equations from (15) of Chen et al. (2014).
-    @debug "update latent variables and velocity..."
+    # Update latent variables and velocity according to (15) of Chen et al. (2014)
     θ .+= v
     v .= (1 - α) .* v .+ η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
 
-    @debug "saving new latent variables..."
+    # Save new latent variables
     vi[spl] = θ
 
-    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(vi, spl)
 
-    @debug "always accept..."
+    # Always accept
     return vi, true
 end
 
@@ -189,30 +186,28 @@ function step(
     spl.info[:i] += 1
     spl.info[:eval_num] = 0
 
-    @debug "compute current step size..."
+    # Compute current step size
     γ = .35
     ϵ_t = spl.alg.ϵ / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
     mssa = spl.info[:adaptor].ssa
     mssa.state.ϵ = ϵ_t
 
-    @debug "X-> R..."
     if spl.selector.tag != :default
         link!(vi, spl)
         model(vi, spl)
     end
 
-    @debug "recording old variables..."
+    # Record old variables
     θ = vi[spl]
     _, grad = gradient_logp(θ, vi, model, spl)
     verifygrad(grad)
 
-    @debug "update latent variables..."
+    # Update latent variables
     θ .+= ϵ_t .* grad ./ 2 .- rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
 
-    @debug "always accept..."
+    # Always accept
     vi[spl] = θ
 
-    @debug "R -> X..."
     spl.selector.tag != :default && invlink!(vi, spl)
 
     return vi, true
