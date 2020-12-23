@@ -44,6 +44,9 @@ end
     DynamicNUTSState
 
 State of the [`DynamicNUTS`](@ref) sampler.
+
+# Fields
+$(TYPEDFIELDS)
 """
 struct DynamicNUTSState{V<:AbstractVarInfo,C,M,S}
     vi::V
