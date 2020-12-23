@@ -213,7 +213,6 @@ function DynamicPPL.initialstep(
     end
 
     # Update `vi` based on acceptance
-    @debug "decide whether to accept..."
     if t.stat.is_accept
         vi[spl] = t.z.θ
         setlogp!(vi, t.stat.log_density)
@@ -227,7 +226,6 @@ function DynamicPPL.initialstep(
 
     # If a Gibbs component, transform the values back to the constrained space.
     if spl.selector.tag !== :default
-        @debug "R -> X..."
         invlink!(vi, spl)
     end
 
@@ -252,7 +250,6 @@ function AbstractMCMC.step(
 
     # When a Gibbs component, transform values to the unconstrained space.
     if spl.selector.tag !== :default
-        @debug "X-> R..."
         link!(vi, spl)
         model(rng, vi, spl)
     end
@@ -287,7 +284,6 @@ function AbstractMCMC.step(
     end
 
     # Update `vi` based on acceptance
-    @debug "decide whether to accept..."
     if t.stat.is_accept
         vi[spl] = t.z.θ
         setlogp!(vi, t.stat.log_density)
@@ -302,7 +298,6 @@ function AbstractMCMC.step(
 
     # If a Gibbs component, transform the values back to the constrained space.
     if spl.selector.tag !== :default
-        @debug "R -> X..."
         invlink!(vi, spl)
     end
 
