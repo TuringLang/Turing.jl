@@ -83,11 +83,24 @@ metadata(t::GibbsTransition) = (lp = t.lp,)
 DynamicPPL.getlogp(t::GibbsTransition) = t.lp
 
 # extract varinfo object from state
-getvarinfo(state) = state.vi
-getvarinfo(state::AbstractVarInfo) = state
+"""
+    gibbs_varinfo(model, sampler, state)
 
-# update state with new varinfo object
-gibbs_update_state(state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
+Return the variables corresponding to the current `state` of the Gibbs component `sampler`.
+"""
+gibbs_varinfo(model, sampler, state) = varinfo(state)
+varinfo(state) = state.vi
+varinfo(state::AbstractVarInfo) = state
+
+"""
+    gibbs_state(model, sampler, state, varinfo)
+
+Return the state of the Gibbs component with updated variables `varinfo`.
+
+The Gibbs component samples from the `model` using the provided `sampler` and its current
+state is `state`.
+"""
+gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
 
 # Initialize the Gibbs sampler.
 function DynamicPPL.initialstep(
@@ -132,8 +145,8 @@ function DynamicPPL.initialstep(
     states = map(samplers) do local_spl
         _, state = DynamicPPL.initialstep(rng, model, local_spl, vi; kwargs...)
 
-        # update VarInfo object
-        vi = getvarinfo(state)
+        # Update `VarInfo` object
+        vi = gibbs_varinfo(model, local_spl, state)
 
         return state
     end
@@ -162,13 +175,13 @@ function AbstractMCMC.step(
         @debug "$(typeof(_sampler)) stepping..."
 
         # Update state of current sampler with updated `VarInfo` object.
-        current_state = gibbs_update_state(_state, vi)
+        current_state = gibbs_state(model, _sampler, _state, vi)
 
         # Step through the local sampler.
         _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
 
         # Update `VarInfo` object.
-        vi = getvarinfo(newstate)
+        vi = gibbs_varinfo(model, _sampler, _state)
 
         return newstate
     end

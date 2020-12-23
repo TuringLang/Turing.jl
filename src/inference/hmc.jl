@@ -18,8 +18,25 @@ struct HMCState{
 end
 
 # TODO: Include recompute Hamiltonian here?
-function gibbs_update_state(state::HMCState, varinfo::AbstractVarInfo)
-    return HMCState(varinfo, state.i, state.traj, state.hamiltonian, state.z, state.adaptor)
+function gibbs_state(
+    model::Model,
+    spl::Sampler{<:Hamiltonian},
+    state::HMCState,
+    varinfo::AbstractVarInfo,
+)
+    # Re-evaluate model
+    model(varinfo, spl)
+
+    # Get position and log density before transition
+    θ_old = varinfo[spl]
+    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_old))
+
+    # TODO: Avoid mutation
+    resize!(state.z.θ, length(θ_old))
+    state.z.θ .= θ_old
+    z = state.z
+
+    return HMCState(varinfo, state.i, state.traj, hamiltonian, z, state.adaptor)
 end
 
 ##########################
@@ -225,12 +242,6 @@ function DynamicPPL.initialstep(
     transition = HMCTransition(vi, t)
     state = HMCState(vi, 1, traj, hamiltonian, t.z, adaptor)
 
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        @debug "R -> X..."
-        invlink!(vi, spl)
-    end
-
     return transition, state
 end
 
@@ -250,29 +261,11 @@ function AbstractMCMC.step(
     vi = state.vi
     i = state.i + 1
 
-    # When a Gibbs component, transform values to the unconstrained space.
-    if spl.selector.tag !== :default
-        @debug "X-> R..."
-        link!(vi, spl)
-        model(rng, vi, spl)
-    end
-
     # Get position and log density before transition
     θ_old = vi[spl]
     log_density_old = getlogp(vi)
-    hamiltonian = if spl.selector.tag === :default
-        state.hamiltonian
-    else
-        get_hamiltonian(model, spl, vi, state, length(θ_old))
-    end
-
-    z = if spl.selector.tag === :default
-        state.z
-    else
-        resize!(state.z.θ, length(θ_old))
-        state.z.θ .= θ_old
-        state.z
-    end
+    hamiltonian = state.hamiltonian
+    z = state.z
 
     # Compute transition.
     t = AHMC.step(rng, hamiltonian, state.traj, z)
@@ -299,12 +292,6 @@ function AbstractMCMC.step(
     # Compute next transition and state.
     transition = HMCTransition(vi, t)
     newstate = HMCState(vi, i, traj, hamiltonian, t.z, state.adaptor)
-
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        @debug "R -> X..."
-        invlink!(vi, spl)
-    end
 
     return transition, newstate
 end
