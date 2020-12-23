@@ -17,7 +17,7 @@ struct HMCState{
     adaptor::TAdapt
 end
 
-# TODO: Include recompute Hamiltonian here?
+# Update state in Gibbs sampling
 function gibbs_state(
     model::Model,
     spl::Sampler{<:Hamiltonian},
