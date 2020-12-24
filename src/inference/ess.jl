@@ -58,11 +58,6 @@ function AbstractMCMC.step(
     # obtain previous sample
     f = vi[spl]
 
-    # recompute log-likelihood in logp
-    if spl.selector.tag !== :default
-        model(rng, vi, spl)
-    end
-
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
     oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi), nothing)

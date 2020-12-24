@@ -78,10 +78,6 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    if spl.selector.rerun # Recompute joint in logp
-        model(rng, vi)
-    end
-
     condvals = conditioned(tonamedtuple(vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)

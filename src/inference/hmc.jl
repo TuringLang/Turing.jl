@@ -24,10 +24,7 @@ function gibbs_state(
     state::HMCState,
     varinfo::AbstractVarInfo,
 )
-    # Re-evaluate model
-    model(varinfo, spl)
-
-    # Get position and log density before transition
+    # Update hamiltonian
     θ_old = varinfo[spl]
     hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_old))
 

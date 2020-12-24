@@ -413,11 +413,6 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    # Recompute joint
-    if spl.selector.rerun
-        model(rng, vi)
-    end
-
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
