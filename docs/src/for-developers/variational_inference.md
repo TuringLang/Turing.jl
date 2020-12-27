@@ -5,7 +5,7 @@ toc: true
 
 # Overview
 
-In this post we'll have a look at what's know as **variational inference (VI)**, a family of _approximate_ Bayesian inference methods. In particular, we will focus on one of the more standard VI methods called **Automatic Differentation Variational Inference (ADVI)**. If 
+In this post we'll have a look at what's know as **variational inference (VI)**, a family of _approximate_ Bayesian inference methods. In particular, we will focus on one of the more standard VI methods called **Automatic Differentation Variational Inference (ADVI)**. 
 
 Here we'll have a look at the theory behind VI, but if you're interested in how to use ADVI in Turing.jl, [checkout this tutorial](../../tutorials/9-variationalinference).
 
