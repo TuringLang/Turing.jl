@@ -101,6 +101,8 @@ export  @model,                 # modelling
         DynamicNUTS,
         ANUTS,
 
+        PolynomialStepsize,
+
         IS,                     # particle-based sampling
         SMC,
         CSMC,
