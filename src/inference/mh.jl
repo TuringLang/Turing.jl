@@ -186,8 +186,6 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-isgibbscomponent(::MH) = true
-
 #####################
 # Utility functions #
 #####################

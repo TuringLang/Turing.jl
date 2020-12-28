@@ -17,25 +17,6 @@ struct HMCState{
     adaptor::TAdapt
 end
 
-# Update state in Gibbs sampling
-function gibbs_state(
-    model::Model,
-    spl::Sampler{<:Hamiltonian},
-    state::HMCState,
-    varinfo::AbstractVarInfo,
-)
-    # Update hamiltonian
-    θ_old = varinfo[spl]
-    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_old))
-
-    # TODO: Avoid mutation
-    resize!(state.z.θ, length(θ_old))
-    state.z.θ .= θ_old
-    z = state.z
-
-    return HMCState(varinfo, state.i, state.traj, hamiltonian, z, state.adaptor)
-end
-
 ##########################
 # Hamiltonian Transition #
 ##########################
@@ -94,8 +75,6 @@ struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
 end
-
-isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
 function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}

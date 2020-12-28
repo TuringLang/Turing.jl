@@ -25,8 +25,6 @@ struct ESS{space} <: InferenceAlgorithm end
 ESS() = ESS{()}()
 ESS(space::Symbol) = ESS{(space,)}()
 
-isgibbscomponent(::ESS) = true
-
 # always accept in the first step
 function DynamicPPL.initialstep(
     rng::AbstractRNG,

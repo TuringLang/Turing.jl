@@ -177,8 +177,6 @@ struct PG{space,R} <: ParticleInference
     resampler::R
 end
 
-isgibbscomponent(::PG) = true
-
 """
     PG(n, space...)
     PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])

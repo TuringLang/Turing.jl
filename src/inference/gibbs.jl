@@ -10,6 +10,11 @@ Determine whether algorithm `alg` is allowed as a Gibbs component.
 """
 isgibbscomponent(alg) = false
 
+isgibbscomponent(::ESS) = true
+isgibbscomponent(::GibbsConditional) = true
+isgibbscomponent(::Hamiltonian) = true
+isgibbscomponent(::MH) = true
+isgibbscomponent(::PG) = true
 
 """
     Gibbs(algs...)
@@ -102,6 +107,51 @@ state is `state`.
 """
 gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
 
+# Update state in Gibbs sampling
+function gibbs_state(
+    model::Model,
+    spl::Sampler{<:Hamiltonian},
+    state::HMCState,
+    varinfo::AbstractVarInfo,
+)
+    # Update hamiltonian
+    θ_old = varinfo[spl]
+    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_old))
+
+    # TODO: Avoid mutation
+    resize!(state.z.θ, length(θ_old))
+    state.z.θ .= θ_old
+    z = state.z
+
+    return HMCState(varinfo, state.i, state.traj, hamiltonian, z, state.adaptor)
+end
+
+"""
+    gibbs_rerun(prev_sampler, sampler)
+
+Check if the model should be rerun to recompute the log density before sampling with the
+Gibbs component `sampler` and after sampling from Gibbs component `prev_sampler`.
+
+By default, the function returns `true`.
+"""
+gibbs_rerun(prev_sampler, sampler) = true
+
+# `vi.logp` already contains the log joint probability if the previous sampler
+# used a `GibbsConditional` or one of the standard `Hamiltonian` algorithms
+gibbs_rerun(::Sampler{<:GibbsConditional}, ::Sampler{<:MH}) = false
+gibbs_rerun(::Sampler{<:Hamiltonian}, ::Sampler{<:MH}) = false
+
+# `vi.logp` already contains the log joint probability if the previous sampler
+# used a `GibbsConditional` or a `MH` algorithm
+gibbs_rerun(::Sampler{<:MH}, ::Sampler{<:Hamiltonian}) = false
+gibbs_rerun(::Sampler{<:GibbsConditional}, ::Sampler{<:Hamiltonian}) = false
+
+# do not have to recompute `vi.logp` since it is not used in `step`
+gibbs_rerun(prev_sampler, ::Sampler{<:GibbsConditional}) = false
+
+# Do not recompute `vi.logp` since it is reset anyway in `step`
+gibbs_rerun(prev_sampler, ::Sampler{<:PG}) = false
+
 # Initialize the Gibbs sampler.
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
@@ -112,40 +162,23 @@ function DynamicPPL.initialstep(
 )
     # Create tuple of samplers
     algs = spl.alg.algs
-    i = 0
     samplers = map(algs) do alg
-        i += 1
-        if i == 1
-            prev_alg = algs[end]
-        else
-            prev_alg = algs[i-1]
-        end
-        rerun = !isa(alg, MH) || prev_alg isa PG || prev_alg isa ESS ||
-            prev_alg isa GibbsConditional
-        selector = Selector(Symbol(typeof(alg)), rerun)
-        Sampler(alg, model, selector)
-    end
-
-    # Add Gibbs to gids for all variables.
-    for sym in keys(vi.metadata)
-        vns = getfield(vi.metadata, sym).vns
-
-        for vn in vns
-            # update the gid for the Gibbs sampler
-            DynamicPPL.updategid!(vi, vn, spl)
-
-            # try to store each subsampler's gid in the VarInfo
-            for local_spl in samplers
-                DynamicPPL.updategid!(vi, vn, local_spl)
-            end
-        end
+        Sampler(alg, model)
     end
 
     # Compute initial states of the local samplers.
+    i = 0
     states = map(samplers) do local_spl
+        # Recompute `vi.logp` if needed.
+        prev_sampler = (i += 1) == 1 ? samplers[end] : samplers[i-1]
+        if gibbs_rerun(prev_sampler, local_spl)
+            model(rng, vi, local_spl)
+        end
+
+        # Compute initial state.
         _, state = DynamicPPL.initialstep(rng, model, local_spl, vi; kwargs...)
 
-        # Update `VarInfo` object
+        # Update `VarInfo` object.
         vi = gibbs_varinfo(model, local_spl, state)
 
         return state
@@ -169,12 +202,14 @@ function AbstractMCMC.step(
     # Iterate through each of the samplers.
     vi = state.vi
     samplers = state.samplers
+    i = 0
     states = map(samplers, state.states) do _sampler, _state
-        # Recompute `vi.logp` if needed
-        if spl.selector.rerun
+        # Recompute `vi.logp` if needed.
+        prev_sampler = (i += 1) == 1 ? samplers[end] : samplers[i-1]
+        if gibbs_rerun(prev_sampler, _sampler)
             model(rng, vi, _sampler)
         end
-    
+
         # Update state of current sampler with updated `VarInfo` object.
         current_state = gibbs_state(model, _sampler, _state, vi)
 
