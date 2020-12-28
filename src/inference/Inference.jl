@@ -44,6 +44,7 @@ export  InferenceAlgorithm,
         GibbsConditional,
         HMC,
         SGLD,
+        PolynomialStepsize,
         SGHMC,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
