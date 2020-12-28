@@ -327,10 +327,8 @@ function DynamicPPL.assume(
             unset_flag!(vi, vn, "del")
             r = rand(rng, dist)
             vi[vn] = vectorize(dist, r)
-            setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, get_num_produce(vi))
         else
-            updategid!(vi, vn, spl)
             r = vi[vn]
         end
     else # vn belongs to other sampler <=> conditionning on vn
@@ -338,7 +336,7 @@ function DynamicPPL.assume(
             r = vi[vn]
         else
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, Selector(:invalid))
+            push!(vi, vn, r, dist)
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
         acclogp!(vi, lp)

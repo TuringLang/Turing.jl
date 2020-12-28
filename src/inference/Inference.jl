@@ -2,12 +2,12 @@ module Inference
 
 using ..Core
 using ..Utilities
-using DynamicPPL: Metadata, _tail, VarInfo, TypedVarInfo, 
+using DynamicPPL: Metadata, VarInfo, TypedVarInfo, 
     islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
-    settrans!, _getvns, getdist, CACHERESET,
+    settrans!, _getvns, getdist,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
-    Selector, DefaultContext, PriorContext,
-    LikelihoodContext, MiniBatchContext, set_flag!, unset_flag!, NamedDist, NoDist,
+    DefaultContext, PriorContext,
+    LikelihoodContext, set_flag!, unset_flag!,
     getspace, inspace
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
@@ -25,8 +25,6 @@ import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
 import ..Core: getchunksize, getADbackend
-import DynamicPPL: get_matching_type,
-    VarName, _getranges, _getindex, getval, _getvns
 import EllipticalSliceSampling
 import Random
 import MCMCChains
@@ -429,7 +427,7 @@ for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval DynamicPPL.getspace(::$alg{<:Any, space}) where {space} = space
 end
 
-function get_matching_type(
+function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG, SMC}}, 
     vi,
     ::Type{TV},

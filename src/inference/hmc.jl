@@ -473,7 +473,6 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
@@ -489,7 +488,6 @@ function DynamicPPL.dot_assume(
     vi,
 )
     @assert length(dist) == size(var, 1)
-    updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
@@ -502,7 +500,6 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
