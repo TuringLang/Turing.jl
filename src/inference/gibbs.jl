@@ -100,10 +100,13 @@ varinfo(state::AbstractVarInfo) = state
 """
     gibbs_state(model, sampler, state, varinfo)
 
-Return the state of the Gibbs component with updated variables `varinfo`.
+Return an updated state, taking into account the variables sampled by other Gibbs components.
 
-The Gibbs component samples from the `model` using the provided `sampler` and its current
-state is `state`.
+# Arguments
+- `model`: model targeted by the Gibbs sampler.
+- `sampler`: the sampler for this Gibbs component.
+- `state`: the state of `sampler` computed in the previous iteration.
+- `varinfo`: the variables, including the ones sampled by other Gibbs components.
 """
 gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
 
