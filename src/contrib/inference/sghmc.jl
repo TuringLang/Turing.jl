@@ -1,214 +1,243 @@
-###
-### Stochastic Gradient Hamiltonian Samplers
-###
+"""
+    SGHMC{AD,space}
 
+Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.e
 
-####
-#### Stochastic Gradient Hamiltonian Monte Carlo sampler.
-####
+# Fields
+$(TYPEDFIELDS)
+
+# Reference
+
+Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonian Monte
+Carlo. In: Proceedings of the 31st International Conference on Machine Learning
+(pp. 1683–1691).
+"""
+struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian{AD}
+    learning_rate::T
+    momentum_decay::T
+end
 
 """
-    SGHMC(n_iters::Int, learning_rate::Float64, momentum_decay::Float64)
+    SGHMC{AD}(space::Symbol...; learning_rate, momentum_decay)
 
-Stochastic Gradient Hamiltonian Monte Carlo sampler.
+Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
-Usage:
+If the automatic differentiation backend `AD` is not provided, the currently activated
+AD backend in Turing is used.
 
-```julia
-SGHMC(1000, 0.01, 0.1)
-```
+# Reference
 
-Arguments:
-
-- `n_iters::Int` : Number of samples to pull.
-- `learning_rate::Float64` : The learning rate.
-- `momentum_decay::Float64` : Momentum decay variable.
-
+Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonian Monte
+Carlo. In: Proceedings of the 31st International Conference on Machine Learning
+(pp. 1683–1691).
 """
-mutable struct SGHMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
-    n_iters::Int       # number of samples
-    learning_rate::Float64   # learning rate
-    momentum_decay::Float64   # momentum decay
-end
-SGHMC(args...) = SGHMC{ADBackend()}(args...)
-function SGHMC{AD}(n_iters::Int, learning_rate::Float64, momentum_decay::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
-    return SGHMC{AD, space, metricT}(n_iters, learning_rate, momentum_decay)
-end
-
+SGHMC(args...; kwargs...) = SGHMC{ADBackend()}(args...; kwargs...)
 function SGHMC{AD}(
-    n_iters,
-    learning_rate,
-    momentum_decay,
-    ::Tuple{};
-    kwargs...
-) where AD
-    return SGHMC{AD}(n_iters, learning_rate, momentum_decay; kwargs...)
-end
-function SGHMC{AD}(
-    n_iters,
-    learning_rate,
-    momentum_decay,
     space::Symbol...;
-    metricT=AHMC.UnitEuclideanMetric
-) where AD
-    return SGHMC{AD}(n_iters, learning_rate, momentum_decay, metricT, space)
+    learning_rate::Real,
+    momentum_decay::Real,
+) where {AD}
+    _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
+    return SGHMC{AD,space,typeof(_learning_rate)}(_learning_rate, _momentum_decay)
 end
 
-function step(
-    model,
-    spl::Sampler{<:SGHMC},
-    vi::VarInfo,
-    is_first::Val{true};
-    kwargs...
-)
-    spl.selector.tag != :default && link!(vi, spl)
-
-    # Initialize velocity
-    v = zeros(Float64, size(vi[spl]))
-    spl.info[:v] = v
-
-    spl.selector.tag != :default && invlink!(vi, spl)
-    return vi, true
+struct SGHMCState{V<:AbstractVarInfo}
+    vi::V
+    velocity::Vector{Float64}
 end
 
-function step(
-    model,
+function DynamicPPL.initialstep(
+    rng::Random.AbstractRNG,
+    model::Model,
     spl::Sampler{<:SGHMC},
-    vi::VarInfo,
-    is_first::Val{false};
-    kwargs...
+    vi::AbstractVarInfo;
+    kwargs...,
 )
-    # Set parameters
-    η, α = spl.alg.learning_rate, spl.alg.momentum_decay
-    spl.info[:eval_num] = 0
-
-    if spl.selector.tag != :default
-        link!(vi, spl)
-        model(vi, spl)
+    # Transform the samples to unconstrained space and compute the joint log probability.
+    if !DynamicPPL.islinked(vi, spl)
+        DynamicPPL.link!(vi, spl)
+        model(rng, vi, spl)
     end
 
-    # Record old variables
-    θ, v = vi[spl], spl.info[:v]
-    _, grad = gradient_logp(θ, vi, model, spl)
-    verifygrad(grad)
+    # Compute initial sample and state.
+    sample = Transition(vi)
+    state = SGHMCState(vi, zero(vi[spl]))
 
-    # Update latent variables and velocity according to (15) of Chen et al. (2014)
-    θ .+= v
-    v .= (1 - α) .* v .+ η .* grad .+ rand.(Normal.(zeros(length(θ)), sqrt(2 * η * α)))
-
-    # Save new latent variables
-    vi[spl] = θ
-
-    spl.selector.tag != :default && invlink!(vi, spl)
-
-    # Always accept
-    return vi, true
+    return sample, state
 end
 
-
-####
-#### Stochastic Gradient Langevin Dynamics sampler.
-####
-
-"""
-    SGLD(n_iters::Int, ϵ::Float64)
-
- Stochastic Gradient Langevin Dynamics sampler.
-
-Usage:
-
-```julia
-SGLD(1000, 0.5)
-```
-
-Arguments:
-
-- `n_iters::Int` : Number of samples to pull.
-- `ϵ::Float64` : The scaling factor for the learing rate.
-
-Reference:
-
-Welling, M., & Teh, Y. W. (2011).  Bayesian learning via stochastic gradient Langevin dynamics.
-In Proceedings of the 28th international conference on machine learning (ICML-11) (pp. 681-688).
-"""
-mutable struct SGLD{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
-    n_iters :: Int       # number of samples
-    ϵ :: Float64   # constant scale factor of learning rate
-end
-function SGLD{AD}(n_iters::Int, ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
-    return SGLD{AD, space, metricT}(n_iters, ϵ)
-end
-
-SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-
-function SGLD{AD}(
-    n_iters,
-    ϵ,
-    ::Tuple{};
-    kwargs...
-) where AD
-    return SGLD{AD}(n_iters, ϵ; kwargs...)
-end
-
-function SGLD{AD}(
-    n_iters,
-    ϵ,
-    space::Symbol...;
-    metricT=AHMC.UnitEuclideanMetric
-) where AD
-    return SGLD{AD}(n_iters, ϵ, metricT, space)
-end
-
-function step(
-    model,
-    spl::Sampler{<:SGLD},
-    vi::VarInfo,
-    is_first::Val{true};
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Sampler{<:SGHMC},
+    state::SGHMCState;
     kwargs...
 )
-    spl.selector.tag != :default && link!(vi, spl)
-
-    mssa = AHMC.Adaptation.ManualSSAdaptor(AHMC.Adaptation.MSSState(spl.alg.ϵ))
-    spl.info[:adaptor] = AHMC.NaiveHMCAdaptor(AHMC.UnitMassMatrix(), mssa)
-
-    spl.selector.tag != :default && invlink!(vi, spl)
-    return vi, true
-end
-
-function step(
-    model,
-    spl::Sampler{<:SGLD},
-    vi::VarInfo,
-    is_first::Val{false};
-    kwargs...
-)
-    # Update iteration counter
-    spl.info[:i] += 1
-    spl.info[:eval_num] = 0
-
-    # Compute current step size
-    γ = .35
-    ϵ_t = spl.alg.ϵ / spl.info[:i]^γ # NOTE: Choose γ=.55 in paper
-    mssa = spl.info[:adaptor].ssa
-    mssa.state.ϵ = ϵ_t
-
-    if spl.selector.tag != :default
-        link!(vi, spl)
-        model(vi, spl)
-    end
-
-    # Record old variables
+    # Compute gradient of log density.
+    vi = state.vi
     θ = vi[spl]
     _, grad = gradient_logp(θ, vi, model, spl)
-    verifygrad(grad)
 
-    # Update latent variables
-    θ .+= ϵ_t .* grad ./ 2 .- rand.(Normal.(zeros(length(θ)), sqrt(ϵ_t)))
+    # Update latent variables and velocity according to
+    # equation (15) of Chen et al. (2014)
+    v = state.velocity
+    θ .+= v
+    η = spl.alg.learning_rate
+    α = spl.alg.momentum_decay
+    newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, length(v))
 
-    # Always accept
+    # Save new variables and recompute log density.
     vi[spl] = θ
+    model(rng, vi, spl)
 
-    spl.selector.tag != :default && invlink!(vi, spl)
+    # Compute next sample and state.
+    sample = Transition(vi)
+    newstate = SGHMCState(vi, newv)
 
-    return vi, true
+    return sample, newstate
+end
+
+"""
+    SGLD
+
+Stochastic gradient Langevin dynamics (SGLD) sampler.
+
+# Fields
+$(TYPEDFIELDS)
+
+# Reference
+
+Max Welling & Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Langevin
+Dynamics. In: Proceedings of the 28th International Conference on Machine Learning
+(pp. 681–688).
+"""
+struct SGLD{AD,space,S} <: StaticHamiltonian{AD}
+    "Step size function."
+    stepsize::S
+end
+
+struct PolynomialStepsize{T<:Real}
+    "Constant scale factor of the step size."
+    a::T
+    "Constant offset of the step size."
+    b::T
+    "Decay rate of step size in (0.5, 1]."
+    γ::T
+
+    function PolynomialStepsize{T}(a::T, b::T, γ::T) where T
+        0.5 < γ ≤ 1 || error("the decay rate `γ` has to be in (0.5, 1]")
+        return new{T}(a, b, γ)
+    end
+end
+
+"""
+    PolynomialStepsize(a[, b=0, γ=0.55])
+
+Create a polynomially decaying stepsize function.
+
+At iteration `t`, the step size is
+```math
+a (b + t)^{-γ}.
+```
+"""
+function PolynomialStepsize(a::T, b::T, γ::T) where {T<:Real}
+    return PolynomialStepsize{T}(a, b, γ)
+end
+function PolynomialStepsize(a::Real, b::Real = 0, γ::Real = 0.55)
+    return PolynomialStepsize(promote(a, b, γ)...)
+end
+
+(f::PolynomialStepsize)(t::Int) = f.a / (t + f.b)^f.γ
+
+"""
+    SGLD{AD}(space::Symbol...; stepsize = PolynomialStepsize(0.01))
+
+Stochastic gradient Langevin dynamics (SGLD) sampler.
+
+By default, a polynomially decaying stepsize is used.
+
+# Reference
+
+Max Welling & Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Langevin
+Dynamics. In: Proceedings of the 28th International Conference on Machine Learning
+(pp. 681–688).
+
+See also: [`PolynomialStepsize`](@ref)
+"""
+SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
+function SGLD{AD}(
+    space::Symbol...;
+    stepsize = PolynomialStepsize(0.01),
+) where {AD}
+    return SGLD{AD,space,typeof(stepsize)}(stepsize)
+end
+
+struct SGLDTransition{T,F<:Real}
+    "The parameters for any given sample."
+    θ::T
+    "The joint log probability of the sample."
+    lp::F
+    "The stepsize that was used to obtain the sample."
+    stepsize::F
+end
+
+function SGLDTransition(vi::AbstractVarInfo, stepsize)
+    theta = tonamedtuple(vi)
+    lp = getlogp(vi)
+    return SGLDTransition(theta, lp, stepsize)
+end
+
+metadata(t::SGLDTransition) = (lp = t.lp, SGLD_stepsize = t.stepsize)
+
+DynamicPPL.getlogp(t::SGLDTransition) = t.lp
+
+struct SGLDState{V<:AbstractVarInfo}
+    vi::V
+    step::Int
+end
+
+function DynamicPPL.initialstep(
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Sampler{<:SGLD},
+    vi::AbstractVarInfo;
+    kwargs...
+)
+    # Transform the samples to unconstrained space and compute the joint log probability.
+    if !DynamicPPL.islinked(vi, spl)
+        DynamicPPL.link!(vi, spl)
+        model(rng, vi, spl)
+    end
+
+    # Create first sample and state.
+    sample = SGLDTransition(vi, zero(spl.alg.stepsize(0)))
+    state = SGLDState(vi, 1)
+
+    return sample, state
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Sampler{<:SGLD},
+    state::SGLDState;
+    kwargs...
+)
+    # Perform gradient step.
+    vi = state.vi
+    θ = vi[spl]
+    _, grad = gradient_logp(θ, vi, model, spl)
+    step = state.step
+    stepsize = spl.alg.stepsize(step)
+    θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, length(θ))
+
+    # Save new variables and recompute log density.
+    vi[spl] = θ
+    model(rng, vi, spl)
+
+    # Compute next sample and state.
+    sample = SGLDTransition(vi, stepsize)
+    newstate = SGLDState(vi, state.step + 1)
+
+    return sample, newstate
 end
