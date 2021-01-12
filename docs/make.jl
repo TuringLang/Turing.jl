@@ -41,13 +41,8 @@ jekyll_build = joinpath(@__DIR__, "jekyll-build")
 with_baseurl(() -> run(`$jekyll_build`), baseurl)
 
 # deploy
-devurl = "dev"
-repo = "github.com:TuringLang/Turing.jl.git"
-deploydocs(
+deploydocs(;
+    repo = "github.com:TuringLang/Turing.jl.git",
     target = "_site",
-    repo = repo,
-    branch = "gh-pages",
-    devbranch = "master",
-    devurl = devurl,
-    versions = ["stable" => "v^", "v#.#", devurl => devurl]
+    push_preview = true,
 )
