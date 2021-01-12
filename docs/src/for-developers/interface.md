@@ -161,7 +161,7 @@ As a refresher, Metropolis-Hastings implements a very basic algorithm:
 Of course, it's much easier to do this in the log space, so the acceptance probability is
 more commonly written as 
 
-\$\$\alpha = \min\Big[\log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1}), 0\Big]\$\$
+\$\$\log \alpha = \min\Big[0, \log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1})]\$\$
 
 In interface terms, we should do the following:
 
