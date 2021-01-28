@@ -429,6 +429,7 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
+    DynamicPPL.updategid!(vi, vn, spl)
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
@@ -444,6 +445,7 @@ function DynamicPPL.dot_assume(
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
     vns = getvn.(1:size(var, 2))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
@@ -458,6 +460,7 @@ function DynamicPPL.dot_assume(
 )
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))

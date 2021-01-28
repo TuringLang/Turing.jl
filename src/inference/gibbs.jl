@@ -130,30 +130,30 @@ function gibbs_state(
 end
 
 """
-    gibbs_rerun(prev_sampler, sampler)
+    gibbs_rerun(prev_alg, alg)
 
 Check if the model should be rerun to recompute the log density before sampling with the
-Gibbs component `sampler` and after sampling from Gibbs component `prev_sampler`.
+Gibbs component `alg` and after sampling from Gibbs component `prev_alg`.
 
 By default, the function returns `true`.
 """
-gibbs_rerun(prev_sampler, sampler) = true
+gibbs_rerun(prev_alg, alg) = true
 
 # `vi.logp` already contains the log joint probability if the previous sampler
 # used a `GibbsConditional` or one of the standard `Hamiltonian` algorithms
-gibbs_rerun(::Sampler{<:GibbsConditional}, ::Sampler{<:MH}) = false
-gibbs_rerun(::Sampler{<:Hamiltonian}, ::Sampler{<:MH}) = false
+gibbs_rerun(::GibbsConditional, ::MH) = false
+gibbs_rerun(::Hamiltonian, ::MH) = false
 
 # `vi.logp` already contains the log joint probability if the previous sampler
 # used a `GibbsConditional` or a `MH` algorithm
-gibbs_rerun(::Sampler{<:MH}, ::Sampler{<:Hamiltonian}) = false
-gibbs_rerun(::Sampler{<:GibbsConditional}, ::Sampler{<:Hamiltonian}) = false
+gibbs_rerun(::MH, ::Hamiltonian) = false
+gibbs_rerun(::GibbsConditional, ::Hamiltonian) = false
 
 # do not have to recompute `vi.logp` since it is not used in `step`
-gibbs_rerun(prev_sampler, ::Sampler{<:GibbsConditional}) = false
+gibbs_rerun(prev_alg, ::GibbsConditional) = false
 
 # Do not recompute `vi.logp` since it is reset anyway in `step`
-gibbs_rerun(prev_sampler, ::Sampler{<:PG}) = false
+gibbs_rerun(prev_alg, ::PG) = false
 
 # Initialize the Gibbs sampler.
 function DynamicPPL.initialstep(
@@ -165,16 +165,38 @@ function DynamicPPL.initialstep(
 )
     # Create tuple of samplers
     algs = spl.alg.algs
+    i = 0
     samplers = map(algs) do alg
-        Sampler(alg, model)
+        i += 1
+        if i == 1
+            prev_alg = algs[end]
+        else
+            prev_alg = algs[i-1]
+        end
+        rerun = gibbs_rerun(prev_alg, alg)
+        selector = DynamicPPL.Selector(Symbol(typeof(alg)), rerun)
+        Sampler(alg, model, selector)
+    end
+
+    # Add Gibbs to gids for all variables.
+    for sym in keys(vi.metadata)
+        vns = getfield(vi.metadata, sym).vns
+
+        for vn in vns
+            # update the gid for the Gibbs sampler
+            DynamicPPL.updategid!(vi, vn, spl)
+
+            # try to store each subsampler's gid in the VarInfo
+            for local_spl in samplers
+                DynamicPPL.updategid!(vi, vn, local_spl)
+            end
+        end
     end
 
     # Compute initial states of the local samplers.
-    i = 0
     states = map(samplers) do local_spl
         # Recompute `vi.logp` if needed.
-        prev_sampler = (i += 1) == 1 ? samplers[end] : samplers[i-1]
-        if gibbs_rerun(prev_sampler, local_spl)
+        if local_spl.selector.rerun
             model(rng, vi, local_spl)
         end
 
@@ -205,11 +227,9 @@ function AbstractMCMC.step(
     # Iterate through each of the samplers.
     vi = state.vi
     samplers = state.samplers
-    i = 0
     states = map(samplers, state.states) do _sampler, _state
         # Recompute `vi.logp` if needed.
-        prev_sampler = (i += 1) == 1 ? samplers[end] : samplers[i-1]
-        if gibbs_rerun(prev_sampler, _sampler)
+        if _sampler.selector.rerun
             model(rng, vi, _sampler)
         end
 
