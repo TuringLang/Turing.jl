@@ -71,9 +71,8 @@ using .ModeEstimation
 
 @init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
     include("modes/OptimInterface.jl")
-    export  optimize
+    export optimize
 end
-
 
 ###########
 # Exports #
@@ -143,8 +142,8 @@ export  @model,                 # modelling
 
         MAP,                    # optimisation interface
         MLE, 
-        instantiate_optimisation_problem, 
-        instantiate_galacticoptim_function
+        optim_problem, 
+        galacticoptim_function
 
 # deprecations
 include("deprecations.jl")

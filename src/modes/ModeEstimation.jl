@@ -13,8 +13,8 @@ export  MAP,
         MLE,
         OptimLogDensity,
         OptimizationContext,
-        instantiate_optimisation_problem, 
-        instantiate_galacticoptim_function
+        optim_problem, 
+        galacticoptim_function
 
 
 struct MLE{constrained} end
@@ -284,7 +284,7 @@ function (t::InitTransformFunction)()
 end 
 
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{false})
+function optim_problem(model::DynamicPPL.Model, ::MAP{false})
   ctx = OptimizationContext(DynamicPPL.DefaultContext())
   obj = OptimLogDensity(model, ctx)
 
@@ -295,7 +295,7 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{false})
   return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{true})
+function optim_problem(model::DynamicPPL.Model, ::MAP{true})
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
   
@@ -305,7 +305,7 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MAP{true})
     return (obj=obj, init = init, transform=t)
   end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{false})
+function optim_problem(model::DynamicPPL.Model, ::MLE{false})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
@@ -316,7 +316,7 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{false})
     return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{true})
+function optim_problem(model::DynamicPPL.Model, ::MLE{true})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
@@ -326,8 +326,8 @@ function instantiate_optimisation_problem(model::DynamicPPL.Model, ::MLE{true})
     return (obj=obj, init = init, transform=t)
 end
 
-function instantiate_galacticoptim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
-  obj, init, t = instantiate_optimisation_problem(model, estimator)
+function galacticoptim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
+  obj, init, t = optim_problem(model, estimator)
   
   l(x,p) = obj(x)
   f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))

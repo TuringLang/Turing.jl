@@ -13,10 +13,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(222)
         true_value = [0.0625, 1.75]
 
-        f1 = instantiate_galacticoptim_function(gdemo_default, MLE())
+        f1 = galacticoptim_function(gdemo_default, MLE())
         p1 = GalacticOptim.OptimizationProblem(f1.f, f1.init(true_value), nothing)
 
-        p2 = instantiate_optimisation_problem(gdemo_default, MLE())
+        p2 = optim_problem(gdemo_default, MLE())
         
 
         m1 = solve(p1, NelderMead())
@@ -38,10 +38,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         Random.seed!(222)
         true_value = [49 / 54, 7 / 6]
 
-        f1 = instantiate_galacticoptim_function(gdemo_default, MAP())
+        f1 = galacticoptim_function(gdemo_default, MAP())
         p1 = GalacticOptim.OptimizationProblem(f1.f, f1.init(true_value), nothing)
 
-        p2 = instantiate_optimisation_problem(gdemo_default, MAP())
+        p2 = optim_problem(gdemo_default, MAP())
         
 
         m1 = solve(p1, NelderMead())
@@ -65,10 +65,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         lb = [0.0, 0.0]
         ub = [2.0, 2.0]
 
-        f1 = instantiate_galacticoptim_function(gdemo_default, MLE(true))
+        f1 = galacticoptim_function(gdemo_default, MLE(true))
         p1 = GalacticOptim.OptimizationProblem(f1.f, f1.init(true_value), nothing; lb=lb, ub=ub)
 
-        p2 = instantiate_optimisation_problem(gdemo_default, MLE(true))
+        p2 = optim_problem(gdemo_default, MLE(true))
         
 
         m1 = solve(p1, Fminbox(LBFGS()))
@@ -89,10 +89,10 @@ include(dir*"/test/test_utils/AllUtils.jl")
         lb = [0.0, 0.0]
         ub = [2.0, 2.0]
 
-        f1 = instantiate_galacticoptim_function(gdemo_default, MAP(true))
+        f1 = galacticoptim_function(gdemo_default, MAP(true))
         p1 = GalacticOptim.OptimizationProblem(f1.f, f1.init(true_value), nothing; lb=lb, ub=ub)
 
-        p2 = instantiate_optimisation_problem(gdemo_default, MAP(true))
+        p2 = optim_problem(gdemo_default, MAP(true))
         
 
         m1 = solve(p1, Fminbox(LBFGS()))
