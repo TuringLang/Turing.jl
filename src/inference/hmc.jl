@@ -51,7 +51,7 @@ Hamiltonian Monte Carlo sampler with static trajectory.
 Arguments:
 
 - `ϵ::Float64` : The leapfrog step size to use.
-- `n_leapfrog::Int` : The number of leapfrop steps to use.
+- `n_leapfrog::Int` : The number of leapfrog steps to use.
 
 Usage:
 
@@ -282,7 +282,7 @@ Arguments:
 
 - `n_adapts::Int` : Numbers of samples to use for adaptation.
 - `δ::Float64` : Target acceptance rate. 65% is often recommended.
-- `λ::Float64` : Target leapfrop length.
+- `λ::Float64` : Target leapfrog length.
 - `ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
