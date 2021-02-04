@@ -17,11 +17,6 @@ struct HMCState{
     adaptor::TAdapt
 end
 
-# TODO: Include recompute Hamiltonian here?
-function gibbs_update_state(state::HMCState, varinfo::AbstractVarInfo)
-    return HMCState(varinfo, state.i, state.traj, state.hamiltonian, state.z, state.adaptor)
-end
-
 ##########################
 # Hamiltonian Transition #
 ##########################
@@ -80,8 +75,6 @@ struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
 end
-
-isgibbscomponent(::Hamiltonian) = true
 
 HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
 function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
@@ -224,11 +217,6 @@ function DynamicPPL.initialstep(
     transition = HMCTransition(vi, t)
     state = HMCState(vi, 1, traj, hamiltonian, t.z, adaptor)
 
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        invlink!(vi, spl)
-    end
-
     return transition, state
 end
 
@@ -241,40 +229,15 @@ function AbstractMCMC.step(
     kwargs...
 )
     # Get step size
-    ϵ = getstepsize(spl, state)
-    @debug "current ϵ" ϵ
-
-    # Get VarInfo object
-    vi = state.vi
-    i = state.i + 1
-
-    # When a Gibbs component, transform values to the unconstrained space.
-    if spl.selector.tag !== :default
-        link!(vi, spl)
-        model(rng, vi, spl)
-    end
-
-    # Get position and log density before transition
-    θ_old = vi[spl]
-    log_density_old = getlogp(vi)
-    hamiltonian = if spl.selector.tag === :default
-        state.hamiltonian
-    else
-        get_hamiltonian(model, spl, vi, state, length(θ_old))
-    end
-
-    z = if spl.selector.tag === :default
-        state.z
-    else
-        resize!(state.z.θ, length(θ_old))
-        state.z.θ .= θ_old
-        state.z
-    end
+    @debug "current ϵ" getstepsize(spl, state)
 
     # Compute transition.
+    hamiltonian = state.hamiltonian
+    z = state.z
     t = AHMC.step(rng, hamiltonian, state.traj, z)
 
     # Adaptation
+    i = state.i + 1
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, traj, _ =
             AHMC.adapt!(hamiltonian, state.traj, state.adaptor,
@@ -283,23 +246,16 @@ function AbstractMCMC.step(
         traj = state.traj
     end
 
-    # Update `vi` based on acceptance
+    # Update variables
+    vi = state.vi
     if t.stat.is_accept
         vi[spl] = t.z.θ
         setlogp!(vi, t.stat.log_density)
-    else
-        vi[spl] = θ_old
-        setlogp!(vi, log_density_old)
     end
 
     # Compute next transition and state.
     transition = HMCTransition(vi, t)
     newstate = HMCState(vi, i, traj, hamiltonian, t.z, state.adaptor)
-
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        invlink!(vi, spl)
-    end
 
     return transition, newstate
 end
@@ -517,7 +473,7 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    updategid!(vi, vn, spl)
+    DynamicPPL.updategid!(vi, vn, spl)
     r = vi[vn]
     # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
     # r
@@ -533,7 +489,7 @@ function DynamicPPL.dot_assume(
     vi,
 )
     @assert length(dist) == size(var, 1)
-    updategid!.(Ref(vi), vns, Ref(spl))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
@@ -546,7 +502,7 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    updategid!.(Ref(vi), vns, Ref(spl))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
