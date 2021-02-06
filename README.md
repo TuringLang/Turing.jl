@@ -33,9 +33,8 @@ You can see the full list of on Github: https://github.com/TuringLang/Turing.jl/
 
 Turing is an open source project so if you feel you have some relevant skills and are interested in contributing then please do get in touch. See the [Contributing](http://turing.ml/docs/contributing/) page for details on the process. You can contribute by opening issues on Github or implementing things yourself and making a pull request. We would also appreciate example models written using Turing.
 
-### Slack
-
-Join [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in the Julia Slack chat for help, discussion, or general communication with the Turing team. If you do not already have an invitation to Julia's Slack, you can get one by going [here](https://julialang.org/slack/).
+## Issues and Discussions
+Issues related to bugs and feature requests are welcome on the [issues page](https://github.com/TuringLang/Turing.jl/issues), while discussions and questions about statistical applications and theory should can place on the [Discussions page](https://github.com/TuringLang/Turing.jl/discussions) or [our channel](https://julialang.slack.com/messages/turing/) (`#turing`) in the Julia Slack chat. If you do not already have an invitation to Julia's Slack, you can get one by going [here](https://julialang.org/slack/).
 
 ## Related projects
 - The Stan language for probabilistic programming - [Stan.jl](https://github.com/StanJulia/Stan.jl)
