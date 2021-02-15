@@ -1,3 +1,35 @@
+struct Vec{N, B<:Bijectors.Bijector{N}} <: Bijectors.Bijector{1}
+    b::B
+    size::NTuple{N, Int}
+end
+
+Base.inv(f::Vec) = Vec(inv(f.b), f.size)
+
+function (f::Vec)(x::AbstractVector)
+    # Reshape into shape compatible with wrapped bijector and then `vec` again.
+    return vec(f.b(reshape(x, f.size)))
+end
+
+function (f::Vec)(x::AbstractMatrix)
+    # At the moment we do batching for higher-than-1-dim spaces by simply using
+    # lists of inputs rather than `AbstractArray` with `N + 1` dimension.
+    cols = Iterators.Stateful(eachcol(x))
+    # Make `init` a matrix to ensure type-stability
+    init = reshape(f(first(cols)), :, 1)
+    return mapreduce(f, hcat, cols; init = init)
+end
+
+function Bijectors.logabsdetjac(f::Vec, x::AbstractVector)
+    return Bijectors.logabsdetjac(f.b, reshape(x, f.size))
+end
+
+function Bijectors.logabsdetjac(f::Vec, x::AbstractMatrix)
+    return map(eachcol(x)) do x_
+        Bijectors.logabsdetjac(f, x_)
+    end
+end
+
+
 """
     bijector(model::Model[, sym2ranges = Val(false)])
 
@@ -33,7 +65,15 @@ function Bijectors.bijector(
         idx += varinfo.metadata[sym].ranges[end][end]
     end
 
-    bs = Bijectors.bijector.(tuple(dists...))
+    bs = map(tuple(dists...)) do d
+        b = Bijectors.bijector(d)
+
+        return if Bijectors.dimension(b) > 1
+            Vec(b, size(d))
+        else
+            b
+        end
+    end
 
     if sym2ranges
         return (
@@ -52,36 +92,13 @@ Creates a mean-field approximation with multivariate normal as underlying distri
 """
 meanfield(model::DynamicPPL.Model) = meanfield(Random.GLOBAL_RNG, model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
-    # setup
-    varinfo = DynamicPPL.VarInfo(model)
-    num_params = sum([size(varinfo.metadata[sym].vals, 1)
-                      for sym ∈ keys(varinfo.metadata)])
+    b = inv(Bijectors.bijector(model, Val(false)))
+    num_params = sum(length.(b.ranges))
 
-    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
-
-    num_ranges = sum([length(varinfo.metadata[sym].ranges)
-                      for sym ∈ keys(varinfo.metadata)])
-    ranges = Vector{UnitRange{Int}}(undef, num_ranges)
-    idx = 0
-    range_idx = 1
-    for sym ∈ keys(varinfo.metadata)
-        for r ∈ varinfo.metadata[sym].ranges
-            ranges[range_idx] = idx .+ r
-            range_idx += 1
-        end
-
-        # append!(ranges, [idx .+ r for r ∈ varinfo.metadata[sym].ranges])
-        idx += varinfo.metadata[sym].ranges[end][end]
-    end
-
-    # initial params
+    # Construct variational posterior
     μ = randn(rng, num_params)
     σ = StatsFuns.softplus.(randn(rng, num_params))
-
-    # construct variational posterior
     d = DistributionsAD.TuringDiagMvNormal(μ, σ)
-    bs = inv.(Bijectors.bijector.(tuple(dists...)))
-    b = Bijectors.Stacked(bs, ranges)
 
     return Bijectors.transformed(d, b)
 end
