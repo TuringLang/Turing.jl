@@ -4,8 +4,7 @@ using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multin
 
 using Random
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "SMC" begin
     @turing_testset "constructor" begin

@@ -10,6 +10,8 @@ setprogress!(false)
 
 include("test_utils/AllUtils.jl")
 
+const project_root = basename(basename(pathof(Turing)))
+
 # Begin testing.
 @testset "Turing" begin
     @testset "core" begin

@@ -5,8 +5,7 @@ using StatsFuns: logistic
 
 using LinearAlgebra
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "hmc.jl" begin
     @numerical_testset "constrained bounded" begin

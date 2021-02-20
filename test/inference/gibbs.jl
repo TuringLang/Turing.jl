@@ -4,8 +4,7 @@ import MCMCChains
 import Turing.Inference
 using Turing.RandomMeasures
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin

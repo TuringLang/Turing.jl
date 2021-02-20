@@ -4,8 +4,7 @@ using StatsFuns
 using Random
 using Test
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @turing_testset "is.jl" begin
     function reference(n)

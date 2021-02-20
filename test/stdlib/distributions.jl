@@ -3,8 +3,7 @@ using Turing: BinomialLogit, NUTS
 using Distributions: Binomial, logpdf
 using StatsFuns: logistic
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "distributions.jl" begin
     @turing_testset "distributions functions" begin
