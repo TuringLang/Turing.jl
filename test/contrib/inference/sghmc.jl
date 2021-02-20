@@ -3,8 +3,7 @@ using LinearAlgebra
 using Random
 using Test
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "sghmc.jl" begin
     @numerical_testset "sghmc inference" begin

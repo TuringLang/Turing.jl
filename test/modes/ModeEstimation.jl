@@ -8,8 +8,7 @@ using Random
 using LinearAlgebra
 using Zygote
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "ModeEstimation.jl" begin
     @testset "MLE" begin

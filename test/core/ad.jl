@@ -9,8 +9,7 @@ using StatsFuns: binomlogpdf, logsumexp
 using Test, LinearAlgebra
 const FDM = FiniteDifferences
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "ad.jl" begin
     @turing_testset "adr" begin

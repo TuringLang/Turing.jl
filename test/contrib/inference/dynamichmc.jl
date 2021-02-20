@@ -1,8 +1,7 @@
 using Turing, Test
 import Random
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
+include(project_root*"/test/test_utils/AllUtils.jl")
 
 @stage_testset "dynamichmc" "dynamichmc.jl" begin
     import DynamicHMC
