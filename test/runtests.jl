@@ -1,5 +1,5 @@
-
 using AbstractMCMC
+using Clustering
 using Distributions
 using FiniteDifferences
 using ForwardDiff
@@ -7,6 +7,7 @@ using Memoization
 using Random
 using ReverseDiff
 using PDMats
+using StatsFuns
 using Tracker
 using Turing
 using Turing.RandomMeasures
@@ -40,8 +41,8 @@ include("test_utils/AllUtils.jl")
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
-#                include("inference/gibbs_conditional.jl")
-#                include("inference/hmc.jl")
+                include("inference/gibbs_conditional.jl")
+                include("inference/hmc.jl")
 #                include("inference/is.jl")
 #                include("inference/mh.jl")
 #                include("inference/ess.jl")

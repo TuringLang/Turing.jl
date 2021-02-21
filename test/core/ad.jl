@@ -2,7 +2,7 @@
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo(ad_test_f)
-        ad_test_f(vi, Turing.SampleFromPrior())
+        ad_test_f(vi, SampleFromPrior())
         svn = vi.metadata.s.vns[1]
         mvn = vi.metadata.m.vns[1]
         _s = getval(vi, svn)[1]
@@ -27,7 +27,7 @@
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        x = map(x->Float64(x), vi[Turing.SampleFromPrior()])
+        x = map(x->Float64(x), vi[SampleFromPrior()])
         ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 

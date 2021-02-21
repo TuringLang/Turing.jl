@@ -1,9 +1,3 @@
-using Random, Turing, Test
-using StatsFuns
-using Clustering
-
-
-
 @turing_testset "gibbs conditionals" begin
     Random.seed!(100)
 
