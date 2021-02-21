@@ -1,8 +1,3 @@
-using Turing, Test
-import Random
-
-include(project_root*"/test/test_utils/AllUtils.jl")
-
 @stage_testset "dynamichmc" "dynamichmc.jl" begin
     import DynamicHMC
     Random.seed!(100)

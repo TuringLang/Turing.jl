@@ -8,7 +8,6 @@ using Random
 using LinearAlgebra
 using Zygote
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "ModeEstimation.jl" begin
     @testset "MLE" begin

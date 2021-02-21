@@ -1,3 +1,5 @@
+# const FDM = FiniteDifferences
+
 ##############################
 # Global variables/constants #
 ##############################

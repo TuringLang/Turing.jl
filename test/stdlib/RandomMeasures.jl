@@ -3,7 +3,6 @@ using Turing.RandomMeasures
 using Test
 using Random
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin

@@ -2,7 +2,6 @@ using Random, Turing, Test
 using StatsFuns
 using Clustering
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 
 @turing_testset "gibbs conditionals" begin

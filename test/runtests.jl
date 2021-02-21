@@ -1,16 +1,32 @@
-##########################################
-# Master file for running all test cases #
-##########################################
-using Zygote, ReverseDiff, Memoization, Turing
-using Pkg
+
+using AbstractMCMC
+using Distributions
+using FiniteDifferences
+using ForwardDiff
+using Memoization
 using Random
+using ReverseDiff
+using PDMats
+using Tracker
+using Turing
+using Turing.RandomMeasures
+using Zygote
+
+# Julia base.
+using LinearAlgebra
+using Pkg
 using Test
+
+using DynamicPPL: getval
+using ForwardDiff: Dual
+using MCMCChains: Chains
+using StatsFuns: binomlogpdf, logistic, logsumexp
+using Turing: Sampler, SampleFromPrior, NUTS, TrackerAD, ZygoteAD
+using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 
 setprogress!(false)
 
 include("test_utils/AllUtils.jl")
-
-const project_root = dirname(dirname(pathof(Turing)))
 
 # Begin testing.
 @testset "Turing" begin
@@ -24,39 +40,39 @@ const project_root = dirname(dirname(pathof(Turing)))
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
-                include("inference/gibbs_conditional.jl")
-                include("inference/hmc.jl")
-                include("inference/is.jl")
-                include("inference/mh.jl")
-                include("inference/ess.jl")
-                include("inference/emcee.jl")
-                include("inference/AdvancedSMC.jl")
-                include("inference/Inference.jl")
-                include("contrib/inference/dynamichmc.jl")
-                include("contrib/inference/sghmc.jl")
+#                include("inference/gibbs_conditional.jl")
+#                include("inference/hmc.jl")
+#                include("inference/is.jl")
+#                include("inference/mh.jl")
+#                include("inference/ess.jl")
+#                include("inference/emcee.jl")
+#                include("inference/AdvancedSMC.jl")
+#                include("inference/Inference.jl")
+#                include("contrib/inference/dynamichmc.jl")
+#                include("contrib/inference/sghmc.jl")
             end
         end
 
-        @testset "variational algorithms : $adbackend" begin
-            include("variational/advi.jl")
-        end
+#        @testset "variational algorithms : $adbackend" begin
+#            include("variational/advi.jl")
+#        end
 
-        @testset "modes" begin
-            include("modes/ModeEstimation.jl")
-        end
+#        @testset "modes" begin
+#            include("modes/ModeEstimation.jl")
+#        end
     end
-    @testset "variational optimisers" begin
-        include("variational/optimisers.jl")
-    end
+#    @testset "variational optimisers" begin
+#        include("variational/optimisers.jl")
+#    end
 
-    Turing.setadbackend(:forwarddiff)
-    @testset "stdlib" begin
-        include("stdlib/distributions.jl")
-        include("stdlib/RandomMeasures.jl")
-    end
+#    Turing.setadbackend(:forwarddiff)
+#    @testset "stdlib" begin
+#        include("stdlib/distributions.jl")
+#        include("stdlib/RandomMeasures.jl")
+#    end
 
-    @testset "utilities" begin
-        # include("utilities/stan-interface.jl")
-        include("inference/utilities.jl")
-    end
+#    @testset "utilities" begin
+#        # include("utilities/stan-interface.jl")
+#        include("inference/utilities.jl")
+#    end
 end

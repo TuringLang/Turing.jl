@@ -1,10 +1,6 @@
-using Random, Turing, Test
-import AbstractMCMC
 import MCMCChains
 import Turing.Inference
-using Turing.RandomMeasures
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin

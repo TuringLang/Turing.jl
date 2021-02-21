@@ -4,7 +4,6 @@ using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multin
 
 using Random
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "SMC" begin
     @turing_testset "constructor" begin

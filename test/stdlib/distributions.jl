@@ -3,7 +3,6 @@ using Turing: BinomialLogit, NUTS
 using Distributions: Binomial, logpdf
 using StatsFuns: logistic
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "distributions.jl" begin
     @turing_testset "distributions functions" begin

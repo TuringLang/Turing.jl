@@ -1,21 +1,8 @@
-using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra
-using PDMats, Zygote
-using Turing: Turing, invlink, link, SampleFromPrior, 
-    TrackerAD, ZygoteAD
-using DynamicPPL: getval
-using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
-using ForwardDiff: Dual
-using StatsFuns: binomlogpdf, logsumexp
-using Test, LinearAlgebra
-const FDM = FiniteDifferences
-
-include(project_root*"/test/test_utils/AllUtils.jl")
-
 @testset "ad.jl" begin
     @turing_testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo(ad_test_f)
-        ad_test_f(vi, SampleFromPrior())
+        ad_test_f(vi, Turing.SampleFromPrior())
         svn = vi.metadata.s.vns[1]
         mvn = vi.metadata.m.vns[1]
         _s = getval(vi, svn)[1]
@@ -26,7 +13,7 @@ include(project_root*"/test/test_utils/AllUtils.jl")
         # Hand-written logp
         function logp(x::Vector)
           s = x[2]
-          # s = invlink(dist_s, s)
+          # s = Turing.invlink(dist_s, s)
           m = x[1]
           lik_dist = Normal(m, sqrt(s))
           lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
@@ -36,11 +23,11 @@ include(project_root*"/test/test_utils/AllUtils.jl")
 
         # Call ForwardDiff's AD
         g = x -> ForwardDiff.gradient(logp, x);
-        # _s = link(dist_s, _s)
+        # _s = Turing.link(dist_s, _s)
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        x = map(x->Float64(x), vi[SampleFromPrior()])
+        x = map(x->Float64(x), vi[Turing.SampleFromPrior()])
         ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 

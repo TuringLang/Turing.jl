@@ -1,6 +1,5 @@
 using Turing, Random, Test
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @stage_testset "stan" "stan-interface.jl" begin
     using CmdStan

@@ -1,10 +1,3 @@
-using Turing
-using LinearAlgebra
-using Random
-using Test
-
-include(project_root*"/test/test_utils/AllUtils.jl")
-
 @testset "sghmc.jl" begin
     @numerical_testset "sghmc inference" begin
         Random.seed!(125)

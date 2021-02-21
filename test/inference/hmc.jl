@@ -1,12 +1,3 @@
-using Turing, Random, Test
-using Turing: Sampler, NUTS
-using MCMCChains: Chains
-using StatsFuns: logistic
-
-using LinearAlgebra
-
-include(project_root*"/test/test_utils/AllUtils.jl")
-
 @testset "hmc.jl" begin
     @numerical_testset "constrained bounded" begin
         # Set a seed

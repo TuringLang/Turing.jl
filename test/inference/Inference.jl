@@ -4,7 +4,6 @@ import MCMCChains
 
 using Random
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "io.jl" begin
     # Only test threading if 1.3+.

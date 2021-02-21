@@ -4,7 +4,6 @@ using StatsFuns
 using Random
 using Test
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @turing_testset "is.jl" begin
     function reference(n)

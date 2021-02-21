@@ -1,6 +1,5 @@
 using Turing, Random, Test
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "ESS" begin
     @model demo(x) = begin

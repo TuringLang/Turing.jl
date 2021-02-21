@@ -2,7 +2,6 @@ using Turing, Random, Test
 import Turing.Inference
 import AdvancedMH
 
-include(project_root*"/test/test_utils/AllUtils.jl")
 
 @testset "mh.jl" begin
     @turing_testset "mh constructor" begin
