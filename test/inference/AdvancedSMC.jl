@@ -1,11 +1,8 @@
-using Turing, Random, Test
-using Turing.Inference: getspace
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 
-using Random
-
-
 @testset "SMC" begin
+    getspace = Turing.Inference.getspace
+
     @turing_testset "constructor" begin
         s = SMC()
         @test s.resampler == ResampleWithESSThreshold()
@@ -98,6 +95,8 @@ using Random
 end
 
 @testset "PG" begin
+    getspace = Turing.Inference.getspace
+
     @turing_testset "constructor" begin
         s = PG(10)
         @test s.nparticles == 10

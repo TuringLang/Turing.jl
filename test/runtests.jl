@@ -1,4 +1,5 @@
 import AdvancedMH
+import MCMCChains
 import Turing.Inference
 
 using AbstractMCMC
@@ -21,7 +22,7 @@ using LinearAlgebra
 using Pkg
 using Test
 
-using DynamicPPL: getval
+using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
@@ -30,9 +31,8 @@ using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 
 setprogress!(false)
 
-include("test_utils/AllUtils.jl")
+clude("test_utils/AllUtils.jl")
 
-# Begin testing.
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
@@ -50,33 +50,33 @@ include("test_utils/AllUtils.jl")
                 include("inference/mh.jl")
                 include("inference/ess.jl")
                 include("inference/emcee.jl")
-#                include("inference/AdvancedSMC.jl")
-#                include("inference/Inference.jl")
-#                include("contrib/inference/dynamichmc.jl")
-#                include("contrib/inference/sghmc.jl")
+                include("inference/AdvancedSMC.jl")
+                include("inference/Inference.jl")
+                include("contrib/inference/dynamichmc.jl")
+                include("contrib/inference/sghmc.jl")
             end
         end
 
-#        @testset "variational algorithms : $adbackend" begin
-#            include("variational/advi.jl")
-#        end
+        @testset "variational algorithms : $adbackend" begin
+            include("variational/advi.jl")
+        end
 
-#        @testset "modes" begin
-#            include("modes/ModeEstimation.jl")
-#        end
+        @testset "modes" begin
+            include("modes/ModeEstimation.jl")
+        end
     end
-#    @testset "variational optimisers" begin
-#        include("variational/optimisers.jl")
-#    end
+    @testset "variational optimisers" begin
+        include("variational/optimisers.jl")
+    end
 
-#    Turing.setadbackend(:forwarddiff)
-#    @testset "stdlib" begin
-#        include("stdlib/distributions.jl")
-#        include("stdlib/RandomMeasures.jl")
-#    end
+    Turing.setadbackend(:forwarddiff)
+    @testset "stdlib" begin
+        include("stdlib/distributions.jl")
+        include("stdlib/RandomMeasures.jl")
+    end
 
-#    @testset "utilities" begin
-#        # include("utilities/stan-interface.jl")
-#        include("inference/utilities.jl")
-#    end
+    @testset "utilities" begin
+        # include("utilities/stan-interface.jl")
+        include("inference/utilities.jl")
+    end
 end

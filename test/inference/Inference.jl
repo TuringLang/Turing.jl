@@ -1,10 +1,3 @@
-using Turing, Random, Test
-using DynamicPPL: getlogp
-import MCMCChains
-
-using Random
-
-
 @testset "io.jl" begin
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
