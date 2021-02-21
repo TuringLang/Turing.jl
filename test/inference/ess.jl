@@ -1,6 +1,3 @@
-using Turing, Random, Test
-
-
 @testset "ESS" begin
     @model demo(x) = begin
         m ~ Normal()

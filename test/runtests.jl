@@ -1,3 +1,6 @@
+import AdvancedMH
+import Turing.Inference
+
 using AbstractMCMC
 using Clustering
 using Distributions
@@ -43,10 +46,10 @@ include("test_utils/AllUtils.jl")
                 include("inference/gibbs.jl")
                 include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
-#                include("inference/is.jl")
-#                include("inference/mh.jl")
-#                include("inference/ess.jl")
-#                include("inference/emcee.jl")
+                include("inference/is.jl")
+                include("inference/mh.jl")
+                include("inference/ess.jl")
+                include("inference/emcee.jl")
 #                include("inference/AdvancedSMC.jl")
 #                include("inference/Inference.jl")
 #                include("contrib/inference/dynamichmc.jl")

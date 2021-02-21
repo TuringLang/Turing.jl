@@ -1,6 +1,3 @@
-using Turing, Random, Test
-import Turing.Inference
-import AdvancedMH
 
 
 @testset "emcee.jl" begin

@@ -1,10 +1,3 @@
-using Turing
-using StatsFuns
-
-using Random
-using Test
-
-
 @turing_testset "is.jl" begin
     function reference(n)
         as = Vector{Float64}(undef, n)

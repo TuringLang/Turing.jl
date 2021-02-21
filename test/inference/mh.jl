@@ -1,8 +1,3 @@
-using Turing, Random, Test
-import Turing.Inference
-import AdvancedMH
-
-
 @testset "mh.jl" begin
     @turing_testset "mh constructor" begin
         Random.seed!(0)
