@@ -1,7 +1,3 @@
-import MCMCChains
-import Turing.Inference
-
-
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin
         N = 500

@@ -1,12 +1,10 @@
-import AdvancedMH
-import MCMCChains
-import Turing.Inference
-
 using AbstractMCMC
+using AdvancedMH
 using Clustering
 using Distributions
 using FiniteDifferences
 using ForwardDiff
+using MCMCChains
 using Memoization
 using Random
 using ReverseDiff
@@ -14,6 +12,7 @@ using PDMats
 using StatsFuns
 using Tracker
 using Turing
+using Turing.Inference
 using Turing.RandomMeasures
 using Zygote
 
@@ -26,7 +25,7 @@ using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
-using Turing: Sampler, SampleFromPrior, NUTS, TrackerAD, ZygoteAD
+using Turing: Sampler, SampleFromPrior, NUTS, TrackerAD, ZygoteAD, getspace
 using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 
 setprogress!(false)
