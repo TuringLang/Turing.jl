@@ -1,13 +1,3 @@
-using Turing, Random, Test
-using Turing: Sampler, NUTS
-using MCMCChains: Chains
-using StatsFuns: logistic
-
-using LinearAlgebra
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "hmc.jl" begin
     @numerical_testset "constrained bounded" begin
         # Set a seed

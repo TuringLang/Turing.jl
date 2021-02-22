@@ -1,9 +1,4 @@
-using Turing, Random, Test
-import Turing.Inference
-import AdvancedMH
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "emcee.jl" begin
     @testset "gdemo" begin

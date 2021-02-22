@@ -1,12 +1,3 @@
-using Random, Turing, Test
-import AbstractMCMC
-import MCMCChains
-import Turing.Inference
-using Turing.RandomMeasures
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin
         N = 500

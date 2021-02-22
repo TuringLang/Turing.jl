@@ -1,17 +1,3 @@
-using ForwardDiff, Distributions, FiniteDifferences, Tracker, Random, LinearAlgebra
-using PDMats, Zygote
-using Turing: Turing, invlink, link, SampleFromPrior, 
-    TrackerAD, ZygoteAD
-using DynamicPPL: getval
-using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
-using ForwardDiff: Dual
-using StatsFuns: binomlogpdf, logsumexp
-using Test, LinearAlgebra
-const FDM = FiniteDifferences
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "ad.jl" begin
     @turing_testset "adr" begin
         ad_test_f = gdemo_default

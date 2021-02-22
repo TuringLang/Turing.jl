@@ -1,5 +1,3 @@
-using Random
-
 @testset "predict" begin
     Random.seed!(100)
 
