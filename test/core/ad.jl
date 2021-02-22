@@ -13,7 +13,7 @@
         # Hand-written logp
         function logp(x::Vector)
           s = x[2]
-          # s = Turing.invlink(dist_s, s)
+          # s = invlink(dist_s, s)
           m = x[1]
           lik_dist = Normal(m, sqrt(s))
           lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
@@ -23,7 +23,7 @@
 
         # Call ForwardDiff's AD
         g = x -> ForwardDiff.gradient(logp, x);
-        # _s = Turing.link(dist_s, _s)
+        # _s = link(dist_s, _s)
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 

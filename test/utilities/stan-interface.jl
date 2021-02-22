@@ -1,6 +1,3 @@
-using Turing, Random, Test
-
-
 @stage_testset "stan" "stan-interface.jl" begin
     using CmdStan
 

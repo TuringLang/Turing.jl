@@ -1,9 +1,3 @@
-using Turing
-using Turing.RandomMeasures
-using Test
-using Random
-
-
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin
         @model infiniteGMM(x) = begin

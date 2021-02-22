@@ -1,9 +1,3 @@
-using Turing, Random, Test
-using Turing: BinomialLogit, NUTS
-using Distributions: Binomial, logpdf
-using StatsFuns: logistic
-
-
 @testset "distributions.jl" begin
     @turing_testset "distributions functions" begin
         ns = 10

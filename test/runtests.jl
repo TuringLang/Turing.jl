@@ -6,7 +6,6 @@ using FiniteDifferences
 using ForwardDiff
 using MCMCChains
 using Memoization
-using Random
 using ReverseDiff
 using PDMats
 using StatsFuns
@@ -16,16 +15,17 @@ using Turing.Inference
 using Turing.RandomMeasures
 using Zygote
 
-# Julia base.
 using LinearAlgebra
 using Pkg
+using Random
 using Test
 
+using Distributions: Binomial, logpdf
 using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
-using Turing: Sampler, SampleFromPrior, NUTS, TrackerAD, ZygoteAD, getspace
+using Turing: BinomialLogit, Sampler, SampleFromPrior, NUTS, TrackerAD, ZygoteAD, getspace
 using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 
 setprogress!(false)
