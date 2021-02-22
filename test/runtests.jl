@@ -31,7 +31,7 @@ using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
 
 setprogress!(false)
 
-clude("test_utils/AllUtils.jl")
+include("test_utils/AllUtils.jl")
 
 @testset "Turing" begin
     @testset "core" begin
