@@ -1,5 +1,3 @@
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-
 @testset "SMC" begin
     @turing_testset "constructor" begin
         s = SMC()

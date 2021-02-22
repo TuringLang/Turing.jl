@@ -1,12 +1,3 @@
-using Turing
-using Optim
-using Test
-using StatsBase
-using NamedArrays
-using ReverseDiff
-using Random
-using LinearAlgebra
-using Zygote
 
 
 @testset "ModeEstimation.jl" begin
