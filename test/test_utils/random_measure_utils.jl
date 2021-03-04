@@ -1,5 +1,3 @@
-using SpecialFunctions
-
 function compute_log_joint(observations, partition, tau0, tau1, sigma, theta)
   n = length(observations)
   k = length(partition)

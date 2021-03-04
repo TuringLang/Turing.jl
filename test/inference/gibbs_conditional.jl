@@ -1,11 +1,3 @@
-using Random, Turing, Test
-using StatsFuns
-using Clustering
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
-
 @turing_testset "gibbs conditionals" begin
     Random.seed!(100)
 
@@ -51,7 +43,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chain = sample(gdemo_default, sampler1, 10_000)
         cond_m_mean = mean(cond_m((s = s_posterior_mean,)))
         check_numerical(chain, [:m, :s], [cond_m_mean, s_posterior_mean])
-        @test all(==(s_posterior_mean), chain[:s])
+        @test all(==(s_posterior_mean), chain[:s][2:end])
 
         m_posterior_mean = 7/6
         sampler2 = Gibbs(
@@ -61,7 +53,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         chain = sample(gdemo_default, sampler2, 10_000)
         cond_s_mean = mean(cond_s((m = m_posterior_mean,)))
         check_numerical(chain, [:m, :s], [m_posterior_mean, cond_s_mean])
-        @test all(==(m_posterior_mean), chain[:m])
+        @test all(==(m_posterior_mean), chain[:m][2:end])
 
         # and one for both using the conditional
         sampler3 = Gibbs(GibbsConditional(:m, cond_m), GibbsConditional(:s, cond_s))

@@ -186,8 +186,6 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-isgibbscomponent(::MH) = true
-
 #####################
 # Utility functions #
 #####################
@@ -413,11 +411,6 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    # Recompute joint
-    if spl.selector.rerun
-        model(rng, vi)
-    end
-
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
@@ -436,7 +429,7 @@ function DynamicPPL.assume(
     vn::VarName,
     vi,
 )
-    updategid!(vi, vn, spl)
+    DynamicPPL.updategid!(vi, vn, spl)
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn))
 end
@@ -452,7 +445,7 @@ function DynamicPPL.dot_assume(
     @assert dim(dist) == size(var, 1)
     getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
     vns = getvn.(1:size(var, 2))
-    updategid!.(Ref(vi), vns, Ref(spl))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
     return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
@@ -467,7 +460,7 @@ function DynamicPPL.dot_assume(
 )
     getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
     vns = getvn.(CartesianIndices(var))
-    updategid!.(Ref(vi), vns, Ref(spl))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))

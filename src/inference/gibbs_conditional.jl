@@ -59,8 +59,6 @@ end
 
 DynamicPPL.getspace(::GibbsConditional{S}) where {S} = (S,)
 
-isgibbscomponent(::GibbsConditional) = true
-
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::Model,
@@ -68,7 +66,7 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...
 )
-    return AbstractMCMC.step(rng, model, spl, vi; kwargs...)
+    return nothing, vi
 end
 
 function AbstractMCMC.step(
@@ -78,14 +76,11 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    if spl.selector.rerun # Recompute joint in logp
-        model(rng, vi)
-    end
-
     condvals = conditioned(tonamedtuple(vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
     vi[spl] = [updated;]  # setindex allows only vectors in this case...
+    model(rng, vi, SampleFromPrior()) # update log joint probability
 
     return nothing, vi
 end

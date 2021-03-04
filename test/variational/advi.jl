@@ -1,11 +1,3 @@
-using DistributionsAD
-
-using Turing, Random, Test, LinearAlgebra
-using Turing: Variational
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
-
-include("../test_utils/AllUtils.jl")
-
 @testset "advi.jl" begin
     @turing_testset "advi constructor" begin
         Random.seed!(0)

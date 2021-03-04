@@ -25,8 +25,6 @@ struct ESS{space} <: InferenceAlgorithm end
 ESS() = ESS{()}()
 ESS(space::Symbol) = ESS{(space,)}()
 
-isgibbscomponent(::ESS) = true
-
 # always accept in the first step
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
@@ -57,11 +55,6 @@ function AbstractMCMC.step(
 )
     # obtain previous sample
     f = vi[spl]
-
-    # recompute log-likelihood in logp
-    if spl.selector.tag !== :default
-        model(rng, vi, spl)
-    end
 
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
