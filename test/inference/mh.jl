@@ -93,7 +93,6 @@
 
         spl1 = MH(prop1)
         spl2 = MH(prop2)
-        spl3 = Gibbs(MH(:m => ones(1,1)), MH(:s => ones(1,1)))
 
         # Test that the two constructors are equivalent.
         @test spl1.proposals.proposal.μ == spl2.proposals.proposal.μ
@@ -102,11 +101,51 @@
         # Test inference.
         chain1 = sample(gdemo_default, spl1, 10000)
         chain2 = sample(gdemo_default, spl2, 10000)
-        chain3 = sample(gdemo_default, spl3, 10000)
 
         check_gdemo(chain1)
         check_gdemo(chain2)
-        check_gdemo(chain3)
+    end
+
+    @turing_testset "gibbs MH proposal matrix" begin
+        # https://github.com/TuringLang/Turing.jl/issues/1556
+
+        # generate data
+        x = rand(Normal(5, 10), 20)
+        y = rand(LogNormal(-3, 2), 20)
+        
+        # Turing model
+        @model function twomeans(x, y)
+            # Set Priors
+            μ ~ MvNormal(2, 3)
+            σ ~ filldist(Exponential(1), 2)
+        
+            # Distributions of supplied data
+            x .~ Normal(μ[1], σ[1])
+            y .~ LogNormal(μ[2], σ[2])
+        
+        end
+        mod = twomeans(x, y)
+        
+        # generate covariance matrix for RWMH
+        # with small-valued VC matrix to check if we only see very small steps
+        vc_μ = convert(Array, 1e-4*I(2))
+        vc_σ = convert(Array, 1e-4*I(2))
+        
+        chn = sample(mod,
+            Gibbs(
+                MH((:μ, vc_μ)),
+                MH((:σ, vc_σ)),
+                ), 3_000 # draws
+            )
+        
+            
+        chn2 = sample(mod, MH(), 3_000)
+
+        # Test that the small variance version is actually smaller.
+        v1 = var(diff(chn["μ[1]"].data, dims=1))
+        v2 = var(diff(chn2["μ[1]"].data, dims=1))
+
+        @test v1 < v2
     end
 
     @turing_testset "vector of multivariate distributions" begin
