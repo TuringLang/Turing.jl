@@ -93,6 +93,7 @@
 
         spl1 = MH(prop1)
         spl2 = MH(prop2)
+        spl3 = Gibbs(MH(:m => ones(1,1)), MH(:s => ones(1,1)))
 
         # Test that the two constructors are equivalent.
         @test spl1.proposals.proposal.μ == spl2.proposals.proposal.μ
@@ -101,9 +102,11 @@
         # Test inference.
         chain1 = sample(gdemo_default, spl1, 10000)
         chain2 = sample(gdemo_default, spl2, 10000)
+        chain3 = sample(gdemo_default, spl3, 10000)
 
         check_gdemo(chain1)
         check_gdemo(chain2)
+        check_gdemo(chain3)
     end
 
     @turing_testset "vector of multivariate distributions" begin
