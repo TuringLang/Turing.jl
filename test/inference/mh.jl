@@ -142,8 +142,8 @@
         chn2 = sample(mod, MH(), 3_000)
 
         # Test that the small variance version is actually smaller.
-        v1 = var(diff(chn["μ[1]"].data, dims=1))
-        v2 = var(diff(chn2["μ[1]"].data, dims=1))
+        v1 = var(diff(Array(chn["μ[1]"]), dims=1))
+        v2 = var(diff(Array(chn2["μ[1]"]), dims=1))
 
         @test v1 < v2
     end
