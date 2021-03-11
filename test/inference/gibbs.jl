@@ -127,7 +127,7 @@
             end
         end
         model = imm(randn(100), 1.0);
-        sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+        sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end
