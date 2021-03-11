@@ -7,7 +7,10 @@ struct MH{space, P} <: InferenceAlgorithm
 end
 
 proposal(p::AdvancedMH.Proposal) = p
+proposal(f::Function) = AdvancedMH.StaticProposal(f)
+proposal(d::Distribution) = AdvancedMH.StaticProposal(d)
 proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
+proposal(x) = error("proposals of type ", typeof(x), " are not supported")
 
 """
     MH(space...)
@@ -162,14 +165,7 @@ function MH(space...)
             # Check to see whether it's a pair that specifies a kernel
             # or a specific proposal distribution.
             push!(prop_syms, s[1])
-
-            if s[2] isa AMH.Proposal
-                push!(props, s[2])
-            elseif s[2] isa Distribution
-                push!(props, AMH.StaticProposal(s[2]))
-            elseif s[2] isa Function
-                push!(props, AMH.StaticProposal(s[2]))
-            end
+            push!(props, proposal(s[2]))
         elseif length(space) == 1
             # If we hit this block, check to see if it's 
             # a run-of-the-mill proposal or covariance
@@ -178,11 +174,17 @@ function MH(space...)
 
             # Return early, we got a covariance matrix. 
             return MH{(), typeof(prop)}(prop)
+        else
+            # Try to convert it to a proposal anyways, 
+            # throw an error if not acceptable.
+            prop = proposal(s)
+            push!(props, prop)
         end
     end
 
     proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
     syms = vcat(syms, prop_syms)
+
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 

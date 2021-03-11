@@ -106,6 +106,48 @@
         check_gdemo(chain2)
     end
 
+    @turing_testset "gibbs MH proposal matrix" begin
+        # https://github.com/TuringLang/Turing.jl/issues/1556
+
+        # generate data
+        x = rand(Normal(5, 10), 20)
+        y = rand(LogNormal(-3, 2), 20)
+        
+        # Turing model
+        @model function twomeans(x, y)
+            # Set Priors
+            μ ~ MvNormal(2, 3)
+            σ ~ filldist(Exponential(1), 2)
+        
+            # Distributions of supplied data
+            x .~ Normal(μ[1], σ[1])
+            y .~ LogNormal(μ[2], σ[2])
+        
+        end
+        mod = twomeans(x, y)
+        
+        # generate covariance matrix for RWMH
+        # with small-valued VC matrix to check if we only see very small steps
+        vc_μ = convert(Array, 1e-4*I(2))
+        vc_σ = convert(Array, 1e-4*I(2))
+        
+        chn = sample(mod,
+            Gibbs(
+                MH((:μ, vc_μ)),
+                MH((:σ, vc_σ)),
+                ), 3_000 # draws
+            )
+        
+            
+        chn2 = sample(mod, MH(), 3_000)
+
+        # Test that the small variance version is actually smaller.
+        v1 = var(diff(Array(chn["μ[1]"]), dims=1))
+        v2 = var(diff(Array(chn2["μ[1]"]), dims=1))
+
+        @test v1 < v2
+    end
+
     @turing_testset "vector of multivariate distributions" begin
         @model function test(k)
             T = Vector{Vector{Float64}}(undef, k)
