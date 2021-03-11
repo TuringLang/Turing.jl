@@ -10,7 +10,7 @@ proposal(p::AdvancedMH.Proposal) = p
 proposal(f::Function) = AdvancedMH.StaticProposal(f)
 proposal(d::Distribution) = AdvancedMH.StaticProposal(d)
 proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
-proposal(x) = error("Proposal type $x not supported")
+proposal(x) = error("proposals of type ", typeof(x), " are not supported")
 
 """
     MH(space...)
