@@ -93,7 +93,7 @@
 
         spl1 = MH(prop1)
         spl2 = MH(prop2)
-        spl3 = Gibbs(MH(:m => Matrix([1.0])), MH(:s => Matrix([1.0])))
+        spl3 = Gibbs(MH(:m => ones(1,1)), MH(:s => ones(1,1)))
 
         # Test that the two constructors are equivalent.
         @test spl1.proposals.proposal.μ == spl2.proposals.proposal.μ
