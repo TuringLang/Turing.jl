@@ -1,12 +1,3 @@
-using Turing, Random, Test
-using DynamicPPL: getlogp
-import MCMCChains
-
-using Random
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "io.jl" begin
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
@@ -73,7 +64,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_gdemo(chn3)
 
         chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
-        check_gdemo(chn3_contd)
+        check_gdemo(chn3_contd; atol=0.25)
     end
     @testset "Contexts" begin
         # Test LikelihoodContext

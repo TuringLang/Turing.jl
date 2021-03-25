@@ -1,8 +1,3 @@
-using Turing, Random, Test
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "ESS" begin
     @model demo(x) = begin
         m ~ Normal()

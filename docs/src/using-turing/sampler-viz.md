@@ -114,7 +114,7 @@ plot_sampler(c)
 
 ### HMC
 
-Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the `NUTS` sampler is often easier to run if you don't want to spend too much time fiddling with step size and and the number of steps to take. Note however that `HMC` does not explore the positive values μ very well, likely due to the leapfrop and step size parameter settings.
+Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the `NUTS` sampler is often easier to run if you don't want to spend too much time fiddling with step size and and the number of steps to take. Note however that `HMC` does not explore the positive values μ very well, likely due to the leapfrog and step size parameter settings.
 
 ```julia
 c = sample(model, HMC(0.01, 10), 1000)

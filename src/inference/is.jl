@@ -31,52 +31,44 @@ struct IS{space} <: InferenceAlgorithm end
 
 IS() = IS{()}()
 
-mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
-    vi                 ::  V
-    final_logevidence  ::  F
-end
+DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 
-ISState(model::Model) = ISState(VarInfo(model), 0.0)
-
-function Sampler(alg::IS, model::Model, s::Selector)
-    info = Dict{Symbol, Any}()
-    state = ISState(model)
-    return Sampler(alg, info, s, state)
-end
-
-function AbstractMCMC.step!(
+function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::Model,
     spl::Sampler{<:IS},
-    ::Integer,
-    transition;
+    vi::AbstractVarInfo;
     kwargs...
 )
-    empty!(spl.state.vi)
-    model(rng, spl.state.vi, spl)
-
-    return Transition(spl)
+    return Transition(vi), nothing
 end
 
-function AbstractMCMC.sample_end!(
-    ::AbstractRNG,
-    ::Model,
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::Model,
     spl::Sampler{<:IS},
-    N::Integer,
-    ts::Vector;
+    ::Nothing;
     kwargs...
 )
-    # Calculate evidence.
-    spl.state.final_logevidence = logsumexp(map(x->x.lp, ts)) - log(N)
+    vi = VarInfo(rng, model, spl)
+    return Transition(vi), nothing
+end
+
+# Calculate evidence.
+function getlogevidence(samples::Vector{<:Transition}, ::Sampler{<:IS}, state)
+    return logsumexp(map(x -> x.lp, samples)) - log(length(samples))
 end
 
 function DynamicPPL.assume(rng, spl::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
-    r = rand(rng, dist)
-    push!(vi, vn, r, dist, spl)
+    if haskey(vi, vn)
+        r = vi[vn]
+    else
+        r = rand(rng, dist)
+        push!(vi, vn, r, dist, spl)
+    end
     return r, 0
 end
 
 function DynamicPPL.observe(spl::Sampler{<:IS}, dist::Distribution, value, vi)
-    # acclogp!(vi, logpdf(dist, value))
     return logpdf(dist, value)
 end

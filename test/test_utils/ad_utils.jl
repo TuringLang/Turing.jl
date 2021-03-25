@@ -1,6 +1,3 @@
-using Turing: gradient_logp, ForwardDiffAD
-using Test
-
 """
     test_reverse_mode_ad(forward, f, ȳ, x...; rtol=1e-6, atol=1e-6)
 

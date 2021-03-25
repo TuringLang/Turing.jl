@@ -55,14 +55,15 @@ using .Variational
 #     end
 # end
 
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" @eval Inference begin
-    import ..DynamicHMC
+@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
+    @eval Inference begin
+        import ..DynamicHMC
 
-    if isdefined(DynamicHMC, :mcmc_with_warmup)
-        using ..DynamicHMC: mcmc_with_warmup
-        include("contrib/inference/dynamichmc.jl")
-    else
-        error("Please update DynamicHMC, v1.x is no longer supported")
+        if isdefined(DynamicHMC, :mcmc_with_warmup)
+            include("contrib/inference/dynamichmc.jl")
+        else
+            error("Please update DynamicHMC, v1.x is no longer supported")
+        end
     end
 end
 
@@ -78,8 +79,7 @@ end
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: pointwise_loglikelihoods, elementwise_loglikelihoods,
-    generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint
 using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
@@ -94,6 +94,7 @@ export  @model,                 # modelling
         Emcee,
         ESS,
         Gibbs,
+        GibbsConditional,
 
         HMC,                    # Hamiltonian-like sampling
         SGLD,
@@ -102,6 +103,8 @@ export  @model,                 # modelling
         NUTS,
         DynamicNUTS,
         ANUTS,
+
+        PolynomialStepsize,
 
         IS,                     # particle-based sampling
         SMC,
@@ -144,8 +147,4 @@ export  @model,                 # modelling
         MLE, 
         optim_problem, 
         galacticoptim_function
-
-# deprecations
-include("deprecations.jl")
-
 end

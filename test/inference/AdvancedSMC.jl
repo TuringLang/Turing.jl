@@ -1,12 +1,3 @@
-using Turing, Random, Test
-using Turing.Core: ResampleWithESSThreshold
-using Turing.Inference: getspace, resample_systematic, resample_multinomial
-
-using Random
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "SMC" begin
     @turing_testset "constructor" begin
         s = SMC()
@@ -235,19 +226,3 @@ end
 #     end
 # end
 
-@turing_testset "resample.jl" begin
-    D = [0.3, 0.4, 0.3]
-    num_samples = Int(1e6)
-    resSystematic = Turing.Inference.resample_systematic(D, num_samples )
-    resStratified = Turing.Inference.resample_stratified(D, num_samples )
-    resMultinomial= Turing.Inference.resample_multinomial(D, num_samples )
-    resResidual   = Turing.Inference.resample_residual(D, num_samples )
-    Turing.Inference.resample(D)
-    resSystematic2=Turing.Inference.resample(D, num_samples )
-
-    @test sum(resSystematic .== 2) ≈ (num_samples * 0.4) atol=1e-3*num_samples
-    @test sum(resSystematic2 .== 2) ≈ (num_samples * 0.4) atol=1e-3*num_samples
-    @test sum(resStratified .== 2) ≈ (num_samples * 0.4) atol=1e-3*num_samples
-    @test sum(resMultinomial .== 2) ≈ (num_samples * 0.4) atol=1e-2*num_samples
-    @test sum(resResidual .== 2) ≈ (num_samples * 0.4) atol=1e-2*num_samples
-end

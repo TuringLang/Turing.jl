@@ -1,12 +1,4 @@
-using Turing
-using Optim
-using BlackBoxOptim
-using GalacticOptim
-using Test
-using Random
 
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
 
 @testset "ModeEstimation.jl" begin
     @testset "MLE" begin

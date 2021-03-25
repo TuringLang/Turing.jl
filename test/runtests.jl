@@ -1,20 +1,49 @@
-##########################################
-# Master file for running all test cases #
-##########################################
-using Zygote, ReverseDiff, Memoization, Turing
+using AbstractMCMC
+using AdvancedMH
+using Clustering
+using Distributions
+using DistributionsAD
+using FiniteDifferences
+using ForwardDiff
+using MCMCChains
+using Memoization
+using NamedArrays
+using Optim
+using PDMats
+using ReverseDiff
+using SpecialFunctions
+using StatsBase
+using StatsFuns
+using Tracker
+using Turing
+using Turing.Inference
+using Turing.RandomMeasures
+using Zygote
+
+using LinearAlgebra
 using Pkg
 using Random
 using Test
+
+using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
+using Distributions: Binomial, logpdf
+using DynamicPPL: getval, getlogp
+using ForwardDiff: Dual
+using MCMCChains: Chains
+using StatsFuns: binomlogpdf, logistic, logsumexp
+using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD, 
+                Variational, ZygoteAD, getspace, gradient_logp
+using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
+using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 setprogress!(false)
 
 include("test_utils/AllUtils.jl")
 
-# Begin testing.
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
-        include("core/container.jl")
     end
 
     Turing.setrdcache(false)
@@ -23,6 +52,7 @@ include("test_utils/AllUtils.jl")
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
+                include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
                 include("inference/is.jl")
                 include("inference/mh.jl")
@@ -31,6 +61,7 @@ include("test_utils/AllUtils.jl")
                 include("inference/AdvancedSMC.jl")
                 include("inference/Inference.jl")
                 include("contrib/inference/dynamichmc.jl")
+                include("contrib/inference/sghmc.jl")
             end
         end
 
