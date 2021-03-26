@@ -2,7 +2,7 @@ module ModeEstimation
 
 using ..Turing
 using Bijectors
-using DiffEqBase: OptimizationFunction
+using SciMLBase: OptimizationFunction
 
 using DynamicPPL
 import DynamicPPL: Model, AbstractContext, VarInfo, VarName,

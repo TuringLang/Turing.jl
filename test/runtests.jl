@@ -5,6 +5,7 @@ using Distributions
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
+using GalacticOptim
 using MCMCChains
 using Memoization
 using NamedArrays
