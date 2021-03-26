@@ -145,6 +145,7 @@ export  @model,                 # modelling
 
         MAP,                    # optimisation interface
         MLE, 
-        optim_problem, 
-        galacticoptim_function
+        optim_objective, 
+        optim_function,
+        optim_problem
 end

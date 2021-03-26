@@ -2,7 +2,7 @@ module ModeEstimation
 
 using ..Turing
 using Bijectors
-using SciMLBase: OptimizationFunction
+using SciMLBase: OptimizationFunction, OptimizationProblem
 
 using DynamicPPL
 import DynamicPPL: Model, AbstractContext, VarInfo, VarName,
@@ -13,8 +13,9 @@ export  MAP,
         MLE,
         OptimLogDensity,
         OptimizationContext,
-        optim_problem, 
-        galacticoptim_function
+        optim_objective, 
+        optim_function,
+        optim_problem
 
 
 struct MLE{constrained} end
@@ -259,6 +260,7 @@ end
 abstract type AbstractTransformFunction end
 abstract type AbstractParameterTransformFunction <: AbstractTransformFunction end
 abstract type AbstractInitTransformFunction <: AbstractParameterTransformFunction end
+abstract type AbstractParameterBoundsTransformFunction <: AbstractParameterTransformFunction end
 
 
 struct ParameterTransformFunction <: AbstractParameterTransformFunction
@@ -267,6 +269,11 @@ struct ParameterTransformFunction <: AbstractParameterTransformFunction
 end
 
 struct InitTransformFunction <: AbstractInitTransformFunction
+    vi::DynamicPPL.VarInfo
+    transform
+end
+
+struct ParameterBoundsTransformFunction <: AbstractParameterBoundsTransformFunction
     vi::DynamicPPL.VarInfo
     transform
 end
@@ -283,8 +290,11 @@ function (t::InitTransformFunction)()
     return t.vi[DynamicPPL.SampleFromPrior()]
 end 
 
+function (t::ParameterBoundsTransformFunction)()
+    return (lb = t.transform(fill(-Inf,length(t.vi[DynamicPPL.SampleFromPrior()])), t.vi), ub = t.transform(fill(Inf,length(t.vi[DynamicPPL.SampleFromPrior()])), t.vi))
+end
 
-function optim_problem(model::DynamicPPL.Model, ::MAP{false})
+function _optim_objective(model::DynamicPPL.Model, ::MAP{false})
   ctx = OptimizationContext(DynamicPPL.DefaultContext())
   obj = OptimLogDensity(model, ctx)
 
@@ -292,20 +302,21 @@ function optim_problem(model::DynamicPPL.Model, ::MAP{false})
   init = InitTransformFunction(obj.vi, transform2unconstrained)
   t = ParameterTransformFunction(obj.vi, transform2constrained)
 
-  return (obj=obj, init = init, transform=t)
+  return (obj=obj, init = init, transform=t, lb=nothing, ub=nothing)
 end
 
-function optim_problem(model::DynamicPPL.Model, ::MAP{true})
+function _optim_objective(model::DynamicPPL.Model, ::MAP{true})
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
   
     init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
     t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
-      
-    return (obj=obj, init = init, transform=t)
+    b = ParameterBoundsTransformFunction(obj.vi, transform2constrained)()
+    
+    return (obj=obj, init = init, transform=t, lb=b.lb, ub=b.ub)
   end
 
-function optim_problem(model::DynamicPPL.Model, ::MLE{false})
+function _optim_objective(model::DynamicPPL.Model, ::MLE{false})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
@@ -313,26 +324,86 @@ function optim_problem(model::DynamicPPL.Model, ::MLE{false})
     init = InitTransformFunction(obj.vi, transform2unconstrained)
     t = ParameterTransformFunction(obj.vi, transform2constrained)
   
-    return (obj=obj, init = init, transform=t)
+    return (obj=obj, init = init, transform=t, lb=nothing, ub=nothing)
 end
 
-function optim_problem(model::DynamicPPL.Model, ::MLE{true})
+function _optim_objective(model::DynamicPPL.Model, ::MLE{true})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
     init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
     t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
-      
-    return (obj=obj, init = init, transform=t)
+    b = ParameterBoundsTransformFunction(obj.vi, transform2constrained)()
+    
+    return (obj=obj, init = init, transform=t, lb=b.lb, ub=b.ub)
 end
 
-function galacticoptim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
-  obj, init, t = optim_problem(model, estimator)
+function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE{true}, MAP{true}})
+    obj = _optim_objective(model, estimator)
+
+    if !isfinite(obj.lb) || !isfinite(obj.ub)
+        @warn "Returned parameter bounds are not finite. Consider defining finite bounds for parameter optimization yourself."
+    end 
+
+    return obj
+end
+
+function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE{false}, MAP{false}})
+    return _optim_objective(model, estimator)
+end
+
+
+function _optim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
+  obj, init, t, lb, ub = _optim_objective(model, estimator)
   
   l(x,p) = obj(x)
   f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
 
-  return (f=f, init=init, transform = t)
+  return (func=f, init=init, transform = t, lb=lb, ub=ub)
 end
 
+function optim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
+    obj, init, t, lb, ub = optim_objective(model, estimator)
+  
+    l(x,p) = obj(x)
+    f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
+  
+    return (func=f, init=init, transform = t, lb=lb, ub=ub)
 end
+
+
+function _optim_problem(model::DynamicPPL.Model, estimator::Union{MAP{false}, MLE{false}}; init_theta = nothing)
+    f = _optim_function(model, estimator)
+
+    init_theta = init_theta === nothing ? f.init() : init_theta
+
+    prob = OptimizationProblem(f.func, init_theta, nothing)
+
+    return (prob=prob, func=f.func, init=f.init, transform = f.transform, lb=f.lb, ub=f.ub)
+end
+
+function _optim_problem(model::DynamicPPL.Model, estimator::Union{MAP{true}, MLE{true}}; init_theta = nothing, lb=nothing , ub=nothing)
+    f = _optim_function(model, estimator)
+
+    lb = lb === nothing ? f.lb : lb
+    ub = ub === nothing ? f.ub : ub
+
+    if !isfinite(lb) || !isfinite(ub) 
+        error("Error: Parameter bounds user-provided or obtained from Turing.jl are not finite. If bounds are automatically generated from Turing.jl model it means parameter priors don't have finite support. In order to solve this, consider unconstrained optimization or explicitly provide lower and upper bounds.")
+    elseif any(isless.(lb .- f.lb, 0.0)) || any(isless.(f.ub .- ub, 0.0)) 
+        error("Error: Provided bounds are outside the prior support interval of the model parameters.")
+    end
+
+    init_theta = init_theta === nothing ? f.init() : init_theta
+
+    prob = OptimizationProblem(f.func,init_theta, nothing; lb = lb, ub = ub)
+
+    return (prob=prob, func=f.func, init=f.init, transform = f.transform, lb=lb, ub=ub)
+end
+
+
+function optim_problem(model::DynamicPPL.Model, estimator::Union{MLE,MAP}; kwargs...)
+    return _optim_problem(model, estimator; kwargs...)
+end
+
+end # module
