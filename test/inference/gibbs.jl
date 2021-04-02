@@ -1,12 +1,3 @@
-using Random, Turing, Test
-import AbstractMCMC
-import MCMCChains
-import Turing.Inference
-using Turing.RandomMeasures
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin
         N = 500
@@ -136,7 +127,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
         end
         model = imm(randn(100), 1.0);
-        sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+        sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end

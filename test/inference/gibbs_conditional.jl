@@ -1,11 +1,3 @@
-using Random, Turing, Test
-using StatsFuns
-using Clustering
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
-
 @turing_testset "gibbs conditionals" begin
     Random.seed!(100)
 

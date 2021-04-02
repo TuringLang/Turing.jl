@@ -1,12 +1,3 @@
-using Turing, Random, Test
-using Turing.Inference: getspace
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-
-using Random
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "SMC" begin
     @turing_testset "constructor" begin
         s = SMC()
