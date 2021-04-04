@@ -517,6 +517,9 @@ function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
     return predict(Random.GLOBAL_RNG, model, chain; kwargs...)
 end
 function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
+    # Don't need all the diagnostics
+    chain = MCMCChains.get_sections(chain, :parameters)
+
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
