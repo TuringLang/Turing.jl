@@ -622,7 +622,7 @@ function transitions_from_chain(
         # Convert `VarInfo` into `NamedTuple` and save.
         theta = DynamicPPL.tonamedtuple(vi)
         lp = Turing.getlogp(vi)
-        Turing.Inference.Transition(theta, lp)
+        Transition(theta, lp)
     end
 
     return transitions
