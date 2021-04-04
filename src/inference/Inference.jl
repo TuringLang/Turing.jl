@@ -604,7 +604,6 @@ function transitions_from_chain(
     return transitions_from_chain(Random.GLOBAL_RNG, model, chain; kwargs...)
 end
 
-
 function transitions_from_chain(
     rng::Random.AbstractRNG,
     model::Turing.Model,
@@ -627,6 +626,5 @@ function transitions_from_chain(
 
     return transitions
 end
-
 
 end # module
