@@ -6,11 +6,13 @@
             @testset "rng" begin
                 model = gdemo_default
 
+                # multithreaded sampling with PG causes segfaults on Julia 1.5.4
+                # https://github.com/TuringLang/Turing.jl/issues/1571
                 samplers = (HMC(0.1, 7),
-                            PG(10),
+                            #PG(10),
                             IS(),
                             MH(),
-                            Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
+                            #Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
                             Gibbs(HMC(0.1, 5, :s), ESS(:m)))
                 for sampler in samplers
                     Random.seed!(5)
