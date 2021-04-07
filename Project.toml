@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.15.12"
+version = "0.15.13"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -38,7 +38,7 @@ AdvancedMH = "0.5.2"
 AdvancedPS = "0.1"
 AdvancedVI = "0.1"
 BangBang = "0.3"
-Bijectors = "0.8"
+Bijectors = "0.8, 0.9"
 Distributions = "0.23.3, 0.24"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8"
