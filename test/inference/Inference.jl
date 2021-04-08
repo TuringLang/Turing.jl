@@ -6,12 +6,25 @@
             @testset "rng" begin
                 model = gdemo_default
 
-                samplers = (HMC(0.1, 7),
-                            PG(10),
-                            IS(),
-                            MH(),
-                            Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
-                            Gibbs(HMC(0.1, 5, :s), ESS(:m)))
+                # multithreaded sampling with PG causes segfaults on Julia 1.5.4
+                # https://github.com/TuringLang/Turing.jl/issues/1571
+                samplers = @static if VERSION <= v"1.5.3" || VERSION >= v"1.6.0"
+                    (
+                        HMC(0.1, 7),
+                        PG(10),
+                        IS(),
+                        MH(),
+                        Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
+                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                    )
+                else
+                    (
+                        HMC(0.1, 7),
+                        IS(),
+                        MH(),
+                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                    )
+                end
                 for sampler in samplers
                     Random.seed!(5)
                     chain1 = sample(model, sampler, MCMCThreads(), 1000, 4)
