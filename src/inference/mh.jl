@@ -334,9 +334,26 @@ end
 end
 
 # Utility functions to link
-maybe_link!(varinfo, sampler, proposal) = nothing
-function maybe_link!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
-    link!(varinfo, sampler)
+should_link(varinfo, sampler, proposal) = false
+function should_link(varinfo, sampler, proposal::NamedTuple{(), Tuple{}})
+    # If it's an empty `NamedTuple`, we're using the priors as proposals
+    # in which case we shouldn't link.
+    return false
+end
+function should_link(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    return true
+end
+function should_link(
+    varinfo,
+    sampler,
+    proposal::NamedTuple{names, vals}
+) where {names, vals<:NTuple{<:Any, <:AdvancedMH.RandomWalkProposal}}
+    return true
+end
+
+function maybe_link!(varinfo, sampler, proposal)
+    should_link(varinfo, sampler, proposal) && link!(varinfo, sampler)
+    return varinfo
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
