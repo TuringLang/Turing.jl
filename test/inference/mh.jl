@@ -130,13 +130,17 @@
         # with small-valued VC matrix to check if we only see very small steps
         vc_μ = convert(Array, 1e-4*I(2))
         vc_σ = convert(Array, 1e-4*I(2))
-        
-        chn = sample(mod,
-            Gibbs(
-                MH((:μ, vc_μ)),
-                MH((:σ, vc_σ)),
-                ), 3_000 # draws
-            )
+
+        alg = Gibbs(
+            MH((:μ, vc_μ)),
+            MH((:σ, vc_σ)),
+        )
+
+        chn = sample(
+            mod,
+            alg,
+            3_000 # draws
+        )
         
             
         chn2 = sample(mod, MH(), 3_000)
@@ -167,5 +171,45 @@
         for j in 1:10, i in 1:5
             @test mean(chain, "T[$j][$i]") ≈ 0.2 atol=0.01
         end
+    end
+
+    @turing_testset "MH link/invlink" begin
+        vi_base = DynamicPPL.VarInfo(gdemo_default)
+
+        # Don't link when no proposals are given since we're using priors
+        # as proposals.
+        vi = deepcopy(vi_base)
+        alg = MH()
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test !DynamicPPL.islinked(vi, spl)
+
+        # Link if proposal is `AdvancedHM.RandomWalkProposal`
+        vi = deepcopy(vi_base)
+        d = length(vi_base[DynamicPPL.SampleFromPrior()])
+        alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(d, 1.0)))
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test DynamicPPL.islinked(vi, spl)
+
+        # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
+        vi = deepcopy(vi_base)
+        alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test DynamicPPL.islinked(vi, spl)
+
+        # Don't link if at least one proposal is NOT `RandomWalkProposal`.
+        # TODO: make it so that only those that are using `RandomWalkProposal`
+        # are linked! I.e. resolve https://github.com/TuringLang/Turing.jl/issues/1583.
+        # https://github.com/TuringLang/Turing.jl/pull/1582#issuecomment-817148192
+        vi = deepcopy(vi_base)
+        alg = MH(
+            :m => AdvancedMH.StaticProposal(Normal()),
+            :s => AdvancedMH.RandomWalkProposal(Normal())
+        )
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test !DynamicPPL.islinked(vi, spl)
     end
 end
