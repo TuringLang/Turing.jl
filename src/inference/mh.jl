@@ -334,6 +334,7 @@ end
 end
 
 # Utility functions to link
+should_link(varinfo, sampler, proposal) = false
 function should_link(varinfo, sampler, proposal::NamedTuple{(), Tuple{}})
     # If it's an empty `NamedTuple`, we're using the priors as proposals
     # in which case we shouldn't link.
