@@ -338,6 +338,13 @@ maybe_link!(varinfo, sampler, proposal) = nothing
 function maybe_link!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
     link!(varinfo, sampler)
 end
+function maybe_link!(
+    varinfo,
+    sampler,
+    proposal::NamedTuple{names, vals}
+) where {names, vals<:NTuple{<:Any, <:AdvancedMH.RandomWalkProposal}}
+    return link!(varinfo, sampler)
+end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
 function propose!(
