@@ -518,12 +518,12 @@ function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
 end
 function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
     # Don't need all the diagnostics
-    chain = MCMCChains.get_sections(chain, :parameters)
+    chain_parameters = MCMCChains.get_sections(chain, :parameters)
 
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
-    transitions = transitions_from_chain(rng, model, chain; sampler = spl)
+    transitions = transitions_from_chain(rng, model, chain_parameters; sampler = spl)
 
     # Let the Turing internals handle everything else for you
     chain_result = reduce(
@@ -541,7 +541,7 @@ function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; inclu
     parameter_names = if include_all
         names(chain_result, :parameters)
     else
-        filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
+        filter(k -> ∉(k, names(chain_parameters, :parameters)), names(chain_result, :parameters))
     end
 
     return chain_result[parameter_names]
