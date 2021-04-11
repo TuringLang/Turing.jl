@@ -98,7 +98,7 @@
             return
         end
 
-        function callback(rng, model, sampler, sample, i; kwargs...)
+        function callback(rng, model, sampler, sample, state, i; kwargs...)
             sample isa Inference.GibbsTransition || error("incorrect sample")
             return
         end
