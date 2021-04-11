@@ -251,7 +251,7 @@ function _params_to_array(ts::Vector)
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
         for nm in nms
-               push!(names_set, nm)
+            push!(names_set, nm)
         end
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
