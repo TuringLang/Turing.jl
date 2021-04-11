@@ -249,15 +249,11 @@ function _params_to_array(ts::Vector)
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
-        for nm in nms
-            if !(nm in names)
-                push!(names, nm)
-            end
-        end
+        append!(names, nms)
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    # names = collect(names_set)
+    unique!(names)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
         (j, key) in enumerate(names)]
 
