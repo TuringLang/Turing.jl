@@ -18,6 +18,7 @@ using Random: AbstractRNG
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using DataStructures: OrderedSet
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
@@ -245,19 +246,17 @@ getparams(t) = t.θ
 getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
 
 function _params_to_array(ts::Vector)
-    names = Vector{Symbol}()
+    names_set = OrderedSet{Symbol}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
         for nm in nms
-            if !(nm in names)
-                push!(names, nm)
-            end
+            push!(names_set, nm)
         end
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    # names = collect(names_set)
+    names = collect(names_set)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
         (j, key) in enumerate(names)]
 
