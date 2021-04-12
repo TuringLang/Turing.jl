@@ -41,9 +41,9 @@ function SGHMC{AD}(
     return SGHMC{AD,space,typeof(_learning_rate)}(_learning_rate, _momentum_decay)
 end
 
-struct SGHMCState{V<:AbstractVarInfo}
+struct SGHMCState{V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
     vi::V
-    velocity::Vector{Float64}
+    velocity::T
 end
 
 function DynamicPPL.initialstep(
@@ -84,7 +84,7 @@ function AbstractMCMC.step(
     θ .+= v
     η = spl.alg.learning_rate
     α = spl.alg.momentum_decay
-    newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, length(v))
+    newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
     # Save new variables and recompute log density.
     vi[spl] = θ
@@ -229,7 +229,7 @@ function AbstractMCMC.step(
     _, grad = gradient_logp(θ, vi, model, spl)
     step = state.step
     stepsize = spl.alg.stepsize(step)
-    θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, length(θ))
+    θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
     # Save new variables and recompute log density.
     vi[spl] = θ
