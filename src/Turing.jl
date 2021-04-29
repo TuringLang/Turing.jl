@@ -143,8 +143,10 @@ export  @model,                 # modelling
         logprior,
         logjoint,
 
-        MAP,                    # optimisation interface
-        MLE, 
+        constrained_space,            # optimisation interface
+        MAP,
+        MLE,
+        get_parameter_bounds,
         optim_objective, 
         optim_function,
         optim_problem

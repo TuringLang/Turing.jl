@@ -6,12 +6,12 @@
             Random.seed!(222)
             true_value = [0.0625, 1.75]
 
-            f1 = optim_function(gdemo_default, MLE())
+            f1 = optim_function(gdemo_default, MLE();constrained=false)
             p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
 
-            p2 = optim_objective(gdemo_default, MLE())
+            p2 = optim_objective(gdemo_default, MLE();constrained=false)
             
-            p3 = optim_problem(gdemo_default, MLE();init_theta=true_value)
+            p3 = optim_problem(gdemo_default, MLE();constrained=false, init_theta=true_value)
 
             m1 = solve(p1, NelderMead())
             m2 = solve(p1, LBFGS())
@@ -38,12 +38,12 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
 
-            f1 = optim_function(gdemo_default, MAP())
+            f1 = optim_function(gdemo_default, MAP();constrained=false)
             p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
 
-            p2 = optim_objective(gdemo_default, MAP())
+            p2 = optim_objective(gdemo_default, MAP();constrained=false)
             
-            p3 = optim_problem(gdemo_default, MAP();init_theta=true_value)
+            p3 = optim_problem(gdemo_default, MAP();constrained=false,init_theta=true_value)
 
             m1 = solve(p1, NelderMead())
             m2 = solve(p1, LBFGS())
@@ -72,12 +72,12 @@
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            f1 = optim_function(gdemo_default, MLE(true))
+            f1 = optim_function(gdemo_default, MLE();constrained=true)
             p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
 
-            p2 = optim_objective(gdemo_default, MLE(true))
+            p2 = optim_objective(gdemo_default, MLE();constrained=true)
             
-            p3 = optim_problem(gdemo_default, MLE(true); init_theta=true_value, lb=lb, ub=ub)
+            p3 = optim_problem(gdemo_default, MLE();constrained=true, init_theta=true_value, lb=lb, ub=ub)
 
             m1 = solve(p1, Fminbox(LBFGS()))
             m2 = solve(p1, Fminbox(BFGS()))
@@ -100,12 +100,12 @@
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            f1 = optim_function(gdemo_default, MAP(true))
+            f1 = optim_function(gdemo_default, MAP();constrained=true)
             p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
 
-            p2 = optim_objective(gdemo_default, MAP(true))
+            p2 = optim_objective(gdemo_default, MAP();constrained=true)
             
-            p3 = optim_problem(gdemo_default, MAP(true); init_theta=true_value, lb=lb, ub=ub)
+            p3 = optim_problem(gdemo_default, MAP();constrained=true, init_theta=true_value, lb=lb, ub=ub)
 
             m1 = solve(p1, Fminbox(LBFGS()))
             m2 = solve(p1, Fminbox(BFGS()))

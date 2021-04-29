@@ -2,29 +2,28 @@ module ModeEstimation
 
 using ..Turing
 using Bijectors
-using SciMLBase: OptimizationFunction, OptimizationProblem
+using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType
 
 using DynamicPPL
-import DynamicPPL: Model, AbstractContext, VarInfo, VarName,
+using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield, settrans!,  setorder!,
     get_and_set_val!, istrans, tilde, dot_tilde, get_vns_and_dist
 
-export  MAP,
+export  constrained_space,  
+        MAP,
         MLE,
         OptimLogDensity,
         OptimizationContext,
+        get_parameter_bounds,
         optim_objective, 
         optim_function,
         optim_problem
 
+struct constrained_space{x} end 
 
-struct MLE{constrained} end
-struct MAP{constrained} end
+struct MLE end
+struct MAP end
 
-MLE(constrained) = MLE{constrained}()
-MAP(constrained) = MAP{constrained}()
-MLE() = MLE{false}()
-MAP() = MAP{false}()
 
 """
     OptimizationContext{C<:AbstractContext} <: AbstractContext
@@ -216,29 +215,23 @@ function transform!(f::OptimLogDensity)
   return nothing
 end
 
+function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{true})
+    spl = DynamicPPL.SampleFromPrior()
 
-function transform2constrained!(p::AbstractArray, vi::DynamicPPL.VarInfo)
-  spl = DynamicPPL.SampleFromPrior()
-
-  linked = DynamicPPL.islinked(vi, spl)
+    linked = DynamicPPL.islinked(vi, spl)
   
-  !linked && DynamicPPL.link!(vi, spl)
-  vi[spl] = p
-  DynamicPPL.invlink!(vi,spl)
-  p .= vi[spl]
-  
-  linked && DynamicPPL.link!(vi,spl)
+    # !linked && DynamicPPL.link!(vi, spl)
+    !linked && return identity(p) 
+    vi[spl] = p
+    DynamicPPL.invlink!(vi,spl)
+    p .= vi[spl]
 
-  return nothing
+    linked && DynamicPPL.link!(vi,spl)
+
+    return nothing
 end
 
-function transform2constrained(p::AbstractArray, vi::DynamicPPL.VarInfo)
-    tp = copy(p)
-    transform2constrained!(tp, vi)
-  return tp
-end
-
-function transform2unconstrained!(p::AbstractArray, vi::DynamicPPL.VarInfo)
+function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{false})
   spl = DynamicPPL.SampleFromPrior()
 
   linked = DynamicPPL.islinked(vi, spl)
@@ -251,159 +244,113 @@ function transform2unconstrained!(p::AbstractArray, vi::DynamicPPL.VarInfo)
   return nothing
 end
 
-function transform2unconstrained(p::AbstractArray, vi::DynamicPPL.VarInfo)
-  tp = copy(p)
-  transform2unconstrained!(tp, vi)
+function transform(p::AbstractArray, vi::DynamicPPL.VarInfo, con::constrained_space)
+    tp = copy(p)
+    transform!(tp, vi, con)
   return tp
 end
 
-abstract type AbstractTransformFunction end
-abstract type AbstractParameterTransformFunction <: AbstractTransformFunction end
-abstract type AbstractInitTransformFunction <: AbstractParameterTransformFunction end
-abstract type AbstractParameterBoundsTransformFunction <: AbstractParameterTransformFunction end
+abstract type AbstractTransform end
 
-
-struct ParameterTransformFunction <: AbstractParameterTransformFunction
-    vi::DynamicPPL.VarInfo
-    transform
+struct ParameterTransform{T<:DynamicPPL.VarInfo, S<:constrained_space} <: AbstractTransform
+    vi::T
+    space::S
 end
 
-struct InitTransformFunction <: AbstractInitTransformFunction
-    vi::DynamicPPL.VarInfo
-    transform
+struct Init{T<:DynamicPPL.VarInfo, S<:constrained_space} <: AbstractTransform
+    vi::T
+    space::S
 end
 
-struct ParameterBoundsTransformFunction <: AbstractParameterBoundsTransformFunction
-    vi::DynamicPPL.VarInfo
-    transform
-end
-
-function (t::ParameterTransformFunction)(p::AbstractArray)
-    return t.transform(p, t.vi)
+function (t::AbstractTransform)(p::AbstractArray)
+    return transform(p, t.vi, t.space)
 end 
 
-function (t::InitTransformFunction)(p::AbstractArray)
-    return t.transform(p, t.vi)
-end 
-
-function (t::InitTransformFunction)()
+function (t::Init)()
     return t.vi[DynamicPPL.SampleFromPrior()]
 end 
 
-function (t::ParameterBoundsTransformFunction)()
-    return (lb = t.transform(fill(-Inf,length(t.vi[DynamicPPL.SampleFromPrior()])), t.vi), ub = t.transform(fill(Inf,length(t.vi[DynamicPPL.SampleFromPrior()])), t.vi))
+ function get_parameter_bounds(model::DynamicPPL.Model)
+    vi = DynamicPPL.VarInfo(model)
+    spl = DynamicPPL.SampleFromPrior()
+
+    ## Check link status of vi
+    linked = DynamicPPL.islinked(vi, spl) 
+  
+    ## transform into unconstrained
+    !linked && DynamicPPL.link!(vi, spl)
+    
+    lb = transform(fill(-Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, constrained_space{true}())
+    ub = transform(fill(Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, constrained_space{true}())
+
+    return lb, ub
 end
 
-function _optim_objective(model::DynamicPPL.Model, ::MAP{false})
+function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{false})
   ctx = OptimizationContext(DynamicPPL.DefaultContext())
   obj = OptimLogDensity(model, ctx)
 
   transform!(obj)
-  init = InitTransformFunction(obj.vi, transform2unconstrained)
-  t = ParameterTransformFunction(obj.vi, transform2constrained)
+  init = Init(obj.vi, constrained_space{false}())
+  t = ParameterTransform(obj.vi, constrained_space{true}())
 
-  return (obj=obj, init = init, transform=t, lb=nothing, ub=nothing)
+  return (obj=obj, init = init, transform=t)
 end
 
-function _optim_objective(model::DynamicPPL.Model, ::MAP{true})
+function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{true})
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
   
-    init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
-    t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
-    b = ParameterBoundsTransformFunction(obj.vi, transform2constrained)()
-    
-    return (obj=obj, init = init, transform=t, lb=b.lb, ub=b.ub)
+    init = Init(obj.vi, constrained_space{true}())
+    t = ParameterTransform(obj.vi, constrained_space{true}())
+      
+    return (obj=obj, init = init, transform=t)
   end
 
-function _optim_objective(model::DynamicPPL.Model, ::MLE{false})
+function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{false})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
     transform!(obj)
-    init = InitTransformFunction(obj.vi, transform2unconstrained)
-    t = ParameterTransformFunction(obj.vi, transform2constrained)
+    init = Init(obj.vi, constrained_space{false}())
+    t = ParameterTransform(obj.vi, constrained_space{true}())
   
-    return (obj=obj, init = init, transform=t, lb=nothing, ub=nothing)
+    return (obj=obj, init = init, transform=t)
 end
 
-function _optim_objective(model::DynamicPPL.Model, ::MLE{true})
+function _optim_objective(model::DynamicPPL.Model, ::MLE, ::constrained_space{true})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
-    init = InitTransformFunction(obj.vi, (init_vals::AbstractArray, vi) -> identity(init_vals))
-    t = ParameterTransformFunction(obj.vi, (p::AbstractArray, vi) -> identity(p))
-    b = ParameterBoundsTransformFunction(obj.vi, transform2constrained)()
+    init = Init(obj.vi, constrained_space{true}())
+    t = ParameterTransform(obj.vi, constrained_space{true}())
     
-    return (obj=obj, init = init, transform=t, lb=b.lb, ub=b.ub)
+    return (obj=obj, init = init, transform=t)
 end
 
-function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE{true}, MAP{true}})
-    obj = _optim_objective(model, estimator)
-
-    if !isfinite(obj.lb) || !isfinite(obj.ub)
-        @warn "Returned parameter bounds are not finite. Consider defining finite bounds for parameter optimization yourself."
-    end 
-
-    return obj
-end
-
-function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE{false}, MAP{false}})
-    return _optim_objective(model, estimator)
+function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; constrained::Bool=true)
+    return _optim_objective(model, estimator, constrained_space{constrained}())
 end
 
 
-function _optim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
-  obj, init, t, lb, ub = _optim_objective(model, estimator)
-  
-  l(x,p) = obj(x)
-  f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
-
-  return (func=f, init=init, transform = t, lb=lb, ub=ub)
-end
-
-function optim_function(model::DynamicPPL.Model, estimator::Union{MLE,MAP})
-    obj, init, t, lb, ub = optim_objective(model, estimator)
+function optim_function(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; constrained::Bool=true, autoad::Union{Nothing, AbstractADType}=nothing)
+    obj, init, t = optim_objective(model, estimator; constrained=constrained)
   
     l(x,p) = obj(x)
-    f = OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
+    f = isa(autoad, AbstractADType) ? OptimizationFunction(l, autoad) : OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
   
-    return (func=f, init=init, transform = t, lb=lb, ub=ub)
+    return (func=f, init=init, transform = t)
 end
 
 
-function _optim_problem(model::DynamicPPL.Model, estimator::Union{MAP{false}, MLE{false}}; init_theta = nothing)
-    f = _optim_function(model, estimator)
+function optim_problem(model::DynamicPPL.Model, estimator::Union{MAP, MLE}; constrained::Bool=true, init_theta=nothing, autoad::Union{Nothing, AbstractADType}=nothing, kwargs...)
+    f = optim_function(model, estimator; constrained=constrained, autoad=autoad)
 
-    init_theta = init_theta === nothing ? f.init() : init_theta
+    init_theta = init_theta === nothing ? f.init() : f.init(init_theta)
 
-    prob = OptimizationProblem(f.func, init_theta, nothing)
+    prob = OptimizationProblem(f.func, init_theta, nothing; kwargs...)
 
-    return (prob=prob, func=f.func, init=f.init, transform = f.transform, lb=f.lb, ub=f.ub)
+    return (prob=prob, init=f.init, transform = f.transform)
 end
 
-function _optim_problem(model::DynamicPPL.Model, estimator::Union{MAP{true}, MLE{true}}; init_theta = nothing, lb=nothing , ub=nothing)
-    f = _optim_function(model, estimator)
-
-    lb = lb === nothing ? f.lb : lb
-    ub = ub === nothing ? f.ub : ub
-
-    if !isfinite(lb) || !isfinite(ub) 
-        error("Error: Parameter bounds user-provided or obtained from Turing.jl are not finite. If bounds are automatically generated from Turing.jl model it means parameter priors don't have finite support. In order to solve this, consider unconstrained optimization or explicitly provide lower and upper bounds.")
-    elseif any(isless.(lb .- f.lb, 0.0)) || any(isless.(f.ub .- ub, 0.0)) 
-        error("Error: Provided bounds are outside the prior support interval of the model parameters.")
-    end
-
-    init_theta = init_theta === nothing ? f.init() : init_theta
-
-    prob = OptimizationProblem(f.func,init_theta, nothing; lb = lb, ub = ub)
-
-    return (prob=prob, func=f.func, init=f.init, transform = f.transform, lb=lb, ub=ub)
 end
-
-
-function optim_problem(model::DynamicPPL.Model, estimator::Union{MLE,MAP}; kwargs...)
-    return _optim_problem(model, estimator; kwargs...)
-end
-
-end # module
