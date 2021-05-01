@@ -279,13 +279,15 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    # Create reference particle that will be retained
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
-
     # Reset the VarInfo before new sweep.
     reset_num_produce!(vi)
-    set_retained_vns_del_by_spl!(vi, spl)
     resetlogp!(vi)
+
+    # Create reference particle for which the samples will be retained.
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
+
+    # For all other particles, do not retain the variables but resample them.
+    set_retained_vns_del_by_spl!(vi, spl)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
