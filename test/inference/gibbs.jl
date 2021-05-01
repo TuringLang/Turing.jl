@@ -35,8 +35,8 @@
         alg = Gibbs(
             CSMC(10, :s),
             HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 3000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        chain = sample(gdemo(1.5, 2.0), alg, 1_500)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
 
         Random.seed!(100)
 
