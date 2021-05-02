@@ -166,6 +166,13 @@ end
         @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
     end
+
+    # https://github.com/TuringLang/Turing.jl/issues/1598
+    @turing_testset "reference particle" begin
+        c = sample(gdemo_default, PG(1), 1_000)
+        @test length(unique(c[:m])) == 1
+        @test length(unique(c[:s])) == 1
+    end
 end
 
 # @testset "pmmh.jl" begin
