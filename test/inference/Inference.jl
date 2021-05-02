@@ -53,7 +53,7 @@
 
         alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMCDA(500, 0.65, 0.05, :m))
+        alg3 = Gibbs(PG(30, :s), HMCDA(1000, 0.65, 0.15, :m))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
