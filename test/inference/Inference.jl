@@ -53,7 +53,7 @@
 
         alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMCDA(1000, 0.65, 0.15, :m))
+        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
@@ -74,10 +74,10 @@
         check_gdemo(chn2_contd)
 
         chn3 = sample(gdemo_default, alg3, 5000; save_state=true)
-        check_gdemo(chn3; atol=0.25)
+        check_gdemo(chn3)
 
         chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
-        check_gdemo(chn3_contd; atol=0.25)
+        check_gdemo(chn3_contd)
     end
     @testset "Contexts" begin
         # Test LikelihoodContext
