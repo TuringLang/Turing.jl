@@ -323,6 +323,7 @@ function AbstractMCMC.bundle_samples(
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
+    stats = missing,
     kwargs...
 )
     # Convert transitions to array format.
@@ -344,6 +345,11 @@ function AbstractMCMC.bundle_samples(
         info = (model = model, sampler = spl, samplerstate = state)
     else
         info = NamedTuple()
+    end
+
+    # Merge in the timing info, if available
+    if !ismissing(stats)
+        info = merge(info, (start_time=stats.start, stop_time=stats.stop))
     end
 
     # Conretize the array before giving it to MCMCChains.
