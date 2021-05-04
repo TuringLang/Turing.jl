@@ -27,14 +27,14 @@ Random.seed!(0)
 
 # Define a strange model.
 @model gdemo(x) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
     bumps = sin(m) + cos(m)
     m = m + 5*bumps
     for i in eachindex(x)
-      x[i] ~ Normal(m, sqrt(s))
+      x[i] ~ Normal(m, sqrt(s²))
     end
-    return s, m
+    return s², m
 end
 
 # Define our data points.

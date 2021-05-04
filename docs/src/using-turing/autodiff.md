@@ -24,10 +24,10 @@ using Turing
 
 # Define a simple Normal model with unknown mean and variance.
 @model function gdemo(x, y)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 # Sample using Gibbs and varying autodiff backends.
@@ -46,4 +46,3 @@ Generally, `TrackerAD` is faster when sampling from variables of high dimensiona
 
 
 If the differentation method is not specified in this way, Turing will default to using whatever the global AD backend is. Currently, this defaults to `ForwardDiff`.
-
