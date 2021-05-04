@@ -130,3 +130,11 @@
         @test mean(abs2, mean_prediction - y) ≤ 1e-3
     end
 end
+
+@testset "Timer" begin
+    chain = sample(gdemo_default, MH(), 1000)
+
+    @test chain.info.start_time isa Float64
+    @test chain.info.stop_time isa Float64
+    @test chain.info.start_time < chain.info.stop_time
+end
