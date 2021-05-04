@@ -20,11 +20,11 @@ code-sample:
   snippet: |
     @model gdemo(x, y) = begin
       # Assumptions
-      σ ~ InverseGamma(2,3)
-      μ ~ Normal(0,sqrt(σ))
+      σ² ~ InverseGamma(2,3)
+      μ ~ Normal(0,sqrt(σ²))
       # Observations
-      x ~ Normal(μ, sqrt(σ))
-      y ~ Normal(μ, sqrt(σ))
+      x ~ Normal(μ, sqrt(σ²))
+      y ~ Normal(μ, sqrt(σ²))
     end
 
 samplers:
