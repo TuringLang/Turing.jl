@@ -30,7 +30,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 AbstractMCMC = "2.1, 3"
 AdvancedMH = "0.5.2"
-AdvancedPS = "0.1"
+AdvancedPS = "0.1, 0.2"
 AdvancedVI = "0.1"
 Clustering = "0.14"
 CmdStan = "6.0.8"
