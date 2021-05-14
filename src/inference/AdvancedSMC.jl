@@ -262,7 +262,7 @@ function DynamicPPL.initialstep(
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
-    indx = AdvancedPS.randcat(Ws)
+    indx = AdvancedPS.randcat(rng, Ws)
     reference = particles.vals[indx]
 
     # Compute the first transition.
@@ -305,7 +305,7 @@ function AbstractMCMC.step(
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
-    indx = AdvancedPS.randcat(Ws)
+    indx = AdvancedPS.randcat(rng, Ws)
     newreference = particles.vals[indx]
 
     # Compute the transition.
