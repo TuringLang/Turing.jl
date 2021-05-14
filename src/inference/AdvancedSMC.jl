@@ -22,7 +22,7 @@ end
 """
     SMC(space...)
     SMC([resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    SMC([resampler = AdvancedPS.resample, ]threshold[, space = ()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
 
@@ -37,7 +37,7 @@ end
 function SMC(resampler, threshold::Real, space::Tuple = ())
     return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
-SMC(threshold::Real, space::Tuple = ()) = SMC(AdvancedPS.resample, threshold, space)
+SMC(threshold::Real, space::Tuple = ()) = SMC(AdvancedPS.resample_systematic, threshold, space)
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
@@ -180,7 +180,7 @@ end
 """
     PG(n, space...)
     PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    PG(n, [resampler = AdvancedPS.resample, ]threshold[, space = ()])
+    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
 in `space`.
@@ -201,7 +201,7 @@ function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
     return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
 function PG(nparticles::Int, threshold::Real, space::Tuple = ())
-    return PG(nparticles, AdvancedPS.resample, threshold, space)
+    return PG(nparticles, AdvancedPS.resample_systematic, threshold, space)
 end
 
 # If only the number of particles and the space is defined
