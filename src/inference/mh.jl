@@ -388,8 +388,8 @@ function propose!(
     vi::AbstractVarInfo,
     model::Model,
     spl::Sampler{<:MH},
-    proposal::AdvancedMH.RandomWalkProposal{<:MvNormal}
-)
+    proposal::AdvancedMH.RandomWalkProposal{issymmetric,<:MvNormal}
+) where {issymmetric}
     # If this is the case, we can just draw directly from the proposal
     # matrix.
     vals = vi[spl]

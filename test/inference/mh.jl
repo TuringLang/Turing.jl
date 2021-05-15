@@ -69,10 +69,10 @@
 
         dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
 
-        @test dt[:z] isa AdvancedMH.StaticProposal{<:MvNormal}
-        @test dt[:m] isa AdvancedMH.StaticProposal{Vector{ContinuousUnivariateDistribution}}
+        @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
+        @test dt[:m] isa AdvancedMH.StaticProposal{false,Vector{ContinuousUnivariateDistribution}}
         @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
-        @test dt[:s] isa AdvancedMH.StaticProposal{<:InverseGamma}
+        @test dt[:s] isa AdvancedMH.StaticProposal{false,<:InverseGamma}
 
         @test vt[:z] isa Vector{Float64} && length(vt[:z]) == 2
         @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2

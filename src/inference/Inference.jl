@@ -181,12 +181,12 @@ end
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, parallel, N, n_chains;
+    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, ensemble, N, n_chains;
                                kwargs...)
 end
 
@@ -194,12 +194,12 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::InferenceAlgorithm,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), ensemble, N, n_chains;
                                kwargs...)
 end
 
@@ -207,14 +207,14 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     sampler::Sampler{<:InferenceAlgorithm},
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.mcmcsample(rng, model, sampler, parallel, N, n_chains;
+    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
@@ -222,14 +222,14 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::Prior,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, SampleFromPrior(), parallel, N, n_chains;
+    return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
