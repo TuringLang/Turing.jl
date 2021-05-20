@@ -95,7 +95,7 @@
             c -> begin
                 dists = map(x) do xi
                     logp = log_π .+ logpdf.(Normal.(c.μ, σ_x), xi)
-                    return Categorical(softmax!(logp))
+                    return Categorical(StatsFuns.softmax!(logp))
                 end
                 return arraydist(dists)
             end

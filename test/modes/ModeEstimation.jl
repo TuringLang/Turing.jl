@@ -1,99 +1,125 @@
 
 
 @testset "ModeEstimation.jl" begin
-    @testset "MLE" begin
-        Random.seed!(222)
-        true_value = [0.0625, 1.75]
-        
-        m1 = optimize(gdemo_default, MLE())
-        m2 = optimize(gdemo_default, MLE(), NelderMead())
-        m3 = optimize(gdemo_default, MLE(), true_value, LBFGS())
-        m4 = optimize(gdemo_default, MLE(), true_value)
+    @testset "gdemo" begin
+        @testset "MLE" begin
+            Random.seed!(222)
+            true_value = [0.0625, 1.75]
 
-        @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
-    end
+            f1 = optim_function(gdemo_default, MLE();constrained=false)
+            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
 
-    @testset "MAP" begin
-        Random.seed!(222)
-        true_value = [49 / 54, 7 / 6]
-        
-        m1 = optimize(gdemo_default, MAP())
-        m2 = optimize(gdemo_default, MAP(), NelderMead())
-        m3 = optimize(gdemo_default, MAP(), true_value, LBFGS())
-        m4 = optimize(gdemo_default, MAP(), true_value)
-        
-        @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m3.values.array - true_value, 0.0, atol=0.01))
-        @test all(isapprox.(m4.values.array - true_value, 0.0, atol=0.01))
-    end
+            p2 = optim_objective(gdemo_default, MLE();constrained=false)
+            
+            p3 = optim_problem(gdemo_default, MLE();constrained=false, init_theta=true_value)
 
-    @testset "StatsBase integration" begin
-        Random.seed!(54321)
-        mle_est = optimize(gdemo_default, MLE())
+            m1 = solve(p1, NelderMead())
+            m2 = solve(p1, LBFGS())
+            m3 = solve(p1, BFGS())
+            m4 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), NelderMead())
+            m5 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), LBFGS())
+            m6 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), BFGS())
+            m7 = solve(p3.prob, NelderMead())
+            m8 = solve(p3.prob, LBFGS())
+            m9 = solve(p3.prob, BFGS())
 
-        @test coefnames(mle_est) == [:s, :m]
-
-        diffs = coef(mle_est).array - [0.0625031; 1.75001]
-        @test all(isapprox.(diffs, 0.0, atol=0.1))
-
-        infomat = [0.003907027690416608 4.157954948417027e-7; 4.157954948417027e-7 0.03125155528962335]
-        @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
-
-        ctable = coeftable(mle_est)
-        @test ctable isa StatsBase.CoefTable
-
-        s = stderror(mle_est).array
-        @test all(isapprox.(s - [0.06250415643292194, 0.17677963626053916], 0.0, atol=0.01))
-
-        @test coefnames(mle_est) == params(mle_est)
-        @test vcov(mle_est) == informationmatrix(mle_est)
-
-        @test isapprox(loglikelihood(mle_est), -0.0652883561466624, atol=0.01)
-    end
-
-    @testset "Linear regression test" begin
-        @model function regtest(x, y)
-            beta ~ MvNormal(2,1)
-            mu = x*beta
-            y ~ MvNormal(mu, 1.0)
+            @test all(isapprox.(f1.transform(m1.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m2.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m3.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m4.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m5.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m6.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m7.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m8.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m9.minimizer) - true_value, 0.0, atol=0.01))
         end
-        
-        Random.seed!(987)
-        true_beta = [1.0, -2.2]
-        x = rand(40, 2)
-        y = x*true_beta
-        
-        model = regtest(x, y)
-        mle = optimize(model, MLE())
-        
-        vcmat = inv(x'x)
-        vcmat_mle = informationmatrix(mle).array
-        
-        @test isapprox(mle.values.array, true_beta)
-        @test isapprox(vcmat, vcmat_mle)
-    end
 
-    @testset "Dot tilde test" begin
-        @model function dot_gdemo(x)
-            s ~ InverseGamma(2,3)
-            m ~ Normal(0, sqrt(s))
-        
-            (.~)(x, Normal(m, sqrt(s)))
+        @testset "MAP" begin
+            Random.seed!(222)
+            true_value = [49 / 54, 7 / 6]
+
+            f1 = optim_function(gdemo_default, MAP();constrained=false)
+            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
+
+            p2 = optim_objective(gdemo_default, MAP();constrained=false)
+            
+            p3 = optim_problem(gdemo_default, MAP();constrained=false,init_theta=true_value)
+
+            m1 = solve(p1, NelderMead())
+            m2 = solve(p1, LBFGS())
+            m3 = solve(p1, BFGS())
+            m4 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), NelderMead())
+            m5 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), LBFGS())
+            m6 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), p2.init(true_value), BFGS())
+            m7 = solve(p3.prob, NelderMead())
+            m8 = solve(p3.prob, LBFGS())
+            m9 = solve(p3.prob, BFGS())
+
+            @test all(isapprox.(f1.transform(m1.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m2.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m3.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m4.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m5.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m6.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m7.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m8.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m9.minimizer) - true_value, 0.0, atol=0.01))
         end
-        
-        model_dot = dot_gdemo([1.5, 2.0])
 
-        mle1 = optimize(gdemo_default, MLE())
-        mle2 = optimize(model_dot, MLE())
+        @testset "MLE constrained" begin
+            Random.seed!(222)
+            true_value = [0.0625, 1.75]
+            lb = [0.0, 0.0]
+            ub = [2.0, 2.0]
 
-        map1 = optimize(gdemo_default, MAP())
-        map2 = optimize(model_dot, MAP())
+            f1 = optim_function(gdemo_default, MLE();constrained=true)
+            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
 
-        @test isapprox(mle1.values.array, mle2.values.array)
-        @test isapprox(map1.values.array, map2.values.array)
+            p2 = optim_objective(gdemo_default, MLE();constrained=true)
+            
+            p3 = optim_problem(gdemo_default, MLE();constrained=true, init_theta=true_value, lb=lb, ub=ub)
+
+            m1 = solve(p1, Fminbox(LBFGS()))
+            m2 = solve(p1, Fminbox(BFGS()))
+            m3 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), lb, ub, p2.init(true_value), Fminbox(LBFGS()))
+            m4 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), lb, ub, p2.init(true_value), Fminbox(BFGS()))
+            m5 = solve(p3.prob, Fminbox(LBFGS()))
+            m6 = solve(p3.prob, Fminbox(BFGS()))
+
+            @test all(isapprox.(f1.transform(m1.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m2.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m3.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m4.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m5.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m6.minimizer) - true_value, 0.0, atol=0.01))
+        end
+
+        @testset "MAP constrained" begin
+            Random.seed!(222)
+            true_value = [49 / 54, 7 / 6]
+            lb = [0.0, 0.0]
+            ub = [2.0, 2.0]
+
+            f1 = optim_function(gdemo_default, MAP();constrained=true)
+            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
+
+            p2 = optim_objective(gdemo_default, MAP();constrained=true)
+            
+            p3 = optim_problem(gdemo_default, MAP();constrained=true, init_theta=true_value, lb=lb, ub=ub)
+
+            m1 = solve(p1, Fminbox(LBFGS()))
+            m2 = solve(p1, Fminbox(BFGS()))
+            m3 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), lb, ub, p2.init(true_value), Fminbox(LBFGS()))
+            m4 = optimize(p2.obj, (G,z) -> p2.obj(nothing,G,nothing,z), lb, ub, p2.init(true_value), Fminbox(BFGS()))
+            m5 = solve(p3.prob, Fminbox(LBFGS()))
+            m6 = solve(p3.prob, Fminbox(BFGS()))
+
+            @test all(isapprox.(f1.transform(m1.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(f1.transform(m2.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m3.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p2.transform(m4.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m5.minimizer) - true_value, 0.0, atol=0.01))
+            @test all(isapprox.(p3.transform(m6.minimizer) - true_value, 0.0, atol=0.01))
+        end
     end
 end

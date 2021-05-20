@@ -5,6 +5,7 @@ using Distributions
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
+using GalacticOptim
 using MCMCChains
 using Memoization
 using NamedArrays
@@ -71,6 +72,7 @@ include("test_utils/AllUtils.jl")
 
         @testset "modes" begin
             include("modes/ModeEstimation.jl")
+            include("modes/OptimInterface.jl")
         end
     end
     @testset "variational optimisers" begin
