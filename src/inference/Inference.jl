@@ -61,7 +61,8 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent
+        isgibbscomponent,
+        get_densities_and_θs     # Tempering 
 
 #######################
 # Sampler abstraction #
