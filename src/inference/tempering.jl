@@ -5,14 +5,16 @@
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::TemperedSampler{<:InferenceAlgorithm},
+    sampler::MCMCTempering.TemperedSampler{<:InferenceAlgorithm},
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
     progress=PROGRESS[],
     kwargs...
 )
-    sampler = TemperedSampler(Sampler(sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
+    sampler = MCMCTempering.TemperedSampler(Sampler(sampler.internal_sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
+
+    @show sampler
 
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
@@ -26,7 +28,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::TemperedSampler{<:InferenceAlgorithm},
+    sampler::MCMCTempering.TemperedSampler{<:InferenceAlgorithm},
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -34,7 +36,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    sampler = TemperedSampler(Sampler(sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
+    sampler = MCMCTempering.TemperedSampler(Sampler(sampler.internal_sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
 
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
@@ -44,8 +46,8 @@ end
 function AbstractMCMC.bundle_samples(
     ts::Vector,
     model::DynamicPPL.Model,
-    spl::TemperedSampler,
-    state::TemperedState,
+    spl::MCMCTempering.TemperedSampler,
+    state::MCMCTempering.TemperedState,
     chain_type::Union{Type{MCMCChains.Chains},Type{Vector{NamedTuple}}};
     kwargs...
 )
@@ -95,18 +97,18 @@ end
 
 function MCMCTempering.get_densities_and_θs(
     model::Model,
-    sampler::Sampler{<:TemperedAlgorithm},
+    sampler::Sampler{<:InferenceAlgorithm},
     states,
     k::Integer,
     Δ::Vector{T},
     Δ_state::Vector{<:Integer}
 ) where {T<:AbstractFloat}
 
-    logπk = make_tempered_logπ(model, Δ[Δ_state[k]], sampler, get_vi(states[k][2]))
-    logπkp1 = make_tempered_logπ(model, Δ[Δ_state[k + 1]], sampler, get_vi(states[k + 1][2]))
+    logπk = MCMCTempering.make_tempered_logπ(model, Δ[Δ_state[k]], sampler, get_vi(states[k][2]))
+    logπkp1 = MCMCTempering.make_tempered_logπ(model, Δ[Δ_state[k + 1]], sampler, get_vi(states[k + 1][2]))
     
-    θk = get_θ(states[k][2], sampler)
-    θkp1 = get_θ(states[k + 1][2], sampler)
+    θk = MCMCTempering.get_θ(states[k][2], sampler)
+    θkp1 = MCMCTempering.get_θ(states[k + 1][2], sampler)
     
     return logπk, logπkp1, θk, θkp1
 end

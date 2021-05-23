@@ -30,6 +30,7 @@ import EllipticalSliceSampling
 import Random
 import MCMCChains
 import StatsBase: predict
+import MCMCTempering
 
 export  InferenceAlgorithm,
         Hamiltonian,
@@ -62,8 +63,11 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent,
-        get_densities_and_θs     # Tempering 
-
+        get_densities_and_θs,     # Tempering 
+        make_tempered_model,
+        make_tempered_logπ,
+        get_θ
+        
 #######################
 # Sampler abstraction #
 #######################
@@ -422,6 +426,7 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
+include("tempering.jl")
 
 ################
 # Typing tools #

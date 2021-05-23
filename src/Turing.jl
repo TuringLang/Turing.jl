@@ -138,5 +138,10 @@ export  @model,                 # modelling
         elementwise_loglikelihoods,
         generated_quantities,
         logprior,
-        logjoint
+        logjoint,
+
+        get_densities_and_θs,     # Tempering 
+        make_tempered_model,
+        make_tempered_logπ,
+        get_θ
 end
