@@ -1,7 +1,12 @@
 ###########################
-#   SAMPLER
+#   SAMPLING
 ###########################
 
+"""
+Upon calling sample on a `TemperedSampler`, we must manually instantiate a `Sampler`
+to insert into the `TemperedSampler`, rather than wrapping the `TemperedSampler`
+itself in a `Sampler`
+"""
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -12,9 +17,13 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    sampler = MCMCTempering.TemperedSampler(Sampler(sampler.internal_sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
-
-    @show sampler
+    sampler = MCMCTempering.TemperedSampler(
+        Sampler(sampler.internal_sampler, model),
+        sampler.Δ,
+        sampler.Δ_init,
+        sampler.N_swap,
+        sampler.swap_strategy
+    )
 
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
@@ -36,7 +45,13 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    sampler = MCMCTempering.TemperedSampler(Sampler(sampler.internal_sampler, model), sampler.Δ, sampler.Δ_init, sampler.N_swap, sampler.swap_strategy)
+    sampler = MCMCTempering.TemperedSampler(
+        Sampler(sampler.internal_sampler, model),
+        sampler.Δ,
+        sampler.Δ_init,
+        sampler.N_swap,
+        sampler.swap_strategy
+    )
 
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
@@ -60,17 +75,17 @@ end
 #   MODEL
 ###########################
 
-struct TemperedEval
+struct TemperedEval{T<:AbstractFloat}
     model :: DynamicPPL.Model
-    β     :: AbstractFloat
+    β     :: T
 end
 
 function (te::TemperedEval)(
-    rng,
-    model,
-    varinfo,
-    sampler,
-    context,
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    varinfo::DynamicPPL.AbstractVarInfo,
+    sampler::DynamicPPL.AbstractSampler,
+    context::DynamicPPL.AbstractContext,
     args...
 )
     context = DynamicPPL.MiniBatchContext(
@@ -80,8 +95,12 @@ function (te::TemperedEval)(
     te.model.f(rng, model, varinfo, sampler, context, args...)
 end
 
+"""
+    MCMCTempering.make_tempered_model
 
-function MCMCTempering.make_tempered_model(model::Model, β::T) where {T<:AbstractFloat}
+Uses a `TemperedEval` to temper a `model`'s `f` by using a `DynamicPPL.MiniBatchContext` to inject `β` as a multiplier on evaluation
+"""
+function MCMCTempering.make_tempered_model(model::DynamicPPL.Model, β::T) where {T<:AbstractFloat}
     return DynamicPPL.Model(model.name, TemperedEval(model, β), model.args, model.defaults)
 end
 
@@ -91,13 +110,9 @@ end
 #   SWAPPING
 ###########################
 
-# function get_sampler(sampler::DynamicPPL.Sampler{<:MCMCTempering.TemperedSampler})
-#     return DynamicPPL.Sampler(sampler.alg.alg, model, sampler.selector)
-# end
-
 function MCMCTempering.get_densities_and_θs(
-    model::Model,
-    sampler::Sampler{<:InferenceAlgorithm},
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler{<:InferenceAlgorithm},
     states,
     k::Integer,
     Δ::Vector{T},
@@ -115,18 +130,20 @@ end
 
 
 """
-    make_tempered_logπ
+    MCMCTempering.make_tempered_logπ
 
-Constructs the likelihood density function for a `model` weighted by `β`
+Constructs the likelihood density function for a `model` weighted by inverse temperature `β`
 
 # Arguments
 - The `model` in question
 - An inverse temperature `β` with which to weight the density
+- A `sampler` to instantiate a new `VarInfo`
+- Alongside the current `varinfo_init`
 
 ## Notes
 - For sake of efficiency, the returned function is closed over an instance of `VarInfo`. This means that you *might* run into some weird behaviour if you call this method sequentially using different types; if that's the case, just generate a new one for each type using `make_`.
 """
-function MCMCTempering.make_tempered_logπ(model::Model, β::T, sampler::DynamicPPL.Sampler, varinfo_init::DynamicPPL.VarInfo) where {T<:AbstractFloat}
+function MCMCTempering.make_tempered_logπ(model::DynamicPPL.Model, β::T, sampler::DynamicPPL.Sampler, varinfo_init::DynamicPPL.VarInfo) where {T<:AbstractFloat}
     
     function logπ(z)
         varinfo = DynamicPPL.VarInfo(varinfo_init, sampler, z)
@@ -141,25 +158,16 @@ end
 """
     get_vi
 
-Returns the `VarInfo` portion of the `k`th chain's state contained in `states`
-
-# Arguments
-- `states` is 2D array containing `length(Δ)` pairs of transition + state for each chain
-- `k` is the index of a chain in `states`
+Returns the `VarInfo` given whatever a sampler's second return component is on an `AbstractMCMC.step`, in some cases this is the `VarInfo` itself, in others it must be accessed as a property of the state
 """
 get_vi(state::Union{HMCState,GibbsState,EmceeState,SMCState}) = state.vi
 get_vi(vi::DynamicPPL.VarInfo) = vi
 
 
 """
-    get_θ
+MCMCTempering.get_θ
 
-Uses the `sampler` to index the `VarInfo` of the `k`th chain and return the associated `θ` proposal
-
-# Arguments
-- `states` is 2D array containing `length(Δ)` pairs of transition + state for each chain
-- `k` is the index of a chain in `states`
-- `sampler` is used to index the `VarInfo` such that `θ` is returned
+Uses the `sampler` to index the `VarInfo` and return the associated `θ` proposal
 """
 MCMCTempering.get_θ(state, sampler::DynamicPPL.Sampler) = get_vi(state)[sampler]
 # get_vi(states, k)[DynamicPPL.SampleFromPrior()]
