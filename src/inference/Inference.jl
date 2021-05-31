@@ -63,10 +63,10 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent,
-        get_densities_and_θs,     # Tempering 
+        get_tempered_loglikelihoods_and_params,     # Tempering 
         make_tempered_model,
-        make_tempered_logπ,
-        get_θ
+        make_tempered_loglikelihood,
+        get_params
         
 #######################
 # Sampler abstraction #
