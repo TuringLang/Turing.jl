@@ -63,9 +63,9 @@ end
 #   MODEL
 ###########################
 
-struct TemperedEval{T<:Real}
-    model :: DynamicPPL.Model
-    β     :: T
+struct TemperedEval{T<:Real,F}
+    f :: F
+    β :: T
 end
 
 function (te::TemperedEval)(
@@ -80,16 +80,22 @@ function (te::TemperedEval)(
         context,
         te.β
     )
-    te.model.f(rng, model, varinfo, sampler, minibatchcontext, args...)
+    te.f(rng, model, varinfo, sampler, minibatchcontext, args...)
 end
 
 """
-    MCMCTempering.make_tempered_model
+    MCMCTempering.make_tempered_model(model, β)
 
-Uses a `TemperedEval` to temper a `model`'s `f` by using a `DynamicPPL.MiniBatchContext` to inject `β` as a multiplier on evaluation
+Uses a `TemperedEval` to temper a `model`'s `f` by using a `DynamicPPL.MiniBatchContext`
+to inject `β` as a multiplier on evaluation.
 """
 function MCMCTempering.make_tempered_model(model::DynamicPPL.Model, β::Real)
-    return DynamicPPL.Model(model.name, TemperedEval(model, β), model.args, model.defaults)
+    return DynamicPPL.Model{DynamicPPL.getmissings(model)}(
+        model.name,
+        TemperedEval(model.f, β),
+        model.args,
+        model.defaults
+    )
 end
 
 
@@ -118,18 +124,10 @@ end
 
 
 """
-    MCMCTempering.make_tempered_loglikelihood
+    MCMCTempering.make_tempered_loglikelihood(model, β, sampler, varinfo_init)
 
-Constructs the likelihood density function for a `model` weighted by inverse temperature `β`
-
-# Arguments
-- The `model` in question
-- An inverse temperature `β` with which to weight the density
-- A `sampler` to instantiate a new `VarInfo`
-- Alongside the current `varinfo_init`
-
-## Notes
-- For sake of efficiency, the returned function is closed over an instance of `VarInfo`. This means that you *might* run into some weird behaviour if you call this method sequentially using different types; if that's the case, just generate a new one for each type using `make_`.
+Construct the log likelihood function for a `model` weighted by inverse temperature `β`.
+To do this we use the `sampler` to instantiate a new `VarInfo` alongside the current `varinfo_init`.
 """
 function MCMCTempering.make_tempered_loglikelihood(
     model::DynamicPPL.Model,
@@ -149,18 +147,19 @@ end
 
 
 """
-    get_vi
+    get_vi(state) / get_vi(vi)
 
-Returns the `VarInfo` given whatever a sampler's second return component is on an `AbstractMCMC.step`, in some cases this is the `VarInfo` itself, in others it must be accessed as a property of the state
+Returns the `VarInfo` given whatever a sampler's second return component is on an `AbstractMCMC.step`,
+in some cases this is the `VarInfo` itself, in others it must be accessed as a property of the state.
 """
 get_vi(state::Union{HMCState,GibbsState,EmceeState,SMCState}) = state.vi
 get_vi(vi::DynamicPPL.VarInfo) = vi
 
 
 """
-MCMCTempering.get_params
+    MCMCTempering.get_params(state, sampler)
 
-Uses the `sampler` to index the `VarInfo` and return the associated `θ` proposal
+Uses the `sampler` to index the `VarInfo` extracted from the `state` and return the associated
+`θ` parameter vector.
 """
 MCMCTempering.get_params(state, sampler::DynamicPPL.Sampler) = get_vi(state)[sampler]
-# get_vi(states, k)[DynamicPPL.SampleFromPrior()]
