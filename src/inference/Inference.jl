@@ -62,11 +62,7 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent,
-        get_tempered_loglikelihoods_and_params,     # Tempering 
-        make_tempered_model,
-        make_tempered_loglikelihood,
-        get_params
+        isgibbscomponent
         
 #######################
 # Sampler abstraction #

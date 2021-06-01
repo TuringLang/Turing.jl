@@ -33,8 +33,8 @@ function AbstractMCMC.sample(
 )
     tempered_sampler = create_tempered_sampler(model, sampler)
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, tempered_sampler, N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
+        return AbstractMCMC.sample(rng, model, tempered_sampler, N;
+                                   chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
@@ -53,7 +53,7 @@ function AbstractMCMC.sample(
     kwargs...
 )
     tempered_sampler = create_tempered_sampler(model, sampler)
-    return AbstractMCMC.mcmcsample(rng, model, tempered_sampler, N, n_chains;
+    return AbstractMCMC.sample(rng, model, tempered_sampler, ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
