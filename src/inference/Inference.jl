@@ -63,7 +63,6 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent
-        
 #######################
 # Sampler abstraction #
 #######################
