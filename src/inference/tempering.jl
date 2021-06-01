@@ -147,10 +147,12 @@ end
 
 
 """
-    get_vi(state) / get_vi(vi)
+    get_vi(state)
 
-Returns the `VarInfo` given whatever a sampler's second return component is on an `AbstractMCMC.step`,
-in some cases this is the `VarInfo` itself, in others it must be accessed as a property of the state.
+Returns the `VarInfo` object of the `state` of a sampler.
+
+The `state` here is the second component returned by `AbstractMCMC.step`.
+The `VarInfo` object can then be the `state` itself, or a property of the `state`.
 """
 get_vi(state::Union{HMCState,GibbsState,EmceeState,SMCState}) = state.vi
 get_vi(vi::DynamicPPL.VarInfo) = vi
@@ -159,7 +161,7 @@ get_vi(vi::DynamicPPL.VarInfo) = vi
 """
     MCMCTempering.get_params(state, sampler)
 
-Uses the `sampler` to index the `VarInfo` extracted from the `state` and return the associated
-`θ` parameter vector.
+Uses the `sampler` to index the `VarInfo` extracted from the `state`.
+This indexing returns the `θ` parameter vector associated with the current sampler `state`.
 """
 MCMCTempering.get_params(state, sampler::DynamicPPL.Sampler) = get_vi(state)[sampler]
