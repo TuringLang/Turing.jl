@@ -82,6 +82,7 @@ using StatsBase: predict
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
         @varname,
+        @submodel,
         DynamicPPL,
 
         Prior,                  # Sampling from the prior
