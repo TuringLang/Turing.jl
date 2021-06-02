@@ -131,4 +131,12 @@
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
     end
+
+    @testset "chain ordering" begin
+        chain_sorted = sample(gdemo_default, Prior(), 1, sort_chain=true)
+        @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
+
+        chain_unsorted = sample(gdemo_default, Prior(), 1, sort_chain=false)
+        @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:m, :s]
+    end
 end
