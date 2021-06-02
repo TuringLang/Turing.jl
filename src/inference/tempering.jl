@@ -111,7 +111,7 @@ function MCMCTempering.get_tempered_loglikelihoods_and_params(
     k::Integer,
     Δ::Vector{T},
     Δ_state::Vector{<:Integer}
-) where {T<:AbstractFloat}
+) where {T<:Real}
 
     logπk = MCMCTempering.make_tempered_loglikelihood(model, Δ[Δ_state[k]], sampler, get_vi(states[k][2]))
     logπkp1 = MCMCTempering.make_tempered_loglikelihood(model, Δ[Δ_state[k + 1]], sampler, get_vi(states[k + 1][2]))
@@ -134,7 +134,7 @@ function MCMCTempering.make_tempered_loglikelihood(
     β::T,
     sampler::DynamicPPL.Sampler,
     varinfo_init::DynamicPPL.VarInfo
-) where {T<:AbstractFloat}
+) where {T<:Real}
     
     function logπ(z)
         varinfo = DynamicPPL.VarInfo(varinfo_init, sampler, z)
