@@ -137,6 +137,6 @@
         @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
 
         chain_unsorted = sample(gdemo_default, Prior(), 1, sort_chain=false)
-        @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:m, :s]
+        @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
     end
 end
