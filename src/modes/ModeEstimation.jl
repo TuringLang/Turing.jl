@@ -6,7 +6,7 @@ import ..AbstractMCMC: AbstractSampler
 import ..DynamicPPL
 import ..DynamicPPL: Model, AbstractContext, VarInfo, AbstractContext, VarName,
     _getindex, getsym, getfield, settrans!,  setorder!,
-    get_and_set_val!, istrans, tilde, dot_tilde, get_vns_and_dist
+    get_and_set_val!, istrans
 import .Optim
 import .Optim: optimize
 import ..ForwardDiff
