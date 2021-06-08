@@ -66,18 +66,12 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
 end
 
 function check_mean_of_mean_models(alg, nsamples, args...; atol=0.0, rtol=0.2, kwargs...)
-    means = []
     for m in mean_of_mean_models
         # Log this so that if something goes wrong, we can identify the
         # algorithm and model.
         @info "Testing $(alg) on $(m.name)"
         μ = mean(Array(sample(m, alg, nsamples, args...; kwargs...)))
-        push!(means, μ)
-    end
 
-    for i in 1:length(means)
-        for j = i + 1:length(means)
-            @test means[i] ≈ means[j] atol=atol rtol=rtol
-        end
+        @test μ ≈ 8.0 atol=atol rtol=rtol
     end
 end
