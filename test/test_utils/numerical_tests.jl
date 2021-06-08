@@ -66,10 +66,9 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
 end
 
 function check_gdemo_models(alg, nsamples, args...; atol=0.0, rtol=0.2, kwargs...)
-    for m in gdemo_models
+    @testset "$(alg) on $(m.name)" for m in gdemo_models
         # Log this so that if something goes wrong, we can identify the
         # algorithm and model.
-        @info "Testing $(alg) on $(m.name)"
         μ = mean(Array(sample(m, alg, nsamples, args...; kwargs...)))
 
         @test μ ≈ 8.0 atol=atol rtol=rtol

@@ -98,12 +98,11 @@
     end
 
     @testset "Mean of mean models" begin
-        for m in gdemo_models
-            @info "Testing MAP on $(m.name)"
+        @testset "MAP on $(m.name)" for m in gdemo_models
             result = optimize(m, MAP())
             @test mean(result.values) ≈ 8.0 rtol=0.05
-
-            @info "Testing MLE on $(m.name)"
+        end
+        @testset "MLE on $(m.name)" for m in gdemo_models
             result = optimize(m, MLE())
             @test mean(result.values) ≈ 10.0 rtol=0.05
         end
