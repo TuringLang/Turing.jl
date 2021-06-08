@@ -141,4 +141,4 @@ end
     @submodel _likelihood_dot_observe(m, x)
 end
 
-const mean_of_mean_models = (gdemo1(), gdemo2(), gdemo3(), gdemo4(), gdemo5(), gdemo7(), gdemo9(), gdemo10())
+const gdemo_models = (gdemo1(), gdemo2(), gdemo3(), gdemo4(), gdemo5(), gdemo7(), gdemo9(), gdemo10())
