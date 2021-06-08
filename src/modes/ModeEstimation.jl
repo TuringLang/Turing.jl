@@ -58,13 +58,17 @@ function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationC
     return DynamicPPL.dot_tilde_assume(ctx, sampler, right, left, vns, inds, vi)
 end
 
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vns, _, vi)
-    r = getval(vi, vns)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
     return r, 0
 end
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler, right, left, vns, _, vi)
-    r = getval(vi, vns)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
     return r, loglikelihood(right, r)
 end
 
@@ -77,29 +81,15 @@ function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:PriorContext}, 
     return 0
 end
 
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler, right, left, vns, _, vi)
-    r = getval(vi, vns)
+function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
     return loglikelihood(right, r)
 end
 
 function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler, dists, value, vi)
     return sum(Distributions.logpdf.(dists, value))
-end
-
-function getval(
-    vi,
-    vns::AbstractVector{<:VarName},
-)
-    r = vi[vns]
-    return r
-end
-
-function getval(
-    vi,
-    vns::AbstractArray{<:VarName},
-)
-    r = reshape(vi[vec(vns)], size(vns))
-    return r
 end
 
 """
