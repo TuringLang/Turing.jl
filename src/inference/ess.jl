@@ -157,6 +157,6 @@ function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS},
     end
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vi)
 end
