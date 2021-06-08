@@ -96,4 +96,16 @@
         @test isapprox(mle1.values.array, mle2.values.array)
         @test isapprox(map1.values.array, map2.values.array)
     end
+
+    @testset "Mean of mean models" begin
+        for m in mean_of_mean_models
+            @info "Testing MAP on $(m)"
+            result = optimize(m, MAP())
+            @test mean(result.values) ≈ 8.0 rtol=0.05
+
+            @info "Testing MLE on $(m)"
+            result = optimize(m, MLE())
+            @test mean(result.values) ≈ 10.0 rtol=0.05
+        end
+    end
 end
