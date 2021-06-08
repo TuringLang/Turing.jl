@@ -58,7 +58,7 @@ MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
     # `dot_assume` and `observe`
     m = TV(undef, length(x))
     m .~ Normal()
-    x ~ TuringDiagMvNormal(m, 0.5 * ones(length(x)))
+    x ~ MvNormal(m, 0.5 * ones(length(x)))
 end
 
 @model function gdemo2(x = 10 * ones(2), ::Type{TV} = Vector{Float64}) where {TV}
@@ -67,13 +67,13 @@ end
     for i in eachindex(m)
         m[i] ~ Normal()
     end
-    x ~ TuringDiagMvNormal(m, 0.5 * ones(length(x)))
+    x ~ MvNormal(m, 0.5 * ones(length(x)))
 end
 
 @model function gdemo3(x = 10 * ones(2))
     # Multivariate `assume` and `observe`
     m ~ MvNormal(length(x), 1.0)
-    x ~ TuringDiagMvNormal(m, 0.5 * ones(length(x)))
+    x ~ MvNormal(m, 0.5 * ones(length(x)))
 end
 
 @model function gdemo4(x = 10 * ones(2), ::Type{TV} = Vector{Float64}) where {TV}
@@ -96,7 +96,7 @@ end
 # @model function gdemo6(::Type{TV} = Vector{Float64}) where {TV}
 #     # `assume` and literal `observe`
 #     m ~ MvNormal(length(x), 1.0)
-#     [10.0, 10.0] ~ TuringDiagMvNormal(m, 0.5 * ones(2))
+#     [10.0, 10.0] ~ MvNormal(m, 0.5 * ones(2))
 # end
 
 @model function gdemo7(::Type{TV} = Vector{Float64}) where {TV}
@@ -130,7 +130,7 @@ end
 end
 
 @model function _likelihood_dot_observe(m, x)
-    x ~ TuringDiagMvNormal(m, 0.5 * ones(length(m)))
+    x ~ MvNormal(m, 0.5 * ones(length(m)))
 end
 
 @model function gdemo10(x = 10 * ones(2), ::Type{TV} = Vector{Float64}) where {TV}
