@@ -99,11 +99,11 @@
 
     @testset "Mean of mean models" begin
         for m in mean_of_mean_models
-            @info "Testing MAP on $(m)"
+            @info "Testing MAP on $(m.name)"
             result = optimize(m, MAP())
             @test mean(result.values) ≈ 8.0 rtol=0.05
 
-            @info "Testing MLE on $(m)"
+            @info "Testing MLE on $(m.name)"
             result = optimize(m, MLE())
             @test mean(result.values) ≈ 10.0 rtol=0.05
         end
