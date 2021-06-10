@@ -93,11 +93,11 @@ end
     x .~ Normal(m, 0.5)
 end
 
-# @model function gdemo6(::Type{TV} = Vector{Float64}) where {TV}
-#     # `assume` and literal `observe`
-#     m ~ MvNormal(length(x), 1.0)
-#     [10.0, 10.0] ~ MvNormal(m, 0.5 * ones(2))
-# end
+@model function gdemo6()
+    # `assume` and literal `observe`
+    m ~ MvNormal(2, 1.0)
+    [10.0, 10.0] ~ MvNormal(m, 0.5 * ones(2))
+end
 
 @model function gdemo7(::Type{TV} = Vector{Float64}) where {TV}
     # `dot_assume` and literal `observe` with indexing
@@ -108,11 +108,11 @@ end
     end
 end
 
-# @model function gdemo8(::Type{TV} = Vector{Float64}) where {TV}
-#     # `assume` and literal `dot_observe`
-#     m ~ Normal()
-#     [10.0, ] .~ Normal(m, 0.5)
-# end
+@model function gdemo8()
+    # `assume` and literal `dot_observe`
+    m ~ Normal()
+    [10.0, ] .~ Normal(m, 0.5)
+end
 
 @model function _prior_dot_assume(::Type{TV} = Vector{Float64}) where {TV}
     m = TV(undef, 2)
@@ -141,4 +141,4 @@ end
     @submodel _likelihood_dot_observe(m, x)
 end
 
-const gdemo_models = (gdemo1(), gdemo2(), gdemo3(), gdemo4(), gdemo5(), gdemo7(), gdemo9(), gdemo10())
+const gdemo_models = (gdemo1(), gdemo2(), gdemo3(), gdemo4(), gdemo5(), gdemo6(), gdemo7(), gdemo8(), gdemo9(), gdemo10())
