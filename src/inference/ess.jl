@@ -112,7 +112,9 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
     vns = _getvns(varinfo, sampler)
-    set_flag!(varinfo, vns[1][1], "del")
+    for vn in Iterators.flatten(values(vns))
+        set_flag!(varinfo, vn, "del")
+    end
     p.model(rng, varinfo, sampler)
     return varinfo[sampler]
 end
@@ -155,6 +157,6 @@ function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS},
     end
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.dot_tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.dot_tilde(ctx, SampleFromPrior(), right, left, vi)
 end

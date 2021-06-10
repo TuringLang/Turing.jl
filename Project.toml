@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.16.0"
+version = "0.16.1"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -47,7 +47,7 @@ DocStringExtensions = "0.8"
 DynamicPPL = "0.11.0"
 EllipticalSliceSampling = "0.4"
 ForwardDiff = "0.10.3"
-Libtask = "0.4, 0.5"
+Libtask = "= 0.4.0, = 0.4.1, = 0.4.2, = 0.5.0, = 0.5.1"
 MCMCChains = "4"
 NamedArrays = "0.9"
 Reexport = "0.2, 1"

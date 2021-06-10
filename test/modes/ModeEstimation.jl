@@ -96,4 +96,13 @@
         @test isapprox(mle1.values.array, mle2.values.array)
         @test isapprox(map1.values.array, map2.values.array)
     end
+
+    @testset "MAP on $(m.name)" for m in gdemo_models
+        result = optimize(m, MAP())
+        @test mean(result.values) ≈ 8.0 rtol=0.05
+    end
+    @testset "MLE on $(m.name)" for m in gdemo_models
+        result = optimize(m, MLE())
+        @test mean(result.values) ≈ 10.0 rtol=0.05
+    end
 end
