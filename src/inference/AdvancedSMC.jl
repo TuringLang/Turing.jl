@@ -301,7 +301,7 @@ function AbstractMCMC.step(
     particles = AdvancedPS.ParticleContainer(x)
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, particles.vals[num_particles])
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
