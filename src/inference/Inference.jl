@@ -325,6 +325,8 @@ function AbstractMCMC.bundle_samples(
     save_state = false,
     stats = missing,
     sort_chain = false,
+    discard_initial = 0,
+    thinning = 1,
     kwargs...
 )
     # Convert transitions to array format.
