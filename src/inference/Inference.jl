@@ -363,6 +363,8 @@ function AbstractMCMC.bundle_samples(
         (internals = extra_params,);
         evidence=le,
         info=info,
+        start=discard_initial + 1,
+        thin=thinning,
     )
 
     return sort_chain ? sort(chain) : chain
