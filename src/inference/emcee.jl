@@ -113,7 +113,7 @@ function AbstractMCMC.bundle_samples(
     extra_vec = map(get_transition_extras, samples)
 
     # Get the extra parameter names & values.
-    extra_params = (internals = extra_vec[1][1],)
+    extra_params = extra_vec[1][1]
     extra_values_vec = [e[2] for e in extra_vec]
 
     # Extract names & construct param array.
@@ -138,7 +138,7 @@ function AbstractMCMC.bundle_samples(
     chain = MCMCChains.Chains(
         parray,
         nms,
-        extra_params;
+        (internals = extra_params,);
         evidence=le,
         info=info,
         start=discard_initial + 1,
