@@ -32,47 +32,37 @@
     end
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)
-        alg = Gibbs(
-            CSMC(10, :s),
-            HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 1_500)
+        alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
 
         Random.seed!(100)
 
-        alg = Gibbs(
-            MH(:s),
-            HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 5000)
+        alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
-        alg = Gibbs(
-            CSMC(15, :s),
-            ESS(:m))
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        alg = Gibbs(CSMC(15, :s), ESS(:m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
-        alg = CSMC(10)
-        chain = sample(gdemo(1.5, 2.0), alg, 5000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.25)
+        alg = CSMC(15)
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         setadsafe(true)
 
         Random.seed!(200)
-        gibbs = Gibbs(
-            PG(10, :z1, :z2, :z3, :z4),
-            HMC(0.15, 3, :mu1, :mu2))
-        chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol=0.2)
+        gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
+        chain = sample(MoGtest_default, gibbs, 5_000)
+        check_MoGtest_default(chain, atol=0.15)
 
         setadsafe(false)
 
         Random.seed!(200)
-        gibbs = Gibbs(
-            PG(10, :z1, :z2, :z3, :z4),
-            ESS(:mu1), ESS(:mu2))
-        chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol = 0.15)
+        gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
+        chain = sample(MoGtest_default, gibbs, 5_000)
+        check_MoGtest_default(chain, atol=0.1)
     end
 
     @turing_testset "transitions" begin
