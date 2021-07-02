@@ -1,13 +1,5 @@
 module Turing
 
-##############
-# Dependency #
-########################################################################
-# NOTE: when using anything from external packages,                    #
-#       let's keep the practice of explictly writing Package.something #
-#       to indicate that's not implemented inside Turing.jl            #
-########################################################################
-
 using Requires, Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
