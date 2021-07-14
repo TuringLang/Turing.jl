@@ -6,12 +6,25 @@
             @testset "rng" begin
                 model = gdemo_default
 
-                samplers = (HMC(0.1, 7),
-                            PG(10),
-                            IS(),
-                            MH(),
-                            Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
-                            Gibbs(HMC(0.1, 5, :s), ESS(:m)))
+                # multithreaded sampling with PG causes segfaults on Julia 1.5.4
+                # https://github.com/TuringLang/Turing.jl/issues/1571
+                samplers = @static if VERSION <= v"1.5.3" || VERSION >= v"1.6.0"
+                    (
+                        HMC(0.1, 7),
+                        PG(10),
+                        IS(),
+                        MH(),
+                        Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
+                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                    )
+                else
+                    (
+                        HMC(0.1, 7),
+                        IS(),
+                        MH(),
+                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                    )
+                end
                 for sampler in samplers
                     Random.seed!(5)
                     chain1 = sample(model, sampler, MCMCThreads(), 1000, 4)
@@ -40,7 +53,7 @@
 
         alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMCDA(500, 0.65, 0.05, :m))
+        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
@@ -60,31 +73,31 @@
         chn2_contd = sample(gdemo_default, alg2, 1000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 1000; save_state=true)
+        chn3 = sample(gdemo_default, alg3, 5000; save_state=true)
         check_gdemo(chn3)
 
         chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
-        check_gdemo(chn3_contd; atol=0.25)
+        check_gdemo(chn3_contd)
     end
     @testset "Contexts" begin
         # Test LikelihoodContext
-        @model testmodel(x) = begin
+        @model function testmodel1(x)
             a ~ Beta()
-            lp1 = getlogp(_varinfo)
-            x[1] ~ Bernoulli(a)
-            global loglike = getlogp(_varinfo) - lp1
+            lp1 = getlogp(__varinfo__)
+            x[1] ~ Bernoulli(a)
+            global loglike = getlogp(__varinfo__) - lp1
         end
-        model = testmodel([1.0])
+        model = testmodel1([1.0])
         varinfo = Turing.VarInfo(model)
         model(varinfo, Turing.SampleFromPrior(), Turing.LikelihoodContext())
         @test getlogp(varinfo) == loglike
 
         # Test MiniBatchContext
-        @model testmodel(x) = begin
+        @model function testmodel2(x)
             a ~ Beta()
-            x[1] ~ Bernoulli(a)
+            x[1] ~ Bernoulli(a)
         end
-        model = testmodel([1.0])
+        model = testmodel2([1.0])
         varinfo1 = Turing.VarInfo(model)
         varinfo2 = deepcopy(varinfo1)
         model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
@@ -117,5 +130,25 @@
         @test all(haskey(x, :lp) for x in chains)
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+    end
+
+    @testset "chain ordering" begin
+        for alg in (Prior(), Emcee(10, 2.0))
+            chain_sorted = sample(gdemo_default, alg, 1, sort_chain=true)
+            @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
+
+            chain_unsorted = sample(gdemo_default, alg, 1, sort_chain=false)
+            @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
+        end
+    end
+
+    @testset "chain iteration numbers" begin
+        for alg in (Prior(), Emcee(10, 2.0))
+            chain = sample(gdemo_default, alg, 10)
+            @test range(chain) == 1:10
+
+            chain = sample(gdemo_default, alg, 10; discard_initial=5, thinning=2)
+            @test range(chain) == range(6; step=2, length=10)
+        end
     end
 end

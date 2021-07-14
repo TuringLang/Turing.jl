@@ -34,10 +34,10 @@ using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model function gdemo(x, y)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 ```
 
@@ -45,7 +45,7 @@ end
 Note: As a sanity check, the expectation of `s` is 49/24 (2.04166666...) and the expectation of `m` is 7/6 (1.16666666...).
 
 
-We can perform inference by using the `sample` function, the first argument of which is our probabalistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library).
+We can perform inference by using the `sample` function, the first argument of which is our probabilistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library).
 
 
 ```julia
@@ -178,11 +178,11 @@ If you wish to perform multithreaded sampling and are running Julia 1.3 or great
 using Turing
 
 @model function gdemo(x)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
 
     for i in eachindex(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
 end
 
@@ -202,27 +202,27 @@ Process parallel sampling can be done like so:
 
 ```julia
 # Load Distributed to add processes and the @everywhere macro.
-using Distributed 
+using Distributed
 
 # Load Turing.
 using Turing
 
-# Add four processes to use for sampling. 
+# Add four processes to use for sampling.
 addprocs(4)
 
 # Initialize everything on all the processes.
 # Note: Make sure to do this after you've already loaded Turing,
-#       so each process does not have to precompile. 
+#       so each process does not have to precompile.
 #       Parallel sampling may fail silently if you do not do this.
 @everywhere using Turing
 
 # Define a model on all processes.
 @everywhere @model function gdemo(x)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
 
     for i in eachindex(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
 end
 
@@ -246,10 +246,10 @@ You can also run your model (as if it were a function) from the prior distributi
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
     return x, y
 end
 ```
@@ -288,10 +288,10 @@ Inputs to the model that have a value `missing` are treated as parameters, aka r
         # Initialize `x` if missing
         x = Vector{T}(undef, 2)
     end
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
     for i in eachindex(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
 end
 
@@ -308,10 +308,10 @@ Turing also supports mixed `missing` and non-`missing` values in `x`, where the 
 
 ```julia
 @model function gdemo(x)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
     for i in eachindex(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
 end
 
@@ -334,12 +334,12 @@ using Turing
         # Initialize x when missing
         x = Vector{T}(undef, 10)
     end
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
     for i in 1:length(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
-    return s, m
+    return s², m
 end
 
 m = generative()
@@ -379,10 +379,10 @@ Similarly, when using a particle sampler, the Julia variable used should either 
 Consider the following `gdemo` model:
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 ```
 
@@ -418,11 +418,11 @@ using Turing
 using Optim
 
 @model function gdemo(x)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
 
     for i in eachindex(x)
-        x[i] ~ Normal(m, sqrt(s))
+        x[i] ~ Normal(m, sqrt(s²))
     end
 end
 ```

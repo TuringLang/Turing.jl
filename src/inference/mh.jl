@@ -2,7 +2,7 @@
 ### Sampler states
 ###
 
-struct MH{space, P} <: InferenceAlgorithm 
+struct MH{space, P} <: InferenceAlgorithm
     proposals::P
 end
 
@@ -15,13 +15,13 @@ proposal(x) = error("proposals of type ", typeof(x), " are not supported")
 """
     MH(space...)
 
-Construct a Metropolis-Hastings algorithm. 
+Construct a Metropolis-Hastings algorithm.
 
-The arguments `space` can be 
+The arguments `space` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
 - A set of one or more symbols to sample with `MH` in conjunction with `Gibbs`, i.e. `Gibbs(MH(:m), PG(10, :s))`
-- An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function` 
+- An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function`
   that generates returns a conditional proposal distribution.
 - A covariance matrix to use as for mean-zero multivariate normal proposals.
 
@@ -31,10 +31,10 @@ The default `MH` will use propose samples from the prior distribution using `Adv
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
@@ -46,10 +46,10 @@ from multiple samplers:
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 # Samples s with MH and m with PG
@@ -61,20 +61,20 @@ Using custom distributions defaults to using static MH:
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
-# Use a static proposal for s and random walk with proposal 
+# Use a static proposal for s and random walk with proposal
 # standard deviation of 0.25 for m.
 chain = sample(
-    gdemo(1.5, 2.0), 
+    gdemo(1.5, 2.0),
     MH(
         :s => InverseGamma(2, 3),
         :m => Normal(0, 1)
-    ), 
+    ),
     1_000
 )
 mean(chain)
@@ -84,20 +84,20 @@ Specifying explicit proposals using the `AdvancedMH` interface:
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
-# Use a static proposal for s and random walk with proposal 
+# Use a static proposal for s and random walk with proposal
 # standard deviation of 0.25 for m.
 chain = sample(
-    gdemo(1.5, 2.0), 
+    gdemo(1.5, 2.0),
     MH(
         :s => AdvancedMH.StaticProposal(InverseGamma(2,3)),
         :m => AdvancedMH.RandomWalkProposal(Normal(0, 0.25))
-    ), 
+    ),
     1_000
 )
 mean(chain)
@@ -107,20 +107,20 @@ Using a custom function to specify a conditional distribution:
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 # Use a static proposal for s and and a conditional proposal for m,
 # where the proposal is centered around the current sample.
 chain = sample(
-    gdemo(1.5, 2.0), 
+    gdemo(1.5, 2.0),
     MH(
         :s => InverseGamma(2, 3),
         :m => x -> Normal(x, 1)
-    ), 
+    ),
     1_000
 )
 mean(chain)
@@ -132,19 +132,19 @@ normal distribution. The provided matrix must be positive semi-definite and squa
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 # Providing a custom variance-covariance matrix
 chain = sample(
-    gdemo(1.5, 2.0), 
+    gdemo(1.5, 2.0),
     MH(
-        [0.25 0.05; 
+        [0.25 0.05;
          0.05 0.50]
-    ), 
+    ),
     1_000
 )
 mean(chain)
@@ -167,15 +167,15 @@ function MH(space...)
             push!(prop_syms, s[1])
             push!(props, proposal(s[2]))
         elseif length(space) == 1
-            # If we hit this block, check to see if it's 
+            # If we hit this block, check to see if it's
             # a run-of-the-mill proposal or covariance
             # matrix.
             prop = proposal(s)
 
-            # Return early, we got a covariance matrix. 
+            # Return early, we got a covariance matrix.
             return MH{(), typeof(prop)}(prop)
         else
-            # Try to convert it to a proposal anyways, 
+            # Try to convert it to a proposal anyways,
             # throw an error if not acceptable.
             prop = proposal(s)
             push!(props, prop)
@@ -265,7 +265,7 @@ end
 # unpack a vector if possible
 unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
-# possibly unpack and reshape samples according to the prior distribution 
+# possibly unpack and reshape samples according to the prior distribution
 reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
 function reconstruct(
     dist::AbstractVector{<:UnivariateDistribution},
@@ -316,7 +316,7 @@ end
 end
 
 @generated function _dist_tuple(
-    props::NamedTuple{propnames}, 
+    props::NamedTuple{propnames},
     vi::VarInfo,
     vns::NamedTuple{names}
 ) where {names,propnames}
@@ -334,9 +334,26 @@ end
 end
 
 # Utility functions to link
-maybe_link!(varinfo, sampler, proposal) = nothing
-function maybe_link!(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
-    link!(varinfo, sampler)
+should_link(varinfo, sampler, proposal) = false
+function should_link(varinfo, sampler, proposal::NamedTuple{(), Tuple{}})
+    # If it's an empty `NamedTuple`, we're using the priors as proposals
+    # in which case we shouldn't link.
+    return false
+end
+function should_link(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
+    return true
+end
+function should_link(
+    varinfo,
+    sampler,
+    proposal::NamedTuple{names, vals}
+) where {names, vals<:NTuple{<:Any, <:AdvancedMH.RandomWalkProposal}}
+    return true
+end
+
+function maybe_link!(varinfo, sampler, proposal)
+    should_link(varinfo, sampler, proposal) && link!(varinfo, sampler)
+    return varinfo
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
@@ -371,8 +388,8 @@ function propose!(
     vi::AbstractVarInfo,
     model::Model,
     spl::Sampler{<:MH},
-    proposal::AdvancedMH.RandomWalkProposal{<:MvNormal}
-)
+    proposal::AdvancedMH.RandomWalkProposal{issymmetric,<:MvNormal}
+) where {issymmetric}
     # If this is the case, we can just draw directly from the proposal
     # matrix.
     vals = vi[spl]

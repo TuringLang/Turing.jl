@@ -77,11 +77,11 @@ function Bijectors.bijector(
 
     if sym2ranges
         return (
-            Bijectors.Stacked(bs, ranges),
+            Bijectors.Stacked(bs, rs),
             (; collect(zip(keys(sym_lookup), values(sym_lookup)))...),
         )
     else
-        return Bijectors.Stacked(bs, ranges)
+        return Bijectors.Stacked(bs, rs)
     end
 end
 

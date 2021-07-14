@@ -40,10 +40,10 @@ using StatsPlots
 
 # Define a simple Normal model with unknown mean and variance.
 @model function gdemo(x, y)
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
-  x ~ Normal(m, sqrt(s))
-  y ~ Normal(m, sqrt(s))
+  s² ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s²))
+  x ~ Normal(m, sqrt(s²))
+  y ~ Normal(m, sqrt(s²))
 end
 
 #  Run sampler, collect results
