@@ -34,7 +34,7 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 AbstractMCMC = "3.2"
-AdvancedHMC = "0.2.24"
+AdvancedHMC = "0.3.0"
 AdvancedMH = "0.6"
 AdvancedPS = "0.2.4"
 AdvancedVI = "0.1"
