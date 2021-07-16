@@ -334,7 +334,7 @@ end
 
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, ϵ::Float64=0.0)
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0)
 
 No-U-Turn Sampler (NUTS) sampler.
 
