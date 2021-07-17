@@ -1,4 +1,4 @@
-@testset "io.jl" begin
+@testset "inference.jl" begin
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
