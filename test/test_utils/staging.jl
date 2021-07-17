@@ -39,7 +39,7 @@ end
 
 macro stage_testset(stage_string::String, args...)
     if do_test(stage_string)
-        return esc(:(@testset($(args...))))
+        return esc(:(@timed_testset($(args...))))
     end
 end
 
@@ -49,4 +49,14 @@ end
 
 macro turing_testset(args...)
     esc(:(@stage_testset "test" $(args...)))
+end
+
+macro timed_testset(name, args...)
+    expr = quote
+        start = time()
+        @testset($name, $(args...))
+        let name = $name
+            @info "$(name): $(time() - start)s"
+        end
+    end
 end
