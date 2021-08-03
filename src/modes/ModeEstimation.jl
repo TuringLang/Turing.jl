@@ -37,84 +37,67 @@ struct OptimizationContext{C<:AbstractContext} <: AbstractContext
 end
 
 # assume
-function DynamicPPL.tilde(rng, ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
-    return DynamicPPL.tilde(ctx, spl, dist, vn, inds, vi)
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, spl, dist, vn, inds, vi)
+    return DynamicPPL.tilde_assume(ctx, spl, dist, vn, inds, vi)
 end
 
-function DynamicPPL.tilde(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn::VarName, inds, vi)
+function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn, inds, vi)
     r = vi[vn]
     return r, 0
 end
 
-function DynamicPPL.tilde(ctx::OptimizationContext, spl, dist, vn::VarName, inds, vi)
+function DynamicPPL.tilde_assume(ctx::OptimizationContext, spl, dist, vn, inds, vi)
     r = vi[vn]
     return r, Distributions.logpdf(dist, r)
 end
 
 
 # observe
-function DynamicPPL.tilde(rng, ctx::OptimizationContext, sampler, right, left, vi)
-    return DynamicPPL.tilde(ctx, sampler, right, left, vi)
+function DynamicPPL.tilde_observe(ctx::OptimizationContext, sampler, right, left, vi)
+    return DynamicPPL.observe(right, left, vi)
 end
 
-function DynamicPPL.tilde(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
+function DynamicPPL.tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
     return 0
-end
-
-function DynamicPPL.tilde(ctx::OptimizationContext, sampler, dist, value, vi)
-    return Distributions.logpdf(dist, value)
 end
 
 # dot assume
-function DynamicPPL.dot_tilde(rng, ctx::OptimizationContext, sampler, right, left, vn::VarName, inds, vi)
-    return DynamicPPL.dot_tilde(ctx, sampler, right, left, vn, inds, vi)
+function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, sampler, right, left, vns, inds, vi)
+    return DynamicPPL.dot_tilde_assume(ctx, sampler, right, left, vns, inds, vi)
 end
 
-function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:LikelihoodContext}, sampler, right, left, vn::VarName, _, vi)
-    vns, dist = get_vns_and_dist(right, left, vn)
-    r = getval(vi, vns)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
     return r, 0
 end
 
-function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn::VarName, _, vi)
-    vns, dist = get_vns_and_dist(right, left, vn)
-    r = getval(vi, vns)
-    return r, loglikelihood(dist, r)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
+    return r, loglikelihood(right, r)
 end
 
 # dot observe
-function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vn, _, vi)
+function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vn, _, vi)
     return 0
 end
 
-function DynamicPPL.dot_tilde(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
+function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
     return 0
 end
 
-function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, right, left, vn, _, vi)
-    vns, dist = get_vns_and_dist(right, left, vn)
-    r = getval(vi, vns)
-    return loglikelihood(dist, r)
+function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
+    return loglikelihood(right, r)
 end
 
-function DynamicPPL.dot_tilde(ctx::OptimizationContext, sampler, dists, value, vi)
+function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler, dists, value, vi)
     return sum(Distributions.logpdf.(dists, value))
-end
-
-function getval(
-    vi,
-    vns::AbstractVector{<:VarName},
-)
-    r = vi[vns]
-    return r
-end
-
-function getval(
-    vi,
-    vns::AbstractArray{<:VarName},
-)
-    r = reshape(vi[vec(vns)], size(vns))
-    return r
 end
 
 """

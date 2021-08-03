@@ -126,7 +126,7 @@ function gibbs_state(
     state.z.θ .= θ_old
     z = state.z
 
-    return HMCState(varinfo, state.i, state.traj, hamiltonian, z, state.adaptor)
+    return HMCState(varinfo, state.i, state.kernel, hamiltonian, z, state.adaptor)
 end
 
 """

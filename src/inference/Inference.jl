@@ -18,6 +18,7 @@ using Random: AbstractRNG
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using DataStructures: OrderedSet
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
@@ -180,12 +181,12 @@ end
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, parallel, N, n_chains;
+    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, ensemble, N, n_chains;
                                kwargs...)
 end
 
@@ -193,12 +194,12 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::InferenceAlgorithm,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), parallel, N, n_chains;
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), ensemble, N, n_chains;
                                kwargs...)
 end
 
@@ -206,14 +207,14 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     sampler::Sampler{<:InferenceAlgorithm},
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.mcmcsample(rng, model, sampler, parallel, N, n_chains;
+    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
@@ -221,14 +222,14 @@ function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
     alg::Prior,
-    parallel::AbstractMCMC.AbstractMCMCParallel,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, SampleFromPrior(), parallel, N, n_chains;
+    return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
@@ -245,19 +246,17 @@ getparams(t) = t.θ
 getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
 
 function _params_to_array(ts::Vector)
-    names = Vector{Symbol}()
+    names_set = OrderedSet{Symbol}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms, vs = flatten_namedtuple(getparams(t))
         for nm in nms
-            if !(nm in names)
-                push!(names, nm)
-            end
+            push!(names_set, nm)
         end
         # Convert the names and values to a single dictionary.
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
-    # names = collect(names_set)
+    names = collect(names_set)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
         (j, key) in enumerate(names)]
 
@@ -324,6 +323,10 @@ function AbstractMCMC.bundle_samples(
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
+    stats = missing,
+    sort_chain = false,
+    discard_initial = 0,
+    thinning = 1,
     kwargs...
 )
     # Convert transitions to array format.
@@ -347,17 +350,26 @@ function AbstractMCMC.bundle_samples(
         info = NamedTuple()
     end
 
+    # Merge in the timing info, if available
+    if !ismissing(stats)
+        info = merge(info, (start_time=stats.start, stop_time=stats.stop))
+    end
+
     # Conretize the array before giving it to MCMCChains.
     parray = MCMCChains.concretize(parray)
 
     # Chain construction.
-    return MCMCChains.Chains(
+    chain = MCMCChains.Chains(
         parray,
         nms,
         (internals = extra_params,);
         evidence=le,
         info=info,
-    ) |> sort
+        start=discard_initial + 1,
+        thin=thinning,
+    )
+
+    return sort_chain ? sort(chain) : chain
 end
 
 # This is type piracy (for SampleFromPrior).
@@ -458,7 +470,7 @@ and then converts these into a `Chains` object using `AbstractMCMC.bundle_sample
 
 # Example
 ```jldoctest
-julia> using Turing; Turing.turnprogress(false);
+julia> using Turing; Turing.setprogress!(false);
 [ Info: [Turing]: progress logging is disabled globally
 
 julia> @model function linear_reg(x, y, σ = 0.1)
@@ -517,31 +529,31 @@ function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
     return predict(Random.GLOBAL_RNG, model, chain; kwargs...)
 end
 function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
+    # Don't need all the diagnostics
+    chain_parameters = MCMCChains.get_sections(chain, :parameters)
+
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
-    transitions = [
-        transitions_from_chain(rng, model, chain[:, :, chn_idx]; sampler = spl)
-        for chn_idx = 1:size(chain, 3)
-    ]
+    transitions = transitions_from_chain(rng, model, chain_parameters; sampler = spl)
 
     # Let the Turing internals handle everything else for you
     chain_result = reduce(
         MCMCChains.chainscat, [
             AbstractMCMC.bundle_samples(
-                transitions[chn_idx],
+                transitions[:, chain_idx],
                 model,
                 spl,
                 nothing,
                 MCMCChains.Chains
-            ) for chn_idx = 1:size(chain, 3)
+            ) for chain_idx = 1:size(transitions, 2)
         ]
     )
 
     parameter_names = if include_all
         names(chain_result, :parameters)
     else
-        filter(k -> ∉(k, names(chain, :parameters)), names(chain_result, :parameters))
+        filter(k -> ∉(k, names(chain_parameters, :parameters)), names(chain_result, :parameters))
     end
 
     return chain_result[parameter_names]
@@ -603,44 +615,22 @@ function transitions_from_chain(
 )
     return transitions_from_chain(Random.GLOBAL_RNG, model, chain; kwargs...)
 end
+
 function transitions_from_chain(
-    rng::AbstractRNG,
+    rng::Random.AbstractRNG,
     model::Turing.Model,
     chain::MCMCChains.Chains;
     sampler = DynamicPPL.SampleFromPrior()
 )
     vi = Turing.VarInfo(model)
 
-    transitions = map(1:length(chain)) do i
-        c = chain[i]
-        md = vi.metadata
-        for v in keys(md)
-            for vn in md[v].vns
-                vn_sym = Symbol(vn)
-
-                # Cannot use `vn_sym` to index in the chain
-                # so we have to extract the corresponding "linear"
-                # indices and use those.
-                # `ks` is empty if `vn_sym` not in `c`.
-                ks = MCMCChains.namesingroup(c, vn_sym)
-
-                if !isempty(ks)
-                    # 1st dimension is of size 1 since `c`
-                    # only contains a single sample, and the
-                    # last dimension is of size 1 since
-                    # we're assuming we're working with a single chain.
-                    val = copy(vec(c[ks].value))
-                    DynamicPPL.setval!(vi, val, vn)
-                    DynamicPPL.settrans!(vi, false, vn)
-                else
-                    DynamicPPL.set_flag!(vi, vn, "del")
-                end
-            end
-        end
-        # Execute `model` on the parameters set in `vi` and sample those with `"del"` flag using `sampler`
+    iters = Iterators.product(1:size(chain, 1), 1:size(chain, 3))
+    transitions = map(iters) do (sample_idx, chain_idx)
+        # Set variables present in `chain` and mark those NOT present in chain to be resampled.
+        DynamicPPL.setval_and_resample!(vi, chain, sample_idx, chain_idx)
         model(rng, vi, sampler)
 
-        # Convert `VarInfo` into `NamedTuple` and save
+        # Convert `VarInfo` into `NamedTuple` and save.
         theta = DynamicPPL.tonamedtuple(vi)
         lp = Turing.getlogp(vi)
         Transition(theta, lp)
