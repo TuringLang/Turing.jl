@@ -2,6 +2,7 @@ module ModeEstimation
 
 using ..Turing
 using Bijectors
+using Random
 using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType
 
 using DynamicPPL
