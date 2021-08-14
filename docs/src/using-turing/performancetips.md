@@ -85,7 +85,7 @@ Alternatively, you could use `filldist` in this example:
 
 ```julia
 @model function tmodel(x, y)
-    params = filldist(truncated(Normal(), 0, Inf), size(x, 2))
+    params ~ filldist(truncated(Normal(), 0, Inf), size(x, 2))
     a = x * params
     y ~ MvNormal(a, 1.0)
 end

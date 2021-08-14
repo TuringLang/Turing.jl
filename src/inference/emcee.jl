@@ -96,6 +96,9 @@ function AbstractMCMC.bundle_samples(
     state::EmceeState,
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
+    sort_chain = false,
+    discard_initial = 0,
+    thinning = 1,
     kwargs...
 )
     # Convert transitions to array format.
@@ -110,7 +113,7 @@ function AbstractMCMC.bundle_samples(
     extra_vec = map(get_transition_extras, samples)
 
     # Get the extra parameter names & values.
-    extra_params = (internals = extra_vec[1][1],)
+    extra_params = extra_vec[1][1]
     extra_values_vec = [e[2] for e in extra_vec]
 
     # Extract names & construct param array.
@@ -132,11 +135,15 @@ function AbstractMCMC.bundle_samples(
     parray = MCMCChains.concretize(parray)
 
     # Chain construction.
-    return MCMCChains.Chains(
+    chain = MCMCChains.Chains(
         parray,
         nms,
-        extra_params;
+        (internals = extra_params,);
         evidence=le,
         info=info,
-    ) |> sort
+        start=discard_initial + 1,
+        thin=thinning,
+    )
+
+    return sort_chain ? sort(chain) : chain
 end
