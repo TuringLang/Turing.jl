@@ -28,6 +28,10 @@ struct OptimizationContext{C<:AbstractContext} <: AbstractContext
     context::C
 end
 
+DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsParent()
+DynamicPPL.childcontext(context::OptimizationContext) = context.context
+DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
+
 # assume
 function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, spl, dist, vn, inds, vi)
     return DynamicPPL.tilde_assume(ctx, spl, dist, vn, inds, vi)
@@ -41,16 +45,6 @@ end
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, spl, dist, vn, inds, vi)
     r = vi[vn]
     return r, Distributions.logpdf(dist, r)
-end
-
-
-# observe
-function DynamicPPL.tilde_observe(ctx::OptimizationContext, sampler, right, left, vi)
-    return DynamicPPL.observe(right, left, vi)
-end
-
-function DynamicPPL.tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
-    return 0
 end
 
 # dot assume
@@ -70,26 +64,6 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFr
     # affect anything.
     r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
     return r, loglikelihood(right, r)
-end
-
-# dot observe
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vn, _, vi)
-    return 0
-end
-
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:PriorContext}, sampler, right, left, vi)
-    return 0
-end
-
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
-    # affect anything.
-    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
-    return loglikelihood(right, r)
-end
-
-function DynamicPPL.dot_tilde_observe(ctx::OptimizationContext, sampler, dists, value, vi)
-    return sum(Distributions.logpdf.(dists, value))
 end
 
 """
