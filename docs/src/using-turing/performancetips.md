@@ -16,9 +16,9 @@ The following example:
 
 ```julia
 @model function gmodel(x)
-    m ~ Normal()
+    m ~ Normal()
     for i = 1:length(x)
-        x[i] ~ Normal(m, 0.2)
+        x[i] ~ Normal(m, 0.2)
     end
 end
 ```
@@ -28,8 +28,8 @@ can be directly expressed more efficiently using a simple transformation:
 using FillArrays
 
 @model function gmodel(x)
-    m ~ Normal()
-    x ~ MvNormal(Fill(m, length(x)), 0.2)
+    m ~ Normal()
+    x ~ MvNormal(Fill(m, length(x)), 0.04 * I)
 end
 ```
 
@@ -62,7 +62,7 @@ The following example with abstract types
     end
 
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 
@@ -77,7 +77,7 @@ can be transformed into the following representation with concrete types:
     end
 
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 
@@ -87,7 +87,7 @@ Alternatively, you could use `filldist` in this example:
 @model function tmodel(x, y)
     params ~ filldist(truncated(Normal(), 0, Inf), size(x, 2))
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 

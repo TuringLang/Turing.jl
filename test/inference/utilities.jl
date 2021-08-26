@@ -11,7 +11,7 @@
 
     @model function linear_reg_vec(x, y, σ = 0.1)
         β ~ Normal(0, 1)
-        y ~ MvNormal(β .* x, σ)
+        y ~ MvNormal(β .* x, σ^2 * I)
     end
 
     f(x) = 2 * x + 0.1 * randn()
@@ -75,12 +75,12 @@
     # https://github.com/TuringLang/Turing.jl/issues/1352
     @model function simple_linear1(x, y)
         intercept ~ Normal(0,1)
-        coef ~ MvNormal(2, 1)
+        coef ~ MvNormal(zeros(2), I)
         coef = reshape(coef, 1, size(x,1))
 
         mu = intercept .+ coef * x |> vec
         error ~ truncated(Normal(0,1), 0, Inf)
-        y ~ MvNormal(mu, error)
+        y ~ MvNormal(mu, error^2 * I)
     end;
 
     @model function simple_linear2(x, y)
@@ -90,7 +90,7 @@
 
         mu = intercept .+ coef * x |> vec
         error ~ truncated(Normal(0,1), 0, Inf)
-        y ~ MvNormal(mu, error)
+        y ~ MvNormal(mu, error^2 * I)
     end;
 
     @model function simple_linear3(x, y)
@@ -103,7 +103,7 @@
 
         mu = intercept .+ coef * x |> vec
         error ~ truncated(Normal(0,1), 0, Inf)
-        y ~ MvNormal(mu, error)
+        y ~ MvNormal(mu, error^2 * I)
     end;
 
     @model function simple_linear4(x, y)
@@ -115,7 +115,7 @@
 
         mu = intercept .+ coef * x |> vec
         error ~ truncated(Normal(0,1), 0, Inf)
-        y ~ MvNormal(mu, error)
+        y ~ MvNormal(mu, error^2 * I)
     end;
 
     # Some data

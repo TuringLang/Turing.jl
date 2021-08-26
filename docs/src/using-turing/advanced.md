@@ -108,14 +108,14 @@ using Turing
 using LinearAlgebra
 
 @model function demo(x)
-    m ~ MvNormal(length(x))
+    m ~ MvNormal(zero(x), I)
     if dot(m, x) < 0
         Turing.@addlogprob! -Inf
         # Exit the model evaluation early
         return
     end
 
-    x ~ MvNormal(m, 1.0)
+    x ~ MvNormal(m, I)
     return
 end
 ```
