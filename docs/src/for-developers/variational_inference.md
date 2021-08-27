@@ -309,4 +309,4 @@ Hence, the resulting empirical estimate of the ELBO is
 
 And maximizing this wrt. \$\$\mu\$\$ and \$\$\Sigma\$\$ is what's referred to as **Automatic Differentation Variational Inference (ADVI)**!
 
-Now if you want to try it out, [check out the tutorial on how to use ADVI in Turing.jl](../../tutorials/9-variationalinference)!
+Now if you want to try it out, [check out the tutorial on how to use ADVI in Turing.jl](../../tutorials/09-variational-inference)!
