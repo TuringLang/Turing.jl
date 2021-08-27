@@ -65,7 +65,7 @@ function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     d = DistributionsAD.TuringDiagMvNormal(μ, σ)
 
     # Construct the bijector constrained → unconstrained.
-    b = Bijectors.bijector(model; varinfo)
+    b = Bijectors.bijector(model; varinfo=varinfo)
 
     # We want to transform from unconstrained space to constrained,
     # hence we need the inverse of `b`.
