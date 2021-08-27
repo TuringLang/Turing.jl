@@ -57,9 +57,9 @@
 
     @testset "Linear regression test" begin
         @model function regtest(x, y)
-            beta ~ MvNormal(2,1)
+            beta ~ MvNormal(zeros(2), I)
             mu = x*beta
-            y ~ MvNormal(mu, 1.0)
+            y ~ MvNormal(mu, I)
         end
         
         Random.seed!(987)

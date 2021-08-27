@@ -89,7 +89,7 @@
 
         # 2. MultivariateDistribution
         dist_multi = [
-            MvNormal(zeros(multi_dim), ones(multi_dim)),
+            MvNormal(zeros(multi_dim), I),
             MvNormal(zeros(2), [2.0 1.0; 1.0 4.0]),
             Dirichlet(multi_dim, 2.0),
         ]
@@ -111,9 +111,7 @@
                     @testset "$(string(typeof(dist)))" begin
                         @info "Distribution(params)" dist
 
-                        @model m() = begin
-                            x ~ dist
-                        end
+                        @model m() = x ~ dist
 
                         chn = sample(m(), HMC(0.2, 1), n_samples)
 
