@@ -16,7 +16,7 @@ X, Y = readlrdata()
     N,D = size(x)
 
     α ~ Normal(0, σ)
-    β ~ MvNormal(zeros(D), ones(D)*σ)
+    β ~ MvNormal(zeros(D), σ^2 * I)
 
     for n = 1:N
         y[n] ~ BinomialLogit(1, dot(x[n,:], β) + α)

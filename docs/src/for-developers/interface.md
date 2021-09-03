@@ -90,7 +90,7 @@ end
 
 # Default constructors.
 MetropolisHastings(init_θ::Real) = MetropolisHastings(init_θ, Normal(0,1))
-MetropolisHastings(init_θ::Vector{<:Real}) = MetropolisHastings(init_θ, MvNormal(length(init_θ),1))
+MetropolisHastings(init_θ::Vector{<:Real}) = MetropolisHastings(init_θ, MvNormal(zero(init_θ), I))
 ```
 
 Above, we have defined a sampler that stores the initial parameterization of the prior,

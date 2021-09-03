@@ -10,7 +10,7 @@ If you are already well-versed in probabilistic programming and just want to tak
 This example can be run on however you have Julia installed (see [Getting Started]({{site.baseurl}}/docs/using-turing/get-started)), but you will need to install the packages `Turing` and `StatsPlots` if you have not done so already.
 
 
-This is an excerpt from a more formal example introducing probabilistic programming which can be found in Jupyter notebook form [here](https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/0_Introduction.ipynb) or as part of the documentation website [here]({{site.baseurl}}/tutorials).
+This is an excerpt from a more formal example introducing probabilistic programming which can be found in Jupyter notebook form [here](https://nbviewer.jupyter.org/github/TuringLang/TuringTutorials/blob/master/notebook/00-introduction/00_introduction.ipynb) or as part of the documentation website [here]({{site.baseurl}}/tutorials).
 
 
 ```julia
