@@ -59,9 +59,12 @@ using .Variational
     end
 end
 
+include("modes/ModeEstimation.jl")
+using .ModeEstimation
+
 @init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/ModeEstimation.jl")
-    export MAP, MLE, optimize
+    include("modes/OptimInterface.jl")
+    export optimize
 end
 
 ###########
@@ -131,5 +134,13 @@ export  @model,                 # modelling
         elementwise_loglikelihoods,
         generated_quantities,
         logprior,
-        logjoint
+        logjoint,
+
+        constrained_space,            # optimisation interface
+        MAP,
+        MLE,
+        get_parameter_bounds,
+        optim_objective, 
+        optim_function,
+        optim_problem
 end
