@@ -113,11 +113,11 @@ using Random
 model = tmodel(1.0)
 
 @code_warntype model.f(
-    Random.GLOBAL_RNG,
     model,
     Turing.VarInfo(model),
-    Turing.SampleFromPrior(),
-    Turing.DefaultContext(),
+    Turing.SamplingContext(
+        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    ),
     model.args...,
 )
 ```
