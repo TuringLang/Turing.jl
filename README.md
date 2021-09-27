@@ -10,7 +10,7 @@
 
 Current features include:
 
-- [General-purpose](https://turing.ml/dev/tutorials/6-infinitemixturemodel/) probabilistic programming with an [intuitive modelling interface](https://turing.ml/dev/tutorials/0-introduction/)
+- [General-purpose](https://turing.ml/dev/tutorials/06-infinite-mixture-model/) probabilistic programming with an [intuitive modelling interface](https://turing.ml/dev/tutorials/00-introduction/)
 - Robust, efficient [Hamiltonian Monte Carlo (HMC)](https://github.com/TuringLang/AdvancedHMC.jl) sampling for differentiable posterior distributions
 - [Particle MCMC](https://github.com/TuringLang/AdvancedPS.jl) sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Compositional inference via Gibbs sampling that combines particle MCMC, HMC, [Random-Walk MH (RWMH)](https://github.com/TuringLang/AdvancedMH.jl) and [Elliptical Slice Sampling](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/ess.jl)
