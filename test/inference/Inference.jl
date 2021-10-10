@@ -1,4 +1,4 @@
-@testset "io.jl" begin
+@testset "inference.jl" begin
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -130,5 +130,25 @@
         @test all(haskey(x, :lp) for x in chains)
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+    end
+
+    @testset "chain ordering" begin
+        for alg in (Prior(), Emcee(10, 2.0))
+            chain_sorted = sample(gdemo_default, alg, 1, sort_chain=true)
+            @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
+
+            chain_unsorted = sample(gdemo_default, alg, 1, sort_chain=false)
+            @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
+        end
+    end
+
+    @testset "chain iteration numbers" begin
+        for alg in (Prior(), Emcee(10, 2.0))
+            chain = sample(gdemo_default, alg, 10)
+            @test range(chain) == 1:10
+
+            chain = sample(gdemo_default, alg, 10; discard_initial=5, thinning=2)
+            @test range(chain) == range(6; step=2, length=10)
+        end
     end
 end

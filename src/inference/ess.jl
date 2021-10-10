@@ -112,7 +112,9 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
     vns = _getvns(varinfo, sampler)
-    set_flag!(varinfo, vns[1][1], "del")
+    for vn in Iterators.flatten(values(vns))
+        set_flag!(varinfo, vn, "del")
+    end
     p.model(rng, varinfo, sampler)
     return varinfo[sampler]
 end
@@ -135,26 +137,27 @@ function (ℓ::ESSLogLikelihood)(f)
     return getlogp(varinfo)
 end
 
-function DynamicPPL.tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn::VarName, inds, vi)
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, inds, vi)
     if inspace(vn, sampler)
-        return DynamicPPL.tilde(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
     else
-        return DynamicPPL.tilde(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
     end
 end
 
-function DynamicPPL.tilde(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.tilde(ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vn::VarName, inds, vi)
-    if inspace(vn, sampler)
-        return DynamicPPL.dot_tilde(rng, LikelihoodContext(), SampleFromPrior(), right, left, vn, inds, vi)
+function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, inds, vi)
+    # TODO: Or should we do `all(Base.Fix2(inspace, sampler), vns)`?
+    if inspace(first(vns), sampler)
+        return DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, inds, vi)
     else
-        return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vn, inds, vi)
+        return DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, inds, vi)
     end
 end
 
-function DynamicPPL.dot_tilde(rng, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.dot_tilde(rng, ctx, SampleFromPrior(), right, left, vi)
+function DynamicPPL.dot_tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+    return DynamicPPL.dot_tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end

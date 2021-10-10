@@ -6,9 +6,9 @@ denoting the dimensionality of the latent variables.
 """
 function Bijectors.bijector(
     model::DynamicPPL.Model,
-    ::Val{sym2ranges} = Val(false),
-) where {sym2ranges}
+    ::Val{sym2ranges} = Val(false);
     varinfo = DynamicPPL.VarInfo(model)
+) where {sym2ranges}
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
                       for sym ∈ keys(varinfo.metadata)])
 
@@ -34,14 +34,15 @@ function Bijectors.bijector(
     end
 
     bs = Bijectors.bijector.(tuple(dists...))
+    rs = tuple(ranges...)
 
     if sym2ranges
         return (
-            Bijectors.Stacked(bs, ranges),
+            Bijectors.Stacked(bs, rs),
             (; collect(zip(keys(sym_lookup), values(sym_lookup)))...),
         )
     else
-        return Bijectors.Stacked(bs, ranges)
+        return Bijectors.Stacked(bs, rs)
     end
 end
 
@@ -52,38 +53,23 @@ Creates a mean-field approximation with multivariate normal as underlying distri
 """
 meanfield(model::DynamicPPL.Model) = meanfield(Random.GLOBAL_RNG, model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
-    # setup
+    # Setup.
     varinfo = DynamicPPL.VarInfo(model)
-    num_params = sum([size(varinfo.metadata[sym].vals, 1)
-                      for sym ∈ keys(varinfo.metadata)])
-
-    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
-
-    num_ranges = sum([length(varinfo.metadata[sym].ranges)
-                      for sym ∈ keys(varinfo.metadata)])
-    ranges = Vector{UnitRange{Int}}(undef, num_ranges)
-    idx = 0
-    range_idx = 1
-    for sym ∈ keys(varinfo.metadata)
-        for r ∈ varinfo.metadata[sym].ranges
-            ranges[range_idx] = idx .+ r
-            range_idx += 1
-        end
-
-        # append!(ranges, [idx .+ r for r ∈ varinfo.metadata[sym].ranges])
-        idx += varinfo.metadata[sym].ranges[end][end]
-    end
+    num_params = length(varinfo[DynamicPPL.SampleFromPrior()])
 
     # initial params
     μ = randn(rng, num_params)
     σ = StatsFuns.softplus.(randn(rng, num_params))
 
-    # construct variational posterior
+    # Construct the base family.
     d = DistributionsAD.TuringDiagMvNormal(μ, σ)
-    bs = inv.(Bijectors.bijector.(tuple(dists...)))
-    b = Bijectors.Stacked(bs, ranges)
 
-    return Bijectors.transformed(d, b)
+    # Construct the bijector constrained → unconstrained.
+    b = Bijectors.bijector(model; varinfo=varinfo)
+
+    # We want to transform from unconstrained space to constrained,
+    # hence we need the inverse of `b`.
+    return Bijectors.transformed(d, inv(b))
 end
 
 # Overloading stuff from `AdvancedVI` to specialize for Turing

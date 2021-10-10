@@ -4,14 +4,14 @@
 
 struct HMCState{
     TV<:AbstractVarInfo,
-    TTraj<:AHMC.AbstractTrajectory,
+    TKernel<:AHMC.HMCKernel,
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
 }
     vi::TV
     i::Int
-    traj::TTraj
+    kernel::TKernel
     hamiltonian::THam
     z::PhType
     adaptor::TAdapt
@@ -190,18 +190,18 @@ function DynamicPPL.initialstep(
         ϵ = spl.alg.ϵ
     end
 
-    # Generate a trajectory.
-    traj = gen_traj(spl.alg, ϵ)
+    # Generate a kernel.
+    kernel = make_ahmc_kernel(spl.alg, ϵ)
 
     # Create initial transition and state.
     # Already perform one step since otherwise we don't get any statistics.
-    t = AHMC.step(rng, hamiltonian, traj, z)
+    t = AHMC.transition(rng, hamiltonian, kernel, z)
 
     # Adaptation
     adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, traj, _ =
-            AHMC.adapt!(hamiltonian, traj, adaptor,
+        hamiltonian, kernel, _ =
+            AHMC.adapt!(hamiltonian, kernel, adaptor,
                         1, nadapts, t.z.θ, t.stat.acceptance_rate)
     end
 
@@ -215,7 +215,7 @@ function DynamicPPL.initialstep(
     end
 
     transition = HMCTransition(vi, t)
-    state = HMCState(vi, 1, traj, hamiltonian, t.z, adaptor)
+    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
 end
@@ -234,16 +234,16 @@ function AbstractMCMC.step(
     # Compute transition.
     hamiltonian = state.hamiltonian
     z = state.z
-    t = AHMC.step(rng, hamiltonian, state.traj, z)
+    t = AHMC.transition(rng, hamiltonian, state.kernel, z)
 
     # Adaptation
     i = state.i + 1
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, traj, _ =
-            AHMC.adapt!(hamiltonian, state.traj, state.adaptor,
+        hamiltonian, kernel, _ =
+            AHMC.adapt!(hamiltonian, state.kernel, state.adaptor,
                         i, nadapts, t.z.θ, t.stat.acceptance_rate)
     else
-        traj = state.traj
+        kernel = state.kernel
     end
 
     # Update variables
@@ -255,7 +255,7 @@ function AbstractMCMC.step(
 
     # Compute next transition and state.
     transition = HMCTransition(vi, t)
-    newstate = HMCState(vi, i, traj, hamiltonian, t.z, state.adaptor)
+    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate
 end
@@ -334,7 +334,7 @@ end
 
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, ϵ::Float64=0.0)
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0)
 
 No-U-Turn Sampler (NUTS) sampler.
 
@@ -459,9 +459,13 @@ function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
 
-gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
-gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
-gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
+function make_ahmc_kernel(alg::HMC, ϵ)
+    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedNSteps(alg.n_leapfrog)))
+end
+function make_ahmc_kernel(alg::HMCDA, ϵ)
+    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ)))
+end
+make_ahmc_kernel(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
 ####
 #### Compiler interface, i.e. tilde operators.
@@ -584,8 +588,8 @@ function HMCState(
         ϵ = spl.alg.ϵ
     end
 
-    # Generate a trajectory.
-    traj = gen_traj(spl.alg, ϵ)
+    # Generate a kernel.
+    kernel = make_ahmc_kernel(spl.alg, ϵ)
 
     # Generate a phasepoint. Replaced during sample_init!
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
@@ -593,5 +597,5 @@ function HMCState(
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
+    return HMCState(vi, 0, 0, kernel.τ, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end

@@ -112,7 +112,7 @@
             params = TV(undef, 2)
             @. params ~ Normal(0, 1)
         
-            x ~ MvNormal(params, 1)
+            x ~ MvNormal(params, I)
         end
         
         function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)

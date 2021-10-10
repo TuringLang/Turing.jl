@@ -324,6 +324,9 @@ function AbstractMCMC.bundle_samples(
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
     stats = missing,
+    sort_chain = false,
+    discard_initial = 0,
+    thinning = 1,
     kwargs...
 )
     # Convert transitions to array format.
@@ -356,13 +359,17 @@ function AbstractMCMC.bundle_samples(
     parray = MCMCChains.concretize(parray)
 
     # Chain construction.
-    return MCMCChains.Chains(
+    chain = MCMCChains.Chains(
         parray,
         nms,
         (internals = extra_params,);
         evidence=le,
         info=info,
-    ) |> sort
+        start=discard_initial + 1,
+        thin=thinning,
+    )
+
+    return sort_chain ? sort(chain) : chain
 end
 
 # This is type piracy (for SampleFromPrior).

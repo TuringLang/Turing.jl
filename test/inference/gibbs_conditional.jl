@@ -72,30 +72,30 @@
         K = 2 # number of clusters
         π = fill(1/K, K) # uniform cluster weights
         m = 0.5 # prior mean of μₖ
-        σ_μ = 2.0 # prior variance of μₖ
-        σ_x = 0.1 # observation variance
+        σ²_μ = 4.0 # prior variance of μₖ
+        σ²_x = 0.01 # observation variance
         N = 20  # number of observations
 
         # We generate data
-        μ_data = rand(Normal(m, σ_μ), K)
+        μ_data = rand(Normal(m, sqrt(σ²_μ)), K)
         z_data = rand(Categorical(π), N)
-        x_data = rand(MvNormal(μ_data[z_data], σ_x))
+        x_data = rand(MvNormal(μ_data[z_data], σ²_x * I))
 
         @model function mixture(x)
-            μ ~ $(MvNormal(fill(m, K), σ_μ))
+            μ ~ $(MvNormal(fill(m, K), σ²_μ * I))
             z ~ $(filldist(Categorical(π), N))
-            x ~ MvNormal(μ[z], $(σ_x))
+            x ~ MvNormal(μ[z], $(σ²_x * I))
             return x
         end
         model = mixture(x_data)
 
         # Conditional distribution ``z | μ, x``
         # see http://www.cs.columbia.edu/~blei/fogm/2015F/notes/mixtures-and-gibbs.pdf
-        cond_z = let x=x_data, log_π=log.(π), σ_x=σ_x
+        cond_z = let x=x_data, log_π=log.(π), σ_x=sqrt(σ²_x)
             c -> begin
                 dists = map(x) do xi
                     logp = log_π .+ logpdf.(Normal.(c.μ, σ_x), xi)
-                    return Categorical(softmax!(logp))
+                    return Categorical(StatsFuns.softmax!(logp))
                 end
                 return arraydist(dists)
             end
@@ -103,7 +103,7 @@
 
         # Conditional distribution ``μ | z, x``
         # see http://www.cs.columbia.edu/~blei/fogm/2015F/notes/mixtures-and-gibbs.pdf
-        cond_μ = let K=K, x_data=x_data, inv_σ_μ2=inv(σ_μ^2), inv_σ_x2=inv(σ_x^2)
+        cond_μ = let K=K, x_data=x_data, inv_σ²_μ=inv(σ²_μ), inv_σ²_x=inv(σ²_x)
             c -> begin
                 # Convert cluster assignments to one-hot encodings
                 z_onehot = c.z .== (1:K)'
@@ -112,10 +112,10 @@
                 n = vec(sum(z_onehot; dims=1))
 
                 # Compute mean and variance of the conditional distribution
-                μ_var = @. inv(inv_σ_x2 * n + inv_σ_μ2)
-                μ_mean = (z_onehot' * x_data) .* inv_σ_x2 .* μ_var
+                μ_var = @. inv(inv_σ²_x * n + inv_σ²_μ)
+                μ_mean = (z_onehot' * x_data) .* inv_σ²_x .* μ_var
 
-                return MvNormal(μ_mean, μ_var)
+                return MvNormal(μ_mean, Diagonal(μ_var))
             end
         end
 

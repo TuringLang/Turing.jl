@@ -5,6 +5,7 @@ using Distributions
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
+using GalacticOptim
 using MCMCChains
 using MCMCTempering
 using Memoization
@@ -47,23 +48,28 @@ include("test_utils/AllUtils.jl")
         include("core/ad.jl")
     end
 
+    @testset "samplers (without AD)" begin
+        include("inference/AdvancedSMC.jl")
+        include("inference/emcee.jl")
+        include("inference/ess.jl")
+        include("inference/is.jl")
+    end
+
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :tracker, :reversediff)
         Turing.setadbackend(adbackend)
+        @info "Testing $(adbackend)"
+        start = time()
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
                 include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
-                include("inference/is.jl")
-                include("inference/mh.jl")
-                include("inference/ess.jl")
-                include("inference/emcee.jl")
-                include("inference/tempering.jl")
-                include("inference/AdvancedSMC.jl")
                 include("inference/Inference.jl")
                 include("contrib/inference/dynamichmc.jl")
                 include("contrib/inference/sghmc.jl")
+                include("inference/mh.jl")
+                include("inference/tempering.jl")
             end
         end
 
@@ -73,7 +79,13 @@ include("test_utils/AllUtils.jl")
 
         @testset "modes" begin
             include("modes/ModeEstimation.jl")
+            include("modes/OptimInterface.jl")
         end
+
+        # Useful for
+        # a) discovering performance regressions,
+        # b) figuring out why CI is timing out.
+        @info "Tests for $(adbackend) took $(time() - start) seconds"
     end
     @testset "variational optimisers" begin
         include("variational/optimisers.jl")
