@@ -14,7 +14,7 @@
             
             Random.seed!(0)
             c1 = sample(gdemo_default, Tempered(s, 2), N)
-            # check_gdemo(c1)
+            check_gdemo(c1)
             @test c1 isa MCMCChains.Chains
 
             Random.seed!(0)
