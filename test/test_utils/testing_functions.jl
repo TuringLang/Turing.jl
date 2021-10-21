@@ -1,5 +1,3 @@
-using Turing
-
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
 function randr(vi::Turing.VarInfo,

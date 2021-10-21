@@ -1,6 +1,3 @@
-using Random, Test, LinearAlgebra, ForwardDiff
-using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
-
 function test_opt(ADPack, opt)
     θ = randn(10, 10)
     θ_fit = randn(10, 10)

@@ -7,7 +7,7 @@ title: Style Guide
 This style guide is adapted from [Invenia](https://invenia.ca/labs/)'s style guide. We would like to thank them for allowing us to access and use it. Please don't let not having read it stop you from contributing to Turing! No one will be annoyed if you open a PR whose style doesn't follow these conventions; we will just help you correct it before it gets merged.
 
 
-These conventions were originally written at Invenia, taking inspiration from a variety of sources including Python's [PEP8](http://legacy.python.org/dev/peps/pep-0008), Julia's [Notes for Contributors](https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md), and Julia's [Style Guide](https://docs.julialang.org/en/latest/manual/style-guide/).
+These conventions were originally written at Invenia, taking inspiration from a variety of sources including Python's [PEP8](http://legacy.python.org/dev/peps/pep-0008), Julia's [Notes for Contributors](https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md), and Julia's [Style Guide](https://docs.julialang.org/en/v1/manual/style-guide/).
 
 
 What follows is a mixture of a verbatim copy of Invenia's original guide and some of our own modifications.
@@ -30,12 +30,12 @@ When adhering to this style it's important to realize that these are guidelines 
 ## Synopsis
 
 
-Attempt to follow both the [Julia Contribution Guidelines](https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md#general-formatting-guidelines-for-julia-code-contributions), the [Julia Style Guide](https://docs.julialang.org/en/latest/manual/style-guide/), and this guide. When convention guidelines conflict this guide takes precedence (known conflicts will be noted in this guide).
+Attempt to follow both the [Julia Contribution Guidelines](https://github.com/JuliaLang/julia/blob/master/CONTRIBUTING.md#general-formatting-guidelines-for-julia-code-contributions), the [Julia Style Guide](https://docs.julialang.org/en/v1/manual/style-guide/), and this guide. When convention guidelines conflict this guide takes precedence (known conflicts will be noted in this guide).
 
 
   * Use 4 spaces per indentation level, no tabs.
   * Try to adhere to a 92 character line length limit.
-  * Use upper camel case convention for [modules](https://docs.julialang.org/en/latest/manual/modules/) and [types](https://docs.julialang.org/en/latest/manual/types/).
+  * Use upper camel case convention for [modules](https://docs.julialang.org/en/v1/manual/modules/) and [types](https://docs.julialang.org/en/v1/manual/types/).
   * Use lower case with underscores for method names (note: Julia code likes to use lower case without underscores).
   * Comments are good, try to explain the intentions of the code.
   * Use whitespace to make the code more readable.
@@ -278,7 +278,7 @@ f(a::AbstractArray{T, N}) where {T <: Real, N} = ...
 g(a::AbstractArray{<: Real, N}) where {N} = ...
 ```
 
-  * Always surround these binary operators with a single space on either side: assignment ($=$), [updating operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Updating-operators-1) ($+=$, $-=$, etc.), [numeric comparisons operators](https://docs.julialang.org/en/latest/manual/mathematical-operations/#Numeric-Comparisons-1) ($==$, $<$, $>$, $!=$, etc.). Note that this guideline does not apply when performing assignment in method definitions.
+  * Always surround these binary operators with a single space on either side: assignment ($=$), [updating operators](https://docs.julialang.org/en/v1/manual/mathematical-operations/#Updating-operators-1) ($+=$, $-=$, etc.), [numeric comparisons operators](https://docs.julialang.org/en/v1/manual/mathematical-operations/#Numeric-Comparisons-1) ($==$, $<$, $>$, $!=$, etc.). Note that this guideline does not apply when performing assignment in method definitions.
 
 
 ```julia
@@ -467,7 +467,7 @@ TODO
 ### Documentation
 
 
-It is recommended that most modules, types and functions should have [docstrings](http://docs.julialang.org/en/latest/manual/documentation/). That being said, only exported functions are required to be documented. Avoid documenting methods like `==` as the built in docstring for the function already covers the details well. Try to document a function and not individual methods where possible as typically all methods will have similar docstrings. If you are adding a method to a function which was defined in `Base` or another package only add a docstring if the behaviour of your function deviates from the existing docstring.
+It is recommended that most modules, types and functions should have [docstrings](http://docs.julialang.org/en/v1/manual/documentation/). That being said, only exported functions are required to be documented. Avoid documenting methods like `==` as the built in docstring for the function already covers the details well. Try to document a function and not individual methods where possible as typically all methods will have similar docstrings. If you are adding a method to a function which was defined in `Base` or another package only add a docstring if the behaviour of your function deviates from the existing docstring.
 
 
 Docstrings are written in [Markdown](https://en.wikipedia.org/wiki/Markdown) and should be concise. Docstring lines should be wrapped at 92 characters.
@@ -605,7 +605,7 @@ If the documentation for bullet-point exceeds 92 characters the line should be w
 ```
 
 
-For additional details on documenting in Julia see the [official documentation](http://docs.julialang.org/en/latest/manual/documentation/).
+For additional details on documenting in Julia see the [official documentation](http://docs.julialang.org/en/v1/manual/documentation/).
 
 
 ## Test Formatting
@@ -614,7 +614,7 @@ For additional details on documenting in Julia see the [official documentation](
 ### Testsets
 
 
-Julia provides [test sets](https://docs.julialang.org/en/latest/stdlib/Test/#Working-with-Test-Sets-1) which allows developers to group tests into logical groupings. Test sets can be nested and ideally packages should only have a single "root" test set. It is recommended that the "runtests.jl" file contains the root test set which contains the remainder of the tests:
+Julia provides [test sets](https://docs.julialang.org/en/v1/stdlib/Test/#Working-with-Test-Sets-1) which allows developers to group tests into logical groupings. Test sets can be nested and ideally packages should only have a single "root" test set. It is recommended that the "runtests.jl" file contains the root test set which contains the remainder of the tests:
 
 
 ```julia

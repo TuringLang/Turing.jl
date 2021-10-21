@@ -27,14 +27,14 @@ Random.seed!(0)
 
 # Define a strange model.
 @model gdemo(x) = begin
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
     bumps = sin(m) + cos(m)
     m = m + 5*bumps
     for i in eachindex(x)
-      x[i] ~ Normal(m, sqrt(s))
+      x[i] ~ Normal(m, sqrt(s²))
     end
-    return s, m
+    return s², m
 end
 
 # Define our data points.
@@ -114,7 +114,7 @@ plot_sampler(c)
 
 ### HMC
 
-Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the `NUTS` sampler is often easier to run if you don't want to spend too much time fiddling with step size and and the number of steps to take. Note however that `HMC` does not explore the positive values μ very well, likely due to the leapfrop and step size parameter settings.
+Hamiltonian Monte Carlo (HMC) sampling is a typical sampler to use, as it tends to be fairly good at converging in a efficient manner. It can often be tricky to set the correct parameters for this sampler however, and the `NUTS` sampler is often easier to run if you don't want to spend too much time fiddling with step size and and the number of steps to take. Note however that `HMC` does not explore the positive values μ very well, likely due to the leapfrog and step size parameter settings.
 
 ```julia
 c = sample(model, HMC(0.01, 10), 1000)

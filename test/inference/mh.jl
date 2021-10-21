@@ -1,10 +1,3 @@
-using Turing, Random, Test
-import Turing.Inference
-import AdvancedMH
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "mh.jl" begin
     @turing_testset "mh constructor" begin
         Random.seed!(0)
@@ -54,7 +47,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
     # Test MH shape passing.
     @turing_testset "shape" begin
-        @model M(mu, sigma, observable) = begin
+        @model function M(mu, sigma, observable)
             z ~ MvNormal(mu, sigma)
 
             m = Array{Float64}(undef, 1, 2)
@@ -71,15 +64,15 @@ include(dir*"/test/test_utils/AllUtils.jl")
             2.0 ~ Normal(m[1], s)
         end
 
-        model = M(zeros(2), ones(2), 1)
+        model = M(zeros(2), I, 1)
         sampler = Inference.Sampler(MH(), model)
 
         dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
 
-        @test dt[:z] isa AdvancedMH.StaticProposal{<:MvNormal}
-        @test dt[:m] isa AdvancedMH.StaticProposal{Vector{ContinuousUnivariateDistribution}}
+        @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
+        @test dt[:m] isa AdvancedMH.StaticProposal{false,Vector{ContinuousUnivariateDistribution}}
         @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
-        @test dt[:s] isa AdvancedMH.StaticProposal{<:InverseGamma}
+        @test dt[:s] isa AdvancedMH.StaticProposal{false,<:InverseGamma}
 
         @test vt[:z] isa Vector{Float64} && length(vt[:z]) == 2
         @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2
@@ -113,6 +106,53 @@ include(dir*"/test/test_utils/AllUtils.jl")
         check_gdemo(chain2)
     end
 
+    @turing_testset "gibbs MH proposal matrix" begin
+        # https://github.com/TuringLang/Turing.jl/issues/1556
+
+        # generate data
+        x = rand(Normal(5, 10), 20)
+        y = rand(LogNormal(-3, 2), 20)
+        
+        # Turing model
+        @model function twomeans(x, y)
+            # Set Priors
+            μ ~ MvNormal(zeros(2), 9 * I)
+            σ ~ filldist(Exponential(1), 2)
+        
+            # Distributions of supplied data
+            x .~ Normal(μ[1], σ[1])
+            y .~ LogNormal(μ[2], σ[2])
+        
+        end
+        mod = twomeans(x, y)
+        
+        # generate covariance matrix for RWMH
+        # with small-valued VC matrix to check if we only see very small steps
+        vc_μ = convert(Array, 1e-4*I(2))
+        vc_σ = convert(Array, 1e-4*I(2))
+
+        alg = Gibbs(
+            MH((:μ, vc_μ)),
+            MH((:σ, vc_σ)),
+        )
+
+        chn = sample(
+            mod,
+            alg,
+            3_000 # draws
+        )
+        
+            
+        chn2 = sample(mod, MH(), 3_000)
+
+        # Test that the small variance version is actually smaller.
+        v1 = var(diff(Array(chn["μ[1]"]), dims=1))
+        v2 = var(diff(Array(chn2["μ[1]"]), dims=1))
+
+        # FIXME: Do this properly. It sometimes fails.
+        # @test v1 < v2
+    end
+
     @turing_testset "vector of multivariate distributions" begin
         @model function test(k)
             T = Vector{Vector{Float64}}(undef, k)
@@ -132,5 +172,45 @@ include(dir*"/test/test_utils/AllUtils.jl")
         for j in 1:10, i in 1:5
             @test mean(chain, "T[$j][$i]") ≈ 0.2 atol=0.01
         end
+    end
+
+    @turing_testset "MH link/invlink" begin
+        vi_base = DynamicPPL.VarInfo(gdemo_default)
+
+        # Don't link when no proposals are given since we're using priors
+        # as proposals.
+        vi = deepcopy(vi_base)
+        alg = MH()
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test !DynamicPPL.islinked(vi, spl)
+
+        # Link if proposal is `AdvancedHM.RandomWalkProposal`
+        vi = deepcopy(vi_base)
+        d = length(vi_base[DynamicPPL.SampleFromPrior()])
+        alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test DynamicPPL.islinked(vi, spl)
+
+        # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
+        vi = deepcopy(vi_base)
+        alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test DynamicPPL.islinked(vi, spl)
+
+        # Don't link if at least one proposal is NOT `RandomWalkProposal`.
+        # TODO: make it so that only those that are using `RandomWalkProposal`
+        # are linked! I.e. resolve https://github.com/TuringLang/Turing.jl/issues/1583.
+        # https://github.com/TuringLang/Turing.jl/pull/1582#issuecomment-817148192
+        vi = deepcopy(vi_base)
+        alg = MH(
+            :m => AdvancedMH.StaticProposal(Normal()),
+            :s => AdvancedMH.RandomWalkProposal(Normal())
+        )
+        spl = DynamicPPL.Sampler(alg)
+        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        @test !DynamicPPL.islinked(vi, spl)
     end
 end

@@ -1,12 +1,3 @@
-using Random, Turing, Test
-import AbstractMCMC
-import MCMCChains
-import Turing.Inference
-using Turing.RandomMeasures
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "gibbs.jl" begin
     @turing_testset "gibbs constructor" begin
         N = 500
@@ -41,47 +32,28 @@ include(dir*"/test/test_utils/AllUtils.jl")
     end
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)
-        alg = Gibbs(
-            CSMC(10, :s),
-            HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 3000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
 
         Random.seed!(100)
 
-        alg = Gibbs(
-            MH(:s),
-            HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 5000)
+        alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
-        alg = Gibbs(
-            CSMC(15, :s),
-            ESS(:m))
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        alg = Gibbs(CSMC(15, :s), ESS(:m))
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
-        alg = CSMC(10)
-        chain = sample(gdemo(1.5, 2.0), alg, 5000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.25)
-
-        setadsafe(true)
+        alg = CSMC(15)
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         Random.seed!(200)
-        gibbs = Gibbs(
-            PG(10, :z1, :z2, :z3, :z4),
-            HMC(0.15, 3, :mu1, :mu2))
-        chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol=0.2)
-
-        setadsafe(false)
-
-        Random.seed!(200)
-        gibbs = Gibbs(
-            PG(10, :z1, :z2, :z3, :z4),
-            ESS(:mu1), ESS(:mu2))
-        chain = sample(MoGtest_default, gibbs, 1500)
-        check_MoGtest_default(chain, atol = 0.15)
+        gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
+        chain = sample(MoGtest_default, gibbs, 5_000)
+        check_MoGtest_default(chain, atol=0.15)
     end
 
     @turing_testset "transitions" begin
@@ -107,7 +79,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             return
         end
 
-        function callback(rng, model, sampler, sample, i; kwargs...)
+        function callback(rng, model, sampler, sample, state, i; kwargs...)
             sample isa Inference.GibbsTransition || error("incorrect sample")
             return
         end
@@ -136,7 +108,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
             end
         end
         model = imm(randn(100), 1.0);
-        sample(model, Gibbs(MH(10, :z), HMC(0.01, 4, :m)), 100);
+        sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end

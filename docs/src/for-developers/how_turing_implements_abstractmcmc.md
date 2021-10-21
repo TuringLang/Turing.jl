@@ -12,10 +12,10 @@ Consider the following Turing, code block:
 
 ```julia
 @model function gdemo(x, y)
-    s ~ InverseGamma(2, 3)
-    m ~ Normal(0, sqrt(s))
-    x ~ Normal(m, sqrt(s))
-    y ~ Normal(m, sqrt(s))
+    s² ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
 end
 
 mod = gdemo(1.5, 2)
@@ -25,7 +25,7 @@ n_samples = 1000
 chn = sample(mod, alg, n_samples)
 ```
 
-The function `sample` is part of the AbstractMCMC interface. As explained in the [interface guide](https://turing.ml/dev/docs/for-developers/interface), building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`](). 
+The function `sample` is part of the AbstractMCMC interface. As explained in the [interface guide](https://turing.ml/dev/docs/for-developers/interface), building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`]().
 
 Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing, using Importance Sampling as an example. I don't go into all the details: for instance, I don't address selectors or parallelism.
 
@@ -84,7 +84,7 @@ In the case of Importance Sampling, there is no need to specify additional param
 alg = IS()
 ```
 
-defines an Importance Sampling algorithm, an instance of `IS` which is a subtype of `InferenceAlgorithm`. 
+defines an Importance Sampling algorithm, an instance of `IS` which is a subtype of `InferenceAlgorithm`.
 
 When creating your own Turing sampling method, you must therefore build a subtype of `InferenceAlgorithm` corresponding to your method.
 
@@ -97,9 +97,9 @@ Turing implements `AbstractMCMC`'s `AbstractSampler` with the `Sampler` struct d
 * `spl.alg`: the sampling method used, an instance of a subtype of `InferenceAlgorithm`
 * `spl.state`: information about the sampling process, see [below](#States)
 
-When you call `sample(mod, alg, n_samples)`, Turing first uses `model` and `alg` to build an instance `spl` of `Sampler` , then calls the native `AbstractMCMC` function `sample(mod, spl, n_samples)`. 
+When you call `sample(mod, alg, n_samples)`, Turing first uses `model` and `alg` to build an instance `spl` of `Sampler` , then calls the native `AbstractMCMC` function `sample(mod, spl, n_samples)`.
 
-When you define your own Turing sampling method, you must therefore build: 
+When you define your own Turing sampling method, you must therefore build:
 
 * a **sampler constructor** that uses a model and an algorithm to initialize an instance of `Sampler`. For Importance Sampling:
 
@@ -125,7 +125,7 @@ mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
 end
 ```
 
-When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average \$\$\frac 1 N \sum\limits\_{j=1}^N w\_i = \frac 1 N \sum\limits\_{j=1}^N p(x,y \mid s\_i, m\_i)\$\$ of the sample weights is a particularly important quantity: 
+When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average \$\$\frac 1 N \sum\limits\_{j=1}^N w\_i = \frac 1 N \sum\limits\_{j=1}^N p(x,y \mid s\_i, m\_i)\$\$ of the sample weights is a particularly important quantity:
 
 * it is used to **normalize** the **empirical approximation** of the posterior distribution
 * its logarithm is the importance sampling **estimate** of the **log evidence** \$\$\log p(x, y)\$\$
@@ -172,11 +172,11 @@ It also [contains](https://github.com/TuringLang/Turing.jl/blob/master/src/infer
 
 A crude summary, which ignores things like parallelism, is the following:
 
- `sample` calls `mcmcsample`, which calls 
+ `sample` calls `mcmcsample`, which calls
 
 * `sample_init!` to set things up
 * `step!` repeatedly to produce multiple new transitions
-* `sample_end!` to perform operations once all samples have been obtained 
+* `sample_end!` to perform operations once all samples have been obtained
 * `bundle_samples` to convert a vector of transitions into a more palatable type, for instance a `Chain`.
 
 You can of course implement all of these functions, but `AbstractMCMC` as well as Turing also provide default implementations for simple cases. For instance, importance sampling uses the default implementations of `sample_init!` and `bundle_samples`, which is why you don't see code for them inside `is.jl`.
@@ -189,7 +189,7 @@ For an example of the former, consider **Importance Sampling** as defined in `is
 
 An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior \$\$p(\theta \mid x\_{\text{obs}})\$\$, in order to compute the acceptance ratio, you need to **evaluate the model joint density** \$\$p(\theta\_{\text{prop}}, x\_{\text{obs}})\$\$ with \$\$\theta\_{\text{prop}}\$\$ a sample from the proposal and \$\$x\_{\text{obs}}\$\$ the observed data.
 
-This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement. 
+This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement.
 
 Consider an instance `m` of `Model` and a sampler `spl`, with associated `VarInfo` `vi = spl.state.vi`. At some point during the sampling process, an AbstractMCMC function such as `step!` calls  `m(vi, ...)`, which calls the model evaluation function `m.f(vi, ...)`.
 
@@ -235,5 +235,5 @@ We focus on the AbstractMCMC functions that are overriden in `is.jl` and execute
   * `return Transition(spl)`: build a transition from the sampler, and return that transition
     * the transition's `vi` field is simply `spl.state.vi`
     * the `lp` field contains the likelihood `spl.state.vi.logp[]`
-* When the, `n_samples` iterations are completed, `sample_end!` fills the `final_logevidence` field of `spl.state` 
+* When the, `n_samples` iterations are completed, `sample_end!` fills the `final_logevidence` field of `spl.state`
   * it simply takes the logarithm of the average of the sample weights, using the log weights for numerical stability

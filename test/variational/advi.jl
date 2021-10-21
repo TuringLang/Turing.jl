@@ -1,11 +1,3 @@
-using DistributionsAD
-
-using Turing, Random, Test, LinearAlgebra
-using Turing: Variational
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
-
-include("../test_utils/AllUtils.jl")
-
 @testset "advi.jl" begin
     @turing_testset "advi constructor" begin
         Random.seed!(0)
@@ -33,7 +25,7 @@ include("../test_utils/AllUtils.jl")
     @turing_testset "advi different interfaces" begin
         Random.seed!(1234)
 
-        target = MvNormal(ones(2))
+        target = MvNormal(zeros(2), I)
         logπ(z) = logpdf(target, z)
         advi = ADVI(10, 1000)
 

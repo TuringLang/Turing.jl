@@ -1,12 +1,3 @@
-using Turing, Random, Test
-using Turing.Inference: getspace
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-
-using Random
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "SMC" begin
     @turing_testset "constructor" begin
         s = SMC()
@@ -174,6 +165,13 @@ end
 
         @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
+    end
+
+    # https://github.com/TuringLang/Turing.jl/issues/1598
+    @turing_testset "reference particle" begin
+        c = sample(gdemo_default, PG(1), 1_000)
+        @test length(unique(c[:m])) == 1
+        @test length(unique(c[:s])) == 1
     end
 end
 

@@ -108,14 +108,14 @@ using Turing
 using LinearAlgebra
 
 @model function demo(x)
-    m ~ MvNormal(length(x))
+    m ~ MvNormal(zero(x), I)
     if dot(m, x) < 0
         Turing.@addlogprob! -Inf
         # Exit the model evaluation early
         return
     end
-    
-    x ~ MvNormal(m, 1.0)
+
+    x ~ MvNormal(m, I)
     return
 end
 ```
@@ -142,11 +142,11 @@ using Turing
 
 @model function gdemo(x)
   # Set priors.
-  s ~ InverseGamma(2, 3)
-  m ~ Normal(0, sqrt(s))
+  s² ~ InverseGamma(2, 3)
+  m ~ Normal(0, sqrt(s²))
 
   # Observe each value of x.
-  @. x ~ Normal(m, sqrt(s))
+  @. x ~ Normal(m, sqrt(s²))
 end
 
 model = gdemo([1.5, 2.0])
@@ -160,7 +160,7 @@ using Turing
 # Create the model function.
 function modelf(rng, model, varinfo, sampler, context, x)
     # Assume s has an InverseGamma distribution.
-    s = Turing.DynamicPPL.tilde_assume(
+    s² = Turing.DynamicPPL.tilde_assume(
         rng,
         context,
         sampler,
@@ -169,20 +169,20 @@ function modelf(rng, model, varinfo, sampler, context, x)
         (),
         varinfo,
     )
-    
+
     # Assume m has a Normal distribution.
     m = Turing.DynamicPPL.tilde_assume(
         rng,
         context,
         sampler,
-        Normal(0, sqrt(s)),
+        Normal(0, sqrt(s²)),
         Turing.@varname(m),
         (),
         varinfo,
     )
 
     # Observe each value of x[i] according to a Normal distribution.
-    Turing.DynamicPPL.dot_tilde_observe(context, sampler, Normal(m, sqrt(s)), x, varinfo)
+    Turing.DynamicPPL.dot_tilde_observe(context, sampler, Normal(m, sqrt(s²)), x, varinfo)
 end
 
 # Instantiate a Model object with our data variables.
@@ -193,4 +193,3 @@ model = Turing.Model(modelf, (x = [1.5, 2.0],))
 
 
 Turing [copies](https://github.com/JuliaLang/julia/issues/4085) Julia tasks to deliver efficient inference algorithms, but it also provides alternative slower implementation as a fallback. Task copying is enabled by default. Task copying requires us to use the `CTask` facility which is provided by [Libtask](https://github.com/TuringLang/Libtask.jl) to create tasks.
-

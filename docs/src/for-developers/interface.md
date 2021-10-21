@@ -90,7 +90,7 @@ end
 
 # Default constructors.
 MetropolisHastings(init_θ::Real) = MetropolisHastings(init_θ, Normal(0,1))
-MetropolisHastings(init_θ::Vector{<:Real}) = MetropolisHastings(init_θ, MvNormal(length(init_θ),1))
+MetropolisHastings(init_θ::Vector{<:Real}) = MetropolisHastings(init_θ, MvNormal(zero(init_θ), I))
 ```
 
 Above, we have defined a sampler that stores the initial parameterization of the prior,
@@ -161,7 +161,7 @@ As a refresher, Metropolis-Hastings implements a very basic algorithm:
 Of course, it's much easier to do this in the log space, so the acceptance probability is
 more commonly written as 
 
-$$\alpha = \min\Big[\log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1}), 0\Big]$$
+\$\$\log \alpha = \min\Big[0, \log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1}) \Big]\$\$
 
 In interface terms, we should do the following:
 

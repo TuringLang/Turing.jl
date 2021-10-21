@@ -1,8 +1,3 @@
-using Turing, Random, Test
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "ESS" begin
     @model demo(x) = begin
         m ~ Normal()
@@ -59,5 +54,9 @@ include(dir*"/test/test_utils/AllUtils.jl")
             ESS(:mu1), ESS(:mu2))
         chain = sample(MoGtest_default, alg, 6000)
         check_MoGtest_default(chain, atol = 0.1)
+
+        # Different "equivalent" models.
+        Random.seed!(125)
+        check_gdemo_models(ESS(), 1_000)
     end
 end

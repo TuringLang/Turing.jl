@@ -56,8 +56,17 @@ struct DynamicNUTSState{V<:AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function gibbs_update_state(state::DynamicNUTSState, varinfo::AbstractVarInfo)
-    return DynamicNUTSState(varinfo, state.cache, state.metric, state.stepsize)
+# Implement interface of `Gibbs` sampler
+function gibbs_state(
+    model::Model,
+    spl::Sampler{<:DynamicNUTS},
+    state::DynamicNUTSState,
+    varinfo::AbstractVarInfo,
+)
+    # Update the previous evaluation.
+    ℓ = DynamicHMCLogDensity(model, spl, varinfo)
+    Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
+    return DynamicNUTSState(varinfo, Q, state.metric, state.stepsize)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = SampleFromUniform()
@@ -90,11 +99,6 @@ function DynamicPPL.initialstep(
     vi[spl] = Q.q
     DynamicPPL.setlogp!(vi, Q.ℓq)
 
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        DynamicPPL.invlink!(vi, spl)
-    end
-
     # Create first sample and state.
     sample = Transition(vi)
     state = DynamicNUTSState(vi, Q, steps.H.κ, steps.ϵ)
@@ -119,28 +123,15 @@ function AbstractMCMC.step(
         ℓ,
         state.stepsize,
     )
-    Q = if spl.selector.tag !== :default
-        # When a Gibbs component, transform values to the unconstrained space
-        # and update the previous evaluation.
-        DynamicPPL.link!(vi, spl)
-        DynamicHMC.evaluate_ℓ(ℓ, vi[spl])
-    else
-        state.cache
-    end
-    newQ, _ = DynamicHMC.mcmc_next_step(steps, Q)
+    Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.
-    vi[spl] = newQ.q
-    DynamicPPL.setlogp!(vi, newQ.ℓq)
-
-    # If a Gibbs component, transform the values back to the constrained space.
-    if spl.selector.tag !== :default
-        DynamicPPL.invlink!(vi, spl)
-    end
+    vi[spl] = Q.q
+    DynamicPPL.setlogp!(vi, Q.ℓq)
 
     # Create next sample and state.
     sample = Transition(vi)
-    newstate = DynamicNUTSState(vi, newQ, state.metric, state.stepsize)
+    newstate = DynamicNUTSState(vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
 end

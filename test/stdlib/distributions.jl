@@ -1,11 +1,3 @@
-using Turing, Random, Test
-using Turing: BinomialLogit, NUTS
-using Distributions: Binomial, logpdf
-using StatsFuns: logistic
-
-dir = splitdir(splitdir(pathof(Turing))[1])[1]
-include(dir*"/test/test_utils/AllUtils.jl")
-
 @testset "distributions.jl" begin
     @turing_testset "distributions functions" begin
         ns = 10
@@ -97,7 +89,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
 
         # 2. MultivariateDistribution
         dist_multi = [
-            MvNormal(zeros(multi_dim), ones(multi_dim)),
+            MvNormal(zeros(multi_dim), I),
             MvNormal(zeros(2), [2.0 1.0; 1.0 4.0]),
             Dirichlet(multi_dim, 2.0),
         ]
@@ -119,9 +111,7 @@ include(dir*"/test/test_utils/AllUtils.jl")
                     @testset "$(string(typeof(dist)))" begin
                         @info "Distribution(params)" dist
 
-                        @model m() = begin
-                            x ~ dist
-                        end
+                        @model m() = x ~ dist
 
                         chn = sample(m(), HMC(0.2, 1), n_samples)
 

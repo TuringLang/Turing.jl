@@ -7,7 +7,7 @@ toc: true
 
 In this post we'll have a look at what's known as **variational inference (VI)**, a family of _approximate_ Bayesian inference methods. In particular, we will focus on one of the more standard VI methods called **Automatic Differentiation Variational Inference (ADVI)**. 
 
-Here we'll have a look at the theory behind VI, but if you're interested in how to use ADVI in Turing.jl, [checkout this tutorial](../../tutorials/9-variationalinference).
+Here we'll have a look at the theory behind VI, but if you're interested in how to use ADVI in Turing.jl, [check out this tutorial](../../tutorials/09-variational-inference).
 
 # Motivation
 
@@ -309,4 +309,4 @@ Hence, the resulting empirical estimate of the ELBO is
 
 And maximizing this wrt. \$\$\mu\$\$ and \$\$\Sigma\$\$ is what's referred to as **Automatic Differentation Variational Inference (ADVI)**!
 
-Now if you want to try it out, [check out the tutorial on how to use ADVI in Turing.jl](../../tutorials/9-variationalinference)!
+Now if you want to try it out, [check out the tutorial on how to use ADVI in Turing.jl](../../tutorials/09-variational-inference)!

@@ -1,5 +1,3 @@
-using Random
-
 @testset "predict" begin
     Random.seed!(100)
 
@@ -13,7 +11,7 @@ using Random
 
     @model function linear_reg_vec(x, y, σ = 0.1)
         β ~ Normal(0, 1)
-        y ~ MvNormal(β .* x, σ)
+        y ~ MvNormal(β .* x, σ^2 * I)
     end
 
     f(x) = 2 * x + 0.1 * randn()
@@ -73,4 +71,70 @@ using Random
         ))
         @test sum(abs2, ys_test - ys_pred_vec) ≤ 0.1
     end
+
+    # https://github.com/TuringLang/Turing.jl/issues/1352
+    @model function simple_linear1(x, y)
+        intercept ~ Normal(0,1)
+        coef ~ MvNormal(zeros(2), I)
+        coef = reshape(coef, 1, size(x,1))
+
+        mu = intercept .+ coef * x |> vec
+        error ~ truncated(Normal(0,1), 0, Inf)
+        y ~ MvNormal(mu, error^2 * I)
+    end;
+
+    @model function simple_linear2(x, y)
+        intercept ~ Normal(0,1)
+        coef ~ filldist(Normal(0,1), 2)
+        coef = reshape(coef, 1, size(x,1))
+
+        mu = intercept .+ coef * x |> vec
+        error ~ truncated(Normal(0,1), 0, Inf)
+        y ~ MvNormal(mu, error^2 * I)
+    end;
+
+    @model function simple_linear3(x, y)
+        intercept ~ Normal(0,1)
+        coef = Vector(undef, 2)
+        for i in axes(coef, 1)
+            coef[i] ~ Normal(0,1)
+        end
+        coef = reshape(coef, 1, size(x,1))
+
+        mu = intercept .+ coef * x |> vec
+        error ~ truncated(Normal(0,1), 0, Inf)
+        y ~ MvNormal(mu, error^2 * I)
+    end;
+
+    @model function simple_linear4(x, y)
+        intercept ~ Normal(0,1)
+        coef1 ~ Normal(0,1)
+        coef2 ~ Normal(0,1)
+        coef = [coef1, coef2]
+        coef = reshape(coef, 1, size(x,1))
+
+        mu = intercept .+ coef * x |> vec
+        error ~ truncated(Normal(0,1), 0, Inf)
+        y ~ MvNormal(mu, error^2 * I)
+    end;
+
+    # Some data
+    x = randn(2, 100);
+    y = [1 + 2 * a + 3 * b for (a,b) in eachcol(x)];
+
+    for model in [simple_linear1, simple_linear2, simple_linear3, simple_linear4]
+        m = model(x, y);
+        chain = sample(m, NUTS(), 100);
+        chain_predict = predict(model(x, missing), chain);
+        mean_prediction = [chain_predict["y[$i]"].data |> mean for i = 1:length(y)]
+        @test mean(abs2, mean_prediction - y) ≤ 1e-3
+    end
+end
+
+@testset "Timer" begin
+    chain = sample(gdemo_default, MH(), 1000)
+
+    @test chain.info.start_time isa Float64
+    @test chain.info.stop_time isa Float64
+    @test chain.info.start_time < chain.info.stop_time
 end

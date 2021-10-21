@@ -1,36 +1,73 @@
-##########################################
-# Master file for running all test cases #
-##########################################
-using Zygote, ReverseDiff, Memoization, Turing
+using AbstractMCMC
+using AdvancedMH
+using Clustering
+using Distributions
+using DistributionsAD
+using FiniteDifferences
+using ForwardDiff
+using GalacticOptim
+using MCMCChains
+using Memoization
+using NamedArrays
+using Optim
+using PDMats
+using ReverseDiff
+using SpecialFunctions
+using StatsBase
+using StatsFuns
+using Tracker
+using Turing
+using Turing.Inference
+using Turing.RandomMeasures
+using Zygote
+
+using LinearAlgebra
 using Pkg
 using Random
 using Test
+
+using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
+using Distributions: Binomial, logpdf
+using DynamicPPL: getval, getlogp
+using ForwardDiff: Dual
+using MCMCChains: Chains
+using StatsFuns: binomlogpdf, logistic, logsumexp
+using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD, 
+                Variational, ZygoteAD, getspace, gradient_logp
+using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
+using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 setprogress!(false)
 
 include("test_utils/AllUtils.jl")
 
-# Begin testing.
 @testset "Turing" begin
     @testset "core" begin
         include("core/ad.jl")
     end
 
+    @testset "samplers (without AD)" begin
+        include("inference/AdvancedSMC.jl")
+        include("inference/emcee.jl")
+        include("inference/ess.jl")
+        include("inference/is.jl")
+    end
+
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :tracker, :reversediff)
         Turing.setadbackend(adbackend)
+        @info "Testing $(adbackend)"
+        start = time()
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
                 include("inference/gibbs.jl")
                 include("inference/gibbs_conditional.jl")
                 include("inference/hmc.jl")
-                include("inference/is.jl")
-                include("inference/mh.jl")
-                include("inference/ess.jl")
-                include("inference/emcee.jl")
-                include("inference/AdvancedSMC.jl")
                 include("inference/Inference.jl")
                 include("contrib/inference/dynamichmc.jl")
+                include("contrib/inference/sghmc.jl")
+                include("inference/mh.jl")
             end
         end
 
@@ -40,7 +77,13 @@ include("test_utils/AllUtils.jl")
 
         @testset "modes" begin
             include("modes/ModeEstimation.jl")
+            include("modes/OptimInterface.jl")
         end
+
+        # Useful for
+        # a) discovering performance regressions,
+        # b) figuring out why CI is timing out.
+        @info "Tests for $(adbackend) took $(time() - start) seconds"
     end
     @testset "variational optimisers" begin
         include("variational/optimisers.jl")
