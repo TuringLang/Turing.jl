@@ -326,7 +326,7 @@ function DynamicPPL.assume(
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, spl)
+            push!!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(rng, dist)
@@ -342,10 +342,10 @@ function DynamicPPL.assume(
             r = vi[vn]
         else
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
+            push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
-        acclogp!(vi, lp)
+        acclogp!!(vi, lp)
     end
     return r, 0, vi
 end
