@@ -347,12 +347,12 @@ function DynamicPPL.assume(
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
         acclogp!(vi, lp)
     end
-    return r, 0
+    return r, 0, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
-    return 0
+    return 0, vi
 end
 
 # Convenient constructor

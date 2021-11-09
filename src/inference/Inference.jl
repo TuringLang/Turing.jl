@@ -3,7 +3,10 @@ module Inference
 using ..Core
 using ..Utilities
 using DynamicPPL: Metadata, VarInfo, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
+    islinked, invlink!, link!,
+    setindex!!, push!!,
+    setlogp!!, getlogp,
+    tonamedtuple, VarName, getsym, vectorize,
     settrans!, _getvns, getdist,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
