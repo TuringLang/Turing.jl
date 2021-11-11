@@ -82,7 +82,7 @@ function AbstractMCMC.step(
     # Setindex allows only vectors in this case.
     vi = setindex!!(vi, [updated;], spl)
     # Update log joint probability.
-    vi = last(DynamicPPL.evaluate(model, rng, vi, SampleFromPrior()))
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
 
     return nothing, vi
 end

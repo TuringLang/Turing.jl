@@ -254,7 +254,7 @@ function (f::MHLogDensityFunction)(x)
 
     x_old, lj_old = vi[sampler], getlogp(vi)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate(f.model, vi, DynamicPPL.DefaultContext()))
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.DefaultContext()))
     lj = getlogp(vi_new)
 
     # Reset old `vi`.

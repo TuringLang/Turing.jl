@@ -233,7 +233,7 @@ function AbstractMCMC.step(
     states = map(samplers, state.states) do _sampler, _state
         # Recompute `vi.logp` if needed.
         if _sampler.selector.rerun
-            vi = last(DynamicPPL.evaluate(model, rng, vi, _sampler))
+            vi = last(DynamicPPL.evaluate!!(model, rng, vi, _sampler))
         end
 
         # Update state of current sampler with updated `VarInfo` object.

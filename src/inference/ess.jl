@@ -133,7 +133,7 @@ end
 function (ℓ::ESSLogLikelihood)(f)
     sampler = ℓ.sampler
     varinfo = setindex!!(ℓ.varinfo, f, sampler)
-    varinfo = last(DynamicPPL.evaluate(ℓ.model, varinfo, sampler))
+    varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
     return getlogp(varinfo)
 end
 

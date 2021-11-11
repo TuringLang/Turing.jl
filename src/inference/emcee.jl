@@ -42,7 +42,7 @@ function AbstractMCMC.step(
             vi = initialize_parameters!!(vi, kwargs[:init_params], spl)
 
             # Update log joint probability.
-            last(DynamicPPL.evaluate(model, rng, vi, SampleFromPrior()))
+            last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
         end
     end
 

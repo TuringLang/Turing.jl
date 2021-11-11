@@ -151,7 +151,7 @@ function DynamicPPL.initialstep(
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
     link!(vi, spl)
-    vi = last(DynamicPPL.evaluate(model, rng, vi, spl))
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
 
     # Extract parameters.
     theta = vi[spl]
@@ -170,7 +170,7 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
-            vi = last(DynamicPPL.evaluate(model, rng, vi, SampleFromUniform()))
+            vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             link!(vi, spl)
             theta = vi[spl]
 
@@ -446,7 +446,7 @@ function gen_logπ(vi_base, spl::AbstractSampler, model)
         vi = vi_base
         x_old, lj_old = vi[spl], getlogp(vi)
         vi = setindex!!(vi, x, spl)
-        vi = last(DynamicPPL.evaluate(model, vi, spl))
+        vi = last(DynamicPPL.evaluate!!(model, vi, spl))
         lj = getlogp(vi)
         # Don't really need to capture these will only be
         # necessary if `vi` is indeed mutable.
