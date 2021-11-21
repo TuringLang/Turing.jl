@@ -502,14 +502,14 @@ Standard errors are calculated from the Fisher information matrix (inverse Hessi
 
 #### Sampling with the MAP/MLE as initial states
 
-You can begin sampling your chain from an MLE/MAP estimate by extracting the vector of parameter values and providing it to the `sample` function with the keyword `init_theta`. For example, here is how to sample from the full posterior using the MAP estimate as the starting point:
+You can begin sampling your chain from an MLE/MAP estimate by extracting the vector of parameter values and providing it to the `sample` function with the keyword `init_params`. For example, here is how to sample from the full posterior using the MAP estimate as the starting point:
 
 ```julia
 # Generate an MAP estimate.
 map_estimate = optimize(model, MAP())
 
 # Sample with the MAP estimate as the starting point.
-chain = sample(model, NUTS(), 1_000, init_theta = map_estimate.values.array)
+chain = sample(model, NUTS(), 1_000, init_params = map_estimate.values.array)
 ```
 
 ## Beyond the Basics
