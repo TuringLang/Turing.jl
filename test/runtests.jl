@@ -2,6 +2,7 @@ using AbstractMCMC
 using AdvancedMH
 using Clustering
 using Distributions
+using Distributions.FillArrays
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
