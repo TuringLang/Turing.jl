@@ -15,7 +15,7 @@ jobs:
       - name: Set up Julia
         uses: julia-actions/setup-julia@v1
         with:
-          version: '1'
+          version: '1.6'
       - name: Set up Ruby 2.6
         uses: actions/setup-ruby@v1
         with:
