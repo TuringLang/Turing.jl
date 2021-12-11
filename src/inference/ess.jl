@@ -137,11 +137,11 @@ function (ℓ::ESSLogLikelihood)(f)
     return getlogp(varinfo)
 end
 
-function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, inds, vi)
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, vi)
     if inspace(vn, sampler)
-        return DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi)
     else
-        return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
+        return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, vi)
     end
 end
 
@@ -149,12 +149,12 @@ function DynamicPPL.tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, 
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, inds, vi)
+function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, vi)
     # TODO: Or should we do `all(Base.Fix2(inspace, sampler), vns)`?
     if inspace(first(vns), sampler)
-        return DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, inds, vi)
+        return DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi)
     else
-        return DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, inds, vi)
+        return DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, vi)
     end
 end
 
