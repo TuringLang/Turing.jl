@@ -68,7 +68,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContex
     return r, 0, vi
 end
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
