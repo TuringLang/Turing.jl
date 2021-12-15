@@ -25,8 +25,11 @@ jobs:
         shell: julia --color=yes {0}
       - name: "Run CompatHelper"
         run: |
-          import CompatHelper
-          CompatHelper.main(; subdirs = ["", "test"], bump_version=true)
+          using CompatHelper
+          bump_version = true # Whether to bump version when making PR.
+          entry_type = DropEntry() # Don't keep existing compat entry.
+          subdirs = ["", "test"]
+          CompatHelper.main(; bump_version, entry_type, subdirs)
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
