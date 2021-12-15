@@ -320,7 +320,7 @@ function DynamicPPL.assume(
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    ::Any
+    _vi::AbstractVarInfo
 )
     vi = AdvancedPS.current_trace().f.varinfo
     if inspace(vn, spl)
@@ -347,7 +347,7 @@ function DynamicPPL.assume(
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
         acclogp!!(vi, lp)
     end
-    return r, 0, vi
+    return r, 0, _vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
