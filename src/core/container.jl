@@ -43,7 +43,7 @@ function AdvancedPS.reset_model(f::TracedModel)
 end
 
 function AdvancedPS.reset_logprob!(f::TracedModel)
-    DynamicPPL.resetlogp!(f.varinfo)
+    DynamicPPL.resetlogp!!(f.varinfo)
     return
 end
 

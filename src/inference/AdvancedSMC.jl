@@ -110,8 +110,8 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
-    empty!(vi)
+    resetlogp!!(vi)
+    empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -249,7 +249,7 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -281,7 +281,7 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     reset_num_produce!(vi)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
