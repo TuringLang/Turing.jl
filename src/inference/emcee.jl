@@ -51,10 +51,8 @@ function AbstractMCMC.step(
         Transition(vi)
     end
     # TODO: Make compatible with immutable `AbstractVarInfo`.
-    foreach(vis) do vi
-        # Transform to unconstrained space.
-        DynamicPPL.link!(vi, spl)
-    end
+    # Transform to unconstrained space.
+    DynamicPPL.link!.(vis, Ref(spl))
     state = EmceeState(
         vis[1],
         map(vis) do vi

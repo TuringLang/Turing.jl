@@ -492,9 +492,7 @@ function DynamicPPL.dot_assume(
     var::AbstractMatrix,
     vi,
 )
-    foreach(vns) do vn
-        DynamicPPL.updategid!(vi, vn, spl)
-    end
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dist, var, vns, vi)
 end
 function DynamicPPL.dot_assume(
@@ -505,9 +503,7 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    foreach(vns) do vn
-        DynamicPPL.updategid!(vi, vn, spl)
-    end
+    DynamicPPL.updategid!(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
