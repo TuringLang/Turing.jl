@@ -315,12 +315,14 @@ function AbstractMCMC.step(
     return transition, _vi
 end
 
+DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
+
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    _vi::AbstractVarInfo
+    ::Any
 )
     vi = AdvancedPS.current_trace().f.varinfo
     if inspace(vn, spl)
@@ -347,7 +349,7 @@ function DynamicPPL.assume(
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
         acclogp!!(vi, lp)
     end
-    return r, 0, _vi
+    return r, 0, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
