@@ -47,15 +47,13 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = map(vis) do vi
-        Transition(vi)
-    end
+    transition = map(Transition, vis)
+
     # TODO: Make compatible with immutable `AbstractVarInfo`.
-    # Transform to unconstrained space.
-    DynamicPPL.link!.(vis, Ref(spl))
     state = EmceeState(
         vis[1],
         map(vis) do vi
+            DynamicPPL.link!(vi, spl)
             AMH.Transition(vi[spl], getlogp(vi))
         end
     )
