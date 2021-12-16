@@ -552,7 +552,7 @@ Turing provides `filldist(dist::Distribution, n::Int)` and `arraydist(dists::Abs
 #### Constructing product distributions with filldist
 
 The function `filldist` provides a general interface to construct product distributions over distributions of the same type and parameterisation.
-Note that in contrast to the product distribution interface provided by Distributions.jl (`Product`), `filldist` supports product distributions over univariate or multivariate distributions.
+Note that, in contrast to the product distribution interface provided by Distributions.jl (`Product`), `filldist` supports product distributions over univariate or multivariate distributions.
 
 Example usage:
 
