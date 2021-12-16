@@ -352,6 +352,20 @@ function DynamicPPL.assume(
     return r, 0, vi
 end
 
+using Random
+# avoid Core._apply_iterate
+(m::DynamicPPL.Model)(x)=m(Random.GLOBAL_RNG, x)
+(m::DynamicPPL.Model)(x, y)=m(Random.GLOBAL_RNG, x, y)
+(m::DynamicPPL.Model)(x, y, z)=m(Random.GLOBAL_RNG, x, y, z)
+
+# trace down into
+Libtask.trace_into(::DynamicPPL.Model) = true
+Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadsafe)) = true
+Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadunsafe)) = true
+Libtask.trace_into(::typeof(DynamicPPL._evaluate)) = true
+Libtask.trace_into(::typeof(DynamicPPL.tilde_observe)) = true
+Libtask.trace_into(::typeof(DynamicPPL.tilde_observe!)) = true
+
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
     return 0, vi
