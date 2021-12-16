@@ -38,22 +38,21 @@ function AbstractMCMC.step(
 
     # Update the parameters if provided.
     if haskey(kwargs, :init_params)
-        for vi in vis
-            initialize_parameters!(vi, kwargs[:init_params], spl)
+        vis = map(vis) do vi
+            vi = initialize_parameters!!(vi, kwargs[:init_params], spl)
 
             # Update log joint probability.
-            model(rng, vi, SampleFromPrior())
+            last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
         end
     end
 
     # Compute initial transition and states.
-    transition = map(vis) do vi
-        Transition(vi)
-    end
+    transition = map(Transition, vis)
+
+    # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            # Transform to unconstrained space.
             DynamicPPL.link!(vi, spl)
             AMH.Transition(vi[spl], getlogp(vi))
         end
@@ -78,7 +77,7 @@ function AbstractMCMC.step(
 
     # Compute the next transition and state.
     transition = map(states) do _state
-        vi[spl] = _state.params
+        vi = setindex!!(vi, _state.params, spl)
         DynamicPPL.invlink!(vi, spl)
         t = Transition(tonamedtuple(vi), _state.lp)
         DynamicPPL.link!(vi, spl)

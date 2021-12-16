@@ -110,8 +110,8 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
-    empty!(vi)
+    resetlogp!!(vi)
+    empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -249,7 +249,7 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -281,7 +281,7 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     reset_num_produce!(vi)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
@@ -315,6 +315,8 @@ function AbstractMCMC.step(
     return transition, _vi
 end
 
+DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
+
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
@@ -326,7 +328,7 @@ function DynamicPPL.assume(
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, spl)
+            push!!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(rng, dist)
@@ -342,17 +344,17 @@ function DynamicPPL.assume(
             r = vi[vn]
         else
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
+            push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
-        acclogp!(vi, lp)
+        acclogp!!(vi, lp)
     end
-    return r, 0
+    return r, 0, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
-    return 0
+    return 0, vi
 end
 
 # Convenient constructor

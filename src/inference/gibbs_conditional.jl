@@ -79,8 +79,10 @@ function AbstractMCMC.step(
     condvals = conditioned(tonamedtuple(vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    vi[spl] = [updated;]  # setindex allows only vectors in this case...
-    model(rng, vi, SampleFromPrior()) # update log joint probability
+    # Setindex allows only vectors in this case.
+    vi = setindex!!(vi, [updated;], spl)
+    # Update log joint probability.
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
 
     return nothing, vi
 end
