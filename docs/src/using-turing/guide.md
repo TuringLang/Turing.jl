@@ -545,15 +545,37 @@ The `Gibbs` sampler can be used to specify unique automatic differentation backe
 
 For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://proceedings.mlr.press/v84/ge18b.html).
 
-### Indexed Group Variables
+### Working with filldist and arraydist
 
-The function `filldist(distribution,n)` provides a simplified interface for defining a set of model variables that share the same structure, but vary by group.
+Turing provides `filldist(dist::Distribution, n::Int)` and `arraydist(dists::AbstractVector{<:Distribution})` as a simplified interface to construct product distributions, e.g., to model a set of variables that share the same structure but vary by group.
 
-For example, with in the following model ``x ~ Normal(\mu_i)`` where ``\mu_i ~ Normal()`` for each group. The group should be a numeric index.
+#### Constructing product distributions with filldist
+
+The function `filldist` provides a general interface to construct product distributions over distributions of the same type and parameterisation.
+Note that in contrast to the product distribution interface provided by Distributions.jl (`Product`), `filldist` supports product distributions over univariate or multivariate distributions.
+
+Example usage:
 
 ```julia
 @model function demo(x, g)
-  a ~ filldist(Normal(), length(unique(g)))
+  k = length(unique(g))
+  a ~ filldist(Exponential(), k) # = Product(fill(Exponential(), k))
+  mu = a[g]
+  x .~ Normal.(mu)
+end
+```
+
+#### Constructing product distributions with arraydist
+
+The function `arraydist` provides a general interface to construct product distributions over distributions of varying type and parameterisation.
+Note that in contrast to the product distribution interface provided by Distributions.jl (`Product`), `arraydist` supports product distributions over univariate or multivariate distributions.
+
+Example usage:
+
+```julia
+@model function demo(x, g)
+  k = length(unique(g))
+  a ~ arraydist([Exponential(i) for i in 1:k])
   mu = a[g]
   x .~ Normal.(mu)
 end
@@ -651,3 +673,4 @@ In all other cases progress logs are displayed with
 [TerminalLoggers.jl](https://github.com/c42f/TerminalLoggers.jl). Alternatively,
 if you provide a custom visualization backend, Turing uses it instead of the
 default backend.
+
