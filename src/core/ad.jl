@@ -108,9 +108,11 @@ function gradient_logp(
     logp_old = getlogp(vi)
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, ctx)
+        new_vi = last(DynamicPPL.evaluate!!(model, new_vi, sampler, ctx))
         logp = getlogp(new_vi)
-        setlogp!(vi, ForwardDiff.value(logp))
+        # Don't need to capture the resulting `vi` since this is only
+        # needed if `vi` is mutable.
+        setlogp!!(vi, ForwardDiff.value(logp))
         return logp
     end
 
@@ -120,7 +122,7 @@ function gradient_logp(
     config = ForwardDiff.GradientConfig(f, θ, chunk)
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
     l = getlogp(vi)
-    setlogp!(vi, logp_old)
+    setlogp!!(vi, logp_old)
 
     return l, ∂l∂θ
 end
@@ -137,7 +139,7 @@ function gradient_logp(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, ctx)
+        new_vi = last(DynamicPPL.evaluate!!(model, new_vi, sampler, ctx))
         return getlogp(new_vi)
     end
 
@@ -162,7 +164,7 @@ function gradient_logp(
     # Specify objective function.
     function f(θ)
         new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, context)
+        new_vi = last(DynamicPPL.evaluate!!(model, new_vi, sampler, context))
         return getlogp(new_vi)
     end
 

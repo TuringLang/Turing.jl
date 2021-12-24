@@ -151,7 +151,7 @@ function DynamicPPL.initialstep(
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
     link!(vi, spl)
-    model(rng, vi, spl)
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
 
     # Extract parameters.
     theta = vi[spl]
@@ -170,7 +170,7 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
-            model(rng, vi, SampleFromUniform())
+            vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             link!(vi, spl)
             theta = vi[spl]
 
@@ -207,11 +207,11 @@ function DynamicPPL.initialstep(
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        vi[spl] = t.z.θ
-        setlogp!(vi, t.stat.log_density)
+        vi = setindex!!(vi, t.z.θ, spl)
+        vi = setlogp!!(vi, t.stat.log_density)
     else
-        vi[spl] = theta
-        setlogp!(vi, log_density_old)
+        vi = setindex!!(vi, theta, spl)
+        vi = setlogp!!(vi, log_density_old)
     end
 
     transition = HMCTransition(vi, t)
@@ -249,8 +249,8 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi[spl] = t.z.θ
-        setlogp!(vi, t.stat.log_density)
+        vi = setindex!!(vi, t.z.θ, spl)
+        vi = setlogp!!(vi, t.stat.log_density)
     end
 
     # Compute next transition and state.
@@ -441,14 +441,17 @@ end
 Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
 `(vi, spl, model)`.
 """
-function gen_logπ(vi, spl::AbstractSampler, model)
+function gen_logπ(vi_base, spl::AbstractSampler, model)
     function logπ(x)::Float64
+        vi = vi_base
         x_old, lj_old = vi[spl], getlogp(vi)
-        vi[spl] = x
-        model(vi, spl)
+        vi = setindex!!(vi, x, spl)
+        vi = last(DynamicPPL.evaluate!!(model, vi, spl))
         lj = getlogp(vi)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
+        # Don't really need to capture these will only be
+        # necessary if `vi` is indeed mutable.
+        setindex!!(vi, x_old, spl)
+        setlogp!!(vi, lj_old)
         return lj
     end
     return logπ
@@ -478,10 +481,7 @@ function DynamicPPL.assume(
     vi,
 )
     DynamicPPL.updategid!(vi, vn, spl)
-    r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    # r
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return DynamicPPL.assume(dist, vn, vi)
 end
 
 function DynamicPPL.dot_assume(
@@ -492,11 +492,8 @@ function DynamicPPL.dot_assume(
     var::AbstractMatrix,
     vi,
 )
-    @assert length(dist) == size(var, 1)
     DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
-    var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    return DynamicPPL.dot_assume(dist, var, vns, vi)
 end
 function DynamicPPL.dot_assume(
     rng,
@@ -506,10 +503,8 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
-    var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    DynamicPPL.updategid!(Ref(vi), vns, Ref(spl))
+    return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
 function DynamicPPL.observe(
@@ -518,7 +513,7 @@ function DynamicPPL.observe(
     value,
     vi,
 )
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
+    return DynamicPPL.observe(d, value, vi)
 end
 
 function DynamicPPL.dot_observe(
@@ -527,7 +522,7 @@ function DynamicPPL.dot_observe(
     value::AbstractArray,
     vi,
 )
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+    return DynamicPPL.dot_observe(ds, value, vi)
 end
 
 ####
@@ -566,7 +561,9 @@ function HMCState(
     kwargs...
 )
     # Link everything if needed.
-    !islinked(vi, spl) && link!(vi, spl)
+    if !islinked(vi, spl)
+        link!(vi, spl)
+    end
 
     # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
