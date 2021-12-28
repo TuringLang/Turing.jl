@@ -360,11 +360,11 @@ using Random
 
 # trace down into
 Libtask.trace_into(::DynamicPPL.Model) = true
-Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadsafe)) = true
-Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadunsafe)) = true
-Libtask.trace_into(::typeof(DynamicPPL._evaluate)) = true
+Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadsafe!!)) = true
+Libtask.trace_into(::typeof(DynamicPPL.evaluate_threadunsafe!!)) = true
+Libtask.trace_into(::typeof(DynamicPPL._evaluate!!)) = true
 Libtask.trace_into(::typeof(DynamicPPL.tilde_observe)) = true
-Libtask.trace_into(::typeof(DynamicPPL.tilde_observe!)) = true
+Libtask.trace_into(::typeof(DynamicPPL.tilde_observe!!)) = true
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     produce(logpdf(dist, value))
