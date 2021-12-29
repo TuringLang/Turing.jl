@@ -52,6 +52,29 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@latest
+      - name: Clone Libtask
+        uses: actions/checkout@v2
+        with:
+          repository: TuringLang/Libtask.jl
+          ref: tape-instruction
+          path: new_libtask
+      - name: Load local Libtask
+        shell: julia --color=yes --project {0}
+        run: |
+          using Pkg
+          try
+            # force it to use this PR's version of the package
+            Pkg.develop(PackageSpec(path="new_libtask"))  # resolver may fail with main deps
+            Pkg.update()
+            # Pkg.test()  # resolver may fail with test time deps
+          catch err
+            err isa Pkg.Resolve.ResolverError || rethrow()
+            # If we can't resolve that means this is incompatible by SemVer and this is fine
+            # It means we marked this as a breaking change, so we don't need to worry about
+            # Mistakenly introducing a breaking change, as we have intentionally made one
+            @info "Not compatible with this release. No problem." exception=err
+            exit(0)  # Exit immediately, as a success
+          end
       - uses: julia-actions/julia-runtest@latest
         with:
           coverage: ${{ matrix.version == '1.6' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1 }}
