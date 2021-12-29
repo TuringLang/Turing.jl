@@ -354,9 +354,9 @@ end
 
 using Random
 # avoid Core._apply_iterate
-(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo)=m(Random.GLOBAL_RNG, x)
-(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo, y::DynamicPPL.AbstractSampler)=m(Random.GLOBAL_RNG, x, y)
-(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo, y::DynamicPPL.AbstractSampler, z::DynamicPPL.AbstractContext)=m(Random.GLOBAL_RNG, x, y, z)
+(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo)=first(evaluate!!(model, x)) 
+(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo, y::DynamicPPL.AbstractSampler)=first(evaluate!!(model, x, y))
+(m::DynamicPPL.Model)(x::DynamicPPL.AbstractVarInfo, y::DynamicPPL.AbstractSampler, z::DynamicPPL.AbstractContext)=first(evaluate!!(model, x, y, z))
 
 # trace down into
 Libtask.trace_into(::DynamicPPL.Model) = true
