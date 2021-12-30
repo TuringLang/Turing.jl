@@ -18,17 +18,18 @@ end
 
 # (f::TracedModel)() = f.model(f.varinfo, f.sampler)
 # TODO: remove this function after updating AdvancedPS to use `f.evaluator`
-(f::Turing.Core.TracedModel)()  = begin
+function (f::Turing.Core.TracedModel)()
     if length(f.evaluator[2:end]) == 3
         f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4])
-    else if length(f.evaluator[2:end]) == 4
+    elseif length(f.evaluator[2:end]) == 4
         f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5])
-    else if length(f.evaluator[2:end]) == 5
+    elseif length(f.evaluator[2:end]) == 5
         f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5], f.evaluator[6])
-    else if length(f.evaluator[2:end]) == 6
+    elseif length(f.evaluator[2:end]) == 6
         f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5], f.evaluator[6], f.evaluator[7])
     end
 end
+
 # Smiliar to `evaluate!!` except that we return the evaluator signature without excutation.
 # TODO: maybe move to DynamicPPL
 @generated function _get_evaluator(
