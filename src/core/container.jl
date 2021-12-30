@@ -49,6 +49,8 @@ function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
     return AdvancedPS.Trace(newf, copy(trace.ctask))
 end
 
+Libtask.tape_copy(trace::AdvancedPS.Trace{<:TracedModel}) = copy(trace)
+
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:TracedModel})
     DynamicPPL.increment_num_produce!(trace.f.varinfo)
     score = consume(trace.ctask)
@@ -74,4 +76,3 @@ function AdvancedPS.reset_logprob!(f::TracedModel)
     DynamicPPL.resetlogp!!(f.varinfo)
     return
 end
-
