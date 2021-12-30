@@ -18,8 +18,17 @@ end
 
 # (f::TracedModel)() = f.model(f.varinfo, f.sampler)
 # TODO: remove this function after updating AdvancedPS to use `f.evaluator`
-(f::TracedModel)()  = f.evaluator[1](f.evaluator[2:end]...)
-
+(f::Turing.Core.TracedModel)()  = begin
+    if length(f.evaluator[2:end]) == 3
+        f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4])
+    else if length(f.evaluator[2:end]) == 4
+        f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5])
+    else if length(f.evaluator[2:end]) == 5
+        f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5], f.evaluator[6])
+    else if length(f.evaluator[2:end]) == 6
+        f.evaluator[1](f.evaluator[2], f.evaluator[3], f.evaluator[4], f.evaluator[5], f.evaluator[6], f.evaluator[7])
+    end
+end
 # Smiliar to `evaluate!!` except that we return the evaluator signature without excutation.
 # TODO: maybe move to DynamicPPL
 @generated function _get_evaluator(
@@ -48,8 +57,6 @@ function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
     newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo))
     return AdvancedPS.Trace(newf, copy(trace.ctask))
 end
-
-Libtask.tape_copy(trace::AdvancedPS.Trace{<:TracedModel}) = copy(trace)
 
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:TracedModel})
     DynamicPPL.increment_num_produce!(trace.f.varinfo)

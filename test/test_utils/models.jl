@@ -7,9 +7,6 @@
   return s, m
 end
 
-using Libtask
-Libtask.trace_into(::typeof(gdemo)) = true
-
 @model gdemo_d() = begin
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
@@ -19,7 +16,6 @@ Libtask.trace_into(::typeof(gdemo)) = true
 end
 
 gdemo_default = gdemo_d()
-Libtask.trace_into(::typeof(gdemo_d)) = true
 
 @model MoGtest(D) = begin
     mu1 ~ Normal(1, 1)
@@ -52,7 +48,6 @@ Libtask.trace_into(::typeof(gdemo_d)) = true
 end
 
 MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
-Libtask.trace_into(::typeof(MoGtest)) = true
 
 # Declare empty model to make the Sampler constructor work.
 @model empty_model() = begin x = 1; end
