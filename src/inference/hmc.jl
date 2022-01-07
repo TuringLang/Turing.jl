@@ -503,7 +503,7 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    DynamicPPL.updategid!(Ref(vi), vns, Ref(spl))
+    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
