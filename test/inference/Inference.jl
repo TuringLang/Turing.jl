@@ -309,6 +309,14 @@
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
+        expr = @macroexpad @model function vdemo1(x)
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            @. x ~ Normal(m, sqrt(s))
+            return s, m
+        end
+        println(expr)
+
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
