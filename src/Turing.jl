@@ -31,6 +31,7 @@ include("stdlib/RandomMeasures.jl")
 include("utilities/Utilities.jl")
 using .Utilities
 include("essential/Essential.jl")
+Base.@deprecate_binding Core Essential false
 using .Essential
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
