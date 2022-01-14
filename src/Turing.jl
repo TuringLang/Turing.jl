@@ -30,8 +30,8 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("utilities/Utilities.jl")
 using .Utilities
-include("core/Core.jl")
-using .Core
+include("essential/Essential.jl")
+using .Essential
 include("inference/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
@@ -140,7 +140,7 @@ export  @model,                 # modelling
         MAP,
         MLE,
         get_parameter_bounds,
-        optim_objective, 
+        optim_objective,
         optim_function,
         optim_problem
 end
