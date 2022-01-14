@@ -34,9 +34,9 @@ using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
-using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD, 
+using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
                 Variational, ZygoteAD, getspace, gradient_logp
-using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
+using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 setprogress!(false)
@@ -44,8 +44,8 @@ setprogress!(false)
 include("test_utils/AllUtils.jl")
 
 @testset "Turing" begin
-    @testset "core" begin
-        include("core/ad.jl")
+    @testset "essential" begin
+        include("essential/ad.jl")
     end
 
     @testset "samplers (without AD)" begin
