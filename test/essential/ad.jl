@@ -77,11 +77,11 @@
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setrdcache(true)
         sample(dir(), HMC(0.01, 1), 1000);
-        caches = Memoization.find_caches(Turing.Core.memoized_taperesult)
+        caches = Memoization.find_caches(Turing.Essential.memoized_taperesult)
         @test length(caches) == 1
         @test !isempty(first(values(caches)))
         Turing.emptyrdcache()
-        caches = Memoization.find_caches(Turing.Core.memoized_taperesult)
+        caches = Memoization.find_caches(Turing.Essential.memoized_taperesult)
         @test length(caches) == 1
         @test isempty(first(values(caches)))
     end
@@ -111,35 +111,35 @@
         @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
             params = TV(undef, 2)
             @. params ~ Normal(0, 1)
-        
+
             x ~ MvNormal(params, I)
         end
-        
+
         function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
             # setup
             varinfo_init = Turing.VarInfo(model)
-            spl = DynamicPPL.SampleFromPrior()    
+            spl = DynamicPPL.SampleFromPrior()
             DynamicPPL.link!(varinfo_init, spl)
-        
+
             function logπ(z; unlinked = false)
                 varinfo = DynamicPPL.VarInfo(varinfo_init, spl, z)
-        
+
                 unlinked && DynamicPPL.invlink!(varinfo_init, spl)
                 model(varinfo, spl, ctx)
                 unlinked && DynamicPPL.link!(varinfo_init, spl)
-        
+
                 return -DynamicPPL.getlogp(varinfo)
             end
-        
+
             return logπ
         end
-        
+
         data = [0.5, -0.5]
         model = tst(data)
-        
+
         likelihood = make_logjoint(model, DynamicPPL.LikelihoodContext())
         target(x) = likelihood(x, unlinked=true)
-        
+
         H_f = ForwardDiff.hessian(target, zeros(2))
         H_r = ReverseDiff.hessian(target, zeros(2))
         @test H_f == [1.0 0.0; 0.0 1.0]

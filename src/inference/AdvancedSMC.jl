@@ -365,6 +365,6 @@ function AdvancedPS.Trace(
 )
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
-    f = Turing.Core.TracedModel(model, sampler, newvarinfo)
+    f = Turing.Essential.TracedModel(model, sampler, newvarinfo)
     return AdvancedPS.Trace(f)
 end
