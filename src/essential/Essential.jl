@@ -1,4 +1,4 @@
-module Core
+module Essential
 
 using DistributionsAD, Bijectors
 using Libtask, ForwardDiff, Random
