@@ -119,7 +119,7 @@ var_1 = mean(chn[:var_1]) # Taking the mean of a variable named var_1.
 ```
 
 
-The key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")` or `chn["x[1]"]`.
+The key (`:var_1`) can be a `Symbol` or a `String`. For example, to fetch `x[1]`, one can use `chn[Symbol("x[1]")]` or `chn["x[1]"]`.
 If you want to retrieve all parameters associated with a specific symbol, you can use `group`. As an example, if you have the
 parameters `"x[1]"`, `"x[2]"`, and `"x[3]"`, calling `group(chn, :x)` or `group(chn, "x")` will return a new chain with only `"x[1]"`, `"x[2]"`, and `"x[3]"`.
 
