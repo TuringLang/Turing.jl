@@ -328,7 +328,8 @@ function DynamicPPL.assume(
     try 
         vi = AdvancedPS.current_trace().f.varinfo
     catch e
-        if e == KeyError(:__trace) # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
             vi = __vi__
         else
             rethrow(e)
