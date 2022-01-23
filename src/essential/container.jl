@@ -35,7 +35,7 @@ end
         context_new = DynamicPPL.setleafcontext(
             context, DynamicPPL.setleafcontext(model.context, DynamicPPL.leafcontext(context))
         )
-        (model.f, model, varinfo, context_new, $(unwrap_args...))
+        (model.f, model, DynamicPPL.resetlogp!!(varinfo), context_new, $(unwrap_args...))
     end
 end
 
