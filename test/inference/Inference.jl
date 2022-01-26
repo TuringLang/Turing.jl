@@ -268,6 +268,7 @@
         )
     end
     @testset "no return" begin
+        Random.seed!(5)
         @model function noreturn(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -280,6 +281,7 @@
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
     @testset "observe" begin
+        Random.seed!(5)
         @model function test()
             z ~ Normal(0, 1)
             x ~ Bernoulli(1)
