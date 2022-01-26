@@ -41,7 +41,7 @@ using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 setprogress!(false)
 
-include("test_utils/AllUtils.jl")
+include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
 @testset "Turing" begin
     @testset "essential" begin

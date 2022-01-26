@@ -1,5 +1,5 @@
-@turing_testset "gibbs conditionals" begin
-    Random.seed!(100)
+@turing_testset "gibbs conditionals.jl" begin
+    Random.seed!(1000)
 
     @turing_testset "gdemo" begin
         # We consider the model
@@ -139,7 +139,7 @@
             @test isapprox([lμ_data, uμ_data], [lμ_hat, uμ_hat], atol=0.1)
 
             z_hat = estimatez(chain, :z, 1:2)
-            ari, _, _, _ = randindex(z_data, Int.(z_hat))
+            ari, _, _, _ = Clustering.randindex(z_data, Int.(z_hat))
             @test isapprox(ari, 1, atol=0.1)
         end
     end
