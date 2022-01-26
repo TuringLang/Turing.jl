@@ -1,6 +1,6 @@
 @testset "mh.jl" begin
     @turing_testset "mh constructor" begin
-        Random.seed!(0)
+        Random.seed!(10)
         N = 500
         s1 = MH(
             (:s, InverseGamma(2,3)),
@@ -24,6 +24,7 @@
         chain = sample(gdemo_default, alg, 2000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MH with Gaussian proposal
         alg = MH(
             (:s, InverseGamma(2,3)),
@@ -31,17 +32,19 @@
         chain = sample(gdemo_default, alg, 7000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
         chain = sample(gdemo_default, alg, 2000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MoGtest
         gibbs = Gibbs(
             CSMC(15, :z1, :z2, :z3, :z4),
             MH((:mu1,GKernel(1)), (:mu2,GKernel(1)))
         )
-        chain = sample(MoGtest_default, gibbs, 5000)
+        chain = sample(MoGtest_default, gibbs, 500)
         check_MoGtest_default(chain, atol = 0.15)
     end
 
