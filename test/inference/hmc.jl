@@ -105,8 +105,8 @@
         # Sampling
         chain = sample(bnn(ts), HMC(0.1, 5), 10)
     end
-    Random.seed!(123)
-    @numerical_testset "hmcda inference" begin
+    @numerical_testset "hmcda inference" begin 
+        Random.seed!(12345)
         alg1 = HMCDA(1000, 0.8, 0.015)
         # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m), HMC(0.25, 3, :s))
         alg3 = Gibbs(PG(10, :s), HMCDA(200, 0.8, 0.005, :m))
@@ -121,9 +121,10 @@
         # @test mean(res2[:s]) ≈ 49/24 atol=0.2
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
 
-        res3 = sample(gdemo_default, alg3, 1000)
+        res3 = sample(gdemo_default, alg3, 2000)
         check_gdemo(res3)
     end
+
     @turing_testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75)
         println(alg)
