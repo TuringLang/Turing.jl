@@ -497,3 +497,4 @@
         vdemo3kw(; T) = vdemo3(T)
         sample(vdemo3kw(; T=Vector{Float64}), alg, 250)
     end
+end
