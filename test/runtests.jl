@@ -26,6 +26,7 @@ using LinearAlgebra
 using Pkg
 using Random
 using Test
+using StableRNGs
 
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
