@@ -105,10 +105,11 @@
         # Sampling
         chain = sample(rng, bnn(ts), HMC(0.1, 5), 10)
     end
+
     @numerical_testset "hmcda inference" begin 
-        alg1 = HMCDA(1000, 0.8, 0.015)
+        alg1 = HMCDA(500, 0.8, 0.015)
         # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m), HMC(0.25, 3, :s))
-        alg3 = Gibbs(PG(10, :s), HMCDA(200, 0.8, 0.005, :m))
+        
         # alg3 = Gibbs(HMC(0.25, 3, :m), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
@@ -119,8 +120,14 @@
         #
         # @test mean(res2[:s]) ≈ 49/24 atol=0.2
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
+    end
 
-        res3 = sample(rng, gdemo_default, alg3, 2000)
+    @numerical_testset "hmcda+gibbs inference" begin 
+        rng = StableRNG(123)
+        Random.seed!(12345) # particle samplers do not support user-provided `rng` yet
+        alg3 = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, init_ϵ = 0.05, :m))
+
+        res3 = sample(rng, gdemo_default, alg3, 3000, discard_initial=1000)
         check_gdemo(res3)
     end
 
