@@ -322,9 +322,19 @@ function DynamicPPL.assume(
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    ::Any
+    __vi__::AbstractVarInfo
 )
-    vi = AdvancedPS.current_trace().f.varinfo
+    local vi
+    try 
+        vi = AdvancedPS.current_trace().f.varinfo
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            vi = __vi__
+        else
+            rethrow(e)
+        end
+    end
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
