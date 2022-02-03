@@ -363,7 +363,7 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    produce(logpdf(dist, value))
+    Libtask.produce(logpdf(dist, value))
     return 0, vi
 end
 
