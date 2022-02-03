@@ -70,3 +70,11 @@ function AdvancedPS.reset_logprob!(f::TracedModel)
     DynamicPPL.resetlogp!!(f.varinfo)
     return
 end
+
+function Libtask.CTask(model::TracedModel)
+    return Libtask.CTask(model.evaluator[1], model.evaluator[2:end]...)
+end
+
+function Libtask.CTask(model::TracedModel, ::Random.AbstractRNG)
+    return Libtask.CTask(model)
+end
