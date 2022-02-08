@@ -1,0 +1,29 @@
+# Based on https://github.com/citation-file-format/citation-file-format/blob/main/examples/1.2.0/pass/key-complete/CITATION.cff.
+
+cff-version: "1.2.0"
+message: "If you use this software, please cite it as below."
+
+authors:
+  - family-names: Ge
+    given-names: Hong
+  - family-names: Xu
+    given-names: Kai
+  - family-names: Ghahramani
+    given-names: Zoubin
+
+keywords:
+  - "probabilistic programming"
+  - "Julia language"
+  - "Bayesian inference"
+  - "Probabilistic models"
+  - "Markov chain Monte Carlo"
+
+repository-code: "https://github.com/TuringLang/Turing"
+
+preferred-citation:
+  type: paper
+  title: "Turing: a language for flexible probabilistic inference"
+  pages: "1682--1690"
+  year: 2018
+  journal: "International Conference on Artificial Intelligence and Statistics, {AISTATS} 2018, 9-11 April 2018, Playa Blanca, Lanzarote, Canary Islands, Spain"
+  url: "http://proceedings.mlr.press/v84/ge18b.html"
