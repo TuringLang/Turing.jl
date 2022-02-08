@@ -50,12 +50,10 @@
         Random.seed!(2);
         iterations = 500;
         model_fun = infiniteGMM(data);
-        # TODO: control flow not supported, see 
-        # https://github.com/TuringLang/Libtask.jl/issues/96
-        # chain = sample(model_fun, SMC(), iterations);
+        chain = sample(model_fun, SMC(), iterations);
 
-        # @test chain isa MCMCChains.Chains
-        # @test eltype(chain.value) === Union{Float64, Missing}
+        @test chain isa MCMCChains.Chains
+        @test eltype(chain.value) === Union{Float64, Missing}
     end
     # partitions = [
     #     [[1, 2, 3, 4]],
