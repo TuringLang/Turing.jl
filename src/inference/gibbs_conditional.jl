@@ -117,7 +117,7 @@ extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[
 function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
     values, strings = p
     if length(values) == length(strings) == 1 && !occursin(r".\[.+\]$", strings[1])
-        # if m ~ MVNormal(1, 1), we could have have ([1], ["m[1]"])!
+        # if m ~ MVNormal([1], I), we could have have ([1], ["m[1]"])!
         return values[1]
     else
         return values

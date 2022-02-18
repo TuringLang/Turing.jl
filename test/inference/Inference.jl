@@ -312,7 +312,7 @@
     end
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
-        if Turing.Core.ADBackend() !== Turing.Core.TrackerAD
+        if Turing.Essential.ADBackend() !== Turing.Essential.TrackerAD
             @model function vdemo1(x)
                 s ~ InverseGamma(2, 3)
                 m ~ Normal(0, sqrt(s))

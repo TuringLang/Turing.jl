@@ -59,7 +59,7 @@
         @model function regtest(x, y)
             beta ~ MvNormal(Zeros(2), I)
             mu = x*beta
-            y ~ MvNormal(mu, 1.0)
+            y ~ MvNormal(mu, I)
         end
         
         Random.seed!(987)
