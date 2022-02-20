@@ -71,10 +71,10 @@ function AdvancedPS.reset_logprob!(f::TracedModel)
     return
 end
 
-function Libtask.CTask(model::TracedModel)
-    return Libtask.CTask(model.evaluator[1], model.evaluator[2:end]...)
+function Libtask.TapedTask(model::TracedModel)
+    return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...)
 end
 
-function Libtask.CTask(model::TracedModel, ::Random.AbstractRNG)
-    return Libtask.CTask(model)
+function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG)
+    return Libtask.TapedTask(model)
 end
