@@ -42,12 +42,12 @@ end
 function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
     f = trace.f
     newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo))
-    return AdvancedPS.Trace(newf, copy(trace.ctask))
+    return AdvancedPS.Trace(newf, copy(trace.task))
 end
 
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:TracedModel})
     DynamicPPL.increment_num_produce!(trace.f.varinfo)
-    score = consume(trace.ctask)
+    score = consume(trace.task)
     if score === nothing
         return
     else
