@@ -53,7 +53,7 @@ We can perform inference by using the `sample` function, the first argument of w
 c1 = sample(gdemo(1.5, 2), SMC(), 1000)
 c2 = sample(gdemo(1.5, 2), PG(10), 1000)
 c3 = sample(gdemo(1.5, 2), HMC(0.1, 5), 1000)
-c4 = sample(gdemo(1.5, 2), Gibbs(PG(10, :m), HMC(0.1, 5, :s)), 1000)
+c4 = sample(gdemo(1.5, 2), Gibbs(PG(10, :m), HMC(0.1, 5, :s²)), 1000)
 c5 = sample(gdemo(1.5, 2), HMCDA(0.15, 0.65), 1000)
 c6 = sample(gdemo(1.5, 2), NUTS(0.65), 1000)
 ```
