@@ -11,6 +11,7 @@ using MCMCChains
 using Memoization
 using NamedArrays
 using Optim
+using OrderedCollections
 using PDMats
 using ReverseDiff
 using SpecialFunctions
@@ -30,10 +31,12 @@ using StableRNGs
 
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
+using DataFrames: DataFrame
 using Distributions: Binomial, logpdf
 using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
+using OrderedCollections: OrderedDict
 using StatsFuns: binomlogpdf, logistic, logsumexp
 using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
                 Variational, ZygoteAD, getspace, gradient_logp
@@ -44,16 +47,19 @@ setprogress!(false)
 
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
+# Collect timing and allocations information to show in a clear way.
+include(pkgdir(Turing)*"/test/test_utils/timing.jl")
+
 @testset "Turing" begin
     @testset "essential" begin
-        include("essential/ad.jl")
+        time_include("essential/ad.jl")
     end
 
     @testset "samplers (without AD)" begin
-        include("inference/AdvancedSMC.jl")
-        include("inference/emcee.jl")
-        include("inference/ess.jl")
-        include("inference/is.jl")
+        time_include("inference/AdvancedSMC.jl")
+        time_include("inference/emcee.jl")
+        time_include("inference/ess.jl")
+        time_include("inference/is.jl")
     end
 
     Turing.setrdcache(false)
@@ -63,42 +69,42 @@ include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
         start = time()
         @testset "inference: $adbackend" begin
             @testset "samplers" begin
-                include("inference/gibbs.jl")
-                include("inference/gibbs_conditional.jl")
-                include("inference/hmc.jl")
-                include("inference/Inference.jl")
-                include("contrib/inference/dynamichmc.jl")
-                include("contrib/inference/sghmc.jl")
-                include("inference/mh.jl")
+                time_include("inference/gibbs.jl", adbackend)
+                time_include("inference/gibbs_conditional.jl", adbackend)
+                time_include("inference/hmc.jl", adbackend)
+                time_include("inference/Inference.jl", adbackend)
+                time_include("contrib/inference/dynamichmc.jl", adbackend)
+                time_include("contrib/inference/sghmc.jl", adbackend)
+                time_include("inference/mh.jl", adbackend)
             end
         end
 
         @testset "variational algorithms : $adbackend" begin
-            include("variational/advi.jl")
+            time_include("variational/advi.jl", adbackend)
         end
 
         @testset "modes" begin
-            include("modes/ModeEstimation.jl")
-            include("modes/OptimInterface.jl")
+            time_include("modes/ModeEstimation.jl", adbackend)
+            time_include("modes/OptimInterface.jl", adbackend)
         end
 
-        # Useful for
-        # a) discovering performance regressions,
-        # b) figuring out why CI is timing out.
+        # Useful for figuring out why CI is timing out.
         @info "Tests for $(adbackend) took $(time() - start) seconds"
     end
     @testset "variational optimisers" begin
-        include("variational/optimisers.jl")
+        time_include("variational/optimisers.jl")
     end
 
     Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
-        include("stdlib/distributions.jl")
-        include("stdlib/RandomMeasures.jl")
+        time_include("stdlib/distributions.jl", :forwarddiff)
+        time_include("stdlib/RandomMeasures.jl", :forwarddiff)
     end
 
     @testset "utilities" begin
         # include("utilities/stan-interface.jl")
-        include("inference/utilities.jl")
+        time_include("inference/utilities.jl")
     end
 end
+
+print(write_running_times(TIMES))

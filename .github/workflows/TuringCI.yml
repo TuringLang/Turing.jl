@@ -57,6 +57,8 @@ jobs:
           coverage: ${{ matrix.version == '1.6' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1 }}
         env:
           JULIA_NUM_THREADS: ${{ matrix.num_threads }}
+      - name: Show running time output
+        run: cat benchmarks/outputs/times.txt
       - uses: julia-actions/julia-processcoverage@v1
         if: matrix.version == '1.6' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1
       - uses: codecov/codecov-action@v1
