@@ -62,10 +62,10 @@ const to = TimerOutput()
 
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :tracker, :reversediff)
-        Turing.setadbackend(adbackend)
-        @info "Testing $(adbackend)"
-        start = time()
         @timeit to "inference: $adbackend" begin
+            Turing.setadbackend(adbackend)
+            @info "Testing $(adbackend)"
+            start = time()
             @testset "inference: $adbackend" begin
                 @testset "samplers" begin
                     @timeit to "gibbs" include("inference/gibbs.jl")
@@ -77,20 +77,21 @@ const to = TimerOutput()
                     @timeit to "mh" include("inference/mh.jl")
                 end
             end
-        end
 
-        @testset "variational algorithms : $adbackend" begin
-            @timeit to "variational/advi" include("variational/advi.jl")
-        end
+            @testset "variational algorithms : $adbackend" begin
+                @timeit to "variational/advi" include("variational/advi.jl")
+            end
 
-        @testset "modes" begin
-            @timeit to "ModeEstimation" include("modes/ModeEstimation.jl")
-            @timeit to "OptimInterface" include("modes/OptimInterface.jl")
-        end
+            @testset "modes : $adbackend" begin
+                @timeit to "ModeEstimation" include("modes/ModeEstimation.jl")
+                @timeit to "OptimInterface" include("modes/OptimInterface.jl")
+            end
 
-        # Useful for figuring out why CI is timing out.
-        @info "Tests for $(adbackend) took $(time() - start) seconds"
+            # Useful for figuring out why CI is timing out.
+            @info "Tests for $(adbackend) took $(time() - start) seconds"
+        end
     end
+
     @testset "variational optimisers" begin
         @timeit to "optimisers" include("variational/optimisers.jl")
     end
