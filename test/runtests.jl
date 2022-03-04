@@ -47,9 +47,7 @@ include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
 # Collect timing and allocations information to show in a clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
-macro timeit_include(path::AbstractString)
-    return :(@timeit TIMEROUTPUT $path include($path))
-end
+macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
 
 @testset "Turing" begin
     @testset "essential" begin
@@ -68,7 +66,6 @@ end
         @timeit TIMEROUTPUT "inference: $adbackend" begin
             Turing.setadbackend(adbackend)
             @info "Testing $(adbackend)"
-            start = time()
             @testset "inference: $adbackend" begin
                 @testset "samplers" begin
                     @timeit_include("inference/gibbs.jl")
@@ -90,8 +87,6 @@ end
                 @timeit_include("modes/OptimInterface.jl")
             end
 
-            # Useful for figuring out why CI is timing out.
-            @info "Tests for $(adbackend) took $(time() - start) seconds"
         end
     end
 
