@@ -35,7 +35,7 @@ using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
-using TimerOutputs: TimerOutput, @timeit, print_timer
+using TimerOutputs: TimerOutputs, @timeit
 using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
                 Variational, ZygoteAD, getspace, gradient_logp
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
@@ -46,7 +46,7 @@ setprogress!(false)
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
 # Collect timing and allocations information to show in a clear way.
-const to = TimerOutput()
+const to = TimerOutputs.TimerOutput()
 
 @testset "Turing" begin
     @testset "essential" begin
@@ -109,4 +109,4 @@ const to = TimerOutput()
 end
 
 # Hiding `avg` column via `compact=true` because we do only one run per entry.
-print_timer(to; compact=true, sortby=:firstexec)
+show(to; compact=true, sortby=:firstexec)
