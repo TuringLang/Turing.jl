@@ -107,4 +107,5 @@ const to = TimerOutput()
     end
 end
 
-print_timer(to; sortby=:firstexec)
+# Hiding `avg` column via `compact=true` because we do only one run per entry.
+print_timer(to; compact=true, sortby=:firstexec)
