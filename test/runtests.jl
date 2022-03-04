@@ -46,45 +46,48 @@ setprogress!(false)
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
 # Collect timing and allocations information to show in a clear way.
-const to = TimerOutputs.TimerOutput()
+const TIMEROUTPUT = TimerOutputs.TimerOutput()
+macro timeit_include(path::AbstractString)
+    return :(@timeit TIMEROUTPUT $path include($path))
+end
 
 @testset "Turing" begin
     @testset "essential" begin
-        @timeit to "essential/ad" include("essential/ad.jl")
+        @timeit_include("essential/ad.jl")
     end
 
     @testset "samplers (without AD)" begin
-        @timeit to "inference/AdvancedSMC" include("inference/AdvancedSMC.jl")
-        @timeit to "inference/emcee" include("inference/emcee.jl")
-        @timeit to "inference/ess" include("inference/ess.jl")
-        @timeit to "inference/is" include("inference/is.jl")
+        @timeit_include("inference/AdvancedSMC.jl")
+        @timeit_include("inference/emcee.jl")
+        @timeit_include("inference/ess.jl")
+        @timeit_include("inference/is.jl")
     end
 
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :tracker, :reversediff)
-        @timeit to "inference: $adbackend" begin
+        @timeit TIMEROUTPUT "inference: $adbackend" begin
             Turing.setadbackend(adbackend)
             @info "Testing $(adbackend)"
             start = time()
             @testset "inference: $adbackend" begin
                 @testset "samplers" begin
-                    @timeit to "gibbs" include("inference/gibbs.jl")
-                    @timeit to "gibbs_conditional" include("inference/gibbs_conditional.jl")
-                    @timeit to "hmc" include("inference/hmc.jl")
-                    @timeit to "Inference" include("inference/Inference.jl")
-                    @timeit to "dynamichmc" include("contrib/inference/dynamichmc.jl")
-                    @timeit to "sghmc" include("contrib/inference/sghmc.jl")
-                    @timeit to "mh" include("inference/mh.jl")
+                    @timeit_include("inference/gibbs.jl")
+                    @timeit_include("inference/gibbs_conditional.jl")
+                    @timeit_include("inference/hmc.jl")
+                    @timeit_include("inference/Inference.jl")
+                    @timeit_include("contrib/inference/dynamichmc.jl")
+                    @timeit_include("contrib/inference/sghmc.jl")
+                    @timeit_include("inference/mh.jl")
                 end
             end
 
             @testset "variational algorithms : $adbackend" begin
-                @timeit to "variational/advi" include("variational/advi.jl")
+                @timeit_include("variational/advi.jl")
             end
 
             @testset "modes : $adbackend" begin
-                @timeit to "ModeEstimation" include("modes/ModeEstimation.jl")
-                @timeit to "OptimInterface" include("modes/OptimInterface.jl")
+                @timeit_include("modes/ModeEstimation.jl")
+                @timeit_include("modes/OptimInterface.jl")
             end
 
             # Useful for figuring out why CI is timing out.
@@ -93,20 +96,19 @@ const to = TimerOutputs.TimerOutput()
     end
 
     @testset "variational optimisers" begin
-        @timeit to "optimisers" include("variational/optimisers.jl")
+        @timeit_include("variational/optimisers.jl")
     end
 
     Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
-        @timeit to "distributions" include("stdlib/distributions.jl")
-        @timeit to "RandomMeasures" include("stdlib/RandomMeasures.jl")
+        @timeit_include("stdlib/distributions.jl")
+        @timeit_include("stdlib/RandomMeasures.jl")
     end
 
     @testset "utilities" begin
         # include("utilities/stan-interface.jl")
-        @timeit to "utilities" include("inference/utilities.jl")
+        @timeit_include("inference/utilities.jl")
     end
 end
 
-# Hiding `avg` column via `compact=true` because we do only one run per entry.
-show(to; compact=true, sortby=:firstexec)
+show(TIMEROUTPUT; compact=true, sortby=:firstexec)
