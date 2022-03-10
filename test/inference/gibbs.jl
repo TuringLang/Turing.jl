@@ -57,7 +57,7 @@
     end
 
     @turing_testset "transitions" begin
-        @model functio ngdemo_copy()
+        @model function gdemo_copy()
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
             1.5 ~ Normal(m, sqrt(s))
