@@ -1,5 +1,5 @@
 # The old-gdemo model.
-@model gdemo(x, y) = begin
+@model function gdemo(x, y)
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
   x ~ Normal(m, sqrt(s))
@@ -7,7 +7,7 @@
   return s, m
 end
 
-@model gdemo_d() = begin
+@model function gdemo_d()
   s ~ InverseGamma(2, 3)
   m ~ Normal(0, sqrt(s))
   1.5 ~ Normal(m, sqrt(s))
@@ -17,7 +17,7 @@ end
 
 gdemo_default = gdemo_d()
 
-@model MoGtest(D) = begin
+@model function MoGtest(D)
     mu1 ~ Normal(1, 1)
     mu2 ~ Normal(4, 1)
     z1 ~ Categorical(2)
@@ -50,4 +50,4 @@ end
 MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
 
 # Declare empty model to make the Sampler constructor work.
-@model empty_model() = begin x = 1; end
+@model empty_model() = x = 1

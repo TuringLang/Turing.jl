@@ -11,7 +11,7 @@ end
 
 X, Y = readlrdata()
 
-@model lr_nuts(x, y, σ) = begin
+@model function lr_nuts(x, y, σ)
 
     N,D = size(x)
 

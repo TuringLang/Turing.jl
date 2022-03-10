@@ -1,38 +1,38 @@
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin
-        @model infiniteGMM(x) = begin
+        @model function infiniteGMM(x)
             # Hyper-parameters, i.e. concentration parameter and parameters of H.
             α = 1.0
             μ0 = 0.0
             σ0 = 1.0
-            
+
             # Define random measure, e.g. Dirichlet process.
             rpm = DirichletProcess(α)
-            
+
             # Define the base distribution, i.e. expected value of the Dirichlet process.
             H = Normal(μ0, σ0)
-            
+
             # Latent assignment.
             z = tzeros(Int, length(x))
-                
+
             # Locations of the infinitely many clusters.
             μ = tzeros(Float64, 0)
-            
+
             for i in 1:length(x)
-                
+
                 # Number of clusters.
                 K = maximum(z)
                 nk = Vector{Int}(map(k -> sum(z .== k), 1:K))
         
                 # Draw the latent assignment.
-                z[i] ~ ChineseRestaurantProcess(rpm, nk)
+                z[i] ~ ChineseRestaurantProcess(rpm, nk)
                 
                 # Create a new cluster?
                 if z[i] > K
                     push!(μ, 0.0)
         
                     # Draw location of new cluster.
-                    μ[z[i]] ~ H
+                    μ[z[i]] ~ H
                 end
                         
                 # Draw observation.
@@ -86,7 +86,7 @@
     #     # DP parameters
     #     alpha = 0.25
 
-    #     @model crpimm(y, rpm) = begin
+    #     @model function crpimm(y, rpm)
     #         # Base distribution.
     #         H = Normal(mu_0, sigma_0)
     #         # Latent assignments.
@@ -233,7 +233,7 @@
     #     alpha = 0.25
 
     #     # stick-breaking process based on Papaspiliopoulos and Roberts (2008).
-    #     @model sbimm(y, rpm, trunc) = begin
+    #     @model function sbimm(y, rpm, trunc)
     #         # Base distribution.
     #         H = Normal(mu_0, sigma_0)
 
@@ -319,7 +319,7 @@
     #     alpha = 0.25
 
     #     # size-biased sampling process
-    #     @model sbsimm(y, rpm, trunc) = begin
+    #     @model function sbsimm(y, rpm, trunc)
     #         # Base distribution.
     #         H = Normal(mu_0, sigma_0)
 

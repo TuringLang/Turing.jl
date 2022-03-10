@@ -49,7 +49,7 @@
         test_model_ad(gdemo_default, logp1, [:m, :s])
 
         # Test Wishart AD.
-        @model wishart_ad() = begin
+        @model function wishart_ad()
             v ~ Wishart(7, [1 0.5; 0.5 1])
             v
         end
@@ -65,7 +65,7 @@
         test_model_ad(wishart_ad(), logp3, [:v])
     end
     @testset "Simplex Tracker, Zygote and ReverseDiff (with and without caching) AD" begin
-        @model dir() = begin
+        @model function dir()
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
         Turing.setadbackend(:tracker)
@@ -87,7 +87,7 @@
     end
     # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
-        @model wishart() = begin
+        @model function wishart()
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:tracker)
@@ -97,7 +97,7 @@
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
 
-        @model invwishart() = begin
+        @model function invwishart()
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:tracker)

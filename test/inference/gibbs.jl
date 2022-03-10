@@ -57,7 +57,7 @@
     end
 
     @turing_testset "transitions" begin
-        @model gdemo_copy() = begin
+        @model functio ngdemo_copy()
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
             1.5 ~ Normal(m, sqrt(s))
@@ -88,7 +88,7 @@
         sample(model, alg, 100; callback = callback)
     end
     @turing_testset "dynamic model" begin
-        @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
+        @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
         

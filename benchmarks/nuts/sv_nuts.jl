@@ -11,7 +11,7 @@ fname = joinpath(dirname(@__FILE__), "sv_nuts.data")
 y, header = readdlm(fname, ',', header=true)
 
 # Stochastic volatility (SV)
-@model sv_nuts(y, dy, ::Type{T}=Vector{Float64}) where {T} = begin
+@model function sv_nuts(y, dy, ::Type{T}=Vector{Float64}) where {T}
     N = size(y,1)
 
     τ ~ Exponential(1/100)

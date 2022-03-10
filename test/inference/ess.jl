@@ -1,11 +1,11 @@
 @testset "ESS" begin
-    @model demo(x) = begin
+    @model function demo(x)
         m ~ Normal()
         x ~ Normal(m, 0.5)
     end
     demo_default = demo(1.0)
 
-    @model demodot(x) = begin
+    @model function demodot(x)
         m = Vector{Float64}(undef, 2)
         @. m ~ Normal()
         x ~ Normal(m[2], 0.5)

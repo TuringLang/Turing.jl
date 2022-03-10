@@ -13,14 +13,14 @@ qqnorm(x, elements::ElementOrFunction...) = qqplot(Normal(), x, Guide.xlabel("Th
 
 NSamples = 5000
 
-@model gdemo_fw() = begin
+@model function gdemo_fw()
   # s ~ InverseGamma(2,3)
   s = 1
   m ~ Normal(0, sqrt(s))
   y ~ MvNormal([m; m; m], [sqrt(s) 0 0; 0 sqrt(s) 0; 0 0 sqrt(s)])
 end
 
-@model gdemo_bk(x) = begin
+@model function gdemo_bk(x)
   # Backward Step 1: theta ~ theta | x
   # s ~ InverseGamma(2,3)
   s = 1
