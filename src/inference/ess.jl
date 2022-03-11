@@ -5,7 +5,7 @@ Elliptical slice sampling algorithm.
 
 # Examples
 ```jldoctest; setup = :(Random.seed!(1))
-julia> @model gdemo(x) = begin
+julia> @model function gdemo(x)
            m ~ Normal()
            x ~ Normal(m, 0.5)
        end

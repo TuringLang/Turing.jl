@@ -25,7 +25,7 @@ variables in a model.
 
 Example:
 ```julia
-@model gibbs_example(x) = begin
+@model function gibbs_example(x)
     v1 ~ Normal(0,1)
     v2 ~ Categorical(5)
 end

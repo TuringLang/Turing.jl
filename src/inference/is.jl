@@ -16,7 +16,7 @@ Example:
 
 ```julia
 # Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
+@model function gdemo(x)
     s² ~ InverseGamma(2,3)
     m ~ Normal(0,sqrt.(s))
     x[1] ~ Normal(m, sqrt.(s))

@@ -4,7 +4,7 @@
     @numerical_testset "constrained bounded" begin
         obs = [0,1,0,1,1,1,1,1,1,1]
 
-        @model constrained_test(obs) = begin
+        @model function constrained_test(obs)
             p ~ Beta(2,2)
             for i = 1:length(obs)
                 obs[i] ~ Bernoulli(p)
@@ -23,7 +23,7 @@
     @numerical_testset "contrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
-        @model constrained_simplex_test(obs12) = begin
+        @model function constrained_simplex_test(obs12)
             ps ~ Dirichlet(2, 3)
             pd ~ Dirichlet(4, 1)
             for i = 1:length(obs12)
@@ -46,7 +46,7 @@
         check_gdemo(res, rtol=0.1)
     end
     @turing_testset "matrix support" begin
-        @model hmcmatrixsup() = begin
+        @model function hmcmatrixsup()
             v ~ Wishart(7, [1 0.5; 0.5 1])
         end
 
@@ -85,7 +85,7 @@
         alpha = 0.16                  # regularizatin term
         var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
-        @model bnn(ts) = begin
+        @model function bnn(ts)
             b1 ~ MvNormal([0. ;0.; 0.],
                 [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
             w11 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
