@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.20.5"
+version = "0.20.6"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -45,7 +45,7 @@ DataStructures = "0.18"
 Distributions = "0.23.3, 0.24, 0.25"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8"
-DynamicPPL = "0.17.2"
+DynamicPPL = "0.17.2, 0.18"
 EllipticalSliceSampling = "0.4"
 ForwardDiff = "0.10.3"
 Libtask = "0.6.7, 0.7"
