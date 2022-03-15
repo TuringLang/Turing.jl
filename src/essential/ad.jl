@@ -113,12 +113,12 @@ function gradient_logp(
         return logp
     end
 
-    chunk_size = getchunksize(typeof(sampler))
     # Set chunk size and do ForwardMode.
+    chunk_size = getchunksize(typeof(sampler))
     config = if chunk_size == 0
         ForwardDiff.GradientConfig(f, θ)
     else
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(min(length(θ), chunk_size)))
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size))
     end
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
     l = getlogp(vi)
