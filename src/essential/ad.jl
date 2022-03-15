@@ -25,7 +25,7 @@ function setadsafe(switch::Bool)
     ADSAFE[] = switch
 end
 
-const CHUNKSIZE = Ref(0) # default chunksize used by AD
+const CHUNKSIZE = Ref(0) # 0 means letting ForwardDiff set it automatically
 
 function setchunksize(chunk_size::Int)
     @info("[Turing]: AD chunk size is set as $chunk_size")
