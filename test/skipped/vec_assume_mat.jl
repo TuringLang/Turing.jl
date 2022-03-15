@@ -1,7 +1,6 @@
 using Turing, Test
 
 N = 5
-setchunksize(4*N)
 alg = HMC(0.2, 4)
 
 @model function vdemo(::Type{T}=Float64) where {T}

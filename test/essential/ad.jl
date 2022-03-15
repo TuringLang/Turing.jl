@@ -165,4 +165,14 @@
 
         Turing.emptyrdcache()
     end
+
+    @testset "chunksize" begin
+        # Default value is 0 (automatic choice by ForwardDiff)
+        @test Turing.CHUNKSIZE[] == 0
+
+        setchunksize(8)
+        @test Turing.CHUNKSIZE[] == 8
+        setchunksize(0)
+        @test Turing.CHUNKSIZE[] == 0
+    end
 end

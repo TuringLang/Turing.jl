@@ -344,7 +344,6 @@
 
             # Vector assumptions
             N = 10
-            setchunksize(N)
             alg = HMC(0.2, 4)
 
             @model function vdemo3()
@@ -413,7 +412,6 @@
 
         # Vector assumptions
         N = 10
-        setchunksize(N)
         alg = HMC(0.2, 4)
 
         @model function vdemo3()
@@ -459,7 +457,6 @@
     end
     @testset "Type parameters" begin
         N = 10
-        setchunksize(N)
         alg = HMC(0.01, 5)
         x = randn(1000)
         @model function vdemo1(::Type{T}=Float64) where {T}
