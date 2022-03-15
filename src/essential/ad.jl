@@ -30,6 +30,7 @@ const CHUNKSIZE = Ref(0) # 0 means letting ForwardDiff set it automatically
 function setchunksize(chunk_size::Int)
     @info("[Turing]: AD chunk size is set as $chunk_size")
     CHUNKSIZE[] = chunk_size
+    AdvancedVI.setchunksize(chunk_size)
 end
 
 abstract type ADBackend end
