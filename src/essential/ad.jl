@@ -10,7 +10,6 @@ function setadbackend(backend::Val)
 end
 
 function _setadbackend(::Val{:forwarddiff})
-    CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forwarddiff
 end
 function _setadbackend(::Val{:tracker})
@@ -26,13 +25,12 @@ function setadsafe(switch::Bool)
     ADSAFE[] = switch
 end
 
-const CHUNKSIZE = Ref(40) # default chunksize used by AD
+const CHUNKSIZE = Ref(0) # 0 means letting ForwardDiff set it automatically
 
 function setchunksize(chunk_size::Int)
-    if ~(CHUNKSIZE[] == chunk_size)
-        @info("[Turing]: AD chunk size is set as $chunk_size")
-        CHUNKSIZE[] = chunk_size
-    end
+    @info("[Turing]: AD chunk size is set as $chunk_size")
+    CHUNKSIZE[] = chunk_size
+    AdvancedVI.setchunksize(chunk_size)
 end
 
 abstract type ADBackend end
@@ -116,10 +114,13 @@ function gradient_logp(
         return logp
     end
 
-    chunk_size = getchunksize(typeof(sampler))
     # Set chunk size and do ForwardMode.
-    chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
-    config = ForwardDiff.GradientConfig(f, θ, chunk)
+    chunk_size = getchunksize(typeof(sampler))
+    config = if chunk_size == 0
+        ForwardDiff.GradientConfig(f, θ)
+    else
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size))
+    end
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
     l = getlogp(vi)
     setlogp!!(vi, logp_old)

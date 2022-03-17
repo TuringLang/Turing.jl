@@ -109,12 +109,11 @@ export  @model,                 # modelling
         ADVI,
 
         sample,                 # inference
-        setchunksize,
         resume,
         @logprob_str,
         @prob_str,
 
-        auto_tune_chunk_size!,  # helper
+        setchunksize,           # helper
         setadbackend,
         setadsafe,
 

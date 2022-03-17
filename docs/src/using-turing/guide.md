@@ -647,8 +647,7 @@ Some of Turing.jl's default settings can be changed for better usage.
 #### AD Chunk Size
 
 
-ForwardDiff (Turing's default AD backend) uses forward-mode chunk-wise AD. The chunk size can be manually set by `setchunksize(new_chunk_size)`; alternatively, use an auto-tuning helper function `auto_tune_chunk_size!(mf::Function, rep_num=10)`, which will profile various chunk sizes. Here `mf` is the model function, e.g. `gdemo(1.5, 2)`, and `rep_num` is the number of repetitions during profiling.
-
+ForwardDiff (Turing's default AD backend) uses forward-mode chunk-wise AD. The chunk size can be set manually by `setchunksize(new_chunk_size)`.
 
 #### AD Backend
 
