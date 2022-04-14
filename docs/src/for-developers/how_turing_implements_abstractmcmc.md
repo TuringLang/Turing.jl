@@ -167,7 +167,7 @@ struct Transition{T, F<:AbstractFloat}
 end
 ```
 
-It also [contains](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L108) a constructor that builds an instance of `Transition` from an instance `spl` of `Sampler`: \$\$\theta\$\$ is `spl.state.vi` converted to a `namedtuple`, and `lp` is `getlogp(spl.state.vi)`. `is.jl` uses this default constructor at the end of the `step!` function [here](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/is.jl#L58).
+It also [contains](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L108) a constructor that builds an instance of `Transition` from an instance `spl` of `Sampler`: $\theta$ is `spl.state.vi` converted to a `namedtuple`, and `lp` is `getlogp(spl.state.vi)`. `is.jl` uses this default constructor at the end of the `step!` function [here](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/is.jl#L58).
 
 ### How `sample` works
 
@@ -226,13 +226,13 @@ It simply returns the density (in the discrete case, the probability) of the obs
 
 We focus on the AbstractMCMC functions that are overriden in `is.jl` and executed inside `mcmcsample`: `step!`, which is called `n_samples` times, and `sample_end!`, which is executed once after those `n_samples` iterations.
 
-* During the \$\$i\$\$-th iteration, `step!` does 3 things:
+* During the $i$-th iteration, `step!` does 3 things:
   * `empty!!(spl.state.vi)`: remove information about the previous sample from the sampler's `VarInfo`
   * `model(rng, spl.state.vi, spl)`: call the model evaluation function
-    * calls to `assume` add the samples from the prior \$\$s\_i\$\$ and \$\$m\_i\$\$ to `spl.state.vi`
+    * calls to `assume` add the samples from the prior $s_i$ and $m_i$ to `spl.state.vi`
     * calls to both `assume` or `observe` are followed by the line `acclogp!!(vi, lp)`, where `lp` is an output of `assume` and `observe`
     * `lp` is set to 0 after `assume`, and to the value of the density at the observation after `observe`
-    * when all the tilde statements have been covered, `spl.state.vi.logp[]` is the sum of the `lp`, ie the likelihood \$\$\log p(x, y \mid s\_i, m\_i) = \log p(x \mid s\_i, m\_i) + \log p(y \mid s\_i, m\_i)\$\$ of the observations given the latent variable samples \$\$s\_i\$\$ and \$\$m\_i\$\$.
+    * when all the tilde statements have been covered, `spl.state.vi.logp[]` is the sum of the `lp`, i.e., the likelihood $\log p(x, y \mid s_i, m_i) = \log p(x \mid s_i, m_i) + \log p(y \mid s_i, m_i)$$ of the observations given the latent variable samples $s_i$ and $m\_i$.
   * `return Transition(spl)`: build a transition from the sampler, and return that transition
     * the transition's `vi` field is simply `spl.state.vi`
     * the `lp` field contains the likelihood `spl.state.vi.logp[]`
