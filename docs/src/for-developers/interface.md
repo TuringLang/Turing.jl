@@ -149,19 +149,19 @@ need, but we need to implement the `step!` function which actually performs infe
 
 As a refresher, Metropolis-Hastings implements a very basic algorithm:
 
-1. Pick some initial state, \$\$\theta\_0\$\$.
-2. For \$\$t\$\$ in \$\$[1,N]\$\$, do
+1. Pick some initial state, $$\theta_0.$$
+2. For $$t$$ in $$[1,N],$$ do
     
-    a. Generate a proposal parameterization \$\$θ'\_t \sim q(\theta'\_t \mid \theta\_{t-1})\$\$. 
+    a. Generate a proposal parameterization $$\theta'_t \sim q(\theta'_t \mid \theta_{t-1}).$$
 
-    b. Calculate the acceptance probability, \$\$\alpha = \text{min}\Big[1,\frac{\pi(θ'\_t)}{\pi(\theta\_{t-1})} \frac{q(θ\_{t-1} \mid θ'\_t)}{q(θ'\_t \mid θ\_{t-1})}) \Big]\$\$.
+    b. Calculate the acceptance probability, $$\alpha = \text{min}\left[1,\frac{\pi(\theta'_t)}{\pi(\theta_{t-1})} \frac{q(\theta_{t-1} \mid \theta'_t)}{q(\theta'\_t \mid \theta_{t-1})}) \right].$$
 
-    c. If \$\$U \le α\$\$ where \$\$U \sim [0,1]\$\$, then \$\$\theta\_t = \theta'\_t\$\$. Otherwise, \$\$\theta\_t = \theta\_{t-1}\$\$.
+    c. If $$U \le \alpha$$ where $$U \sim [0,1],$$ then $$\theta_t = \theta'_t.$$ Otherwise, $$\theta_t = \theta_{t-1}.$$
 
 Of course, it's much easier to do this in the log space, so the acceptance probability is
 more commonly written as 
 
-\$\$\log \alpha = \min\Big[0, \log \pi(θ'\_t) - \log \pi(θ\_{t-1}) + \log q(θ\_{t-1} \mid θ'\_t) - \log q(θ'\_t \mid θ\_{t-1}) \Big]\$\$
+$$\log \alpha = \min\left[0, \log \pi(\theta'_t) - \log \pi(\theta_{t-1}) + \log q(\theta_{t-1} \mid \theta^\prime_t) - \log q(\theta\prime_t \mid \theta_{t-1}) \right].$$
 
 In interface terms, we should do the following:
 

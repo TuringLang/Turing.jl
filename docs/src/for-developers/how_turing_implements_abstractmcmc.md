@@ -31,16 +31,18 @@ Turing sampling methods (most of which are written [here](https://github.com/Tur
 
 First, we explain how Importance Sampling works in the abstract. Consider the model defined in the first code block. Mathematically, it can be written:
 
-$\begin{align}
-s &\sim \text{InverseGamma}(2, 3) \\
-m &\sim \text{Normal}(0, \sqrt{s}) \\
-x &\sim \text{Normal}(m, \sqrt{s}) \\
-y &\sim \text{Normal}(m, \sqrt{s})
-\end{align}$
+$$
+\begin{align}
+s &\sim \text{InverseGamma}(2, 3), \\
+m &\sim \text{Normal}(0, \sqrt{s}), \\
+x &\sim \text{Normal}(m, \sqrt{s}), \\
+y &\sim \text{Normal}(m, \sqrt{s}),
+\end{align}
+$$
 
-The **latent** variables are \$\$s\$\$ and \$\$m\$\$, the **observed** variables are \$\$x\$\$ and \$\$y\$\$. The model **joint** distribution \$\$p(s,m,x,y)\$\$ decomposes into the **prior** \$\$p(s,m)\$\$ and the **likelihood** \$\$p(x,y \mid s,m)\$\$. Since \$\$x = 1.5\$\$ and \$\$y = 2\$\$ are observed, the goal is to infer the **posterior** distribution \$\$p(s,m \mid x,y)\$\$.
+The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m).$ Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y).$
 
-Importance Sampling produces independent samples \$\$(s\_i, m\_i)\$\$ from the prior distribution. It also outputs unnormalized weights \$\$w\_i = \frac {p(x,y,s\_i,m\_i)} {p(s\_i, m\_i)} = p(x,y \mid s\_i, m\_i)\$\$ such that the empirical distribution \$\$\frac 1 N \sum\limits\_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w\_j} \delta_{(s\_i, m\_i)}\$\$ is a good approximation of the posterior.
+Importance Sampling produces independent samples $(s_i, m_i)$ from the prior distribution. It also outputs unnormalized weights $$w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$$ such that the empirical distribution $$\frac{1}{N} \sum_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$$ is a good approximation of the posterior.
 
 ## 1. Define a `Sampler`
 
@@ -66,8 +68,7 @@ This is all handled by DynamicPPL, more specifically [here](https://github.com/T
 
 ### Algorithms
 
-An **algorithm** is just a sampling method: in Turing, it is a subtype of the abstract type `InferenceAlgorithm`. Defining an algorithm may require specifying a few high-level parameters. For example, "Hamiltonian Monte-Carlo" may be too vague, but "Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01" is an algorithm. "Metropolis-Hastings" may be too vague, but "Metropolis-Hastings with proposal distribution `p`" is an algorithm. \$\$\epsilon\$\$
-
+An **algorithm** is just a sampling method: in Turing, it is a subtype of the abstract type `InferenceAlgorithm`. Defining an algorithm may require specifying a few high-level parameters. For example, "Hamiltonian Monte-Carlo" may be too vague, but "Hamiltonian Monte Carlo with  10 leapfrog steps per proposal and a stepsize of 0.01" is an algorithm. "Metropolis-Hastings" may be too vague, but "Metropolis-Hastings with proposal distribution `p`" is an algorithm. 
 Thus
 
 ```julia
@@ -125,12 +126,12 @@ mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
 end
 ```
 
-When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average \$\$\frac 1 N \sum\limits\_{j=1}^N w\_i = \frac 1 N \sum\limits\_{j=1}^N p(x,y \mid s\_i, m\_i)\$\$ of the sample weights is a particularly important quantity:
+When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average $$\frac 1 N \sum_{j=1}^N w_i = \frac 1 N \sum_{j=1}^N p(x,y \mid s_i, m_i)$$ of the sample weights is a particularly important quantity:
 
 * it is used to **normalize** the **empirical approximation** of the posterior distribution
-* its logarithm is the importance sampling **estimate** of the **log evidence** \$\$\log p(x, y)\$\$
+* its logarithm is the importance sampling **estimate** of the **log evidence** $\log p(x, y)$
 
-To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing \$\$\log \left( \frac 1 N \sum\limits\_{j=1}^N w\_i \right)\$\$.
+To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing $$\log \left( \frac 1 N \sum_{j=1}^N w_i \right).$$
 
 ```julia
 mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
@@ -154,7 +155,7 @@ A lot of the things here are method-specific. However Turing also has some funct
 
 `AbstractMCMC` stores information corresponding to each individual sample in objects called `transition`, but does not specify what the structure of these objects could be. You could decide to implement a type `MyTransition` for transitions corresponding to the specifics of your methods. However, there are many situations in which the only information you need for each sample is:
 
-* its value: \$\$\theta\$\$
+* its value: $\theta$
 * log of the joint probability of the observed data and this sample: `lp`
 
 `Inference.jl` [defines](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/Inference.jl#L103) a struct `Transition`, which corresponds to this default situation
@@ -187,7 +188,7 @@ The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of c
 
 For an example of the former, consider **Importance Sampling** as defined in `is.jl`. This implementation of Importance Sampling uses the model prior distribution as a proposal distribution, and therefore requires **samples from the prior distribution** of the model. Another example is **Approximate Bayesian Computation**, which requires multiple **samples from the model prior and likelihood distributions** in order to generate a single sample.
 
-An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior \$\$p(\theta \mid x\_{\text{obs}})\$\$, in order to compute the acceptance ratio, you need to **evaluate the model joint density** \$\$p(\theta\_{\text{prop}}, x\_{\text{obs}})\$\$ with \$\$\theta\_{\text{prop}}\$\$ a sample from the proposal and \$\$x\_{\text{obs}}\$\$ the observed data.
+An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior $$p(\theta \mid x_{\text{obs}}),$$ in order to compute the acceptance ratio, you need to **evaluate the model joint density** $$p\left(\theta_{\text{prop}}, x_{\text{obs}}\right)$$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.
 
 This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement.
 
