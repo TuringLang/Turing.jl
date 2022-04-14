@@ -47,7 +47,14 @@ Importance Sampling produces independent samples $(s\_i, m\_i)$ from the prior d
 $$w
 \_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)
 $$ 
-such that the empirical distribution $$\frac{1}{N} \sum\_{i =1}^N \frac {w\_i} {\sum\limits_{j=1}^N w\_j} \delta\_{(s\_i, m\_i)}$$ is a good approximation of the posterior.
+
+such that the empirical distribution 
+
+$$
+\frac{1}{N} \sum_{i =1}^N \frac {w_i} {\sum_{j=1}^N w_j} \delta\_{(s_i, m_i)}
+$$ 
+
+is a good approximation of the posterior.
 
 ## 1. Define a `Sampler`
 
