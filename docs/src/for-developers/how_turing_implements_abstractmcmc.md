@@ -42,7 +42,12 @@ $$
 
 The **latent** variables are $s$ and $m$, the **observed** variables are $x$ and $y$. The model **joint** distribution $p(s,m,x,y)$ decomposes into the **prior** $p(s,m)$ and the **likelihood** $p(x,y \mid s,m).$ Since $x = 1.5$ and $y = 2$ are observed, the goal is to infer the **posterior** distribution $p(s,m \mid x,y).$
 
-Importance Sampling produces independent samples $(s_i, m_i)$ from the prior distribution. It also outputs unnormalized weights $$w_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)$$ such that the empirical distribution $$\frac{1}{N} \sum_{i =1}^N \frac {w_i} {\sum\limits_{j=1}^N w_j} \delta_{(s_i, m_i)}$$ is a good approximation of the posterior.
+Importance Sampling produces independent samples $(s\_i, m\_i)$ from the prior distribution. It also outputs unnormalized weights 
+
+$$w
+\_i = \frac {p(x,y,s_i,m_i)} {p(s_i, m_i)} = p(x,y \mid s_i, m_i)
+$$ 
+such that the empirical distribution $$\frac{1}{N} \sum\_{i =1}^N \frac {w\_i} {\sum\limits_{j=1}^N w\_j} \delta\_{(s\_i, m\_i)}$$ is a good approximation of the posterior.
 
 ## 1. Define a `Sampler`
 
@@ -126,12 +131,22 @@ mutable struct SamplerState{VIType<:VarInfo} <: AbstractSamplerState
 end
 ```
 
-When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average $$\frac 1 N \sum_{j=1}^N w_i = \frac 1 N \sum_{j=1}^N p(x,y \mid s_i, m_i)$$ of the sample weights is a particularly important quantity:
+When doing Importance Sampling, we care not only about the values of the samples but also their weights. We will see below that the weight of each sample is also added to `spl.state.vi`. Moreover, the average 
+
+$$
+\frac 1 N \sum_{j=1}^N w_i = \frac 1 N \sum_{j=1}^N p(x,y \mid s_i, m_i)
+$$ 
+
+of the sample weights is a particularly important quantity:
 
 * it is used to **normalize** the **empirical approximation** of the posterior distribution
 * its logarithm is the importance sampling **estimate** of the **log evidence** $\log p(x, y)$
 
-To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing $$\log \left( \frac 1 N \sum_{j=1}^N w_i \right).$$
+To avoid having to compute it over and over again, `is.jl`defines an IS-specific concrete type `ISState` for sampler states, with an additional field `final_logevidence` containing 
+
+$$
+\log \left( \frac 1 N \sum_{j=1}^N w_i \right).
+$$
 
 ```julia
 mutable struct ISState{V<:VarInfo, F<:AbstractFloat} <: AbstractSamplerState
@@ -188,7 +203,19 @@ The functions mentioned above, such as `sample_init!`, `step!`, etc.,  must of c
 
 For an example of the former, consider **Importance Sampling** as defined in `is.jl`. This implementation of Importance Sampling uses the model prior distribution as a proposal distribution, and therefore requires **samples from the prior distribution** of the model. Another example is **Approximate Bayesian Computation**, which requires multiple **samples from the model prior and likelihood distributions** in order to generate a single sample.
 
-An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior $$p(\theta \mid x_{\text{obs}}),$$ in order to compute the acceptance ratio, you need to **evaluate the model joint density** $$p\left(\theta_{\text{prop}}, x_{\text{obs}}\right)$$ with $\theta_{\text{prop}}$ a sample from the proposal and $x_{\text{obs}}$ the observed data.
+An example of the latter is the **Metropolis-Hastings** algorithm. At every step of sampling from a target posterior 
+
+$$
+p(\theta \mid x_{\text{obs}}),
+$$ 
+
+in order to compute the acceptance ratio, you need to **evaluate the model joint density** 
+
+$$
+p\left(\theta_{\text{prop}}, x_{\text{obs}}\right)
+$$ 
+
+with $\theta\_{\text{prop}}$ a sample from the proposal and $x\_{\text{obs}}$ the observed data.
 
 This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement.
 
