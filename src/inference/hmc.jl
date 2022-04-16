@@ -441,22 +441,13 @@ function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
     space::Symbol...;
-    max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric
+    kwargs...,
 ) where AD
-    NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
+    NUTS{AD}(n_adapts, δ; space, kwargs...)
 end
 
-function NUTS{AD}(
-    δ::Float64;
-    max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric
-) where AD
-    NUTS{AD}(-1, δ, max_depth, Δ_max, init_ϵ, metricT, ())
+function NUTS{AD}(δ::Float64; kwargs...) where AD
+    NUTS{AD}(-1, δ; kwargs...)
 end
 
 function NUTS{AD}(kwargs...) where AD
