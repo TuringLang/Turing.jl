@@ -395,12 +395,23 @@ Arguments:
 - `init_ϵ::Float64` : Inital step size; 0 means automatically searching using a heuristic procedure.
 
 """
-struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
+struct NUTS{
+    AD,
+    space,
+    metricT <: AHMC.AbstractMetric,
+    TS<:AHMC.AbstractTrajectorySampler,
+    TC<:AHMC.AbstractTerminationCriterion,
+    I<:AHMC.AbstractIntegrator,
+    A<:AHMC.AbstractAdaptor
+} <: AdaptiveHamiltonian{AD}
     n_adapts::Int         # number of samples with adaption for ϵ
     δ::Float64        # target accept rate
     max_depth::Int         # maximum tree depth
     Δ_max::Float64
     ϵ::Float64     # (initial) step size
+    metric::metricT
+    integrator::I
+    adaptor::A
 end
 
 NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
