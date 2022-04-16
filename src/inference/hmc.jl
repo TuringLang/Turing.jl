@@ -40,6 +40,47 @@ end
 DynamicPPL.getlogp(t::HMCTransition) = t.lp
 
 ###
+### Default options
+###
+
+struct DefaultIntegrator{T<:AHMC.AbstractIntegrator} <: AHMC.AbstractIntegrator end
+
+struct DefaultMetric{T<:AHMC.AbstractMetric} <: AHMC.AbstractMetric end
+
+struct DefaultAdaptor <: AHMC.AbstractAdaptor end
+
+function as_concrete(metric::AHMC.AbstractMetric, nparams)
+    nparams == size(metric, 1) || throw(ArgumentError("Metric must have size ($nparams, $nparams)"))
+end
+function as_concrete(metric::DefaultMetric{T}, nparams) where {T}
+    return T(nparams)
+end
+
+as_concrete(integrator::AHMC.AbstractIntegrator, ϵ) = integrator
+function as_concrete(integrator::DefaultIntegrator{T}, ϵ) where {T}
+    return T(ϵ)
+end
+
+as_concrete(adaptor::AHMC.AbstractAdaptor, metric::AHMC.AbstractMetric; kwargs...) = adaptor
+function as_concrete(adaptor::DefaultAdaptor, metric::AHMC.AbstractMetric; δ=0.65, n_adapts=-1, ϵ=0.0)
+    pc = AHMC.MassMatrixAdaptor(metric)
+    da = AHMC.StepSizeAdaptor(δ, ϵ)
+
+    if iszero(n_adapts)
+        adaptor = AHMC.Adaptation.NoAdaptation()
+    else
+        if metric == AHMC.UnitEuclideanMetric
+            adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
+        else
+            adaptor = AHMC.StanHMCAdaptor(pc, da)
+            AHMC.initialize!(adaptor, n_adapts)
+        end
+    end
+
+    return adaptor
+end
+
+###
 ### Hamiltonian Monte Carlo samplers.
 ###
 
