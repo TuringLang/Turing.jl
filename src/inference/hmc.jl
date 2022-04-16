@@ -463,6 +463,32 @@ function NUTS{AD}(kwargs...) where AD
     NUTS{AD}(-1, 0.65; kwargs...)
 end
 
+function NUTS{AD}(
+    n_adapts::Int,
+    δ::Float64;
+    max_depth::Int = 10,
+    Δ_max::Float64 = 1000.0,
+    init_ϵ::Float64 = 0.0,
+    metricT = AHMC.DiagEuclideanMetric,
+    metric::AHMC.AbstractMetric = DefaultMetric{metricT}(),
+    integratorT = AHMC.Leapfrog,
+    integrator::AHMC.AbstractIntegrator = DefaultIntegrator{integratorT}(),
+    adaptor::AHMC.AbstractAdaptor = DefaultAdaptor(),
+    space::Tuple = (),
+) where {AD}
+    NUTS{
+        AD,
+        space,
+        typeof(metric),
+        AHMC.MultinomialTS,
+        AHMC.GeneralisedNoUTurn,
+        typeof(integrator),
+        typeof(adaptor),
+    }(
+        n_adapts, δ, max_depth, Δ_max, init_ϵ, metric, integrator, adaptor,
+    )
+end
+
 for alg in (:HMC, :HMCDA, :NUTS)
     @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
 end
