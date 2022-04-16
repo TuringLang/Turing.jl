@@ -641,20 +641,22 @@ function HMCState(
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
 
-    # Get the metric type.
-    metricT = getmetricT(spl.alg)
-
     # Create a Hamiltonian.
     θ_init = Vector{Float64}(spl.state.vi[spl])
-    metric = metricT(length(θ_init))
+    # Get the metric.
+    metric = as_concrete(spl.alg.metric, length(θ_init))
     h = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
 
     # Find good eps if not provided one
-    if iszero(spl.alg.ϵ)
-        ϵ = AHMC.find_good_stepsize(h, θ_init)
-        @info "Found initial step size" ϵ
+    if spl.alg.integrator isa DefaultIntegrator
+        if iszero(spl.alg.ϵ)
+            ϵ = AHMC.find_good_stepsize(h, θ_init)
+            @info "Found initial step size" ϵ
+        else
+            ϵ = spl.alg.ϵ
+        end
     else
-        ϵ = spl.alg.ϵ
+        ϵ = AHMC.step_size(spl.alg.integrator)
     end
 
     # Generate a kernel.
@@ -666,5 +668,6 @@ function HMCState(
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, kernel.τ, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
+    adaptor = as_concrete(spl.alg.adaptor, metric; n_adapts=spl.alg.n_adapts, ϵ=ϵ, δ=spl.alg.δ)
+    return HMCState(vi, 0, 0, kernel.τ, h, spl.alg.adaptor, t.z)
 end
