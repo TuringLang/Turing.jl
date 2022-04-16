@@ -422,10 +422,10 @@ function NUTS{AD}(
     max_depth::Int,
     Δ_max::Float64,
     ϵ::Float64,
-    ::Type{metricT},
+    metricT::Type,
     space::Tuple
-) where {AD, metricT}
-    return NUTS{AD, space, metricT}(n_adapts, δ, max_depth, Δ_max, ϵ)
+) where {AD}
+    NUTS{AD}(n_adapts, δ; max_depth, Δ_max, init_ϵ=ϵ, metricT, space)
 end
 
 function NUTS{AD}(
