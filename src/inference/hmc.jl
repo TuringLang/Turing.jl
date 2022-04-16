@@ -453,7 +453,7 @@ function NUTS{AD}(δ::Float64; kwargs...) where AD
     NUTS{AD}(-1, δ; kwargs...)
 end
 
-function NUTS{AD}(kwargs...) where AD
+function NUTS{AD}(; kwargs...) where AD
     NUTS{AD}(-1, 0.65; kwargs...)
 end
 
