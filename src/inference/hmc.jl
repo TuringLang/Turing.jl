@@ -537,7 +537,10 @@ end
 function make_ahmc_kernel(alg::HMCDA, ϵ)
     return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ)))
 end
-make_ahmc_kernel(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
+function make_ahmc_kernel(alg::NUTS{AD,space,metricT,TS,TC}, ϵ) where {AD,space,metricT,TS,TC}
+    integrator = as_concrete(alg.integrator, ϵ)
+    return AHMC.NUTS{TS,TC}(integrator, alg.max_depth, alg.Δ_max)
+end
 
 ####
 #### Compiler interface, i.e. tilde operators.
