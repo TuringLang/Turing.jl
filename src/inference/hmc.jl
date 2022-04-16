@@ -198,8 +198,7 @@ function DynamicPPL.initialstep(
     theta = vi[spl]
 
     # Create a Hamiltonian.
-    metricT = getmetricT(spl.alg)
-    metric = metricT(length(theta))
+    metric = as_concrete(spl.alg.metric, length(theta))
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     logπ = gen_logπ(vi, spl, model)
     hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
@@ -224,11 +223,15 @@ function DynamicPPL.initialstep(
     log_density_old = getlogp(vi)
 
     # Find good eps if not provided one
-    if iszero(spl.alg.ϵ)
-        ϵ = AHMC.find_good_stepsize(hamiltonian, theta)
-        @info "Found initial step size" ϵ
+    if spl.alg.integrator isa DefaultIntegrator
+        if iszero(spl.alg.ϵ)
+            ϵ = AHMC.find_good_stepsize(hamiltonian, theta)
+            @info "Found initial step size" ϵ
+        else
+            ϵ = spl.alg.ϵ
+        end
     else
-        ϵ = spl.alg.ϵ
+        ϵ = AHMC.step_size(spl.alg.integrator)
     end
 
     # Generate a kernel.
@@ -239,7 +242,7 @@ function DynamicPPL.initialstep(
     t = AHMC.transition(rng, hamiltonian, kernel, z)
 
     # Adaptation
-    adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
+    adaptor = as_concrete(spl.alg.adaptor, metric; n_adapts=spl.alg.n_adapts, ϵ=ϵ, δ=spl.alg.δ)
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, kernel, _ =
             AHMC.adapt!(hamiltonian, kernel, adaptor,
