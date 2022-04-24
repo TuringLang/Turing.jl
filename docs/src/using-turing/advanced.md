@@ -172,7 +172,7 @@ function gdemo(model, varinfo, context, x)
     # Observe each value of x[i] according to a Normal distribution.
     DynamicPPL.dot_tilde_observe!!(context, Normal(m, sqrt(s²)), x, Turing.@varname(x), varinfo)
 end
-gdemo(x) = Turing.Model(:gdemo, gdemo, (; x))
+gdemo(x) = Turing.Model(gdemo, (; x))
 
 # Instantiate a Model object with our data variables.
 model = gdemo([1.5, 2.0])
