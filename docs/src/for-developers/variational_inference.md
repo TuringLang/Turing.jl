@@ -1,9 +1,6 @@
 ---
-layout: post
-title: CV
-cover: malibu.jpg
-categories: posts
-permalink: cv
+title: Variational Inference
+toc: true
 ---
 
 # Overview
