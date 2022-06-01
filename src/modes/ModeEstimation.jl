@@ -3,7 +3,7 @@ module ModeEstimation
 using ..Turing
 using Bijectors
 using Random
-using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType
+using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
@@ -291,24 +291,47 @@ function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; co
 end
 
 
-function optim_function(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; constrained::Bool=true, autoad::Union{Nothing, AbstractADType}=nothing)
+function optim_function(
+    model::Model,
+    estimator::Union{MLE, MAP};
+    constrained::Bool=true,
+    autoad::Union{Nothing, AbstractADType}=NoAD(),
+)
+    if autoad === nothing
+        Base.depwarn("the use of `autoad=nothing` is deprecated, please use `autoad=SciMLBase.NoAD()`", :optim_function)
+    end
+
     obj, init, t = optim_objective(model, estimator; constrained=constrained)
     
-    l(x,p) = obj(x)
-    f = isa(autoad, AbstractADType) ? OptimizationFunction(l, autoad) : OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
+    l(x, _) = obj(x)
+    f = if autoad isa AbstractADType && autoad !== NoAD()
+        OptimizationFunction(l, autoad)
+    else
+        OptimizationFunction(
+            l;
+            grad = (G,x,p) -> obj(nothing, G, nothing, x),
+            hess = (H,x,p) -> obj(nothing, nothing, H, x),
+        )
+    end
     
     return (func=f, init=init, transform = t)
 end
 
 
-function optim_problem(model::DynamicPPL.Model, estimator::Union{MAP, MLE}; constrained::Bool=true, init_theta=nothing, autoad::Union{Nothing, AbstractADType}=nothing, kwargs...)
-    f = optim_function(model, estimator; constrained=constrained, autoad=autoad)
+function optim_problem(
+    model::Model,
+    estimator::Union{MAP, MLE};
+    constrained::Bool=true,
+    init_theta=nothing,
+    autoad::Union{Nothing, AbstractADType}=NoAD(),
+    kwargs...,
+)
+    f, init, transform = optim_function(model, estimator; constrained=constrained, autoad=autoad)
 
-    init_theta = init_theta === nothing ? f.init() : f.init(init_theta)
+    u0 = init_theta === nothing ? init() : init(init_theta)
+    prob = OptimizationProblem(f, u0; kwargs...)
 
-    prob = OptimizationProblem(f.func, init_theta, nothing; kwargs...)
-
-    return (prob=prob, init=f.init, transform = f.transform)
+    return (; prob, init, transform)
 end
 
 end

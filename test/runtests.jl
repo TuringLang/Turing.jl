@@ -7,6 +7,7 @@ using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
 using GalacticOptim
+using GalacticOptimJL
 using MCMCChains
 using Memoization
 using NamedArrays
