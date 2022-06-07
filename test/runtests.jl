@@ -6,12 +6,12 @@ using Distributions.FillArrays
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
-using GalacticOptim
-using GalacticOptimJL
 using MCMCChains
 using Memoization
 using NamedArrays
 using Optim
+using Optimization
+using OptimizationOptimJL
 using PDMats
 using ReverseDiff
 using SpecialFunctions

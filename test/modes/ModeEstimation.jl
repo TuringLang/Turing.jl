@@ -71,7 +71,7 @@
             ub = [2.0, 2.0]
 
             f1 = optim_function(gdemo_default, MLE();constrained=true)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
 
             p2 = optim_objective(gdemo_default, MLE();constrained=true)
             
@@ -99,7 +99,7 @@
             ub = [2.0, 2.0]
 
             f1 = optim_function(gdemo_default, MAP();constrained=true)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
 
             p2 = optim_objective(gdemo_default, MAP();constrained=true)
             
