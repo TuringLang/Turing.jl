@@ -46,7 +46,7 @@ standardtag(::ForwardDiffAD{<:Any,true}) = true
 standardtag(::ForwardDiffAD) = false
 
 # Use standard tag if not specified otherwise
-ForwardDiff{N}() where {N} = ForwardDiff{N,true}()
+ForwardDiffAD{N}() where {N} = ForwardDiffAD{N,true}()
 
 struct TrackerAD <: ADBackend end
 struct ZygoteAD <: ADBackend end
