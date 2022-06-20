@@ -1,5 +1,4 @@
 using .ReverseDiff: compile, GradientTape
-using .ReverseDiff.DiffResults: GradientResult
 
 struct ReverseDiffAD{cache} <: ADBackend end
 const RDCache = Ref(false)
@@ -22,26 +21,26 @@ function gradient_logp(
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    T = typeof(getlogp(vi))
+    # Save current log density value.
+    logp_old = getlogp(vi)
 
-    # Specify objective function.
-    function f(θ)
-        new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, context)
-        return getlogp(new_vi)
-    end
+    # Define log density function.
+    f = Turing.LogDensityFunction(vi, model, sampler, context)
+
+    # Obtain both value and gradient of the log density function.
     tp, result = taperesult(f, θ)
     ReverseDiff.gradient!(result, tp, θ)
-    l = DiffResults.value(result)
-    ∂l∂θ::typeof(θ) = DiffResults.gradient(result)
+    logp = DiffResults.value(result)
+    ∂logp∂θ = DiffResults.gradient(result)
 
-    return l, ∂l∂θ
+    # Ensure that `vi` was not mutated.
+    @assert getlogp(vi) == logp_old
+
+    return logp, ∂logp∂θ
 end
 
 tape(f, x) = GradientTape(f, x)
-function taperesult(f, x)
-    return tape(f, x), GradientResult(x)
-end
+taperesult(f, x) = (tape(f, x), DiffResults.GradientResult(x))
 
 @require Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73" @eval begin
     setrdcache(::Val{true}) = RDCache[] = true
@@ -58,20 +57,22 @@ end
         sampler::AbstractSampler = SampleFromPrior(),
         context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
-        T = typeof(getlogp(vi))
+        # Save current log density value.
+        logp_old = getlogp(vi)
 
-        # Specify objective function.
-        function f(θ)
-            new_vi = VarInfo(vi, sampler, θ)
-            model(new_vi, sampler, context)
-            return getlogp(new_vi)
-        end
+        # Define log density function.
+        f = Turing.LogDensityFunction(vi, model, sampler, context)
+
+        # Obtain both value and gradient of the log density function.
         ctp, result = memoized_taperesult(f, θ)
         ReverseDiff.gradient!(result, ctp, θ)
-        l = DiffResults.value(result)
-        ∂l∂θ = DiffResults.gradient(result)
+        logp = DiffResults.value(result)
+        ∂logp∂θ = DiffResults.gradient(result)
 
-        return l, ∂l∂θ
+        # Ensure that `vi` was not mutated.
+        @assert getlogp(vi) == logp_old
+
+        return logp, ∂logp∂θ
     end
 
     # This makes sure we generate a single tape per Turing model and sampler
@@ -85,7 +86,7 @@ end
     end
     memoized_taperesult(f, x) = memoized_taperesult(RDTapeKey(f, x))
     Memoization.@memoize Dict function memoized_taperesult(k::RDTapeKey)
-        return compiledtape(k.f, k.x), GradientResult(k.x)
+        return compiledtape(k.f, k.x), DiffResults.GradientResult(k.x)
     end
     compiledtape(f, x) = compile(GradientTape(f, x))
 end
