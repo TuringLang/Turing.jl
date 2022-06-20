@@ -34,10 +34,19 @@ function setchunksize(chunk_size::Int)
 end
 
 abstract type ADBackend end
-struct ForwardDiffAD{chunk} <: ADBackend end
+struct ForwardDiffAD{chunk,standardtag} <: ADBackend end
 getchunksize(::Type{<:ForwardDiffAD{chunk}}) where chunk = chunk
 getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
 getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
+
+# Standard tag: Improves stacktraces
+# Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/
+struct TuringTag end
+standardtag(::ForwardDiffAD{<:Any,true}) = true
+standardtag(::ForwardDiffAD) = false
+
+# Use standard tag if not specified otherwise
+ForwardDiff{N}() where {N} = ForwardDiff{N,true}()
 
 struct TrackerAD <: ADBackend end
 struct ZygoteAD <: ADBackend end
@@ -95,7 +104,7 @@ Compute the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
 """
 function gradient_logp(
-    ::ForwardDiffAD,
+    ad::ForwardDiffAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
@@ -114,12 +123,19 @@ function gradient_logp(
         return logp
     end
 
+    # Define tag
+    tag = if standardtag(ad)
+        ForwardDiff.Tag(TuringTag(), eltype(θ))
+    else
+        ForwardDiff.Tag(f, eltype(θ))
+    end
+
     # Set chunk size and do ForwardMode.
     chunk_size = getchunksize(typeof(sampler))
     config = if chunk_size == 0
-        ForwardDiff.GradientConfig(f, θ)
+        ForwardDiff.GradientConfig(f, θ. ForwardDiff.Chunk(θ), tag)
     else
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size))
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
     end
     ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
     l = getlogp(vi)
