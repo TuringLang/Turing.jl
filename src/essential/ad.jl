@@ -45,6 +45,9 @@ struct TuringTag end
 standardtag(::ForwardDiffAD{<:Any,true}) = true
 standardtag(::ForwardDiffAD) = false
 
+# Allow Turing tag in gradient etc. calls
+ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, f, ::AbstractArray{V}) where {V} = true
+
 # Use standard tag if not specified otherwise
 ForwardDiffAD{N}() where {N} = ForwardDiffAD{N,true}()
 
@@ -131,9 +134,9 @@ function gradient_logp(
     end
 
     # Set chunk size and do ForwardMode.
-    chunk_size = getchunksize(typeof(sampler))
+    chunk_size = getchunksize(typeof(ad))
     config = if chunk_size == 0
-        ForwardDiff.GradientConfig(f, θ. ForwardDiff.Chunk(θ), tag)
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
     else
         ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
     end
