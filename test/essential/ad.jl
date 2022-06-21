@@ -177,4 +177,16 @@
         @test Turing.CHUNKSIZE[] == 0
         @test Turing.AdvancedVI.CHUNKSIZE[] == 0
     end
+
+    @testset "tag" begin
+        @test Turing.ADBackend(Val(:forwarddiff))() === Turing.ForwardDiffAD{Turing.CHUNKSIZE[],true}()
+        for chunksize in (0, 1, 10)
+            ad = Turing.ForwardDiffAD{chunksize}()
+            @test ad === Turing.ForwardDiffAD{chunksize,true}()
+            @test Turing.Essential.standardtag(ad)
+            for standardtag in (false, 0, 1)
+                @test !Turing.Essential.standardtag(Turing.ForwardDiffAD{chunksize,standardtag}())
+            end
+        end
+    end
 end
