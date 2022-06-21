@@ -25,6 +25,25 @@ function setprogress!(progress::Bool)
     return progress
 end
 
+# Log density function
+struct LogDensityFunction{V,M,S,C}
+    varinfo::V
+    model::M
+    sampler::S
+    context::C
+end
+
+function (f::LogDensityFunction)(θ::AbstractVector)
+    return getlogp(last(DynamicPPL.evaluate!!(f.model, VarInfo(f.varinfo, f.sampler, θ), f.sampler, f.context)))
+end
+
+# Standard tag: Improves stacktraces
+# Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/
+struct TuringTag end
+
+# Allow Turing tag in gradient etc. calls of the log density function
+ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::LogDensityFunction, ::AbstractArray{V}) where {V} = true
+
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
