@@ -21,9 +21,6 @@ function gradient_logp(
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    # Save current log density value.
-    logp_old = getlogp(vi)
-
     # Define log density function.
     f = Turing.LogDensityFunction(vi, model, sampler, context)
 
@@ -32,9 +29,6 @@ function gradient_logp(
     ReverseDiff.gradient!(result, tp, θ)
     logp = DiffResults.value(result)
     ∂logp∂θ = DiffResults.gradient(result)
-
-    # Ensure that `vi` was not mutated.
-    @assert getlogp(vi) == logp_old
 
     return logp, ∂logp∂θ
 end
@@ -57,9 +51,6 @@ taperesult(f, x) = (tape(f, x), DiffResults.GradientResult(x))
         sampler::AbstractSampler = SampleFromPrior(),
         context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
     )
-        # Save current log density value.
-        logp_old = getlogp(vi)
-
         # Define log density function.
         f = Turing.LogDensityFunction(vi, model, sampler, context)
 
@@ -68,9 +59,6 @@ taperesult(f, x) = (tape(f, x), DiffResults.GradientResult(x))
         ReverseDiff.gradient!(result, ctp, θ)
         logp = DiffResults.value(result)
         ∂logp∂θ = DiffResults.gradient(result)
-
-        # Ensure that `vi` was not mutated.
-        @assert getlogp(vi) == logp_old
 
         return logp, ∂logp∂θ
     end
