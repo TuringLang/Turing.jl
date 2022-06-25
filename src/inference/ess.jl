@@ -126,7 +126,7 @@ Distributions.mean(p::ESSPrior) = p.μ
 # Evaluate log-likelihood of proposals
 const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext()}
 
-function (ℓ::ESSLogLikelihood)(f)
+function (ℓ::ESSLogLikelihood)(f::AbstractVector)
     sampler = ℓ.sampler
     varinfo = setindex!!(ℓ.varinfo, f, sampler)
     varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))

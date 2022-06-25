@@ -98,7 +98,7 @@ end
 Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
 at the array `z`.
 """
-function (f::OptimLogDensity)(z)
+function (f::OptimLogDensity)(z::AbstractVector)
     sampler = f.sampler
     varinfo = DynamicPPL.VarInfo(f.varinfo, sampler, z)
     return -getlogp(last(DynamicPPL.evaluate!!(model, varinfo, sampler, f.context)))
@@ -240,8 +240,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{fa
     obj = OptimLogDensity(model, ctx)
 
     transform!(obj)
-    init = Init(obj.vi, constrained_space{false}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
 
     return (obj=obj, init = init, transform=t)
 end
@@ -250,8 +250,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
     
-    init = Init(obj.vi, constrained_space{true}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -261,8 +261,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{f
     obj = OptimLogDensity(model, ctx)
     
     transform!(obj)
-    init = Init(obj.vi, constrained_space{false}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
