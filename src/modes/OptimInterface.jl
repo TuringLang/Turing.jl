@@ -196,7 +196,7 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], optimizer, args...; kwargs...)
+    return _optimize(model, f, f.varinfo[f.sampler], optimizer, args...; kwargs...)
 end
 
 function _optimize(
@@ -206,13 +206,13 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.vi[DynamicPPL.SampleFromPrior()], Optim.LBFGS(), args...; kwargs...)
+    return _optimize(model, f, f.varinfo[f.sampler], Optim.LBFGS(), args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
+    init_vals::AbstractArray = f.varinfo[f.sampler],
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
@@ -230,13 +230,13 @@ function _optimize(
     kwargs...
 )
     # Do some initialization.
-    spl = DynamicPPL.SampleFromPrior()
+    spl = f.sampler
 
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    f.vi[spl] = init_vals
-    link!(f.vi, spl)
-    init_vals = f.vi[spl]
+    f.varinfo[spl] = init_vals
+    link!(f.varinfo, spl)
+    init_vals = f.varinfo[spl]
 
     # Optimize!
     M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
@@ -248,13 +248,13 @@ function _optimize(
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
     # correct dimensionality.
-    f.vi[spl] = M.minimizer
-    invlink!(f.vi, spl)
-    vals = f.vi[spl]
-    link!(f.vi, spl)
+    f.varinfo[spl] = M.minimizer
+    invlink!(f.varinfo, spl)
+    vals = f.varinfo[spl]
+    link!(f.varinfo, spl)
 
     # Make one transition to get the parameter names.
-    ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(f.vi), DynamicPPL.getlogp(f.vi))]
+    ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(f.varinfo), DynamicPPL.getlogp(f.varinfo))]
     varnames, _ = Turing.Inference._params_to_array(ts)
 
     # Store the parameters and their names in an array.

@@ -78,39 +78,30 @@ end
 """
     OptimLogDensity{M<:Model,C<:Context,V<:VarInfo}
 
-A struct that stores the log density function of a `DynamicPPL` model.
+A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-struct OptimLogDensity{M<:Model,C<:AbstractContext,V<:VarInfo}
-    "A `DynamicPPL.Model` constructed either with the `@model` macro or manually."
-    model::M
-    "A `DynamicPPL.AbstractContext` used to evaluate the model. `LikelihoodContext` or `DefaultContext` are typical for MAP/MLE."
-    context::C
-    "A `DynamicPPL.VarInfo` struct that will be used to update model parameters."
-    vi::V
-end
+const OptimLogDensity{M<:Model,C<:OptimizationContext,V<:VarInfo} = Turing.LogDensityFunction{V,M,DynamicPPL.SampleFromPrior,C}
 
 """
-    OptimLogDensity(model::Model, context::AbstractContext)
+    OptimLogDensity(model::Model, context::OptimizationContext)
 
 Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
 """
-function OptimLogDensity(model::Model, context::AbstractContext)
+function OptimLogDensity(model::Model, context::OptimizationContext)
     init = VarInfo(model)
-    return OptimLogDensity(model, context, init)
+    return Turing.LogDensityFunction(init, model, DynamicPPL.SampleFromPrior(), context)
 end
 
 """
     (f::OptimLogDensity)(z)
 
-Evaluate the log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
+Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
 at the array `z`.
 """
 function (f::OptimLogDensity)(z)
-    spl = DynamicPPL.SampleFromPrior()
-
-    varinfo = DynamicPPL.VarInfo(f.vi, spl, z)
-    f.model(varinfo, spl, f.context)
-    return -DynamicPPL.getlogp(varinfo)
+    sampler = f.sampler
+    varinfo = DynamicPPL.VarInfo(f.varinfo, sampler, z)
+    return -getlogp(last(DynamicPPL.evaluate!!(model, varinfo, sampler, f.context)))
 end
 
 function (f::OptimLogDensity)(F, G, H, z)
@@ -119,13 +110,13 @@ function (f::OptimLogDensity)(F, G, H, z)
         error("Second order optimization is not yet supported.")
     end
 
-    spl = DynamicPPL.SampleFromPrior()
+    spl = f.sampler
     
     if G !== nothing
         # Calculate log joint and the gradient
         l, g = Turing.gradient_logp(
             z, 
-            DynamicPPL.VarInfo(f.vi, spl, z), 
+            DynamicPPL.VarInfo(f.varinfo, spl, z),
             f.model, 
             spl,
             f.context
@@ -158,16 +149,16 @@ end
 #################################################
 
 function transform!(f::OptimLogDensity)
-    spl = DynamicPPL.SampleFromPrior()
+    spl = f.sampler
 
     ## Check link status of vi in OptimLogDensity
-    linked = DynamicPPL.islinked(f.vi, spl) 
+    linked = DynamicPPL.islinked(f.varinfo, spl)
 
     ## transform into constrained or unconstrained space depending on current state of vi
     if !linked
-        DynamicPPL.link!(f.vi, spl)
+        DynamicPPL.link!(f.varinfo, spl)
     else
-        DynamicPPL.invlink!(f.vi, spl)
+        DynamicPPL.invlink!(f.varinfo, spl)
     end
 
     return nothing
