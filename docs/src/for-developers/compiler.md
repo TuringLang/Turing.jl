@@ -74,7 +74,7 @@ end
 
 This would allow us to generate a model by calling `gauss(; x = rand(3))`.
 
-If an argument has a default value `missing`, it is treated as a random variable. For variables which require an intialization because we
+If an argument has a default value `missing`, it is treated as a random variable. For variables which require an initialization because we
 need to loop or broadcast over its elements, such as `x` above, the following needs to be done:
 ```julia
 if x === missing

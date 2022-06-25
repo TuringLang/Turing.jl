@@ -305,7 +305,7 @@ $$
 \end{align*}.
 $$
 
-And maximizing this wrt. $\mu$ and $\Sigma$ is what's referred to as **Automatic Differentation Variational Inference (ADVI)**!
+And maximizing this wrt. $\mu$ and $\Sigma$ is what's referred to as **Automatic Differentiation Variational Inference (ADVI)**!
 
 Now if you want to try it out, [check out the tutorial on how to use ADVI in Turing.jl](../../tutorials/09-variational-inference)!
 

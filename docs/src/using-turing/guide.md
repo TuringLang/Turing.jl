@@ -540,7 +540,7 @@ chn = sample(simple_choice_f, Gibbs(HMC(0.2, 3, :p), PG(20, :z)), 1000)
 ```
 
 
-The `Gibbs` sampler can be used to specify unique automatic differentation backends for different variable spaces. Please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article for more.
+The `Gibbs` sampler can be used to specify unique automatic differentiation backends for different variable spaces. Please see the [Automatic Differentiation]({{site.baseurl}}/docs/using-turing/autodiff) article for more.
 
 
 For more details of compositional sampling in Turing.jl, please check the corresponding [paper](http://proceedings.mlr.press/v84/ge18b.html).

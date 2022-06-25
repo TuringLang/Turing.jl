@@ -55,7 +55,7 @@ directory. Edits must be made to the `docs/src/` versions.
 
 ## MacOS Notes
 Under MacOS one might need to install the following additional gems's
-to have jekyll running as descibed above.
+to have jekyll running as described above.
 
 ```
 gem install jekyll-paginate
