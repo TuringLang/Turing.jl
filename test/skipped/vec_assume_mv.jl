@@ -3,25 +3,24 @@ using Turing, Test
 
 N = 10
 beta = [0.5, 0.5]
-setchunksize(N*length(beta))
 alg = HMC(0.2, 4)
 
 # Test for vectorize UnivariateDistribution
-@model vdemo() = begin
+@model function vdemo()
   phi = Vector{Vector{Real}}(undef, N)
   @> phi ~ Dirichlet(beta)
 end
 
 ch_vec, t_vec, m_vec, gctime, memallocs = @timed res_vec = sample(vdemo(), alg)
 
-@model vdemo() = begin
+@model function vdemo()
   phi = Matrix(undef, 2, N)
   @. phi ~ Dirichlet(beta)
 end
 
 ch_vec_mat, t_vec_mat, m_vec_mat, gctime, memallocs = @timed res_vec_mat = sample(vdemo(), alg)
 
-@model vdemo() = begin
+@model function vdemo()
   phi = Vector{Vector{Real}}(undef, N)
   for i = 1:N
     phi[i] ~ Dirichlet(beta)

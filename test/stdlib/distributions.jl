@@ -1,7 +1,8 @@
 @testset "distributions.jl" begin
+    rng = StableRNG(12345)
     @turing_testset "distributions functions" begin
         ns = 10
-        logitp = randn()
+        logitp = randn(rng)
         d1 = BinomialLogit(ns, logitp)
         d2 = Binomial(ns, logistic(logitp))
         k = 3
@@ -9,12 +10,10 @@
     end
 
     @turing_testset "distributions functions" begin
-        Random.seed!(1)
-
         d = OrderedLogistic(-2, [-1, 1])
 
         n = 1_000_000
-        y = rand(d, n)
+        y = rand(rng, d, n)
         K = length(d.cutpoints) + 1
         p = [mean(==(k), y) for k in 1:K]          # empirical probs
         pmf = [exp(logpdf(d, k)) for k in 1:K]
@@ -31,9 +30,9 @@
     end
 
     @numerical_testset "single distribution correctness" begin
-        Random.seed!(12321)
+        rng = StableRNG(1)
 
-        n_samples = 50_000
+        n_samples = 10_000
         mean_tol = 0.1
         var_atol = 1.0
         var_tol = 0.5
@@ -113,7 +112,7 @@
 
                         @model m() = x ~ dist
 
-                        chn = sample(m(), HMC(0.2, 1), n_samples)
+                        chn = sample(rng, m(), HMC(0.05, 20), n_samples)
 
                         # Numerical tests.
                         check_dist_numerical(dist,

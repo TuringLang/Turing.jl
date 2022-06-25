@@ -66,7 +66,7 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
 end
 
 function check_gdemo_models(alg, nsamples, args...; atol=0.0, rtol=0.2, kwargs...)
-    @testset "$(alg) on $(m.name)" for m in gdemo_models
+    @testset "$(alg) on $(nameof(m))" for m in DynamicPPL.TestUtils.DEMO_MODELS
         # Log this so that if something goes wrong, we can identify the
         # algorithm and model.
         μ = mean(Array(sample(m, alg, nsamples, args...; kwargs...)))

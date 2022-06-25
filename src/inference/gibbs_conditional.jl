@@ -79,8 +79,10 @@ function AbstractMCMC.step(
     condvals = conditioned(tonamedtuple(vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
-    vi[spl] = [updated;]  # setindex allows only vectors in this case...
-    model(rng, vi, SampleFromPrior()) # update log joint probability
+    # Setindex allows only vectors in this case.
+    vi = setindex!!(vi, [updated;], spl)
+    # Update log joint probability.
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
 
     return nothing, vi
 end
@@ -115,7 +117,7 @@ extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[
 function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
     values, strings = p
     if length(values) == length(strings) == 1 && !occursin(r".\[.+\]$", strings[1])
-        # if m ~ MVNormal(1, 1), we could have have ([1], ["m[1]"])!
+        # if m ~ MVNormal([1], I), we could have have ([1], ["m[1]"])!
         return values[1]
     else
         return values

@@ -10,7 +10,7 @@ CurrentModule = Turing
 ## Index
 
 ```@index
-Modules = [Turing, Turing.Core, Turing.Inference, Libtask]
+Modules = [Turing, Turing.Essential, Turing.Inference, Libtask]
 ```
 
 ## Modelling

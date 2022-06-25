@@ -1,4 +1,4 @@
-module Core
+module Essential
 
 using DistributionsAD, Bijectors
 using Libtask, ForwardDiff, Random
@@ -16,6 +16,7 @@ using StatsFuns: logsumexp, softmax
 using Requires
 
 import AdvancedPS
+import DiffResults
 import ZygoteRules
 
 include("container.jl")

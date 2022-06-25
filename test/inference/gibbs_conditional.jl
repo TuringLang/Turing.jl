@@ -1,5 +1,5 @@
-@turing_testset "gibbs conditionals" begin
-    Random.seed!(100)
+@turing_testset "gibbs conditionals.jl" begin
+    Random.seed!(1000); rng = StableRNG(123)
 
     @turing_testset "gdemo" begin
         # We consider the model
@@ -40,7 +40,7 @@
             GibbsConditional(:m, cond_m),
             GibbsConditional(:s, _ -> Normal(s_posterior_mean, 0)),
         )
-        chain = sample(gdemo_default, sampler1, 10_000)
+        chain = sample(rng, gdemo_default, sampler1, 10_000)
         cond_m_mean = mean(cond_m((s = s_posterior_mean,)))
         check_numerical(chain, [:m, :s], [cond_m_mean, s_posterior_mean])
         @test all(==(s_posterior_mean), chain[:s][2:end])
@@ -50,18 +50,19 @@
             GibbsConditional(:m, _ -> Normal(m_posterior_mean, 0)),
             GibbsConditional(:s, cond_s),
         )
-        chain = sample(gdemo_default, sampler2, 10_000)
+        chain = sample(rng, gdemo_default, sampler2, 10_000)
         cond_s_mean = mean(cond_s((m = m_posterior_mean,)))
         check_numerical(chain, [:m, :s], [m_posterior_mean, cond_s_mean])
         @test all(==(m_posterior_mean), chain[:m][2:end])
 
         # and one for both using the conditional
         sampler3 = Gibbs(GibbsConditional(:m, cond_m), GibbsConditional(:s, cond_s))
-        chain = sample(gdemo_default, sampler3, 10_000)
+        chain = sample(rng, gdemo_default, sampler3, 10_000)
         check_gdemo(chain)
     end
 
     @turing_testset "GMM" begin
+        Random.seed!(1000); rng = StableRNG(123)
         # We consider the model
         # ```math
         # μₖ ~ Normal(m, σ_μ), k = 1, …, K,
@@ -77,9 +78,9 @@
         N = 20  # number of observations
 
         # We generate data
-        μ_data = rand(Normal(m, sqrt(σ²_μ)), K)
-        z_data = rand(Categorical(π), N)
-        x_data = rand(MvNormal(μ_data[z_data], σ²_x * I))
+        μ_data = rand(rng, Normal(m, sqrt(σ²_μ)), K)
+        z_data = rand(rng, Categorical(π), N)
+        x_data = rand(rng, MvNormal(μ_data[z_data], σ²_x * I))
 
         @model function mixture(x)
             μ ~ $(MvNormal(fill(m, K), σ²_μ * I))
@@ -132,14 +133,14 @@
         sampler2 = Gibbs(GibbsConditional(:z, cond_z), MH(:μ))
         sampler3 = Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ))
         for sampler in (sampler1, sampler2, sampler3)
-            chain = sample(model, sampler, 10_000)
+            chain = sample(rng, model, sampler, 10_000)
 
             μ_hat = estimate(chain, :μ)
             lμ_hat, uμ_hat = extrema(μ_hat)
             @test isapprox([lμ_data, uμ_data], [lμ_hat, uμ_hat], atol=0.1)
 
             z_hat = estimatez(chain, :z, 1:2)
-            ari, _, _, _ = randindex(z_data, Int.(z_hat))
+            ari, _, _, _ = Clustering.randindex(z_data, Int.(z_hat))
             @test isapprox(ari, 1, atol=0.1)
         end
     end

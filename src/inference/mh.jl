@@ -254,10 +254,12 @@ function (f::MHLogDensityFunction)(x)
 
     x_old, lj_old = vi[sampler], getlogp(vi)
     set_namedtuple!(vi, x)
-    f.model(vi)
-    lj = getlogp(vi)
-    vi[sampler] = x_old
-    setlogp!(vi, lj_old)
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.DefaultContext()))
+    lj = getlogp(vi_new)
+
+    # Reset old `vi`.
+    setindex!!(vi, x_old, sampler)
+    setlogp!!(vi, lj_old)
 
     return lj
 end
@@ -352,8 +354,10 @@ function should_link(
 end
 
 function maybe_link!(varinfo, sampler, proposal)
-    should_link(varinfo, sampler, proposal) && link!(varinfo, sampler)
-    return varinfo
+    if should_link(varinfo, sampler, proposal)
+        link!(varinfo, sampler)
+    end
+    return nothing
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
@@ -375,11 +379,12 @@ function propose!(
     densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl, vi))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
+    # TODO: Make this compatible with immmutable `VarInfo`.
     # Update the values in the VarInfo.
     set_namedtuple!(vi, trans.params)
-    setlogp!(vi, trans.lp)
+    setlogp!!(vi, trans.lp)
 
-    return
+    return vi
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
@@ -402,11 +407,12 @@ function propose!(
     densitymodel = AMH.DensityModel(gen_logπ(vi, spl, model))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
+    # TODO: Make this compatible with immmutable `VarInfo`.
     # Update the values in the VarInfo.
-    vi[spl] = trans.params
-    setlogp!(vi, trans.lp)
+    setindex!!(vi, trans.params, spl)
+    setlogp!!(vi, trans.lp)
 
-    return
+    return vi
 end
 
 function DynamicPPL.initialstep(
@@ -450,7 +456,7 @@ function DynamicPPL.assume(
 )
     DynamicPPL.updategid!(vi, vn, spl)
     r = vi[vn]
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return r, logpdf_with_trans(dist, r, istrans(vi, vn)), vi
 end
 
 function DynamicPPL.dot_assume(
@@ -467,7 +473,7 @@ function DynamicPPL.dot_assume(
     DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = vi[vns]
     var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1]))), vi
 end
 function DynamicPPL.dot_assume(
     rng,
@@ -482,7 +488,7 @@ function DynamicPPL.dot_assume(
     DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     r = reshape(vi[vec(vns)], size(var))
     var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1]))), vi
 end
 
 function DynamicPPL.observe(

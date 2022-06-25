@@ -5,7 +5,7 @@ Elliptical slice sampling algorithm.
 
 # Examples
 ```jldoctest; setup = :(Random.seed!(1))
-julia> @model gdemo(x) = begin
+julia> @model function gdemo(x)
            m ~ Normal()
            x ~ Normal(m, 0.5)
        end
@@ -71,8 +71,8 @@ function AbstractMCMC.step(
     )
 
     # update sample and log-likelihood
-    vi[spl] = sample
-    setlogp!(vi, state.loglikelihood)
+    vi = setindex!!(vi, sample, spl)
+    vi = setlogp!!(vi, state.loglikelihood)
 
     return Transition(vi), vi
 end
@@ -111,6 +111,7 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
+    # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
     vns = _getvns(varinfo, sampler)
     for vn in Iterators.flatten(values(vns))
         set_flag!(varinfo, vn, "del")
@@ -131,17 +132,16 @@ end
 
 function (ℓ::ESSLogLikelihood)(f)
     sampler = ℓ.sampler
-    varinfo = ℓ.varinfo
-    varinfo[sampler] = f
-    ℓ.model(varinfo, sampler)
+    varinfo = setindex!!(ℓ.varinfo, f, sampler)
+    varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
     return getlogp(varinfo)
 end
 
-function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, inds, vi)
-    if inspace(vn, sampler)
-        return DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, inds, vi)
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, vi)
+    return if inspace(vn, sampler)
+        DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi)
     else
-        return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, inds, vi)
+        DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, vi)
     end
 end
 
@@ -149,12 +149,12 @@ function DynamicPPL.tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, 
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, inds, vi)
+function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, vi)
     # TODO: Or should we do `all(Base.Fix2(inspace, sampler), vns)`?
-    if inspace(first(vns), sampler)
-        return DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, inds, vi)
+    return if inspace(first(vns), sampler)
+        DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi)
     else
-        return DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, inds, vi)
+        DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, vi)
     end
 end
 

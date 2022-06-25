@@ -10,7 +10,6 @@ function setadbackend(backend::Val)
 end
 
 function _setadbackend(::Val{:forwarddiff})
-    CHUNKSIZE[] == 0 && setchunksize(40)
     ADBACKEND[] = :forwarddiff
 end
 function _setadbackend(::Val{:tracker})
@@ -26,20 +25,26 @@ function setadsafe(switch::Bool)
     ADSAFE[] = switch
 end
 
-const CHUNKSIZE = Ref(40) # default chunksize used by AD
+const CHUNKSIZE = Ref(0) # 0 means letting ForwardDiff set it automatically
 
 function setchunksize(chunk_size::Int)
-    if ~(CHUNKSIZE[] == chunk_size)
-        @info("[Turing]: AD chunk size is set as $chunk_size")
-        CHUNKSIZE[] = chunk_size
-    end
+    @info("[Turing]: AD chunk size is set as $chunk_size")
+    CHUNKSIZE[] = chunk_size
+    AdvancedVI.setchunksize(chunk_size)
 end
 
 abstract type ADBackend end
-struct ForwardDiffAD{chunk} <: ADBackend end
+struct ForwardDiffAD{chunk,standardtag} <: ADBackend end
+
+# Use standard tag if not specified otherwise
+ForwardDiffAD{N}() where {N} = ForwardDiffAD{N,true}()
+
 getchunksize(::Type{<:ForwardDiffAD{chunk}}) where chunk = chunk
 getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
 getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
+
+standardtag(::ForwardDiffAD{<:Any,true}) = true
+standardtag(::ForwardDiffAD) = false
 
 struct TrackerAD <: ADBackend end
 struct ZygoteAD <: ADBackend end
@@ -97,32 +102,36 @@ Compute the value of the log joint of `θ` and its gradient for the model
 specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
 """
 function gradient_logp(
-    ::ForwardDiffAD,
+    ad::ForwardDiffAD,
     θ::AbstractVector{<:Real},
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
-    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    # Define function to compute log joint.
-    logp_old = getlogp(vi)
-    function f(θ)
-        new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, ctx)
-        logp = getlogp(new_vi)
-        setlogp!(vi, ForwardDiff.value(logp))
-        return logp
+    # Define log density function.
+    f = Turing.LogDensityFunction(vi, model, sampler, context)
+
+    # Define configuration for ForwardDiff.
+    tag = if standardtag(ad)
+        ForwardDiff.Tag(Turing.TuringTag(), eltype(θ))
+    else
+        ForwardDiff.Tag(f, eltype(θ))
+    end
+    chunk_size = getchunksize(typeof(ad))
+    config = if chunk_size == 0
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
+    else
+        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
     end
 
-    chunk_size = getchunksize(typeof(sampler))
-    # Set chunk size and do ForwardMode.
-    chunk = ForwardDiff.Chunk(min(length(θ), chunk_size))
-    config = ForwardDiff.GradientConfig(f, θ, chunk)
-    ∂l∂θ = ForwardDiff.gradient!(similar(θ), f, θ, config)
-    l = getlogp(vi)
-    setlogp!(vi, logp_old)
+    # Obtain both value and gradient of the log density function.
+    out = DiffResults.GradientResult(θ)
+    ForwardDiff.gradient!(out, f, θ, config)
+    logp = DiffResults.value(out)
+    ∂logp∂θ = DiffResults.gradient(out)
 
-    return l, ∂l∂θ
+    return logp, ∂logp∂θ
 end
 function gradient_logp(
     ::TrackerAD,
@@ -130,21 +139,17 @@ function gradient_logp(
     vi::VarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
-    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
+    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    T = typeof(getlogp(vi))
+    # Define log density function.
+    f = Turing.LogDensityFunction(vi, model, sampler, context)
 
-    # Specify objective function.
-    function f(θ)
-        new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, ctx)
-        return getlogp(new_vi)
-    end
-
-    # Compute forward and reverse passes.
+    # Compute forward pass and pullback.
     l_tracked, ȳ = Tracker.forward(f, θ)
-    # Remove tracking info from variables in model (because mutable state).
-    l::T, ∂l∂θ::typeof(θ) = Tracker.data(l_tracked), Tracker.data(ȳ(1)[1])
+
+    # Remove tracking info.
+    l::typeof(getlogp(vi)) = Tracker.data(l_tracked)
+    ∂l∂θ::typeof(θ) = Tracker.data(only(ȳ(1)))
 
     return l, ∂l∂θ
 end
@@ -157,18 +162,12 @@ function gradient_logp(
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
 )
-    T = typeof(getlogp(vi))
+    # Define log density function.
+    f = Turing.LogDensityFunction(vi, model, sampler, context)
 
-    # Specify objective function.
-    function f(θ)
-        new_vi = VarInfo(vi, sampler, θ)
-        model(new_vi, sampler, context)
-        return getlogp(new_vi)
-    end
-
-    # Compute forward and reverse passes.
-    l::T, ȳ = ZygoteRules.pullback(f, θ)
-    ∂l∂θ::typeof(θ) = ȳ(1)[1]
+    # Compute forward pass and pullback.
+    l::typeof(getlogp(vi)), ȳ = ZygoteRules.pullback(f, θ)
+    ∂l∂θ::typeof(θ) = only(ȳ(1))
 
     return l, ∂l∂θ
 end

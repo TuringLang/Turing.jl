@@ -3,7 +3,7 @@ module ModeEstimation
 using ..Turing
 using Bijectors
 using Random
-using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType
+using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
@@ -42,37 +42,37 @@ DynamicPPL.childcontext(context::OptimizationContext) = context.context
 DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
 
 # assume
-function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, spl, dist, vn, inds, vi)
-    return DynamicPPL.tilde_assume(ctx, spl, dist, vn, inds, vi)
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, spl, dist, vn, vi)
+    return DynamicPPL.tilde_assume(ctx, spl, dist, vn, vi)
 end
 
-function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn, inds, vi)
+function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn, vi)
     r = vi[vn]
-    return r, 0
+    return r, 0, vi
 end
 
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, spl, dist, vn, inds, vi)
+function DynamicPPL.tilde_assume(ctx::OptimizationContext, spl, dist, vn, vi)
     r = vi[vn]
-    return r, Distributions.logpdf(dist, r)
+    return r, Distributions.logpdf(dist, r), vi
 end
 
 # dot assume
-function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, sampler, right, left, vns, inds, vi)
-    return DynamicPPL.dot_tilde_assume(ctx, sampler, right, left, vns, inds, vi)
+function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, sampler, right, left, vns, vi)
+    return DynamicPPL.dot_tilde_assume(ctx, sampler, right, left, vns, vi)
 end
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, sampler::SampleFromPrior, right, left, vns, _, vi)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, sampler::SampleFromPrior, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
-    return r, 0
+    return r, 0, vi
 end
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, _, vi)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
-    return r, loglikelihood(right, r)
+    return r, loglikelihood(right, r), vi
 end
 
 """
@@ -158,26 +158,26 @@ end
 #################################################
 
 function transform!(f::OptimLogDensity)
-  spl = DynamicPPL.SampleFromPrior()
+    spl = DynamicPPL.SampleFromPrior()
 
-  ## Check link status of vi in OptimLogDensity
-  linked = DynamicPPL.islinked(f.vi, spl) 
+    ## Check link status of vi in OptimLogDensity
+    linked = DynamicPPL.islinked(f.vi, spl) 
 
-  ## transform into constrained or unconstrained space depending on current state of vi
-  if !linked
-    DynamicPPL.link!(f.vi, spl)
-  else
-    DynamicPPL.invlink!(f.vi, spl)
-  end
+    ## transform into constrained or unconstrained space depending on current state of vi
+    if !linked
+        DynamicPPL.link!(f.vi, spl)
+    else
+        DynamicPPL.invlink!(f.vi, spl)
+    end
 
-  return nothing
+    return nothing
 end
 
 function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{true})
     spl = DynamicPPL.SampleFromPrior()
 
     linked = DynamicPPL.islinked(vi, spl)
-  
+    
     # !linked && DynamicPPL.link!(vi, spl)
     !linked && return identity(p) 
     vi[spl] = p
@@ -190,22 +190,22 @@ function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_spac
 end
 
 function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{false})
-  spl = DynamicPPL.SampleFromPrior()
+    spl = DynamicPPL.SampleFromPrior()
 
-  linked = DynamicPPL.islinked(vi, spl)
-  linked && DynamicPPL.invlink!(vi, spl)
-  vi[spl] = p
-  DynamicPPL.link!(vi, spl)
-  p .= vi[spl]
-  !linked && DynamicPPL.invlink!(vi, spl)
+    linked = DynamicPPL.islinked(vi, spl)
+    linked && DynamicPPL.invlink!(vi, spl)
+    vi[spl] = p
+    DynamicPPL.link!(vi, spl)
+    p .= vi[spl]
+    !linked && DynamicPPL.invlink!(vi, spl)
 
-  return nothing
+    return nothing
 end
 
 function transform(p::AbstractArray, vi::DynamicPPL.VarInfo, con::constrained_space)
     tp = copy(p)
     transform!(tp, vi, con)
-  return tp
+    return tp
 end
 
 abstract type AbstractTransform end
@@ -228,13 +228,13 @@ function (t::Init)()
     return t.vi[DynamicPPL.SampleFromPrior()]
 end 
 
- function get_parameter_bounds(model::DynamicPPL.Model)
+function get_parameter_bounds(model::DynamicPPL.Model)
     vi = DynamicPPL.VarInfo(model)
     spl = DynamicPPL.SampleFromPrior()
 
     ## Check link status of vi
     linked = DynamicPPL.islinked(vi, spl) 
-  
+    
     ## transform into unconstrained
     !linked && DynamicPPL.link!(vi, spl)
     
@@ -245,34 +245,34 @@ end
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{false})
-  ctx = OptimizationContext(DynamicPPL.DefaultContext())
-  obj = OptimLogDensity(model, ctx)
+    ctx = OptimizationContext(DynamicPPL.DefaultContext())
+    obj = OptimLogDensity(model, ctx)
 
-  transform!(obj)
-  init = Init(obj.vi, constrained_space{false}())
-  t = ParameterTransform(obj.vi, constrained_space{true}())
+    transform!(obj)
+    init = Init(obj.vi, constrained_space{false}())
+    t = ParameterTransform(obj.vi, constrained_space{true}())
 
-  return (obj=obj, init = init, transform=t)
+    return (obj=obj, init = init, transform=t)
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{true})
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
-  
+    
     init = Init(obj.vi, constrained_space{true}())
     t = ParameterTransform(obj.vi, constrained_space{true}())
-      
+    
     return (obj=obj, init = init, transform=t)
-  end
+end
 
 function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{false})
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
-  
+    
     transform!(obj)
     init = Init(obj.vi, constrained_space{false}())
     t = ParameterTransform(obj.vi, constrained_space{true}())
-  
+    
     return (obj=obj, init = init, transform=t)
 end
 
@@ -291,24 +291,47 @@ function optim_objective(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; co
 end
 
 
-function optim_function(model::DynamicPPL.Model, estimator::Union{MLE, MAP}; constrained::Bool=true, autoad::Union{Nothing, AbstractADType}=nothing)
+function optim_function(
+    model::Model,
+    estimator::Union{MLE, MAP};
+    constrained::Bool=true,
+    autoad::Union{Nothing, AbstractADType}=NoAD(),
+)
+    if autoad === nothing
+        Base.depwarn("the use of `autoad=nothing` is deprecated, please use `autoad=SciMLBase.NoAD()`", :optim_function)
+    end
+
     obj, init, t = optim_objective(model, estimator; constrained=constrained)
-  
-    l(x,p) = obj(x)
-    f = isa(autoad, AbstractADType) ? OptimizationFunction(l, autoad) : OptimizationFunction(l; grad = (G,x,p) -> obj(nothing, G, nothing, x), hess = (H,x,p) -> obj(nothing, nothing, H, x))
-  
+    
+    l(x, _) = obj(x)
+    f = if autoad isa AbstractADType && autoad !== NoAD()
+        OptimizationFunction(l, autoad)
+    else
+        OptimizationFunction(
+            l;
+            grad = (G,x,p) -> obj(nothing, G, nothing, x),
+            hess = (H,x,p) -> obj(nothing, nothing, H, x),
+        )
+    end
+    
     return (func=f, init=init, transform = t)
 end
 
 
-function optim_problem(model::DynamicPPL.Model, estimator::Union{MAP, MLE}; constrained::Bool=true, init_theta=nothing, autoad::Union{Nothing, AbstractADType}=nothing, kwargs...)
-    f = optim_function(model, estimator; constrained=constrained, autoad=autoad)
+function optim_problem(
+    model::Model,
+    estimator::Union{MAP, MLE};
+    constrained::Bool=true,
+    init_theta=nothing,
+    autoad::Union{Nothing, AbstractADType}=NoAD(),
+    kwargs...,
+)
+    f, init, transform = optim_function(model, estimator; constrained=constrained, autoad=autoad)
 
-    init_theta = init_theta === nothing ? f.init() : f.init(init_theta)
+    u0 = init_theta === nothing ? init() : init(init_theta)
+    prob = OptimizationProblem(f, u0; kwargs...)
 
-    prob = OptimizationProblem(f.func, init_theta, nothing; kwargs...)
-
-    return (prob=prob, init=f.init, transform = f.transform)
+    return (; prob, init, transform)
 end
 
 end

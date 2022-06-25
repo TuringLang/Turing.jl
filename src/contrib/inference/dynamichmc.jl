@@ -97,7 +97,7 @@ function DynamicPPL.initialstep(
 
     # Update the variables.
     vi[spl] = Q.q
-    DynamicPPL.setlogp!(vi, Q.ℓq)
+    DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
     sample = Transition(vi)
@@ -127,7 +127,7 @@ function AbstractMCMC.step(
 
     # Update the variables.
     vi[spl] = Q.q
-    DynamicPPL.setlogp!(vi, Q.ℓq)
+    DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
     sample = Transition(vi)

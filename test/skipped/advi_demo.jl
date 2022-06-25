@@ -16,7 +16,7 @@ pyplot()
 using ConjugatePriors
 
 # define Turing model
-@model model(x) = begin
+@model function model(x)
     s ~ InverseGamma(2, 3)
     m ~ Normal(0.0, sqrt(s))  # `Normal(μ, σ)` has mean μ and variance σ², i.e. parametrize with std. not variance
 

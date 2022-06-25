@@ -1,9 +1,12 @@
 module Inference
 
-using ..Core
+using ..Essential
 using ..Utilities
-using DynamicPPL: Metadata, VarInfo, TypedVarInfo, 
-    islinked, invlink!, getlogp, tonamedtuple, VarName, getsym, vectorize, 
+using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
+    islinked, invlink!, link!,
+    setindex!!, push!!,
+    setlogp!!, getlogp,
+    tonamedtuple, VarName, getsym, vectorize,
     settrans!, _getvns, getdist,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
@@ -25,7 +28,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import ..Core: getchunksize, getADbackend
+import ..Essential: getchunksize, getADbackend
 import EllipticalSliceSampling
 import Random
 import MCMCChains
@@ -257,7 +260,7 @@ function _params_to_array(ts::Vector)
         return Dict(nms[j] => vs[j] for j in 1:length(vs))
     end
     names = collect(names_set)
-    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), 
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
         (j, key) in enumerate(names)]
 
     return names, vals
@@ -441,7 +444,7 @@ for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
 end
 
 function DynamicPPL.get_matching_type(
-    spl::Sampler{<:Union{PG, SMC}}, 
+    spl::Sampler{<:Union{PG, SMC}},
     vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
@@ -563,8 +566,8 @@ end
 
     transitions_from_chain(
         [rng::AbstractRNG,]
-        model::Model, 
-        chain::MCMCChains.Chains; 
+        model::Model,
+        chain::MCMCChains.Chains;
         sampler = DynamicPPL.SampleFromPrior()
     )
 

@@ -1,5 +1,3 @@
-
-
 @testset "ModeEstimation.jl" begin
     @testset "gdemo" begin
         @testset "MLE" begin
@@ -7,7 +5,7 @@
             true_value = [0.0625, 1.75]
 
             f1 = optim_function(gdemo_default, MLE();constrained=false)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value))
 
             p2 = optim_objective(gdemo_default, MLE();constrained=false)
             
@@ -39,7 +37,7 @@
             true_value = [49 / 54, 7 / 6]
 
             f1 = optim_function(gdemo_default, MAP();constrained=false)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value))
 
             p2 = optim_objective(gdemo_default, MAP();constrained=false)
             
@@ -73,7 +71,7 @@
             ub = [2.0, 2.0]
 
             f1 = optim_function(gdemo_default, MLE();constrained=true)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
 
             p2 = optim_objective(gdemo_default, MLE();constrained=true)
             
@@ -101,7 +99,7 @@
             ub = [2.0, 2.0]
 
             f1 = optim_function(gdemo_default, MAP();constrained=true)
-            p1 = GalacticOptim.OptimizationProblem(f1.func, f1.init(true_value), nothing; lb=lb, ub=ub)
+            p1 = OptimizationProblem(f1.func, f1.init(true_value); lb=lb, ub=ub)
 
             p2 = optim_objective(gdemo_default, MAP();constrained=true)
             

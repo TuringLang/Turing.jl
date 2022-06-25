@@ -1,11 +1,4 @@
 @testset "sghmc.jl" begin
-    @numerical_testset "sghmc inference" begin
-        Random.seed!(125)
-
-        alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5)
-        chain = sample(gdemo_default, alg, 10_000)
-        check_gdemo(chain, atol = 0.1)
-    end
     @turing_testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1)
         @test alg isa SGHMC
@@ -21,6 +14,13 @@
         @test alg isa SGHMC
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
+    end
+    @numerical_testset "sghmc inference" begin
+        rng = StableRNG(123)
+
+        alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5)
+        chain = sample(rng, gdemo_default, alg, 10_000)
+        check_gdemo(chain, atol = 0.1)
     end
 end
 
@@ -42,9 +42,9 @@ end
         @test sampler isa Turing.Sampler{<:SGLD}
     end
     @numerical_testset "sgld inference" begin
-        Random.seed!(125)
+        rng = StableRNG(1)
 
-        chain = sample(gdemo_default, SGLD(; stepsize = PolynomialStepsize(0.5)), 10_000)
+        chain = sample(rng, gdemo_default, SGLD(; stepsize = PolynomialStepsize(0.5)), 20_000)
         check_gdemo(chain, atol = 0.2)
 
         # Weight samples by step sizes (cf section 4.2 in the paper by Welling and Teh)

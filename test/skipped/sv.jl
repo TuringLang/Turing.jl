@@ -4,7 +4,7 @@ using Turing
 using HDF5, JLD
 sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
 
-@model sv_model(T, y) = begin
+@model function sv_model(T, y)
     ϕ ~ Uniform(-1, 1)
     σ ~ truncated(Cauchy(0,5), 0, Inf)
     μ ~ Cauchy(0, 10)

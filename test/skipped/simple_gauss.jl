@@ -4,7 +4,7 @@ include("unit_test_helper.jl")
 
 using Turing
 
-@model simple_gauss() = begin
+@model function simple_gauss()
     s = 1
     m ~ Normal(0,sqrt(s))
     2.0 ~ Normal(m, sqrt(s))

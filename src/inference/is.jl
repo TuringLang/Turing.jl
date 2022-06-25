@@ -16,7 +16,7 @@ Example:
 
 ```julia
 # Define a simple Normal model with unknown mean and variance.
-@model gdemo(x) = begin
+@model function gdemo(x)
     s² ~ InverseGamma(2,3)
     m ~ Normal(0,sqrt.(s))
     x[1] ~ Normal(m, sqrt.(s))
@@ -64,11 +64,11 @@ function DynamicPPL.assume(rng, spl::Sampler{<:IS}, dist::Distribution, vn::VarN
         r = vi[vn]
     else
         r = rand(rng, dist)
-        push!(vi, vn, r, dist, spl)
+        vi = push!!(vi, vn, r, dist, spl)
     end
-    return r, 0
+    return r, 0, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:IS}, dist::Distribution, value, vi)
-    return logpdf(dist, value)
+    return logpdf(dist, value), vi
 end
