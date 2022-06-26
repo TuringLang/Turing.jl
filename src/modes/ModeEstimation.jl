@@ -101,7 +101,7 @@ at the array `z`.
 function (f::OptimLogDensity)(z::AbstractVector)
     sampler = f.sampler
     varinfo = DynamicPPL.VarInfo(f.varinfo, sampler, z)
-    return -getlogp(last(DynamicPPL.evaluate!!(model, varinfo, sampler, f.context)))
+    return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, sampler, f.context)))
 end
 
 function (f::OptimLogDensity)(F, G, H, z)
@@ -271,8 +271,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
-    init = Init(obj.vi, constrained_space{true}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
