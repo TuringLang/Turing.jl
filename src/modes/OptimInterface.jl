@@ -70,7 +70,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     vns = DynamicPPL._getvns(m.f.varinfo, spl)
     
     linked = DynamicPPL._islinked(m.f.varinfo, vns)
-    linked && invlink!(m.f.vi, spl)
+    linked && invlink!(m.f.varinfo, spl)
 
     # Calculate the Hessian.
     varnames = StatsBase.coefnames(m)
