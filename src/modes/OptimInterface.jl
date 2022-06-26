@@ -67,9 +67,9 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # NOTE: This should be converted to islinked(vi, spl) after
     # https://github.com/TuringLang/DynamicPPL.jl/pull/124 goes through.
-    vns = DynamicPPL._getvns(m.f.vi, spl)
+    vns = DynamicPPL._getvns(m.f.varinfo, spl)
     
-    linked = DynamicPPL._islinked(m.f.vi, vns)
+    linked = DynamicPPL._islinked(m.f.varinfo, vns)
     linked && invlink!(m.f.vi, spl)
 
     # Calculate the Hessian.
@@ -78,7 +78,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     info = inv(H)
 
     # Link it back if we invlinked it.
-    linked && link!(m.f.vi, spl)
+    linked && link!(m.f.varinfo, spl)
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
