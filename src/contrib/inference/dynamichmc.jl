@@ -21,7 +21,7 @@ DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
 # Only define traits for `DynamicNUTS` sampler to avoid type piracy and surprises
 # TODO: Implement generally with `LogDensityProblems`
-const DynamicHMCLogDensity{M,S<:Sampler{<:DynamicNUTS},V} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
+const DynamicHMCLogDensity{M<:Model,S<:Sampler{<:DynamicNUTS},V} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
 
 function DynamicHMC.dimension(ℓ::DynamicHMCLogDensity)
     return length(ℓ.varinfo[ℓ.sampler])
