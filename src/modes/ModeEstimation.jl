@@ -292,8 +292,7 @@ function optim_function(
     else
         OptimizationFunction(
             l;
-            grad = (G,x,p) -> obj(nothing, G, nothing, x),
-            hess = (H,x,p) -> obj(nothing, nothing, H, x),
+            grad = (G,x,p) -> obj(nothing, G, x),
         )
     end
     
