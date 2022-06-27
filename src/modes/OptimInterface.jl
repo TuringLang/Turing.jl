@@ -239,7 +239,7 @@ function _optimize(
     init_vals = f.varinfo[spl]
 
     # Optimize!
-    M = Optim.optimize(Optim.only_fgh!(f), init_vals, optimizer, options, args...; kwargs...)
+    M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)

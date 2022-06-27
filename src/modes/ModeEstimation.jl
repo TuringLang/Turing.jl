@@ -104,39 +104,31 @@ function (f::OptimLogDensity)(z::AbstractVector)
     return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, sampler, f.context)))
 end
 
-function (f::OptimLogDensity)(F, G, H, z)
-    # Throw an error if a second order method was used.
-    if H !== nothing
-        error("Second order optimization is not yet supported.")
-    end
-
-    spl = f.sampler
-    
+function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
-        # Calculate log joint and the gradient
-        l, g = Turing.gradient_logp(
+        # Calculate negative log joint and its gradient.
+        sampler = f.sampler
+        neglogp, ∇neglogp = Turing.gradient_logp(
             z, 
-            DynamicPPL.VarInfo(f.varinfo, spl, z),
+            DynamicPPL.VarInfo(f.varinfo, sampler, z),
             f.model, 
-            spl,
-            f.context
+            sampler,
+            f.context,
         )
 
-        # Use the negative gradient because we are minimizing.
-        G[:] = -g
+        # Save the gradient to the pre-allocated array.
+        copyto!(G, ∇neglogp)
 
-        # If F is something, return that since we already have the 
-        # log joint.
+        # If F is something, the negative log joint is requested as well.
+        # We have already computed it as a by-product above and hence return it directly.
         if F !== nothing
-            F = -l
-            return F
+            return neglogp
         end
     end
 
-    # No gradient necessary, just return the log joint.
+    # Only negative log joint requested but no gradient.
     if F !== nothing
-        F = f(z)
-        return F
+        return f(z)
     end
 
     return nothing
