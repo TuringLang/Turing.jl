@@ -223,7 +223,7 @@ end
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.vi[DynamicPPL.SampleFromPrior()], 
+    init_vals::AbstractArray = f.varinfo[f.sampler], 
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
     options::Optim.Options = Optim.Options(),
     args...; 
