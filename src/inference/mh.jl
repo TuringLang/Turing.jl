@@ -400,7 +400,7 @@ function propose!(
     prev_trans = AMH.Transition(vals, getlogp(vi))
 
     # Make a new transition.
-    densitymodel = AMH.DensityModel(gen_logπ(vi, spl, model))
+    densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
     # TODO: Make this compatible with immmutable `VarInfo`.
