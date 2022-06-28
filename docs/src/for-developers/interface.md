@@ -192,7 +192,7 @@ end
 ```
 
 The first `step!` function just packages up the initial parameterization inside the
-sampler, and returns it. We implicity accept the very first parameterization.
+sampler, and returns it. We implicitly accept the very first parameterization.
 
 The other `step!` function performs the usual steps from Metropolis-Hastings. Included are
 several helper functions, `proposal` and `q`, which are designed to replicate the functions

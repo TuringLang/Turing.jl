@@ -379,7 +379,7 @@ function propose!(
     densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl, vi))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immmutable `VarInfo`.
+    # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
     set_namedtuple!(vi, trans.params)
     setlogp!!(vi, trans.lp)
@@ -407,7 +407,7 @@ function propose!(
     densitymodel = AMH.DensityModel(gen_logπ(vi, spl, model))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immmutable `VarInfo`.
+    # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
     setindex!!(vi, trans.params, spl)
     setlogp!!(vi, trans.lp)

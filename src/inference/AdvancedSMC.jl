@@ -349,7 +349,7 @@ function DynamicPPL.assume(
             DynamicPPL.updategid!(vi, vn, spl)
             r = vi[vn]
         end
-    else # vn belongs to other sampler <=> conditionning on vn
+    else # vn belongs to other sampler <=> conditioning on vn
         if haskey(vi, vn)
             r = vi[vn]
         else

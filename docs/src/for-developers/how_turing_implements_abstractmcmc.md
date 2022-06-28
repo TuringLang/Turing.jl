@@ -258,7 +258,7 @@ It simply returns the density (in the discrete case, the probability) of the obs
 
 ## 4. Summary: Importance Sampling step by step
 
-We focus on the AbstractMCMC functions that are overriden in `is.jl` and executed inside `mcmcsample`: `step!`, which is called `n_samples` times, and `sample_end!`, which is executed once after those `n_samples` iterations.
+We focus on the AbstractMCMC functions that are overridden in `is.jl` and executed inside `mcmcsample`: `step!`, which is called `n_samples` times, and `sample_end!`, which is executed once after those `n_samples` iterations.
 
 * During the $i$-th iteration, `step!` does 3 things:
   * `empty!!(spl.state.vi)`: remove information about the previous sample from the sampler's `VarInfo`

@@ -16,7 +16,7 @@ function TracedModel(
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
 end
 
-# Smiliar to `evaluate!!` except that we return the evaluator signature without excutation.
+# Smiliar to `evaluate!!` except that we return the evaluator signature without execution.
 # TODO: maybe move to DynamicPPL
 @generated function _get_evaluator(
     model::Model{_F,argnames}, varinfo, context
