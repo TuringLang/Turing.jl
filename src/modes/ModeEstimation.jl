@@ -78,74 +78,57 @@ end
 """
     OptimLogDensity{M<:Model,C<:Context,V<:VarInfo}
 
-A struct that stores the log density function of a `DynamicPPL` model.
+A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-struct OptimLogDensity{M<:Model,C<:AbstractContext,V<:VarInfo}
-    "A `DynamicPPL.Model` constructed either with the `@model` macro or manually."
-    model::M
-    "A `DynamicPPL.AbstractContext` used to evaluate the model. `LikelihoodContext` or `DefaultContext` are typical for MAP/MLE."
-    context::C
-    "A `DynamicPPL.VarInfo` struct that will be used to update model parameters."
-    vi::V
-end
+const OptimLogDensity{M<:Model,C<:OptimizationContext,V<:VarInfo} = Turing.LogDensityFunction{V,M,DynamicPPL.SampleFromPrior,C}
 
 """
-    OptimLogDensity(model::Model, context::AbstractContext)
+    OptimLogDensity(model::Model, context::OptimizationContext)
 
 Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
 """
-function OptimLogDensity(model::Model, context::AbstractContext)
+function OptimLogDensity(model::Model, context::OptimizationContext)
     init = VarInfo(model)
-    return OptimLogDensity(model, context, init)
+    return Turing.LogDensityFunction(init, model, DynamicPPL.SampleFromPrior(), context)
 end
 
 """
     (f::OptimLogDensity)(z)
 
-Evaluate the log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
+Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
 at the array `z`.
 """
-function (f::OptimLogDensity)(z)
-    spl = DynamicPPL.SampleFromPrior()
-
-    varinfo = DynamicPPL.VarInfo(f.vi, spl, z)
-    f.model(varinfo, spl, f.context)
-    return -DynamicPPL.getlogp(varinfo)
+function (f::OptimLogDensity)(z::AbstractVector)
+    sampler = f.sampler
+    varinfo = DynamicPPL.VarInfo(f.varinfo, sampler, z)
+    return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, sampler, f.context)))
 end
 
-function (f::OptimLogDensity)(F, G, H, z)
-    # Throw an error if a second order method was used.
-    if H !== nothing
-        error("Second order optimization is not yet supported.")
-    end
-
-    spl = DynamicPPL.SampleFromPrior()
-    
+function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
-        # Calculate log joint and the gradient
-        l, g = Turing.gradient_logp(
+        # Calculate negative log joint and its gradient.
+        sampler = f.sampler
+        neglogp, ∇neglogp = Turing.gradient_logp(
             z, 
-            DynamicPPL.VarInfo(f.vi, spl, z), 
+            DynamicPPL.VarInfo(f.varinfo, sampler, z),
             f.model, 
-            spl,
-            f.context
+            sampler,
+            f.context,
         )
 
-        # Use the negative gradient because we are minimizing.
-        G[:] = -g
+        # Save the gradient to the pre-allocated array.
+        copyto!(G, ∇neglogp)
 
-        # If F is something, return that since we already have the 
-        # log joint.
+        # If F is something, the negative log joint is requested as well.
+        # We have already computed it as a by-product above and hence return it directly.
         if F !== nothing
-            F = -l
-            return F
+            return neglogp
         end
     end
 
-    # No gradient necessary, just return the log joint.
+    # Only negative log joint requested but no gradient.
     if F !== nothing
-        F = f(z)
-        return F
+        return f(z)
     end
 
     return nothing
@@ -158,16 +141,16 @@ end
 #################################################
 
 function transform!(f::OptimLogDensity)
-    spl = DynamicPPL.SampleFromPrior()
+    spl = f.sampler
 
     ## Check link status of vi in OptimLogDensity
-    linked = DynamicPPL.islinked(f.vi, spl) 
+    linked = DynamicPPL.islinked(f.varinfo, spl)
 
     ## transform into constrained or unconstrained space depending on current state of vi
     if !linked
-        DynamicPPL.link!(f.vi, spl)
+        DynamicPPL.link!(f.varinfo, spl)
     else
-        DynamicPPL.invlink!(f.vi, spl)
+        DynamicPPL.invlink!(f.varinfo, spl)
     end
 
     return nothing
@@ -249,8 +232,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{fa
     obj = OptimLogDensity(model, ctx)
 
     transform!(obj)
-    init = Init(obj.vi, constrained_space{false}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
 
     return (obj=obj, init = init, transform=t)
 end
@@ -259,8 +242,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
     
-    init = Init(obj.vi, constrained_space{true}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -270,8 +253,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{f
     obj = OptimLogDensity(model, ctx)
     
     transform!(obj)
-    init = Init(obj.vi, constrained_space{false}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -280,8 +263,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
-    init = Init(obj.vi, constrained_space{true}())
-    t = ParameterTransform(obj.vi, constrained_space{true}())
+    init = Init(obj.varinfo, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -309,8 +292,7 @@ function optim_function(
     else
         OptimizationFunction(
             l;
-            grad = (G,x,p) -> obj(nothing, G, nothing, x),
-            hess = (H,x,p) -> obj(nothing, nothing, H, x),
+            grad = (G,x,p) -> obj(nothing, G, x),
         )
     end
     

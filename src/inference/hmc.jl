@@ -160,7 +160,7 @@ function DynamicPPL.initialstep(
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
+    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
 
     # Compute phase point z.
@@ -262,7 +262,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓπ = gen_logπ(vi, spl, model)
+    ℓπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     ∂ℓπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     return AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
 end
@@ -435,28 +435,6 @@ function gen_∂logπ∂θ(vi, spl::Sampler, model)
     return ∂logπ∂θ
 end
 
-"""
-    gen_logπ(vi, spl::Sampler, model)
-
-Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
-`(vi, spl, model)`.
-"""
-function gen_logπ(vi_base, spl::AbstractSampler, model)
-    function logπ(x)::Float64
-        vi = vi_base
-        x_old, lj_old = vi[spl], getlogp(vi)
-        vi = setindex!!(vi, x, spl)
-        vi = last(DynamicPPL.evaluate!!(model, vi, spl))
-        lj = getlogp(vi)
-        # Don't really need to capture these will only be
-        # necessary if `vi` is indeed mutable.
-        setindex!!(vi, x_old, spl)
-        setlogp!!(vi, lj_old)
-        return lj
-    end
-    return logπ
-end
-
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
@@ -567,7 +545,7 @@ function HMCState(
 
     # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
+    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
 
     # Get the metric type.
     metricT = getmetricT(spl.alg)
