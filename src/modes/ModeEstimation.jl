@@ -7,7 +7,7 @@ using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
-    _getindex, getsym, getfield, settrans!,  setorder!,
+    _getindex, getsym, getfield,  setorder!,
     get_and_set_val!, istrans
 
 export  constrained_space,  
