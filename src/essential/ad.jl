@@ -68,7 +68,7 @@ getADbackend(spl::SampleFromPrior) = ADBackend()()
 """
     gradient_logp(
         θ::AbstractVector{<:Real},
-        vi::VarInfo,
+        vi::AbstractVarInfo,
         model::Model,
         sampler::AbstractSampler,
         ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -80,7 +80,7 @@ tool is currently active.
 """
 function gradient_logp(
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler,
     ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -92,7 +92,7 @@ end
 gradient_logp(
     backend::ADBackend,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
     ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -104,7 +104,7 @@ specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{
 function gradient_logp(
     ad::ForwardDiffAD,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler=SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -136,7 +136,7 @@ end
 function gradient_logp(
     ::TrackerAD,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -157,7 +157,7 @@ end
 function gradient_logp(
     backend::ZygoteAD,
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()

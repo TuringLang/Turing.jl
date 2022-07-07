@@ -16,7 +16,7 @@ end
 function gradient_logp(
     backend::ReverseDiffAD{false},
     θ::AbstractVector{<:Real},
-    vi::VarInfo,
+    vi::AbstractVarInfo,
     model::Model,
     sampler::AbstractSampler = SampleFromPrior(),
     context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
@@ -46,7 +46,7 @@ taperesult(f, x) = (tape(f, x), DiffResults.GradientResult(x))
     function gradient_logp(
         backend::ReverseDiffAD{true},
         θ::AbstractVector{<:Real},
-        vi::VarInfo,
+        vi::AbstractVarInfo,
         model::Model,
         sampler::AbstractSampler = SampleFromPrior(),
         context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
