@@ -150,7 +150,9 @@ function DynamicPPL.initialstep(
     kwargs...
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    link!(vi, spl)
+    # FIXME(torfjelde): This won't actually transform the variables, i.e. we're assuming
+    # the variables are already transformed.
+    vi = DynamicPPL.settrans!!(vi, true)
     vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
 
     # Extract parameters.
@@ -170,8 +172,9 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
+            # TODO(torfjelde): Check that this is tested properly.
+            vi = DynamicPPL.settrans!!(vi, true)
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
-            link!(vi, spl)
             theta = vi[spl]
 
             hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
