@@ -207,10 +207,10 @@ function DynamicPPL.initialstep(
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        vi = setindex!!(vi, t.z.θ, spl)
+        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     else
-        vi = setindex!!(vi, theta, spl)
+        vi = DynamicPPL.unflatten(vi, spl, theta)
         vi = setlogp!!(vi, log_density_old)
     end
 
@@ -249,7 +249,7 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi = setindex!!(vi, t.z.θ, spl)
+        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     end
 

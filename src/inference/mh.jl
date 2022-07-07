@@ -403,12 +403,7 @@ function propose!(
     densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immutable `VarInfo`.
-    # Update the values in the VarInfo.
-    setindex!!(vi, trans.params, spl)
-    setlogp!!(vi, trans.lp)
-
-    return vi
+    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.param), trans.lp)
 end
 
 function DynamicPPL.initialstep(
