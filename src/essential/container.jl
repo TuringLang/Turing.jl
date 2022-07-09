@@ -16,7 +16,6 @@ function TracedModel(
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
 end
 
-# Smiliar to `evaluate!!` except that we return the evaluator signature without execution.
 # TODO: maybe move to DynamicPPL
 @generated function _get_evaluator(
     model::Model{_F,argnames}, varinfo, context
@@ -40,41 +39,58 @@ end
 end
 
 function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
-    f = trace.f
+    println("Copy")
+    f = trace.model
     newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo))
     return AdvancedPS.Trace(newf, copy(trace.task))
 end
 
-function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:TracedModel})
-    DynamicPPL.increment_num_produce!(trace.f.varinfo)
-    score = consume(trace.task)
+function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:AdvancedPS.GenericModel{<:TracedModel}}, isref::Bool=false)
+    println("Advance")
+    println(fieldnames(typeof(trace)))
+    println(fieldnames(typeof(trace.model)))
+    println(fieldnames(typeof(trace.model.f)))
+    DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
+    score = consume(trace.model.ctask)
     if score === nothing
         return
     else
-        return score + DynamicPPL.getlogp(trace.f.varinfo)
+        return score + DynamicPPL.getlogp(trace.model.f.varinfo)
     end
 end
 
-function AdvancedPS.delete_retained!(f::TracedModel)
-    DynamicPPL.set_retained_vns_del_by_spl!(f.varinfo, f.sampler)
+function AdvancedPS.delete_retained!(trace::TracedModel)
+    println("Delete Retained")
+    DynamicPPL.set_retained_vns_del_by_spl!(trace.varinfo, trace.sampler)
     return
 end
 
-function AdvancedPS.reset_model(f::TracedModel)
-    newvarinfo = deepcopy(f.varinfo)
+function AdvancedPS.reset_model(trace::TracedModel)
+    println("Reset model")
+    newvarinfo = deepcopy(trace.varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
-    return TracedModel(f.model, f.sampler, newvarinfo)
+    return TracedModel(trace.model, trace.sampler, newvarinfo)
 end
 
-function AdvancedPS.reset_logprob!(f::TracedModel)
-    DynamicPPL.resetlogp!!(f.varinfo)
+function AdvancedPS.reset_logprob!(trace::TracedModel)
+    println("Reset logprob")
+    DynamicPPL.resetlogp!!(trace.model.varinfo)
     return
 end
 
-function Libtask.TapedTask(model::TracedModel)
+function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG)
+    println("Ttaps")
     return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...)
 end
 
-function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG)
-    return Libtask.TapedTask(model)
+function AdvancedPS.fork(trace::AdvancedPS.GenericTrace{<:TracedModel}, isref::Bool=false)
+    newtrace = copy(trace)
+    args = newtrace.model.ctask.args
+    newtrace.rng = args[end]
+    isref && AdvanecdPS.delete_retained!(newtrace.model.f)
+    isref && AdvancedPS.delete_seeds!(newtrace)
+
+    # add backward reference
+    AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
+    return newtrace
 end

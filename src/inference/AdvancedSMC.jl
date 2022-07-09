@@ -115,7 +115,9 @@ function DynamicPPL.initialstep(
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
-        [AdvancedPS.Trace(model, spl, vi) for _ in 1:nparticles],
+        [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:nparticles],
+        AdvancedPS.TracedRNG(),
+        rng
     )
 
     # Perform particle sweep.
@@ -126,7 +128,7 @@ function DynamicPPL.initialstep(
     weight = AdvancedPS.getweight(particles, 1)
 
     # Compute the first transition and the first state.
-    transition = SMCTransition(particle.f.varinfo, weight)
+    transition = SMCTransition(particle.model.f.varinfo, weight)
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -148,7 +150,7 @@ function AbstractMCMC.step(
     weight = AdvancedPS.getweight(particles, index)
 
     # Compute the transition and the next state.
-    transition = SMCTransition(particle.f.varinfo, weight)
+    transition = SMCTransition(particle.model.f.varinfo, weight)
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -254,7 +256,9 @@ function DynamicPPL.initialstep(
     # Create a new set of particles
     num_particles = spl.alg.nparticles
     particles = AdvancedPS.ParticleContainer(
-        [AdvancedPS.Trace(model, spl, vi) for _ in 1:num_particles],
+        [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:num_particles],
+        AdvancedPS.TracedRNG(),
+        rng
     )
 
     # Perform a particle sweep.
@@ -266,7 +270,7 @@ function DynamicPPL.initialstep(
     reference = particles.vals[indx]
 
     # Compute the first transition.
-    _vi = reference.f.varinfo
+    _vi = reference.model.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
     return transition, _vi
@@ -284,7 +288,8 @@ function AbstractMCMC.step(
     resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
+    trng = AdvancedPS.TracedRNG()
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, trng))
 
     # For all other particles, do not retain the variables but resample them.
     set_retained_vns_del_by_spl!(vi, spl)
@@ -293,7 +298,7 @@ function AbstractMCMC.step(
     num_particles = spl.alg.nparticles
     x = map(1:num_particles) do i
         if i != num_particles
-            return AdvancedPS.Trace(model, spl, vi)
+            return AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG())
         else
             return reference
         end
@@ -309,7 +314,7 @@ function AbstractMCMC.step(
     newreference = particles.vals[indx]
 
     # Compute the transition.
-    _vi = newreference.f.varinfo
+    _vi = newreference.model.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
     return transition, _vi
@@ -326,7 +331,7 @@ function DynamicPPL.assume(
 )
     local vi
     try 
-        vi = AdvancedPS.current_trace().f.varinfo
+        vi = AdvancedPS.current_trace().model.f.varinfo
     catch e
         # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
         if e == KeyError(:__trace) || current_task().storage isa Nothing
@@ -372,9 +377,19 @@ function AdvancedPS.Trace(
     model::Model,
     sampler::Sampler{<:Union{SMC,PG}},
     varinfo::AbstractVarInfo,
+    rng::AdvancedPS.TracedRNG
 )
+    println("Building trace")
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
-    f = Turing.Essential.TracedModel(model, sampler, newvarinfo)
-    return AdvancedPS.Trace(f)
+
+    tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo)
+    ttask = Libtask.TapedTask(tmodel, rng)
+    println("Made it")
+    #wrapedmodel = Turing.Essential.TapedGenericModel(tmodel, ttask)
+    
+    wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
+
+    newtrace = AdvancedPS.Trace(wrapedmodel, rng)
+    return newtrace
 end
