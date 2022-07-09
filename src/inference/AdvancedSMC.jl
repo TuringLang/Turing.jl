@@ -379,15 +379,11 @@ function AdvancedPS.Trace(
     varinfo::AbstractVarInfo,
     rng::AdvancedPS.TracedRNG
 )
-    println("Building trace")
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
 
     tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo)
     ttask = Libtask.TapedTask(tmodel, rng)
-    println("Made it")
-    #wrapedmodel = Turing.Essential.TapedGenericModel(tmodel, ttask)
-    
     wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
 
     newtrace = AdvancedPS.Trace(wrapedmodel, rng)
