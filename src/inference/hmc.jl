@@ -542,8 +542,9 @@ function HMCState(
     kwargs...
 )
     # Link everything if needed.
-    if !islinked(vi, spl)
-        link!(vi, spl)
+    waslinked = islinked(vi, spl)
+    if !waslinked
+        vi = link!!(vi, spl, model)
     end
 
     # Get the initial log pdf and gradient functions.
@@ -573,7 +574,9 @@ function HMCState(
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
 
     # Unlink everything.
-    invlink!(vi, spl)
+    if waslinked
+        vi = invlink!!(vi, spl, model)
+    end
 
     return HMCState(vi, 0, 0, kernel.τ, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end
