@@ -150,10 +150,7 @@ function DynamicPPL.initialstep(
     kwargs...
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    # FIXME(torfjelde): This won't actually transform the variables, i.e. we're assuming
-    # the variables are already transformed.
-    vi = DynamicPPL.settrans!!(vi, true)
-    vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
+    vi = link!!(vi, spl, model)
 
     # Extract parameters.
     theta = vi[spl]
@@ -172,8 +169,7 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
-            # TODO(torfjelde): Check that this is tested properly.
-            vi = DynamicPPL.settrans!!(vi, true)
+            # NOTE: This will sample in the unconstrained space.
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             theta = vi[spl]
 
@@ -573,7 +569,7 @@ function HMCState(
     # Generate a phasepoint. Replaced during sample_init!
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
 
-    # Unlink everything.
+    # Unlink everything, if it was indeed linked before.
     if waslinked
         vi = invlink!!(vi, spl, model)
     end
