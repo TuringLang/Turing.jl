@@ -64,7 +64,7 @@
             model | (s = DynamicPPL.TestUtils.posterior_mean(model).s,)
         end
 
-        DynamicPPL.test_sampler(
+        DynamicPPL.TestUtils.test_sampler(
             models_conditioned, DynamicPPL.Sampler(ESS()), 10_000;
             # Filter out the varnames we've conditioned on.
             varnames_filter=vn -> DynamicPPL.getsym(vn) != :s
