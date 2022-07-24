@@ -228,8 +228,7 @@ function copy_tutorial(tutorial_path)
     clone("https://github.com/TuringLang/TuringTutorials", tmp_path)
 
     # Move to markdown folder.
-    md_path = joinpath(tmp_path, "markdown")
-
+    md_path = joinpath(tmp_path, "tutorials")
     # Copy the .md versions of all examples.
     try
         @debug(md_path)
