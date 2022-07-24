@@ -242,19 +242,15 @@ A log density function for the MH sampler.
 
 This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
-struct MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} <: Function # Relax AMH.DensityModel?
-    model::M
-    sampler::S
-    vi::V
-end
+const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
 
-function (f::MHLogDensityFunction)(x)
+function (f::MHLogDensityFunction)(x::NamedTuple)
     sampler = f.sampler
-    vi = f.vi
+    vi = f.varinfo
 
     x_old, lj_old = vi[sampler], getlogp(vi)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.DefaultContext()))
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
     lj = getlogp(vi_new)
 
     # Reset old `vi`.
@@ -376,10 +372,10 @@ function propose!(
     prev_trans = AMH.Transition(vt, getlogp(vi))
 
     # Make a new transition.
-    densitymodel = AMH.DensityModel(MHLogDensityFunction(model, spl, vi))
+    densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immmutable `VarInfo`.
+    # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
     set_namedtuple!(vi, trans.params)
     setlogp!!(vi, trans.lp)
@@ -404,10 +400,10 @@ function propose!(
     prev_trans = AMH.Transition(vals, getlogp(vi))
 
     # Make a new transition.
-    densitymodel = AMH.DensityModel(gen_logπ(vi, spl, model))
+    densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immmutable `VarInfo`.
+    # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
     setindex!!(vi, trans.params, spl)
     setlogp!!(vi, trans.lp)
