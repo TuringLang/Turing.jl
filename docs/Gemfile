@@ -11,7 +11,8 @@ ruby RUBY_VERSION
 # Happy Jekylling!
 # gem "jekyll", "3.2.1"
 gem "jekyll"
-gem "faraday", "0.15.4"
+gem "faraday", "1.0.0"
+gem "webrick"
 
 gem "jekyll-paginate"
 gem "jekyll-sitemap"

@@ -38,7 +38,7 @@ if !isnothing(version_match)
 end
 
 jekyll_build = joinpath(@__DIR__, "jekyll-build")
-with_baseurl(() -> run(`$jekyll_build`), baseurl)
+with_baseurl(() -> run(`$jekyll_build --trace`), baseurl)
 
 # deploy
 devurl = "dev"
