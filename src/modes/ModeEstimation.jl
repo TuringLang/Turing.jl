@@ -5,6 +5,7 @@ using Bijectors
 using Random
 using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
+using Setfield
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield,  setorder!,
@@ -100,7 +101,7 @@ at the array `z`.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     sampler = f.sampler
-    varinfo = DynamicPPL.VarInfo(f.varinfo, sampler, z)
+    varinfo = DynamicPPL.unflatten(f.varinfo, sampler, z)
     return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, sampler, f.context)))
 end
 
@@ -110,7 +111,7 @@ function (f::OptimLogDensity)(F, G, z)
         sampler = f.sampler
         neglogp, ∇neglogp = Turing.gradient_logp(
             z, 
-            DynamicPPL.VarInfo(f.varinfo, sampler, z),
+            DynamicPPL.unflatten(f.varinfo, sampler, z),
             f.model, 
             sampler,
             f.context,
@@ -140,71 +141,75 @@ end
 # Generic optimisation objective initialisation #
 #################################################
 
-function transform!(f::OptimLogDensity)
+function transform!!(f::OptimLogDensity)
     spl = f.sampler
 
     ## Check link status of vi in OptimLogDensity
     linked = DynamicPPL.islinked(f.varinfo, spl)
 
     ## transform into constrained or unconstrained space depending on current state of vi
-    if !linked
-        DynamicPPL.link!(f.varinfo, spl)
+    @set! f.varinfo = if !linked
+        DynamicPPL.link!!(f.varinfo, spl, f.model)
     else
-        DynamicPPL.invlink!(f.varinfo, spl)
+        DynamicPPL.invlink!!(f.varinfo, spl, f.model)
     end
 
-    return nothing
+    return f
 end
 
-function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{true})
+function transform!!(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL.Model, ::constrained_space{true})
     spl = DynamicPPL.SampleFromPrior()
 
     linked = DynamicPPL.islinked(vi, spl)
     
-    # !linked && DynamicPPL.link!(vi, spl)
-    !linked && return identity(p) 
-    vi[spl] = p
-    DynamicPPL.invlink!(vi,spl)
+    !linked && return identity(p)  # TODO: why do we do `identity` here?
+    vi = DynamicPPL.setindex!!(vi, p, spl)
+    vi = DynamicPPL.invlink!!(vi, spl, model)
     p .= vi[spl]
 
-    linked && DynamicPPL.link!(vi,spl)
+    # If linking mutated, we need to link once more.
+    linked && DynamicPPL.link!!(vi, spl, model)
 
-    return nothing
+    return p
 end
 
-function transform!(p::AbstractArray, vi::DynamicPPL.VarInfo, ::constrained_space{false})
+function transform!!(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL.Model, ::constrained_space{false})
     spl = DynamicPPL.SampleFromPrior()
 
     linked = DynamicPPL.islinked(vi, spl)
-    linked && DynamicPPL.invlink!(vi, spl)
-    vi[spl] = p
-    DynamicPPL.link!(vi, spl)
+    if linked
+        vi = DynamicPPL.invlink!!(vi, spl, model)
+    end
+    vi = DynamicPPL.setindex!!(vi, p, spl)
+    vi = DynamicPPL.link!!(vi, spl, model)
     p .= vi[spl]
-    !linked && DynamicPPL.invlink!(vi, spl)
 
-    return nothing
+    # If linking mutated, we need to link once more.
+    !linked && DynamicPPL.invlink!!(vi, spl, model)
+
+    return p
 end
 
-function transform(p::AbstractArray, vi::DynamicPPL.VarInfo, con::constrained_space)
-    tp = copy(p)
-    transform!(tp, vi, con)
-    return tp
+function transform(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL.Model, con::constrained_space)
+    return transform!!(copy(p), vi, model, con)
 end
 
 abstract type AbstractTransform end
 
-struct ParameterTransform{T<:DynamicPPL.VarInfo, S<:constrained_space} <: AbstractTransform
+struct ParameterTransform{T<:DynamicPPL.VarInfo,M<:DynamicPPL.Model, S<:constrained_space} <: AbstractTransform
     vi::T
+    model::M
     space::S
 end
 
-struct Init{T<:DynamicPPL.VarInfo, S<:constrained_space} <: AbstractTransform
+struct Init{T<:DynamicPPL.VarInfo,M<:DynamicPPL.Model, S<:constrained_space} <: AbstractTransform
     vi::T
+    model::M
     space::S
 end
 
 function (t::AbstractTransform)(p::AbstractArray)
-    return transform(p, t.vi, t.space)
+    return transform(p, t.vi, t.model, t.space)
 end 
 
 function (t::Init)()
@@ -219,10 +224,12 @@ function get_parameter_bounds(model::DynamicPPL.Model)
     linked = DynamicPPL.islinked(vi, spl) 
     
     ## transform into unconstrained
-    !linked && DynamicPPL.link!(vi, spl)
+    if !linked
+        vi = DynamicPPL.link!!(vi, spl, model)
+    end
     
-    lb = transform(fill(-Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, constrained_space{true}())
-    ub = transform(fill(Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, constrained_space{true}())
+    lb = transform(fill(-Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, model, constrained_space{true}())
+    ub = transform(fill(Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, model, constrained_space{true}())
 
     return lb, ub
 end
@@ -231,9 +238,9 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{fa
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
 
-    transform!(obj)
-    init = Init(obj.varinfo, constrained_space{false}())
-    t = ParameterTransform(obj.varinfo, constrained_space{true}())
+    obj = transform!!(obj)
+    init = Init(obj.varinfo, model, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, model, constrained_space{true}())
 
     return (obj=obj, init = init, transform=t)
 end
@@ -242,8 +249,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.DefaultContext())
     obj = OptimLogDensity(model, ctx)
     
-    init = Init(obj.varinfo, constrained_space{true}())
-    t = ParameterTransform(obj.varinfo, constrained_space{true}())
+    init = Init(obj.varinfo, model, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, model, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -252,9 +259,9 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{f
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
     
-    transform!(obj)
-    init = Init(obj.varinfo, constrained_space{false}())
-    t = ParameterTransform(obj.varinfo, constrained_space{true}())
+    obj = transform!!(obj)
+    init = Init(obj.varinfo, model, constrained_space{false}())
+    t = ParameterTransform(obj.varinfo, model, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
@@ -263,8 +270,8 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE, ::constrained_space{tr
     ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
     obj = OptimLogDensity(model, ctx)
   
-    init = Init(obj.varinfo, constrained_space{true}())
-    t = ParameterTransform(obj.varinfo, constrained_space{true}())
+    init = Init(obj.varinfo, model, constrained_space{true}())
+    t = ParameterTransform(obj.varinfo, model, constrained_space{true}())
     
     return (obj=obj, init = init, transform=t)
 end
