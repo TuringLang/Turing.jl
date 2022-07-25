@@ -185,7 +185,7 @@
         vi = deepcopy(vi_base)
         alg = MH()
         spl = DynamicPPL.Sampler(alg)
-        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test !DynamicPPL.islinked(vi, spl)
 
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
@@ -193,14 +193,14 @@
         d = length(vi_base[DynamicPPL.SampleFromPrior()])
         alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
         spl = DynamicPPL.Sampler(alg)
-        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test DynamicPPL.islinked(vi, spl)
 
         # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
         vi = deepcopy(vi_base)
         alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
         spl = DynamicPPL.Sampler(alg)
-        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test DynamicPPL.islinked(vi, spl)
 
         # Don't link if at least one proposal is NOT `RandomWalkProposal`.
@@ -213,7 +213,7 @@
             :s => AdvancedMH.RandomWalkProposal(Normal())
         )
         spl = DynamicPPL.Sampler(alg)
-        Turing.Inference.maybe_link!(vi, spl, alg.proposals)
+        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test !DynamicPPL.islinked(vi, spl)
     end
 end

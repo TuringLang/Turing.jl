@@ -57,7 +57,7 @@ function AbstractMCMC.step(
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            DynamicPPL.link!(vi, spl)
+            vi = DynamicPPL.link!!(vi, spl, model)
             AMH.Transition(vi[spl], getlogp(vi))
         end
     )
@@ -82,9 +82,9 @@ function AbstractMCMC.step(
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = setindex!!(vi, _state.params, spl)
-        DynamicPPL.invlink!(vi, spl)
+        vi = DynamicPPL.invlink!!(vi, spl, model)
         t = Transition(tonamedtuple(vi), _state.lp)
-        DynamicPPL.link!(vi, spl)
+        vi = DynamicPPL.link!!(vi, spl, model)
         return t
     end
     newstate = EmceeState(vi, states)

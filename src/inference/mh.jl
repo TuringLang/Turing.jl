@@ -349,11 +349,8 @@ function should_link(
     return true
 end
 
-function maybe_link!(varinfo, sampler, proposal)
-    if should_link(varinfo, sampler, proposal)
-        link!(varinfo, sampler)
-    end
-    return nothing
+function maybe_link!!(varinfo, sampler, proposal, model)
+    return should_link(varinfo, sampler, proposal) ? link!!(varinfo, sampler, model) : varinfo
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
@@ -415,7 +412,7 @@ function DynamicPPL.initialstep(
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
-    maybe_link!(vi, spl, spl.alg.proposals)
+    vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
     return Transition(vi), vi
 end
