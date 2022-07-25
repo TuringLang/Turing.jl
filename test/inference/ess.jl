@@ -45,7 +45,7 @@
             CSMC(15, :s),
             ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.1)
 
         # MoGtest
         Random.seed!(125)
@@ -56,7 +56,18 @@
         check_MoGtest_default(chain, atol = 0.1)
 
         # Different "equivalent" models.
-        Random.seed!(125)
-        check_gdemo_models(ESS(), 1_000)
+        # NOTE: Because `ESS` only supports "single" variables with
+        # Guassian priors, we restrict ourselves to this subspace by conditioning
+        # on the non-Gaussian variables in `DEMO_MODELS`.
+        models_conditioned = map(DynamicPPL.TestUtils.DEMO_MODELS) do model
+            # Condition on the non-Gaussian random variables.
+            model | (s = DynamicPPL.TestUtils.posterior_mean(model).s,)
+        end
+
+        DynamicPPL.TestUtils.test_sampler(
+            models_conditioned, DynamicPPL.Sampler(ESS()), 10_000;
+            # Filter out the varnames we've conditioned on.
+            varnames_filter=vn -> DynamicPPL.getsym(vn) != :s
+        )
     end
 end
