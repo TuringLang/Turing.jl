@@ -150,11 +150,11 @@ need, but we need to implement the `step!` function which actually performs infe
 
 As a refresher, Metropolis-Hastings implements a very basic algorithm:
 
-1. Pick some initial state, ``$\theta_0$``.
-2. For ``$t$`` in ``$[1,N],$`` do
-    - Generate a proposal parameterization ``$\theta^\prime_t \sim q(\theta^\prime_t \mid \theta_{t-1}).$``
-    - Calculate the acceptance probability, ``$\alpha = \text{min}\left[1,\frac{\pi(\theta'_t)}{\pi(\theta_{t-1})} \frac{q(\theta_{t-1} \mid \theta'_t)}{q(\theta'_t \mid \theta_{t-1})}) \right].$``
-    - If ``$U \le \alpha$`` where ``$U \sim [0,1],$`` then ``$\theta_t = \theta'_t.$`` Otherwise, ``$\theta_t = \theta_{t-1}.$``
+1. Pick some initial state, ``\theta_0``.
+2. For ``t`` in ``[1,N],`` do
+    - Generate a proposal parameterization ``\theta^\prime_t \sim q(\theta^\prime_t \mid \theta_{t-1}).``
+    - Calculate the acceptance probability, ``\alpha = \text{min}\left[1,\frac{\pi(\theta'_t)}{\pi(\theta_{t-1})} \frac{q(\theta_{t-1} \mid \theta'_t)}{q(\theta'_t \mid \theta_{t-1})}) \right].``
+    - If ``U \le \alpha`` where ``U \sim [0,1],`` then ``\theta_t = \theta'_t.`` Otherwise, ``\theta_t = \theta_{t-1}.``
 
 Of course, it's much easier to do this in the log space, so the acceptance probability is
 more commonly written as 
@@ -279,7 +279,7 @@ function AbstractMCMC.bundle_samples(
 
     # Check if we received any parameter names.
     if ismissing(param_names)
-        param_names = ["Parameter $i" for i in 1:(length(first(vals))-1)]
+        param_names = ["Parameter i" for i in 1:(length(first(vals))-1)]
     end
 
     # Add the log density field to the parameter names.
