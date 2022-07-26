@@ -279,7 +279,7 @@ function AbstractMCMC.bundle_samples(
 
     # Check if we received any parameter names.
     if ismissing(param_names)
-        param_names = ["Parameter i" for i in 1:(length(first(vals))-1)]
+        param_names = ["Parameter $i" for i in 1:(length(first(vals))-1)]
     end
 
     # Add the log density field to the parameter names.
