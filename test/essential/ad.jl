@@ -119,14 +119,20 @@
             # setup
             varinfo_init = Turing.VarInfo(model)
             spl = DynamicPPL.SampleFromPrior()
-            DynamicPPL.link!(varinfo_init, spl)
+            varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
 
             function logπ(z; unlinked = false)
-                varinfo = DynamicPPL.VarInfo(varinfo_init, spl, z)
+                varinfo = DynamicPPL.unflatten(varinfo_init, spl, z)
 
-                unlinked && DynamicPPL.invlink!(varinfo_init, spl)
-                model(varinfo, spl, ctx)
-                unlinked && DynamicPPL.link!(varinfo_init, spl)
+                # TODO(torfjelde): Pretty sure this is a mistake.
+                # Why are we not linking `varinfo` rather than `varinfo_init`?
+                if unlinked
+                    varinfo_init = DynamicPPL.invlink!!(varinfo_init, spl, model)
+                end
+                varinfo = last(DynamicPPL.evaluate!!(model, varinfo, DynamicPPL.SamplingContext(spl, ctx)))
+                if unlinked
+                    varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
+                end
 
                 return -DynamicPPL.getlogp(varinfo)
             end
