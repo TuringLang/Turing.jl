@@ -1,6 +1,0 @@
-<div id="{{ include.id }}" class="plotly"></div>
-<script>
- Plotly.d3.json("{{ include.json }}", function(err, fig) {
-   Plotly.plot("{{ include.id }}", fig.data, fig.layout, {responsive: true});
- });
-</script>
