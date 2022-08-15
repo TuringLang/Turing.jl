@@ -235,9 +235,12 @@ function AbstractMCMC.step(
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, _sampler))
         end
 
+        println("$(typeof(_state))")
         # Update state of current sampler with updated `VarInfo` object.
         current_state = gibbs_state(model, _sampler, _state, vi)
 
+        println("State $(typeof(current_state))")
+        println("Sampler $(typeof(_sampler))")
         # Step through the local sampler.
         _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
 
