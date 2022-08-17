@@ -27,11 +27,19 @@
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
+        ℓ = LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
         x = map(x->Float64(x), vi[SampleFromPrior()])
-        ∇E1 = gradient_logp(TrackerAD(), x, vi, ad_test_f)[2]
+
+        trackerℓ = LogDensityProblems.ADgradient(TrackerAD(), ℓ)
+        @test trackerℓ isa LogDensityProblems.TrackerGradientLogDensity
+        @test trackerℓ.ℓ === ℓ
+        ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
-        ∇E2 = gradient_logp(ZygoteAD(), x, vi, ad_test_f)[2]
+        zygoteℓ = LogDensityProblems.ADgradient(ZygoteAD(), ℓ)
+        @test zygoteℓ isa LogDensityProblems.ZygoteGradientLogDensity
+        @test zygoteℓ.ℓ === ℓ
+        ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
         @test sort(∇E2) ≈ grad_FWAD atol=1e-9
     end
     @turing_testset "general AD tests" begin
@@ -71,19 +79,13 @@
         Turing.setadbackend(:tracker)
         sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
-        sample(dir(), HMC(0.01, 1), 1000);
+        sample(dir(), HMC(0.01, 1), 1000)
         Turing.setadbackend(:reversediff)
         Turing.setrdcache(false)
-        sample(dir(), HMC(0.01, 1), 1000);
+        sample(dir(), HMC(0.01, 1), 1000)
         Turing.setrdcache(true)
-        sample(dir(), HMC(0.01, 1), 1000);
-        caches = Memoization.find_caches(Turing.Essential.memoized_taperesult)
-        @test length(caches) == 1
-        @test !isempty(first(values(caches)))
-        Turing.emptyrdcache()
-        caches = Memoization.find_caches(Turing.Essential.memoized_taperesult)
-        @test length(caches) == 1
-        @test isempty(first(values(caches)))
+        sample(dir(), HMC(0.01, 1), 1000)
+        Turing.setrdcache(false)
     end
     # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
@@ -163,7 +165,7 @@
             @test mean(Array(chn[:sigma])) ≈ std(data) atol=0.5
         end
 
-        Turing.emptyrdcache()
+        Turing.setrdcache(false)
     end
 
     @testset "chunksize" begin

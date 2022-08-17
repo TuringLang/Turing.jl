@@ -28,8 +28,9 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import ..Essential: getchunksize, getADbackend
+import ..Essential: getADbackend
 import EllipticalSliceSampling
+import LogDensityProblems
 import Random
 import MCMCChains
 import StatsBase: predict
@@ -76,7 +77,6 @@ abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
-getchunksize(::Type{<:Hamiltonian{AD}}) where AD = getchunksize(AD)
 getADbackend(::Hamiltonian{AD}) where AD = AD()
 
 # Algorithm for sampling from the prior

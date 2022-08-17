@@ -7,7 +7,6 @@ using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
 using MCMCChains
-using Memoization
 using NamedArrays
 using Optim
 using Optimization
@@ -38,7 +37,7 @@ using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
 using TimerOutputs: TimerOutputs, @timeit
 using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
-                Variational, ZygoteAD, getspace, gradient_logp
+                Variational, ZygoteAD, getspace
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
