@@ -1,3 +1,4 @@
+# TODO(torfjelde): Find a better solution.
 struct Vec{N, B<:Bijectors.Bijector{N}} <: Bijectors.Bijector{1}
     b::B
     size::NTuple{N, Int}
