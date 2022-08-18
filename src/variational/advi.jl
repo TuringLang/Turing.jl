@@ -4,7 +4,7 @@ struct Vec{N, B<:Bijectors.Bijector{N}} <: Bijectors.Bijector{1}
     size::NTuple{N, Int}
 end
 
-Base.inv(f::Vec) = Vec(inv(f.b), f.size)
+Bijectors.inverse(f::Vec) = Vec(Bijectors.inverse(f.b), f.size)
 
 function (f::Vec)(x::AbstractVector)
     # Reshape into shape compatible with wrapped bijector and then `vec` again.
@@ -78,11 +78,11 @@ function Bijectors.bijector(
 
     if sym2ranges
         return (
-            Bijectors.Stacked(bs, rs),
+            Bijectors.Stacked(bs, ranges),
             (; collect(zip(keys(sym_lookup), values(sym_lookup)))...),
         )
     else
-        return Bijectors.Stacked(bs, rs)
+        return Bijectors.Stacked(bs, ranges)
     end
 end
 
