@@ -25,6 +25,7 @@ function AbstractMCMC.step(
     model::Model,
     spl::Sampler{<:Emcee};
     resume_from = nothing,
+    init_params = nothing,
     kwargs...
 )
     if resume_from !== nothing
@@ -37,23 +38,25 @@ function AbstractMCMC.step(
     vis = [VarInfo(rng, model, SampleFromPrior()) for _ in 1:n]
 
     # Update the parameters if provided.
-    if haskey(kwargs, :init_params)
-        for vi in vis
-            initialize_parameters!(vi, kwargs[:init_params], spl)
+    if init_params !== nothing
+        length(init_params) == n || throw(
+            ArgumentError("initial parameters have to be specified for each walker")
+        )
+        vis = map(vis, init_params) do vi, init
+            vi = DynamicPPL.initialize_parameters!!(vi, init, spl)
 
             # Update log joint probability.
-            model(rng, vi, SampleFromPrior())
+            last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
         end
     end
 
     # Compute initial transition and states.
-    transition = map(vis) do vi
-        Transition(vi)
-    end
+    transition = map(Transition, vis)
+
+    # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            # Transform to unconstrained space.
             DynamicPPL.link!(vi, spl)
             AMH.Transition(vi[spl], getlogp(vi))
         end
@@ -71,14 +74,14 @@ function AbstractMCMC.step(
 )
     # Generate a log joint function.
     vi = state.vi
-    densitymodel = AMH.DensityModel(gen_logπ(vi, SampleFromPrior(), model))
+    densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()))
 
     # Compute the next states.
     states = last(AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states))
 
     # Compute the next transition and state.
     transition = map(states) do _state
-        vi[spl] = _state.params
+        vi = setindex!!(vi, _state.params, spl)
         DynamicPPL.invlink!(vi, spl)
         t = Transition(tonamedtuple(vi), _state.lp)
         DynamicPPL.link!(vi, spl)

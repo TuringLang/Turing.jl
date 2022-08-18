@@ -83,13 +83,20 @@ function test_model_ad(model, f, syms::Vector{Symbol})
         end
     end
 
-    spl = SampleFromPrior()
-    _, ∇E = gradient_logp(ForwardDiffAD{1}(), vi[spl], vi, model)
-    grad_Turing = sort(∇E)
+    # Compute primal.
+    x = vec(vnvals)
+    logp = f(x)
 
-    # Call ForwardDiff's AD
-    grad_FWAD = sort(ForwardDiff.gradient(f, vec(vnvals)))
+    # Call ForwardDiff's AD directly.
+    grad_FWAD = sort(ForwardDiff.gradient(f, x))
 
-    # Compare result
-    @test grad_Turing ≈ grad_FWAD atol=1e-9
+    # Compare with `gradient_logp`.
+    z = vi[SampleFromPrior()]
+    for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
+        l, ∇E = gradient_logp(ForwardDiffAD{chunksize, standardtag}(), z, vi, model)
+
+        # Compare result
+        @test l ≈ logp
+        @test sort(∇E) ≈ grad_FWAD atol=1e-9
+    end
 end

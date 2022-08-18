@@ -19,11 +19,9 @@ DynamicNUTS{AD}(space::Symbol...) where AD = DynamicNUTS{AD, space}()
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-struct DynamicHMCLogDensity{M<:Model,S<:Sampler{<:DynamicNUTS},V<:AbstractVarInfo}
-    model::M
-    sampler::S
-    varinfo::V
-end
+# Only define traits for `DynamicNUTS` sampler to avoid type piracy and surprises
+# TODO: Implement generally with `LogDensityProblems`
+const DynamicHMCLogDensity{M<:Model,S<:Sampler{<:DynamicNUTS},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
 
 function DynamicHMC.dimension(ℓ::DynamicHMCLogDensity)
     return length(ℓ.varinfo[ℓ.sampler])
@@ -37,7 +35,7 @@ function DynamicHMC.logdensity_and_gradient(
     ℓ::DynamicHMCLogDensity,
     x::AbstractVector,
 )
-    return gradient_logp(x, ℓ.varinfo, ℓ.model, ℓ.sampler)
+    return gradient_logp(x, ℓ.varinfo, ℓ.model, ℓ.sampler, ℓ.context)
 end
 
 """
@@ -64,7 +62,7 @@ function gibbs_state(
     varinfo::AbstractVarInfo,
 )
     # Update the previous evaluation.
-    ℓ = DynamicHMCLogDensity(model, spl, varinfo)
+    ℓ = Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext())
     Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
     return DynamicNUTSState(varinfo, Q, state.metric, state.stepsize)
 end
@@ -87,7 +85,7 @@ function DynamicPPL.initialstep(
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
         rng,
-        DynamicHMCLogDensity(model, spl, vi),
+        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
         0;
         initialization = (q = vi[spl],),
         reporter = DynamicHMC.NoProgressReport(),
@@ -97,7 +95,7 @@ function DynamicPPL.initialstep(
 
     # Update the variables.
     vi[spl] = Q.q
-    DynamicPPL.setlogp!(vi, Q.ℓq)
+    DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
     sample = Transition(vi)
@@ -115,7 +113,7 @@ function AbstractMCMC.step(
 )
     # Compute next sample.
     vi = state.vi
-    ℓ = DynamicHMCLogDensity(model, spl, vi)
+    ℓ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     steps = DynamicHMC.mcmc_steps(
         rng,
         DynamicHMC.NUTS(),
@@ -127,7 +125,7 @@ function AbstractMCMC.step(
 
     # Update the variables.
     vi[spl] = Q.q
-    DynamicPPL.setlogp!(vi, Q.ℓq)
+    DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
     sample = Transition(vi)

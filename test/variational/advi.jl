@@ -25,7 +25,7 @@
     @turing_testset "advi different interfaces" begin
         Random.seed!(1234)
 
-        target = MvNormal(ones(2))
+        target = MvNormal(zeros(2), I)
         logπ(z) = logpdf(target, z)
         advi = ADVI(10, 1000)
 

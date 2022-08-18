@@ -4,12 +4,13 @@
 [![Coverage Status](https://coveralls.io/repos/github/TuringLang/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/TuringLang/Turing.jl?branch=master)
 [![codecov](https://codecov.io/gh/TuringLang/Turing.jl/branch/master/graph/badge.svg?token=OiUBsnDQqf)](https://codecov.io/gh/TuringLang/Turing.jl)
 [![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](https://turing.ml/dev/docs/using-turing/)
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 
 **Turing.jl** is a Julia library for general-purpose [probabilistic programming](https://en.wikipedia.org/wiki/Probabilistic_programming_language). Turing allows the user to write models using standard Julia syntax, and provides a wide range of sampling-based inference methods for solving problems across probabilistic machine learning, Bayesian statistics, and data science. Compared to other probabilistic programming languages, Turing has a special focus on modularity, and decouples the modelling language (i.e. the compiler) and inference methods. This modular design, together with the use of a high-level numerical language Julia, makes Turing particularly extensible: new model families and inference methods can be easily added.
 
 Current features include:
 
-- [General-purpose](https://turing.ml/dev/tutorials/6-infinitemixturemodel/) probabilistic programming with an [intuitive modelling interface](https://turing.ml/dev/tutorials/0-introduction/)
+- [General-purpose](https://turing.ml/dev/tutorials/06-infinite-mixture-model/) probabilistic programming with an [intuitive modelling interface](https://turing.ml/dev/tutorials/00-introduction/)
 - Robust, efficient [Hamiltonian Monte Carlo (HMC)](https://github.com/TuringLang/AdvancedHMC.jl) sampling for differentiable posterior distributions
 - [Particle MCMC](https://github.com/TuringLang/AdvancedPS.jl) sampling for complex posterior distributions involving discrete variables and stochastic control flows
 - Compositional inference via Gibbs sampling that combines particle MCMC, HMC, [Random-Walk MH (RWMH)](https://github.com/TuringLang/AdvancedMH.jl) and [Elliptical Slice Sampling](https://github.com/TuringLang/Turing.jl/blob/master/src/inference/ess.jl)

@@ -74,7 +74,7 @@ end
 
 This would allow us to generate a model by calling `gauss(; x = rand(3))`.
 
-If an argument has a default value `missing`, it is treated as a random variable. For variables which require an intialization because we
+If an argument has a default value `missing`, it is treated as a random variable. For variables which require an initialization because we
 need to loop or broadcast over its elements, such as `x` above, the following needs to be done:
 ```julia
 if x === missing
@@ -187,7 +187,7 @@ without any default values. Finally, in the new function body a `model::Model` w
 In order to track random variables in the sampling process, `Turing` uses the `VarName` struct which acts as a random variable identifier generated at runtime. The `VarName` of a random variable is generated from the expression on the LHS of a `~` statement when the symbol on the LHS is in the set `P` of unobserved random variables. Every `VarName` instance has a type parameter `sym` which is the symbol of the Julia variable in the model that the random variable belongs to. For example, `x[1] ~ Normal()` will generate an instance of `VarName{:x}` assuming `x` is an unobserved random variable. Every `VarName` also has a field `indexing`, which stores the indices required to access the random variable from the Julia variable indicated by `sym` as a tuple of tuples.  Each element of the tuple thereby contains the indices of one indexing operation (`VarName` also supports hierarchical arrays and range indexing). Some examples:
 - `x ~ Normal()` will generate a `VarName(:x, ())`.
 - `x[1] ~ Normal()` will generate a `VarName(:x, ((1,),))`.
-- `x[:,1] ~ MvNormal(zeros(2))` will generate a `VarName(:x, ((Colon(), 1),))`.
+- `x[:,1] ~ MvNormal(zeros(2), I)` will generate a `VarName(:x, ((Colon(), 1),))`.
 - `x[:,1][1+1] ~ Normal()` will generate a `VarName(:x, ((Colon(), 1), (2,)))`.
 
 The easiest way to manually construct a `VarName` is to use the `@varname` macro on an indexing expression, which will take the `sym` value from the actual variable name, and put the index values appropriately into the constructor.
@@ -227,7 +227,7 @@ not. Let `md` be an instance of `Metadata`:
 - `md.flags` is a dictionary of true/false flags. `md.flags[flag][md.idcs[vn]]` is the
  value of `flag` corresponding to `vn`.
 
-Note that in order to make `md::Metadata` type stable, all the `md.vns` must have the same symbol and distribution type. However, one can have a single Julia variable, e.g. `x`, that is a matrix or a hierarchical array sampled in partitions, e.g. `x[1][:] ~ MvNormal(zeros(2), 1.0); x[2][:] ~ MvNormal(ones(2), 1.0)`. The symbol `x` can still be managed by a single `md::Metadata` without hurting the type stability since all the distributions on the RHS of `~` are of the same type. 
+Note that in order to make `md::Metadata` type stable, all the `md.vns` must have the same symbol and distribution type. However, one can have a single Julia variable, e.g. `x`, that is a matrix or a hierarchical array sampled in partitions, e.g. `x[1][:] ~ MvNormal(zeros(2), I); x[2][:] ~ MvNormal(ones(2), I)`. The symbol `x` can still be managed by a single `md::Metadata` without hurting the type stability since all the distributions on the RHS of `~` are of the same type. 
 
 However, in `Turing` models one cannot have this restriction, so we must use a type unstable `Metadata` if we want to use one `Metadata` instance for the whole model. This is what `UntypedVarInfo` does. A type unstable `Metadata` will still work but will have inferior performance.
 

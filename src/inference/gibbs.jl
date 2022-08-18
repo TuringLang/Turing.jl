@@ -25,7 +25,7 @@ variables in a model.
 
 Example:
 ```julia
-@model gibbs_example(x) = begin
+@model function gibbs_example(x)
     v1 ~ Normal(0,1)
     v2 ~ Categorical(5)
 end
@@ -126,7 +126,7 @@ function gibbs_state(
     state.z.θ .= θ_old
     z = state.z
 
-    return HMCState(varinfo, state.i, state.traj, hamiltonian, z, state.adaptor)
+    return HMCState(varinfo, state.i, state.kernel, hamiltonian, z, state.adaptor)
 end
 
 """
@@ -163,6 +163,9 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...
 )
+    # TODO: Technically this only works for `VarInfo` or `ThreadSafeVarInfo{<:VarInfo}`.
+    # Should we enforce this?
+
     # Create tuple of samplers
     algs = spl.alg.algs
     i = 0
@@ -230,7 +233,7 @@ function AbstractMCMC.step(
     states = map(samplers, state.states) do _sampler, _state
         # Recompute `vi.logp` if needed.
         if _sampler.selector.rerun
-            model(rng, vi, _sampler)
+            vi = last(DynamicPPL.evaluate!!(model, rng, vi, _sampler))
         end
 
         # Update state of current sampler with updated `VarInfo` object.

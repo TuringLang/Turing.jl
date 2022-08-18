@@ -38,9 +38,9 @@ denoting the dimensionality of the latent variables.
 """
 function Bijectors.bijector(
     model::DynamicPPL.Model,
-    ::Val{sym2ranges} = Val(false),
-) where {sym2ranges}
+    ::Val{sym2ranges} = Val(false);
     varinfo = DynamicPPL.VarInfo(model)
+) where {sym2ranges}
     num_params = sum([size(varinfo.metadata[sym].vals, 1)
                       for sym ∈ keys(varinfo.metadata)])
 
@@ -92,15 +92,23 @@ Creates a mean-field approximation with multivariate normal as underlying distri
 """
 meanfield(model::DynamicPPL.Model) = meanfield(Random.GLOBAL_RNG, model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
-    b = inv(Bijectors.bijector(model, Val(false)))
-    num_params = sum(length.(b.ranges))
+    # Setup.
+    varinfo = DynamicPPL.VarInfo(model)
+    num_params = length(varinfo[DynamicPPL.SampleFromPrior()])
 
-    # Construct variational posterior
+    # initial params
     μ = randn(rng, num_params)
     σ = StatsFuns.softplus.(randn(rng, num_params))
+
+    # Construct the base family.
     d = DistributionsAD.TuringDiagMvNormal(μ, σ)
 
-    return Bijectors.transformed(d, b)
+    # Construct the bijector constrained → unconstrained.
+    b = Bijectors.bijector(model; varinfo=varinfo)
+
+    # We want to transform from unconstrained space to constrained,
+    # hence we need the inverse of `b`.
+    return Bijectors.transformed(d, inv(b))
 end
 
 # Overloading stuff from `AdvancedVI` to specialize for Turing

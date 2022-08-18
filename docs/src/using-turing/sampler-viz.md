@@ -26,7 +26,7 @@ using DynamicPPL: getlogp, settrans!, getval, reconstruct, vectorize, setval!
 Random.seed!(0)
 
 # Define a strange model.
-@model gdemo(x) = begin
+@model function gdemo(x)
     s² ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s²))
     bumps = sin(m) + cos(m)
@@ -48,7 +48,7 @@ vi = Turing.VarInfo(model)
 # Note: We only have to do this here because we are being very hands-on.
 # Turing will handle all of this for you during normal sampling.
 dist = InverseGamma(2,3)
-svn = vi.metadata.s.vns[1]
+svn = vi.metadata.s².vns[1]
 mvn = vi.metadata.m.vns[1]
 setval!(vi, vectorize(dist, Bijectors.link(dist, reconstruct(dist, getval(vi, svn)))), svn)
 settrans!(vi, true, svn)
@@ -64,8 +64,8 @@ end
 
 function plot_sampler(chain; label="")
     # Extract values from chain.
-    val = get(chain, [:s, :m, :lp])
-    ss = link.(Ref(InverseGamma(2, 3)), val.s)
+    val = get(chain, [:s², :m, :lp])
+    ss = link.(Ref(InverseGamma(2, 3)), val.s²)
     ms = val.m
     lps = val.lp
 

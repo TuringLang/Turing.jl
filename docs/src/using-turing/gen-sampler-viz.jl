@@ -10,7 +10,7 @@ using DynamicPPL: getlogp, settrans!, getval, reconstruct, vectorize, setval!
 Random.seed!(0)
 
 # Define a strange model.
-@model gdemo(x) = begin
+@model function gdemo(x)
     s² ~ InverseGamma(2, 3)
     m ~ Normal(0, sqrt(s²))
     bumps = sin(m) + cos(m)

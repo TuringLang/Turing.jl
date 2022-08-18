@@ -50,23 +50,14 @@
         chain = sample(gdemo(1.5, 2.0), alg, 5_000)
         check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
-        setadsafe(true)
-
         Random.seed!(200)
         gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs, 5_000)
         check_MoGtest_default(chain, atol=0.15)
-
-        setadsafe(false)
-
-        Random.seed!(200)
-        gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
-        chain = sample(MoGtest_default, gibbs, 5_000)
-        check_MoGtest_default(chain, atol=0.1)
     end
 
     @turing_testset "transitions" begin
-        @model gdemo_copy() = begin
+        @model function gdemo_copy()
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
             1.5 ~ Normal(m, sqrt(s))
@@ -97,7 +88,7 @@
         sample(model, alg, 100; callback = callback)
     end
     @turing_testset "dynamic model" begin
-        @model imm(y, alpha, ::Type{M}=Vector{Float64}) where {M} = begin
+        @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
         
@@ -117,7 +108,8 @@
             end
         end
         model = imm(randn(100), 1.0);
-        sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
+        # https://github.com/TuringLang/Turing.jl/issues/1725
+        # sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m)), 100);
     end
 end

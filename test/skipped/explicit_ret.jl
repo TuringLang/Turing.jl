@@ -1,7 +1,7 @@
 using Turing
 using Test
 
-@model test_ex_rt() = begin
+@model function test_ex_rt()
   x ~ Normal(10, 1)
   y ~ Normal(x / 2, 1)
   z = y + 1

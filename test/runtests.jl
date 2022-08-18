@@ -2,6 +2,7 @@ using AbstractMCMC
 using AdvancedMH
 using Clustering
 using Distributions
+using Distributions.FillArrays
 using DistributionsAD
 using FiniteDifferences
 using ForwardDiff
@@ -9,6 +10,8 @@ using MCMCChains
 using Memoization
 using NamedArrays
 using Optim
+using Optimization
+using OptimizationOptimJL
 using PDMats
 using ReverseDiff
 using SpecialFunctions
@@ -24,6 +27,7 @@ using LinearAlgebra
 using Pkg
 using Random
 using Test
+using StableRNGs
 
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
@@ -32,59 +36,75 @@ using DynamicPPL: getval, getlogp
 using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
-using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD, 
+using TimerOutputs: TimerOutputs, @timeit
+using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
                 Variational, ZygoteAD, getspace, gradient_logp
-using Turing.Core: TuringDenseMvNormal, TuringDiagMvNormal
+using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 setprogress!(false)
 
-include("test_utils/AllUtils.jl")
+include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
+
+# Collect timing and allocations information to show in a clear way.
+const TIMEROUTPUT = TimerOutputs.TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
 
 @testset "Turing" begin
-    @testset "core" begin
-        include("core/ad.jl")
+    @testset "essential" begin
+        @timeit_include("essential/ad.jl")
+    end
+
+    @testset "samplers (without AD)" begin
+        @timeit_include("inference/AdvancedSMC.jl")
+        @timeit_include("inference/emcee.jl")
+        @timeit_include("inference/ess.jl")
+        @timeit_include("inference/is.jl")
     end
 
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :tracker, :reversediff)
-        Turing.setadbackend(adbackend)
-        @testset "inference: $adbackend" begin
-            @testset "samplers" begin
-                include("inference/gibbs.jl")
-                include("inference/gibbs_conditional.jl")
-                include("inference/hmc.jl")
-                include("inference/is.jl")
-                include("inference/mh.jl")
-                include("inference/ess.jl")
-                include("inference/emcee.jl")
-                include("inference/AdvancedSMC.jl")
-                include("inference/Inference.jl")
-                include("contrib/inference/dynamichmc.jl")
-                include("contrib/inference/sghmc.jl")
+        @timeit TIMEROUTPUT "inference: $adbackend" begin
+            Turing.setadbackend(adbackend)
+            @info "Testing $(adbackend)"
+            @testset "inference: $adbackend" begin
+                @testset "samplers" begin
+                    @timeit_include("inference/gibbs.jl")
+                    @timeit_include("inference/gibbs_conditional.jl")
+                    @timeit_include("inference/hmc.jl")
+                    @timeit_include("inference/Inference.jl")
+                    @timeit_include("contrib/inference/dynamichmc.jl")
+                    @timeit_include("contrib/inference/sghmc.jl")
+                    @timeit_include("inference/mh.jl")
+                end
             end
-        end
 
-        @testset "variational algorithms : $adbackend" begin
-            include("variational/advi.jl")
-        end
+            @testset "variational algorithms : $adbackend" begin
+                @timeit_include("variational/advi.jl")
+            end
 
-        @testset "modes" begin
-            include("modes/ModeEstimation.jl")
+            @testset "modes : $adbackend" begin
+                @timeit_include("modes/ModeEstimation.jl")
+                @timeit_include("modes/OptimInterface.jl")
+            end
+
         end
     end
+
     @testset "variational optimisers" begin
-        include("variational/optimisers.jl")
+        @timeit_include("variational/optimisers.jl")
     end
 
     Turing.setadbackend(:forwarddiff)
     @testset "stdlib" begin
-        include("stdlib/distributions.jl")
-        include("stdlib/RandomMeasures.jl")
+        @timeit_include("stdlib/distributions.jl")
+        @timeit_include("stdlib/RandomMeasures.jl")
     end
 
     @testset "utilities" begin
         # include("utilities/stan-interface.jl")
-        include("inference/utilities.jl")
+        @timeit_include("inference/utilities.jl")
     end
 end
+
+show(TIMEROUTPUT; compact=true, sortby=:firstexec)

@@ -4,14 +4,14 @@
 
 struct HMCState{
     TV<:AbstractVarInfo,
-    TTraj<:AHMC.AbstractTrajectory,
+    TKernel<:AHMC.HMCKernel,
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
 }
     vi::TV
     i::Int
-    traj::TTraj
+    kernel::TKernel
     hamiltonian::THam
     z::PhType
     adaptor::TAdapt
@@ -151,7 +151,7 @@ function DynamicPPL.initialstep(
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
     link!(vi, spl)
-    model(rng, vi, spl)
+    vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
 
     # Extract parameters.
     theta = vi[spl]
@@ -160,7 +160,7 @@ function DynamicPPL.initialstep(
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
+    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
 
     # Compute phase point z.
@@ -170,7 +170,7 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
-            model(rng, vi, SampleFromUniform())
+            vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             link!(vi, spl)
             theta = vi[spl]
 
@@ -190,32 +190,32 @@ function DynamicPPL.initialstep(
         ϵ = spl.alg.ϵ
     end
 
-    # Generate a trajectory.
-    traj = gen_traj(spl.alg, ϵ)
+    # Generate a kernel.
+    kernel = make_ahmc_kernel(spl.alg, ϵ)
 
     # Create initial transition and state.
     # Already perform one step since otherwise we don't get any statistics.
-    t = AHMC.step(rng, hamiltonian, traj, z)
+    t = AHMC.transition(rng, hamiltonian, kernel, z)
 
     # Adaptation
     adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, traj, _ =
-            AHMC.adapt!(hamiltonian, traj, adaptor,
+        hamiltonian, kernel, _ =
+            AHMC.adapt!(hamiltonian, kernel, adaptor,
                         1, nadapts, t.z.θ, t.stat.acceptance_rate)
     end
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        vi[spl] = t.z.θ
-        setlogp!(vi, t.stat.log_density)
+        vi = setindex!!(vi, t.z.θ, spl)
+        vi = setlogp!!(vi, t.stat.log_density)
     else
-        vi[spl] = theta
-        setlogp!(vi, log_density_old)
+        vi = setindex!!(vi, theta, spl)
+        vi = setlogp!!(vi, log_density_old)
     end
 
     transition = HMCTransition(vi, t)
-    state = HMCState(vi, 1, traj, hamiltonian, t.z, adaptor)
+    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
 end
@@ -234,35 +234,35 @@ function AbstractMCMC.step(
     # Compute transition.
     hamiltonian = state.hamiltonian
     z = state.z
-    t = AHMC.step(rng, hamiltonian, state.traj, z)
+    t = AHMC.transition(rng, hamiltonian, state.kernel, z)
 
     # Adaptation
     i = state.i + 1
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, traj, _ =
-            AHMC.adapt!(hamiltonian, state.traj, state.adaptor,
+        hamiltonian, kernel, _ =
+            AHMC.adapt!(hamiltonian, state.kernel, state.adaptor,
                         i, nadapts, t.z.θ, t.stat.acceptance_rate)
     else
-        traj = state.traj
+        kernel = state.kernel
     end
 
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi[spl] = t.z.θ
-        setlogp!(vi, t.stat.log_density)
+        vi = setindex!!(vi, t.z.θ, spl)
+        vi = setlogp!!(vi, t.stat.log_density)
     end
 
     # Compute next transition and state.
     transition = HMCTransition(vi, t)
-    newstate = HMCState(vi, i, traj, hamiltonian, t.z, state.adaptor)
+    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate
 end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓπ = gen_logπ(vi, spl, model)
+    ℓπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     ∂ℓπ∂θ = gen_∂logπ∂θ(vi, spl, model)
     return AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
 end
@@ -334,7 +334,7 @@ end
 
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=5, Δ_max::Float64=1000.0, ϵ::Float64=0.0)
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0)
 
 No-U-Turn Sampler (NUTS) sampler.
 
@@ -435,33 +435,18 @@ function gen_∂logπ∂θ(vi, spl::Sampler, model)
     return ∂logπ∂θ
 end
 
-"""
-    gen_logπ(vi, spl::Sampler, model)
-
-Generate a function that takes `θ` and returns logpdf at `θ` for the model specified by
-`(vi, spl, model)`.
-"""
-function gen_logπ(vi, spl::AbstractSampler, model)
-    function logπ(x)::Float64
-        x_old, lj_old = vi[spl], getlogp(vi)
-        vi[spl] = x
-        model(vi, spl)
-        lj = getlogp(vi)
-        vi[spl] = x_old
-        setlogp!(vi, lj_old)
-        return lj
-    end
-    return logπ
-end
-
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
 
-gen_traj(alg::HMC, ϵ) = AHMC.StaticTrajectory(AHMC.Leapfrog(ϵ), alg.n_leapfrog)
-gen_traj(alg::HMCDA, ϵ) = AHMC.HMCDA(AHMC.Leapfrog(ϵ), alg.λ)
-gen_traj(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
+function make_ahmc_kernel(alg::HMC, ϵ)
+    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedNSteps(alg.n_leapfrog)))
+end
+function make_ahmc_kernel(alg::HMCDA, ϵ)
+    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ)))
+end
+make_ahmc_kernel(alg::NUTS, ϵ) = AHMC.NUTS(AHMC.Leapfrog(ϵ), alg.max_depth, alg.Δ_max)
 
 ####
 #### Compiler interface, i.e. tilde operators.
@@ -474,10 +459,7 @@ function DynamicPPL.assume(
     vi,
 )
     DynamicPPL.updategid!(vi, vn, spl)
-    r = vi[vn]
-    # acclogp!(vi, logpdf_with_trans(dist, r, istrans(vi, vn)))
-    # r
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn))
+    return DynamicPPL.assume(dist, vn, vi)
 end
 
 function DynamicPPL.dot_assume(
@@ -488,11 +470,8 @@ function DynamicPPL.dot_assume(
     var::AbstractMatrix,
     vi,
 )
-    @assert length(dist) == size(var, 1)
     DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
-    var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1])))
+    return DynamicPPL.dot_assume(dist, var, vns, vi)
 end
 function DynamicPPL.dot_assume(
     rng,
@@ -503,9 +482,7 @@ function DynamicPPL.dot_assume(
     vi,
 )
     DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
-    var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1])))
+    return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
 function DynamicPPL.observe(
@@ -514,7 +491,7 @@ function DynamicPPL.observe(
     value,
     vi,
 )
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
+    return DynamicPPL.observe(d, value, vi)
 end
 
 function DynamicPPL.dot_observe(
@@ -523,7 +500,7 @@ function DynamicPPL.dot_observe(
     value::AbstractArray,
     vi,
 )
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
+    return DynamicPPL.dot_observe(ds, value, vi)
 end
 
 ####
@@ -562,11 +539,13 @@ function HMCState(
     kwargs...
 )
     # Link everything if needed.
-    !islinked(vi, spl) && link!(vi, spl)
+    if !islinked(vi, spl)
+        link!(vi, spl)
+    end
 
     # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = gen_logπ(vi, spl, model)
+    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
 
     # Get the metric type.
     metricT = getmetricT(spl.alg)
@@ -584,8 +563,8 @@ function HMCState(
         ϵ = spl.alg.ϵ
     end
 
-    # Generate a trajectory.
-    traj = gen_traj(spl.alg, ϵ)
+    # Generate a kernel.
+    kernel = make_ahmc_kernel(spl.alg, ϵ)
 
     # Generate a phasepoint. Replaced during sample_init!
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
@@ -593,5 +572,5 @@ function HMCState(
     # Unlink everything.
     invlink!(vi, spl)
 
-    return HMCState(vi, 0, 0, traj, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
+    return HMCState(vi, 0, 0, kernel.τ, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end

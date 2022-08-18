@@ -1,6 +1,6 @@
 @testset "mh.jl" begin
     @turing_testset "mh constructor" begin
-        Random.seed!(0)
+        Random.seed!(10)
         N = 500
         s1 = MH(
             (:s, InverseGamma(2,3)),
@@ -24,6 +24,7 @@
         chain = sample(gdemo_default, alg, 2000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MH with Gaussian proposal
         alg = MH(
             (:s, InverseGamma(2,3)),
@@ -31,23 +32,25 @@
         chain = sample(gdemo_default, alg, 7000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
         chain = sample(gdemo_default, alg, 2000)
         check_gdemo(chain, atol = 0.1)
 
+        Random.seed!(125)
         # MoGtest
         gibbs = Gibbs(
             CSMC(15, :z1, :z2, :z3, :z4),
             MH((:mu1,GKernel(1)), (:mu2,GKernel(1)))
         )
-        chain = sample(MoGtest_default, gibbs, 5000)
+        chain = sample(MoGtest_default, gibbs, 500)
         check_MoGtest_default(chain, atol = 0.15)
     end
 
     # Test MH shape passing.
     @turing_testset "shape" begin
-        @model M(mu, sigma, observable) = begin
+        @model function M(mu, sigma, observable)
             z ~ MvNormal(mu, sigma)
 
             m = Array{Float64}(undef, 1, 2)
@@ -64,7 +67,7 @@
             2.0 ~ Normal(m[1], s)
         end
 
-        model = M(zeros(2), ones(2), 1)
+        model = M(zeros(2), I, 1)
         sampler = Inference.Sampler(MH(), model)
 
         dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
@@ -116,7 +119,7 @@
         # Turing model
         @model function twomeans(x, y)
             # Set Priors
-            μ ~ MvNormal(2, 3)
+            μ ~ MvNormal(zeros(2), 9 * I)
             σ ~ filldist(Exponential(1), 2)
         
             # Distributions of supplied data
@@ -188,7 +191,7 @@
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
         vi = deepcopy(vi_base)
         d = length(vi_base[DynamicPPL.SampleFromPrior()])
-        alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(d, 1.0)))
+        alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
         spl = DynamicPPL.Sampler(alg)
         Turing.Inference.maybe_link!(vi, spl, alg.proposals)
         @test DynamicPPL.islinked(vi, spl)

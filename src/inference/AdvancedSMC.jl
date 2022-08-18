@@ -110,8 +110,8 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
-    empty!(vi)
+    resetlogp!!(vi)
+    empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -249,7 +249,7 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
     set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -281,7 +281,7 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     reset_num_produce!(vi)
-    resetlogp!(vi)
+    resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi))
@@ -315,18 +315,30 @@ function AbstractMCMC.step(
     return transition, _vi
 end
 
+DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
+
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    ::Any
+    __vi__::AbstractVarInfo
 )
-    vi = AdvancedPS.current_trace().f.varinfo
+    local vi
+    try 
+        vi = AdvancedPS.current_trace().f.varinfo
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            vi = __vi__
+        else
+            rethrow(e)
+        end
+    end
     if inspace(vn, spl)
         if ~haskey(vi, vn)
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, spl)
+            push!!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del")
             r = rand(rng, dist)
@@ -337,22 +349,22 @@ function DynamicPPL.assume(
             DynamicPPL.updategid!(vi, vn, spl)
             r = vi[vn]
         end
-    else # vn belongs to other sampler <=> conditionning on vn
+    else # vn belongs to other sampler <=> conditioning on vn
         if haskey(vi, vn)
             r = vi[vn]
         else
             r = rand(rng, dist)
-            push!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
+            push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
-        acclogp!(vi, lp)
+        acclogp!!(vi, lp)
     end
-    return r, 0
+    return r, 0, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    produce(logpdf(dist, value))
-    return 0
+    Libtask.produce(logpdf(dist, value))
+    return 0, vi
 end
 
 # Convenient constructor
@@ -363,6 +375,6 @@ function AdvancedPS.Trace(
 )
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
-    f = Turing.Core.TracedModel(model, sampler, newvarinfo)
+    f = Turing.Essential.TracedModel(model, sampler, newvarinfo)
     return AdvancedPS.Trace(f)
 end

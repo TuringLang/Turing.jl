@@ -244,10 +244,3 @@ Distributions.logpdf(d::LogPoisson, k::Real) = _logpdf(d, k)
 
 Base.rand(rng::Random.AbstractRNG, d::LogPoisson) = rand(rng, Poisson(d.λ))
 Distributions.sampler(d::LogPoisson) = sampler(Poisson(d.λ))
-
-Bijectors.logpdf_with_trans(d::NoDist{<:Univariate}, ::Real, ::Bool) = 0
-Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, ::AbstractVector{<:Real}, ::Bool) = 0
-function Bijectors.logpdf_with_trans(d::NoDist{<:Multivariate}, x::AbstractMatrix{<:Real}, ::Bool)
-    return zeros(Int, size(x, 2))
-end
-Bijectors.logpdf_with_trans(d::NoDist{<:Matrixvariate}, ::AbstractMatrix{<:Real}, ::Bool) = 0

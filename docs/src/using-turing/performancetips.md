@@ -16,9 +16,9 @@ The following example:
 
 ```julia
 @model function gmodel(x)
-    m ~ Normal()
+    m ~ Normal()
     for i = 1:length(x)
-        x[i] ~ Normal(m, 0.2)
+        x[i] ~ Normal(m, 0.2)
     end
 end
 ```
@@ -28,8 +28,8 @@ can be directly expressed more efficiently using a simple transformation:
 using FillArrays
 
 @model function gmodel(x)
-    m ~ Normal()
-    x ~ MvNormal(Fill(m, length(x)), 0.2)
+    m ~ Normal()
+    x ~ MvNormal(Fill(m, length(x)), 0.04 * I)
 end
 ```
 
@@ -44,7 +44,7 @@ Generally, try to use `:forwarddiff` for models with few parameters and `:revers
 In case of `:tracker` and `:zygote`, it is necessary to avoid loops for now.
 This is mainly due to the reverse-mode AD backends `Tracker` and `Zygote` which are inefficient for such cases. `ReverseDiff` does better but vectorized operations will still perform better.
 
-Avoiding loops can be done using `filldist(dist, N)` and `arraydist(dists)`. `filldist(dist, N)` creates a multivariate distribution that is composed of `N` identical and independent copies of the univariate distribution `dist` if `dist` is univariate, or it creates a matrix-variate distribution composed of `N` identical and idependent copies of the multivariate distribution `dist` if `dist` is multivariate. `filldist(dist, N, M)` can also be used to create a matrix-variate distribution from a univariate distribution `dist`.  `arraydist(dists)` is similar to `filldist` but it takes an array of distributions `dists` as input. Writing a [custom distribution](advanced) with a custom adjoint is another option to avoid loops.
+Avoiding loops can be done using `filldist(dist, N)` and `arraydist(dists)`. `filldist(dist, N)` creates a multivariate distribution that is composed of `N` identical and independent copies of the univariate distribution `dist` if `dist` is univariate, or it creates a matrix-variate distribution composed of `N` identical and independent copies of the multivariate distribution `dist` if `dist` is multivariate. `filldist(dist, N, M)` can also be used to create a matrix-variate distribution from a univariate distribution `dist`.  `arraydist(dists)` is similar to `filldist` but it takes an array of distributions `dists` as input. Writing a [custom distribution](advanced) with a custom adjoint is another option to avoid loops.
 
 
 ## Ensure that types in your model can be inferred
@@ -62,7 +62,7 @@ The following example with abstract types
     end
 
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 
@@ -77,7 +77,7 @@ can be transformed into the following representation with concrete types:
     end
 
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 
@@ -85,9 +85,9 @@ Alternatively, you could use `filldist` in this example:
 
 ```julia
 @model function tmodel(x, y)
-    params = filldist(truncated(Normal(), 0, Inf), size(x, 2))
+    params ~ filldist(truncated(Normal(), 0, Inf), size(x, 2))
     a = x * params
-    y ~ MvNormal(a, 1.0)
+    y ~ MvNormal(a, I)
 end
 ```
 
@@ -113,11 +113,11 @@ using Random
 model = tmodel(1.0)
 
 @code_warntype model.f(
-    Random.GLOBAL_RNG,
     model,
     Turing.VarInfo(model),
-    Turing.SampleFromPrior(),
-    Turing.DefaultContext(),
+    Turing.SamplingContext(
+        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    ),
     model.args...,
 )
 ```

@@ -11,13 +11,13 @@ end
 
 x, y = readlrdata()
 
-@model hlr_nuts(x, y, θ) = begin
+@model function hlr_nuts(x, y, θ)
 
     N,D = size(x)
 
     σ² ~ Exponential(θ)
     α ~ Normal(0, sqrt(σ²))
-    β ~ MvNormal(zeros(D), ones(D)*sqrt(σ²))
+    β ~ MvNormal(zeros(D), σ² * I)
 
     for n = 1:N
         y[n] ~ BinomialLogit(1, dot(x[n,:], β) + α)

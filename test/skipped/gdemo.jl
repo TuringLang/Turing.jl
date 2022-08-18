@@ -4,7 +4,7 @@ include("unit_test_helper.jl")
 
 using Turing
 
-@model gdemo() = begin
+@model function gdemo()
     s ~ InverseGamma(2, 3)
     m ~ Normal(0,sqrt(s))
     1.5 ~ Normal(m, sqrt(s))

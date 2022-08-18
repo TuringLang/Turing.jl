@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.3'
+          - '1.6'
           - '1'
         os:
           - ubuntu-latest
@@ -35,5 +35,7 @@ jobs:
             ${{ runner.os }}-test-
       - uses: julia-actions/julia-buildpkg@latest
       - uses: julia-actions/julia-runtest@latest
+        with:
+          coverage: false
         env:
           STAGE: numerical
