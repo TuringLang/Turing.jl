@@ -10,6 +10,8 @@ using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield,  setorder!,
     get_and_set_val!, istrans
 
+import LogDensityProblems
+
 export  constrained_space,  
         MAP,
         MLE,
