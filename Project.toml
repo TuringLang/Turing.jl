@@ -32,7 +32,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
-ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 AbstractMCMC = "4"
