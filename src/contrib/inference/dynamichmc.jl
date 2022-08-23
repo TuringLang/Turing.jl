@@ -38,13 +38,13 @@ end
 
 # Implement interface of `Gibbs` sampler
 function gibbs_state(
-    ::Model,
+    model::Model,
     spl::Sampler{<:DynamicNUTS},
     state::DynamicNUTSState,
     varinfo::AbstractVarInfo,
 )
-    # Update the previous evaluation.
-    ℓ = state.logdensity
+    # Update the log density function and its cached evaluation.
+    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext()))
     Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
     return DynamicNUTSState(ℓ, varinfo, Q, state.metric, state.stepsize)
 end
