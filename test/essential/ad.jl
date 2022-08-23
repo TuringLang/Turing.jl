@@ -27,7 +27,7 @@
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        ℓ = LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
+        ℓ = Turing.LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
         trackerℓ = LogDensityProblems.ADgradient(TrackerAD(), ℓ)
