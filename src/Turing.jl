@@ -57,16 +57,6 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-# TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
-#   Related: https://github.com/TuringLang/Turing.jl/issues/746
-#@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-#     @eval Utilities begin
-#         using ..Turing.CmdStan: CmdStan, Adapt, Hmc
-#         using ..Turing: HMC, HMCDA, NUTS
-#         include("utilities/stan-interface.jl")
-#     end
-# end
-
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
     @eval Inference begin
         import ..DynamicHMC
