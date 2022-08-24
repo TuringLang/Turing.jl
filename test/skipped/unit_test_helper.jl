@@ -10,7 +10,7 @@ function test_grad(turing_model, grad_f; trans=Dict())
     @testset "Gradient using random inputs" begin
         ℓ = LogDensityProblems.ADgradient(
             TrackerAD(),
-            LogDensityFunction(vi, model_f, SampleFromPrior(), DynamicPPL.DefaultContext()),
+            Turing.LogDensityFunction(vi, model_f, SampleFromPrior(), DynamicPPL.DefaultContext()),
         )
         for _ = 1:10000
             theta = rand(d)
