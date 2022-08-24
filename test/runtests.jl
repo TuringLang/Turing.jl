@@ -41,6 +41,8 @@ using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, Trac
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
+import LogDensityProblems
+
 setprogress!(false)
 
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
