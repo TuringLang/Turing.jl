@@ -102,7 +102,6 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
     end
 
     @testset "utilities" begin
-        # include("utilities/stan-interface.jl")
         @timeit_include("inference/utilities.jl")
     end
 end
