@@ -236,7 +236,7 @@ function AbstractMCMC.step(
     # Iterate through each of the samplers.
     vi = state.vi
     samplers = state.samplers
-    states = map(samplers, spl.iterations, state.states) do _sampler, iteration, _state
+    states = map(samplers, spl.alg.iterations, state.states) do _sampler, iteration, _state
         # Recompute `vi.logp` if needed.
         if _sampler.selector.rerun
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, _sampler))
