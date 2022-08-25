@@ -44,24 +44,24 @@ more particles in the particle sampler.
 struct Gibbs{space, A<:Tuple, B<:Tuple} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
     iterations::B
-    function Gibbs{space, A}(algs::A, iterations) where {space, A<:Tuple}
+    function Gibbs{space, A, B}(algs::A, iterations::B) where {space, A<:Tuple, B<:Tuple}
         all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
-        return new{space, A}(algs, iterations)
+        return new{space, A, B}(algs, iterations)
     end
 end
 
 function Gibbs(args...)
     if eltype(args) <: InferenceAlgorithm
         algs = args
-        iterations = tuple(fill(length(args), 1))
+        iterations = tuple(fill(length(args), 1)...)
     else
-        algs = tuple(map(first, args))
-        iterations = tuple(map(last, args))
+        algs = tuple(map(first, args)...)
+        iterations = tuple(map(last, args)...)
     end
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
 
-    Gibbs{space, typeof(algs)}(algs, iterations)
+    Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 """
