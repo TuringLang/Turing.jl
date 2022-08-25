@@ -54,6 +54,10 @@
         gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
         chain = sample(MoGtest_default, gibbs, 5_000)
         check_MoGtest_default(chain, atol=0.15)
+
+        alg = Gibbs(MH(:s) => 10, HMC(0.2, 4, :m) => 10)
+        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
     end
 
     @turing_testset "transitions" begin

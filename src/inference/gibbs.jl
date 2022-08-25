@@ -41,20 +41,27 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, A<:Tuple} <: InferenceAlgorithm
+struct Gibbs{space, A<:Tuple, B<:Tuple} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
-
-    function Gibbs{space, A}(algs::A) where {space, A<:Tuple}
+    iterations::B
+    function Gibbs{space, A}(algs::A, iterations) where {space, A<:Tuple}
         all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
-        return new{space, A}(algs)
+        return new{space, A}(algs, iterations)
     end
 end
 
-function Gibbs(algs...)
+function Gibbs(args...)
+    if eltype(args) <: InferenceAlgorithm
+        algs = args
+        iterations = tuple(fill(length(args), 1))
+    else
+        algs = tuple(map(first, args))
+        iterations = tuple(map(last, args))
+    end
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
 
-    Gibbs{space, typeof(algs)}(algs)
+    Gibbs{space, typeof(algs)}(algs, iterations)
 end
 
 """
@@ -229,7 +236,7 @@ function AbstractMCMC.step(
     # Iterate through each of the samplers.
     vi = state.vi
     samplers = state.samplers
-    states = map(samplers, state.states) do _sampler, _state
+    states = map(samplers, spl.iterations, state.states) do _sampler, iteration, _state
         # Recompute `vi.logp` if needed.
         if _sampler.selector.rerun
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, _sampler))
@@ -239,7 +246,10 @@ function AbstractMCMC.step(
         current_state = gibbs_state(model, _sampler, _state, vi)
 
         # Step through the local sampler.
-        _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
+        newstate = current_state
+        for _ in 1:iteration
+            _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
+        end
 
         # Update `VarInfo` object.
         vi = gibbs_varinfo(model, _sampler, newstate)
