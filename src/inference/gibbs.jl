@@ -53,7 +53,7 @@ end
 function Gibbs(args...)
     if eltype(args) <: InferenceAlgorithm
         algs = args
-        iterations = tuple(fill(length(args), 1)...)
+        iterations = tuple(fill(1, length(args))...)
     else
         algs = tuple(map(first, args)...)
         iterations = tuple(map(last, args)...)
