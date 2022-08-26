@@ -19,25 +19,6 @@ DynamicNUTS{AD}(space::Symbol...) where AD = DynamicNUTS{AD, space}()
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
-# Only define traits for `DynamicNUTS` sampler to avoid type piracy and surprises
-# TODO: Implement generally with `LogDensityProblems`
-const DynamicHMCLogDensity{M<:Model,S<:Sampler{<:DynamicNUTS},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
-
-function DynamicHMC.dimension(ℓ::DynamicHMCLogDensity)
-    return length(ℓ.varinfo[ℓ.sampler])
-end
-
-function DynamicHMC.capabilities(::Type{<:DynamicHMCLogDensity})
-    return DynamicHMC.LogDensityOrder{1}()
-end
-
-function DynamicHMC.logdensity_and_gradient(
-    ℓ::DynamicHMCLogDensity,
-    x::AbstractVector,
-)
-    return gradient_logp(x, ℓ.varinfo, ℓ.model, ℓ.sampler, ℓ.context)
-end
-
 """
     DynamicNUTSState
 
@@ -46,9 +27,10 @@ State of the [`DynamicNUTS`](@ref) sampler.
 # Fields
 $(TYPEDFIELDS)
 """
-struct DynamicNUTSState{V<:AbstractVarInfo,C,M,S}
+struct DynamicNUTSState{L,V<:AbstractVarInfo,C,M,S}
+    logdensity::L
     vi::V
-    "Cache of sample, log density, and gradient of log density."
+    "Cache of sample, log density, and gradient of log density evaluation."
     cache::C
     metric::M
     stepsize::S
@@ -61,10 +43,10 @@ function gibbs_state(
     state::DynamicNUTSState,
     varinfo::AbstractVarInfo,
 )
-    # Update the previous evaluation.
-    ℓ = Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext())
+    # Update the log density function and its cached evaluation.
+    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext()))
     Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
-    return DynamicNUTSState(varinfo, Q, state.metric, state.stepsize)
+    return DynamicNUTSState(ℓ, varinfo, Q, state.metric, state.stepsize)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = SampleFromUniform()
@@ -82,10 +64,13 @@ function DynamicPPL.initialstep(
         model(rng, vi, spl)
     end
 
+    # Define log-density function.
+    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
         rng,
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
+        ℓ,
         0;
         initialization = (q = vi[spl],),
         reporter = DynamicHMC.NoProgressReport(),
@@ -99,7 +84,7 @@ function DynamicPPL.initialstep(
 
     # Create first sample and state.
     sample = Transition(vi)
-    state = DynamicNUTSState(vi, Q, steps.H.κ, steps.ϵ)
+    state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
 end
@@ -113,7 +98,7 @@ function AbstractMCMC.step(
 )
     # Compute next sample.
     vi = state.vi
-    ℓ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(
         rng,
         DynamicHMC.NUTS(),
@@ -129,7 +114,7 @@ function AbstractMCMC.step(
 
     # Create next sample and state.
     sample = Transition(vi)
-    newstate = DynamicNUTSState(vi, Q, state.metric, state.stepsize)
+    newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
 end

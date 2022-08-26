@@ -159,8 +159,11 @@ function DynamicPPL.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    ℓ = LogDensityProblems.ADgradient(
+        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    )
+    logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
+    ∂logπ∂θ(x) = LogDensityProblems.logdensity_and_gradient(ℓ, x)
     hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
 
     # Compute phase point z.
@@ -262,8 +265,11 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
-    ∂ℓπ∂θ = gen_∂logπ∂θ(vi, spl, model)
+    ℓ = LogDensityProblems.ADgradient(
+        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    )
+    ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
+    ∂ℓπ∂θ = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ℓ)
     return AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
 end
 
@@ -421,19 +427,6 @@ end
 
 getstepsize(sampler::Sampler{<:Hamiltonian}, state) = sampler.alg.ϵ
 getstepsize(sampler::Sampler{<:AdaptiveHamiltonian}, state) = AHMC.getϵ(state.adaptor)
-
-"""
-    gen_∂logπ∂θ(vi, spl::Sampler, model)
-
-Generate a function that takes a vector of reals `θ` and compute the logpdf and
-gradient at `θ` for the model specified by `(vi, spl, model)`.
-"""
-function gen_∂logπ∂θ(vi, spl::Sampler, model)
-    function ∂logπ∂θ(x)
-        return gradient_logp(x, vi, model, spl)
-    end
-    return ∂logπ∂θ
-end
 
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
