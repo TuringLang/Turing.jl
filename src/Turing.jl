@@ -9,6 +9,7 @@ using Tracker: Tracker
 
 import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
+import LogDensityProblems
 import Random
 
 const PROGRESS = Ref(true)
@@ -37,12 +38,20 @@ function (f::LogDensityFunction)(θ::AbstractVector)
     return getlogp(last(DynamicPPL.evaluate!!(f.model, VarInfo(f.varinfo, f.sampler, θ), f.sampler, f.context)))
 end
 
+# LogDensityProblems interface
+LogDensityProblems.logdensity(f::LogDensityFunction, θ::AbstractVector) = f(θ)
+LogDensityProblems.dimension(f::LogDensityFunction) = length(f.varinfo[f.sampler])
+function LogDensityProblems.capabilities(::Type{<:LogDensityFunction})
+    return LogDensityProblems.LogDensityOrder{0}()
+end
+
 # Standard tag: Improves stacktraces
 # Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/
 struct TuringTag end
 
 # Allow Turing tag in gradient etc. calls of the log density function
 ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::LogDensityFunction, ::AbstractArray{V}) where {V} = true
+ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(LogDensityProblems.logdensity),<:LogDensityFunction}, ::AbstractArray{V}) where {V} = true
 
 # Random probability measures.
 include("stdlib/distributions.jl")
