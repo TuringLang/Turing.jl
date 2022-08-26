@@ -248,7 +248,7 @@ function AbstractMCMC.step(
         # Step through the local sampler.
         newstate = current_state
         for _ in 1:iteration
-            _, newstate = AbstractMCMC.step(rng, model, _sampler, current_state; kwargs...)
+            _, newstate = AbstractMCMC.step(rng, model, _sampler, newstate; kwargs...)
         end
 
         # Update `VarInfo` object.
