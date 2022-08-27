@@ -36,6 +36,11 @@ end
 alg = Gibbs(HMC(0.2, 3, :v1), PG(20, :v2))
 ```
 
+One can also pass the number of iterations for each Gibbs component using the following syntax:
+- `alg = Gibbs((HMC(0.2, 3, :v1), n_hmc), (PG(20, :v2), n_pg))`
+- `alg = Gibbs(HMC(0.2, 3, :v1) => n_hmc, PG(20, :v2) => n_pg)`
+where `n_hmc` and `n_pg` are the number of iterations for HMC and PG in each Gibbs iteration.
+
 Tips:
 - `HMC` and `NUTS` are fast samplers, and can throw off particle-based
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
