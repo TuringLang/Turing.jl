@@ -56,7 +56,7 @@ struct Gibbs{space, A<:Tuple, B<:Tuple} <: InferenceAlgorithm
 end
 
 function Gibbs(algs::InferenceAlgorithm...)
-    iterations = tuple(fill(1, length(args))...)
+    iterations = tuple(fill(1, length(algs))...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
     return Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
