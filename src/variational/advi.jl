@@ -1,3 +1,36 @@
+# TODO(torfjelde): Find a better solution.
+struct Vec{N, B<:Bijectors.Bijector{N}} <: Bijectors.Bijector{1}
+    b::B
+    size::NTuple{N, Int}
+end
+
+Bijectors.inverse(f::Vec) = Vec(Bijectors.inverse(f.b), f.size)
+
+function (f::Vec)(x::AbstractVector)
+    # Reshape into shape compatible with wrapped bijector and then `vec` again.
+    return vec(f.b(reshape(x, f.size)))
+end
+
+function (f::Vec)(x::AbstractMatrix)
+    # At the moment we do batching for higher-than-1-dim spaces by simply using
+    # lists of inputs rather than `AbstractArray` with `N + 1` dimension.
+    cols = Iterators.Stateful(eachcol(x))
+    # Make `init` a matrix to ensure type-stability
+    init = reshape(f(first(cols)), :, 1)
+    return mapreduce(f, hcat, cols; init = init)
+end
+
+function Bijectors.logabsdetjac(f::Vec, x::AbstractVector)
+    return Bijectors.logabsdetjac(f.b, reshape(x, f.size))
+end
+
+function Bijectors.logabsdetjac(f::Vec, x::AbstractMatrix)
+    return map(eachcol(x)) do x_
+        Bijectors.logabsdetjac(f, x_)
+    end
+end
+
+
 """
     bijector(model::Model[, sym2ranges = Val(false)])
 
@@ -33,16 +66,23 @@ function Bijectors.bijector(
         idx += varinfo.metadata[sym].ranges[end][end]
     end
 
-    bs = Bijectors.bijector.(tuple(dists...))
-    rs = tuple(ranges...)
+    bs = map(tuple(dists...)) do d
+        b = Bijectors.bijector(d)
+
+        return if Bijectors.dimension(b) > 1
+            Vec(b, size(d))
+        else
+            b
+        end
+    end
 
     if sym2ranges
         return (
-            Bijectors.Stacked(bs, rs),
+            Bijectors.Stacked(bs, ranges),
             (; collect(zip(keys(sym_lookup), values(sym_lookup)))...),
         )
     else
-        return Bijectors.Stacked(bs, rs)
+        return Bijectors.Stacked(bs, ranges)
     end
 end
 
