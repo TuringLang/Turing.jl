@@ -62,7 +62,7 @@ function Gibbs(algs::InferenceAlgorithm...)
     return Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
-function Gibbs(args::T...) where {T <: Union{Tuple{InferenceAlgorithm,Int}, Pair{InferenceAlgorithm,Int}}}
+function Gibbs(args::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}...)
     algs = tuple(map(first, args)...)
     iterations = tuple(map(last, args)...)
     # obtain space of sampling algorithms
