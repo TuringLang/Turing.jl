@@ -55,14 +55,19 @@ struct Gibbs{space, A<:Tuple, B<:Tuple} <: InferenceAlgorithm
     end
 end
 
-function Gibbs(algs::InferenceAlgorithm...)
+function Gibbs(alg1::InferenceAlgorithm, algrest::InferenceAlgorithm...)
+    algs = (alg1, algrest...)
     iterations = tuple(fill(1, length(algs))...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
     return Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
-function Gibbs(args::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}...)
+function Gibbs(
+    arg1::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, 
+    argrest::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}...,
+)
+    args = (arg1, argrest...)
     algs = tuple(map(first, args)...)
     iterations = tuple(map(last, args)...)
     # obtain space of sampling algorithms
