@@ -46,21 +46,22 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, A<:Tuple, B<:Tuple} <: InferenceAlgorithm
+struct Gibbs{space, N, A<:NTuple{N, InferenceAlgorithm}, B<:NTuple{N, Int}} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
     iterations::B
-    function Gibbs{space, A, B}(algs::A, iterations::B) where {space, A<:Tuple, B<:Tuple}
+    function Gibbs{space, N, A, B}(algs::A, iterations::B) where {space, N, A<:NTuple{N, InferenceAlgorithm}, B<:NTuple{N, Int}}
         all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
-        return new{space, A, B}(algs, iterations)
+        return new{space, N, A, B}(algs, iterations)
     end
 end
 
 function Gibbs(alg1::InferenceAlgorithm, algrest::InferenceAlgorithm...)
     algs = (alg1, algrest...)
-    iterations = tuple(fill(1, length(algs))...)
+    N = length(algs)
+    iterations = tuple(fill(1, N)...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space, N, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 function Gibbs(
@@ -68,11 +69,12 @@ function Gibbs(
     argrest::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}...,
 )
     args = (arg1, argrest...)
+    N = length(args)
     algs = tuple(map(first, args)...)
     iterations = tuple(map(last, args)...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space, N, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 """
