@@ -34,21 +34,21 @@
         Random.seed!(100)
         alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m))
         chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
+        check_gdemo(chain; atol=0.15)
 
         Random.seed!(100)
 
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
         chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_gdemo(chain; atol=0.1)
 
         alg = Gibbs(CSMC(15, :s), ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_gdemo(chain; atol=0.1)
 
         alg = CSMC(15)
         chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_gdemo(chain; atol=0.1)
 
         Random.seed!(200)
         gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
@@ -60,7 +60,7 @@
             Gibbs(MH(:s) => 10, HMC(0.2, 4, :m) => 10),
         ]
             chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-            check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+            check_gdemo(chain; atol=0.1)
         end
     end
 
