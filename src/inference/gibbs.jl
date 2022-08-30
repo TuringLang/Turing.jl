@@ -55,26 +55,24 @@ struct Gibbs{space, N, A<:NTuple{N, InferenceAlgorithm}, B<:NTuple{N, Int}} <: I
     end
 end
 
-function Gibbs(alg1::InferenceAlgorithm, algrest::InferenceAlgorithm...)
+function Gibbs(alg1::InferenceAlgorithm, algrest::Vararg{InferenceAlgorithm,N}) where {N}
     algs = (alg1, algrest...)
-    N = length(algs)
-    iterations = tuple(fill(1, N)...)
+    iterations = ntuple(_ -> 1, Val(N + 1))
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, N, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 function Gibbs(
     arg1::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, 
-    argrest::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}...,
-)
+    argrest::Vararg{<:Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, N},
+) where {N}
     args = (arg1, argrest...)
-    N = length(args)
     algs = tuple(map(first, args)...)
     iterations = tuple(map(last, args)...)
     # obtain space of sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, N, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 """
