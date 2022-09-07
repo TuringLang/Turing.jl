@@ -90,10 +90,14 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     # Call ForwardDiff's AD directly.
     grad_FWAD = sort(ForwardDiff.gradient(f, x))
 
-    # Compare with `gradient_logp`.
+    # Compare with `logdensity_and_gradient`.
     z = vi[SampleFromPrior()]
     for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
-        l, ∇E = gradient_logp(ForwardDiffAD{chunksize, standardtag}(), z, vi, model)
+        ℓ = LogDensityProblems.ADgradient(
+            ForwardDiffAD{chunksize, standardtag}(),
+            Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()),
+        )
+        l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
         # Compare result
         @test l ≈ logp

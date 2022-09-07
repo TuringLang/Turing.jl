@@ -41,7 +41,8 @@ function SGHMC{AD}(
     return SGHMC{AD,space,typeof(_learning_rate)}(_learning_rate, _momentum_decay)
 end
 
-struct SGHMCState{V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
+struct SGHMCState{L,V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
+    logdensity::L
     vi::V
     velocity::T
 end
@@ -61,7 +62,8 @@ function DynamicPPL.initialstep(
 
     # Compute initial sample and state.
     sample = Transition(vi)
-    state = SGHMCState(vi, zero(vi[spl]))
+    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+    state = SGHMCState(ℓ, vi, zero(vi[spl]))
 
     return sample, state
 end
@@ -74,9 +76,10 @@ function AbstractMCMC.step(
     kwargs...
 )
     # Compute gradient of log density.
+    ℓ = state.logdensity
     vi = state.vi
     θ = vi[spl]
-    _, grad = gradient_logp(θ, vi, model, spl)
+    grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
 
     # Update latent variables and velocity according to
     # equation (15) of Chen et al. (2014)
@@ -92,7 +95,7 @@ function AbstractMCMC.step(
 
     # Compute next sample and state.
     sample = Transition(vi)
-    newstate = SGHMCState(vi, newv)
+    newstate = SGHMCState(ℓ, vi, newv)
 
     return sample, newstate
 end
@@ -191,7 +194,8 @@ metadata(t::SGLDTransition) = (lp = t.lp, SGLD_stepsize = t.stepsize)
 
 DynamicPPL.getlogp(t::SGLDTransition) = t.lp
 
-struct SGLDState{V<:AbstractVarInfo}
+struct SGLDState{L,V<:AbstractVarInfo}
+    logdensity::L
     vi::V
     step::Int
 end
@@ -211,7 +215,8 @@ function DynamicPPL.initialstep(
 
     # Create first sample and state.
     sample = SGLDTransition(vi, zero(spl.alg.stepsize(0)))
-    state = SGLDState(vi, 1)
+    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+    state = SGLDState(ℓ, vi, 1)
 
     return sample, state
 end
@@ -224,9 +229,10 @@ function AbstractMCMC.step(
     kwargs...
 )
     # Perform gradient step.
+    ℓ = state.logdensity
     vi = state.vi
     θ = vi[spl]
-    _, grad = gradient_logp(θ, vi, model, spl)
+    grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
     step = state.step
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
@@ -237,7 +243,7 @@ function AbstractMCMC.step(
 
     # Compute next sample and state.
     sample = SGLDTransition(vi, stepsize)
-    newstate = SGLDState(vi, state.step + 1)
+    newstate = SGLDState(ℓ, vi, state.step + 1)
 
     return sample, newstate
 end

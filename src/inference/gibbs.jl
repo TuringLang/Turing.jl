@@ -29,7 +29,6 @@ Example:
     v1 ~ Normal(0,1)
     v2 ~ Categorical(5)
 end
-```
 
 # Use PG for a 'v2' variable, and use HMC for the 'v1' variable.
 # Note that v2 is discrete, so the PG sampler is more appropriate

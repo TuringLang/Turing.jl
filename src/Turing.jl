@@ -9,6 +9,7 @@ using Tracker: Tracker
 
 import AdvancedVI
 import DynamicPPL: getspace, NoDist, NamedDist
+import LogDensityProblems
 import Random
 
 const PROGRESS = Ref(true)
@@ -38,12 +39,20 @@ function (f::LogDensityFunction)(θ::AbstractVector)
     return getlogp(last(DynamicPPL.evaluate!!(f.model, vi_new, f.sampler, f.context)))
 end
 
+# LogDensityProblems interface
+LogDensityProblems.logdensity(f::LogDensityFunction, θ::AbstractVector) = f(θ)
+LogDensityProblems.dimension(f::LogDensityFunction) = length(f.varinfo[f.sampler])
+function LogDensityProblems.capabilities(::Type{<:LogDensityFunction})
+    return LogDensityProblems.LogDensityOrder{0}()
+end
+
 # Standard tag: Improves stacktraces
 # Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/
 struct TuringTag end
 
 # Allow Turing tag in gradient etc. calls of the log density function
 ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::LogDensityFunction, ::AbstractArray{V}) where {V} = true
+ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(LogDensityProblems.logdensity),<:LogDensityFunction}, ::AbstractArray{V}) where {V} = true
 
 # Random probability measures.
 include("stdlib/distributions.jl")
@@ -57,16 +66,6 @@ include("inference/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
-
-# TODO: re-design `sample` interface in MCMCChains, which unify CmdStan and Turing.
-#   Related: https://github.com/TuringLang/Turing.jl/issues/746
-#@init @require CmdStan="593b3428-ca2f-500c-ae53-031589ec8ddd" @eval begin
-#     @eval Utilities begin
-#         using ..Turing.CmdStan: CmdStan, Adapt, Hmc
-#         using ..Turing: HMC, HMCDA, NUTS
-#         include("utilities/stan-interface.jl")
-#     end
-# end
 
 @init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
     @eval Inference begin

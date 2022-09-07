@@ -13,21 +13,12 @@ import Bijectors: link, invlink
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using Requires
 
 import AdvancedPS
-import DiffResults
-import ZygoteRules
+import LogDensityProblems
 
 include("container.jl")
 include("ad.jl")
-
-function __init__()
-    @require ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267" begin
-        include("compat/reversediff.jl")
-        export ReverseDiffAD, getrdcache, setrdcache, emptyrdcache
-    end
-end
 
 export  @model,
         @varname,
@@ -53,11 +44,13 @@ export  @model,
         ForwardDiffAD,
         TrackerAD,
         ZygoteAD,
+        ReverseDiffAD,
         value,
-        gradient_logp,
         CHUNKSIZE,
         ADBACKEND,
         setchunksize,
+        setrdcache,
+        getrdcache,
         verifygrad,
         @logprob_str,
         @prob_str

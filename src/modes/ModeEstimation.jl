@@ -11,6 +11,8 @@ using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield,  setorder!,
     get_and_set_val!, istrans
 
+import LogDensityProblems
+
 export  constrained_space,  
         MAP,
         MLE,
@@ -108,14 +110,9 @@ end
 function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
         # Calculate negative log joint and its gradient.
-        sampler = f.sampler
-        neglogp, ∇neglogp = Turing.gradient_logp(
-            z, 
-            DynamicPPL.unflatten(f.varinfo, sampler, z),
-            f.model, 
-            sampler,
-            f.context,
-        )
+        # TODO: Make OptimLogDensity already an LogDensityProblems.ADgradient? Allow to specify AD?
+        ℓ = LogDensityProblems.ADgradient(f)
+        neglogp, ∇neglogp = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
         # Save the gradient to the pre-allocated array.
         copyto!(G, ∇neglogp)

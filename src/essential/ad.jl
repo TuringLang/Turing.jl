@@ -18,6 +18,9 @@ end
 function _setadbackend(::Val{:zygote})
     ADBACKEND[] = :zygote
 end
+function _setadbackend(::Val{:reversediff})
+    ADBACKEND[] = :reversediff
+end
 
 const ADSAFE = Ref(false)
 function setadsafe(switch::Bool)
@@ -39,9 +42,7 @@ struct ForwardDiffAD{chunk,standardtag} <: ADBackend end
 # Use standard tag if not specified otherwise
 ForwardDiffAD{N}() where {N} = ForwardDiffAD{N,true}()
 
-getchunksize(::Type{<:ForwardDiffAD{chunk}}) where chunk = chunk
-getchunksize(::Type{<:Sampler{Talg}}) where Talg = getchunksize(Talg)
-getchunksize(::Type{SampleFromPrior}) = CHUNKSIZE[]
+getchunksize(::ForwardDiffAD{chunk}) where chunk = chunk
 
 standardtag(::ForwardDiffAD{<:Any,true}) = true
 standardtag(::ForwardDiffAD) = false
@@ -49,12 +50,24 @@ standardtag(::ForwardDiffAD) = false
 struct TrackerAD <: ADBackend end
 struct ZygoteAD <: ADBackend end
 
+struct ReverseDiffAD{cache} <: ADBackend end
+
+const RDCache = Ref(false)
+
+setrdcache(b::Bool) = setrdcache(Val(b))
+setrdcache(::Val{false}) = RDCache[] = false
+setrdcache(::Val{true}) = RDCache[] = true
+
+getrdcache() = RDCache[]
+
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
 ADBackend(::Val{:tracker}) = TrackerAD
 ADBackend(::Val{:zygote}) = ZygoteAD
+ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
+
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
 """
@@ -63,54 +76,15 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
-getADbackend(spl::SampleFromPrior) = ADBackend()()
+getADbackend(::SampleFromPrior) = ADBackend()()
 
-"""
-    gradient_logp(
-        θ::AbstractVector{<:Real},
-        vi::AbstractVarInfo,
-        model::Model,
-        sampler::AbstractSampler,
-        ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-    )
-
-Computes the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, sampler, model)` using whichever automatic differentation
-tool is currently active.
-"""
-function gradient_logp(
-    θ::AbstractVector{<:Real},
-    vi::AbstractVarInfo,
-    model::Model,
-    sampler::AbstractSampler,
-    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-)
-    return gradient_logp(getADbackend(sampler), θ, vi, model, sampler, ctx)
+function LogDensityProblems.ADgradient(ℓ::Turing.LogDensityFunction)
+    return LogDensityProblems.ADgradient(getADbackend(ℓ.sampler), ℓ)
 end
 
-"""
-gradient_logp(
-    backend::ADBackend,
-    θ::AbstractVector{<:Real},
-    vi::AbstractVarInfo,
-    model::Model,
-    sampler::AbstractSampler = SampleFromPrior(),
-    ctx::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-)
-
-Compute the value of the log joint of `θ` and its gradient for the model
-specified by `(vi, sampler, model)` using `backend` for AD, e.g. `ForwardDiffAD{N}()` uses `ForwardDiff.jl` with chunk size `N`, `TrackerAD()` uses `Tracker.jl` and `ZygoteAD()` uses `Zygote.jl`.
-"""
-function gradient_logp(
-    ad::ForwardDiffAD,
-    θ::AbstractVector{<:Real},
-    vi::AbstractVarInfo,
-    model::Model,
-    sampler::AbstractSampler=SampleFromPrior(),
-    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-)
-    # Define log density function.
-    f = Turing.LogDensityFunction(vi, model, sampler, context)
+function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+    θ = ℓ.varinfo[ℓ.sampler]
+    f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
     # Define configuration for ForwardDiff.
     tag = if standardtag(ad)
@@ -118,58 +92,30 @@ function gradient_logp(
     else
         ForwardDiff.Tag(f, eltype(θ))
     end
-    chunk_size = getchunksize(typeof(ad))
+    chunk_size = getchunksize(ad)
     config = if chunk_size == 0
         ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
     else
         ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
     end
 
-    # Obtain both value and gradient of the log density function.
-    out = DiffResults.GradientResult(θ)
-    ForwardDiff.gradient!(out, f, θ, config)
-    logp = DiffResults.value(out)
-    ∂logp∂θ = DiffResults.gradient(out)
-
-    return logp, ∂logp∂θ
-end
-function gradient_logp(
-    ::TrackerAD,
-    θ::AbstractVector{<:Real},
-    vi::AbstractVarInfo,
-    model::Model,
-    sampler::AbstractSampler = SampleFromPrior(),
-    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-)
-    # Define log density function.
-    f = Turing.LogDensityFunction(vi, model, sampler, context)
-
-    # Compute forward pass and pullback.
-    l_tracked, ȳ = Tracker.forward(f, θ)
-
-    # Remove tracking info.
-    l::typeof(getlogp(vi)) = Tracker.data(l_tracked)
-    ∂l∂θ::typeof(θ) = Tracker.data(only(ȳ(1)))
-
-    return l, ∂l∂θ
+    return LogDensityProblems.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
 end
 
-function gradient_logp(
-    backend::ZygoteAD,
-    θ::AbstractVector{<:Real},
-    vi::AbstractVarInfo,
-    model::Model,
-    sampler::AbstractSampler = SampleFromPrior(),
-    context::DynamicPPL.AbstractContext = DynamicPPL.DefaultContext()
-)
-    # Define log density function.
-    f = Turing.LogDensityFunction(vi, model, sampler, context)
+function LogDensityProblems.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblems.ADgradient(Val(:Tracker), ℓ)
+end
 
-    # Compute forward pass and pullback.
-    l::typeof(getlogp(vi)), ȳ = ZygoteRules.pullback(f, θ)
-    ∂l∂θ::typeof(θ) = only(ȳ(1))
+function LogDensityProblems.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblems.ADgradient(Val(:Zygote), ℓ)
+end
 
-    return l, ∂l∂θ
+for cache in (:true, :false)
+    @eval begin
+        function LogDensityProblems.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
+            return LogDensityProblems.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
+        end
+    end
 end
 
 function verifygrad(grad::AbstractVector{<:Real})
