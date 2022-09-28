@@ -12,6 +12,9 @@ end
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
 end
+function _setadbackend(::Val{:enzyme})
+    ADBACKEND[] = :enzyme
+end
 function _setadbackend(::Val{:tracker})
     ADBACKEND[] = :tracker
 end
@@ -47,6 +50,7 @@ getchunksize(::ForwardDiffAD{chunk}) where chunk = chunk
 standardtag(::ForwardDiffAD{<:Any,true}) = true
 standardtag(::ForwardDiffAD) = false
 
+struct EnzymeAD <: ADBackend end
 struct TrackerAD <: ADBackend end
 struct ZygoteAD <: ADBackend end
 
@@ -64,6 +68,7 @@ ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
 ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
+ADBackend(::Val{:enzyme}) = EnzymeAD
 ADBackend(::Val{:tracker}) = TrackerAD
 ADBackend(::Val{:zygote}) = ZygoteAD
 ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
@@ -100,6 +105,10 @@ function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensity
     end
 
     return LogDensityProblems.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
+end
+
+function LogDensityProblems.ADgradient(::EnzymeAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblems.ADgradient(Val(:Enzyme), ℓ)
 end
 
 function LogDensityProblems.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
