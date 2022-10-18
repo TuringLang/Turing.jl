@@ -9,9 +9,11 @@ function TracedModel(
     model::Model,
     sampler::AbstractSampler,
     varinfo::AbstractVarInfo,
+    rng::Random.AbstractRNG=DynamicPPL.Random.GLOBAL_RNG
 ) 
     # evaluate!!(m.model, varinfo, SamplingContext(Random.AbstractRNG, m.sampler, DefaultContext()))
-    context = SamplingContext(DynamicPPL.Random.GLOBAL_RNG, sampler, DefaultContext())
+    # context = SamplingContext(DynamicPPL.Random.GLOBAL_RNG, sampler, DefaultContext())
+    context = SamplingContext(rng, sampler, DefaultContext())
     evaluator = _get_evaluator(model, varinfo, context)
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
 end
@@ -40,12 +42,14 @@ end
 
 function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
     f = trace.model
-    newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo))
+    newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo), deepcopy(f.rng))
     return AdvancedPS.Trace(newf, copy(trace.task))
 end
 
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:AdvancedPS.GenericModel{<:TracedModel}}, isref::Bool=false)
+    # Make sure we load/reset the rng in the new replaying mechanism
     DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
+    isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
     if score === nothing
         return
@@ -70,8 +74,11 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return
 end
 
-AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} = nothing
+function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
+    args = trace.model.ctask.args
+    rng = args[end]
+end
 
-function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG)
+function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG)
     return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...)
 end
