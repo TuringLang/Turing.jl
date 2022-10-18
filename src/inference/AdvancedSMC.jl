@@ -241,6 +241,11 @@ function getlogevidence(samples, sampler::Sampler{<:PG}, vi::AbstractVarInfo)
     return mean(x.logevidence for x in samples)
 end
 
+struct PGState
+    vi::AbstractVarInfo
+    rng::Random.AbstractRNG
+end
+
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -273,23 +278,24 @@ function DynamicPPL.initialstep(
     _vi = reference.model.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
-    return transition, _vi
+    return transition, PGState(_vi, reference.rng)#_vi
 end
 
 function AbstractMCMC.step(
     rng::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:PG},
-    vi::AbstractVarInfo;
+    state::PGState;
+    #vi::AbstractVarInfo;
     kwargs...
 )
     # Reset the VarInfo before new sweep.
+    vi = state.vi
     reset_num_produce!(vi)
     resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
-    trng = AdvancedPS.TracedRNG()
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, trng))
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
     set_retained_vns_del_by_spl!(vi, spl)
@@ -317,7 +323,7 @@ function AbstractMCMC.step(
     _vi = newreference.model.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
-    return transition, _vi
+    return transition, PGState(_vi, newreference.rng)
 end
 
 DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
@@ -330,8 +336,10 @@ function DynamicPPL.assume(
     __vi__::AbstractVarInfo
 )
     local vi
+    trace = AdvancedPS.current_trace()
+    trng = trace.rng
     try 
-        vi = AdvancedPS.current_trace().model.f.varinfo
+        vi = trace.model.f.varinfo
     catch e
         # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
         if e == KeyError(:__trace) || current_task().storage isa Nothing
@@ -340,18 +348,19 @@ function DynamicPPL.assume(
             rethrow(e)
         end
     end
+
     if inspace(vn, spl)
         if ~haskey(vi, vn)
-            r = rand(rng, dist)
+            r = rand(trng, dist)
             push!!(vi, vn, r, dist, spl)
         elseif is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del")
-            r = rand(rng, dist)
+            unset_flag!(vi, vn, "del") # Reference particle parent
+            r = rand(trng, dist)
             vi[vn] = vectorize(dist, r)
             DynamicPPL.setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, get_num_produce(vi))
         else
-            DynamicPPL.updategid!(vi, vn, spl)
+            DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
             r = vi[vn]
         end
     else # vn belongs to other sampler <=> conditioning on vn
@@ -366,7 +375,6 @@ function DynamicPPL.assume(
     end
     return r, 0, vi
 end
-
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     Libtask.produce(logpdf(dist, value))
     return 0, vi
@@ -383,7 +391,7 @@ function AdvancedPS.Trace(
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
 
-    tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo)
+    tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
     ttask = Libtask.TapedTask(tmodel, rng)
     wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
 
