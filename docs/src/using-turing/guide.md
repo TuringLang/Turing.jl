@@ -595,6 +595,60 @@ plot(chn) # Plots statistics of the samples.
 
 There are numerous functions in addition to `describe` and `plot` in the `MCMCChains` package, such as those used in convergence diagnostics. For more information on the package, please see the [GitHub repository](https://github.com/TuringLang/MCMCChains.jl).
 
+### Reparametrization and generated_quantities
+
+Often, the most natural parameterization for a model is not the most computationally feasible. Consider the following
+(efficiently reparametrized) implementation of Neal's funnel [(Neal, 2003)](https://arxiv.org/abs/physics/0009028):
+
+```julia
+@model function Neal()
+    # Raw draws
+    y_raw ~ Normal(0,1)
+    x_raw ~ arraydist([Normal(0, 1) for i in 1:9])
+
+    # Transform:
+    y = 3*y_raw
+    x = exp.(y./2) .* x_raw
+
+    # Return:
+    return [x; y]
+end
+```
+
+In this case, the random variables exposed in the chain (`x_raw`, `y_raw`) are not in a useful form — what we're really after is the deterministically transformed variables `x, y`. 
+
+More generally, there are often quantities in our models that we might be interested in viewing, but which are not explicitly present in our chain. 
+
+We can generate draws from these variables — in this case, `x, y` — by adding them as a return statement to the model, and then calling `generated_quantities(model, chain)`. Calling this function outputs an array of values specified in the return statement of the model. 
+
+For example, in the above reparametrization, we sample from our model:
+
+```julia
+chain = sample(Neal(), NUTS(), 1000) 
+```
+
+and then call:
+
+```julia
+generated_quantities(Neal(), chain)
+```
+
+to return an array for each posterior sample containing `x1, x2, ... x9, y`. 
+
+In this case, it might be useful to reorganize our output into a matrix for plotting:
+
+```julia
+reparam_chain = reduce(hcat, generated_quantities(Neal(), chain))'
+```
+
+Where we can recover a vector of our samples as follows:
+
+```julia
+x1_samples = reparam_chain[:, 1]
+y_samples = reparam_chain[:, 10]
+```
+
+
 
 ### Working with Libtask.jl
 
