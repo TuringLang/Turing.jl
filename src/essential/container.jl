@@ -75,7 +75,8 @@ end
 
 function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
     args = trace.model.ctask.args
-    rng = args[end]
+    rng = args[end].rng
+    trace.rng = rng
 end
 
 function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG)

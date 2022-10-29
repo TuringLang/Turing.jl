@@ -387,7 +387,6 @@ function AdvancedPS.Trace(
     varinfo::AbstractVarInfo,
     rng::AdvancedPS.TracedRNG
 )
-    println("Building trace")
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
 
