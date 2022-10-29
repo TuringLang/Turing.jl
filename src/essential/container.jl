@@ -9,10 +9,9 @@ function TracedModel(
     model::Model,
     sampler::AbstractSampler,
     varinfo::AbstractVarInfo,
-    rng::Random.AbstractRNG=DynamicPPL.Random.GLOBAL_RNG
+    rng::Random.AbstractRNG
 ) 
     # evaluate!!(m.model, varinfo, SamplingContext(Random.AbstractRNG, m.sampler, DefaultContext()))
-    # context = SamplingContext(DynamicPPL.Random.GLOBAL_RNG, sampler, DefaultContext())
     context = SamplingContext(rng, sampler, DefaultContext())
     evaluator = _get_evaluator(model, varinfo, context)
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
@@ -66,7 +65,7 @@ end
 function AdvancedPS.reset_model(trace::TracedModel)
     newvarinfo = deepcopy(trace.varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
-    return TracedModel(trace.model, trace.sampler, newvarinfo)
+    return trace
 end
 
 function AdvancedPS.reset_logprob!(trace::TracedModel)
