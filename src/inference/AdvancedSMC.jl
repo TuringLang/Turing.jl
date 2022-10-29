@@ -309,7 +309,7 @@ function AbstractMCMC.step(
             return reference
         end
     end
-    particles = AdvancedPS.ParticleContainer(x)
+    particles = AdvancedPS.ParticleContainer(x, AdvancedPS.TracedRNG(), rng)
 
     # Perform a particle sweep.
     logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, reference)
