@@ -223,6 +223,11 @@ struct PGTransition{T,F<:AbstractFloat}
     logevidence::F
 end
 
+struct PGState
+    vi::AbstractVarInfo
+    rng::Random.AbstractRNG
+end
+
 function PGTransition(vi::AbstractVarInfo, logevidence)
     theta = tonamedtuple(vi)
 
@@ -237,13 +242,8 @@ metadata(t::PGTransition) = (lp = t.lp, logevidence = t.logevidence)
 
 DynamicPPL.getlogp(t::PGTransition) = t.lp
 
-function getlogevidence(samples, sampler::Sampler{<:PG}, vi::AbstractVarInfo)
+function getlogevidence(samples, sampler::Sampler{<:PG}, state::PGState)
     return mean(x.logevidence for x in samples)
-end
-
-struct PGState
-    vi::AbstractVarInfo
-    rng::Random.AbstractRNG
 end
 
 function DynamicPPL.initialstep(
