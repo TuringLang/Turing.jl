@@ -34,6 +34,19 @@
 
                     @test chain1.value == chain2.value
                 end
+
+                # Should also be stable with am explicit RNG
+                seed = 5
+                rng = Random.MersenneTwister(seed)
+                for sampler in samplers
+                    Random.seed!(rng, seed)
+                    chain1 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+
+                    Random.seed!(rng, seed)
+                    chain2 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+
+                    @test chain1.value == chain2.value
+                end
             end
 
             # Smoke test for default sample call.

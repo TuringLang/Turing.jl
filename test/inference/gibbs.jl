@@ -92,8 +92,8 @@
             N = length(y)
             rpm = DirichletProcess(alpha)
         
-            z = tzeros(Int, N)
-            cluster_counts = tzeros(Int, N)
+            z = zeros(Int, N) # tzeros is deprecated ?
+            cluster_counts = zeros(Int, N)
             fill!(cluster_counts, 0)
         
             for i in 1:N
