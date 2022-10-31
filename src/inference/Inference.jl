@@ -448,7 +448,7 @@ function DynamicPPL.get_matching_type(
     vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
-    return TArray{T, N}
+    return Array{T, N}
 end
 
 ##############
