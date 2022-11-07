@@ -109,12 +109,15 @@ function Base.rand(rng::Random.AbstractRNG, d::BinomialLogit)
 end
 Distributions.sampler(d::BinomialLogit) = sampler(Binomial(d.n, logistic(d.logitp)))
 
-"""
-    BernoulliLogit(logitp::Real)
+# Part of Distributions >= 0.25.77
+if !isdefined(Distributions, :BernoulliLogit)
+    """
+        BernoulliLogit(logitp::Real)
 
-Create a univariate logit-parameterised Bernoulli distribution.
-"""
-BernoulliLogit(logitp::Real) = BinomialLogit(1, logitp)
+    Create a univariate logit-parameterised Bernoulli distribution.
+    """
+    BernoulliLogit(logitp::Real) = BinomialLogit(1, logitp)
+end
 
 """
     OrderedLogistic(η, c::AbstractVector)

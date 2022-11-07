@@ -140,7 +140,7 @@ export  @model,                 # modelling
         Flat,
         FlatPos,
         BinomialLogit,
-        BernoulliLogit,
+        BernoulliLogit,         # Part of Distributions >= 0.25.77
         OrderedLogistic,
         LogPoisson,
         NamedDist,
