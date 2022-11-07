@@ -203,7 +203,7 @@ end
     LogPoisson(logλ)
 
 The *Poisson distribution* with logarithmic parameterization of the rate parameter
-descibes the number of independent events occurring within a unit time interval, given the
+describes the number of independent events occurring within a unit time interval, given the
 average rate of occurrence ``exp(logλ)``.
 
 The distribution has the probability mass function
