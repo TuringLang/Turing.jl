@@ -358,7 +358,7 @@ function maybe_link!!(varinfo, sampler, proposal, model)
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
-function propose!(
+function propose!!(
     rng::AbstractRNG,
     vi::AbstractVarInfo,
     model::Model,
@@ -383,7 +383,7 @@ function propose!(
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
-function propose!(
+function propose!!(
     rng::AbstractRNG,
     vi::AbstractVarInfo,
     model::Model,
@@ -429,7 +429,7 @@ function AbstractMCMC.step(
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    propose!(rng, vi, model, spl, spl.alg.proposals)
+    vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
 
     return Transition(vi), vi
 end
