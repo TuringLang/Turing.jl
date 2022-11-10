@@ -402,7 +402,7 @@ function propose!(
     densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.param), trans.lp)
+    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.params), trans.lp)
 end
 
 function DynamicPPL.initialstep(
