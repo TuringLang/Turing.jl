@@ -30,13 +30,13 @@
             (:s, InverseGamma(2,3)),
             (:m, GKernel(1.0)))
         chain = sample(gdemo_default, alg, 7000)
-        check_gdemo(chain, atol = 0.1)
+        check_gdemo(chain, atol = 0.2)
 
         Random.seed!(125)
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
         chain = sample(gdemo_default, alg, 2000)
-        check_gdemo(chain, atol = 0.1)
+        check_gdemo(chain, atol = 0.2)
 
         Random.seed!(125)
         # MoGtest
