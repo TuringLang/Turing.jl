@@ -21,8 +21,8 @@
     @numerical_testset "mh inference" begin
         Random.seed!(125)
         alg = MH()
-        chain = sample(gdemo_default, alg, 2000)
-        check_gdemo(chain, atol = 0.2)
+        chain = sample(gdemo_default, alg, 7000)
+        check_gdemo(chain, atol = 0.1)
 
         Random.seed!(125)
         # MH with Gaussian proposal
