@@ -79,6 +79,6 @@ function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{
     trace.rng = rng
 end
 
-function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG)
-    return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...)
+function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG; kwargs...)
+    return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...; kwargs...)
 end
