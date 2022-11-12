@@ -150,8 +150,7 @@ function DynamicPPL.initialstep(
     kwargs...
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    link!(vi, spl)
-    vi = last(DynamicPPL.evaluate!!(model, rng, vi, spl))
+    vi = link!!(vi, spl, model)
 
     # Extract parameters.
     theta = vi[spl]
@@ -173,8 +172,8 @@ function DynamicPPL.initialstep(
     # and its gradient are finite.
     if init_params === nothing
         while !isfinite(z)
+            # NOTE: This will sample in the unconstrained space.
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
-            link!(vi, spl)
             theta = vi[spl]
 
             hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
@@ -210,10 +209,10 @@ function DynamicPPL.initialstep(
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        vi = setindex!!(vi, t.z.θ, spl)
+        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     else
-        vi = setindex!!(vi, theta, spl)
+        vi = DynamicPPL.unflatten(vi, spl, theta)
         vi = setlogp!!(vi, log_density_old)
     end
 
@@ -252,7 +251,7 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi = setindex!!(vi, t.z.θ, spl)
+        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     end
 
@@ -532,8 +531,9 @@ function HMCState(
     kwargs...
 )
     # Link everything if needed.
-    if !islinked(vi, spl)
-        link!(vi, spl)
+    waslinked = islinked(vi, spl)
+    if !waslinked
+        vi = link!!(vi, spl, model)
     end
 
     # Get the initial log pdf and gradient functions.
@@ -562,8 +562,10 @@ function HMCState(
     # Generate a phasepoint. Replaced during sample_init!
     h, t = AHMC.sample_init(rng, h, θ_init) # this also ensure AHMC has the same dim as θ.
 
-    # Unlink everything.
-    invlink!(vi, spl)
+    # Unlink everything, if it was indeed linked before.
+    if waslinked
+        vi = invlink!!(vi, spl, model)
+    end
 
     return HMCState(vi, 0, 0, kernel.τ, h, AHMCAdaptor(spl.alg, metric; ϵ=ϵ), t.z)
 end

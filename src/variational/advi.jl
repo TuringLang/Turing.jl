@@ -109,7 +109,7 @@ function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
 
     # We want to transform from unconstrained space to constrained,
     # hence we need the inverse of `b`.
-    return Bijectors.transformed(d, inv(b))
+    return Bijectors.transformed(d, Bijectors.inverse(b))
 end
 
 # Overloading stuff from `AdvancedVI` to specialize for Turing

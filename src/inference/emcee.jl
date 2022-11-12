@@ -43,7 +43,7 @@ function AbstractMCMC.step(
             ArgumentError("initial parameters have to be specified for each walker")
         )
         vis = map(vis, init_params) do vi, init
-            vi = DynamicPPL.initialize_parameters!!(vi, init, spl)
+            vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
 
             # Update log joint probability.
             last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
@@ -57,7 +57,7 @@ function AbstractMCMC.step(
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            DynamicPPL.link!(vi, spl)
+            vi = DynamicPPL.link!!(vi, spl, model)
             AMH.Transition(vi[spl], getlogp(vi))
         end
     )
@@ -82,9 +82,9 @@ function AbstractMCMC.step(
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = setindex!!(vi, _state.params, spl)
-        DynamicPPL.invlink!(vi, spl)
+        vi = DynamicPPL.invlink!!(vi, spl, model)
         t = Transition(tonamedtuple(vi), _state.lp)
-        DynamicPPL.link!(vi, spl)
+        vi = DynamicPPL.link!!(vi, spl, model)
         return t
     end
     newstate = EmceeState(vi, states)
