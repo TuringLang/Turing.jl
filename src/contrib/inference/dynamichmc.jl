@@ -60,8 +60,8 @@ function DynamicPPL.initialstep(
 )
     # Ensure that initial sample is in unconstrained space.
     if !DynamicPPL.islinked(vi, spl)
-        DynamicPPL.link!(vi, spl)
-        model(rng, vi, spl)
+        vi = DynamicPPL.link!!(vi, spl, model)
+        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
     end
 
     # Define log-density function.
@@ -79,8 +79,8 @@ function DynamicPPL.initialstep(
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
 
     # Update the variables.
-    vi[spl] = Q.q
-    DynamicPPL.setlogp!!(vi, Q.ℓq)
+    vi = DynamicPPL.setindex!!(vi, Q.q, spl)
+    vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
     sample = Transition(vi)
@@ -109,8 +109,8 @@ function AbstractMCMC.step(
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.
-    vi[spl] = Q.q
-    DynamicPPL.setlogp!!(vi, Q.ℓq)
+    vi = DynamicPPL.setindex!!(vi, Q.q, spl)
+    vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
     sample = Transition(vi)

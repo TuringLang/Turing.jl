@@ -1,3 +1,4 @@
+using Setfield
 using DynamicPPL: DefaultContext, LikelihoodContext
 import .Optim
 import .Optim: optimize
@@ -65,12 +66,10 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     # Hessian is computed with respect to the untransformed parameters.
     spl = DynamicPPL.SampleFromPrior()
 
-    # NOTE: This should be converted to islinked(vi, spl) after
-    # https://github.com/TuringLang/DynamicPPL.jl/pull/124 goes through.
-    vns = DynamicPPL._getvns(m.f.varinfo, spl)
-    
-    linked = DynamicPPL._islinked(m.f.varinfo, vns)
-    linked && invlink!(m.f.varinfo, spl)
+    linked = DynamicPPL.islinked(m.f.varinfo, spl)
+    if linked
+        @set! m.f.varinfo = invlink!!(m.f.varinfo, spl, m.f.model)
+    end
 
     # Calculate the Hessian.
     varnames = StatsBase.coefnames(m)
@@ -78,7 +77,9 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     info = inv(H)
 
     # Link it back if we invlinked it.
-    linked && link!(m.f.varinfo, spl)
+    if linked
+        @set! m.f.varinfo = link!!(m.f.varinfo, spl, m.f.model)
+    end
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
@@ -234,8 +235,8 @@ function _optimize(
 
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    f.varinfo[spl] = init_vals
-    link!(f.varinfo, spl)
+    @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, init_vals, spl)
+    @set! f.varinfo = DynamicPPL.link!!(f.varinfo, spl, model)
     init_vals = f.varinfo[spl]
 
     # Optimize!
@@ -248,13 +249,16 @@ function _optimize(
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
     # correct dimensionality.
-    f.varinfo[spl] = M.minimizer
-    invlink!(f.varinfo, spl)
+    @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, M.minimizer, spl)
+    @set! f.varinfo = invlink!!(f.varinfo, spl, model)
     vals = f.varinfo[spl]
-    link!(f.varinfo, spl)
+    @set! f.varinfo = link!!(f.varinfo, spl, model)
 
     # Make one transition to get the parameter names.
-    ts = [Turing.Inference.Transition(DynamicPPL.tonamedtuple(f.varinfo), DynamicPPL.getlogp(f.varinfo))]
+    ts = [Turing.Inference.Transition(
+        DynamicPPL.tonamedtuple(f.varinfo),
+        DynamicPPL.getlogp(f.varinfo)
+    )]
     varnames, _ = Turing.Inference._params_to_array(ts)
 
     # Store the parameters and their names in an array.
