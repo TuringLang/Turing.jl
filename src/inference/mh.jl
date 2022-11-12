@@ -197,7 +197,11 @@ end
 
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 """
-function set_namedtuple!(vi::VarInfo, nt::NamedTuple)
+function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTuple)
+    # TODO: Replace this with something like
+    # for vn in keys(vi)
+    #     vi = DynamicPPL.setindex!!(vi, get(nt, vn))
+    # end
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
         nvns = length(vns)
@@ -245,6 +249,7 @@ This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,S,DynamicPPL.DefaultContext}
 
 function (f::MHLogDensityFunction)(x::NamedTuple)
+    # TODO: Make this work with immutable `f.varinfo` too.
     sampler = f.sampler
     vi = f.varinfo
 
@@ -286,14 +291,14 @@ function reconstruct(
 end
 
 """
-    dist_val_tuple(spl::Sampler{<:MH}, vi::AbstractVarInfo)
+    dist_val_tuple(spl::Sampler{<:MH}, vi::VarInfo)
 
 Return two `NamedTuples`.
 
 The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
-function dist_val_tuple(spl::Sampler{<:MH}, vi::AbstractVarInfo)
+function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
     vns = _getvns(vi, spl)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
@@ -349,15 +354,12 @@ function should_link(
     return true
 end
 
-function maybe_link!(varinfo, sampler, proposal)
-    if should_link(varinfo, sampler, proposal)
-        link!(varinfo, sampler)
-    end
-    return nothing
+function maybe_link!!(varinfo, sampler, proposal, model)
+    return should_link(varinfo, sampler, proposal) ? link!!(varinfo, sampler, model) : varinfo
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
-function propose!(
+function propose!!(
     rng::AbstractRNG,
     vi::AbstractVarInfo,
     model::Model,
@@ -378,13 +380,11 @@ function propose!(
     # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
     set_namedtuple!(vi, trans.params)
-    setlogp!!(vi, trans.lp)
-
-    return vi
+    return setlogp!!(vi, trans.lp)
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
-function propose!(
+function propose!!(
     rng::AbstractRNG,
     vi::AbstractVarInfo,
     model::Model,
@@ -403,12 +403,7 @@ function propose!(
     densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    # TODO: Make this compatible with immutable `VarInfo`.
-    # Update the values in the VarInfo.
-    setindex!!(vi, trans.params, spl)
-    setlogp!!(vi, trans.lp)
-
-    return vi
+    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.params), trans.lp)
 end
 
 function DynamicPPL.initialstep(
@@ -420,7 +415,7 @@ function DynamicPPL.initialstep(
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
-    maybe_link!(vi, spl, spl.alg.proposals)
+    vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
     return Transition(vi), vi
 end
@@ -435,7 +430,7 @@ function AbstractMCMC.step(
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    propose!(rng, vi, model, spl, spl.alg.proposals)
+    vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
 
     return Transition(vi), vi
 end

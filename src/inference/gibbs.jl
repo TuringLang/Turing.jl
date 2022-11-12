@@ -217,7 +217,7 @@ function DynamicPPL.initialstep(
     states = map(samplers) do local_spl
         # Recompute `vi.logp` if needed.
         if local_spl.selector.rerun
-            model(rng, vi, local_spl)
+            vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, local_spl)))
         end
 
         # Compute initial state.
