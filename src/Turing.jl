@@ -35,7 +35,8 @@ struct LogDensityFunction{V,M,S,C}
 end
 
 function (f::LogDensityFunction)(θ::AbstractVector)
-    return getlogp(last(DynamicPPL.evaluate!!(f.model, VarInfo(f.varinfo, f.sampler, θ), f.sampler, f.context)))
+    vi_new = DynamicPPL.unflatten(f.varinfo, f.sampler, θ)
+    return getlogp(last(DynamicPPL.evaluate!!(f.model, vi_new, f.sampler, f.context)))
 end
 
 # LogDensityProblems interface
