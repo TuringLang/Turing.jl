@@ -58,7 +58,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
 
     @testset "samplers (without AD)" begin
         @timeit_include("inference/AdvancedSMC.jl")
-        # @timeit_include("inference/emcee.jl")
+        @timeit_include("inference/emcee.jl")
         @timeit_include("inference/ess.jl")
         @timeit_include("inference/is.jl")
     end
