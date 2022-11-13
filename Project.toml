@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.21.13"
+version = "0.21.14"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -56,7 +56,7 @@ NamedArrays = "0.9"
 Reexport = "0.2, 1"
 Requires = "0.5, 1.0"
 SciMLBase = "1.37.1"
-Setfield = "0.8"
+Setfield = "0.8, 1"
 SpecialFunctions = "0.7.2, 0.8, 0.9, 0.10, 1, 2"
 StatsBase = "0.32, 0.33"
 StatsFuns = "0.8, 0.9, 1"
