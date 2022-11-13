@@ -239,7 +239,7 @@
         x = Float64[1 2]
 
         @model function gauss(x)
-            priors = Array{Float64, 2}
+            priors = zeros(Float64, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)
