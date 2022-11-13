@@ -73,10 +73,10 @@
         chn2_contd = sample(gdemo_default, alg2, 2000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 5000; save_state=true)
+        chn3 = sample(gdemo_default, alg3, 10_000; save_state=true)
         check_gdemo(chn3; atol=0.1)
 
-        chn3_contd = sample(gdemo_default, alg3, 5000; resume_from=chn3)
+        chn3_contd = sample(gdemo_default, alg3, 10_000; resume_from=chn3)
         check_gdemo(chn3_contd, atol=0.1)
     end
     @testset "Contexts" begin
