@@ -39,10 +39,12 @@ end
     end
 end
 
-function Base.copy(trace::AdvancedPS.Trace{<:TracedModel})
-    f = trace.model
-    newf = TracedModel(f.model, f.sampler, deepcopy(f.varinfo), deepcopy(f.rng))
-    return AdvancedPS.Trace(newf, copy(trace.task))
+
+function Base.copy(model::AdvancedPS.GenericModel{<:TracedModel})
+    newtask = copy(model.ctask)
+    newmodel = TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(deepcopy(model.f.model), deepcopy(model.f.sampler), deepcopy(model.f.varinfo), deepcopy(model.f.evaluator))
+    n = AdvancedPS.GenericModel(newmodel, newtask)
+    return n
 end
 
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:AdvancedPS.GenericModel{<:TracedModel}}, isref::Bool=false)

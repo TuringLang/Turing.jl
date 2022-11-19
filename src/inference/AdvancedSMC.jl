@@ -372,6 +372,7 @@ function DynamicPPL.assume(
     end
     return r, 0, vi
 end
+
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     Libtask.produce(logpdf(dist, value))
     return 0, vi
@@ -388,7 +389,7 @@ function AdvancedPS.Trace(
     DynamicPPL.reset_num_produce!(newvarinfo)
 
     tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
-    ttask = Libtask.TapedTask(tmodel, rng)
+    ttask = Libtask.TapedTask(tmodel, rng; deepcopy_types=Union{typeof(rng), typeof(model)})
     wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
 
     newtrace = AdvancedPS.Trace(wrapedmodel, rng)
