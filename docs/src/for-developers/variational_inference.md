@@ -248,7 +248,7 @@ where ``\mathcal{J}_{f^{-1}}(x)`` denotes the jacobian of ``f^{-1}`` evaluted at
 \mathbb{P}\_{\tilde{p}}\left(y \in f^{-1}(A) \right) = \int\_{f^{-1}(A)} \tilde{p}(y) \mathrm{d}y,
 ```
 
-since ``f^{-1}\left(\mathrm{supp} (p(x)) \right) = \mathbb{R}^d `` which has probability 1. This probability distribution has *density* ``\tilde{p}(y) with \mathrm{supp} \left( \tilde{p}(y) \right) = \mathbb{R}^d``, defined
+since ``f^{-1}\left(\mathrm{supp} (p(x)) \right) = \mathbb{R}^d `` which has probability 1. This probability distribution has *density* ``\tilde{p}(y)`` with ``\mathrm{supp} \left( \tilde{p}(y) \right) = \mathbb{R}^d``, defined
 
 ```math
 \tilde{p}(y) = p \left( f^{-1}(y) \right) \ \left| \det \mathcal{J}\_{f^{-1}}(y) \right|
