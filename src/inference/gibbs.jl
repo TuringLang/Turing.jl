@@ -108,8 +108,7 @@ Return an updated state, taking into account the variables sampled by other Gibb
 - `varinfo`: the variables, including the ones sampled by other Gibbs components.
 """
 gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
-
-gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo) = state
+gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo) = PGState(varinfo, state.rng)
 
 # Update state in Gibbs sampling
 function gibbs_state(
