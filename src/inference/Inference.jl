@@ -33,6 +33,7 @@ import EllipticalSliceSampling
 import LogDensityProblems
 import Random
 import MCMCChains
+using InferenceObjects: InferenceObjects
 import StatsBase: predict
 
 export  InferenceAlgorithm,
@@ -66,6 +67,15 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent
+
+const turing_inferencedata_key_map = (
+    hamiltonian_energy = :energy,
+    hamiltonian_energy_error = :energy_error,
+    is_adapt = :tune,
+    max_hamiltonian_energy_error = :max_energy_error,
+    nom_step_size = :step_size_nom,
+    numerical_error = :diverging,
+)
 
 #######################
 # Sampler abstraction #
@@ -417,6 +427,81 @@ function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
 end
 
 DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
+
+# Default InferenceObjects constructor
+# This is type piracy!
+function AbstractMCMC.bundle_samples(
+    ts::Vector,
+    model::AbstractModel,
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    state,
+    chain_type::Type{InferenceObjects.InferenceData};
+    group = spl isa SampleFromPrior ? :prior : :posterior,
+    save_state = false,
+    stats = missing,
+    dims=(;),
+    coords=(;),
+    kwargs...
+)
+    sample = map(t -> map(v -> length(v[1]) == 1 ? v[1][1] : v[1], getparams(t)), ts)
+    sample_stats = map(_rename_sample_stats ∘ metadata, ts)
+
+    # Set up the info tuple.
+    attrs = OrderedDict{String,Any}()
+    if save_state
+        attrs["model"] = model
+        attrs["sampler"] = spl
+        attrs["samplerstate"] = state
+    end
+
+    # Merge in the timing info, if available
+    if !ismissing(stats)
+        attrs["start_time"] = stats.start
+        attrs["stop_time"] = stats.stop
+    end
+
+    # Get the average or final log evidence, if it exists.
+    le = getlogevidence(ts, spl, state)
+    if !ismissing(le)
+        attrs["log_evidence"] = le
+    end
+
+    # identify if this is posterior or prior
+    sample_stats_group = group === :prior ? :sample_stats_prior : :sample_stats
+
+    # InferenceData construction.
+    idata = InferenceObjects.convert_to_inference_data(
+        [sample];
+        group=group,
+        sample_stats_group => [sample_stats],
+        attrs=attrs,
+        dims=dims,
+        coords=coords,
+    )
+    return idata
+end
+
+function AbstractMCMC.chainsstack(c::AbstractVector{<:InferenceObjects.InferenceData})
+    nchains = length(c)
+    nchains == 1 && return c[1]
+    groups = map(keys(first(c))) do k
+        k => AbstractMCMC.chainsstack(map(idata -> idata[k], c))
+    end
+    return InferenceObjects.InferenceData(; groups...)
+end
+function AbstractMCMC.chainsstack(c::AbstractVector{<:InferenceObjects.Dataset})
+    nchains = length(c)
+    nchains == 1 && return c[1]
+    # TODO: gather our metadata into vectors instead of replacing
+    group = cat(c...; dims=:chain)
+    # give each chain a different index
+    return InferenceObjects.DimensionalData.set(group, :chain => Base.OneTo(nchains))
+end
+
+function _rename_sample_stats(stats::NamedTuple)
+    new_keys = map(k -> get(turing_inferencedata_key_map, k, k), keys(stats))
+    return NamedTuple{new_keys}(values(stats))
+end
 
 #######################################
 # Concrete algorithm implementations. #
