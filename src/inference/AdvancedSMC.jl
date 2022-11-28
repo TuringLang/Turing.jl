@@ -275,7 +275,7 @@ function DynamicPPL.initialstep(
     _vi = reference.model.f.varinfo
     transition = PGTransition(_vi, logevidence)
 
-    return transition, PGState(_vi, reference.rng)#_vi
+    return transition, PGState(_vi, reference.rng)
 end
 
 function AbstractMCMC.step(
@@ -283,7 +283,6 @@ function AbstractMCMC.step(
     model::AbstractModel,
     spl::Sampler{<:PG},
     state::PGState;
-    #vi::AbstractVarInfo;
     kwargs...
 )
     # Reset the VarInfo before new sweep.

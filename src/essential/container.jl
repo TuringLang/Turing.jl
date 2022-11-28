@@ -11,7 +11,6 @@ function TracedModel(
     varinfo::AbstractVarInfo,
     rng::Random.AbstractRNG
 ) 
-    # evaluate!!(m.model, varinfo, SamplingContext(Random.AbstractRNG, m.sampler, DefaultContext()))
     context = SamplingContext(rng, sampler, DefaultContext())
     evaluator = _get_evaluator(model, varinfo, context)
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
@@ -43,8 +42,8 @@ end
 function Base.copy(model::AdvancedPS.GenericModel{<:TracedModel})
     newtask = copy(model.ctask)
     newmodel = TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(deepcopy(model.f.model), deepcopy(model.f.sampler), deepcopy(model.f.varinfo), deepcopy(model.f.evaluator))
-    n = AdvancedPS.GenericModel(newmodel, newtask)
-    return n
+    gen_model = AdvancedPS.GenericModel(newmodel, newtask)
+    return gen_model
 end
 
 function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:AdvancedPS.GenericModel{<:TracedModel}}, isref::Bool=false)
@@ -61,18 +60,17 @@ end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
     DynamicPPL.set_retained_vns_del_by_spl!(trace.varinfo, trace.sampler)
-    return
+    return trace
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
-    newvarinfo = deepcopy(trace.varinfo)
-    DynamicPPL.reset_num_produce!(newvarinfo)
+    DynamicPPL.reset_num_produce!(trace.varinfo)
     return trace
 end
 
 function AdvancedPS.reset_logprob!(trace::TracedModel)
     DynamicPPL.resetlogp!!(trace.model.varinfo)
-    return
+    return trace
 end
 
 function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
@@ -80,6 +78,7 @@ function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{
     _, _, container, = args
     rng = container.rng
     trace.rng = rng
+    return trace
 end
 
 function Libtask.TapedTask(model::TracedModel, rng::Random.AbstractRNG; kwargs...)
