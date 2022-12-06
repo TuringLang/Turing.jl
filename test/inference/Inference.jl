@@ -58,7 +58,7 @@
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_resumed = Turing.Inference.resume(chn1, 5000)
+        chn1_resumed = Turing.Inference.resume(chn1, 2000)
         check_gdemo(chn1_resumed)
 
         chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
@@ -67,16 +67,16 @@
         chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1, reuse_spl_n=1000)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(gdemo_default, alg2, 5000; save_state=true)
+        chn2 = sample(gdemo_default, alg2, 2000; save_state=true)
         check_gdemo(chn2)
 
-        chn2_contd = sample(gdemo_default, alg2, 5000; resume_from=chn2)
+        chn2_contd = sample(gdemo_default, alg2, 2000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 10_000; save_state=true)
+        chn3 = sample(gdemo_default, alg3, 2_000; save_state=true)
         check_gdemo(chn3)
 
-        chn3_contd = sample(gdemo_default, alg3, 10_000; resume_from=chn3)
+        chn3_contd = sample(gdemo_default, alg3, 2_000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
     @testset "Contexts" begin
