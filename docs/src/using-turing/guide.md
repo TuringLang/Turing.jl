@@ -10,7 +10,7 @@ title: Guide
 
 ### Introduction
 
-A probabilistic program is Julia code wrapped in a `@model` macro. It can use arbitrary Julia code, but to ensure correctness of inference it should not have external effects or modify global state. Stack-allocated variables are safe, but mutable heap-allocated objects may lead to subtle bugs when using task copying. To help avoid those we provide a Turing-safe datatype `TArray` that can be used to create mutable arrays in Turing programs.
+A probabilistic program is Julia code wrapped in a `@model` macro. It can use arbitrary Julia code, but to ensure correctness of inference it should not have external effects or modify global state. Stack-allocated variables are safe, but mutable heap-allocated objects may lead to subtle bugs when using task copying. By default Libtask deepcopies `Array` and `Dict` objects when copying task to avoid bugs with data stored in mutable structure in Turing models. 
 
 
 To specify distributions of random variables, Turing programs should use the `~` notation:
@@ -369,7 +369,7 @@ The element type of a vector (or matrix) of random variables should match the `e
     1. `Real` to enable auto-differentiation through the model which uses special number types that are sub-types of `Real`, or
     2. Some type parameter `T` defined in the model header using the type parameter syntax, e.g. `function gdemo(x, ::Type{T} = Float64) where {T}`.
 Similarly, when using a particle sampler, the Julia variable used should either be:
-    1. A `TArray`, or
+    1. An `Array`, or
     2. An instance of some type parameter `T` defined in the model header using the type parameter syntax, e.g. `function gdemo(x, ::Type{T} = Vector{Float64}) where {T}`.
 
 
@@ -594,48 +594,6 @@ plot(chn) # Plots statistics of the samples.
 
 
 There are numerous functions in addition to `describe` and `plot` in the `MCMCChains` package, such as those used in convergence diagnostics. For more information on the package, please see the [GitHub repository](https://github.com/TuringLang/MCMCChains.jl).
-
-
-### Working with Libtask.jl
-
-
-The [Libtask.jl](https://github.com/TuringLang/Libtask.jl) library provides write-on-copy data structures that are safe for use in Turing's particle-based samplers. One data structure in particular is often required for use – the [`TArray`](http://turing.ml/docs/library/#Libtask.TArray). The following sampler types require the use of a `TArray` to store distributions:
-
-
-  * `IPMCMC`
-  * `IS`
-  * `PG`
-  * `PMMH`
-  * `SMC`
-
-
-If you do not use a `TArray` to store arrays of distributions when using a particle-based sampler, you may experience errors.
-
-
-Here is an example of how the `TArray` (using a `TArray` constructor function called `tzeros`) can be applied in this way:
-
-
-```julia
-# Turing model definition.
-@model function BayesHmm(y)
-    # Declare a TArray with a length of N.
-    s = tzeros(Int, N)
-    m = Vector{Real}(undef, K)
-    T = Vector{Vector{Real}}(undef, K)
-    for i = 1:K
-        T[i] ~ Dirichlet(ones(K)/K)
-        m[i] ~ Normal(i, 0.01)
-    end
-
-    # Draw from a distribution for each element in s.
-    s[1] ~ Categorical(K)
-    for i = 2:N
-        s[i] ~ Categorical(vec(T[s[i-1]]))
-        y[i] ~ Normal(m[s[i]], 0.1)
-    end
-    return (s, m)
-end;
-```
 
 
 ### Changing Default Settings
