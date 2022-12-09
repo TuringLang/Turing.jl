@@ -31,7 +31,7 @@
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
         trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
-        @test trackerℓ isa LogDensityProblems.TrackerGradientLogDensity
+        @test trackerℓ isa LogDensityProblemsAD.TrackerGradientLogDensity
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
