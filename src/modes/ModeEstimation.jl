@@ -12,6 +12,7 @@ using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     get_and_set_val!, istrans
 
 import LogDensityProblems
+import LogDensityProblemsAD
 
 export  constrained_space,  
         MAP,
@@ -111,7 +112,7 @@ function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
         # Calculate negative log joint and its gradient.
         # TODO: Make OptimLogDensity already an LogDensityProblems.ADgradient? Allow to specify AD?
-        ℓ = LogDensityProblems.ADgradient(f)
+        ℓ = LogDensityProblemsAD.ADgradient(f)
         neglogp, ∇neglogp = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
         # Save the gradient to the pre-allocated array.
