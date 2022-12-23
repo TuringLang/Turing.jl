@@ -108,11 +108,11 @@ function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensi
 end
 
 function LogDensityProblemsAD.ADgradient(::EnzymeAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(Val(:Enzyme), ℓ)
+    return LogDensityProblemsAD.ADgradient(Val(:Enzyme), ℓ)
 end
 
 function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(Val(:Tracker), ℓ)
+    return LogDensityProblemsAD.ADgradient(Val(:Tracker), ℓ)
 end
 
 function LogDensityProblemsAD.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
