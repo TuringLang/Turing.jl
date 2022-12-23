@@ -83,11 +83,11 @@ Find the autodifferentiation backend of the algorithm `alg`.
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 getADbackend(::SampleFromPrior) = ADBackend()()
 
-function LogDensityProblems.ADgradient(ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(getADbackend(ℓ.sampler), ℓ)
+function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.sampler), ℓ)
 end
 
-function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
     θ = ℓ.varinfo[ℓ.sampler]
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
@@ -104,25 +104,25 @@ function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensity
         ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
     end
 
-    return LogDensityProblems.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
+    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
 end
 
-function LogDensityProblems.ADgradient(::EnzymeAD, ℓ::Turing.LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(::EnzymeAD, ℓ::Turing.LogDensityFunction)
     return LogDensityProblems.ADgradient(Val(:Enzyme), ℓ)
 end
 
-function LogDensityProblems.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
     return LogDensityProblems.ADgradient(Val(:Tracker), ℓ)
 end
 
-function LogDensityProblems.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(Val(:Zygote), ℓ)
+function LogDensityProblemsAD.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(Val(:Zygote), ℓ)
 end
 
 for cache in (:true, :false)
     @eval begin
-        function LogDensityProblems.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
-            return LogDensityProblems.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
+        function LogDensityProblemsAD.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
+            return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
         end
     end
 end

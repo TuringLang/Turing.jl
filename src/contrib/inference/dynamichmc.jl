@@ -44,7 +44,7 @@ function gibbs_state(
     varinfo::AbstractVarInfo,
 )
     # Update the log density function and its cached evaluation.
-    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext()))
+    ℓ = LogDensityProblemsAD.ADgradient(Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext()))
     Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
     return DynamicNUTSState(ℓ, varinfo, Q, state.metric, state.stepsize)
 end
@@ -65,7 +65,7 @@ function DynamicPPL.initialstep(
     end
 
     # Define log-density function.
-    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+    ℓ = LogDensityProblemsAD.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(

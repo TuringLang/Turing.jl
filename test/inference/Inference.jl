@@ -34,6 +34,19 @@
 
                     @test chain1.value == chain2.value
                 end
+
+                # Should also be stable with am explicit RNG
+                seed = 5
+                rng = Random.MersenneTwister(seed)
+                for sampler in samplers
+                    Random.seed!(rng, seed)
+                    chain1 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+
+                    Random.seed!(rng, seed)
+                    chain2 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+
+                    @test chain1.value == chain2.value
+                end
             end
 
             # Smoke test for default sample call.
@@ -58,7 +71,7 @@
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_resumed = Turing.Inference.resume(chn1, 1000)
+        chn1_resumed = Turing.Inference.resume(chn1, 2000)
         check_gdemo(chn1_resumed)
 
         chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
@@ -67,19 +80,17 @@
         chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1, reuse_spl_n=1000)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(gdemo_default, alg2, 1000; save_state=true)
+        chn2 = sample(gdemo_default, alg2, 2000; save_state=true)
         check_gdemo(chn2)
 
-        chn2_contd = sample(gdemo_default, alg2, 1000; resume_from=chn2)
+        chn2_contd = sample(gdemo_default, alg2, 2000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 5000; save_state=true)
-        # HACK: Increase `atol` because apparently on MacOS 0.2, which is default,
-        # can sometimes be too small.
-        check_gdemo(chn3; atol=0.3)
+        chn3 = sample(gdemo_default, alg3, 5_000; save_state=true)
+        check_gdemo(chn3)
 
-        chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
-        check_gdemo(chn3_contd, atol=0.3)
+        chn3_contd = sample(gdemo_default, alg3, 5_000; resume_from=chn3)
+        check_gdemo(chn3_contd)
     end
     @testset "Contexts" begin
         # Test LikelihoodContext
@@ -107,7 +118,7 @@
         @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
     end
     @testset "Prior" begin
-        N = 5000
+        N = 10_000
 
         # Note that all chains contain 3 values per sample: 2 variables + log probability
         Random.seed!(100)
@@ -121,7 +132,7 @@
         chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol=0.2
+        @test mean(chains, :s) ≈ 3 atol=0.1
         @test mean(chains, :m) ≈ 0 atol=0.1
 
         Random.seed!(100)
@@ -226,7 +237,7 @@
         x = Float64[1 2]
 
         @model function gauss(x)
-            priors = TArray{Float64}(2)
+            priors = zeros(Float64, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
             for i in 1:length(x)

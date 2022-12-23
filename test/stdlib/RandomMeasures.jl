@@ -13,10 +13,10 @@
             H = Normal(μ0, σ0)
 
             # Latent assignment.
-            z = tzeros(Int, length(x))
+            z = zeros(Int, length(x))
 
             # Locations of the infinitely many clusters.
-            μ = tzeros(Float64, 0)
+            μ = zeros(Float64, 0)
 
             for i in 1:length(x)
 

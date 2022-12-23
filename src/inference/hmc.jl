@@ -158,7 +158,7 @@ function DynamicPPL.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ℓ = LogDensityProblems.ADgradient(
+    ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     )
     logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
@@ -264,7 +264,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓ = LogDensityProblems.ADgradient(
+    ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     )
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)

@@ -30,14 +30,14 @@
         ℓ = Turing.LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
-        trackerℓ = LogDensityProblems.ADgradient(TrackerAD(), ℓ)
-        @test trackerℓ isa LogDensityProblems.TrackerGradientLogDensity
+        trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
+        @test trackerℓ isa LogDensityProblemsAD.TrackerGradientLogDensity
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
-        zygoteℓ = LogDensityProblems.ADgradient(ZygoteAD(), ℓ)
-        @test zygoteℓ isa LogDensityProblems.ZygoteGradientLogDensity
+        zygoteℓ = LogDensityProblemsAD.ADgradient(ZygoteAD(), ℓ)
+        @test zygoteℓ isa LogDensityProblemsAD.ZygoteGradientLogDensity
         @test zygoteℓ.ℓ === ℓ
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
         @test sort(∇E2) ≈ grad_FWAD atol=1e-9

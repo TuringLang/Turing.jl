@@ -158,7 +158,7 @@ So let's revisit the assumptions we've made at this point:
 4. Evaluation of the probability density ``q\_{\theta}(z)`` is differentiable wrt. ``\theta``.
 5. ``\mathbb{H}\left(q\_{\theta}(z)\right)`` is tractable.
 6. Evaluation of the joint density ``p(x, z)`` is tractable and differentiable wrt. ``z``
-7. The support of ``p(z \mid x)`` is a subspace of the support of ``q(z)`` : ``\mathrm{supp}\left(p(z \mid x)\right) \subseteq \mathrm{supp}\left(q(z)\right)``.
+7. The support of ``q(z)`` is a subspace of the support of ``p(z \mid x)`` : ``\mathrm{supp}\left(q(z)\right) \subseteq \mathrm{supp}\left(p(z \mid x)\right)``.
 
 All of these are not *necessary* to do VI, but they are very convenient and results in a fairly flexible approach. One distribution which has a density satisfying all of the above assumptions _except_ (7) (we'll get back to this in second) for any tractable and differentiable ``p(z \mid \\{ x\_i \\}\_{i = 1}^n)`` is the good ole' Gaussian/normal distribution:
 
@@ -248,7 +248,7 @@ where ``\mathcal{J}_{f^{-1}}(x)`` denotes the jacobian of ``f^{-1}`` evaluted at
 \mathbb{P}\_{\tilde{p}}\left(y \in f^{-1}(A) \right) = \int\_{f^{-1}(A)} \tilde{p}(y) \mathrm{d}y,
 ```
 
-since ``f^{-1}\left(\mathrm{supp} (p(x)) \right) = \mathbb{R}^d `` which has probability 1. This probability distribution has *density* ``\tilde{p}(y) with \mathrm{supp} \left( \tilde{p}(y) \right) = \mathbb{R}^d``, defined
+since ``f^{-1}\left(\mathrm{supp} (p(x)) \right) = \mathbb{R}^d `` which has probability 1. This probability distribution has *density* ``\tilde{p}(y)`` with ``\mathrm{supp} \left( \tilde{p}(y) \right) = \mathbb{R}^d``, defined
 
 ```math
 \tilde{p}(y) = p \left( f^{-1}(y) \right) \ \left| \det \mathcal{J}\_{f^{-1}}(y) \right|

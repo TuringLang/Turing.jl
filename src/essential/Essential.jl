@@ -16,6 +16,7 @@ using StatsFuns: logsumexp, softmax
 
 import AdvancedPS
 import LogDensityProblems
+import LogDensityProblemsAD
 
 include("container.jl")
 include("ad.jl")

@@ -42,6 +42,7 @@ using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
 import LogDensityProblems
+import LogDensityProblemsAD
 
 setprogress!(false)
 
