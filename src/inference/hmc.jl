@@ -186,7 +186,7 @@ function DynamicPPL.initialstep(
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
-        ϵ = AHMC.find_good_stepsize(hamiltonian, theta)
+        ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)
         @info "Found initial step size" ϵ
     else
         ϵ = spl.alg.ϵ
