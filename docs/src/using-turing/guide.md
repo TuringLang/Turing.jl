@@ -42,7 +42,12 @@ end
 ```
 
 
-Note: As a sanity check, the expectation of `s` is 49/24 (2.04166666...) and the expectation of `m` is 7/6 (1.16666666...).
+Note: As a sanity check, the prior expectation of `s²` is `mean(InverseGamma(2, 3)) = 3/(2 - 1) = 3` and the prior expectation of `m` is 0. This can be easily checked using `Prior`:
+
+```julia
+p1 = sample(gdemo(missing, missing), Prior(), 100000)
+```
+
 
 
 We can perform inference by using the `sample` function, the first argument of which is our probabilistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library).
