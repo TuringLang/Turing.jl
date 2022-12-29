@@ -42,7 +42,7 @@ end
 ```
 
 
-Note: As a sanity check, the expectation of `s²` is 3 (theta/(alpha - 1)) and the expectation of `m` is 0. This can be easily checked using Prior:
+Note: As a sanity check, the prior expectation of `s²` is 3 (= theta/(alpha - 1), where theta is 3 and alpha is 2) and the prior expectation of `m` is 0. This can be easily checked using `Prior`:
 
 ```julia
 p1 = sample(gdemo(missing, missing), Prior(), 100000)
