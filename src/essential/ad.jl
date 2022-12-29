@@ -9,6 +9,10 @@ function setadbackend(backend::Val)
     Bijectors.setadbackend(backend)
 end
 
+# TODO: Add support to AdvancedVI and Bijectors
+# (or better: use common interface package)
+setadbackend(backend::Val{:enzyme}) = _setadbackend(backend)
+
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
 end
