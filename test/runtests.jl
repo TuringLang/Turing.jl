@@ -41,6 +41,7 @@ using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, Trac
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
+import Enzyme
 import LogDensityProblems
 import LogDensityProblemsAD
 
@@ -65,7 +66,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
     end
 
     Turing.setrdcache(false)
-    for adbackend in (:forwarddiff, :tracker, :reversediff)
+    for adbackend in (:forwarddiff, :tracker, :reversediff, :enzyme)
         @timeit TIMEROUTPUT "inference: $adbackend" begin
             Turing.setadbackend(adbackend)
             @info "Testing $(adbackend)"
