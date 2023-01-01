@@ -42,7 +42,12 @@ end
 ```
 
 
-Note: As a sanity check, the expectation of `s` is 49/24 (2.04166666...) and the expectation of `m` is 7/6 (1.16666666...).
+Note: As a sanity check, the prior expectation of `s²` is `mean(InverseGamma(2, 3)) = 3/(2 - 1) = 3` and the prior expectation of `m` is 0. This can be easily checked using `Prior`:
+
+```julia
+p1 = sample(gdemo(missing, missing), Prior(), 100000)
+```
+
 
 
 We can perform inference by using the `sample` function, the first argument of which is our probabilistic program and the second of which is a sampler. More information on each sampler is located in the [API]({{site.baseurl}}/docs/library).
@@ -375,8 +380,35 @@ Similarly, when using a particle sampler, the Julia variable used should either 
 
 ### Querying Probabilities from Model or Chain
 
+Consider first the following simplified `gdemo` model:
+```julia
+@model function gdemo0(x)
+    s ~ InverseGamma(2, 3)
+    m ~ Normal(0, sqrt(s))
+    x ~ Normal(m, sqrt(s))
+end
 
-Consider the following `gdemo` model:
+# Instantiate three models, with different value of x
+model1 = gdemo0(1)
+model4 = gdemo0(4)
+model10 = gdemo0(10)
+```
+
+Now, query the instantiated models: compute the likelihood of `x = 1.0` given the values of `s = 1.0` and `m = 1.0` for the parameters:
+```julia
+prob"x = 1.0 | model = model1, s = 1.0, m = 1.0"
+prob"x = 1.0 | model = model4, s = 1.0, m = 1.0"
+prob"x = 1.0 | model = model10, s = 1.0, m = 1.0"
+```
+
+Notice that even if we use three models, instantiated with three different values of `x`, we should obtain the same likelihood. We can easily verify that value in this case:
+
+```julia
+pdf(Normal(1.0, 1.0), 1.0)
+```
+
+
+Let us now consider the following `gdemo` model:
 ```julia
 @model function gdemo(x, y)
     s² ~ InverseGamma(2, 3)
@@ -384,19 +416,22 @@ Consider the following `gdemo` model:
     x ~ Normal(m, sqrt(s²))
     y ~ Normal(m, sqrt(s²))
 end
+
+# Instantiate the model.
+model = gdemo(2.0, 4.0)
 ```
 
 The following are examples of valid queries of the `Turing` model or chain:
 
-- `prob"x = 1.0, y = 1.0 | model = gdemo, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
+- `prob"x = 1.0, y = 1.0 | model = model, s = 1.0, m = 1.0"` calculates the likelihood of `x = 1` and `y = 1` given `s = 1` and `m = 1`.
 
-- `prob"s = 1.0, m = 1.0 | model = gdemo, x = nothing, y = nothing"` calculates the joint probability of `s = 1` and `m = 1` ignoring `x` and `y`. `x` and `y` are ignored so they can be optionally dropped from the RHS of `|`, but it is recommended to define them.
+- `prob"s² = 1.0, m = 1.0 | model = model, x = nothing, y = nothing"` calculates the joint probability of `s = 1` and `m = 1` ignoring `x` and `y`. `x` and `y` are ignored so they can be optionally dropped from the RHS of `|`, but it is recommended to define them.
 
-- `prob"s = 1.0, m = 1.0, x = 1.0 | model = gdemo, y = nothing"` calculates the joint probability of `s = 1`, `m = 1` and `x = 1` ignoring `y`.
+- `prob"s² = 1.0, m = 1.0, x = 1.0 | model = model, y = nothing"` calculates the joint probability of `s = 1`, `m = 1` and `x = 1` ignoring `y`.
 
-- `prob"s = 1.0, m = 1.0, x = 1.0, y = 1.0 | model = gdemo"` calculates the joint probability of all the variables.
+- `prob"s² = 1.0, m = 1.0, x = 1.0, y = 1.0 | model = model"` calculates the joint probability of all the variables.
 
-- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain, model = gdemo"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
+- After the MCMC sampling, given a `chain`, `prob"x = 1.0, y = 1.0 | chain = chain, model = model"` calculates the element-wise likelihood of `x = 1.0` and `y = 1.0` for each sample in `chain`.
 
 - If `save_state=true` was used during sampling (i.e., `sample(model, sampler, N; save_state=true)`), you can simply do `prob"x = 1.0, y = 1.0 | chain = chain"`.
 
