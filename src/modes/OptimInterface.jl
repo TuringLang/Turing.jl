@@ -197,7 +197,7 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.varinfo[f.sampler], optimizer, args...; kwargs...)
+    return _optimize(model, f, Turing.getparams(f), optimizer, args...; kwargs...)
 end
 
 function _optimize(
@@ -207,37 +207,38 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.varinfo[f.sampler], Optim.LBFGS(), args...; kwargs...)
+    return _optimize(model, f, Turing.getparams(f), Optim.LBFGS(), args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.varinfo[f.sampler],
+    init_vals::AbstractArray = Turing.getparams(f),
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
 )
-    return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
+    return _optimize(model, f, init_vals, Optim.LBFGS(), options, args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.varinfo[f.sampler], 
+    init_vals::AbstractArray = Turing.getparams(f), 
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
 )
     # Do some initialization.
-    spl = f.sampler
+    # TODO: Can we remove the usage of sampler completely here?
+    spl = Turing.hassampler(f) ? Turing.getsampler(f) : Turing.SampleFromPrior()
 
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
     @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, init_vals, spl)
     @set! f.varinfo = DynamicPPL.link!!(f.varinfo, spl, model)
-    init_vals = f.varinfo[spl]
+    init_vals = Turing.getparams(f)
 
     # Optimize!
     M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
@@ -251,7 +252,7 @@ function _optimize(
     # correct dimensionality.
     @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, M.minimizer, spl)
     @set! f.varinfo = invlink!!(f.varinfo, spl, model)
-    vals = f.varinfo[spl]
+    vals = Turing.getparams(f)
     @set! f.varinfo = link!!(f.varinfo, spl, model)
 
     # Make one transition to get the parameter names.

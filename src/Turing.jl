@@ -43,15 +43,32 @@ function LogDensityFunction(
     return LogDensityFunction(varinfo, model, DynamicPPL.SamplingContext(sampler, context))
 end
 
+# Convenient for end-user.
+function LogDensityfunction(
+    model::DynamicPPL.Model,
+    varinfo::DynamicPPL.AbstractVarInfo=DynamicPPL.VarInfo(model),
+    context::DynamicPPL.AbstractContext=DynamicPPL.DefaultContext(),
+)
+    return LogDensityFunction(model, varinfo, context)
+end
+
 # HACK: heavy usage of `AbstractSampler` for, well, _everything_, is being phased out. In the mean time
 # we need to define these annoying methods to ensure that we stay compatible with everything.
-_sampler_maybe(ctx::DynamicPPL.SamplingContext) = ctx.sampler
-_sampler_maybe(ctx::DynamicPPL.AbstractContext) = _sampler_maybe(DynamicPPL.NodeTrait(ctx), ctx)
-_sampler_maybe(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = nothing
-_sampler_maybe(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = _sampler_maybe(DynamicPPL.childcontext(ctx))
+getsampler(f::LogDensityFunction) = getsampler(f.context)
+getsampler(ctx::DynamicPPL.SamplingContext) = ctx.sampler
+getsampler(ctx::DynamicPPL.AbstractContext) = getsampler(DynamicPPL.NodeTrait(ctx), ctx)
+getsampler(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getsampler(DynamicPPL.childcontext(ctx))
 
-unflatten(varinfo, context, θ) = unflatten(_sampler_maybe(context), varinfo, context, θ)
-unflatten(::Nothing, varinfo, context, θ) = DynamicPPL.unflatten(varinfo, θ)
+hassampler(f::LogDensityFunction) = hassampler(f.context)
+hassampler(ctx::DynamicPPL.SamplingContext) = true
+hassampler(ctx::DynamicPPL.AbstractContext) = hassampler(DynamicPPL.NodeTrait(ctx), ctx)
+hassampler(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = false
+hassampler(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = hassampler(DynamicPPL.childcontext(ctx))
+
+# TODO: This is annoying. Should all this be moved to DynamicPPL so we can share the impl of `unflatten`?
+function unflatten(varinfo, context, θ)
+    return hassampler(context) ? unflatten(getsampler(context), varinfo, context, θ) : DynamicPPL.unflatten(varinfo, θ)
+end
 unflatten(sampler::DynamicPPL.AbstractSampler, varinfo, context, θ) = DynamicPPL.unflatten(varinfo, sampler, θ)
 
 function (f::LogDensityFunction)(θ::AbstractVector)
@@ -65,20 +82,17 @@ function LogDensityProblems.capabilities(::Type{<:LogDensityFunction})
     return LogDensityProblems.LogDensityOrder{0}()
 end
 
-function _get_indexer(ctx::DynamicPPL.AbstractContext)
-    return _get_indexer(DynamicPPL.NodeTrait(ctx), ctx)
-end
-function _get_indexer(ctx::DynamicPPL.SamplingContext)
-    return ctx.sampler
-end
+_get_indexer(ctx::DynamicPPL.AbstractContext) = _get_indexer(DynamicPPL.NodeTrait(ctx), ctx)
+_get_indexer(ctx::DynamicPPL.SamplingContext) = ctx.sampler
 function _get_indexer(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext)
     return _get_indexer(DynamicPPL.childcontext(ctx))
 end
 function _get_indexer(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext)
     return Colon()
 end
-LogDensityProblems.dimension(f::LogDensityFunction) = length(f.varinfo[_get_indexer(f.context)])
+getparams(f::LogDensityFunction) = f.varinfo[_get_indexer(f.context)]
 
+LogDensityProblems.dimension(f::LogDensityFunction) = length(getparams(f))
 
 # Standard tag: Improves stacktraces
 # Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/

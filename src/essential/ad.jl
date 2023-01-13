@@ -80,13 +80,13 @@ getADbackend(::SampleFromPrior) = ADBackend()()
 getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
 getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
 getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
-getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()()
 
-function LogDensityProblems.ADgradient(ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(getADbackend(ℓ.context), ℓ)
+function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
-function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
     θ = ℓ.varinfo[Turing._get_indexer(ℓ.context)]
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
