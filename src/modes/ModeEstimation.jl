@@ -46,36 +46,34 @@ DynamicPPL.childcontext(context::OptimizationContext) = context.context
 DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
 
 # assume
-function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, spl, dist, vn, vi)
-    return DynamicPPL.tilde_assume(ctx, spl, dist, vn, vi)
+function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
+    return DynamicPPL.tilde_assume(ctx, dist, vn, vi)
 end
 
-function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, spl, dist, vn, vi)
-    r = vi[vn]
+function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, dist, vn, vi)
+    r = vi[vn, dist]
     return r, 0, vi
 end
 
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, spl, dist, vn, vi)
-    r = vi[vn]
+function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
+    r = vi[vn, dist]
     return r, Distributions.logpdf(dist, r), vi
 end
 
 # dot assume
-function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::OptimizationContext, sampler, right, left, vns, vi)
-    return DynamicPPL.dot_tilde_assume(ctx, sampler, right, left, vns, vi)
-end
-
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, sampler::SampleFromPrior, right, left, vns, vi)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
-    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
+    # TODO: Stop using `get_and_set_val!`.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, SampleFromPrior())
     return r, 0, vi
 end
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, sampler::SampleFromPrior, right, left, vns, vi)
+function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
-    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, sampler)
+    # TODO: Stop using `get_and_set_val!`.
+    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, SampleFromPrior())
     return r, loglikelihood(right, r), vi
 end
 
@@ -84,7 +82,7 @@ end
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:Model,C<:OptimizationContext,V<:VarInfo} = Turing.LogDensityFunction{V,M,DynamicPPL.SampleFromPrior,C}
+const OptimLogDensity{M<:Model,C<:OptimizationContext,V<:VarInfo} = Turing.LogDensityFunction{V,M,C}
 
 """
     OptimLogDensity(model::Model, context::OptimizationContext)
@@ -93,7 +91,7 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::Model, context::OptimizationContext)
     init = VarInfo(model)
-    return Turing.LogDensityFunction(init, model, DynamicPPL.SampleFromPrior(), context)
+    return Turing.LogDensityFunction(init, model, context)
 end
 
 """
@@ -103,9 +101,8 @@ Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with 
 at the array `z`.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
-    sampler = f.sampler
-    varinfo = DynamicPPL.unflatten(f.varinfo, sampler, z)
-    return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, sampler, f.context)))
+    varinfo = DynamicPPL.unflatten(f.varinfo, z)
+    return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
 
 function (f::OptimLogDensity)(F, G, z)
@@ -140,7 +137,8 @@ end
 #################################################
 
 function transform!!(f::OptimLogDensity)
-    spl = f.sampler
+    # TODO: Do we really need this?
+    spl = DynamicPPL.SampleFromPrior()
 
     ## Check link status of vi in OptimLogDensity
     linked = DynamicPPL.islinked(f.varinfo, spl)

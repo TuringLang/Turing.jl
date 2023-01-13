@@ -77,13 +77,17 @@ Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 getADbackend(::SampleFromPrior) = ADBackend()()
+getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
+getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
+getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()
 
-function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.sampler), ℓ)
+function LogDensityProblems.ADgradient(ℓ::Turing.LogDensityFunction)
+    return LogDensityProblems.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
-function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
-    θ = ℓ.varinfo[ℓ.sampler]
+function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+    θ = ℓ.varinfo[Turing._get_indexer(ℓ.context)]
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
     # Define configuration for ForwardDiff.
