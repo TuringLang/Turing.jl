@@ -44,7 +44,7 @@ function LogDensityFunction(
 end
 
 # Convenient for end-user.
-function LogDensityfunction(
+function LogDensityFunction(
     model::DynamicPPL.Model,
     varinfo::DynamicPPL.AbstractVarInfo=DynamicPPL.VarInfo(model),
     context::DynamicPPL.AbstractContext=DynamicPPL.DefaultContext(),
