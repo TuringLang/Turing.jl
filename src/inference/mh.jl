@@ -250,7 +250,7 @@ const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turin
 
 function (f::MHLogDensityFunction)(x::NamedTuple)
     # TODO: Make this work with immutable `f.varinfo` too.
-    sampler = f.sampler
+    sampler = Turing.getsampler(f)
     vi = f.varinfo
 
     x_old, lj_old = vi[sampler], getlogp(vi)

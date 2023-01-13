@@ -46,10 +46,6 @@ DynamicPPL.childcontext(context::OptimizationContext) = context.context
 DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
 
 # assume
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
-    return DynamicPPL.tilde_assume(ctx, dist, vn, vi)
-end
-
 function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, dist, vn, vi)
     r = vi[vn, dist]
     return r, 0, vi

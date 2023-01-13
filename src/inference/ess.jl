@@ -127,7 +127,7 @@ Distributions.mean(p::ESSPrior) = p.μ
 const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.SamplingContext{<:S}}
 
 function (ℓ::ESSLogLikelihood)(f::AbstractVector)
-    sampler = f.context.sampler
+    sampler = Turing.getsampler(ℓ)
     varinfo = setindex!!(ℓ.varinfo, f, sampler)
     varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
     return getlogp(varinfo)
