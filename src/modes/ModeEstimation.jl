@@ -61,7 +61,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContex
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, SampleFromPrior())
+    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
     return r, 0, vi
 end
 
@@ -69,7 +69,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(Random.GLOBAL_RNG, vi, vns, right, SampleFromPrior())
+    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
     return r, loglikelihood(right, r), vi
 end
 
