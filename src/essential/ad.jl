@@ -87,7 +87,7 @@ function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
 end
 
 function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
-    θ = ℓ.varinfo[Turing._get_indexer(ℓ.context)]
+    θ = DynamicPPL.getparams(ℓ)
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
     # Define configuration for ForwardDiff.

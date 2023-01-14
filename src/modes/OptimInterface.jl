@@ -1,5 +1,6 @@
 using Setfield
 using DynamicPPL: DefaultContext, LikelihoodContext
+using DynamicPPL: DynamicPPL
 import .Optim
 import .Optim: optimize
 import ..ForwardDiff
@@ -197,7 +198,7 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, Turing.getparams(f), optimizer, args...; kwargs...)
+    return _optimize(model, f, DynamicPPL.getparams(f), optimizer, args...; kwargs...)
 end
 
 function _optimize(
@@ -207,13 +208,13 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, Turing.getparams(f), Optim.LBFGS(), args...; kwargs...)
+    return _optimize(model, f, DynamicPPL.getparams(f), Optim.LBFGS(), args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = Turing.getparams(f),
+    init_vals::AbstractArray = DynamicPPL.getparams(f),
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
@@ -224,7 +225,7 @@ end
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = Turing.getparams(f), 
+    init_vals::AbstractArray = DynamicPPL.getparams(f), 
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
     options::Optim.Options = Optim.Options(),
     args...; 
@@ -232,13 +233,13 @@ function _optimize(
 )
     # Do some initialization.
     # TODO: Can we remove the usage of sampler completely here?
-    spl = Turing.hassampler(f) ? Turing.getsampler(f) : Turing.SampleFromPrior()
+    spl = DynamicPPL.hassampler(f) ? DynamicPPL.getsampler(f) : DynamicPPL.SampleFromPrior()
 
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
     @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, init_vals, spl)
     @set! f.varinfo = DynamicPPL.link!!(f.varinfo, spl, model)
-    init_vals = Turing.getparams(f)
+    init_vals = DynamicPPL.getparams(f)
 
     # Optimize!
     M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
@@ -252,7 +253,7 @@ function _optimize(
     # correct dimensionality.
     @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, M.minimizer, spl)
     @set! f.varinfo = invlink!!(f.varinfo, spl, model)
-    vals = Turing.getparams(f)
+    vals = DynamicPPL.getparams(f)
     @set! f.varinfo = link!!(f.varinfo, spl, model)
 
     # Make one transition to get the parameter names.
