@@ -376,7 +376,7 @@ function propose!!(
     # Make a new transition.
     densitymodel = AMH.DensityModel(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(vi, model, DynamicPPL.SamplingContext(spl)))
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
