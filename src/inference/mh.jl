@@ -248,7 +248,7 @@ This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
 const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.SamplingContext{<:S}}
 
-function (f::MHLogDensityFunction)(x::NamedTuple)
+function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
     # TODO: Make this work with immutable `f.varinfo` too.
     sampler = DynamicPPL.getsampler(f)
     vi = f.varinfo
