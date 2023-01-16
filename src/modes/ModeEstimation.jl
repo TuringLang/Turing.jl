@@ -90,13 +90,14 @@ function OptimLogDensity(model::Model, context::OptimizationContext)
     return Turing.LogDensityFunction(init, model, context)
 end
 
+# NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
 """
-    (f::OptimLogDensity)(z)
+    LogDensityProblems.logdensity(f::OptimLogDensity, z)
 
 Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
 at the array `z`.
 """
-function (f::OptimLogDensity)(z::AbstractVector)
+function LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
     return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
@@ -133,51 +134,44 @@ end
 #################################################
 
 function transform!!(f::OptimLogDensity)
-    # TODO: Do we really need this?
-    spl = DynamicPPL.SampleFromPrior()
-
     ## Check link status of vi in OptimLogDensity
-    linked = DynamicPPL.islinked(f.varinfo, spl)
+    linked = DynamicPPL.istrans(f.varinfo)
 
     ## transform into constrained or unconstrained space depending on current state of vi
     @set! f.varinfo = if !linked
-        DynamicPPL.link!!(f.varinfo, spl, f.model)
+        DynamicPPL.link!!(f.varinfo, f.model)
     else
-        DynamicPPL.invlink!!(f.varinfo, spl, f.model)
+        DynamicPPL.invlink!!(f.varinfo, f.model)
     end
 
     return f
 end
 
 function transform!!(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL.Model, ::constrained_space{true})
-    spl = DynamicPPL.SampleFromPrior()
-
-    linked = DynamicPPL.islinked(vi, spl)
+    linked = DynamicPPL.istrans(vi)
     
     !linked && return identity(p)  # TODO: why do we do `identity` here?
-    vi = DynamicPPL.setindex!!(vi, p, spl)
-    vi = DynamicPPL.invlink!!(vi, spl, model)
+    vi = DynamicPPL.unflatten(vi, p, spl)
+    vi = DynamicPPL.invlink!!(vi, model)
     p .= vi[spl]
 
     # If linking mutated, we need to link once more.
-    linked && DynamicPPL.link!!(vi, spl, model)
+    linked && DynamicPPL.link!!(vi, model)
 
     return p
 end
 
 function transform!!(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL.Model, ::constrained_space{false})
-    spl = DynamicPPL.SampleFromPrior()
-
-    linked = DynamicPPL.islinked(vi, spl)
+    linked = DynamicPPL.istrans(vi)
     if linked
-        vi = DynamicPPL.invlink!!(vi, spl, model)
+        vi = DynamicPPL.invlink!!(vi, model)
     end
-    vi = DynamicPPL.setindex!!(vi, p, spl)
-    vi = DynamicPPL.link!!(vi, spl, model)
-    p .= vi[spl]
+    vi = DynamicPPL.unflatten(vi, p)
+    vi = DynamicPPL.link!!(vi, model)
+    p .= vi[:]
 
     # If linking mutated, we need to link once more.
-    !linked && DynamicPPL.invlink!!(vi, spl, model)
+    !linked && DynamicPPL.invlink!!(vi, model)
 
     return p
 end
@@ -202,7 +196,7 @@ end
 
 function (t::AbstractTransform)(p::AbstractArray)
     return transform(p, t.vi, t.model, t.space)
-end 
+end
 
 function (t::Init)()
     return t.vi[DynamicPPL.SampleFromPrior()]
@@ -213,15 +207,16 @@ function get_parameter_bounds(model::DynamicPPL.Model)
     spl = DynamicPPL.SampleFromPrior()
 
     ## Check link status of vi
-    linked = DynamicPPL.islinked(vi, spl) 
+    linked = DynamicPPL.istrans(vi)
     
     ## transform into unconstrained
     if !linked
-        vi = DynamicPPL.link!!(vi, spl, model)
+        vi = DynamicPPL.link!!(vi, model)
     end
-    
-    lb = transform(fill(-Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, model, constrained_space{true}())
-    ub = transform(fill(Inf,length(vi[DynamicPPL.SampleFromPrior()])), vi, model, constrained_space{true}())
+
+    d = length(vi[:])
+    lb = transform(fill(-Inf, d), vi, model, constrained_space{true}())
+    ub = transform(fill(Inf, d), vi, model, constrained_space{true}())
 
     return lb, ub
 end
