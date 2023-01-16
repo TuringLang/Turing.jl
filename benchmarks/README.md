@@ -10,8 +10,9 @@ can write a benchmark like this:
 ```julia
 using Turing, BenchmarkTools
 
-BenchmarkSuite["dummy"] = BenchmarkGroup(["tag1", "tag2"])
+BenchmarkSuite["example_benchmark"] = BenchmarkGroup(["tag1", "tag2"])
 
-BenchmarkSuite["dummy"]["benchmark_1"] = @benchmarkable a_time_consuming_computing()
+BenchmarkSuite["example_benchmark"]["benchmark_1"] = @benchmarkable a_time_consuming_computing()
 ```
+
 More details can be found in the documents of `BenchmarkTools.jl`.
