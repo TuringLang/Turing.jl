@@ -1,8 +1,6 @@
 using Turing
 using DelimitedFiles
 
-using BenchmarkHelper
-
 if !haskey(BenchmarkSuite, "nuts")
     BenchmarkSuite["nuts"] = BenchmarkGroup(["nuts"])
 end

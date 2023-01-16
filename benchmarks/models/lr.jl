@@ -1,8 +1,6 @@
 using Turing
 using LinearAlgebra
 
-using BenchmarkHelper
-
 include("lr_helper.jl")
 
 if !haskey(BenchmarkSuite, "nuts")
