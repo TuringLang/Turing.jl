@@ -90,17 +90,19 @@ function OptimLogDensity(model::Model, context::OptimizationContext)
     return Turing.LogDensityFunction(init, model, context)
 end
 
-# NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
 """
     LogDensityProblems.logdensity(f::OptimLogDensity, z)
 
 Evaluate the negative log joint (with `DefaultContext`) or log likelihood (with `LikelihoodContext`)
 at the array `z`.
 """
-function LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector)
+function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
     return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
+
+# NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
+LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector) = f(z)
 
 function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
@@ -121,7 +123,7 @@ function (f::OptimLogDensity)(F, G, z)
 
     # Only negative log joint requested but no gradient.
     if F !== nothing
-        return f(z)
+        return LogDensityProblems.logdensity(f, z)
     end
 
     return nothing
@@ -151,9 +153,9 @@ function transform!!(p::AbstractArray, vi::DynamicPPL.VarInfo, model::DynamicPPL
     linked = DynamicPPL.istrans(vi)
     
     !linked && return identity(p)  # TODO: why do we do `identity` here?
-    vi = DynamicPPL.unflatten(vi, p, spl)
+    vi = DynamicPPL.unflatten(vi, p)
     vi = DynamicPPL.invlink!!(vi, model)
-    p .= vi[spl]
+    p .= vi[:]
 
     # If linking mutated, we need to link once more.
     linked && DynamicPPL.link!!(vi, model)
@@ -204,7 +206,6 @@ end
 
 function get_parameter_bounds(model::DynamicPPL.Model)
     vi = DynamicPPL.VarInfo(model)
-    spl = DynamicPPL.SampleFromPrior()
 
     ## Check link status of vi
     linked = DynamicPPL.istrans(vi)
