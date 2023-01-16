@@ -65,12 +65,15 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContex
     return r, 0, vi
 end
 
+_loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
+_loglikelihood(dists::AbstractVector{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
+
 function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
     r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    return r, loglikelihood(right, r), vi
+    return r, _loglikelihood(right, r), vi
 end
 
 """
