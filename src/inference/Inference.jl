@@ -31,6 +31,7 @@ import BangBang
 import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
+import LogDensityProblemsAD
 import Random
 import MCMCChains
 import StatsBase: predict
@@ -448,7 +449,7 @@ function DynamicPPL.get_matching_type(
     vi,
     ::Type{TV},
 ) where {T, N, TV <: Array{T, N}}
-    return TArray{T, N}
+    return Array{T, N}
 end
 
 ##############

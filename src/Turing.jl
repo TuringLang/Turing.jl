@@ -8,6 +8,7 @@ using Libtask
 using Tracker: Tracker
 
 import AdvancedVI
+using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
 import Random
@@ -24,26 +25,6 @@ function setprogress!(progress::Bool)
     PROGRESS[] = progress
     AdvancedVI.turnprogress(progress)
     return progress
-end
-
-# Log density function
-struct LogDensityFunction{V,M,S,C}
-    varinfo::V
-    model::M
-    sampler::S
-    context::C
-end
-
-function (f::LogDensityFunction)(θ::AbstractVector)
-    vi_new = DynamicPPL.unflatten(f.varinfo, f.sampler, θ)
-    return getlogp(last(DynamicPPL.evaluate!!(f.model, vi_new, f.sampler, f.context)))
-end
-
-# LogDensityProblems interface
-LogDensityProblems.logdensity(f::LogDensityFunction, θ::AbstractVector) = f(θ)
-LogDensityProblems.dimension(f::LogDensityFunction) = length(f.varinfo[f.sampler])
-function LogDensityProblems.capabilities(::Type{<:LogDensityFunction})
-    return LogDensityProblems.LogDensityOrder{0}()
 end
 
 # Standard tag: Improves stacktraces
@@ -154,6 +135,7 @@ export  @model,                 # modelling
         generated_quantities,
         logprior,
         logjoint,
+        LogDensityFunction,
 
         constrained_space,            # optimisation interface
         MAP,

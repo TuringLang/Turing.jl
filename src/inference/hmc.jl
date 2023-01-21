@@ -158,7 +158,7 @@ function DynamicPPL.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ℓ = LogDensityProblems.ADgradient(
+    ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     )
     logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
@@ -186,7 +186,7 @@ function DynamicPPL.initialstep(
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
-        ϵ = AHMC.find_good_stepsize(hamiltonian, theta)
+        ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)
         @info "Found initial step size" ϵ
     else
         ϵ = spl.alg.ϵ
@@ -264,7 +264,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓ = LogDensityProblems.ADgradient(
+    ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     )
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
@@ -550,7 +550,7 @@ function HMCState(
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
-        ϵ = AHMC.find_good_stepsize(h, θ_init)
+        ϵ = AHMC.find_good_stepsize(rng, h, θ_init)
         @info "Found initial step size" ϵ
     else
         ϵ = spl.alg.ϵ
