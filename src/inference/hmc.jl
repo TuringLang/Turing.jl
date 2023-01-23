@@ -159,7 +159,14 @@ function DynamicPPL.initialstep(
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
     ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+        Turing.LogDensityFunction(
+            vi,
+            model,
+            # Use the leaf-context from the `model` in case the user has
+            # contextualized the model with something like `PriorContext`
+            # to sample from the prior.
+            DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
+        )
     )
     logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
     ∂logπ∂θ(x) = LogDensityProblems.logdensity_and_gradient(ℓ, x)
@@ -265,7 +272,11 @@ end
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
     ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+        Turing.LogDensityFunction(
+            vi,
+            model,
+            DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context))
+        )
     )
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
     ∂ℓπ∂θ = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ℓ)
@@ -538,7 +549,12 @@ function HMCState(
 
     # Get the initial log pdf and gradient functions.
     ∂logπ∂θ = gen_∂logπ∂θ(vi, spl, model)
-    logπ = Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    logπ = Turing.LogDensityFunction(
+        vi,
+        model,
+        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
+    )
+
 
     # Get the metric type.
     metricT = getmetricT(spl.alg)
