@@ -67,13 +67,7 @@ function Bijectors.bijector(
     end
 
     bs = map(tuple(dists...)) do d
-        b = Bijectors.bijector(d)
-
-        return if Bijectors.dimension(b) > 1
-            Vec(b, size(d))
-        else
-            b
-        end
+        return Vec(Bijectors.bijector(d), size(d))
     end
 
     if sym2ranges
