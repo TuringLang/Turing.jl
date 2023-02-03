@@ -207,4 +207,13 @@
         end
         @test sample(rng, mwe3(), HMC(0.2, 4), 1_000) isa Chains
     end
+
+    # issue #1923
+    @turing_testset "reproducibility" begin
+        alg = NUTS(1000, 0.8)
+        res1 = sample(StableRNG(123), gdemo_default, alg, 1000)
+        res2 = sample(StableRNG(123), gdemo_default, alg, 1000)
+        res3 = sample(StableRNG(123), gdemo_default, alg, 1000)
+        @test Array(res1) == Array(res2) == Array(res3)
+    end
 end

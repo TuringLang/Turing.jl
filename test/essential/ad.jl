@@ -31,13 +31,13 @@
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
         trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
-        @test trackerℓ isa LogDensityProblemsAD.TrackerGradientLogDensity
+        @test trackerℓ isa LogDensityProblemsAD.TrackerExt.TrackerGradientLogDensity
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
         zygoteℓ = LogDensityProblemsAD.ADgradient(ZygoteAD(), ℓ)
-        @test zygoteℓ isa LogDensityProblemsAD.ZygoteGradientLogDensity
+        @test zygoteℓ isa LogDensityProblemsAD.ZygoteExt.ZygoteGradientLogDensity
         @test zygoteℓ.ℓ === ℓ
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
         @test sort(∇E2) ≈ grad_FWAD atol=1e-9

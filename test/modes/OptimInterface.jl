@@ -1,4 +1,30 @@
+function find_map(model::DynamicPPL.TestUtils.DemoModels)
+    # Set up.
+    true_values = rand(NamedTuple, model)
+    d = length(true_values.s)
+    s_size, m_size = size(true_values.s), size(true_values.m)
+    s_isunivariate = true_values.s isa Real
+    m_isunivariate = true_values.m isa Real
 
+    # Cosntruct callable.
+    function f_wrapped(x)
+        s = s_isunivariate ? x[1] : reshape(x[1:d], s_size)
+        m = m_isunivariate ? x[2] : reshape(x[d + 1:end], m_size)
+        return -DynamicPPL.TestUtils.logjoint_true(model, s, m)
+    end
+
+    # Optimize.
+    lbs = vcat(fill(0, d), fill(-Inf, d))
+    ubs = fill(Inf, 2d)
+    result = optimize(f_wrapped, lbs, ubs, rand(2d), Fminbox(NelderMead()))
+    @assert Optim.converged(result) "optimization didn't converge"
+
+    # Extract the result.
+    x = Optim.minimizer(result)
+    s = s_isunivariate ? x[1] : reshape(x[1:d], s_size)
+    m = m_isunivariate ? x[2] : reshape(x[d + 1:end], m_size)
+    return -Optim.minimum(result), (s = s, m = m)
+end
 
 @testset "OptimInterface.jl" begin
     @testset "MLE" begin
@@ -95,5 +121,25 @@
 
         @test isapprox(mle1.values.array, mle2.values.array)
         @test isapprox(map1.values.array, map2.values.array)
+    end
+
+    # FIXME: Some models doesn't work for Tracker and ReverseDiff.
+    if Turing.Essential.ADBACKEND[] === :forwarddiff
+        @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+            maximum_true, maximizer_true = find_map(model)
+
+            @testset "$(optimizer)" for optimizer in [LBFGS(), NelderMead()]
+                result = optimize(model, MAP(), optimizer)
+                vals = result.values
+
+                for vn in DynamicPPL.TestUtils.varnames(model)
+                    for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(maximizer_true, vn))
+                        sym = DynamicPPL.AbstractPPL.getsym(vn_leaf)
+                        true_value_vn = get(maximizer_true, vn_leaf)
+                        @test vals[Symbol(vn_leaf)] ≈ true_value_vn rtol = 0.05
+                    end
+                end
+            end
+        end
     end
 end

@@ -1,5 +1,6 @@
 using Setfield
 using DynamicPPL: DefaultContext, LikelihoodContext
+using DynamicPPL: DynamicPPL
 import .Optim
 import .Optim: optimize
 import ..ForwardDiff
@@ -64,11 +65,9 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    spl = DynamicPPL.SampleFromPrior()
-
-    linked = DynamicPPL.islinked(m.f.varinfo, spl)
+    linked = DynamicPPL.istrans(m.f.varinfo)
     if linked
-        @set! m.f.varinfo = invlink!!(m.f.varinfo, spl, m.f.model)
+        @set! m.f.varinfo = invlink!!(m.f.varinfo, m.f.model)
     end
 
     # Calculate the Hessian.
@@ -78,7 +77,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Link it back if we invlinked it.
     if linked
-        @set! m.f.varinfo = link!!(m.f.varinfo, spl, m.f.model)
+        @set! m.f.varinfo = link!!(m.f.varinfo, m.f.model)
     end
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
@@ -197,7 +196,7 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.varinfo[f.sampler], optimizer, args...; kwargs...)
+    return _optimize(model, f, DynamicPPL.getparams(f), optimizer, args...; kwargs...)
 end
 
 function _optimize(
@@ -207,37 +206,34 @@ function _optimize(
     args...; 
     kwargs...
 )
-    return _optimize(model, f, f.varinfo[f.sampler], Optim.LBFGS(), args...; kwargs...)
+    return _optimize(model, f, DynamicPPL.getparams(f), Optim.LBFGS(), args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.varinfo[f.sampler],
+    init_vals::AbstractArray = DynamicPPL.getparams(f),
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
 )
-    return _optimize(model, f,init_vals, Optim.LBFGS(), options, args...; kwargs...)
+    return _optimize(model, f, init_vals, Optim.LBFGS(), options, args...; kwargs...)
 end
 
 function _optimize(
     model::Model, 
     f::OptimLogDensity, 
-    init_vals::AbstractArray = f.varinfo[f.sampler], 
+    init_vals::AbstractArray = DynamicPPL.getparams(f), 
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
     options::Optim.Options = Optim.Options(),
     args...; 
     kwargs...
 )
-    # Do some initialization.
-    spl = f.sampler
-
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, init_vals, spl)
-    @set! f.varinfo = DynamicPPL.link!!(f.varinfo, spl, model)
-    init_vals = f.varinfo[spl]
+    @set! f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
+    @set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    init_vals = DynamicPPL.getparams(f)
 
     # Optimize!
     M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
@@ -249,10 +245,10 @@ function _optimize(
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
     # correct dimensionality.
-    @set! f.varinfo = DynamicPPL.setindex!!(f.varinfo, M.minimizer, spl)
-    @set! f.varinfo = invlink!!(f.varinfo, spl, model)
-    vals = f.varinfo[spl]
-    @set! f.varinfo = link!!(f.varinfo, spl, model)
+    @set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
+    @set! f.varinfo = invlink!!(f.varinfo, model)
+    vals = DynamicPPL.getparams(f)
+    @set! f.varinfo = link!!(f.varinfo, model)
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(
