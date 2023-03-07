@@ -6,12 +6,7 @@ setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(backend::Val)
     _setadbackend(backend)
     AdvancedVI.setadbackend(backend)
-    Bijectors.setadbackend(backend)
 end
-
-# TODO: Add support to AdvancedVI and Bijectors
-# (or better: use common interface package)
-setadbackend(backend::Val{:enzyme}) = _setadbackend(backend)
 
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
