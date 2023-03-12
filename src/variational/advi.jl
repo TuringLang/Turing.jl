@@ -91,7 +91,7 @@ end
 
 Creates a mean-field approximation with multivariate normal as underlying distribution.
 """
-meanfield(model::DynamicPPL.Model) = meanfield(Random.GLOBAL_RNG, model)
+meanfield(model::DynamicPPL.Model) = meanfield(Random.default_rng(), model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     # Setup.
     varinfo = DynamicPPL.VarInfo(model)
