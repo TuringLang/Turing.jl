@@ -454,7 +454,7 @@ When referencing Julia in documentation note that "Julia" refers to the programm
 
 ```julia
 
-# A commment
+# A comment
 code
 
 # Another comment
