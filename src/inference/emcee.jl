@@ -124,7 +124,8 @@ function AbstractMCMC.bundle_samples(
     # Extract names & construct param array.
     nms = [nms; extra_params]
     parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
-    parray = cat(parray..., dims=3)
+    # NOTE: Use `reduce` instead of splatting to avoid stack overflow.
+    parray = reduce((x, y) -> cat(x, y; dims=3), parray)
 
     # Get the average or final log evidence, if it exists.
     le = getlogevidence(samples, state, spl)
