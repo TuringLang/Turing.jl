@@ -21,7 +21,7 @@
         # Test gid of each samplers
         g = Turing.Sampler(s3, gdemo_default)
 
-        _, state = AbstractMCMC.step(Random.GLOBAL_RNG, gdemo_default, g)
+        _, state = AbstractMCMC.step(Random.default_rng(), gdemo_default, g)
         @test state.samplers[1].selector != g.selector
         @test state.samplers[2].selector != g.selector
         @test state.samplers[1].selector != state.samplers[2].selector

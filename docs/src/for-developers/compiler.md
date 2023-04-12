@@ -30,7 +30,7 @@ A `model::Model` is a callable struct that one can sample from by calling
 ```julia
 (model::Model)([rng, varinfo, sampler, context])
 ```
-where `rng` is a random number generator (default: `Random.GLOBAL_RNG`), `varinfo` is a data structure that stores information
+where `rng` is a random number generator (default: `Random.default_rng()`), `varinfo` is a data structure that stores information
 about the random variables (default: `DynamicPPL.VarInfo()`), `sampler` is a sampling algorithm (default: `DynamicPPL.SampleFromPrior()`),
 and `context` is a sampling context that can, e.g., modify how the log probability is accumulated (default: `DynamicPPL.DefaultContext()`).
 

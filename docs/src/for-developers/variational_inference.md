@@ -242,7 +242,7 @@ This means that if we have a differentiable bijection ``f: \mathrm{supp} \left( 
 \mathbb{P}\_p(x \in A) = \int\_{f^{-1}(A)} p \left(f^{-1}(y) \right) \ \left| \det \mathcal{J}\_{f^{-1}}(y) \right| \mathrm{d}y,
 ```
 
-where ``\mathcal{J}_{f^{-1}}(x)`` denotes the jacobian of ``f^{-1}`` evaluted at ``x``. Observe that this defines a probability distribution
+where ``\mathcal{J}_{f^{-1}}(x)`` denotes the jacobian of ``f^{-1}`` evaluated at ``x``. Observe that this defines a probability distribution
 
 ```math
 \mathbb{P}\_{\tilde{p}}\left(y \in f^{-1}(A) \right) = \int\_{f^{-1}(A)} \tilde{p}(y) \mathrm{d}y,
