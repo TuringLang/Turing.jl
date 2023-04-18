@@ -116,7 +116,7 @@ model = tmodel(1.0)
     model,
     Turing.VarInfo(model),
     Turing.SamplingContext(
-        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+        Random.default_rng(), Turing.SampleFromPrior(), Turing.DefaultContext(),
     ),
     model.args...,
 )
