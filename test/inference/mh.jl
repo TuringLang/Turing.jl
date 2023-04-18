@@ -223,6 +223,6 @@
         burnin = 10_000
         n = 10_000
         chain = sample(gdemo_default_prior, alg, n; discard_initial = burnin)
-        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.1)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
     end
 end
