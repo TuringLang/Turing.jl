@@ -216,4 +216,13 @@
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test !DynamicPPL.islinked(vi, spl)
     end
+
+    @turing_testset "prior" begin
+        alg = NUTS()
+        gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
+        burnin = 10_000
+        n = 10_000
+        chain = sample(gdemo_default_prior, alg, n; discard_initial = burnin)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.1)
+    end
 end
