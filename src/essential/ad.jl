@@ -98,13 +98,13 @@ function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensi
         ForwardDiff.Tag(f, eltype(θ))
     end
     chunk_size = getchunksize(ad)
-    config = if chunk_size == 0
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
+    chunk = if chunk_size == 0
+        ForwardDiff.Chunk(θ)
     else
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
+        ForwardDiff.Chunk(length(θ), chunk_size)
     end
 
-    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
+    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
 function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)

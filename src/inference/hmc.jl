@@ -299,7 +299,7 @@ Arguments:
 - `n_adapts::Int` : Numbers of samples to use for adaptation.
 - `δ::Float64` : Target acceptance rate. 65% is often recommended.
 - `λ::Float64` : Target leapfrog length.
-- `ϵ::Float64=0.0` : Inital step size; 0 means automatically search by Turing.
+- `ϵ::Float64=0.0` : Initial step size; 0 means automatically search by Turing.
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
@@ -367,7 +367,7 @@ Arguments:
 - `δ::Float64` : Target acceptance rate for dual averaging.
 - `max_depth::Int` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
-- `init_ϵ::Float64` : Inital step size; 0 means automatically searching using a heuristic procedure.
+- `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
 
 """
 struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}

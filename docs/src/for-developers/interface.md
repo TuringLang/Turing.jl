@@ -61,7 +61,7 @@ The full code for this implementation is housed in
 
 ### Imports
 
-Let's begin by importing the relevant libraries. We'll import `AbstracMCMC`, which contains
+Let's begin by importing the relevant libraries. We'll import `AbstractMCMC`, which contains
 the interface framework we'll fill out. We also need `Distributions` and `Random`.
 
 ```julia

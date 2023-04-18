@@ -20,7 +20,7 @@
 
         check_numerical(chain, [:p], [10/14], atol=0.1)
     end
-    @numerical_testset "contrained simplex" begin
+    @numerical_testset "constrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model function constrained_simplex_test(obs12)
