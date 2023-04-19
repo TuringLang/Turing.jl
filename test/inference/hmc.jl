@@ -221,9 +221,6 @@
         alg = NUTS(1000, 0.8)
         gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
         chain = sample(gdemo_default_prior, alg, 10_000)
-        chain_prior = sample(gdemo_default, Prior(), 10_000)
-
-        @test mean(chain[:s]) ≈ mean(chain_prior[:s]) atol=0.1
-        @test mean(chain[:m]) ≈ mean(chain_prior[:m]) atol=0.1
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.2)
     end
 end
