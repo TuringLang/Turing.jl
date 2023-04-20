@@ -375,7 +375,14 @@ function propose!!(
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(vi, model, DynamicPPL.SamplingContext(rng, spl)))
+        Base.Fix1(
+            LogDensityProblems.logdensity,
+            Turing.LogDensityFunction(
+                vi,
+                model,
+                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
+            )
+        )
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
@@ -403,7 +410,14 @@ function propose!!(
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(vi, model, DynamicPPL.SamplingContext(rng, spl)))
+        Base.Fix1(
+            LogDensityProblems.logdensity,
+            Turing.LogDensityFunction(
+                vi,
+                model,
+                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
+            )
+        )
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
