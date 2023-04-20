@@ -1,5 +1,3 @@
-
-
 @testset "emcee.jl" begin
     @testset "gdemo" begin
         Random.seed!(9876)
@@ -35,7 +33,7 @@
 
         # Initial parameters
         chain = sample(gdemo_default, spl, 1; init_params=fill([2.0, 1.0], nwalkers))
-        @test chain[:s] == fill(2.0, nwalkers, 1)
-        @test chain[:m] == fill(1.0, nwalkers, 1)
+        @test chain[:s] == fill(2.0, 1, nwalkers)
+        @test chain[:m] == fill(1.0, 1, nwalkers)
     end
 end
