@@ -6,6 +6,7 @@ setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(backend::Val)
     _setadbackend(backend)
     AdvancedVI.setadbackend(backend)
+    Bijectors.setadbackend(backend)
 end
 
 function _setadbackend(::Val{:forwarddiff})
