@@ -133,7 +133,7 @@ function AbstractMCMC.sample(
     N::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, N; kwargs...)
+    return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -190,7 +190,7 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     kwargs...
 )
-    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, ensemble, N, n_chains;
+    return AbstractMCMC.sample(Random.default_rng(), model, alg, ensemble, N, n_chains;
                                kwargs...)
 end
 
@@ -397,7 +397,7 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
 end
 
 function resume(chain::MCMCChains.Chains, args...; kwargs...)
-    return resume(Random.GLOBAL_RNG, chain, args...; kwargs...)
+    return resume(Random.default_rng(), chain, args...; kwargs...)
 end
 
 function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
@@ -530,7 +530,7 @@ true
 ```
 """
 function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
-    return predict(Random.GLOBAL_RNG, model, chain; kwargs...)
+    return predict(Random.default_rng(), model, chain; kwargs...)
 end
 function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
     # Don't need all the diagnostics
@@ -617,7 +617,7 @@ function transitions_from_chain(
     chain::MCMCChains.Chains;
     kwargs...
 )
-    return transitions_from_chain(Random.GLOBAL_RNG, model, chain; kwargs...)
+    return transitions_from_chain(Random.default_rng(), model, chain; kwargs...)
 end
 
 function transitions_from_chain(

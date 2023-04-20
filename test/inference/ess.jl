@@ -57,7 +57,7 @@
 
         # Different "equivalent" models.
         # NOTE: Because `ESS` only supports "single" variables with
-        # Guassian priors, we restrict ourselves to this subspace by conditioning
+        # Gaussian priors, we restrict ourselves to this subspace by conditioning
         # on the non-Gaussian variables in `DEMO_MODELS`.
         models_conditioned = map(DynamicPPL.TestUtils.DEMO_MODELS) do model
             # Condition on the non-Gaussian random variables.

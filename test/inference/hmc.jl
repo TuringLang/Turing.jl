@@ -20,7 +20,7 @@
 
         check_numerical(chain, [:p], [10/14], atol=0.1)
     end
-    @numerical_testset "contrained simplex" begin
+    @numerical_testset "constrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model function constrained_simplex_test(obs12)
@@ -215,5 +215,12 @@
         res2 = sample(StableRNG(123), gdemo_default, alg, 1000)
         res3 = sample(StableRNG(123), gdemo_default, alg, 1000)
         @test Array(res1) == Array(res2) == Array(res3)
+    end
+
+    @turing_testset "prior" begin
+        alg = NUTS(1000, 0.8)
+        gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
+        chain = sample(gdemo_default_prior, alg, 10_000)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.2)
     end
 end
