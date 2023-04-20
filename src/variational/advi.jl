@@ -1,5 +1,5 @@
 # TODO(torfjelde): Find a better solution.
-struct Vec{N, B<:Bijectors.Bijector{N}} <: Bijectors.Bijector{1}
+struct Vec{N,B} <: Bijectors.Bijector
     b::B
     size::NTuple{N, Int}
 end
