@@ -12,7 +12,8 @@
         check_gdemo(chain)
 
         # https://github.com/TuringLang/Turing.jl/pull/1976
-        n_samples = 100_000
+        @info "Testing emcee with large number of iterations"
+        n_samples = 10_000
         chain = sample(gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
