@@ -1,13 +1,14 @@
 module Variational
 
-import AdvancedVI
-import Bijectors
-import DistributionsAD
-import DynamicPPL
-import StatsBase
-import StatsFuns
+using AdvancedVI
+using Bijectors
+using DistributionsAD
+using DynamicPPL
+using StatsBase
+using StatsFuns
+using Distributions
 
-import Random
+using Random
 
 # Reexports
 using AdvancedVI: vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
