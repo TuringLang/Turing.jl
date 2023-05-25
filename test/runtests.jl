@@ -66,7 +66,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
     end
 
     Turing.setrdcache(false)
-    for adbackend in (:forwarddiff, :tracker, :reversediff, :enzyme)
+    for adbackend in (:forwarddiff, :reversediff, :enzyme)
         @timeit TIMEROUTPUT "inference: $adbackend" begin
             Turing.setadbackend(adbackend)
             @info "Testing $(adbackend)"

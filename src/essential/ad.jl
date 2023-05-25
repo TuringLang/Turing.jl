@@ -15,6 +15,7 @@ function _setadbackend(::Val{:enzyme})
     ADBACKEND[] = :enzyme
 end
 function _setadbackend(::Val{:tracker})
+    @warn "Usage of Tracker.jl with Turing.jl is no longer being actively tested and maintained; please use at your own risk. See Zygote.jl or ReverseDiff.jl for fully supported reverse-mode backends."
     ADBACKEND[] = :tracker
 end
 function _setadbackend(::Val{:zygote})

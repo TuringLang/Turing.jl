@@ -1,17 +1,21 @@
 # TODO(torfjelde): Find a better solution.
-struct Vec{N, B<:Bijectors.Transform} <: Bijectors.Transform
+struct Vec{N,B} <: Bijectors.Bijector
     b::B
     size::NTuple{N, Int}
 end
 
 Bijectors.inverse(f::Vec) = Vec(Bijectors.inverse(f.b), f.size)
 
-function (f::Vec)(x::AbstractVector)
+function Bijectors.with_logabsdet_jacobian(f::Vec, x)
+    return Bijectors.transform(f, x), Bijectors.logabsdetjac(f, x)
+end
+
+function Bijectors.transform(f::Vec, x::AbstractVector)
     # Reshape into shape compatible with wrapped bijector and then `vec` again.
     return vec(f.b(reshape(x, f.size)))
 end
 
-function (f::Vec)(x::AbstractMatrix)
+function Bijectors.transform(f::Vec, x::AbstractMatrix)
     # At the moment we do batching for higher-than-1-dim spaces by simply using
     # lists of inputs rather than `AbstractArray` with `N + 1` dimension.
     cols = Iterators.Stateful(eachcol(x))
@@ -68,11 +72,10 @@ function Bijectors.bijector(
 
     bs = map(tuple(dists...)) do d
         b = Bijectors.bijector(d)
-
-        return if Bijectors.dimension(b) > 1
-            Vec(b, size(d))
-        else
+        if d isa Distributions.UnivariateDistribution
             b
+        else
+            Vec(b, size(d))
         end
     end
 
