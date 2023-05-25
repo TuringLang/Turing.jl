@@ -11,6 +11,7 @@ using Random: Random
 import AdvancedVI
 import Bijectors
 
+
 # Reexports
 using AdvancedVI: vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
 export
