@@ -6,13 +6,13 @@ setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(backend::Val)
     _setadbackend(backend)
     AdvancedVI.setadbackend(backend)
-    Bijectors.setadbackend(backend)
 end
 
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
 end
 function _setadbackend(::Val{:tracker})
+    @warn "Usage of Tracker.jl with Turing.jl is no longer being actively tested and maintained; please use at your own risk. See Zygote.jl or ReverseDiff.jl for fully supported reverse-mode backends."
     ADBACKEND[] = :tracker
 end
 function _setadbackend(::Val{:zygote})

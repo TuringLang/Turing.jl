@@ -216,4 +216,11 @@
         res3 = sample(StableRNG(123), gdemo_default, alg, 1000)
         @test Array(res1) == Array(res2) == Array(res3)
     end
+
+    @turing_testset "prior" begin
+        alg = NUTS(1000, 0.8)
+        gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
+        chain = sample(gdemo_default_prior, alg, 10_000)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
+    end
 end
