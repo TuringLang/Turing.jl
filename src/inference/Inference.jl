@@ -237,6 +237,65 @@ function AbstractMCMC.sample(
                                chain_type=chain_type, progress=progress, kwargs...)
 end
 
+################
+# No glue code #
+################
+
+"""
+    to_turing_transition(transition, state)
+
+Converts a `transition` to a transition compatible with Turing.
+
+# Arguments
+- `transition`: A transition returned by `AbstractMCMC.step`.
+- `state`: A `TuringState` object.
+"""
+function to_turing_transition(transition, state)
+    # TODO: Implement.
+    return transition
+end
+
+"""
+    TuringState
+
+Simple wrapper around a `varinfo` and the `sampler_state`.
+"""
+struct TuringState{V,S}
+    varinfo::V
+    sampler_state::S
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::AbstractMCMC.AbstractSampler;
+    kwargs...)
+    
+    # TODO: Construct initial sample.
+    ctxt = model.context
+    vi = DynamicPPL.VarInfo(model, ctxt)
+    logdensity = DynamicPPL.LogDensityFunction(vi, model, ctxt)
+    transition, sampler_state = AbstractMCMC.step(rng, logdensity, spl; kwargs...)
+
+    return to_turing_transition(transition), TuringState(varinfo, sampler_state)
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::AbstractMCMC.AbstractSampler,
+    state::TuringState;
+    kwargs...)
+
+    f = DynamicPPL.LogDensityFunction(model, state.varinfo)
+    transition, sampler_state =
+        AbstractMCMC.step(rng, f, spl, state.sampler_state; kwargs...)
+
+    # TODO: Make transition into something compatible with Turing.jl's way of handling samples.
+    # Can we make it return the same transition as the CURRENT `step` implemented in Turing?
+    return to_turing_transition(transition), TuringState(state.varinfo, sampler_state)
+end
+
 ##########################
 # Chain making utilities #
 ##########################
