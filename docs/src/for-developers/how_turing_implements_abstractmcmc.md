@@ -4,7 +4,7 @@ title: How Turing implements AbstractMCMC
 
 # How Turing implements AbstractMCMC
 
-Prerequisite: [Interface guide](https://turing.ml/dev/docs/for-developers/interface).
+Prerequisite: [Interface guide](https://turinglang.org/dev/docs/for-developers/interface).
 
 ## Introduction
 
@@ -25,7 +25,7 @@ n_samples = 1000
 chn = sample(mod, alg, n_samples)
 ```
 
-The function `sample` is part of the AbstractMCMC interface. As explained in the [interface guide](https://turing.ml/dev/docs/for-developers/interface), building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`]().
+The function `sample` is part of the AbstractMCMC interface. As explained in the [interface guide](https://turinglang.org/dev/docs/for-developers/interface), building a a sampling method that can be used by `sample` consists in overloading the structs and functions in `AbstractMCMC`. The interface guide also gives a standalone example of their implementation, [`AdvancedMH.jl`]().
 
 Turing sampling methods (most of which are written [here](https://github.com/TuringLang/Turing.jl/tree/master/src/inference)) also implement `AbstractMCMC`. Turing defines a particular architecture for `AbstractMCMC` implementations, that enables working with models defined by the `@model` macro, and uses DynamicPPL as a backend. The goal of this page is to describe this architecture, and how you would go about implementing your own sampling method in Turing, using Importance Sampling as an example. I don't go into all the details: for instance, I don't address selectors or parallelism.
 
@@ -226,7 +226,7 @@ p\left(\theta_{\text{prop}}, x_{\text{obs}}\right)
 
 with ``\theta_{\text{prop}}`` a sample from the proposal and ``x_{\text{obs}}`` the observed data.
 
-This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turing.ml/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement.
+This begs the question: how can these functions access model information during sampling? Recall that the model is stored as an instance `m` of `Model`. One of the attributes of `m` is the model evaluation function `m.f`, which is built by compiling the `@model` macro. Executing `f` runs the tilde statements of the model in order, and adds model information to the sampler (the instance of `Sampler` that stores information about the ongoing sampling process) at each step (see [here](https://turinglang.org/dev/docs/for-developers/compiler) for more information about how the `@model` macro is compiled). The DynamicPPL functions `assume` and `observe` determine what kind of information to add to the sampler for every tilde statement.
 
 Consider an instance `m` of `Model` and a sampler `spl`, with associated `VarInfo` `vi = spl.state.vi`. At some point during the sampling process, an AbstractMCMC function such as `step!` calls  `m(vi, ...)`, which calls the model evaluation function `m.f(vi, ...)`.
 
