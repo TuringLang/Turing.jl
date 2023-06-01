@@ -1,1 +1,1 @@
-Turing's documentation in this directory is in markdown format. On how to build the documentation, please refer to the [README](https://github.com/TuringLang/turing.ml) file in [turing.ml](https://github.com/TuringLang/turing.ml). 
+Turing's documentation in this directory is in markdown format. On how to build the documentation, please refer to the [README](https://github.com/TuringLang/turinglang.github.io) file in [turinglang.github.io](https://github.com/TuringLang/turinglang.github.io).
