@@ -233,7 +233,7 @@
             end
         end
 
-        @test_warn "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword" begin
+        @test_logs (:warn, "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword") begin
             sample(demo_warn_init_params(), NUTS(), 10)
         end
     end
