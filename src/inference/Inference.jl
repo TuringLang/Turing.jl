@@ -48,13 +48,13 @@ export  InferenceAlgorithm,
         Emcee,
         Gibbs,      # classic sampling
         GibbsConditional,
-        HMC,
+        #HMC,
         SGLD,
         PolynomialStepsize,
         SGHMC,
-        HMCDA,
-        NUTS,       # Hamiltonian-like sampling
-        DynamicNUTS,
+        #HMCDA,
+        #NUTS,       # Hamiltonian-like sampling
+        #DynamicNUTS,
         IS,
         SMC,
         CSMC,
@@ -74,11 +74,15 @@ export  InferenceAlgorithm,
 abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
 abstract type ParticleInference <: InferenceAlgorithm end
+
+# Move to AHMC
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
+#= 
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
 getADbackend(::Hamiltonian{AD}) where AD = AD()
+=#
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
@@ -126,7 +130,7 @@ metadata(vi::AbstractVarInfo) = (lp = getlogp(vi),)
 #########################################
 # Default definitions for the interface #
 #########################################
-
+#=
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
@@ -236,64 +240,158 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
-
+=#
 ################
 # No glue code #
 ################
 
-"""
-    to_turing_transition(transition, state)
-
-Converts a `transition` to a transition compatible with Turing.
-
-# Arguments
-- `transition`: A transition returned by `AbstractMCMC.step`.
-- `state`: A `TuringState` object.
-"""
-function to_turing_transition(transition, state)
-    # TODO: Implement.
-    return transition
+# Single chain
+function AbstractMCMC.sample(
+    model::DynamicPPL.Model, 
+    sampler::AbstractMCMC.AbstractSampler,
+    N::Integer;
+    progress = PROGRESS[],
+    verbose = false,
+    callback = nothing,
+    kwargs...,
+)
+    return AbstractMCMC.sample(
+        Random.GLOBAL_RNG,
+        model,
+        sampler,
+        N;
+        progress = progress,
+        verbose = verbose,
+        callback = callback,
+        kwargs...,
+    )
 end
 
-"""
-    TuringState
-
-Simple wrapper around a `varinfo` and the `sampler_state`.
-"""
-struct TuringState{V,S}
-    varinfo::V
-    sampler_state::S
-end
-
-function AbstractMCMC.step(
+function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::AbstractMCMC.AbstractSampler;
-    kwargs...)
-    
-    # TODO: Construct initial sample.
+    sampler::AbstractMCMC.AbstractSampler,
+    N::Integer;
+    progress = false,
+    verbose = PROGRESS[],
+    callback = nothing,
+    resume_from=nothing,
+    kwargs...,
+)   
+    #=
+    # do we need this?
+    if callback === nothing
+        callback = HMCProgressCallback(N, progress = progress, verbose = verbose)
+        progress = false # don't use AMCMC's progress-funtionality
+    end
+    =#
+
+    # unpack model
+    # TODO: is there a more efficient way to do this?
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
-    logdensity = DynamicPPL.LogDensityFunction(vi, model, ctxt)
-    transition, sampler_state = AbstractMCMC.step(rng, logdensity, spl; kwargs...)
+    dists = _get_dists(vi)
+    dist_lengths = [length(dist) for dist in dists]
+    vsyms = _name_variables(vi, dist_lengths)
 
-    return to_turing_transition(transition), TuringState(varinfo, sampler_state)
+    # make model from Turing output
+    ℓ = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(vi, model, ctxt))
+    d = LogDensityProblems.dimension(ℓ)
+    model = AbstractMCMC.LogDensityModel(ℓ)
+
+    if resume_from === nothing
+        return AbstractMCMC.mcmcsample(
+            rng,
+            model,
+            sampler,
+            N;
+            param_names = vsyms,
+            progress = progress,
+            verbose = verbose,
+            callback = callback,
+            vi = vi,
+            d = d,
+            kwargs...)
+    else
+        return resume(resume_from,
+            N;
+            param_names = vsyms,
+            progress = progress,
+            verbose = verbose,
+            callback = callback,
+            vi = vi,
+            d = d,
+            kwargs...)
+    end
 end
 
-function AbstractMCMC.step(
+# Parallel sampling
+function AbstractMCMC.sample(
+    model::DynamicPPL.Model, 
+    sampler::AbstractMCMC.AbstractSampler,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
+    N::Integer;
+    progress = true,
+    verbose = PROGRESS[],
+    callback = nothing,
+    kwargs...,
+)
+    return AbstractMCMC.sample(
+        Random.GLOBAL_RNG,
+        model,
+        sampler,
+        ensemble,
+        N;
+        progress = progress,
+        verbose = verbose,
+        callback = callback,
+        kwargs...,
+    )
+end
+
+function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::AbstractMCMC.AbstractSampler,
-    state::TuringState;
-    kwargs...)
+    sampler::AbstractMCMC.AbstractSampler,
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
+    N::Integer;
+    progress = true,
+    verbose = false,
+    callback = nothing,
+    resume_from=nothing,
+    kwargs...,
+)   
+    if callback === nothing
+        callback = HMCProgressCallback(N, progress = progress, verbose = verbose)
+        progress = false # don't use AMCMC's progress-funtionality
+    end
 
-    f = DynamicPPL.LogDensityFunction(model, state.varinfo)
-    transition, sampler_state =
-        AbstractMCMC.step(rng, f, spl, state.sampler_state; kwargs...)
+    # unpack model
+    # TODO: is there a more efficient way to do this?
+    ctxt = model.context
+    vi = DynamicPPL.VarInfo(model, ctxt)
+    dists = _get_dists(vi)
+    dist_lengths = [length(dist) for dist in dists]
+    vsyms = _name_variables(vi, dist_lengths)
 
-    # TODO: Make transition into something compatible with Turing.jl's way of handling samples.
-    # Can we make it return the same transition as the CURRENT `step` implemented in Turing?
-    return to_turing_transition(transition), TuringState(state.varinfo, sampler_state)
+    # make model from Turing output
+    ℓ = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(vi, model, ctxt))
+    d = LogDensityProblems.dimension(ℓ)
+    model = AbstractMCMC.LogDensityModel(ℓ)
+
+    return AbstractMCMC.mcmcsample(
+        rng,
+        model,
+        sampler,
+        ensemble,
+        N;
+        param_names = vsyms,
+        progress = progress,
+        verbose = verbose,
+        callback = callback,
+        vi = vi,
+        d = d,
+        kwargs...)
 end
 
 ##########################
@@ -483,26 +581,26 @@ DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
 #######################################
 
 include("ess.jl")
-include("hmc.jl")
+#include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs_conditional.jl")
-include("gibbs.jl")
-include("../contrib/inference/sghmc.jl")
+#include("gibbs.jl")
+#include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
 
 ################
 # Typing tools #
 ################
-
+#=
 for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
     @eval DynamicPPL.getspace(::$alg{<:Any, space}) where {space} = space
 end
-
+=#
 function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG, SMC}},
     vi,
@@ -514,6 +612,26 @@ end
 ##############
 # Utilities  #
 ##############
+
+function _get_dists(vi::VarInfo)
+    mds = values(vi.metadata)
+    return [md.dists[1] for md in mds]
+end
+
+function _name_variables(vi::VarInfo, dist_lengths::AbstractVector)
+    vsyms = keys(vi)
+    names = []
+    for (vsym, dist_length) in zip(vsyms, dist_lengths)
+        if dist_length==1
+            name = [vsym]
+            append!(names, name)
+        else
+            name = [DynamicPPL.VarName(Symbol(vsym, i,)) for i in 1:dist_length]
+            append!(names, name)
+         end
+    end
+    return names
+end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
