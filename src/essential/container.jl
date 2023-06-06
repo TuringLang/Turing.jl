@@ -1,3 +1,9 @@
+struct ArgsAndKwargsF{F}
+    f::F
+end
+
+(f::ArgsAndKwargsF)(args, kwargs) = f.f(args...; kwargs...)
+
 struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple}
     model::M
     sampler::S
@@ -9,35 +15,17 @@ function TracedModel(
     model::Model,
     sampler::AbstractSampler,
     varinfo::AbstractVarInfo,
-    rng::Random.AbstractRNG
-) 
+    rng::Random.AbstractRNG,
+)
     context = SamplingContext(rng, sampler, DefaultContext())
-    evaluator = _get_evaluator(model, varinfo, context)
-    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
+        model,
+        sampler,
+        varinfo,
+        (ArgsAndKwargsF(model.f), args, kwargs),
+    )
 end
-
-# TODO: maybe move to DynamicPPL
-@generated function _get_evaluator(
-    model::Model{_F,argnames}, varinfo, context
-) where {_F,argnames}
-    unwrap_args = [
-        :($DynamicPPL.matchingvalue(context_new, varinfo, model.args.$var)) for var in argnames
-    ]
-    # We want to give `context` precedence over `model.context` while also
-    # preserving the leaf context of `context`. We can do this by
-    # 1. Set the leaf context of `model.context` to `leafcontext(context)`.
-    # 2. Set leaf context of `context` to the context resulting from (1).
-    # The result is:
-    # `context` -> `childcontext(context)` -> ... -> `model.context`
-    #  -> `childcontext(model.context)` -> ... -> `leafcontext(context)`
-    return quote
-        context_new = DynamicPPL.setleafcontext(
-            context, DynamicPPL.setleafcontext(model.context, DynamicPPL.leafcontext(context))
-        )
-        (model.f, model, DynamicPPL.resetlogp!!(varinfo), context_new, $(unwrap_args...))
-    end
-end
-
 
 function Base.copy(model::AdvancedPS.GenericModel{<:TracedModel})
     newtask = copy(model.ctask)
