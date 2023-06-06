@@ -23,7 +23,7 @@ In Bayesian inference one usually specifies a model as follows: given data ``\\{
 where ``\overset{\text{i.i.d.}}{\sim}`` denotes that the samples are identically independently distributed. Our goal in Bayesian inference is then to find the _posterior_
 
 ```math
-p(z \mid \\{ x\_i \\}\_{i = 1}^n) = \prod\_{i=1}^{n} p(z \mid x\_i).
+p(z \mid \\{ x\_i \\}\_{i = 1}^n) \propto p(z) \prod\_{i=1}^{n} p(x\_i \mid z).
 ```
 
 In general one cannot obtain a closed form expression for ``p(z \mid \\{ x\_i \\}\_{i = 1}^n)``, but one might still be able to _sample_ from ``p(z \mid \\{ x\_i \\}\_{i = 1}^n)`` with guarantees of converging to the target posterior ``p(z \mid \\{ x\_i \\}\_{i = 1}^n)`` as the number of samples go to ``\infty``, e.g. MCMC.
