@@ -62,8 +62,6 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
 end
 
 function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
-    args = trace.model.ctask.args
-    _, _, container, = args
     # Extract the `args`.
     args, _ = trace.model.ctask.args
     # From `args`, extract the RNG-container, i.e. `SamplingContext`.
