@@ -48,13 +48,13 @@ export  InferenceAlgorithm,
         Emcee,
         Gibbs,      # classic sampling
         GibbsConditional,
-        #HMC,
+        HMC,
         SGLD,
         PolynomialStepsize,
         SGHMC,
-        #HMCDA,
-        #NUTS,       # Hamiltonian-like sampling
-        #DynamicNUTS,
+        HMCDA,
+        NUTS,       # Hamiltonian-like sampling
+        DynamicNUTS,
         IS,
         SMC,
         CSMC,
@@ -77,12 +77,12 @@ abstract type ParticleInference <: InferenceAlgorithm end
 
 # Move to AHMC
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
-#= 
+ 
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
 
 getADbackend(::Hamiltonian{AD}) where AD = AD()
-=#
+
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
@@ -581,13 +581,13 @@ DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
 #######################################
 
 include("ess.jl")
-#include("hmc.jl")
+include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs_conditional.jl")
-#include("gibbs.jl")
-#include("../contrib/inference/sghmc.jl")
+include("gibbs.jl")
+include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
 
 ################
