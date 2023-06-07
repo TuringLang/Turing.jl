@@ -228,13 +228,16 @@
         attempt = 0
         @model function demo_warn_init_params()
             x ~ Normal()
-            if (attempt += 1) < 20
+            if (attempt += 1) < 30
                 Turing.@addlogprob! -Inf
             end
         end
 
-        @test_logs (:warn, "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword") begin
-            sample(demo_warn_init_params(), NUTS(), 10)
+        @test_logs (
+            :warn,
+            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
+        ) min_level = Logging.Warn begin
+            sample(demo_warn_init_params(), NUTS(), 5)
         end
     end
 end
