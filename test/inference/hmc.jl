@@ -236,7 +236,7 @@
         @test_logs (
             :warn,
             "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
-        ) min_level = Logging.Warn begin
+        ) (:info,) match_mode=:any begin
             sample(demo_warn_init_params(), NUTS(), 5)
         end
     end
