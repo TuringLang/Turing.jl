@@ -130,7 +130,7 @@ metadata(vi::AbstractVarInfo) = (lp = getlogp(vi),)
 #########################################
 # Default definitions for the interface #
 #########################################
-#=
+
 function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
@@ -240,47 +240,31 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
-=#
+
 ################
 # No glue code #
 ################
 
-# Single chain
 function AbstractMCMC.sample(
     model::DynamicPPL.Model, 
     sampler::AbstractMCMC.AbstractSampler,
     N::Integer;
-    progress = PROGRESS[],
-    verbose = false,
-    callback = nothing,
-    kwargs...,
+    kwargs...
 )
-    return AbstractMCMC.sample(
-        Random.GLOBAL_RNG,
-        model,
-        sampler,
-        N;
-        progress = progress,
-        verbose = verbose,
-        callback = callback,
-        kwargs...,
-    )
+    return AbstractMCMC.sample(Random.default_rng(), model, sampler, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
+    rng::AbstractRNG,
+    model::DynamicPPL.Model, 
     sampler::AbstractMCMC.AbstractSampler,
     N::Integer;
-    progress = false,
-    verbose = PROGRESS[],
-    chain_type = MCMCChains.Chains,
-    callback = nothing,
+    chain_type=MCMCChains.Chains,
     resume_from=nothing,
-    kwargs...,
-)   
+    progress=PROGRESS[],
+    kwargs...
+)
     # unpack model
-    # TODO: is there a more efficient way to do this?
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
     dists = _get_dists(vi)
@@ -293,73 +277,38 @@ function AbstractMCMC.sample(
     model = AbstractMCMC.LogDensityModel(ℓ)
 
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            param_names = vsyms,
-            progress = progress,
-            verbose = verbose,
-            callback = callback,
-            chain_type=chain_type,
-            vi = vi,
-            d = d,
-            kwargs...)
+        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       vi=vi, d=d,
+                                       chain_type=chain_type, progress=progress, kwargs...)
     else
-        return resume(resume_from,
-            N;
-            param_names = vsyms,
-            progress = progress,
-            verbose = verbose,
-            callback = callback,
-            chain_type=chain_type,
-            vi = vi,
-            d = d,
-            kwargs...)
+        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
 end
 
-# Parallel sampling
 function AbstractMCMC.sample(
     model::DynamicPPL.Model, 
     sampler::AbstractMCMC.AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer;
-    progress = true,
-    verbose = PROGRESS[],
-    callback = nothing,
-    kwargs...,
+    N::Integer,
+    n_chains::Integer;
+    kwargs...
 )
-    return AbstractMCMC.sample(
-        Random.GLOBAL_RNG,
-        model,
-        sampler,
-        ensemble,
-        N;
-        progress = progress,
-        verbose = verbose,
-        callback = callback,
-        kwargs...,
-    )
+    return AbstractMCMC.sample(Random.default_rng(), model, sampler, ensemble, N, n_chains;
+                               kwargs...)
 end
 
 function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
+    rng::AbstractRNG,
+    model::DynamicPPL.Model, 
     sampler::AbstractMCMC.AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer;
-    verbose = PROGRESS[],
-    chain_type = MCMCChains.Chains,
-    verbose = false,
-    callback = nothing,
-    resume_from=nothing,
-    kwargs...,
+    N::Integer,
+    n_chains::Integer;
+    chain_type=MCMCChains.Chains,
+    progress=PROGRESS[],
+    kwargs...
 )   
-
     # unpack model
-    # TODO: is there a more efficient way to do this?
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
     dists = _get_dists(vi)
@@ -371,20 +320,9 @@ function AbstractMCMC.sample(
     d = LogDensityProblems.dimension(ℓ)
     model = AbstractMCMC.LogDensityModel(ℓ)
 
-    return AbstractMCMC.mcmcsample(
-        rng,
-        model,
-        sampler,
-        ensemble,
-        N;
-        param_names = vsyms,
-        progress = progress,
-        verbose = verbose,
-        callback = callback,
-        chain_type = chain_type,
-        vi = vi,
-        d = d,
-        kwargs...)
+    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
+                                    vi=vi, d=d,
+                                   chain_type=chain_type, progress=progress, kwargs...)
 end
 
 ##########################
