@@ -267,20 +267,16 @@ function AbstractMCMC.sample(
     # unpack model
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
-    dists = _get_dists(vi)
-    dist_lengths = [length(dist) for dist in dists]
-    vsyms = _name_variables(vi, dist_lengths)
+    vsyms = _name_variables(vi)
 
     # make model from Turing output
     logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
     logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
-    d = LogDensityProblems.dimension(logdensityproblem)
-    logdensitymodel = AbstractMCMC.LogDensityModel(logdensityproblem)
+    model = AbstractMCMC.LogDensityModel(logdensityproblem)
 
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, logdensitymodel, sampler, N;
-                                       param_names=vsyms, vi=vi, d=d,
-                                       chain_type=chain_type, progress=progress, kwargs...)
+        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
@@ -312,19 +308,15 @@ function AbstractMCMC.sample(
     # unpack model
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
-    dists = _get_dists(vi)
-    dist_lengths = [length(dist) for dist in dists]
-    vsyms = _name_variables(vi, dist_lengths)
+    vsyms = _name_variables(vi)
 
     # make model from Turing output
     logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
     logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
-    d = LogDensityProblems.dimension(logdensityproblem)
-    logdensitymodel = AbstractMCMC.LogDensityModel(logdensityproblem)
+    model = AbstractMCMC.LogDensityModel(logdensityproblem)
 
-    return AbstractMCMC.mcmcsample(rng, logdensitymodel, sampler, ensemble, N, n_chains;
-                                   param_names=vsyms, vi=vi, d=d,
-                                   chain_type=chain_type, progress=progress, kwargs...)
+    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
+                                   param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
 end
 
 ##########################
@@ -550,8 +542,10 @@ function _get_dists(vi::VarInfo)
     mds = values(vi.metadata)
     return [md.dists[1] for md in mds]
 end
-
-function _name_variables(vi::VarInfo, dist_lengths::AbstractVector)
+  
+function _name_variables(vi::VarInfo)
+    dists = _get_dists(vi)
+    dist_lengths = [length(dist) for dist in dists]
     vsyms = keys(vi)
     names = []
     for (vsym, dist_length) in zip(vsyms, dist_lengths)
