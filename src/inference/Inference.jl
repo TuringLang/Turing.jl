@@ -274,18 +274,11 @@ function AbstractMCMC.sample(
     N::Integer;
     progress = false,
     verbose = PROGRESS[],
+    chain_type = MCMCChains.Chains,
     callback = nothing,
     resume_from=nothing,
     kwargs...,
 )   
-    #=
-    # do we need this?
-    if callback === nothing
-        callback = HMCProgressCallback(N, progress = progress, verbose = verbose)
-        progress = false # don't use AMCMC's progress-funtionality
-    end
-    =#
-
     # unpack model
     # TODO: is there a more efficient way to do this?
     ctxt = model.context
@@ -309,6 +302,7 @@ function AbstractMCMC.sample(
             progress = progress,
             verbose = verbose,
             callback = callback,
+            chain_type=chain_type,
             vi = vi,
             d = d,
             kwargs...)
@@ -319,6 +313,7 @@ function AbstractMCMC.sample(
             progress = progress,
             verbose = verbose,
             callback = callback,
+            chain_type=chain_type,
             vi = vi,
             d = d,
             kwargs...)
@@ -355,16 +350,13 @@ function AbstractMCMC.sample(
     sampler::AbstractMCMC.AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer;
-    progress = true,
+    verbose = PROGRESS[],
+    chain_type = MCMCChains.Chains,
     verbose = false,
     callback = nothing,
     resume_from=nothing,
     kwargs...,
 )   
-    if callback === nothing
-        callback = HMCProgressCallback(N, progress = progress, verbose = verbose)
-        progress = false # don't use AMCMC's progress-funtionality
-    end
 
     # unpack model
     # TODO: is there a more efficient way to do this?
@@ -389,6 +381,7 @@ function AbstractMCMC.sample(
         progress = progress,
         verbose = verbose,
         callback = callback,
+        chain_type = chain_type,
         vi = vi,
         d = d,
         kwargs...)
