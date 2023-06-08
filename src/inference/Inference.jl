@@ -278,7 +278,7 @@ function AbstractMCMC.sample(
 
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       vi=vi, d=d,
+                                       param_names=vsyms, vi=vi, d=d,
                                        chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
@@ -321,7 +321,7 @@ function AbstractMCMC.sample(
     model = AbstractMCMC.LogDensityModel(ℓ)
 
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
-                                    vi=vi, d=d,
+                                   param_names=vsyms, vi=vi, d=d,
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
