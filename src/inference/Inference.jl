@@ -269,11 +269,6 @@ function AbstractMCMC.sample(
     vi = DynamicPPL.VarInfo(model, ctxt)
     vsyms = _name_variables(vi)
 
-    # make model from Turing output
-    logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
-    logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
-    model = AbstractMCMC.LogDensityModel(logdensityproblem)
-
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
                                        param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
@@ -309,11 +304,6 @@ function AbstractMCMC.sample(
     ctxt = model.context
     vi = DynamicPPL.VarInfo(model, ctxt)
     vsyms = _name_variables(vi)
-
-    # make model from Turing output
-    logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
-    logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
-    model = AbstractMCMC.LogDensityModel(logdensityproblem)
 
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
