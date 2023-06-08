@@ -272,12 +272,13 @@ function AbstractMCMC.sample(
     vsyms = _name_variables(vi, dist_lengths)
 
     # make model from Turing output
-    ℓ = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(vi, model, ctxt))
-    d = LogDensityProblems.dimension(ℓ)
-    model = AbstractMCMC.LogDensityModel(ℓ)
+    logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
+    logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
+    d = LogDensityProblems.dimension(logdensityproblem)
+    logdensitymodel = AbstractMCMC.LogDensityModel(logdensityproblem)
 
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+        return AbstractMCMC.mcmcsample(rng, logdensitymodel, sampler, N;
                                        param_names=vsyms, vi=vi, d=d,
                                        chain_type=chain_type, progress=progress, kwargs...)
     else
@@ -316,11 +317,12 @@ function AbstractMCMC.sample(
     vsyms = _name_variables(vi, dist_lengths)
 
     # make model from Turing output
-    ℓ = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(vi, model, ctxt))
-    d = LogDensityProblems.dimension(ℓ)
-    model = AbstractMCMC.LogDensityModel(ℓ)
+    logdensityfunction = DynamicPPL.LogDensityFunction(vi, model, ctxt)
+    logdensityproblem = LogDensityProblemsAD.ADgradient(logdensityfunction)
+    d = LogDensityProblems.dimension(logdensityproblem)
+    logdensitymodel = AbstractMCMC.LogDensityModel(logdensityproblem)
 
-    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
+    return AbstractMCMC.mcmcsample(rng, logdensitymodel, sampler, ensemble, N, n_chains;
                                    param_names=vsyms, vi=vi, d=d,
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
