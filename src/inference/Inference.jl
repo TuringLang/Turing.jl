@@ -149,7 +149,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::AbstractSampler,
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
@@ -210,7 +210,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
