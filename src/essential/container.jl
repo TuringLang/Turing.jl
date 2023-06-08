@@ -1,9 +1,3 @@
-struct ArgsAndKwargsF{F}
-    f::F
-end
-
-(f::ArgsAndKwargsF)(args, kwargs) = f.f(args...; kwargs...)
-
 struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple}
     model::M
     sampler::S
@@ -18,12 +12,14 @@ function TracedModel(
     rng::Random.AbstractRNG,
 )
     context = SamplingContext(rng, sampler, DefaultContext())
-    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    # FIXME: We're just dropping the `kwargs` here. I'm guessing this can
+    # cause issues if the model ends up mutating any of the keyword arguments.
+    args, _ = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
         model,
         sampler,
         varinfo,
-        (ArgsAndKwargsF(model.f), args, kwargs),
+        (model.f, args...),
     )
 end
 
@@ -61,9 +57,9 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return trace
 end
 
-function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
+function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R}
     # Extract the `args`.
-    args, _ = trace.model.ctask.args
+    args = trace.model.ctask.args
     # From `args`, extract the RNG-container, i.e. `SamplingContext`.
     container = args[3]
     rng = container.rng
