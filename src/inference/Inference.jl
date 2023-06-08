@@ -153,7 +153,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::AbstractSampler,
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
@@ -214,7 +214,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -239,74 +239,6 @@ function AbstractMCMC.sample(
 )
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
-end
-
-################
-# No glue code #
-################
-
-function AbstractMCMC.sample(
-    model::DynamicPPL.Model, 
-    sampler::AbstractMCMC.AbstractSampler,
-    N::Integer;
-    kwargs...
-)
-    return AbstractMCMC.sample(Random.default_rng(), model, sampler, N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model, 
-    sampler::AbstractMCMC.AbstractSampler,
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    # unpack model
-    ctxt = model.context
-    vi = DynamicPPL.VarInfo(model, ctxt)
-    vsyms = _name_variables(vi)
-
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
-    end
-end
-
-function AbstractMCMC.sample(
-    model::DynamicPPL.Model, 
-    sampler::AbstractMCMC.AbstractSampler,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...
-)
-    return AbstractMCMC.sample(Random.default_rng(), model, sampler, ensemble, N, n_chains;
-                               kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model, 
-    sampler::AbstractMCMC.AbstractSampler,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
-    kwargs...
-)   
-    # unpack model
-    ctxt = model.context
-    vi = DynamicPPL.VarInfo(model, ctxt)
-    vsyms = _name_variables(vi)
-
-    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
-                                   param_names=vsyms, chain_type=chain_type, progress=progress, kwargs...)
 end
 
 ##########################
