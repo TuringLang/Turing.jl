@@ -14,12 +14,15 @@ function TracedModel(
     context = SamplingContext(rng, sampler, DefaultContext())
     # FIXME: We're just dropping the `kwargs` here. I'm guessing this can
     # cause issues if the model ends up mutating any of the keyword arguments.
-    args, _ = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    args_and_kwwargs = [args..., kwwargs...]
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
         model,
         sampler,
         varinfo,
-        (model.f, args...),
+        # FIXME: this is a hacky way of preserving a previous DynamicPPL behavior prior
+        # https://github.com/TuringLang/DynamicPPL.jl/pull/477
+        (model.f, args_and_kwwargs...),
     )
 end
 
