@@ -173,6 +173,12 @@ end
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
     end
+
+    # https://github.com/TuringLang/Turing.jl/issues/2007
+    @turing_testset "keyword arguments not supported" begin
+        @model kwarg_demo(; x = 2) = return x
+        @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
+    end
 end
 
 # @testset "pmmh.jl" begin
