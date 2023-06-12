@@ -12,17 +12,15 @@ function TracedModel(
     rng::Random.AbstractRNG,
 )
     context = SamplingContext(rng, sampler, DefaultContext())
-    # FIXME: We're just dropping the `kwargs` here. I'm guessing this can
-    # cause issues if the model ends up mutating any of the keyword arguments.
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
-    args_and_kwargs = [args..., kwargs...]
+    if kwargs !== nothing || isempty(kwargs)
+        error("Sampling with `$(sampler.alg)` does not support keyword arguments.")
+    end
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
         model,
         sampler,
         varinfo,
-        # FIXME: this is a hacky way of preserving a previous DynamicPPL behavior prior
-        # https://github.com/TuringLang/DynamicPPL.jl/pull/477
-        (model.f, args_and_kwargs...),
+        (model.f, args...)
     )
 end
 
@@ -63,9 +61,9 @@ end
 function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R}
     # Extract the `args`.
     args = trace.model.ctask.args
-    # From `args`, extract the RNG-container, i.e. `SamplingContext`.
-    container = args[3]
-    rng = container.rng
+    # From `args`, extract the `SamplingContext`, which contains the RNG.
+    sampling_context = args[3]
+    rng = sampling_context.rng
     trace.rng = rng
     return trace
 end
