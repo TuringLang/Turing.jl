@@ -221,7 +221,7 @@
         alg = NUTS(1000, 0.8)
         gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
         chain = sample(gdemo_default_prior, alg, 10_000)
-        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.45, rtol=0.15)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.45)
     end
 
     @turing_testset "warning for difficult init params" begin
