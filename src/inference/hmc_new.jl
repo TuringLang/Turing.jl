@@ -4,7 +4,7 @@ struct TuringState{S,F}
 end
 
 state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
-function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition::AdvancedHMC.Transition)
+function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     θ = getparams(transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
     # TODO: `deepcopy` is overkill; make more efficient.
