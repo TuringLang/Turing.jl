@@ -3,16 +3,18 @@ struct TuringState{S,F}
     logdensity::F
 end
 
-function state_to_turing(f::DynamicPPL.LogDensityFunction, state::AdvancedHMC.HMCState)
-    return TuringState(state, f)
-end
-
+state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition::AdvancedHMC.Transition)
-    varinfo = DynamicPPL.unflatten(f.varinfo, transition.z.θ)
+    θ = getparams(transition)
+    varinfo = DynamicPPL.unflatten(f.varinfo, θ)
     # TODO: `deepcopy` is overkill; make more efficient.
     varinfo = DynamicPPL.invlink!!(deepcopy(varinfo), f.model)
     return HMCTransition(varinfo, transition)
 end
+
+# NOTE: Can easily be implemented for other samplers.
+getparams(transition::AdvancedHMC.Transition) = transition.z.θ
+
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
