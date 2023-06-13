@@ -13,7 +13,7 @@ function TracedModel(
 )
     context = SamplingContext(rng, sampler, DefaultContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
-    if kwargs !== nothing || !isempty(kwargs)
+    if kwargs !== nothing && !isempty(kwargs)
         error("Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.")
     end
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
