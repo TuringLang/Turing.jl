@@ -51,11 +51,9 @@ end
 
 # TODO: This needs to be replaced by something much better.
 # We can probably re-use a lot from `DynamicPPL.initialstep`.
-function initialize_nuts(f::DynamicPPL.LogDensityFunction)
-    needs_linking = !istrans(f.varinfo)
-    if needs_linking
-        DynamicPPL.link!!(f.varinfo, f.model)
-    end
+function initialize_nuts(model::Turing.Model)
+    f = DynamicPPL.LogDensityFunction(model)
+    DynamicPPL.Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, f.model)
     
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)
@@ -78,10 +76,6 @@ function initialize_nuts(f::DynamicPPL.LogDensityFunction)
         AdvancedHMC.MassMatrixAdaptor(metric),
         AdvancedHMC.StepSizeAdaptor(0.8, integrator)
     )
-
-    if needs_linking
-        DynamicPPL.invlink!!(f.varinfo, f.model)
-    end
 
     return AdvancedHMC.HMCSampler(proposal, metric, adaptor)
 end
