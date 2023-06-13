@@ -148,8 +148,8 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    model::DynamicPPL.Model,
+    sampler::AbstractSampler,
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
@@ -166,7 +166,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::Prior,
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -209,8 +209,8 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    model::DynamicPPL.Model,
+    sampler::AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -224,7 +224,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::Prior,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -322,8 +322,8 @@ getlogevidence(transitions, sampler, state) = missing
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector,
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    model::DynamicPPL.Model,
+    spl::AbstractMCMC.AbstractSampler,
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state = false,
@@ -379,8 +379,8 @@ end
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector,
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    model::DynamicPPL.Model,
+    spl::AbstractMCMC.AbstractSampler,
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...
@@ -432,6 +432,7 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
+include("hmc_new.jl")
 
 ################
 # Typing tools #
