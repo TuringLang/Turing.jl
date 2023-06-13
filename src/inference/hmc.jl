@@ -102,7 +102,7 @@ DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -142,7 +142,7 @@ end
 
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     spl::Sampler{<:Hamiltonian},
     vi::AbstractVarInfo;
     init_params=nothing,

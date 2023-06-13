@@ -128,7 +128,7 @@ metadata(vi::AbstractVarInfo) = (lp = getlogp(vi),)
 #########################################
 
 function AbstractMCMC.sample(
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::InferenceAlgorithm,
     N::Integer;
     kwargs...
@@ -138,7 +138,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::InferenceAlgorithm,
     N::Integer;
     kwargs...
@@ -148,7 +148,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::AbstractSampler,
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -166,7 +166,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::Prior,
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -183,7 +183,7 @@ function AbstractMCMC.sample(
 end
 
 function AbstractMCMC.sample(
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -196,7 +196,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -209,7 +209,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::AbstractSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -224,7 +224,7 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     alg::Prior,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
