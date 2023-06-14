@@ -246,8 +246,8 @@
             return priors
         end
 
-        chain = sample(gauss(x), PG(10), 10)
-        chain = sample(gauss(x), SMC(), 10)
+        @test_throws ErrorException chain = sample(gauss(x), PG(10), 10)
+        @test_throws ErrorException chain = sample(gauss(x), SMC(), 10)
 
         @model function gauss2(::Type{TV}=Vector{Float64}; x) where {TV}
             priors = TV(undef, 2)
