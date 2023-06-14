@@ -178,13 +178,20 @@ function DynamicPPL.initialstep(
     # If no initial parameters are provided, resample until the log probability
     # and its gradient are finite.
     if init_params === nothing
+        init_attempt_count = 1
         while !isfinite(z)
+            if init_attempt_count == 10
+                @warn "failed to find valid initial parameters in $(init_attempt_count) tries; consider providing explicit initial parameters using the `init_params` keyword"
+            end
+
             # NOTE: This will sample in the unconstrained space.
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             theta = vi[spl]
 
             hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
             z = AHMC.phasepoint(rng, theta, hamiltonian)
+
+            init_attempt_count += 1
         end
     end
 
