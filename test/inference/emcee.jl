@@ -1,5 +1,3 @@
-
-
 @testset "emcee.jl" begin
     @testset "gdemo" begin
         Random.seed!(9876)
@@ -10,6 +8,15 @@
         spl = Emcee(n_walkers, 2.0)
         @test DynamicPPL.alg_str(Sampler(spl, gdemo_default)) == "Emcee"
 
+        chain = sample(gdemo_default, spl, n_samples)
+        check_gdemo(chain)
+    end
+
+    @testset "memory usage with large number of iterations" begin
+        # https://github.com/TuringLang/Turing.jl/pull/1976
+        @info "Testing emcee with large number of iterations"
+        spl = Emcee(10, 2.0)
+        n_samples = 10_000
         chain = sample(gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
@@ -30,7 +37,7 @@
 
         # Initial parameters
         chain = sample(gdemo_default, spl, 1; init_params=fill([2.0, 1.0], nwalkers))
-        @test chain[:s] == fill(2.0, nwalkers, 1)
-        @test chain[:m] == fill(1.0, nwalkers, 1)
+        @test chain[:s] == fill(2.0, 1, nwalkers)
+        @test chain[:m] == fill(1.0, 1, nwalkers)
     end
 end
