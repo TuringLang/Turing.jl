@@ -275,12 +275,11 @@
             return priors
         end
 
-        chain = sample(gauss3(; x=x), PG(10), 10)
-        @test_throws ErrorExceptionchain = sample(gauss3(; x=x), SMC(), 10)
+        chain = sample(gauss3(x), PG(10), 10)
+        chain = sample(gauss3(x), SMC(), 10)
 
-        chain = sample(gauss3(Vector{Float64}; x=x), PG(10), 10)
-        chain = sample(gauss3(Vector{Float64}; x=x), SMC(), 10)
-
+        chain = sample(gauss3(x, Vector{Real}), PG(10), 10)
+        chain = sample(gauss3(x, Vector{Real}), SMC(), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
