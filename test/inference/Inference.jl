@@ -260,7 +260,7 @@
         end
 
         @test_throws ErrorException chain = sample(gauss2(; x=x), PG(10), 10)
-        @test_throws ErrorExceptionchain = sample(gauss2(; x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(gauss2(; x=x), SMC(), 10)
 
         @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), PG(10), 10)
         @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), SMC(), 10)
