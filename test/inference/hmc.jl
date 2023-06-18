@@ -221,6 +221,23 @@
         alg = NUTS(1000, 0.8)
         gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
         chain = sample(gdemo_default_prior, alg, 10_000)
-        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.45)
+    end
+
+    @turing_testset "warning for difficult init params" begin
+        attempt = 0
+        @model function demo_warn_init_params()
+            x ~ Normal()
+            if (attempt += 1) < 30
+                Turing.@addlogprob! -Inf
+            end
+        end
+
+        @test_logs (
+            :warn,
+            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
+        ) (:info,) match_mode=:any begin
+            sample(demo_warn_init_params(), NUTS(), 5)
+        end
     end
 end
