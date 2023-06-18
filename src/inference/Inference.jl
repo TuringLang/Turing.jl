@@ -435,7 +435,7 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
-include("hmc_new.jl")
+include("../contrib/inference/abstractmcmc.jl")
 
 ################
 # Typing tools #
