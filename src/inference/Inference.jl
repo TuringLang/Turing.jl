@@ -240,27 +240,6 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
-
-# TODO: Do we also support `resume`, etc?
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:SamplerWrapper};
-    kwargs...
-)
-    return AbstractMCMC.step(rng, model, sampler.alg.sampler; kwargs...)
-end
-
-
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:SamplerWrapper},
-    state;
-    kwargs...
-)
-    return AbstractMCMC.step(rng, model, sampler.alg.sampler, state; kwargs...)
-end
 ##########################
 # Chain making utilities #
 ##########################

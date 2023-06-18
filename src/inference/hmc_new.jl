@@ -15,11 +15,11 @@ end
 # NOTE: Can easily be implemented for other samplers.
 getparams(transition::AdvancedHMC.Transition) = transition.z.θ
 
-
+# TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::AdvancedHMC.HMCSampler;
+    sampler::Sampler{<:SamplerWrapper};
     kwargs...
 )
     # Create a log-density function.
@@ -29,7 +29,9 @@ function AbstractMCMC.step(
     DynamicPPL.Setfield.@set! f.varinfo = link!!(f.varinfo, model)
 
     # Then just call `AdvancedHMC.step` with the right arguments.
-    transition_inner, state_inner = AbstractMCMC.step(rng, AbstractMCMC.LogDensityModel(f), sampler; kwargs...)
+    transition_inner, state_inner = AbstractMCMC.step(
+        rng, AbstractMCMC.LogDensityModel(f), sampler.alg.sampler; kwargs...
+    )
 
     # Update the `state`
     return transition_to_turing(f, transition_inner), state_to_turing(f, state_inner)
@@ -38,14 +40,16 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::AdvancedHMC.HMCSampler,
+    sampler::Sampler{<:SamplerWrapper},
     state::TuringState;
     kwargs...
 )
     f = state.logdensity
 
     # Then just call `AdvancedHMC.step` with the right arguments.
-    transition_inner, state_inner = AbstractMCMC.step(rng, AbstractMCMC.LogDensityModel(f), sampler, state.state; kwargs...)
+    transition_inner, state_inner = AbstractMCMC.step(
+        rng, AbstractMCMC.LogDensityModel(f), sampler.alg.sampler, state.state; kwargs...
+    )
 
     # Update the `state`
     return transition_to_turing(f, transition_inner), state_to_turing(f, state_inner)
