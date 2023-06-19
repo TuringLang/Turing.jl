@@ -134,7 +134,7 @@ function Optim.optimize(
 end
 
 function _mle_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
+    ctx = LikelihoodOptimizationContext()
     return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
@@ -180,7 +180,7 @@ function Optim.optimize(
 end
 
 function _map_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.DefaultContext())
+    ctx = DefaultOptimizationContext()
     return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
 end
 

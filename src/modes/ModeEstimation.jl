@@ -29,6 +29,21 @@ struct constrained_space{x} end
 struct MLE end
 struct MAP end
 
+struct LikelihoodOptimizationContext <: AbstractContext end
+DynamicPPL.NodeTrait(::LikelihoodOptimizationContext) = DynamicPPL.IsLeaf()
+
+function DynamicPPL.tilde_assume(ctx::LikelihoodOptimizationContext, dist, vn, vi)
+    r = vi[vn, dist]
+    return r, 0, vi
+end
+
+function DynamicPPL.dot_tilde_assume(ctx::LikelihoodOptimizationContext, right, left, vns, vi)
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
+    # affect anything.
+    # TODO: Stop using `get_and_set_val!`.
+    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
+    return r, 0, vi
+end
 
 """
     OptimizationContext{C<:AbstractContext} <: AbstractContext
@@ -37,43 +52,36 @@ The `OptimizationContext` transforms variables to their constrained space, but
 does not use the density with respect to the transformation. This context is
 intended to allow an optimizer to sample in R^n freely.
 """
-struct OptimizationContext{C<:AbstractContext} <: AbstractContext
-    context::C
-end
-
-DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsParent()
-DynamicPPL.childcontext(context::OptimizationContext) = context.context
-DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
+struct DefaultOptimizationContext <: AbstractContext end
+DynamicPPL.NodeTrait(::DefaultOptimizationContext) = DynamicPPL.IsLeaf()
 
 # assume
-function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, dist, vn, vi)
-    r = vi[vn, dist]
-    return r, 0, vi
-end
-
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
+function DynamicPPL.tilde_assume(ctx::DefaultOptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
     return r, Distributions.logpdf(dist, r), vi
 end
 
 # dot assume
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
-    # affect anything.
-    # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    return r, 0, vi
-end
-
 _loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
 _loglikelihood(dists::AbstractArray{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
 
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
+function DynamicPPL.dot_tilde_assume(ctx::DefaultOptimizationContext, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
     r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
     return r, _loglikelihood(right, r), vi
+end
+
+# Shared.
+const OptimizationContext = Union{LikelihoodOptimizationContext,DefaultOptimizationContext}
+
+function tilde_observe(context::OptimizationContext, right, left, vi)
+    return tilde_observe(DefaultContext(), right, left, vi)
+end
+
+function dot_tilde_observe(context::OptimizationContext, right, left, vi)
+    return dot_tilde_observe(DefaultContext(), right, left, vi)
 end
 
 """
@@ -226,7 +234,7 @@ function get_parameter_bounds(model::DynamicPPL.Model)
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{false})
-    ctx = OptimizationContext(DynamicPPL.DefaultContext())
+    ctx = DefaultOptimizationContext()
     obj = OptimLogDensity(model, ctx)
 
     obj = transform!!(obj)
@@ -237,7 +245,7 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{fa
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{true})
-    ctx = OptimizationContext(DynamicPPL.DefaultContext())
+    ctx = DefaultOptimizationContext()
     obj = OptimLogDensity(model, ctx)
     
     init = Init(obj.varinfo, model, constrained_space{true}())
@@ -247,7 +255,7 @@ function _optim_objective(model::DynamicPPL.Model, ::MAP, ::constrained_space{tr
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{false})
-    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
+    ctx = LikelihoodOptimizationContext()
     obj = OptimLogDensity(model, ctx)
     
     obj = transform!!(obj)
@@ -258,7 +266,7 @@ function _optim_objective(model::DynamicPPL.Model, ::MLE,  ::constrained_space{f
 end
 
 function _optim_objective(model::DynamicPPL.Model, ::MLE, ::constrained_space{true})
-    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
+    ctx = LikelihoodOptimizationContext()
     obj = OptimLogDensity(model, ctx)
   
     init = Init(obj.varinfo, model, constrained_space{true}())
