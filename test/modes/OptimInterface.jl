@@ -164,4 +164,25 @@ end
             end
         end
     end
+
+    # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
+    @testset "With ConditionContext" begin
+        @model function model1(x)
+            μ ~ Uniform(0, 2)
+            x ~ LogNormal(μ, 1)
+        end;
+
+        @model function model2()
+            μ ~ Uniform(0, 2)
+            x ~ LogNormal(μ, 1)
+        end;
+
+        model2(x) = model2() | (; x)
+
+        v = 1.0
+        w = [1.0]
+
+        ctx = Turing.LikelihoodOptimizationContext()
+        @test Turing.OptimLogDensity(model1(v), ctx)(w) == Turing.OptimLogDensity(model2(v), ctx)(w)
+    end
 end
