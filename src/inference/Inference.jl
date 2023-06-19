@@ -22,6 +22,7 @@ using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
+using CSV
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC

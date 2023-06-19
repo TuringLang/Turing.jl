@@ -100,6 +100,22 @@ end
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`
+function save_cb(rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler,
+    transition::HMCTransition,
+    state::HMCState,
+    iteration::Int64;
+    chain_name::String="chain",
+    kwargs...
+)
+    vii = deepcopy(state.vi)
+    DynamicPPL.invlink!!(vii, model)
+    θ = vii[sampler]
+    # it would be good to have the param names as in the chain
+    CSV.write(string(chain_name,".csv"), Dict("params"=>[θ]), append=true)
+end
+
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -112,7 +128,12 @@ function AbstractMCMC.sample(
     discard_adapt=true,
     discard_initial=-1,
     kwargs...
-)
+)       
+    callback = nothing
+    if :chain_name ∈ keys(Dict(kwargs))
+        callback = save_cb
+    end    
+    
     if resume_from === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
@@ -131,11 +152,12 @@ function AbstractMCMC.sample(
         end
 
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
+                                       callback=callback,
                                        chain_type=chain_type, progress=progress,
                                        nadapts=_nadapts, discard_initial=_discard_initial,
                                        kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress,
+        return resume(resume_from, N; callback=callback, chain_type=chain_type, progress=progress,
                       nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
     end
 end
