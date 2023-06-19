@@ -100,22 +100,6 @@ end
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`
-function save_cb(rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler,
-    transition::HMCTransition,
-    state::HMCState,
-    iteration::Int64;
-    chain_name::String="chain",
-    kwargs...
-)
-    vii = deepcopy(state.vi)
-    DynamicPPL.invlink!!(vii, model)
-    θ = vii[sampler]
-    # it would be good to have the param names as in the chain
-    CSV.write(string(chain_name,".csv"), Dict("params"=>[θ]), append=true)
-end
-
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,

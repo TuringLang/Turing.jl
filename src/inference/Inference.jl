@@ -175,11 +175,17 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
+    callback = nothing
+    if :chain_name ∈ keys(Dict(kwargs))
+        callback = save_cb
+    end 
+
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
+                                       callback=callback,
                                        chain_type=chain_type, progress=progress, kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
+        return resume(resume_from, N; callback=callback, chain_type=chain_type, progress=progress, kwargs...)
     end
 end
 
@@ -218,8 +224,14 @@ function AbstractMCMC.sample(
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
-)
+)   
+    callback = nothing
+    if :chain_name ∈ keys(Dict(kwargs))
+        callback = save_cb
+    end 
+
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
+                                   callback=callback,
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
 
@@ -456,6 +468,22 @@ end
 ##############
 # Utilities  #
 ##############
+
+function save_cb(rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler,
+    transition::HMCTransition,
+    state::HMCState,
+    iteration::Int64;
+    chain_name::String="chain",
+    kwargs...
+)
+    vii = deepcopy(state.vi)
+    DynamicPPL.invlink!!(vii, model)
+    θ = vii[sampler]
+    # it would be good to have the param names as in the chain
+    CSV.write(string(chain_name,".csv"), Dict("params"=>[θ]), append=true)
+end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
