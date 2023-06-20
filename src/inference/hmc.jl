@@ -112,12 +112,7 @@ function AbstractMCMC.sample(
     discard_adapt=true,
     discard_initial=-1,
     kwargs...
-)       
-    callback = nothing
-    if :chain_name ∈ keys(Dict(kwargs))
-        callback = save_cb
-    end    
-    
+)          
     if resume_from === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
@@ -136,12 +131,11 @@ function AbstractMCMC.sample(
         end
 
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       callback=callback,
                                        chain_type=chain_type, progress=progress,
                                        nadapts=_nadapts, discard_initial=_discard_initial,
                                        kwargs...)
     else
-        return resume(resume_from, N; callback=callback, chain_type=chain_type, progress=progress,
+        return resume(resume_from, N; chain_type=chain_type, progress=progress,
                       nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
     end
 end
