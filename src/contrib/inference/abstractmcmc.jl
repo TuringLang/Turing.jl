@@ -36,20 +36,27 @@ getstats(transition::AdvancedHMC.Transition) = transition.stat
 getparams(transition::AdvancedMH.Transition) = transition.params
 getstats(transition) = NamedTuple()
 
+getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
+getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
+
+setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Setfield.@set f.varinfo = varinfo
+setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo) = setvarinfo(parent(f), varinfo)
+
 # TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler_wrapper::Sampler{<:SamplerWrapper};
+    sampler_wrapper::Sampler{<:ExternalSampler};
     kwargs...
 )
     sampler = sampler_wrapper.alg.sampler
 
-    # Create a log-density function.
-    f = DynamicPPL.LogDensityFunction(model)
+    # Create a log-density function with an implementation of the
+    # gradient so we ensure that we're using the same AD backend as in Turing.
+    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo.
-    DynamicPPL.Setfield.@set! f.varinfo = link!!(f.varinfo, model)
+    f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     transition_inner, state_inner = AbstractMCMC.step(
@@ -63,7 +70,7 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler_wrapper::Sampler{<:SamplerWrapper},
+    sampler_wrapper::Sampler{<:ExternalSampler},
     state::TuringState;
     kwargs...
 )
@@ -77,35 +84,4 @@ function AbstractMCMC.step(
 
     # Update the `state`
     return transition_to_turing(f, transition_inner), state_to_turing(f, state_inner)
-end
-
-# TODO: This needs to be replaced by something much better.
-# We can probably re-use a lot from `DynamicPPL.initialstep`.
-function initialize_nuts(model::Turing.Model)
-    f = DynamicPPL.LogDensityFunction(model)
-    DynamicPPL.Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, f.model)
-    
-    # Choose parameter dimensionality and initial parameter value
-    D = LogDensityProblems.dimension(f)
-    initial_θ = rand(D)
-
-    # Define a Hamiltonian system
-    metric = AdvancedHMC.DiagEuclideanMetric(D)
-    hamiltonian = AdvancedHMC.Hamiltonian(metric, f)
-
-    # Define a leapfrog solver, with initial step size chosen heuristically
-    initial_ϵ = AdvancedHMC.find_good_stepsize(hamiltonian, initial_θ)
-    integrator = AdvancedHMC.Leapfrog(initial_ϵ)
-
-    # Define an HMC sampler, with the following components
-    #   - multinomial sampling scheme,
-    #   - generalised No-U-Turn criteria, and
-    #   - windowed adaption for step-size and diagonal mass matrix
-    proposal = AdvancedHMC.NUTS{AdvancedHMC.MultinomialTS,AdvancedHMC.GeneralisedNoUTurn}(integrator)
-    adaptor = AdvancedHMC.StanHMCAdaptor(
-        AdvancedHMC.MassMatrixAdaptor(metric),
-        AdvancedHMC.StepSizeAdaptor(0.8, integrator)
-    )
-
-    return AdvancedHMC.HMCSampler(proposal, metric, adaptor)
 end
