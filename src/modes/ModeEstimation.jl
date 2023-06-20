@@ -39,41 +39,51 @@ intended to allow an optimizer to sample in R^n freely.
 """
 struct OptimizationContext{C<:AbstractContext} <: AbstractContext
     context::C
+
+    function OptimizationContext{C}(context::C) where {C<:AbstractContext}
+        leaf = DynamicPPL.leafcontext(context)
+        if !(leaf isa Union{DefaultContext,LikelihoodContext})
+            throw(ArgumentError("`OptimizationContext` supports only leaf contexts of type `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` (given: `$(typeof(leaf)))`"))
+        end
+        return new{C}(context)
+    end
 end
+
+OptimizationContext(context::AbstractContext) = OptimizationContext{typeof(context)}(context)
 
 DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::OptimizationContext) = context.context
 DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
 
 # assume
-function DynamicPPL.tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, dist, vn, vi)
-    r = vi[vn, dist]
-    return r, 0, vi
-end
-
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
-    return r, Distributions.logpdf(dist, r), vi
+    lp = if DynamicPPL.leafcontext(ctx) isa DefaultContext
+        # MAP
+        Distributions.logpdf(dist, r)
+    else
+        # MLE
+        0
+    end
+    return r, lp, vi
 end
 
 # dot assume
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext{<:LikelihoodContext}, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
-    # affect anything.
-    # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    return r, 0, vi
-end
-
 _loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
 _loglikelihood(dists::AbstractArray{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
-
 function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
     r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    return r, _loglikelihood(right, r), vi
+    lp = if DynamicPPL.leafcontext(ctx) isa DefaultContext
+        # MAP
+        _loglikelihood(right, r)
+    else
+        # MLE
+        0
+    end
+    return r, lp, vi
 end
 
 """

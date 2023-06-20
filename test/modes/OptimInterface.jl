@@ -1,29 +1,36 @@
-function find_map(model::DynamicPPL.TestUtils.DemoModels)
-    # Set up.
-    true_values = rand(NamedTuple, model)
-    d = length(true_values.s)
-    s_size, m_size = size(true_values.s), size(true_values.m)
-    s_isunivariate = true_values.s isa Real
-    m_isunivariate = true_values.m isa Real
+# TODO: Remove these once the equivalent is present in `DynamicPPL.TestUtils.
+function likelihood_optima(::DynamicPPL.TestUtils.UnivariateAssumeDemoModels)
+    return (s=1/16, m=7/4)
+end
+function posterior_optima(::DynamicPPL.TestUtils.UnivariateAssumeDemoModels)
+    # TODO: Figure out exact for `s`.
+    return (s=0.907407, m=7/6)
+end
 
-    # Cosntruct callable.
-    function f_wrapped(x)
-        s = s_isunivariate ? x[1] : reshape(x[1:d], s_size)
-        m = m_isunivariate ? x[2] : reshape(x[d + 1:end], m_size)
-        return -DynamicPPL.TestUtils.logjoint_true(model, s, m)
-    end
+function likelihood_optima(model::DynamicPPL.TestUtils.MultivariateAssumeDemoModels)
+    # Get some containers to fill.
+    vals = Random.rand(model)
 
-    # Optimize.
-    lbs = vcat(fill(0, d), fill(-Inf, d))
-    ubs = fill(Inf, 2d)
-    result = optimize(f_wrapped, lbs, ubs, rand(2d), Fminbox(NelderMead()))
-    @assert Optim.converged(result) "optimization didn't converge"
+    # NOTE: These are "as close to zero as we can get".
+    vals.s[1] = 1e-32
+    vals.s[2] = 1e-32
 
-    # Extract the result.
-    x = Optim.minimizer(result)
-    s = s_isunivariate ? x[1] : reshape(x[1:d], s_size)
-    m = m_isunivariate ? x[2] : reshape(x[d + 1:end], m_size)
-    return -Optim.minimum(result), (s = s, m = m)
+    vals.m[1] = 1.5
+    vals.m[2] = 2.0
+
+    return vals
+end
+function posterior_optima(model::DynamicPPL.TestUtils.MultivariateAssumeDemoModels)
+    # Get some containers to fill.
+    vals = Random.rand(model)
+
+    # TODO: Figure out exact for `s[1]`.
+    vals.s[1] = 0.890625
+    vals.s[2] = 1
+    vals.m[1] = 3/4
+    vals.m[2] = 1
+
+    return vals
 end
 
 @testset "OptimInterface.jl" begin
@@ -126,20 +133,54 @@ end
     # FIXME: Some models doesn't work for Tracker and ReverseDiff.
     if Turing.Essential.ADBACKEND[] === :forwarddiff
         @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-            maximum_true, maximizer_true = find_map(model)
+            result_true = posterior_optima(model)
 
             @testset "$(optimizer)" for optimizer in [LBFGS(), NelderMead()]
                 result = optimize(model, MAP(), optimizer)
                 vals = result.values
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
-                    for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(maximizer_true, vn))
-                        sym = DynamicPPL.AbstractPPL.getsym(vn_leaf)
-                        true_value_vn = get(maximizer_true, vn_leaf)
-                        @test vals[Symbol(vn_leaf)] ≈ true_value_vn rtol = 0.05
+                    for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
                     end
                 end
             end
         end
+        @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+            result_true = likelihood_optima(model)
+
+            # `NelderMead` seems to struggle with convergence here, so we exclude it.
+            @testset "$(optimizer)" for optimizer in [LBFGS(),]
+                result = optimize(model, MLE(), optimizer)
+                vals = result.values
+
+                for vn in DynamicPPL.TestUtils.varnames(model)
+                    for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                    end
+                end
+            end
+       end
+    end
+
+    # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
+    @testset "With ConditionContext" begin
+        @model function model1(x)
+            μ ~ Uniform(0, 2)
+            x ~ LogNormal(μ, 1)
+        end;
+
+        @model function model2()
+            μ ~ Uniform(0, 2)
+            x ~ LogNormal(μ, 1)
+        end;
+
+        model2(x) = model2() | (; x)
+
+        v = 1.0
+        w = [1.0]
+
+        ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
+        @test Turing.OptimLogDensity(model1(v), ctx)(w) == Turing.OptimLogDensity(model2(v), ctx)(w)
     end
 end
