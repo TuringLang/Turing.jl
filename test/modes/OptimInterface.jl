@@ -33,6 +33,30 @@ function posterior_optima(model::DynamicPPL.TestUtils.MultivariateAssumeDemoMode
     return vals
 end
 
+# Used for testing how well it works with nested contexts.
+struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext
+    context::C
+    logprior_weight::T1
+    loglikelihood_weight::T2
+end
+DynamicPPL.NodeTrait(::OverrideContext) = DynamicPPL.IsParent()
+DynamicPPL.childcontext(parent::OverrideContext) = parent.context
+DynamicPPL.setchildcontext(parent::OverrideContext, child) = OverrideContext(
+    child,
+    parent.logprior_weight,
+    parent.loglikelihood_weight
+)
+
+# Only implement what we need for the models above.
+function DynamicPPL.tilde_assume(context::OverrideContext, right, vn, vi)
+    value, logp, vi = DynamicPPL.tilde_assume(context.context, right, vn, vi)
+    return value, context.logprior_weight, vi
+end
+function DynamicPPL.tilde_observe(context::OverrideContext, right, left, vi)
+    logp, vi = DynamicPPL.tilde_observe(context.context, right, left, vi)
+    return context.loglikelihood_weight, vi
+end
+
 @testset "OptimInterface.jl" begin
     @testset "MLE" begin
         Random.seed!(222)
@@ -177,12 +201,45 @@ end
             x ~ LogNormal(μ, 1)
         end;
 
-        model2(x) = model2() | (; x)
-
-        v = 1.0
-        w = [1.0]
+        x = 1.0
+        u = [1.0]
 
         ctx = Turing.LikelihoodOptimizationContext()
-        @test Turing.OptimLogDensity(model1(v), ctx)(w) == Turing.OptimLogDensity(model2(v), ctx)(w)
+        val1 = Turing.OptimLogDensity(model1(x), ctx)(u)
+        val2 = Turing.OptimLogDensity(model2() | (x = x,), ctx)(u)
+        @test  val1 == val2
+
+        # More tests with nested contexts.
+        @testset "Prefixing" begin
+            function prefix_μ(model)
+                return DynamicPPL.contextualize(
+                    model,
+                    DynamicPPL.PrefixContext{:inner}(model.context)
+                )
+            end
+
+            ctx = Turing.LikelihoodOptimizationContext()
+            model1_contextualized = prefix_μ(model1(x))
+            model2_contextualized = prefix_μ(model2() | (var"inner.x" = x,))
+            val1 = Turing.OptimLogDensity(model1_contextualized, ctx)(u)
+            val2 = Turing.OptimLogDensity(model2_contextualized, ctx)(u)
+            @test val1 ≈ val2
+        end
+
+        @testset "Weighted" begin
+            function override(model)
+                return DynamicPPL.contextualize(
+                    model,
+                    OverrideContext(model.context, 100, 1)
+                )
+            end
+            model1_contextualized = override(model1(x))
+            model2_contextualized = override(model2() | (x = x,))
+
+            ctx = Turing.DefaultOptimizationContext()
+            val1 = Turing.OptimLogDensity(model1_contextualized, ctx)(u)
+            val2 = Turing.OptimLogDensity(model2_contextualized, ctx)(u)
+            @test val1 ≈ val2
+        end
     end
 end
