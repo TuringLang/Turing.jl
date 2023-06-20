@@ -164,23 +164,57 @@ end
     end
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
-    @testset "With ConditionContext" begin
+    @testset "OptimizationContext" begin
         @model function model1(x)
             μ ~ Uniform(0, 2)
             x ~ LogNormal(μ, 1)
-        end;
+        end
 
         @model function model2()
             μ ~ Uniform(0, 2)
             x ~ LogNormal(μ, 1)
-        end;
-
-        model2(x) = model2() | (; x)
+        end
 
         v = 1.0
         w = [1.0]
 
-        ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-        @test Turing.OptimLogDensity(model1(v), ctx)(w) == Turing.OptimLogDensity(model2(v), ctx)(w)
+        @testset "With ConditionContext" begin
+            m1 = model1(v)
+            m2 = model2() | (; x = v)
+            ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
+            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+        end
+
+        @testset "With prefixes" begin
+            function prefix_μ(model)
+                return DynamicPPL.contextualize(model, DynamicPPL.PrefixContext{:inner}(model.context))
+            end
+
+            m1 = prefix_μ(model1(v))
+            m2 = prefix_μ(model2() | (var"inner.x" = v,))
+            ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
+            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+        end
+
+        @testset "Weighted" begin
+            weighted(model) = DynamicPPL.contextualize(model, DynamicPPL.MiniBatchContext(model.context, 100))
+
+            # NOTE: We'll change `MiniBatchContext` to weight prior instead of likelihood.
+            # But this _is_ a real-world use-case, e.g. in MCMCTempering we will want
+            # to weight both the prior and the likelihood (though using different weights).
+            function DynamicPPL.tilde_assume(context::DynamicPPL.MiniBatchContext, right, vn, vi)
+                value, logp, vi = DynamicPPL.tilde_assume(context.context, right, vn, vi)
+                return value, logp * context.loglike_scalar, vi
+            end
+            function DynamicPPL.tilde_observe(context::DynamicPPL.MiniBatchContext, right, left, vi)
+                logp, vi = DynamicPPL.tilde_observe(context.context, right, left, vi)
+                return logp, vi
+            end
+
+            m1 = weighted(model1(v))
+            m2 = weighted(model2() | (; x = v))
+            ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
+            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+        end
     end
 end
