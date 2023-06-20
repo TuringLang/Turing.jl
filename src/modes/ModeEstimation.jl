@@ -41,9 +41,8 @@ struct OptimizationContext{C<:AbstractContext} <: AbstractContext
     context::C
 
     function OptimizationContext{C}(context::C) where {C<:AbstractContext}
-        leaf = DynamicPPL.leafcontext(context)
-        if !(leaf isa Union{DefaultContext,LikelihoodContext})
-            throw(ArgumentError("`OptimizationContext` supports only leaf contexts of type `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` (given: `$(typeof(leaf)))`"))
+        if !(context isa Union{DefaultContext,LikelihoodContext})
+            throw(ArgumentError("`OptimizationContext` supports only leaf contexts of type `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` (given: `$(typeof(context)))`"))
         end
         return new{C}(context)
     end
@@ -51,14 +50,12 @@ end
 
 OptimizationContext(context::AbstractContext) = OptimizationContext{typeof(context)}(context)
 
-DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsParent()
-DynamicPPL.childcontext(context::OptimizationContext) = context.context
-DynamicPPL.setchildcontext(::OptimizationContext, child) = OptimizationContext(child)
+DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
 # assume
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
-    lp = if DynamicPPL.leafcontext(ctx) isa DefaultContext
+    lp = if ctx.context isa DefaultContext
         # MAP
         Distributions.logpdf(dist, r)
     else
@@ -76,7 +73,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     # affect anything.
     # TODO: Stop using `get_and_set_val!`.
     r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    lp = if DynamicPPL.leafcontext(ctx) isa DefaultContext
+    lp = if ctx.context isa DefaultContext
         # MAP
         _loglikelihood(right, r)
     else
