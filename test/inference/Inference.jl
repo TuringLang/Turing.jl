@@ -523,4 +523,14 @@
         vdemo3kw(; T) = vdemo3(T)
         sample(vdemo3kw(; T=Vector{Float64}), alg, 250)
     end
+
+    @testset "names_values" begin
+        ks, xs = Turing.Inference.names_values([
+            (a=1,),
+            (b=2,),
+            (a=3, b=4)
+        ])
+        @test all(xs[:, 1] .=== [1, missing, 3])
+        @test all(xs[:, 2] .=== [missing, 2, 4])
+    end
 end
