@@ -10,7 +10,7 @@ function initialize_nuts(model::Turing.Model)
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)
-    initial_θ = rand(D)
+    initial_θ = rand(D) .- 0.5
 
     # Define a Hamiltonian system
     metric = AdvancedHMC.DiagEuclideanMetric(D)
@@ -37,7 +37,7 @@ end
 function initialize_mh(model)
     f = DynamicPPL.LogDensityFunction(model)
     d = LogDensityProblems.dimension(f)
-    return AdvancedMH.RWMH(MvNormal(Zeros(d), I))
+    return AdvancedMH.RWMH(MvNormal(Zeros(d), 0.1 * I))
 end
 
 @testset "External samplers" begin
@@ -49,7 +49,7 @@ end
             DynamicPPL.TestUtils.test_sampler(
                 [model],
                 DynamicPPL.Sampler(externalsampler(sampler), model),
-                1_000;
+                5_000;
                 nadapts=1_000,
                 discard_initial=1_000,
                 rtol=0.1
@@ -65,7 +65,7 @@ end
             DynamicPPL.TestUtils.test_sampler(
                 [model],
                 DynamicPPL.Sampler(externalsampler(sampler), model),
-                1_000;
+                10_000;
                 discard_initial=1_000,
                 thinning=10,
                 rtol=0.1
