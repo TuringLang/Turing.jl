@@ -123,8 +123,13 @@ function AbstractMCMC.bundle_samples(
 
     # Extract names & construct param array.
     nms = [nms; extra_params]
-    parray = map(x -> hcat(x[1], x[2]), zip(vals_vec, extra_values_vec))
-    parray = cat(parray..., dims=3)
+    # `hcat` first to ensure we get the right `eltype`.
+    x = hcat(first(vals_vec), first(extra_values_vec))
+    # Pre-allocate to minimize memory usage.
+    parray = Array{eltype(x),3}(undef, length(vals_vec), size(x, 2), size(x, 1))
+    for (i, (vals, extras)) in enumerate(zip(vals_vec, extra_values_vec))
+        parray[i, :, :] = transpose(hcat(vals, extras))
+    end
 
     # Get the average or final log evidence, if it exists.
     le = getlogevidence(samples, state, spl)

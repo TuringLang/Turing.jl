@@ -259,11 +259,27 @@
             return priors
         end
 
-        chain = sample(gauss2(; x=x), PG(10), 10)
-        chain = sample(gauss2(; x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(gauss2(; x=x), PG(10), 10)
+        @test_throws ErrorException chain = sample(gauss2(; x=x), SMC(), 10)
 
-        chain = sample(gauss2(Vector{Float64}; x=x), PG(10), 10)
-        chain = sample(gauss2(Vector{Float64}; x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), PG(10), 10)
+        @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), SMC(), 10)
+
+        @model function gauss3(x, ::Type{TV}=Vector{Float64}) where {TV}
+            priors = TV(undef, 2)
+            priors[1] ~ InverseGamma(2, 3)         # s
+            priors[2] ~ Normal(0, sqrt(priors[1])) # m
+            for i in 1:length(x)
+                x[i] ~ Normal(priors[2], sqrt(priors[1]))
+            end
+            return priors
+        end
+
+        chain = sample(gauss3(x), PG(10), 10)
+        chain = sample(gauss3(x), SMC(), 10)
+
+        chain = sample(gauss3(x, Vector{Real}), PG(10), 10)
+        chain = sample(gauss3(x, Vector{Real}), SMC(), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -506,5 +522,15 @@
 
         vdemo3kw(; T) = vdemo3(T)
         sample(vdemo3kw(; T=Vector{Float64}), alg, 250)
+    end
+
+    @testset "names_values" begin
+        ks, xs = Turing.Inference.names_values([
+            (a=1,),
+            (b=2,),
+            (a=3, b=4)
+        ])
+        @test all(xs[:, 1] .=== [1, missing, 3])
+        @test all(xs[:, 2] .=== [missing, 2, 4])
     end
 end
