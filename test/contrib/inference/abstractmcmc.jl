@@ -27,7 +27,7 @@ function initialize_nuts(model::Turing.Model)
     proposal = AdvancedHMC.NUTS{AdvancedHMC.MultinomialTS,AdvancedHMC.GeneralisedNoUTurn}(integrator)
     adaptor = AdvancedHMC.StanHMCAdaptor(
         AdvancedHMC.MassMatrixAdaptor(metric),
-        AdvancedHMC.StepSizeAdaptor(0.8, integrator)
+        AdvancedHMC.StepSizeAdaptor(0.65, integrator)
     )
 
     return AdvancedHMC.HMCSampler(proposal, metric, adaptor)
