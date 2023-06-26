@@ -6,11 +6,12 @@ function initialize_nuts(model::Turing.Model)
     f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo.
-    f = Turing.Inference.setvarinfo(f, DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model))
+    vi = Turing.Inference.getvarinfo(f)
+    f = Turing.Inference.setvarinfo(f, DynamicPPL.link!!(vi, model))
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)
-    initial_θ = rand(D) .- 0.5
+    initial_θ = vi[DynamicPPL.SampleFromPrior()]
 
     # Define a Hamiltonian system
     metric = AdvancedHMC.DiagEuclideanMetric(D)
