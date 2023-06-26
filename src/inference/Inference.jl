@@ -470,7 +470,8 @@ function SaveCSV(rng::AbstractRNG,
     θ = vii[sampler]
     # it would be good to have the param names as in the chain
     chain_name = get(kwargs, :chain_name, "chain")
-    CSV.write(string(chain_name,".csv"), Dict("params"=>[θ]), append=true)
+    CSV.write(string(chain_name,".csv"), Dict("params"=>[θ]);
+              append=true, delim=";")
 end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
