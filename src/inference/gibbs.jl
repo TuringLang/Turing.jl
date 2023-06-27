@@ -69,22 +69,9 @@ struct GibbsState{V<:VarInfo,S<:Tuple{Vararg{Sampler}},T}
     states::T
 end
 
-struct GibbsTransition{T,F}
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability for the sample's parameters."
-    lp::F
-end
+metadata(t::Transition) = (lp = t.lp,)
 
-function GibbsTransition(vi::AbstractVarInfo)
-    theta = tonamedtuple(vi)
-    lp = getlogp(vi)
-    return GibbsTransition(theta, lp)
-end
-
-metadata(t::GibbsTransition) = (lp = t.lp,)
-
-DynamicPPL.getlogp(t::GibbsTransition) = t.lp
+DynamicPPL.getlogp(t::Transition) = t.lp
 
 # extract varinfo object from state
 """
@@ -213,7 +200,7 @@ function DynamicPPL.initialstep(
     end
 
     # Compute initial transition and state.
-    transition = GibbsTransition(vi)
+    transition = Transition(vi)
     state = GibbsState(vi, samplers, states)
 
     return transition, state
@@ -248,5 +235,5 @@ function AbstractMCMC.step(
         return newstate
     end
 
-    return GibbsTransition(vi), GibbsState(vi, samplers, states)
+    return Transition(vi), GibbsState(vi, samplers, states)
 end

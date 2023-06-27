@@ -105,15 +105,22 @@ end
 # Default Transition #
 ######################
 
-struct Transition{T, F<:AbstractFloat}
-    θ  :: T
-    lp :: F
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+    θ     :: T
+    lp    :: F
+    stat  :: S
 end
 
 function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp)
+    return Transition{typeof(theta), typeof(lp)}(theta, lp, nothing)
+end
+
+function Transition(vi::AbstractVarInfo)
+    theta = tonamedtuple(vi)
+    lp = getlogp(vi)
+    return ransition{typeof(theta), typeof(lp)}(theta, lp, nothing)
 end
 
 metadata(t::Transition) = (lp = t.lp,)
