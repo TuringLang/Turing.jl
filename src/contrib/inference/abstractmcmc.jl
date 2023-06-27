@@ -56,11 +56,20 @@ function AbstractMCMC.step(
     f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo.
-    f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))
+    vi = getvarinfo(f)
+    f = setvarinfo(f, DynamicPPL.link!!(vi, model))
+
+    # Make init_params
+    if :init_params ∈ keys(Dict(kwargs))
+        init_params = kwargs[:init_params]
+    else
+        init_params = vi[DynamicPPL.SampleFromUniform()]
+    end
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     transition_inner, state_inner = AbstractMCMC.step(
-        rng, AbstractMCMC.LogDensityModel(f), sampler; kwargs...
+        rng, AbstractMCMC.LogDensityModel(f), sampler;
+        init_params=init_params, kwargs...
     )
 
     # Update the `state`
