@@ -47,6 +47,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler_wrapper::Sampler{<:ExternalSampler};
+    init_params=nothing,
     kwargs...
 )
     sampler = sampler_wrapper.alg.sampler
@@ -60,10 +61,8 @@ function AbstractMCMC.step(
     f = setvarinfo(f, DynamicPPL.link!!(vi, model))
 
     # Make init_params
-    if :init_params ∈ keys(Dict(kwargs))
-        init_params = kwargs[:init_params]
-    else
-        init_params = vi[DynamicPPL.SampleFromUniform()]
+    if init_params === nothing
+        init_params = 4 .* rand(rng, LogDensityProblems.dimension(f)) .- 2
     end
 
     # Then just call `AdvancedHMC.step` with the right arguments.
