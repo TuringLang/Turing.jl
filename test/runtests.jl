@@ -50,6 +50,9 @@ setprogress!(false)
 # Disable Enzyme warnings
 Enzyme.API.typeWarning!(false)
 
+# Enable runtime activity (workaround)
+Enzyme.API.runtimeActivity!(true)
+
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 
 # Collect timing and allocations information to show in a clear way.
