@@ -111,19 +111,15 @@ struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     stat  :: S
 end
 
-function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
+function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
     theta = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp, nothing)
+    return Transition(theta, lp, nothing)
 end
 
-function Transition(vi::AbstractVarInfo)
-    theta = tonamedtuple(vi)
-    lp = getlogp(vi)
-    return ransition{typeof(theta), typeof(lp)}(theta, lp, nothing)
+function metadata(t::Transition)
+    return merge((lp = t.lp,), t.stat)
 end
-
-metadata(t::Transition) = (lp = t.lp,)
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 

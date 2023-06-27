@@ -27,12 +27,6 @@ function Transition(vi::AbstractVarInfo, t::AHMC.Transition)
     return Transition(theta, lp, t.stat)
 end
 
-function metadata(t::Transition)
-    return merge((lp = t.lp,), t.stat)
-end
-
-DynamicPPL.getlogp(t::Transition) = t.lp
-
 ###
 ### Hamiltonian Monte Carlo samplers.
 ###

@@ -69,10 +69,6 @@ struct GibbsState{V<:VarInfo,S<:Tuple{Vararg{Sampler}},T}
     states::T
 end
 
-metadata(t::Transition) = (lp = t.lp,)
-
-DynamicPPL.getlogp(t::Transition) = t.lp
-
 # extract varinfo object from state
 """
     gibbs_varinfo(model, sampler, state)
