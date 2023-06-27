@@ -159,7 +159,7 @@ end
         @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             result_true = posterior_optima(model)
 
-            @testset "$(optimizer)" for optimizer in [LBFGS(), NelderMead()]
+            @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
                 result = optimize(model, MAP(), optimizer)
                 vals = result.values
 
@@ -174,8 +174,14 @@ end
             result_true = likelihood_optima(model)
 
             # `NelderMead` seems to struggle with convergence here, so we exclude it.
-            @testset "$(optimizer)" for optimizer in [LBFGS(),]
-                result = optimize(model, MLE(), optimizer)
+            @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
+                # Some of the models have one variance parameter per observation, and so
+                # the MLE should have the variances set to 0. Since we're working in
+                # transformed space, this corresponds to `-Inf`, which is of course not achievable.
+                # In particular, it can result in "early termniation" of the optimization process
+                # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
+                # something larger than the default.
+                result = optimize(model, MLE(), optimizer, Optim.Options(g_tol=1e-3, f_tol=1e-3))
                 vals = result.values
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
@@ -184,7 +190,7 @@ end
                     end
                 end
             end
-       end
+        end
     end
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
