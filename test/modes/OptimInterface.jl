@@ -170,23 +170,38 @@ end
                 end
             end
         end
+
+
+        # Some of the models have one variance parameter per observation, and so
+        # the MLE should have the variances set to 0. Since we're working in
+        # transformed space, this corresponds to `-Inf`, which is of course not achievable.
+        # In particular, it can result in "early termniation" of the optimization process
+        # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
+        # something larger than the default.
+        allowed_incorrect_mle = [
+            DynamicPPL.TestUtils.demo_dot_assume_dot_observe,
+            DynamicPPL.TestUtils.demo_assume_index_observe,
+            DynamicPPL.TestUtils.demo_assume_multivariate_observe,
+            DynamicPPL.TestUtils.demo_assume_observe_literal,
+            DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
+            DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
+            DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
+        ]
         @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             result_true = likelihood_optima(model)
 
             # `NelderMead` seems to struggle with convergence here, so we exclude it.
             @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(),]
-                # Some of the models have one variance parameter per observation, and so
-                # the MLE should have the variances set to 0. Since we're working in
-                # transformed space, this corresponds to `-Inf`, which is of course not achievable.
-                # In particular, it can result in "early termniation" of the optimization process
-                # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
-                # something larger than the default.
                 result = optimize(model, MLE(), optimizer, Optim.Options(g_tol=1e-3, f_tol=1e-3))
                 vals = result.values
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
                     for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
-                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                        if model.f in allowed_incorrect_mle
+                            @test isfinite(get(result_true, vn_leaf))
+                        else
+                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                        end
                     end
                 end
             end
