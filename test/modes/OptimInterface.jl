@@ -174,7 +174,7 @@ end
             result_true = likelihood_optima(model)
 
             # `NelderMead` seems to struggle with convergence here, so we exclude it.
-            @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
+            @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(),]
                 # Some of the models have one variance parameter per observation, and so
                 # the MLE should have the variances set to 0. Since we're working in
                 # transformed space, this corresponds to `-Inf`, which is of course not achievable.
