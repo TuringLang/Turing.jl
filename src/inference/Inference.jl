@@ -120,7 +120,12 @@ function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
 end
 
 function metadata(t::Transition)
-    return merge((lp = t.lp,), t.stat)
+    stat = t.stat
+    if stat === nothing
+        return (lp = t.lp,)
+    else
+        return merge((lp = t.lp,), t.stat)
+    end
 end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
