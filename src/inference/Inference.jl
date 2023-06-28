@@ -124,7 +124,7 @@ function metadata(t::Transition)
     if stat === nothing
         return (lp = t.lp,)
     else
-        return merge((lp = t.lp,), t.stat)
+        return merge((lp = t.lp,), stat)
     end
 end
 
