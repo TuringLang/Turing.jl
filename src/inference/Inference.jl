@@ -105,18 +105,28 @@ end
 # Default Transition #
 ######################
 
-struct Transition{T, F<:AbstractFloat}
-    θ  :: T
-    lp :: F
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+    θ     :: T
+    lp    :: F # TODO: merge `lp` with `stat`
+    stat  :: S
 end
 
-function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(vi), nt)
+Transition(θ, lp) = Transition(θ, lp, nothing)
+
+function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
+    θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp)
+    return Transition(θ, lp, nothing)
 end
 
-metadata(t::Transition) = (lp = t.lp,)
+function metadata(t::Transition)
+    stat = t.stat
+    if stat === nothing
+        return (lp = t.lp,)
+    else
+        return merge((lp = t.lp,), stat)
+    end
+end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
