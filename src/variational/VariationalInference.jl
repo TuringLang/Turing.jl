@@ -5,6 +5,7 @@ using DynamicPPL: DynamicPPL
 using StatsBase: StatsBase
 using StatsFuns: StatsFuns
 using LogDensityProblems: LogDensityProblems
+using Distributions
 
 using Random: Random
 
