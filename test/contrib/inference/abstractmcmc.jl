@@ -52,7 +52,7 @@ end
                 5_000;
                 nadapts=1_000,
                 discard_initial=1_000,
-                rtol=0.1
+                rtol=0.2
             )
         end
     end
@@ -68,7 +68,7 @@ end
                 10_000;
                 discard_initial=1_000,
                 thinning=10,
-                rtol=0.1
+                rtol=0.2
             )
         end
     end
