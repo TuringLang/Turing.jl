@@ -105,18 +105,28 @@ end
 # Default Transition #
 ######################
 
-struct Transition{T, F<:AbstractFloat}
-    θ  :: T
-    lp :: F
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+    θ     :: T
+    lp    :: F # TODO: merge `lp` with `stat`
+    stat  :: S
 end
 
-function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(vi), nt)
+Transition(θ, lp) = Transition(θ, lp, nothing)
+
+function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
+    θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp)
+    return Transition(θ, lp, nothing)
 end
 
-metadata(t::Transition) = (lp = t.lp,)
+function metadata(t::Transition)
+    stat = t.stat
+    if stat === nothing
+        return (lp = t.lp,)
+    else
+        return merge((lp = t.lp,), stat)
+    end
+end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
@@ -297,23 +307,23 @@ function names_values(extra_data::AbstractVector{<:NamedTuple{names}}) where nam
     return collect(names), values
 end
 
-function names_values(extra_data::AbstractVector{<:NamedTuple})
+function names_values(xs::AbstractVector{<:NamedTuple})
     # Obtain all parameter names.
-    names_set = Set(Symbol[])
-    for data in extra_data
-        for name in names(data)
-            push!(extra_names_set, name)
+    names_set = Set{Symbol}()
+    for x in xs
+        for k in keys(x)
+            push!(names_set, k)
         end
     end
-    extra_names = collect(extra_names_set)
+    names_unique = collect(names_set)
 
     # Extract all values as matrix.
     values = [
-        hasfield(data, name) ? missing : getfield(data, name)
-        for data in extra_data, name in extra_names
+        haskey(x, name) ? x[name] : missing
+        for x in xs, name in names_unique
     ]
 
-    return extra_names, values
+    return names_unique, values
 end
 
 getlogevidence(transitions, sampler, state) = missing

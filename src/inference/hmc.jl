@@ -21,23 +21,11 @@ end
 # Hamiltonian Transition #
 ##########################
 
-struct HMCTransition{T,NT<:NamedTuple,F<:AbstractFloat}
-    θ::T
-    lp::F
-    stat::NT
-end
-
-function HMCTransition(vi::AbstractVarInfo, t::AHMC.Transition)
+function Transition(vi::AbstractVarInfo, t::AHMC.Transition)
     theta = tonamedtuple(vi)
     lp = getlogp(vi)
-    return HMCTransition(theta, lp, t.stat)
+    return Transition(theta, lp, t.stat)
 end
-
-function metadata(t::HMCTransition)
-    return merge((lp = t.lp,), t.stat)
-end
-
-DynamicPPL.getlogp(t::HMCTransition) = t.lp
 
 ###
 ### Hamiltonian Monte Carlo samplers.
@@ -230,7 +218,7 @@ function DynamicPPL.initialstep(
         vi = setlogp!!(vi, log_density_old)
     end
 
-    transition = HMCTransition(vi, t)
+    transition = Transition(vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
@@ -270,7 +258,7 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = HMCTransition(vi, t)
+    transition = Transition(vi, t)
     newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate
