@@ -77,7 +77,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
                     @timeit_include("inference/Inference.jl")
                     @timeit_include("contrib/inference/dynamichmc.jl")
                     @timeit_include("contrib/inference/sghmc.jl")
-                    #@timeit_include("contrib/inference/abstractmcmc.jl")
+                    @timeit_include("contrib/inference/abstractmcmc.jl")
                     @timeit_include("inference/mh.jl")
                 end
             end
