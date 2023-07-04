@@ -107,7 +107,7 @@ end
 
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
-    lp    :: F
+    lp    :: F # TODO: merge `lp` with `stat`
     stat  :: S
 end
 
