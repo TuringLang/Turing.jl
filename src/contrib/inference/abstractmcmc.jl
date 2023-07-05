@@ -3,16 +3,10 @@ struct TuringState{S,F}
     logdensity::F
 end
 
-struct TuringTransition{T,NT<:NamedTuple,F<:AbstractFloat}
-    θ::T
-    lp::F
-    stat::NT
-end
-
-function TuringTransition(vi::AbstractVarInfo, t)
+function Transition(vi::AbstractVarInfo, t)
     theta = tonamedtuple(vi)
     lp = getlogp(vi)
-    return TuringTransition(theta, lp, getstats(t))
+    return Transition(theta, lp, getstats(t))
 end
 
 metadata(t::TuringTransition) = merge((lp = t.lp,), t.stat)
@@ -24,7 +18,7 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
     # TODO: `deepcopy` is overkill; make more efficient.
     varinfo = DynamicPPL.invlink!!(deepcopy(varinfo), f.model)
-    return TuringTransition(varinfo, transition)
+    return Transition(varinfo, transition)
 end
 
 # NOTE: Only thing that depends on the underlying sampler.
