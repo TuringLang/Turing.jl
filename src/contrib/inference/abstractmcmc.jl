@@ -9,9 +9,6 @@ function Transition(vi::AbstractVarInfo, t)
     return Transition(theta, lp, getstats(t))
 end
 
-metadata(t::TuringTransition) = merge((lp = t.lp,), t.stat)
-DynamicPPL.getlogp(t::TuringTransition) = t.lp
-
 state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     θ = getparams(transition)
