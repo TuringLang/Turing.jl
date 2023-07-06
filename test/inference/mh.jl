@@ -17,6 +17,9 @@
 
         s4 = Gibbs(MH(:m), MH(:s))
         c4 = sample(gdemo_default, s4, N)
+
+        s5 = MH(gdemo_default)
+        c5 = sample(gdemo_default, s5, N)
     end
     @numerical_testset "mh inference" begin
         Random.seed!(125)

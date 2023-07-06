@@ -11,7 +11,7 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
     LikelihoodContext, set_flag!, unset_flag!,
-    getspace, inspace
+    getspace, inspace, AbstractContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
