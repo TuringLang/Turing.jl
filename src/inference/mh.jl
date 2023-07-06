@@ -188,6 +188,16 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
+function StaticMH(model::Model)
+    priors = extract_priors(model)
+    return AMH.MetropolisHastings(AMH.StaticProposal(priors))
+end
+
+function RWMH(model::Model)
+    priors = extract_priors(model)
+    return AMH.MetropolisHastings(AMH.RandomWalkProposal(priors))
+end
+
 #####################
 # Utility functions #
 #####################

@@ -68,7 +68,8 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent,
-        externalsampler
+        externalsampler,
+        extract_priors
 
 #######################
 # Sampler abstraction #
@@ -484,6 +485,54 @@ end
 ##############
 # Utilities  #
 ##############
+
+Base.@kwdef struct PriorExtractorContext{D,Ctx} <: AbstractContext
+    priors::D=OrderedDict{VarName,Any}()
+    context::Ctx=SamplingContext()
+end
+
+NodeTrait(::PriorExtractorContext) = IsParent()
+childcontext(context::PriorExtractorContext) = context.context
+setchildcontext(parent::PriorExtractorContext, child) = PriorExtractorContext(parent.priors, child)
+
+function DynamicPPL.tilde_assume(context::PriorExtractorContext, right, vn, vi)
+    setprior!(context, vn, right)
+    return DynamicPPL.tilde_assume(childcontext(context), right, vn, vi)
+end
+
+function DynamicPPL.dot_tilde_assume(context::PriorExtractorContext, right, left, vn, vi)
+    setprior!(context, vn, right)
+    return DynamicPPL.dot_tilde_assume(childcontext(context), right, left, vn, vi)
+end
+
+function setprior!(context::PriorExtractorContext, vn::VarName, dist::Distribution)
+    context.priors[vn] = dist
+end
+
+function setprior!(context::PriorExtractorContext, vns::AbstractArray{<:VarName}, dist::Distribution)
+    for vn in vns
+        context.priors[vn] = dist
+    end
+end
+
+function setprior!(context::PriorExtractorContext, vns::AbstractArray{<:VarName}, dists::AbstractArray{<:Distribution})
+    # TODO: Support broadcasted expressions properly.
+    for (vn, dist) in zip(vns, dists)
+        context.priors[vn] = dist
+    end
+end
+
+"""
+    extract_priors(model::Model)
+
+Extract the priors from a model. This is done by sampling from the model and
+recording the distributions that are used to generate the samples.
+"""
+function extract_priors(model::Model)
+    context = PriorExtractorContext()
+    evaluate!!(model, VarInfo(), context)
+    return context.priors
+end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
