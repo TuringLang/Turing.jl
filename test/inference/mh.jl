@@ -18,8 +18,11 @@
         s4 = Gibbs(MH(:m), MH(:s))
         c4 = sample(gdemo_default, s4, N)
 
-        s5 = MH(gdemo_default)
+        s5 = RWMH(gdemo_default)
         c5 = sample(gdemo_default, s5, N)
+
+        s6 = StaticMH(gdemo_default)
+        c6 = sample(gdemo_default, s6, N)
     end
     @numerical_testset "mh inference" begin
         Random.seed!(125)
