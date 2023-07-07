@@ -123,25 +123,26 @@ end
 ######################
 # Default Transition #
 ######################
+# Default
+# Extended in contrib/inference/abstractmcmc.jl
+getstats(t) = nothing
 
-struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+Base.@kwdef struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
     lp    :: F # TODO: merge `lp` with `stat`
-    stat  :: S
+    stat  :: S = nothing
 end
 
 function Transition(vi::AbstractVarInfo, t)
-    theta = tonamedtuple(vi)
+    θ = tonamedtuple(vi)
     lp = getlogp(vi)
-    return Transition(theta, lp, getstats(t))
+    return Transition(θ=θ, lp=lp, stat=getstats(t))
 end
-
-Transition(θ, lp) = Transition(θ, lp, nothing)
 
 function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
     θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition(θ, lp, nothing)
+    return Transition(θ=θ, lp=lp)
 end
 
 function metadata(t::Transition)
