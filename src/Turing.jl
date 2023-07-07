@@ -85,6 +85,7 @@ export  @model,                 # modelling
 
         MH,                     # classic sampling
         RWMH,
+        StaticMH,
         Emcee,
         ESS,
         Gibbs,
@@ -113,6 +114,7 @@ export  @model,                 # modelling
         @logprob_str,
         @prob_str,
         externalsampler,
+        extract_priors,
 
         setchunksize,           # helper
         setadbackend,

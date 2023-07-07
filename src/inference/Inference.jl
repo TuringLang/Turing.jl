@@ -11,7 +11,9 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
     LikelihoodContext, set_flag!, unset_flag!,
-    getspace, inspace, AbstractContext
+    getspace, inspace, AbstractContext, 
+    evaluate!!, IsParent, OrderedDict,
+    SamplingContext, Distribution 
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -29,6 +31,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
+import DynamicPPL: tilde_assume, dot_tilde_assume, childcontext, setchildcontext, NodeTrait
 import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
@@ -45,6 +48,8 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
+        RWMH,
+        StaticMH,
         ESS,
         Emcee,
         Gibbs,      # classic sampling
