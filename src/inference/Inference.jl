@@ -671,9 +671,9 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        theta = DynamicPPL.tonamedtuple(vi)
+        θ = DynamicPPL.tonamedtuple(vi)
         lp = Turing.getlogp(vi)
-        Transition(theta, lp)
+        Transition(θ=θ, lp=lp)
     end
 
     return transitions
