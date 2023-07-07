@@ -3,12 +3,6 @@ struct TuringState{S,F}
     logdensity::F
 end
 
-function Transition(vi::AbstractVarInfo, t)
-    theta = tonamedtuple(vi)
-    lp = getlogp(vi)
-    return Transition(theta, lp, getstats(t))
-end
-
 state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     θ = getparams(transition)
