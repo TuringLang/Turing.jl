@@ -133,10 +133,10 @@ struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     stat  :: S
 end
 
-function Transition(vi::AbstractVarInfo, t)
-    θ = tonamedtuple(vi)
+function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
+    θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition(θ=θ, lp=lp, stat=getstats(t))
+    return Transition(θ, lp, getstats(t))
 end
 
 function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
