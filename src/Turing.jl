@@ -112,6 +112,7 @@ export  @model,                 # modelling
         resume,
         @logprob_str,
         @prob_str,
+        externalsampler,
 
         setchunksize,           # helper
         setadbackend,
