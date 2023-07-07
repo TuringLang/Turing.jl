@@ -127,7 +127,7 @@ end
 # Extended in contrib/inference/abstractmcmc.jl
 getstats(t) = nothing
 
-Base.@kwdef struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
     lp    :: F # TODO: merge `lp` with `stat`
     stat  :: S = nothing
