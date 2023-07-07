@@ -130,7 +130,7 @@ getstats(t) = nothing
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
     lp    :: F # TODO: merge `lp` with `stat`
-    stat  :: S = nothing
+    stat  :: S
 end
 
 function Transition(vi::AbstractVarInfo, t)
