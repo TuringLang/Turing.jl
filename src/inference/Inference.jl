@@ -139,12 +139,6 @@ function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
     return Transition(θ, lp, getstats(t))
 end
 
-function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
-    θ = merge(tonamedtuple(vi), nt)
-    lp = getlogp(vi)
-    return Transition(θ=θ, lp=lp)
-end
-
 function metadata(t::Transition)
     stat = t.stat
     if stat === nothing
@@ -671,9 +665,7 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        θ = DynamicPPL.tonamedtuple(vi)
-        lp = Turing.getlogp(vi)
-        Transition(θ=θ, lp=lp)
+        Transition(vi)
     end
 
     return transitions
