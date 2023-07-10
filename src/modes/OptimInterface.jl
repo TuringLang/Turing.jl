@@ -50,19 +50,23 @@ function Base.show(io::IO, m::ModeResult)
     show(io, m.values.array)
 end
 
-function StatsBase.coeftable(m::ModeResult)
+function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     # Get columns for coeftable.
     terms = String.(StatsBase.coefnames(m))
     estimates = m.values.array[:, 1]
     stderrors = StatsBase.stderror(m)
     zscore = estimates ./ stderrors
-    # p = 2 * (1 .- cdf.(Normal(0, 1), abs.(zscore)))
+    p = 2 * (1 .- cdf.(Normal(0, 1), abs.(zscore)))
 
-    # # 95% confidence interval (CI)
-    # ci_low = estimates .+ quantile(Normal(0, 1), 0.025) .* stderrors
-    # ci_high = estimates .+ quantile(Normal(0, 1), 0.975) .* stderrors
+    # Confidence interval (CI)
+    q = quantile(Normal(0, 1), 1 - (1 - level) / 2)
+    ci_low = estimates .- q .* stderrors
+    ci_high = estimates .+ q .* stderrors
 
-    StatsBase.CoefTable([estimates, stderrors, zscore], ["estimate", "stderror", "tstat"], terms)
+    StatsBase.CoefTable(
+        [estimates, stderrors, zscore, p, ci_low, ci_high],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower 95%", "Upper 95%"],
+        terms)
 end
 
 function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
