@@ -25,13 +25,13 @@ struct ModeResult{
     M<:OptimLogDensity
 } <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
-    values :: V
+    values::V
     "The stored Optim.jl results."
-    optim_result :: O
+    optim_result::O
     "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run."
-    lp :: Float64
+    lp::Float64
     "The evaluation function used to calculate the output."
-    f :: M
+    f::M
 end
 #############################
 # Various StatsBase methods #
@@ -53,11 +53,16 @@ end
 function StatsBase.coeftable(m::ModeResult)
     # Get columns for coeftable.
     terms = String.(StatsBase.coefnames(m))
-    estimates = m.values.array[:,1]
+    estimates = m.values.array[:, 1]
     stderrors = StatsBase.stderror(m)
-    tstats = estimates ./ stderrors
+    zscore = estimates ./ stderrors
+    # p = 2 * (1 .- cdf.(Normal(0, 1), abs.(zscore)))
 
-    StatsBase.CoefTable([estimates, stderrors, tstats], ["estimate", "stderror", "tstat"], terms)
+    # # 95% confidence interval (CI)
+    # ci_low = estimates .+ quantile(Normal(0, 1), 0.025) .* stderrors
+    # ci_high = estimates .+ quantile(Normal(0, 1), 0.975) .* stderrors
+
+    StatsBase.CoefTable([estimates, stderrors, zscore], ["estimate", "stderror", "tstat"], terms)
 end
 
 function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
@@ -192,7 +197,7 @@ Estimate a mode, i.e., compute a MLE or MAP estimate.
 function _optimize(
     model::Model,
     f::OptimLogDensity,
-    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
+    optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     args...;
     kwargs...
 )
@@ -202,7 +207,7 @@ end
 function _optimize(
     model::Model,
     f::OptimLogDensity,
-    options::Optim.Options = Optim.Options(),
+    options::Optim.Options=Optim.Options(),
     args...;
     kwargs...
 )
@@ -212,8 +217,8 @@ end
 function _optimize(
     model::Model,
     f::OptimLogDensity,
-    init_vals::AbstractArray = DynamicPPL.getparams(f),
-    options::Optim.Options = Optim.Options(),
+    init_vals::AbstractArray=DynamicPPL.getparams(f),
+    options::Optim.Options=Optim.Options(),
     args...;
     kwargs...
 )
@@ -223,9 +228,9 @@ end
 function _optimize(
     model::Model,
     f::OptimLogDensity,
-    init_vals::AbstractArray = DynamicPPL.getparams(f),
-    optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
-    options::Optim.Options = Optim.Options(),
+    init_vals::AbstractArray=DynamicPPL.getparams(f),
+    optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
+    options::Optim.Options=Optim.Options(),
     args...;
     kwargs...
 )
