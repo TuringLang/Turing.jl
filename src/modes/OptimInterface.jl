@@ -11,16 +11,16 @@ import Printf
 
 """
     ModeResult{
-        V<:NamedArrays.NamedArray, 
-        M<:NamedArrays.NamedArray, 
-        O<:Optim.MultivariateOptimizationResults, 
+        V<:NamedArrays.NamedArray,
+        M<:NamedArrays.NamedArray,
+        O<:Optim.MultivariateOptimizationResults,
         S<:NamedArrays.NamedArray
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
 """
 struct ModeResult{
-    V<:NamedArrays.NamedArray, 
+    V<:NamedArrays.NamedArray,
     O<:Optim.MultivariateOptimizationResults,
     M<:OptimLogDensity
 } <: StatsBase.StatisticalModel
@@ -52,7 +52,7 @@ end
 
 function StatsBase.coeftable(m::ModeResult)
     # Get columns for coeftable.
-    terms = StatsBase.coefnames(m)
+    terms = String.(StatsBase.coefnames(m))
     estimates = m.values.array[:,1]
     stderrors = StatsBase.stderror(m)
     tstats = estimates ./ stderrors
@@ -113,7 +113,7 @@ mle = optimize(model, MLE())
 mle = optimize(model, MLE(), NelderMead())
 ```
 """
-function Optim.optimize(model::Model, ::MLE, options::Optim.Options=Optim.Options(); kwargs...) 
+function Optim.optimize(model::Model, ::MLE, options::Optim.Options=Optim.Options(); kwargs...)
     return _mle_optimize(model, options; kwargs...)
 end
 function Optim.optimize(model::Model, ::MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
@@ -123,11 +123,11 @@ function Optim.optimize(model::Model, ::MLE, optimizer::Optim.AbstractOptimizer,
     return _mle_optimize(model, optimizer, options; kwargs...)
 end
 function Optim.optimize(
-    model::Model, 
-    ::MLE, 
-    init_vals::AbstractArray, 
-    optimizer::Optim.AbstractOptimizer, 
-    options::Optim.Options=Optim.Options(); 
+    model::Model,
+    ::MLE,
+    init_vals::AbstractArray,
+    optimizer::Optim.AbstractOptimizer,
+    options::Optim.Options=Optim.Options();
     kwargs...
 )
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -159,7 +159,7 @@ map_est = optimize(model, MAP(), NelderMead())
 ```
 """
 
-function Optim.optimize(model::Model, ::MAP, options::Optim.Options=Optim.Options(); kwargs...) 
+function Optim.optimize(model::Model, ::MAP, options::Optim.Options=Optim.Options(); kwargs...)
     return _map_optimize(model, options; kwargs...)
 end
 function Optim.optimize(model::Model, ::MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
@@ -169,11 +169,11 @@ function Optim.optimize(model::Model, ::MAP, optimizer::Optim.AbstractOptimizer,
     return _map_optimize(model, optimizer, options; kwargs...)
 end
 function Optim.optimize(
-    model::Model, 
-    ::MAP, 
-    init_vals::AbstractArray, 
-    optimizer::Optim.AbstractOptimizer, 
-    options::Optim.Options=Optim.Options(); 
+    model::Model,
+    ::MAP,
+    init_vals::AbstractArray,
+    optimizer::Optim.AbstractOptimizer,
+    options::Optim.Options=Optim.Options();
     kwargs...
 )
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -190,43 +190,43 @@ end
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
+    model::Model,
+    f::OptimLogDensity,
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
-    args...; 
+    args...;
     kwargs...
 )
     return _optimize(model, f, DynamicPPL.getparams(f), optimizer, args...; kwargs...)
 end
 
 function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
+    model::Model,
+    f::OptimLogDensity,
     options::Optim.Options = Optim.Options(),
-    args...; 
+    args...;
     kwargs...
 )
     return _optimize(model, f, DynamicPPL.getparams(f), Optim.LBFGS(), args...; kwargs...)
 end
 
 function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
+    model::Model,
+    f::OptimLogDensity,
     init_vals::AbstractArray = DynamicPPL.getparams(f),
     options::Optim.Options = Optim.Options(),
-    args...; 
+    args...;
     kwargs...
 )
     return _optimize(model, f, init_vals, Optim.LBFGS(), options, args...; kwargs...)
 end
 
 function _optimize(
-    model::Model, 
-    f::OptimLogDensity, 
-    init_vals::AbstractArray = DynamicPPL.getparams(f), 
+    model::Model,
+    f::OptimLogDensity,
+    init_vals::AbstractArray = DynamicPPL.getparams(f),
     optimizer::Optim.AbstractOptimizer = Optim.LBFGS(),
     options::Optim.Options = Optim.Options(),
-    args...; 
+    args...;
     kwargs...
 )
     # Convert the initial values, since it is assumed that users provide them
@@ -243,7 +243,7 @@ function _optimize(
         @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
     end
 
-    # Get the VarInfo at the MLE/MAP point, and run the model to ensure 
+    # Get the VarInfo at the MLE/MAP point, and run the model to ensure
     # correct dimensionality.
     @set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
     @set! f.varinfo = invlink!!(f.varinfo, model)
