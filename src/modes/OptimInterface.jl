@@ -59,7 +59,7 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     p = pvalue(Normal(), zscore; tail=:both)
 
     # Confidence interval (CI)
-    q = quantile(Normal(0, 1), 1 - (1 - level) / 2)
+    q = quantile(Normal(), (1 + level) / 2)
     ci_low = estimates .- q .* stderrors
     ci_high = estimates .+ q .* stderrors
 
