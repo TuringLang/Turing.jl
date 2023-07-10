@@ -52,7 +52,7 @@ end
 
 function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     # Get columns for coeftable.
-    terms = String.(StatsBase.coefnames(m))
+    terms = string.(StatsBase.coefnames(m))
     estimates = m.values.array[:, 1]
     stderrors = StatsBase.stderror(m)
     zscore = estimates ./ stderrors
