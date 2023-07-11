@@ -57,7 +57,7 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     estimates = m.values.array[:, 1]
     stderrors = StatsBase.stderror(m)
     zscore = estimates ./ stderrors
-    p = StatsAPI.pvalue(Normal(), zscore; tail=:both)
+    p = map(z -> StatsAPI.pvalue(Normal(), z; tail=:both), zscore)
 
     # Confidence interval (CI)
     q = quantile(Normal(), (1 + level) / 2)
