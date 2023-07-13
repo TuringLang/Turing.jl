@@ -63,10 +63,13 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     q = quantile(Normal(), (1 + level) / 2)
     ci_low = estimates .- q .* stderrors
     ci_high = estimates .+ q .* stderrors
-
+    
+    level_ = 100*level
+    level_percentage = isinteger(level_) ? Int(level_) : level_ 
+    
     StatsBase.CoefTable(
         [estimates, stderrors, zscore, p, ci_low, ci_high],
-        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower 95%", "Upper 95%"],
+        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower $(level_percentage)%", "Upper $(level_percentage)%"],
         terms)
 end
 
