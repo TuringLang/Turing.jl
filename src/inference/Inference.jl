@@ -29,6 +29,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
+import ..Essential: getADbackend
 import DynamicPPL: extract_priors
 import EllipticalSliceSampling
 import LogDensityProblems
