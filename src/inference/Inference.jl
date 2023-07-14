@@ -11,9 +11,7 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
     LikelihoodContext, set_flag!, unset_flag!,
-    getspace, inspace, AbstractContext, 
-    evaluate!!, IsParent, OrderedDict,
-    SamplingContext, Distribution 
+    getspace, inspace
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -31,8 +29,7 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import DynamicPPL: tilde_assume, dot_tilde_assume, childcontext, setchildcontext, NodeTrait
-import ..Essential: getADbackend
+import DynamicPPL: extract_priors
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
@@ -73,8 +70,7 @@ export  InferenceAlgorithm,
         resume,
         predict,
         isgibbscomponent,
-        externalsampler,
-        extract_priors
+        externalsampler
 
 #######################
 # Sampler abstraction #
@@ -490,18 +486,6 @@ end
 ##############
 # Utilities  #
 ##############
-
-"""
-    extract_priors(model::Model)
-
-Extract the priors from a model. This is done by sampling from the model and
-recording the distributions that are used to generate the samples.
-"""
-function extract_priors(model::Model)
-    context = PriorExtractorContext()
-    evaluate!!(model, VarInfo(), context)
-    return context.priors
-end
 
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
