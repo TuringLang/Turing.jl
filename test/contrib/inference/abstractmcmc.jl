@@ -41,7 +41,7 @@ function initialize_mh(model)
 end
 
 @testset "External samplers" begin
-    @testset "AdvancedHMC.jl" begin
+    @turing_testset "AdvancedHMC.jl" begin
         for model in DynamicPPL.TestUtils.DEMO_MODELS
             # Need some functionality to initialize the sampler.
             # TODO: Remove this once the constructors in the respective packages become "lazy".
@@ -57,7 +57,7 @@ end
         end
     end
 
-    @testset "AdvancedMH.jl" begin
+    @turing_testset "AdvancedMH.jl" begin
         for model in DynamicPPL.TestUtils.DEMO_MODELS
             # Need some functionality to initialize the sampler.
             # TODO: Remove this once the constructors in the respective packages become "lazy".
