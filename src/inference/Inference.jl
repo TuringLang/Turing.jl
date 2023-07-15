@@ -22,6 +22,7 @@ using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
+using Setfield: Setfield
 
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
@@ -66,7 +67,8 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent
+        isgibbscomponent,
+        externalsampler
 
 #######################
 # Sampler abstraction #
@@ -77,8 +79,25 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
-
 getADbackend(::Hamiltonian{AD}) where AD = AD()
+
+"""
+    ExternalSampler{S<:AbstractSampler}
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ExternalSampler{S<:AbstractSampler} <: InferenceAlgorithm
+    "the sampler to wrap"
+    sampler::S
+end
+
+"""
+    externalsampler(sampler::AbstractSampler)
+
+Wrap a sampler so it can be used as an inference algorithm.
+"""
+externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
@@ -104,6 +123,9 @@ end
 ######################
 # Default Transition #
 ######################
+# Default
+# Extended in contrib/inference/abstractmcmc.jl
+getstats(t) = nothing
 
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
@@ -113,10 +135,10 @@ end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
 
-function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
+function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
     θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition(θ, lp, nothing)
+    return Transition(θ, lp, getstats(t))
 end
 
 function metadata(t::Transition)
@@ -246,7 +268,6 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
-
 ##########################
 # Chain making utilities #
 ##########################
@@ -442,6 +463,7 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
+include("../contrib/inference/abstractmcmc.jl")
 
 ################
 # Typing tools #
@@ -645,9 +667,7 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        theta = DynamicPPL.tonamedtuple(vi)
-        lp = Turing.getlogp(vi)
-        Transition(theta, lp)
+        Transition(vi)
     end
 
     return transitions
