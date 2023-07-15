@@ -52,7 +52,8 @@ end
                 5_000;
                 nadapts=1_000,
                 discard_initial=1_000,
-                rtol=0.2
+                rtol=0.2,
+                sampler_name = "AdvancedHMC"
             )
         end
     end
@@ -68,7 +69,8 @@ end
                 10_000;
                 discard_initial=1_000,
                 thinning=10,
-                rtol=0.2
+                rtol=0.2,
+                sampler_name = "AdvancedMH"
             )
         end
     end
