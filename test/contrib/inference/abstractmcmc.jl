@@ -70,7 +70,7 @@ end
                 discard_initial=1_000,
                 thinning=10,
                 rtol=0.2,
-                sampler_name = "AdvancedMH"
+                sampler_name="AdvancedMH"
             )
         end
     end
