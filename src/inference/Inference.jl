@@ -126,6 +126,9 @@ end
 ######################
 # Default Transition #
 ######################
+# Default
+# Extended in contrib/inference/abstractmcmc.jl
+getstats(t) = nothing
 
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
@@ -135,10 +138,10 @@ end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
 
-function Transition(vi::AbstractVarInfo; nt::NamedTuple=NamedTuple())
+function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
     θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition(θ, lp, nothing)
+    return Transition(θ, lp, getstats(t))
 end
 
 function metadata(t::Transition)
@@ -667,9 +670,7 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        theta = DynamicPPL.tonamedtuple(vi)
-        lp = Turing.getlogp(vi)
-        Transition(theta, lp)
+        Transition(vi)
     end
 
     return transitions
