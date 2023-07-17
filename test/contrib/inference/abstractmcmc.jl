@@ -53,7 +53,7 @@ end
                 nadapts=1_000,
                 discard_initial=1_000,
                 rtol=0.2,
-                sampler_name = "AdvancedHMC"
+                sampler_name="AdvancedHMC"
             )
         end
     end
