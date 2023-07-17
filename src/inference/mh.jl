@@ -188,14 +188,6 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-function StaticMH(model::Model)
-    return MH(model; proposal_type=AMH.StaticProposal)
-end
-
-function RWMH(model::Model)
-    return MH(model; proposal_type=AMH.RandomWalkProposal)
-end
-
 function MH(model::Model; proposal_type=AMH.StaticProposal)
     priors = extract_priors(model)
     props = Tuple([proposal_type(prop) for prop in values(priors)])
