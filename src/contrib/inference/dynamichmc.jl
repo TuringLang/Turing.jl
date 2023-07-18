@@ -60,7 +60,7 @@ function AbstractMCMC.step(
         state.stepsize,
     )
     transition, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
-    newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
+    newstate = DynamicNUTSState(ℓ, transition, state.metric, state.stepsize)
 
     return transition, newstate
 end
