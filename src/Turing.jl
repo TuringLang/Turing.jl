@@ -53,7 +53,7 @@ using .Variational
         import ..DynamicHMC
 
         if isdefined(DynamicHMC, :mcmc_with_warmup)
-            include("contrib/inference/dynamichmc.jl")
+            include("ext/dynamichmc.jl")
         else
             error("Please update DynamicHMC, v1.x is no longer supported")
         end

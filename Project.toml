@@ -66,3 +66,13 @@ StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
 Tracker = "0.2.3"
 julia = "1.7"
+
+
+[extensions]
+dynamichmc = "DynamicHMC"
+
+[extras]
+DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb"
+
+[weakdeps]
+DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb"
