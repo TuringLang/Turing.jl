@@ -125,7 +125,7 @@ end
 ######################
 # Default
 # Extended in contrib/inference/abstractmcmc.jl
-getstats(t) = nothing
+function getstats end
 
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
     θ     :: T
