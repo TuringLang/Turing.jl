@@ -124,7 +124,6 @@ end
 # Default Transition #
 ######################
 # Default
-# Extended in contrib/inference/abstractmcmc.jl
 getstats(t) = nothing
 
 struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
