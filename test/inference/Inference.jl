@@ -292,8 +292,11 @@
             return p
         end
 
-        chain = sample(
+        sample(
             newinterface(obs), HMC{Turing.ForwardDiffAD{2}}(0.75, 3, :p, :x), 100
+        )
+        sample(
+            newinterface(obs), HMC{Turing.AutoForwardDiff{2}}(0.75, 3, :p, :x), 100
         )
     end
     @testset "no return" begin
@@ -341,7 +344,7 @@
     end
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
-        if Turing.Essential.ADBackend() !== Turing.Essential.TrackerAD
+        if Turing.Essential.ADBackend() !== Turing.AutoTracker
             @model function vdemo1(x)
                 s ~ InverseGamma(2, 3)
                 m ~ Normal(0, sqrt(s))

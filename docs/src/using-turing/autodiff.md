@@ -16,7 +16,7 @@ To switch between the different AD backends, one can call function `Turing.setad
 ## Compositional Sampling with Differing AD Modes
 
 
-Turing supports intermixed automatic differentiation methods for different variable spaces. The snippet below shows using `ForwardDiff` to sample the mean (`m`) parameter, and using the Tracker-based `TrackerAD` autodiff for the variance (`s`) parameter:
+Turing supports intermixed automatic differentiation methods for different variable spaces. The snippet below shows using `ForwardDiff` to sample the mean (`m`) parameter, and using the Tracker-based `Turing.AutoTracker` autodiff for the variance (`s`) parameter:
 
 
 ```julia
@@ -34,15 +34,15 @@ end
 c = sample(
 	gdemo(1.5, 2),
   	Gibbs(
-    	HMC{Turing.ForwardDiffAD{1}}(0.1, 5, :m),
-        HMC{Turing.TrackerAD}(0.1, 5, :s)
+    	HMC{Turing.AutoForwardDiff{1}}(0.1, 5, :m),
+        HMC{Turing.AutoTracker}(0.1, 5, :s)
     ),
     1000,
 )
 ```
 
 
-Generally, `TrackerAD` is faster when sampling from variables of high dimensionality (greater than 20) and `ForwardDiffAD` is more efficient for lower-dimension variables. This functionality allows those who are performance sensitive to fine tune their automatic differentiation for their specific models.
+Generally, `AutoTracker` is faster when sampling from variables of high dimensionality (greater than 20) and `AutoForwardDiff` is more efficient for lower-dimension variables. This functionality allows those who are performance sensitive to fine tune their automatic differentiation for their specific models.
 
 
 If the differentiation method is not specified in this way, Turing will default to using whatever the global AD backend is. Currently, this defaults to `ForwardDiff`.

@@ -30,7 +30,7 @@
         ℓ = Turing.LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
-        trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
+        trackerℓ = LogDensityProblemsAD.ADgradient(Turing.AutoTracker(), ℓ)
         if isdefined(Base, :get_extension)
             @test trackerℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADTrackerExt).TrackerGradientLogDensity
         else
@@ -40,7 +40,7 @@
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
-        zygoteℓ = LogDensityProblemsAD.ADgradient(ZygoteAD(), ℓ)
+        zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
         if isdefined(Base, :get_extension)
             @test zygoteℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADZygoteExt).ZygoteGradientLogDensity
         else
@@ -195,12 +195,13 @@
 
     @testset "tag" begin
         @test Turing.ADBackend(Val(:forwarddiff))() === Turing.ForwardDiffAD{Turing.CHUNKSIZE[],true}()
-        for chunksize in (0, 1, 10)
-            ad = Turing.ForwardDiffAD{chunksize}()
-            @test ad === Turing.ForwardDiffAD{chunksize,true}()
+        @test Turing.ADBackend(Val(:forwarddiff))() === Turing.AutoForwardDiff{Turing.CHUNKSIZE[],true}()
+        for chunksize in (0, 1, 10), T in (Turing.ForwardDiffAD, Turing.AutoForwardDiff)
+            ad = T{chunksize}()
+            @test ad === T{chunksize,true}()
             @test Turing.Essential.standardtag(ad)
             for standardtag in (false, 0, 1)
-                @test !Turing.Essential.standardtag(Turing.ForwardDiffAD{chunksize,standardtag}())
+                @test !Turing.Essential.standardtag(T{chunksize,standardtag}())
             end
         end
     end

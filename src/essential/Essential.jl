@@ -13,6 +13,7 @@ import Bijectors: link, invlink
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
+using ADTypes: ADTypes, AutoTracker, AutoReverseDiff, AutoZygote
 
 import AdvancedPS
 import LogDensityProblems
@@ -20,6 +21,11 @@ import LogDensityProblemsAD
 
 include("container.jl")
 include("ad.jl")
+
+Base.@deprecate_binding ForwardDiffAD AutoForwardDiff
+Base.@deprecate_binding TrackerAD AutoTracker
+Base.@deprecate_binding ReverseDiffAD AutoReverseDiff
+Base.@deprecate_binding ZygoteAD AutoZygote
 
 export  @model,
         @varname,
@@ -42,10 +48,10 @@ export  @model,
         ADBackend,
         setadbackend,
         setadsafe,
-        ForwardDiffAD,
-        TrackerAD,
-        ZygoteAD,
-        ReverseDiffAD,
+        AutoForwardDiff,
+        AutoTracker,
+        AutoZygote,
+        AutoReverseDiff,
         value,
         CHUNKSIZE,
         ADBACKEND,
