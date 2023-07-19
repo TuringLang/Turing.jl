@@ -2,6 +2,8 @@
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
+export DynamicNUTS
+
 """
     DynamicNUTS
 

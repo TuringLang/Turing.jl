@@ -55,7 +55,6 @@ export  InferenceAlgorithm,
         SGHMC,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
-        DynamicNUTS,
         IS,
         SMC,
         CSMC,

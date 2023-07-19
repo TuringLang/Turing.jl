@@ -67,7 +67,6 @@ StatsFuns = "0.8, 0.9, 1"
 Tracker = "0.2.3"
 julia = "1.7"
 
-
 [extensions]
 dynamichmc = "DynamicHMC"
 
