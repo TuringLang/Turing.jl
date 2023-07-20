@@ -22,7 +22,7 @@ function DynamicPPL.tilde_observe(context::OverrideContext, right, left, vi)
     return context.loglikelihood_weight, vi
 end
 
-@testset "OptimInterface.jl" begin
+@numerical_testset "OptimInterface.jl" begin
     @testset "MLE" begin
         Random.seed!(222)
         true_value = [0.0625, 1.75]
