@@ -2,6 +2,17 @@
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
+struct DynamicNUTS{S<:DynamicHMC.NUTS} <: AbstractSampler
+    sampler::S
+end
+
+DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
+
+function externalsampler(spl::DynamicHMC.NUTS) 
+    spl = DynamicNUTS(spl)
+    return ExternalSampler(spl)
+end
+
 """
     DynamicNUTSState
 
@@ -46,7 +57,7 @@ end
 function AbstractMCMC.step(
     rng::AbstractRNG,
     model::LogDensityModel,
-    spl::DynamicHMC.NUTS,
+    spl::DynamicNUTS,
     state::DynamicNUTSState;
     kwargs...
 )
