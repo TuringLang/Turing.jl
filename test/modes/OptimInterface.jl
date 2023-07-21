@@ -122,7 +122,7 @@ end
     # FIXME: Some models doesn't work for Tracker and ReverseDiff.
     if Turing.Essential.ADBACKEND[] === :forwarddiff
         @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-            result_true = posterior_optima(model)
+            result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
             @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
                 result = optimize(model, MAP(), optimizer)
@@ -153,7 +153,7 @@ end
             DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
         ]
         @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-            result_true = likelihood_optima(model)
+            result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
             # `NelderMead` seems to struggle with convergence here, so we exclude it.
             @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(),]
