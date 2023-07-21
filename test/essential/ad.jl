@@ -95,15 +95,14 @@
         sample(dir(), HMC(0.01, 1), 1000)
         Turing.setrdcache(false)
     end
-    # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
         @model function wishart()
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:tracker)
         sample(wishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(wishart(), HMC(0.01, 1), 1000);
+        Turing.setadbackend(:reversediff)
+        sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
 
@@ -112,8 +111,8 @@
         end
         Turing.setadbackend(:tracker)
         sample(invwishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(invwishart(), HMC(0.01, 1), 1000);
+        Turing.setadbackend(:reversediff)
+        sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end
