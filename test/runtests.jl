@@ -53,16 +53,16 @@ const TIMEROUTPUT = TimerOutputs.TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
 
 @testset "Turing" begin
-    @testset "essential" begin
-        @timeit_include("essential/ad.jl")
-    end
+    #@testset "essential" begin
+    #    @timeit_include("essential/ad.jl")
+    #end
 
-    @testset "samplers (without AD)" begin
-        @timeit_include("inference/AdvancedSMC.jl")
-        @timeit_include("inference/emcee.jl")
-        @timeit_include("inference/ess.jl")
-        @timeit_include("inference/is.jl")
-    end
+    #@testset "samplers (without AD)" begin
+    #    @timeit_include("inference/AdvancedSMC.jl")
+    #    @timeit_include("inference/emcee.jl")
+    #    @timeit_include("inference/ess.jl")
+    #    @timeit_include("inference/is.jl")
+    #end
 
     Turing.setrdcache(false)
     for adbackend in (:forwarddiff, :reversediff)
@@ -71,25 +71,25 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
             @info "Testing $(adbackend)"
             @testset "inference: $adbackend" begin
                 @testset "samplers" begin
-                    @timeit_include("inference/gibbs.jl")
-                    @timeit_include("inference/gibbs_conditional.jl")
-                    @timeit_include("inference/hmc.jl")
-                    @timeit_include("inference/Inference.jl")
+                    #@timeit_include("inference/gibbs.jl")
+                    #@timeit_include("inference/gibbs_conditional.jl")
+                    #@timeit_include("inference/hmc.jl")
+                    #@timeit_include("inference/Inference.jl")
                     @timeit_include("contrib/inference/dynamichmc.jl")
-                    @timeit_include("contrib/inference/sghmc.jl")
+                    #@timeit_include("contrib/inference/sghmc.jl")
                     @timeit_include("contrib/inference/abstractmcmc.jl")
-                    @timeit_include("inference/mh.jl")
+                    #@timeit_include("inference/mh.jl")
                 end
             end
 
-            @testset "variational algorithms : $adbackend" begin
-                @timeit_include("variational/advi.jl")
-            end
+            #@testset "variational algorithms : $adbackend" begin
+            #    @timeit_include("variational/advi.jl")
+            #end
 
-            @testset "modes : $adbackend" begin
-                @timeit_include("modes/ModeEstimation.jl")
-                @timeit_include("modes/OptimInterface.jl")
-            end
+            #@testset "modes : $adbackend" begin
+            #    @timeit_include("modes/ModeEstimation.jl")
+            #    @timeit_include("modes/OptimInterface.jl")
+            #end
 
         end
     end

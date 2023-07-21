@@ -2,16 +2,17 @@
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
+import DynamicHMC
+
+# Wraps DynamicHMC as an AbstractSampler
 struct DynamicNUTS{S<:DynamicHMC.NUTS} <: AbstractSampler
     sampler::S
 end
 
 DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
+externalsampler(spl::DynamicHMC.NUTS) = ExternalSampler(DynamicNUTS(spl))
+externalsampler(spl::DynamicNUTS) = ExternalSampler(spl)
 
-function externalsampler(spl::DynamicHMC.NUTS) 
-    spl = DynamicNUTS(spl)
-    return ExternalSampler(spl)
-end
 
 """
     DynamicNUTSState
@@ -31,32 +32,38 @@ end
 
 function AbstractMCMC.step(
     rng::AbstractRNG,
-    model::LogDensityModel,
+    model::AbstractMCMC.LogDensityModel,
     spl::DynamicNUTS;
     init_params = nothing,
     kwargs...
 )
     # Unpack model
-    ℓ = model.logdensity
+    # We wrap it again in ADgradient 
+    ℓ = LogDensityProblemsAD.ADgradient(model.logdensity)
+
+    # Make init params if nothing
+    if init_params == nothing
+        d = LogDensityProblems.dimension(model.logdensity)
+        init_params = randn(rng, d)
+    end 
 
     # Perform initial step.
-    results = mcmc_keep_warmup(
+    results = DynamicHMC.mcmc_keep_warmup(
         rng,
         ℓ,
         0;
         initialization = (q = init_params,),
-        reporter = NoProgressReport(),
+        reporter = DynamicHMC.NoProgressReport(),
     )
-    steps = mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
-    transition, _ = mcmc_next_step(steps, results.final_warmup_state.Q)
+    steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
+    transition, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
     state = DynamicNUTSState(ℓ, transition, steps.H.κ, steps.ϵ)
-
     return transition, state
 end
 
 function AbstractMCMC.step(
     rng::AbstractRNG,
-    model::LogDensityModel,
+    model::AbstractMCMC.LogDensityModel,
     spl::DynamicNUTS,
     state::DynamicNUTSState;
     kwargs...
@@ -65,7 +72,7 @@ function AbstractMCMC.step(
     ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(
         rng,
-        spl,
+        spl.sampler,
         state.metric,
         ℓ,
         state.stepsize,
@@ -75,3 +82,5 @@ function AbstractMCMC.step(
 
     return transition, newstate
 end
+
+getparams(transition::DynamicHMC.EvaluatedLogDensity) = transition.q
