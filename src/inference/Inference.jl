@@ -463,7 +463,6 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
-include("../contrib/inference/dynamichmc.jl")
 include("../contrib/inference/abstractmcmc.jl")
 
 ################
