@@ -19,7 +19,6 @@ getparams(transition::AdvancedHMC.Transition) = transition.z.θ
 getstats(transition::AdvancedHMC.Transition) = transition.stat
 
 getparams(transition::AdvancedMH.Transition) = transition.params
-getstats(transition) = NamedTuple()
 
 getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
 getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
