@@ -1,5 +1,5 @@
-@stage_testset "dynamichmc" "dynamichmc.jl" begin
-    import DynamicHMC
+@testset "DynamicHMCExt" begin
+    using DynamicHMC
     Random.seed!(100)
 
     @test DynamicPPL.alg_str(Sampler(DynamicNUTS(), gdemo_default)) == "DynamicNUTS"
