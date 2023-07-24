@@ -5,19 +5,15 @@ module DynamicHMCExt
 
 
 if isdefined(Base, :get_extension)
-    using Turing
     import DynamicHMC
-    import AbstractMCMC
-    import Random
-    import LogDensityProblems
-    import LogDensityProblemsAD
+    using Turing
+    using Turing: AbstractMCMC, Random, LogDensityProblems 
+    using Turing.Inference: LogDensityProblemsAD
 else
-    using ..Turing
     import ..DynamicHMC
-    import ..AbstractMCMC
-    import ..Random
-    import ..LogDensityProblems
-    import ..LogDensityProblemsAD
+    using ..Turing
+    using ..Turing: AbstractMCMC, Random, LogDensityProblems 
+    using ..Turing.Inference: LogDensityProblemsAD
 end
 
 # Wraps DynamicHMC as an AbstractSampler
