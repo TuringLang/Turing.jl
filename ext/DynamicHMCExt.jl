@@ -1,17 +1,25 @@
 module DynamicHMCExt
-
-if isdefined(Base, :get_extension)
-    import DynamicHMC
-else
-    import ..DynamicHMCgit 
-end
-
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
+
+if isdefined(Base, :get_extension)
+    import DynamicHMC
+    import AbstractMCMC
+    import Random
+    import LogDensityProblems
+    import LogDensityProblemsAD
+else
+    import ..DynamicHMC
+    import ..AbstractMCMC
+    import ..Random
+    import ..LogDensityProblems
+    import ..LogDensityProblemsAD
+end
+
 # Wraps DynamicHMC as an AbstractSampler
-struct DynamicNUTS{S<:DynamicHMC.NUTS} <: AbstractSampler
+struct DynamicNUTS{S<:DynamicHMC.NUTS} <: AbstractMCMC.AbstractSampler
     sampler::S
 end
 
@@ -24,9 +32,6 @@ externalsampler(spl::DynamicNUTS) = ExternalSampler(spl)
     DynamicNUTSState
 
 State of the [`DynamicNUTS`](@ref) sampler.
-
-# Fields
-$(TYPEDFIELDS)
 """
 struct DynamicNUTSState{L,C,M,S}
     logdensity::L
@@ -37,7 +42,7 @@ struct DynamicNUTSState{L,C,M,S}
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
+    rng::Random.AbstractRNG,
     model::AbstractMCMC.LogDensityModel,
     spl::DynamicNUTS;
     init_params = nothing,
@@ -68,7 +73,7 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
+    rng::Random.AbstractRNG,
     model::AbstractMCMC.LogDensityModel,
     spl::DynamicNUTS,
     state::DynamicNUTSState;
