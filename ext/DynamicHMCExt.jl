@@ -3,7 +3,7 @@ module DynamicHMCExt
 if isdefined(Base, :get_extension)
     import DynamicHMC
 else
-    import ..DynamicHMC
+    import ..DynamicHMCgit 
 end
 
 ###
@@ -90,3 +90,5 @@ function AbstractMCMC.step(
 end
 
 getparams(transition::DynamicHMC.EvaluatedLogDensity) = transition.q
+
+end # module
