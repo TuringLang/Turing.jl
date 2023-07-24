@@ -1,5 +1,5 @@
 using Pkg
-Pkg.add(Pkg.PackageSpec(; url="https://github.com/EnzymeAD/Enzyme.jl.git", rev="main"))
+Pkg.add(Pkg.PackageSpec(; url="https://github.com/EnzymeAD/Enzyme.jl.git", rev="addr13"))
 
 using AbstractMCMC
 using AdvancedMH
