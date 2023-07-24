@@ -59,10 +59,12 @@ end
 if !isdefined(Base, :get_extension)
     using Requires
 end
-@static if !isdefined(Base, :get_extension)
-    @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
-end
 
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
+    end
+end
 ###########
 # Exports #
 ###########

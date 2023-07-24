@@ -5,12 +5,14 @@ module DynamicHMCExt
 
 
 if isdefined(Base, :get_extension)
+    using Turing
     import DynamicHMC
     import AbstractMCMC
     import Random
     import LogDensityProblems
     import LogDensityProblemsAD
 else
+    using ..Turing
     import ..DynamicHMC
     import ..AbstractMCMC
     import ..Random
@@ -24,9 +26,7 @@ struct DynamicNUTS{S<:DynamicHMC.NUTS} <: AbstractMCMC.AbstractSampler
 end
 
 DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
-externalsampler(spl::DynamicHMC.NUTS) = ExternalSampler(DynamicNUTS(spl))
-externalsampler(spl::DynamicNUTS) = ExternalSampler(spl)
-
+Turing.externalsampler(spl::DynamicHMC.NUTS) = Turing.externalsampler(DynamicNUTS(spl))
 
 """
     DynamicNUTSState
@@ -94,6 +94,6 @@ function AbstractMCMC.step(
     return transition, newstate
 end
 
-getparams(transition::DynamicHMC.EvaluatedLogDensity) = transition.q
+Turing.Inference.getparams(transition::DynamicHMC.EvaluatedLogDensity) = transition.q
 
 end # module
