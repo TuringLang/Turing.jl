@@ -7,7 +7,7 @@ module DynamicHMCExt
 if isdefined(Base, :get_extension)
     import DynamicHMC
     using Turing
-    using Turing: AbstractMCMC, Random, LogDensityProblems 
+    using Turing: AbstractMCMC, Random, LogDensityProblems, DocStringExtensions
     using Turing.Inference: LogDensityProblemsAD
 else
     import ..DynamicHMC
@@ -28,6 +28,9 @@ Turing.externalsampler(spl::DynamicHMC.NUTS) = Turing.externalsampler(DynamicNUT
     DynamicNUTSState
 
 State of the [`DynamicNUTS`](@ref) sampler.
+
+# Fields
+$(DocStringExtensions.FIELDS)
 """
 struct DynamicNUTSState{L,C,M,S}
     logdensity::L
@@ -49,7 +52,7 @@ function AbstractMCMC.step(
     ℓ = LogDensityProblemsAD.ADgradient(model.logdensity)
 
     # Make init params if nothing
-    if init_params == nothing
+    if init_params === nothing
         d = LogDensityProblems.dimension(model.logdensity)
         init_params = randn(rng, d)
     end 
