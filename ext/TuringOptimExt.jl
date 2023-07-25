@@ -2,11 +2,11 @@ module TuringOptimExt
 
 if isdefined(Base, :get_extension)
     import Turing
-    import Turing: DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, StatsAPI, StatsBase 
+    import Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, Statistics, StatsAPI, StatsBase 
     import Optim
 else
     import ..Turing
-    import ..Turing: DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, StatsAPI, StatsBase
+    import ..Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, Statistics, StatsAPI, StatsBase
     import ..Optim
 end
 
@@ -57,10 +57,10 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     estimates = m.values.array[:, 1]
     stderrors = StatsBase.stderror(m)
     zscore = estimates ./ stderrors
-    p = map(z -> StatsAPI.pvalue(Normal(), z; tail=:both), zscore)
+    p = map(z -> StatsAPI.pvalue(Distributions.Normal(), z; tail=:both), zscore)
 
     # Confidence interval (CI)
-    q = quantile(Normal(), (1 + level) / 2)
+    q = Statistics.quantile(Distributions.Normal(), (1 + level) / 2)
     ci_low = estimates .- q .* stderrors
     ci_high = estimates .+ q .* stderrors
     
