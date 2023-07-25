@@ -8,12 +8,12 @@ if isdefined(Base, :get_extension)
     import DynamicHMC
     using Turing
     using Turing: AbstractMCMC, Random, LogDensityProblems
-    using Turing.Inference: LogDensityProblemsAD, DocStringExtensions
+    using Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
 else
     import ..DynamicHMC
     using ..Turing
     using ..Turing: AbstractMCMC, Random, LogDensityProblems 
-    using ..Turing.Inference: LogDensityProblemsAD, DocStringExtensions
+    using ..Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
 end
 
 # Wraps DynamicHMC as an AbstractSampler
@@ -30,7 +30,7 @@ Turing.externalsampler(spl::DynamicHMC.NUTS) = Turing.externalsampler(DynamicNUT
 State of the [`DynamicNUTS`](@ref) sampler.
 
 # Fields
-$(DocStringExtensions.FIELDS)
+$(TYPEDFIELDS)
 """
 struct DynamicNUTSState{L,C,M,S}
     logdensity::L

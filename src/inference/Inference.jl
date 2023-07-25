@@ -33,7 +33,6 @@ import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
-import DocStringExtensions
 import Random
 import MCMCChains
 import StatsBase: predict
