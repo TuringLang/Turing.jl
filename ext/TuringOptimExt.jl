@@ -1,14 +1,14 @@
-using Setfield
-using DynamicPPL: DefaultContext, LikelihoodContext
-using DynamicPPL: DynamicPPL
-import .Optim
-import .Optim: optimize
-import ..ForwardDiff
-import NamedArrays
-import StatsBase
-import Printf
-import StatsAPI
+module TuringOptimExt
 
+if isdefined(Base, :get_extension)
+    import Turing
+    import Turing: DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, StatsAPI, StatsBase 
+    import Optim
+else
+    import ..Turing
+    import ..Turing: DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, StatsAPI, StatsBase
+    import ..Optim
+end
 
 """
     ModeResult{
@@ -23,7 +23,7 @@ A wrapper struct to store various results from a MAP or MLE estimation.
 struct ModeResult{
     V<:NamedArrays.NamedArray,
     O<:Optim.MultivariateOptimizationResults,
-    M<:OptimLogDensity
+    M<:Turing.OptimLogDensity
 } <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
@@ -80,7 +80,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     # Hessian is computed with respect to the untransformed parameters.
     linked = DynamicPPL.istrans(m.f.varinfo)
     if linked
-        @set! m.f.varinfo = invlink!!(m.f.varinfo, m.f.model)
+        Setfield.@set! m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
 
     # Calculate the Hessian.
@@ -90,7 +90,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Link it back if we invlinked it.
     if linked
-        @set! m.f.varinfo = link!!(m.f.varinfo, m.f.model)
+        Setfield.@set! m.f.varinfo = DynamicPPL.link!!(m.f.varinfo, m.f.model)
     end
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
@@ -126,18 +126,18 @@ mle = optimize(model, MLE())
 mle = optimize(model, MLE(), NelderMead())
 ```
 """
-function Optim.optimize(model::Model, ::MLE, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, options::Optim.Options=Optim.Options(); kwargs...)
     return _mle_optimize(model, options; kwargs...)
 end
-function Optim.optimize(model::Model, ::MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
     return _mle_optimize(model, init_vals, options; kwargs...)
 end
-function Optim.optimize(model::Model, ::MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
     return _mle_optimize(model, optimizer, options; kwargs...)
 end
 function Optim.optimize(
-    model::Model,
-    ::MLE,
+    model::DynamicPPL.Model,
+    ::Turing.MLE,
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
@@ -146,9 +146,9 @@ function Optim.optimize(
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 
-function _mle_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
+function _mle_optimize(model::DynamicPPL.Model, args...; kwargs...)
+    ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
+    return _optimize(model, Turing.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -172,18 +172,18 @@ map_est = optimize(model, MAP(), NelderMead())
 ```
 """
 
-function Optim.optimize(model::Model, ::MAP, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, options::Optim.Options=Optim.Options(); kwargs...)
     return _map_optimize(model, options; kwargs...)
 end
-function Optim.optimize(model::Model, ::MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
     return _map_optimize(model, init_vals, options; kwargs...)
 end
-function Optim.optimize(model::Model, ::MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
     return _map_optimize(model, optimizer, options; kwargs...)
 end
 function Optim.optimize(
-    model::Model,
-    ::MAP,
+    model::DynamicPPL.Model,
+    ::Turing.MAP,
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
@@ -192,9 +192,9 @@ function Optim.optimize(
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 
-function _map_optimize(model::Model, args...; kwargs...)
-    ctx = OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(model, OptimLogDensity(model, ctx), args...; kwargs...)
+function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
+    ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
+    return _optimize(model, Turing.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -203,8 +203,8 @@ end
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function _optimize(
-    model::Model,
-    f::OptimLogDensity,
+    model::DynamicPPL.Model,
+    f::Turing.OptimLogDensity,
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     args...;
     kwargs...
@@ -213,8 +213,8 @@ function _optimize(
 end
 
 function _optimize(
-    model::Model,
-    f::OptimLogDensity,
+    model::DynamicPPL.Model,
+    f::Turing.OptimLogDensity,
     options::Optim.Options=Optim.Options(),
     args...;
     kwargs...
@@ -223,8 +223,8 @@ function _optimize(
 end
 
 function _optimize(
-    model::Model,
-    f::OptimLogDensity,
+    model::DynamicPPL.Model,
+    f::Turing.OptimLogDensity,
     init_vals::AbstractArray=DynamicPPL.getparams(f),
     options::Optim.Options=Optim.Options(),
     args...;
@@ -234,8 +234,8 @@ function _optimize(
 end
 
 function _optimize(
-    model::Model,
-    f::OptimLogDensity,
+    model::DynamicPPL.Model,
+    f::Turing.OptimLogDensity,
     init_vals::AbstractArray=DynamicPPL.getparams(f),
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     options::Optim.Options=Optim.Options(),
@@ -244,8 +244,8 @@ function _optimize(
 )
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    @set! f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
-    @set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
+    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
     init_vals = DynamicPPL.getparams(f)
 
     # Optimize!
@@ -258,10 +258,10 @@ function _optimize(
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure
     # correct dimensionality.
-    @set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
-    @set! f.varinfo = invlink!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
+    Setfield.@set! f.varinfo = DynamicPPL.invlink!!(f.varinfo, model)
     vals = DynamicPPL.getparams(f)
-    @set! f.varinfo = link!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(
@@ -275,3 +275,5 @@ function _optimize(
 
     return ModeResult(vmat, M, -M.minimum, f)
 end
+
+end # module

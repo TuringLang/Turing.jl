@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.26.6"
+version = "0.26.7"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -56,6 +56,7 @@ LogDensityProblems = "2"
 LogDensityProblemsAD = "1.4"
 MCMCChains = "5, 6"
 NamedArrays = "0.9"
+Optim = "1"
 Reexport = "0.2, 1"
 Requires = "0.5, 1.0"
 SciMLBase = "1.37.1"
@@ -66,3 +67,12 @@ StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
 Tracker = "0.2.3"
 julia = "1.7"
+
+[weakdeps]
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+
+[extensions]
+TuringOptimExt = "Optim"
+
+[extras]
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
