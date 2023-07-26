@@ -22,6 +22,7 @@ using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
+using Setfield: Setfield
 using CSV
 
 import AbstractMCMC
@@ -67,7 +68,8 @@ export  InferenceAlgorithm,
         dot_observe,
         resume,
         predict,
-        isgibbscomponent
+        isgibbscomponent,
+        externalsampler
 
 #######################
 # Sampler abstraction #
@@ -78,8 +80,25 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
-
 getADbackend(::Hamiltonian{AD}) where AD = AD()
+
+"""
+    ExternalSampler{S<:AbstractSampler}
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ExternalSampler{S<:AbstractSampler} <: InferenceAlgorithm
+    "the sampler to wrap"
+    sampler::S
+end
+
+"""
+    externalsampler(sampler::AbstractSampler)
+
+Wrap a sampler so it can be used as an inference algorithm.
+"""
+externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
@@ -105,19 +124,32 @@ end
 ######################
 # Default Transition #
 ######################
+# Default
+# Extended in contrib/inference/abstractmcmc.jl
+getstats(t) = nothing
 
-struct Transition{T, F<:AbstractFloat}
-    θ  :: T
-    lp :: F
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+    θ     :: T
+    lp    :: F # TODO: merge `lp` with `stat`
+    stat  :: S
 end
 
-function Transition(vi::AbstractVarInfo, nt::NamedTuple=NamedTuple())
-    theta = merge(tonamedtuple(vi), nt)
+Transition(θ, lp) = Transition(θ, lp, nothing)
+
+function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
+    θ = merge(tonamedtuple(vi), nt)
     lp = getlogp(vi)
-    return Transition{typeof(theta), typeof(lp)}(theta, lp)
+    return Transition(θ, lp, getstats(t))
 end
 
-metadata(t::Transition) = (lp = t.lp,)
+function metadata(t::Transition)
+    stat = t.stat
+    if stat === nothing
+        return (lp = t.lp,)
+    else
+        return merge((lp = t.lp,), stat)
+    end
+end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
@@ -237,7 +269,6 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
-
 ##########################
 # Chain making utilities #
 ##########################
@@ -298,23 +329,23 @@ function names_values(extra_data::AbstractVector{<:NamedTuple{names}}) where nam
     return collect(names), values
 end
 
-function names_values(extra_data::AbstractVector{<:NamedTuple})
+function names_values(xs::AbstractVector{<:NamedTuple})
     # Obtain all parameter names.
-    names_set = Set(Symbol[])
-    for data in extra_data
-        for name in names(data)
-            push!(extra_names_set, name)
+    names_set = Set{Symbol}()
+    for x in xs
+        for k in keys(x)
+            push!(names_set, k)
         end
     end
-    extra_names = collect(extra_names_set)
+    names_unique = collect(names_set)
 
     # Extract all values as matrix.
     values = [
-        hasfield(data, name) ? missing : getfield(data, name)
-        for data in extra_data, name in extra_names
+        haskey(x, name) ? x[name] : missing
+        for x in xs, name in names_unique
     ]
 
-    return extra_names, values
+    return names_unique, values
 end
 
 getlogevidence(transitions, sampler, state) = missing
@@ -433,6 +464,7 @@ include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
+include("../contrib/inference/abstractmcmc.jl")
 
 ################
 # Typing tools #
@@ -653,9 +685,7 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        theta = DynamicPPL.tonamedtuple(vi)
-        lp = Turing.getlogp(vi)
-        Transition(theta, lp)
+        Transition(vi)
     end
 
     return transitions

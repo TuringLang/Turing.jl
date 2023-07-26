@@ -74,13 +74,13 @@
             ::Type{MCMCChains.Chains};
             kwargs...
         )
-            samples isa Vector{<:Inference.GibbsTransition} ||
+            samples isa Vector{<:Inference.Transition} ||
                 error("incorrect transitions")
             return
         end
 
         function callback(rng, model, sampler, sample, state, i; kwargs...)
-            sample isa Inference.GibbsTransition || error("incorrect sample")
+            sample isa Inference.Transition || error("incorrect sample")
             return
         end
 
