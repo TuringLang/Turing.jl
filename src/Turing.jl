@@ -11,6 +11,12 @@ import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
+import NamedArrays
+import Setfield
+import StatsAPI
+import StatsBase
+
+import Printf
 import Random
 
 const PROGRESS = Ref(true)
@@ -48,25 +54,8 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
-    @eval Inference begin
-        import ..DynamicHMC
-
-        if isdefined(DynamicHMC, :mcmc_with_warmup)
-            include("contrib/inference/dynamichmc.jl")
-        else
-            error("Please update DynamicHMC, v1.x is no longer supported")
-        end
-    end
-end
-
 include("modes/ModeEstimation.jl")
 using .ModeEstimation
-
-@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/OptimInterface.jl")
-    export optimize
-end
 
 ###########
 # Exports #
@@ -145,4 +134,22 @@ export  @model,                 # modelling
         optim_objective,
         optim_function,
         optim_problem
+
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
+    end
+    @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
+        @eval Inference begin
+            import ..DynamicHMC
+    
+            if isdefined(DynamicHMC, :mcmc_with_warmup)
+                include("contrib/inference/dynamichmc.jl")
+            else
+                error("Please update DynamicHMC, v1.x is no longer supported")
+            end
+        end
+    end
+end
+
 end
