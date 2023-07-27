@@ -26,8 +26,8 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """ 
-struct DynamicNUTS{AD} <: Turing.Inference.Hamiltonian{AD} 
-    sampler::DynamicHMC.NUTS
+struct DynamicNUTS{AD, T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{AD} 
+    sampler::T
 end
 
 DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
