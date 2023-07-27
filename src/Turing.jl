@@ -142,7 +142,7 @@ end
 function __init__()
     @static if !isdefined(Base, :get_extension)
         @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
-        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
   end
 end
 
