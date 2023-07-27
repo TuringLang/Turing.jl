@@ -11,6 +11,12 @@ import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
+import NamedArrays
+import Setfield
+import StatsAPI
+import StatsBase
+
+import Printf
 import Random
 
 const PROGRESS = Ref(true)
@@ -51,20 +57,6 @@ using .Variational
 include("modes/ModeEstimation.jl")
 using .ModeEstimation
 
-@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/OptimInterface.jl")
-    export optimize
-end
-
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-function __init__()
-    @static if !isdefined(Base, :get_extension)
-        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
-    end
-end
 ###########
 # Exports #
 ###########
@@ -142,4 +134,14 @@ export  @model,                 # modelling
         optim_objective,
         optim_function,
         optim_problem
+
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
+  end
 end
