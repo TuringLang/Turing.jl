@@ -1,4 +1,4 @@
-@testset "DynamicHMCExt" begin
+@testset "TuringDynamicHMCExt" begin
     import DynamicHMC
     Random.seed!(100)
 
