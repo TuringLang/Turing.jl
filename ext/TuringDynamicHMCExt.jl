@@ -1,4 +1,4 @@
-module DynamicHMCExt
+module TuringDynamicHMCExt
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
@@ -26,14 +26,17 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """ 
-struct DynamicNUTS{AD, T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{AD} 
-    sampler::T
+struct DynamicNUTS{AD,space} <: Turing.Inference.Hamiltonian{AD} 
+    sampler::DynamicHMC.NUTS
 end
 
 DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
-DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space}(spl)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl, ())
 DynamicNUTS{AD}() where AD = DynamicNUTS{AD}(DynamicHMC.NUTS())
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
+
+DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
 """
     DynamicNUTSState
