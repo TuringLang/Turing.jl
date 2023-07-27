@@ -70,7 +70,7 @@ Tracker = "0.2.3"
 julia = "1.7"
 
 [extensions]
-DynamicHMCExt = "DynamicHMC"
+TuringDynamicHMCExt = "DynamicHMC"
 TuringOptimExt = "Optim"
 
 [extras]
