@@ -145,3 +145,5 @@ function __init__()
         @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/DynamicHMCExt.jl")
   end
 end
+
+end # module
