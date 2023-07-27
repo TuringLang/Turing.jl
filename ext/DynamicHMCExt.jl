@@ -120,7 +120,7 @@ function AbstractMCMC.step(
     ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(
         rng,
-        DynamicHMC.NUTS(),
+        spl.sampler,
         state.metric,
         ℓ,
         state.stepsize,
