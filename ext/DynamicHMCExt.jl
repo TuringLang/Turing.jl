@@ -30,11 +30,11 @@ struct DynamicNUTS{AD,space} <: Turing.Inference.Hamiltonian{AD}
     sampler::DynamicHMC.NUTS
 end
 
-DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
-Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
-
 DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
-DynamicNUTS{AD}(space::Symbol...) where AD = DynamicNUTS{AD, space}()
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space}(spl)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl, ())
+DynamicNUTS{AD}() where AD = DynamicNUTS{AD}(DynamicHMC.NUTS())
+Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
@@ -56,7 +56,7 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
 end
 
 # Implement interface of `Gibbs` sampler
-function Turing.gibbs_state(
+function Turing.Inference.gibbs_state(
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:DynamicNUTS},
     state::DynamicNUTSState,
@@ -68,7 +68,7 @@ function Turing.gibbs_state(
     return DynamicNUTSState(ℓ, varinfo, Q, state.metric, state.stepsize)
 end
 
-DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = DynamicPPL.SampleFromUniform()
+DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS}) = DynamicPPL.SampleFromUniform()
 
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
@@ -102,7 +102,7 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
-    sample = Turing.Transition(vi)
+    sample = Turing.Inference.Transition(vi)
     state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
@@ -120,7 +120,7 @@ function AbstractMCMC.step(
     ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(
         rng,
-        spl.sampler,
+        spl.alg.sampler,
         state.metric,
         ℓ,
         state.stepsize,
@@ -132,7 +132,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
-    sample = Turing.Transition(vi)
+    sample = Turing.Inference.Transition(vi)
     newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
