@@ -31,7 +31,7 @@ struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{
 end
 
 DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
-DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space, DynamicHMC.NUTS}(spl)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space, typeof(spl)}(spl)
 DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl, ())
 DynamicNUTS{AD}() where AD = DynamicNUTS{AD}(DynamicHMC.NUTS())
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
@@ -125,4 +125,4 @@ function AbstractMCMC.step(
     return sample, newstate
 end
 
-end # module
+end
