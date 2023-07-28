@@ -445,7 +445,7 @@ function make_ahmc_kernel(alg::HMCDA, ϵ)
     return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ)))
 end
 make_ahmc_kernel(alg::NUTS, ϵ) =
-    AHMC.HMCKernel(AHMC.Trajectory{MultinomialTS}(AHMC.Leapfrog(ϵ), GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)))
+    AHMC.HMCKernel(AHMC.Trajectory{AHMC.MultinomialTS}(AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)))
 
 ####
 #### Compiler interface, i.e. tilde operators.
