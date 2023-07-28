@@ -24,7 +24,7 @@ function initialize_nuts(model::Turing.Model)
     #   - multinomial sampling scheme,
     #   - generalised No-U-Turn criteria, and
     #   - windowed adaption for step-size and diagonal mass matrix
-    proposal = AdvancedHMC.NUTS{AdvancedHMC.MultinomialTS,AdvancedHMC.GeneralisedNoUTurn}(integrator)
+    proposal = HMCKernel(Trajectory{MultinomialTS}(integrator, GeneralisedNoUTurn()))
     adaptor = AdvancedHMC.StanHMCAdaptor(
         AdvancedHMC.MassMatrixAdaptor(metric),
         AdvancedHMC.StepSizeAdaptor(0.65, integrator)
