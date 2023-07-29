@@ -189,7 +189,7 @@ function AbstractMCMC.sample(
     kwargs...
 )
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N + n_nadapts;
+        return AbstractMCMC.mcmcsample(rng, model, sampler, N + min(div(N, 10), 1_000);
                                        n_adapts = min(div(N, 10), 1_000), chain_type=chain_type, progress=progress, kwargs...)
     else
         return resume(resume_from, N; n_adapts = 0, chain_type=chain_type, progress=progress, kwargs...)
