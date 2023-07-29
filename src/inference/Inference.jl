@@ -190,7 +190,7 @@ function AbstractMCMC.sample(
     kwargs[:n_adapts] = get(kwargs, :n_adapts, default_n_adapts)
     kwargs[:discard_initial] = get(kwargs, :discard_initial, default_n_adapts)
     
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N + default_n_adapts; kwargs...)
 end
 
 function AbstractMCMC.sample(
