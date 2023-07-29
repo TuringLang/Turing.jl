@@ -135,21 +135,15 @@ export  @model,                 # modelling
         optim_function,
         optim_problem
 
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
 function __init__()
     @static if !isdefined(Base, :get_extension)
         @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
-    end
-    @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
-        @eval Inference begin
-            import ..DynamicHMC
-    
-            if isdefined(DynamicHMC, :mcmc_with_warmup)
-                include("contrib/inference/dynamichmc.jl")
-            else
-                error("Please update DynamicHMC, v1.x is no longer supported")
-            end
-        end
-    end
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
+  end
 end
 
 end
