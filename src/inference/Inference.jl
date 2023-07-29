@@ -190,9 +190,9 @@ function AbstractMCMC.sample(
 )
     if resume_from === nothing
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
+                                       n_adapts::Int = min(div(N, 10), 1_000), chain_type=chain_type, progress=progress, kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
+        return resume(resume_from, N; n_adapts = 0, chain_type=chain_type, progress=progress, kwargs...)
     end
 end
 
