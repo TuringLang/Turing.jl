@@ -181,21 +181,6 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    alg::ExternalSampler,
-    N::Integer;
-    kwargs...
-)
-    # Default adaption settings for external samplers
-    default_n_adapts = min(div(N, 10), 1_000)
-    kwargs[:n_adapts] = get(kwargs, :n_adapts, default_n_adapts)
-    kwargs[:discard_initial] = get(kwargs, :discard_initial, default_n_adapts)
-    
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N + default_n_adapts; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
     sampler::Sampler{<:InferenceAlgorithm},
     N::Integer;
     chain_type=MCMCChains.Chains,
@@ -252,24 +237,6 @@ function AbstractMCMC.sample(
 )
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), ensemble, N, n_chains;
                                kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::ExternalSampler,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...
-)
-    # Default adaption settings for external samplers
-    default_n_adapts = min(div(N, 10), 1_000)
-    kwargs[:n_adapts] = get(kwargs, :n_adapts, default_n_adapts)
-    kwargs[:discard_initial] = get(kwargs, :discard_initial, default_n_adapts)
-    
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), ensemble, N, n_chains;
-    kwargs...)
 end
 
 function AbstractMCMC.sample(
