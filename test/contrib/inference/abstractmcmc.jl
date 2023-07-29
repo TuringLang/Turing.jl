@@ -50,7 +50,7 @@ end
                 [model],
                 DynamicPPL.Sampler(externalsampler(sampler), model),
                 5_000;
-                nadapts=1_000,
+                n_adapts=1_000,
                 discard_initial=1_000,
                 rtol=0.2
             )
