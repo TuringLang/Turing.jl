@@ -46,8 +46,6 @@ export  InferenceAlgorithm,
         SampleFromUniform,
         SampleFromPrior,
         MH,
-        RWMH,
-        StaticMH,
         ESS,
         Emcee,
         Gibbs,      # classic sampling
