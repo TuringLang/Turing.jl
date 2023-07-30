@@ -1,6 +1,20 @@
+module TuringDynamicHMCExt
 ###
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
+
+
+if isdefined(Base, :get_extension)
+    import DynamicHMC
+    using Turing
+    using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
+    using Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+else
+    import ..DynamicHMC
+    using ..Turing
+    using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
+    using ..Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+end
 
 """
     DynamicNUTS
@@ -12,10 +26,15 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """ 
-struct DynamicNUTS{AD,space} <: Hamiltonian{AD} end
+struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{AD} 
+    sampler::T
+end
 
-DynamicNUTS(args...) = DynamicNUTS{ADBackend()}(args...)
-DynamicNUTS{AD}(space::Symbol...) where AD = DynamicNUTS{AD, space}()
+DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space, typeof(spl)}(spl)
+DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl, ())
+DynamicNUTS{AD}() where AD = DynamicNUTS{AD}(DynamicHMC.NUTS())
+Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
 
@@ -27,7 +46,7 @@ State of the [`DynamicNUTS`](@ref) sampler.
 # Fields
 $(TYPEDFIELDS)
 """
-struct DynamicNUTSState{L,V<:AbstractVarInfo,C,M,S}
+struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     logdensity::L
     vi::V
     "Cache of sample, log density, and gradient of log density evaluation."
@@ -36,26 +55,13 @@ struct DynamicNUTSState{L,V<:AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-# Implement interface of `Gibbs` sampler
-function gibbs_state(
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
-    state::DynamicNUTSState,
-    varinfo::AbstractVarInfo,
-)
-    # Update the log density function and its cached evaluation.
-    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(varinfo, model, spl, DynamicPPL.DefaultContext()))
-    Q = DynamicHMC.evaluate_ℓ(ℓ, varinfo[spl])
-    return DynamicNUTSState(ℓ, varinfo, Q, state.metric, state.stepsize)
-end
-
-DynamicPPL.initialsampler(::Sampler{<:DynamicNUTS}) = SampleFromUniform()
+DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS}) = DynamicPPL.SampleFromUniform()
 
 function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
-    vi::AbstractVarInfo;
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:DynamicNUTS},
+    vi::DynamicPPL.AbstractVarInfo;
     kwargs...
 )
     # Ensure that initial sample is in unconstrained space.
@@ -65,7 +71,7 @@ function DynamicPPL.initialstep(
     end
 
     # Define log-density function.
-    ℓ = LogDensityProblems.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+    ℓ = LogDensityProblemsAD.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
@@ -83,16 +89,16 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
-    sample = Transition(vi)
+    sample = Turing.Inference.Transition(vi)
     state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:DynamicNUTS},
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:DynamicNUTS},
     state::DynamicNUTSState;
     kwargs...
 )
@@ -101,7 +107,7 @@ function AbstractMCMC.step(
     ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(
         rng,
-        DynamicHMC.NUTS(),
+        spl.alg.sampler,
         state.metric,
         ℓ,
         state.stepsize,
@@ -113,8 +119,10 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
-    sample = Transition(vi)
+    sample = Turing.Inference.Transition(vi)
     newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
+end
+
 end

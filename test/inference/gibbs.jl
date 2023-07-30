@@ -21,7 +21,7 @@
         # Test gid of each samplers
         g = Turing.Sampler(s3, gdemo_default)
 
-        _, state = AbstractMCMC.step(Random.GLOBAL_RNG, gdemo_default, g)
+        _, state = AbstractMCMC.step(Random.default_rng(), gdemo_default, g)
         @test state.samplers[1].selector != g.selector
         @test state.samplers[2].selector != g.selector
         @test state.samplers[1].selector != state.samplers[2].selector
@@ -33,26 +33,26 @@
     @numerical_testset "gibbs inference" begin
         Random.seed!(100)
         alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_gdemo(chain; atol=0.15)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
 
         Random.seed!(100)
 
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m))
-        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_gdemo(chain; atol=0.1)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = Gibbs(CSMC(15, :s), ESS(:m))
-        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_gdemo(chain; atol=0.1)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         alg = CSMC(15)
-        chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-        check_gdemo(chain; atol=0.1)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
 
         Random.seed!(200)
         gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2))
-        chain = sample(MoGtest_default, gibbs, 5_000)
+        chain = sample(MoGtest_default, gibbs, 10_000)
         check_MoGtest_default(chain, atol=0.15)
 
         for alg in [
@@ -82,13 +82,13 @@
             ::Type{MCMCChains.Chains};
             kwargs...
         )
-            samples isa Vector{<:Inference.GibbsTransition} ||
+            samples isa Vector{<:Inference.Transition} ||
                 error("incorrect transitions")
             return
         end
 
         function callback(rng, model, sampler, sample, state, i; kwargs...)
-            sample isa Inference.GibbsTransition || error("incorrect sample")
+            sample isa Inference.Transition || error("incorrect sample")
             return
         end
 
@@ -100,8 +100,8 @@
             N = length(y)
             rpm = DirichletProcess(alpha)
         
-            z = tzeros(Int, N)
-            cluster_counts = tzeros(Int, N)
+            z = zeros(Int, N)
+            cluster_counts = zeros(Int, N)
             fill!(cluster_counts, 0)
         
             for i in 1:N

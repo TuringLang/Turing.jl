@@ -39,7 +39,7 @@
         multi_dim = 4
         # 1. UnivariateDistribution
         # NOTE: Noncentral distributions are commented out because of
-        #       AD imcompatibility of their logpdf functions
+        #       AD incompatibility of their logpdf functions
         dist_uni = [
             Arcsine(1, 3),
             Beta(2, 1),

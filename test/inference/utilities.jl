@@ -136,5 +136,5 @@ end
 
     @test chain.info.start_time isa Float64
     @test chain.info.stop_time isa Float64
-    @test chain.info.start_time < chain.info.stop_time
+    @test chain.info.start_time ≤ chain.info.stop_time
 end

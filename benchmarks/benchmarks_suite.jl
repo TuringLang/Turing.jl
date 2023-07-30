@@ -1,9 +1,18 @@
-using Turing, BenchmarkTools, BenchmarkHelper
+using Turing, BenchmarkTools
 using LinearAlgebra
 
-## Dummny benchmarks
+const BenchmarkSuite = BenchmarkTools.BenchmarkGroup()
 
-BenchmarkSuite["dummy"] = BenchmarkGroup(["dummy"])
+#
+# Add models to benchmarks 
+#
+
+include("models/hlr.jl")
+include("models/lr.jl")
+include("models/sv_nuts.jl")
+
+# constrained 
+BenchmarkSuite["constrained"] = BenchmarkGroup(["constrained"])
 
 data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
@@ -17,7 +26,7 @@ data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 end
 
 
-BenchmarkSuite["dummy"]["dummy"] = @benchmarkable sample($(constrained_test(data)), $(HMC(0.01, 2)), 2000)
+BenchmarkSuite["constrained"]["constrained"] = @benchmarkable sample($(constrained_test(data)), $(HMC(0.01, 2)), 2000)
 
 
 ## gdemo
@@ -35,9 +44,8 @@ end
 BenchmarkSuite["gdemo"]["hmc"] = @benchmarkable sample($(gdemo(1.5, 2.0)), $(HMC(0.01, 2)), 2000)
 
 
-##
+
 ## MvNormal
-##
 
 BenchmarkSuite["mnormal"] = BenchmarkGroup(["mnormal"])
 

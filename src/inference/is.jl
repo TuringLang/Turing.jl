@@ -3,9 +3,6 @@
 
 Importance sampling algorithm.
 
-Note that this method is particle-based, and arrays of variables
-must be stored in a [`TArray`](@ref) object.
-
 Usage:
 
 ```julia
