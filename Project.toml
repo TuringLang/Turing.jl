@@ -1,6 +1,7 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.27"
+version = "0.28"
+
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -38,7 +39,7 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
 AbstractMCMC = "4"
-AdvancedHMC = "0.3.0, 0.4"
+AdvancedHMC = "0.3.0, 0.4.0, 0.5.2"
 AdvancedMH = "0.6.8, 0.7"
 AdvancedPS = "0.4"
 AdvancedVI = "0.2"
@@ -48,6 +49,7 @@ DataStructures = "0.18"
 Distributions = "0.23.3, 0.24, 0.25"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
+DynamicHMC = "3.4"
 DynamicPPL = "0.23"
 EllipticalSliceSampling = "0.5, 1"
 ForwardDiff = "0.10.3"
@@ -68,11 +70,14 @@ StatsFuns = "0.8, 0.9, 1"
 Tracker = "0.2.3"
 julia = "1.7"
 
-[weakdeps]
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
-
 [extensions]
+TuringDynamicHMCExt = "DynamicHMC"
 TuringOptimExt = "Optim"
 
 [extras]
+DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+
+[weakdeps]
+DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
