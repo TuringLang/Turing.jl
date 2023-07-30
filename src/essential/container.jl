@@ -9,35 +9,20 @@ function TracedModel(
     model::Model,
     sampler::AbstractSampler,
     varinfo::AbstractVarInfo,
-    rng::Random.AbstractRNG
-) 
+    rng::Random.AbstractRNG,
+)
     context = SamplingContext(rng, sampler, DefaultContext())
-    evaluator = _get_evaluator(model, varinfo, context)
-    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(model, sampler, varinfo, evaluator)
-end
-
-# TODO: maybe move to DynamicPPL
-@generated function _get_evaluator(
-    model::Model{_F,argnames}, varinfo, context
-) where {_F,argnames}
-    unwrap_args = [
-        :($DynamicPPL.matchingvalue(context_new, varinfo, model.args.$var)) for var in argnames
-    ]
-    # We want to give `context` precedence over `model.context` while also
-    # preserving the leaf context of `context`. We can do this by
-    # 1. Set the leaf context of `model.context` to `leafcontext(context)`.
-    # 2. Set leaf context of `context` to the context resulting from (1).
-    # The result is:
-    # `context` -> `childcontext(context)` -> ... -> `model.context`
-    #  -> `childcontext(model.context)` -> ... -> `leafcontext(context)`
-    return quote
-        context_new = DynamicPPL.setleafcontext(
-            context, DynamicPPL.setleafcontext(model.context, DynamicPPL.leafcontext(context))
-        )
-        (model.f, model, DynamicPPL.resetlogp!!(varinfo), context_new, $(unwrap_args...))
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    if kwargs !== nothing && !isempty(kwargs)
+        error("Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.")
     end
+    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
+        model,
+        sampler,
+        varinfo,
+        (model.f, args...)
+    )
 end
-
 
 function Base.copy(model::AdvancedPS.GenericModel{<:TracedModel})
     newtask = copy(model.ctask)
@@ -73,10 +58,12 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return trace
 end
 
-function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R} 
+function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{AdvancedPS.GenericModel{TracedModel{M,S,V,E}, F}, R}) where {M,S,V,E,F,R}
+    # Extract the `args`.
     args = trace.model.ctask.args
-    _, _, container, = args
-    rng = container.rng
+    # From `args`, extract the `SamplingContext`, which contains the RNG.
+    sampling_context = args[3]
+    rng = sampling_context.rng
     trace.rng = rng
     return trace
 end

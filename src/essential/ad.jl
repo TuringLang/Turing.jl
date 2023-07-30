@@ -6,13 +6,13 @@ setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(backend::Val)
     _setadbackend(backend)
     AdvancedVI.setadbackend(backend)
-    Bijectors.setadbackend(backend)
 end
 
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
 end
 function _setadbackend(::Val{:tracker})
+    @warn "Usage of Tracker.jl with Turing.jl is no longer being actively tested and maintained; please use at your own risk. See Zygote.jl or ReverseDiff.jl for fully supported reverse-mode backends."
     ADBACKEND[] = :tracker
 end
 function _setadbackend(::Val{:zygote})
@@ -77,13 +77,18 @@ Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 getADbackend(::SampleFromPrior) = ADBackend()()
+getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
+getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
+
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()()
+getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
 
 function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.sampler), ℓ)
+    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
 function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
-    θ = ℓ.varinfo[ℓ.sampler]
+    θ = DynamicPPL.getparams(ℓ)
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
     # Define configuration for ForwardDiff.
@@ -93,13 +98,13 @@ function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensi
         ForwardDiff.Tag(f, eltype(θ))
     end
     chunk_size = getchunksize(ad)
-    config = if chunk_size == 0
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
+    chunk = if chunk_size == 0
+        ForwardDiff.Chunk(θ)
     else
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
+        ForwardDiff.Chunk(length(θ), chunk_size)
     end
 
-    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
+    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
 function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)

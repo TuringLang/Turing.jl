@@ -216,4 +216,16 @@
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
         @test !DynamicPPL.islinked(vi, spl)
     end
+
+    @turing_testset "prior" begin
+        # HACK: MH can be so bad for this prior model for some reason that it's difficult to
+        # find a non-trivial `atol` where the tests will pass for all seeds. Hence we fix it :/
+        rng = StableRNG(10)
+        alg = MH()
+        gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
+        burnin = 10_000
+        n = 10_000
+        chain = sample(rng, gdemo_default_prior, alg, n; discard_initial = burnin, thinning=10)
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
+    end
 end

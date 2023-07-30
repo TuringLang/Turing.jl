@@ -31,13 +31,21 @@
         x = map(x->Float64(x), vi[SampleFromPrior()])
 
         trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
-        @test trackerℓ isa LogDensityProblemsAD.TrackerGradientLogDensity
+        if isdefined(Base, :get_extension)
+            @test trackerℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADTrackerExt).TrackerGradientLogDensity
+        else
+            @test trackerℓ isa LogDensityProblemsAD.LogDensityProblemsADTrackerExt.TrackerGradientLogDensity
+        end
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
         @test sort(∇E1) ≈ grad_FWAD atol=1e-9
 
         zygoteℓ = LogDensityProblemsAD.ADgradient(ZygoteAD(), ℓ)
-        @test zygoteℓ isa LogDensityProblemsAD.ZygoteGradientLogDensity
+        if isdefined(Base, :get_extension)
+            @test zygoteℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADZygoteExt).ZygoteGradientLogDensity
+        else
+            @test zygoteℓ isa LogDensityProblemsAD.LogDensityProblemsADZygoteExt.ZygoteGradientLogDensity
+        end
         @test zygoteℓ.ℓ === ℓ
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
         @test sort(∇E2) ≈ grad_FWAD atol=1e-9
@@ -87,15 +95,14 @@
         sample(dir(), HMC(0.01, 1), 1000)
         Turing.setrdcache(false)
     end
-    # FIXME: For some reasons PDMatDistribution AD tests fail with ReverseDiff
     @testset "PDMatDistribution AD" begin
         @model function wishart()
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:tracker)
         sample(wishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(wishart(), HMC(0.01, 1), 1000);
+        Turing.setadbackend(:reversediff)
+        sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(wishart(), HMC(0.01, 1), 1000);
 
@@ -104,8 +111,8 @@
         end
         Turing.setadbackend(:tracker)
         sample(invwishart(), HMC(0.01, 1), 1000);
-        #Turing.setadbackend(:reversediff)
-        #sample(invwishart(), HMC(0.01, 1), 1000);
+        Turing.setadbackend(:reversediff)
+        sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(invwishart(), HMC(0.01, 1), 1000);
     end

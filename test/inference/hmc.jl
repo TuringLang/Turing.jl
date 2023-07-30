@@ -20,7 +20,7 @@
 
         check_numerical(chain, [:p], [10/14], atol=0.1)
     end
-    @numerical_testset "contrained simplex" begin
+    @numerical_testset "constrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model function constrained_simplex_test(obs12)
@@ -215,5 +215,35 @@
         res2 = sample(StableRNG(123), gdemo_default, alg, 1000)
         res3 = sample(StableRNG(123), gdemo_default, alg, 1000)
         @test Array(res1) == Array(res2) == Array(res3)
+    end
+
+    @turing_testset "prior" begin
+        @model function demo_hmc_prior()
+            # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
+            # which means that it's _very_ difficult to find a good tolerance in the test below:)
+            s ~ truncated(Normal(3, 1), lower=0)
+            m ~ Normal(0, sqrt(s))
+        end
+        alg = NUTS(1000, 0.8)
+        gdemo_default_prior = DynamicPPL.contextualize(demo_hmc_prior(), DynamicPPL.PriorContext())
+        chain = sample(gdemo_default_prior, alg, 10_000)
+        check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.1)
+    end
+
+    @turing_testset "warning for difficult init params" begin
+        attempt = 0
+        @model function demo_warn_init_params()
+            x ~ Normal()
+            if (attempt += 1) < 30
+                Turing.@addlogprob! -Inf
+            end
+        end
+
+        @test_logs (
+            :warn,
+            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
+        ) (:info,) match_mode=:any begin
+            sample(demo_warn_init_params(), NUTS(), 5)
+        end
     end
 end
