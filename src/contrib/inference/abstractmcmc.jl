@@ -12,6 +12,7 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(varinfo, transition)
 end
 
+# TODO: move these functions to DynamicPPL
 function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
     set_namedtuple!(vi, θ)
     vi
