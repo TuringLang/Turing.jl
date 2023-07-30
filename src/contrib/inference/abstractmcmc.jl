@@ -12,6 +12,12 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(varinfo, transition)
 end
 
+function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
+    set_namedtuple!(vi, θ)
+    vi
+end
+DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.logp, vi.transformation)
+
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
@@ -37,7 +43,7 @@ function AbstractMCMC.step(
 
     # Create a log-density function with an implementation of the
     # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
+    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model, SimpleVarInfo(model)))
 
     # Link the varinfo.
     f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))

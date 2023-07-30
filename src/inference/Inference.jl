@@ -102,6 +102,15 @@ Wrap a sampler so it can be used as an inference algorithm.
 """
 externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
+"""
+    ESLogDensityFunction
+
+A log density function for the External sampler.
+
+"""
+const ESLogDensityFunction{M<:Model,S<:Sampler{<:ExternalSampler},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.DefaultContext}
+LogDensityProblems.logdensity(f::ESLogDensityFunction, x::NamedTuple) = DynamicPPL.logjoint(f.model, SimpleVarInfo(x))
+
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
 
