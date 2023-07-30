@@ -93,7 +93,7 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     # Compare with `logdensity_and_gradient`.
     z = vi[SampleFromPrior()]
     for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
-        ℓ = LogDensityProblems.ADgradient(
+        ℓ = LogDensityProblemsAD.ADgradient(
             ForwardDiffAD{chunksize, standardtag}(),
             Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()),
         )

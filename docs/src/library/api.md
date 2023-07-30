@@ -42,15 +42,3 @@ BinomialLogit
 VecBinomialLogit
 OrderedLogistic
 ```
-
-
-## Data Structures
-```@docs
-TArray
-```
-
-## Utilities
-```@docs
-tzeros
-```
-

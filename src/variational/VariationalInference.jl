@@ -1,13 +1,17 @@
 module Variational
 
+using DistributionsAD: DistributionsAD
+using DynamicPPL: DynamicPPL
+using StatsBase: StatsBase
+using StatsFuns: StatsFuns
+using LogDensityProblems: LogDensityProblems
+using Distributions
+
+using Random: Random
+
 import AdvancedVI
 import Bijectors
-import DistributionsAD
-import DynamicPPL
-import StatsBase
-import StatsFuns
 
-import Random
 
 # Reexports
 using AdvancedVI: vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
@@ -33,25 +37,10 @@ function make_logjoint(model::DynamicPPL.Model; weight = 1.0)
         DynamicPPL.DefaultContext(),
         weight
     )
-    varinfo_init = DynamicPPL.VarInfo(model, ctx)
-
-    function logπ(z)
-        varinfo = DynamicPPL.VarInfo(varinfo_init, DynamicPPL.SampleFromUniform(), z)
-        model(varinfo)
-
-        return DynamicPPL.getlogp(varinfo)
-    end
-
-    return logπ
+    model_contextualized = DynamicPPL.contextualize(model, ctx)
+    f = DynamicPPL.LogDensityFunction(model_contextualized)
+    return Base.Fix1(LogDensityProblems.logdensity, f)
 end
-
-function logjoint(model::DynamicPPL.Model, varinfo, z)
-    varinfo = DynamicPPL.VarInfo(varinfo, DynamicPPL.SampleFromUniform(), z)
-    model(varinfo)
-
-    return DynamicPPL.getlogp(varinfo)
-end
-
 
 # objectives
 function (elbo::ELBO)(

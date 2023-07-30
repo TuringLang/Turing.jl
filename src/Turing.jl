@@ -8,8 +8,15 @@ using Libtask
 using Tracker: Tracker
 
 import AdvancedVI
+using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
+import NamedArrays
+import Setfield
+import StatsAPI
+import StatsBase
+
+import Printf
 import Random
 
 const PROGRESS = Ref(true)
@@ -24,26 +31,6 @@ function setprogress!(progress::Bool)
     PROGRESS[] = progress
     AdvancedVI.turnprogress(progress)
     return progress
-end
-
-# Log density function
-struct LogDensityFunction{V,M,S,C}
-    varinfo::V
-    model::M
-    sampler::S
-    context::C
-end
-
-function (f::LogDensityFunction)(θ::AbstractVector)
-    vi_new = DynamicPPL.unflatten(f.varinfo, f.sampler, θ)
-    return getlogp(last(DynamicPPL.evaluate!!(f.model, vi_new, f.sampler, f.context)))
-end
-
-# LogDensityProblems interface
-LogDensityProblems.logdensity(f::LogDensityFunction, θ::AbstractVector) = f(θ)
-LogDensityProblems.dimension(f::LogDensityFunction) = length(f.varinfo[f.sampler])
-function LogDensityProblems.capabilities(::Type{<:LogDensityFunction})
-    return LogDensityProblems.LogDensityOrder{0}()
 end
 
 # Standard tag: Improves stacktraces
@@ -67,25 +54,8 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
-    @eval Inference begin
-        import ..DynamicHMC
-
-        if isdefined(DynamicHMC, :mcmc_with_warmup)
-            include("contrib/inference/dynamichmc.jl")
-        else
-            error("Please update DynamicHMC, v1.x is no longer supported")
-        end
-    end
-end
-
 include("modes/ModeEstimation.jl")
 using .ModeEstimation
-
-@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/OptimInterface.jl")
-    export optimize
-end
 
 ###########
 # Exports #
@@ -131,6 +101,7 @@ export  @model,                 # modelling
         resume,
         @logprob_str,
         @prob_str,
+        externalsampler,
 
         setchunksize,           # helper
         setadbackend,
@@ -154,6 +125,7 @@ export  @model,                 # modelling
         generated_quantities,
         logprior,
         logjoint,
+        LogDensityFunction,
 
         constrained_space,            # optimisation interface
         MAP,
@@ -162,4 +134,16 @@ export  @model,                 # modelling
         optim_objective,
         optim_function,
         optim_problem
+
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
+  end
+end
+
 end

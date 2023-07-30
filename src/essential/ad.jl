@@ -6,13 +6,13 @@ setadbackend(backend_sym::Symbol) = setadbackend(Val(backend_sym))
 function setadbackend(backend::Val)
     _setadbackend(backend)
     AdvancedVI.setadbackend(backend)
-    Bijectors.setadbackend(backend)
 end
 
 function _setadbackend(::Val{:forwarddiff})
     ADBACKEND[] = :forwarddiff
 end
 function _setadbackend(::Val{:tracker})
+    @warn "Usage of Tracker.jl with Turing.jl is no longer being actively tested and maintained; please use at your own risk. See Zygote.jl or ReverseDiff.jl for fully supported reverse-mode backends."
     ADBACKEND[] = :tracker
 end
 function _setadbackend(::Val{:zygote})
@@ -77,13 +77,18 @@ Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
 getADbackend(::SampleFromPrior) = ADBackend()()
+getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
+getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
 
-function LogDensityProblems.ADgradient(ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(getADbackend(ℓ.sampler), ℓ)
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()()
+getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
+
+function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
-function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
-    θ = ℓ.varinfo[ℓ.sampler]
+function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+    θ = DynamicPPL.getparams(ℓ)
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
     # Define configuration for ForwardDiff.
@@ -93,27 +98,27 @@ function LogDensityProblems.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensity
         ForwardDiff.Tag(f, eltype(θ))
     end
     chunk_size = getchunksize(ad)
-    config = if chunk_size == 0
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(θ), tag)
+    chunk = if chunk_size == 0
+        ForwardDiff.Chunk(θ)
     else
-        ForwardDiff.GradientConfig(f, θ, ForwardDiff.Chunk(length(θ), chunk_size), tag)
+        ForwardDiff.Chunk(length(θ), chunk_size)
     end
 
-    return LogDensityProblems.ADgradient(Val(:ForwardDiff), ℓ; gradientconfig=config)
+    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
-function LogDensityProblems.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(Val(:Tracker), ℓ)
+function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(Val(:Tracker), ℓ)
 end
 
-function LogDensityProblems.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblems.ADgradient(Val(:Zygote), ℓ)
+function LogDensityProblemsAD.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(Val(:Zygote), ℓ)
 end
 
 for cache in (:true, :false)
     @eval begin
-        function LogDensityProblems.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
-            return LogDensityProblems.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
+        function LogDensityProblemsAD.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
+            return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
         end
     end
 end
