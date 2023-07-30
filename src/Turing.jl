@@ -73,8 +73,6 @@ export  @model,                 # modelling
         Prior,                  # Sampling from the prior
 
         MH,                     # classic sampling
-        RWMH,
-        StaticMH,
         Emcee,
         ESS,
         Gibbs,
