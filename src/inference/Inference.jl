@@ -110,6 +110,13 @@ function LogDensityProblems.logdensity(f::ESLogDensityFunction, x::NamedTuple)
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
 end
 
+# TODO: move these functions to DynamicPPL
+function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
+    set_namedtuple!(deepcopy(vi), θ)
+    return vi
+end
+DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.logp, vi.transformation)
+
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
 

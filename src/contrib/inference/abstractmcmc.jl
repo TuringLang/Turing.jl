@@ -12,13 +12,6 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(varinfo, transition)
 end
 
-# TODO: move these functions to DynamicPPL
-function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
-    set_namedtuple!(deepcopy(vi), θ)
-    return vi
-end
-DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.logp, vi.transformation)
-
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
