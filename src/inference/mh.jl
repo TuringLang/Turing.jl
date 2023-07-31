@@ -191,8 +191,8 @@ end
 function MH(model::Model; proposal_type=AMH.StaticProposal)
     priors = DynamicPPL.extract_priors(model)
     props = Tuple([proposal_type(prop) for prop in values(priors)])
-    vars = Symbol.(keys(priors))
-    priors = NamedTuple{Tuple(vars)}(props)
+    vars = Tuple(map(Symbol, collect(keys(priors))))
+    priors = NamedTuple{vars}(props)
     return AMH.MetropolisHastings(priors)
 end
 
