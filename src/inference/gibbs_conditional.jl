@@ -49,7 +49,7 @@ m = inverse_gdemo(x)
 sample(m, Gibbs(GibbsConditional(:λ, cond_λ), GibbsConditional(:m, cond_m)), 10)
 ```
 """
-struct GibbsConditional{S, C}
+struct GibbsConditional{S, C} <: InferenceAlgorithm
     conditional::C
 
     function GibbsConditional(sym::Symbol, conditional::C) where {C}
