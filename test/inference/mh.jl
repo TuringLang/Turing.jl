@@ -18,10 +18,10 @@
         s4 = Gibbs(MH(:m), MH(:s))
         c4 = sample(gdemo_default, s4, N)
 
-        s5 = externalsampler(MH(gdemo_default, proposal_type=AMH.RandomWalkProposal))
+        s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
         c5 = sample(gdemo_default, s5, N)
 
-        s6 = externalsampler(MH(gdemo_default, proposal_type=AMH.StaticProposal))
+        s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
         c6 = sample(gdemo_default, s6, N)
     end
     @numerical_testset "mh inference" begin
