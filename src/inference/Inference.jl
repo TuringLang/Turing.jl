@@ -110,7 +110,7 @@ function LogDensityProblems.logdensity(f::ESLogDensityFunction, x::NamedTuple)
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
 end
 
-# TODO: move these functions to DynamicPPL
+# TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.
 function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
     set_namedtuple!(deepcopy(vi), θ)
     return vi
