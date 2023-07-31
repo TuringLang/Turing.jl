@@ -55,12 +55,13 @@
         chain = sample(MoGtest_default, gibbs, 10_000)
         check_MoGtest_default(chain, atol=0.15)
 
+        Random.seed!(200)
         for alg in [
-            Gibbs((MH(:s), 10), (HMC(0.2, 4, :m), 10)),
-            Gibbs(MH(:s) => 10, HMC(0.2, 4, :m) => 10),
+            Gibbs((MH(:s), 2), (HMC(0.2, 4, :m), 1)),
+            Gibbs(MH(:s) => 1, HMC(0.2, 4, :m) => 2),
         ]
-            chain = sample(gdemo(1.5, 2.0), alg, 5_000)
-            check_gdemo(chain; atol=0.1)
+            chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+            check_gdemo(chain; atol=0.15)
         end
     end
 

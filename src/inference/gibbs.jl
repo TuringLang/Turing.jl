@@ -67,8 +67,7 @@ function Gibbs(
     arg1::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, 
     argrest::Vararg{<:Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, N},
 ) where {N}
-    args = (arg1, argrest...)
-    allargs = (arg, args...)
+    allargs = (arg1, argrest...)
     algs = map(first, allargs)
     iterations = map(last, allargs)
     # obtain space of sampling algorithms
