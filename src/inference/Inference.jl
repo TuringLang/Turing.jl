@@ -106,7 +106,9 @@ A log density function for the External sampler.
 
 """
 const ESLogDensityFunction{M<:Model,S<:Sampler{<:ExternalSampler},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.DefaultContext}
-LogDensityProblems.logdensity(f::ESLogDensityFunction, x::NamedTuple) = DynamicPPL.logjoint(f.model, SimpleVarInfo(x))
+function LogDensityProblems.logdensity(f::ESLogDensityFunction, x::NamedTuple)
+    return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
+end
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
