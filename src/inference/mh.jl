@@ -188,11 +188,17 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
-function MH(model::Model; proposal_type=AMH.StaticProposal)
+# Some of the proposals require working in unconstrained space.
+transform_maybe(proposal::AMH.Proposal) = proposal
+function transform_maybe(proposal::AMH.RandomWalkProposal)
+    return AMH.RandomWalkProposal(Bijectors.transformed(proposal.proposal))
+end
+
+function MH(model::Model; proposal_type=AMH.StatoicProposal)
     priors = DynamicPPL.extract_priors(model)
     props = Tuple([proposal_type(prop) for prop in values(priors)])
     vars = Tuple(map(Symbol, collect(keys(priors))))
-    priors = NamedTuple{vars}(props)
+    priors = map(transform_maybe, NamedTuple{vars}(props))
     return AMH.MetropolisHastings(priors)
 end
 
