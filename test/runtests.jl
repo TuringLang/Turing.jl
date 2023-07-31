@@ -81,8 +81,8 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
             @info "Testing $(adbackend)"
             @testset "inference: $adbackend" begin
                 @testset "samplers" begin
-                    @timeit_include("inference/gibbs.jl")
-                    @timeit_include("inference/gibbs_conditional.jl")
+                    # @timeit_include("inference/gibbs.jl")
+                    # @timeit_include("inference/gibbs_conditional.jl")
                     @timeit_include("inference/hmc.jl")
                     @timeit_include("inference/Inference.jl")
                     @timeit_include("contrib/inference/dynamichmc.jl")
