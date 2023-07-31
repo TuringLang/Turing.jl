@@ -354,6 +354,7 @@ end
 function should_link(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
     return true
 end
+# FIXME: This won't be hit unless `vals` are all the exactly same concrete type of `AdvancedMH.RandomWalkProposal`!
 function should_link(
     varinfo,
     sampler,
