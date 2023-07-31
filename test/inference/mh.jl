@@ -21,7 +21,7 @@
         s5 = externalsampler(MH(gdemo_default, proposal_type=AMH.RandomWalkProposal))
         c5 = sample(gdemo_default, s5, N)
 
-        s6 = externalsampler(MH(gdemo_default, proposal_type=AMH.StaticProposal)
+        s6 = externalsampler(MH(gdemo_default, proposal_type=AMH.StaticProposal))
         c6 = sample(gdemo_default, s6, N)
     end
     @numerical_testset "mh inference" begin
