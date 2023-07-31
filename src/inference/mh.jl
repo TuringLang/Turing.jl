@@ -194,7 +194,7 @@ function transform_maybe(proposal::AMH.RandomWalkProposal)
     return AMH.RandomWalkProposal(Bijectors.transformed(proposal.proposal))
 end
 
-function MH(model::Model; proposal_type=AMH.StatoicProposal)
+function MH(model::Model; proposal_type=AMH.StaticProposal)
     priors = DynamicPPL.extract_priors(model)
     props = Tuple([proposal_type(prop) for prop in values(priors)])
     vars = Tuple(map(Symbol, collect(keys(priors))))
