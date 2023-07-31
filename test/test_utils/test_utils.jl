@@ -42,6 +42,7 @@ using StatsFuns: binomlogpdf, logistic, logsumexp
 using TimerOutputs: TimerOutputs, @timeit
 using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
                 Variational, ZygoteAD, getspace
+using Turing.Variational: AdvancedVI
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 import LogDensityProblems
 import LogDensityProblemsAD
