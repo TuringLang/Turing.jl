@@ -46,7 +46,7 @@ import LogDensityProblemsAD
 
 setprogress!(false)
 
-include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
+include(pkgdir(Turing)*"/test/test_utils/test_utils.jl")
 
 # Collect timing and allocations information to show in a clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
