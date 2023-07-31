@@ -189,7 +189,7 @@ function MH(space...)
 end
 
 function MH(model::Model; proposal_type=AMH.StaticProposal)
-    priors = extract_priors(model)
+    priors = DynamicPPL.extract_priors(model)
     props = Tuple([proposal_type(prop) for prop in values(priors)])
     vars = Symbol.(keys(priors))
     priors = NamedTuple{Tuple(vars)}(props)
