@@ -14,8 +14,8 @@ end
 
 # TODO: move these functions to DynamicPPL
 function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple) 
-    set_namedtuple!(vi, θ)
-    vi
+    set_namedtuple!(deepcopy(vi), θ)
+    return vi
 end
 DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.logp, vi.transformation)
 
@@ -44,7 +44,7 @@ function AbstractMCMC.step(
 
     # Create a log-density function with an implementation of the
     # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model, SimpleVarInfo(model)))
+    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo.
     f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))
