@@ -38,11 +38,10 @@ alg = Gibbs(HMC(0.2, 3, :v1), PG(20, :v2))
 
 One can also pass the number of iterations for each Gibbs component using the following syntax:
 - `alg = Gibbs((HMC(0.2, 3, :v1), n_hmc), (PG(20, :v2), n_pg))`
-- `alg = Gibbs(HMC(0.2, 3, :v1) => n_hmc, PG(20, :v2) => n_pg)`
-where `n_hmc` and `n_pg` are the number of iterations for HMC and PG in each Gibbs iteration.
+where `n_hmc` and `n_pg` are the number of HMC and PG iterations for each Gibbs iteration.
 
 Tips:
-- `HMC` and `NUTS` are fast samplers, and can throw off particle-based
+- `HMC` and `NUTS` are fast samplers and can throw off particle-based
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
@@ -58,19 +57,19 @@ end
 function Gibbs(alg1::InferenceAlgorithm, algrest::Vararg{InferenceAlgorithm,N}) where {N}
     algs = (alg1, algrest...)
     iterations = ntuple(_ -> 1, Val(N + 1))
-    # obtain space of sampling algorithms
+    # obtain space for sampling algorithms
     space = Tuple(union(getspace.(algs)...))
     return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
 end
 
 function Gibbs(
-    arg1::Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, 
-    argrest::Vararg{<:Union{Tuple{<:InferenceAlgorithm,Int}, Pair{<:InferenceAlgorithm,Int}}, N},
+    arg1::Tuple{<:InferenceAlgorithm,Int},
+    argrest::Vararg{<:Tuple{<:InferenceAlgorithm,Int}, N},
 ) where {N}
     allargs = (arg1, argrest...)
     algs = map(first, allargs)
     iterations = map(last, allargs)
-    # obtain space of sampling algorithms
+    # obtain space for sampling algorithms
     space = Tuple(union(getspace.(algs)...))
     return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
 end
