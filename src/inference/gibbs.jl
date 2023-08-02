@@ -16,6 +16,8 @@ isgibbscomponent(::Hamiltonian) = true
 isgibbscomponent(::MH) = true
 isgibbscomponent(::PG) = true
 
+const TGIBBS = Union{InferenceAlgorithm, GibbsConditional}
+
 """
     Gibbs(algs...)
 
@@ -45,16 +47,16 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, N, A<:NTuple{N, InferenceAlgorithm}, B<:NTuple{N, Int}} <: InferenceAlgorithm
+struct Gibbs{space, N, A<:NTuple{N, TGIBBS}, B<:NTuple{N, Int}} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
     iterations::B
-    function Gibbs{space, N, A, B}(algs::A, iterations::B) where {space, N, A<:NTuple{N, InferenceAlgorithm}, B<:NTuple{N, Int}}
+    function Gibbs{space, N, A, B}(algs::A, iterations::B) where {space, N, A<:NTuple{N, TGIBBS}, B<:NTuple{N, Int}}
         all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
         return new{space, N, A, B}(algs, iterations)
     end
 end
 
-function Gibbs(alg1::InferenceAlgorithm, algrest::Vararg{InferenceAlgorithm,N}) where {N}
+function Gibbs(alg1::TGIBBS, algrest::Vararg{TGIBBS,N}) where {N}
     algs = (alg1, algrest...)
     iterations = ntuple(Returns(1), Val(N + 1))
     # obtain space for sampling algorithms
@@ -63,8 +65,8 @@ function Gibbs(alg1::InferenceAlgorithm, algrest::Vararg{InferenceAlgorithm,N}) 
 end
 
 function Gibbs(
-    arg1::Tuple{<:InferenceAlgorithm,Int},
-    argrest::Vararg{<:Tuple{<:InferenceAlgorithm,Int}, N},
+    arg1::Tuple{<:TGIBBS,Int},
+    argrest::Vararg{<:Tuple{<:TGIBBS,Int}, N},
 ) where {N}
     allargs = (arg1, argrest...)
     algs = map(first, allargs)
