@@ -56,7 +56,7 @@ end
 
 function Gibbs(alg1::InferenceAlgorithm, algrest::Vararg{InferenceAlgorithm,N}) where {N}
     algs = (alg1, algrest...)
-    iterations = ntuple(_ -> 1, Val(N + 1))
+    iterations = ntuple(Returns(1), Val(N + 1))
     # obtain space for sampling algorithms
     space = Tuple(union(getspace.(algs)...))
     return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
