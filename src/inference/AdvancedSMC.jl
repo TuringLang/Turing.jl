@@ -331,15 +331,16 @@ function DynamicPPL.assume(
     vn::VarName,
     __vi__::AbstractVarInfo
 )
-    local vi
-    trace = AdvancedPS.current_trace()
-    trng = trace.rng
+    local vi, trng
     try 
+        trace = AdvancedPS.current_trace()
+        trng = trace.rng
         vi = trace.model.f.varinfo
     catch e
         # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
         if e == KeyError(:__trace) || current_task().storage isa Nothing
             vi = __vi__
+            trng = rng
         else
             rethrow(e)
         end
