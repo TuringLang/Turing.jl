@@ -47,4 +47,16 @@
         xs = rand(target, 10)
         @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.05
     end
+
+    @turing_testset "simplex bijector" begin
+        @model function mwe()
+            x ~ Dirichlet([1.0,1.0])
+            return x
+        end
+        
+        m = mwe()
+        b = bijector(m)
+        x0 = m()
+        b(x0)
+    end
 end
