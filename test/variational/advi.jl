@@ -51,12 +51,12 @@
     # regression test for:
     # https://github.com/TuringLang/Turing.jl/issues/2065
     @turing_testset "simplex bijector" begin
-        @model function mwe()
+        @model function dirichlet()
             x ~ Dirichlet([1.0,1.0])
             return x
         end
         
-        m = mwe()
+        m = dirichlet()
         b = bijector(m)
         x0 = m()
         z0 = b(x0)
