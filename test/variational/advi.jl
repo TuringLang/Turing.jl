@@ -1,25 +1,23 @@
 @testset "advi.jl" begin
     @turing_testset "advi constructor" begin
         Random.seed!(0)
+        s1 = ADVI()
+        q  = vi(gdemo_default, s1, 1000)
+        c1 = rand(q, 500)
+    end
+
+    @numerical_testset "advi inference" begin
+        opt = Adam()
+        Random.seed!(1)
         N = 500
 
-        s1 = ADVI()
-        q = vi(gdemo_default, s1)
-        c1 = rand(q, N)
-    end
-    @numerical_testset "advi inference" begin
-        @testset for opt in [TruncatedADAGrad(), DecayedADAGrad()]
-            Random.seed!(1)
-            N = 500
+        alg = ADVI(10)
+        q = vi(gdemo_default, alg, 5000; optimizer = opt)
+        samples = transpose(rand(q, N))
+        chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
 
-            alg = ADVI(10, 5000)
-            q = vi(gdemo_default, alg; optimizer = opt)
-            samples = transpose(rand(q, N))
-            chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
-
-            # TODO: uhmm, seems like a large `eps` here...
-            check_gdemo(chn, atol = 0.5)
-        end
+        # TODO: uhmm, seems like a large `eps` here...
+        check_gdemo(chn, atol = 0.5)
     end
 
     @turing_testset "advi different interfaces" begin

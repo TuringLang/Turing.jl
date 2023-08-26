@@ -89,13 +89,6 @@ function Bijectors.bijector(
     end
 end
 
-struct ADVI
-    "Number of samples used to estimate the ELBO in each optimization step."
-    samples_per_step::Int
-    "Maximum number of gradient steps."
-    max_iters::Int
-end
-
 """
     meanfield([rng, ]model::Model)
 
@@ -122,29 +115,31 @@ function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     return Bijectors.transformed(d, Bijectors.inverse(b))
 end
 
+ADVI() = AdvancedVI.ADVI(1)
+
 function vi(
     model::DynamicPPL.Model,
-    alg::ADVI;
-    optimizer = Optimisers.Adam(),
+    obj::ADVI,
+    max_iters::Int;
+    optimizer = Adam(),
 )
     q_trans = meanfield(model)
-    return vi(model, alg, q_trans; optimizer)
+    return vi(model, obj, q_trans, max_iters; optimizer)
 end
 
 function vi(
     model::DynamicPPL.Model,
-    alg::ADVI,
-    q::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal};
-    optimizer = Optimisers.Adam(),
+    obj::ADVI,
+    q,
+    max_iters::Int;
+    optimizer = Adam(),
 )
     varinfo = DynamicPPL.VarInfo(model)
     b = Bijectors.bijector(model)
     prob = DynamicPPL.LogDensityFunction(model, varinfo)
 
-    obj = AdvancedVI.ADVI(prob, alg.samples_per_step; invbij = inverse(b))
-
     q, _, _ = optimize(
-        obj, q.dist, alg.max_iters; adbackend=ADBackend(), optimizer=optimizer
+        prob, obj, q, max_iters; adbackend=ADBackend(), optimizer=optimizer
     )
     return q
 end
