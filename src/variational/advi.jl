@@ -6,6 +6,9 @@ end
 
 Bijectors.inverse(f::Vec) = Vec(Bijectors.inverse(f.b), f.size)
 
+Bijectors.output_length(f::Vec, sz) = Bijectors.output_length(f.b, sz)
+Bijectors.output_length(f::Vec, n::Int) = Bijectors.output_length(f.b, n)
+
 function Bijectors.with_logabsdet_jacobian(f::Vec, x)
     return Bijectors.transform(f, x), Bijectors.logabsdetjac(f, x)
 end
@@ -13,6 +16,11 @@ end
 function Bijectors.transform(f::Vec, x::AbstractVector)
     # Reshape into shape compatible with wrapped bijector and then `vec` again.
     return vec(f.b(reshape(x, f.size)))
+end
+
+function Bijectors.transform(f::Vec{N,<:Bijectors.Inverse}, x::AbstractVector) where N
+    # Reshape into shape compatible with original (forward) bijector and then `vec` again.
+    return vec(f.b(reshape(x, Bijectors.output_length(f.b.orig, prod(f.size)))))
 end
 
 function Bijectors.transform(f::Vec, x::AbstractMatrix)
