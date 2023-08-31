@@ -5,7 +5,6 @@ using StatsBase: StatsBase
 using LogDensityProblems: LogDensityProblems
 using Distributions
 using DistributionsAD
-using Optimisers: Adam
 using StatsFuns: StatsFuns
 import ..Essential: ADBackend
 
