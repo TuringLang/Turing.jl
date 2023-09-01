@@ -152,9 +152,8 @@ struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
 end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
-
-function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
-    θ = merge(getparams(model, vi), nt)
+function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t)
+    θ = getparams(model, vi)
     lp = getlogp(vi)
     return Transition(θ, lp, getstats(t))
 end
