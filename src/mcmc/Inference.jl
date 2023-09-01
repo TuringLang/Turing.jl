@@ -479,9 +479,9 @@ include("is.jl")
 include("AdvancedSMC.jl")
 include("gibbs_conditional.jl")
 include("gibbs.jl")
-include("../contrib/inference/sghmc.jl")
 include("emcee.jl")
-include("../contrib/inference/abstractmcmc.jl")
+include("abstractmcmc.jl")
+include("../contrib/inference/sghmc.jl")
 
 ################
 # Typing tools #
